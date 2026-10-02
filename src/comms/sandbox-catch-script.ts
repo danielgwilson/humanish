@@ -4,16 +4,16 @@
 
 /**
  * The self-contained in-sandbox capture server — a plain **python3** script (stdlib only), because the
- * stock E2B desktop template ships python3 but NOT node, and the co-located catcher must run in a
+ * stock E2B desktop template ships python3 but not node, and the co-located catcher must run in a
  * runtime the sandbox guarantees (the precedented choice: LocalStack is a python catcher the app points
  * at; you pick the runtime the environment has). It runs on the sandbox's own python3, imports nothing
- * from humanish. DELIBERATELY dumb: it records each POST verbatim as an NDJSON line `{t, path, body}`
+ * from humanish. Deliberately dumb: it records each POST verbatim as an NDJSON line `{t, path, body}`
  * and returns a plausible provider success — all normalization/profile parsing happens host-side on the
  * drained lines, so the typed, tested profiles stay in one place. It also serves the host-rendered inbox
  * surface statically at /inbox + /api/inbox (with a script-forbidding CSP). argv: <port> <deliveriesFile>
  * <servedDir> [inboxPort]. The capture listener binds 127.0.0.1 (loopback) — the app under test reaches
  * it in-sandbox, nothing on the internet can inject a fake send. When an [inboxPort] is given (the
- * shared-world route, where the persona lives in a DIFFERENT sandbox), it ALSO starts a READ-ONLY inbox
+ * shared-world route, where the persona lives in a different sandbox), it also starts a read-only inbox
  * listener on 0.0.0.0:<inboxPort> so getHost can proxy the persona's inbox reads to it; that listener
  * serves GET only (POST → 405). The CUA same-sandbox route omits it and stays loopback-only.
  */

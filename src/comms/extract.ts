@@ -47,8 +47,8 @@ export function extractOtpCodes(body: string): string[] {
       list.push(c);
     }
   };
-  // The alphanumeric alternative requires at least one DIGIT (lookahead) so a labeled prose word like
-  // "your code is INVALID" isn't captured as a code; pure-digit codes (4–8) match directly.
+  // The alphanumeric alternative requires at least one digit (lookahead) so a labeled prose word like
+  // `your code is INVALID` isn't captured as a code; pure-digit codes (4–8) match directly.
   const labeledRe =
     /(?:one[-\s]?time\s+(?:pass)?code|verification\s+code|security\s+code|access\s+code|login\s+code|confirmation\s+code|passcode|\bOTP\b|\bPIN\b|\bcode\b)\D{0,15}\b([0-9]{4,8}|(?=[A-Za-z0-9]*[0-9])[A-Z0-9]{6,8})\b/gi;
   let m: RegExpExecArray | null;

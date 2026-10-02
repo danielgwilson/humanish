@@ -70,7 +70,7 @@ export interface LabCommandOptions {
   safe?: boolean | undefined;
 }
 
-// Transcode ONLY for a terminal. A pipe carries bytes to another program — mangling those would
+// Transcode only for a terminal. A pipe carries bytes to another program, and mangling those would
 // corrupt a JSON payload for a reader that handles UTF-8 perfectly well — while a TTY carries them
 // to a font, through a locale that may not decode them. See src/routes/terminal/encoding.ts for what a
 // participant actually read back off the screen.

@@ -171,7 +171,7 @@ function prepareCuaWatch(
   settings: CuaRunSettings,
 ): CuaWatchPlan | undefined {
   // Validate exposure up front (fail-closed matrix), before any run/spend. A live CUA watch is the
-  // one surface that serves runtime E2B stream URLs, so it MUST sit behind edge auth.
+  // one surface that serves runtime E2B stream URLs, so it must sit behind edge auth.
   const exposeValidation = validateExposure("watch", exposureRequestFromOptions(args.options), {
     dryRun: settings.dryRun,
     detach: args.options.detach === true,
@@ -227,7 +227,7 @@ function cuaRunOptions(
     dryRun: settings.dryRun,
     ...(settings.wantsFollow
       ? {
-          // Fires INSIDE runLab, before the actor loop and before sandbox creation, so a
+          // Fires inside runLab, before the actor loop and before sandbox creation, so a
           // tunnel-auth failure aborts before any spend and leaves no orphaned sandbox.
           onObserverReady: (observer: ObserverResult & { ok: true }) =>
             attachLiveObserver(args.io, settings, prepared.exposure, live, observer),
@@ -325,7 +325,7 @@ async function reportCuaRun(
 ): Promise<void> {
   const { server, observer: attachedObserver } = live;
   const exposeRequested = prepared.exposure.exposed;
-  // Serving is NOT gated on result.ok: a timed_out, incomplete or failed run still comes up so the
+  // Serving is not gated on result.ok: a timed_out, incomplete or failed run still comes up so the
   // operator can inspect its evidence live (and, under --expose, from a phone).
   let output: CuaActorLabResult = result;
   if (server && attachedObserver) {

@@ -76,7 +76,7 @@ interface UnexpectedErrorEnvelope {
 
 /**
  * Print the disclosure the first time humanish would collect anything, and remember that it was
- * shown. AWAITED by the caller: if this loses the race with process exit, a default-on collector
+ * shown. Awaited by the caller: if this loses the race with process exit, a default-on collector
  * becomes a silent one.
  */
 async function announceTelemetryOnce(command: Command, io: CliIo): Promise<void> {
@@ -197,12 +197,12 @@ class HumanishCommand extends Command {
   override action(fn: (this: this, ...args: any[]) => void | Promise<void>): this {
     const cliIo = this.cliIo;
     const wrapped = function (this: Command, ...args: any[]): void | Promise<void> {
-      // ONE emission point for every command, at the same seam that already catches every throw.
+      // One emission point for every command, at the same seam that already catches every throw.
       // Twenty .action() handlers each remembering to record a metric is twenty chances to forget
       // one, and a funnel with a hole in it is worse than no funnel.
       const startedAt = Date.now();
       lastExitCode = 0;
-      // The NOTICE is awaited; the SEND is not. They have opposite requirements: disclosure must
+      // The notice is awaited; the send is not. They have opposite requirements: disclosure must
       // never be lost (a silent default-on collector is indefensible), and a metric must never
       // make anyone wait. The first version put both in the fire-and-forget path, and the notice
       // lost the race with process exit — a real participant ran this build and never saw it.
@@ -278,7 +278,7 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
   io.setExitCode(2);
 }
 
-/** `unknown option '--x'` -> the sibling commands that DO declare `--x`. */
+/** `unknown option '--x'` -> the sibling commands that do declare `--x`. */
 function commandsDeclaring(root: Command, flag: string): string[] {
   const found: string[] = [];
   const walk = (command: Command, trail: string[]): void => {
@@ -306,7 +306,7 @@ export function withSiblingFlagHint(text: string, root: Command): string {
   if (match === null) return text;
   const owners = commandsDeclaring(root, match[1]!);
   if (owners.length === 0) return text;
-  // Truncation is REPORTED, never silent: a list that quietly drops owners would send a reader
+  // Truncation is reported, never silent: a list that quietly drops owners would send a reader
   // looking in the wrong place and think it had answered them.
   const shown = owners.slice(0, 3);
   const list = shown.map((owner) => `\`humanish ${owner}\``).join(", ");
@@ -363,7 +363,7 @@ export function createProgram(
     .configureOutput({
       writeOut: (text) => cliIo.writeOut(text),
       writeErr: (text) => cliIo.writeErr(text),
-      // A rejected flag should name the command that WOULD have taken it. Found by a real
+      // A rejected flag should name the command that would have taken it. Found by a real
       // first-contact study (labs/first-contact.yaml): a participant reached for
       // `humanish run --no-open` by analogy with `lab run`, got a bare "unknown option", and
       // filed it as a documentation mismatch. The flag is genuinely absent — `run` opens

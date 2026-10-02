@@ -56,7 +56,7 @@ export interface CuaActorDescriptor extends ActorDescriptorBase {
   runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
 }
 
-// The scripted descriptor exposes runSession ONLY (no toActorTrace): runScriptedBrowserSession
+// The scripted descriptor exposes runSession only (no toActorTrace): runScriptedBrowserSession
 // already returns a fully-formed ActorTrace at result.trace (the CUA shape), so a mapper would
 // be a no-op identity.
 export interface ScriptedBrowserActorDescriptor extends ActorDescriptorBase {
@@ -79,7 +79,7 @@ export type ActorDescriptor =
   | TerminalActorDescriptor;
 
 /**
- * REGISTRY CONTRACT: an actor whose capabilities include the "computer-use" lane is a
+ * Registry contract: an actor whose capabilities include the "computer-use" lane is a
  * CuaActorDescriptor — its runSession takes CuaActorSessionOptions and returns a CuaLoopResult.
  * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature and add
  * its id to CuaActorDescriptor["id"], so code narrowed by this guard can still tell the ids apart.
@@ -92,8 +92,8 @@ export function isCuaActorDescriptor(
 }
 
 /**
- * REGISTRY CONTRACT (mirror of isCuaActorDescriptor): an actor whose capabilities include the
- * "scripted-browser" lane IS a ScriptedBrowserActorDescriptor — runSession takes
+ * Registry contract (mirror of isCuaActorDescriptor): an actor whose capabilities include the
+ * "scripted-browser" lane is a ScriptedBrowserActorDescriptor; runSession takes
  * ScriptedBrowserSessionOptions and returns ScriptedBrowserSessionResult (trace fully formed,
  * like the CUA shape — no separate toActorTrace). Any future scripted driver (e.g. a HAR
  * replayer) must keep this signature; it is what lets the lab dispatch on capabilities, not ids.
@@ -105,8 +105,8 @@ export function isScriptedBrowserActorDescriptor(
 }
 
 /**
- * REGISTRY CONTRACT (mirror of isCuaActorDescriptor / isScriptedBrowserActorDescriptor): an actor
- * whose capabilities include the "terminal" lane IS a TerminalActorDescriptor. This is the guard
+ * Registry contract (mirror of isCuaActorDescriptor / isScriptedBrowserActorDescriptor): an actor
+ * whose capabilities include the "terminal" lane is a TerminalActorDescriptor. This is the guard
  * the terminal-product lab uses for route selection and capability enforcement. The current
  * descriptor's direct runSession is intentionally unsupported; live execution is route-owned.
  * Any future terminal actor must declare keyPlacement honestly and integrate with that lifecycle.

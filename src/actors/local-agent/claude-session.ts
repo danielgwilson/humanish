@@ -1,20 +1,20 @@
-// ONE Claude Code process as the computer-use brain, instead of a fresh `claude -p` per turn.
+// One Claude Code process as the computer-use brain, instead of a fresh `claude -p` per turn.
 //
-// WHY (#520): `actors[].localAgent: codex` already runs through a persistent app-server thread,
-// so the participant remembers what it tried. `claude` spawned `claude -p` per turn, so EVERY
+// Why (#520): `actors[].localAgent: codex` already runs through a persistent app-server thread,
+// so the participant remembers what it tried. `claude` spawned `claude -p` per turn, so every
 // turn started cold. Measured on the same lab with the same credentials (n=1 each): one-shot,
 // 188 actions over 90 turns and never finished; a thread that remembers, 21 actions over 8 turns
 // and goal_satisfied in 103 s. A participant that cannot remember trying the menu tries the menu
 // again. Until this existed, comparing the two agents measured the transport, not the model.
 //
-// THE MECHANISM, checked on this machine before it was written: `claude -p --input-format
+// The mechanism, checked on this machine before it was written: `claude -p --input-format
 // stream-json --output-format stream-json --verbose` is a bidirectional session over stdio. One
 // NDJSON `user` message in, a stream of `system` / `assistant` / `result` messages out, then it
 // waits for the next `user` message with the conversation intact. Two messages, one session id,
 // and a codeword given in the first turn was recalled in the second. `--allowedTools Read` keeps
 // the bound the one-shot version had: it looks at a picture, and that is all it can do.
 //
-// What this is NOT: a change to the loop, the executor, the trace, or the Observer. Only where
+// What this is not: a change to the loop, the executor, the trace, or the Observer. Only where
 // the next action comes from.
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -281,7 +281,7 @@ export function userMessage(text: string): JsonObject {
 
 /**
  * Start one Claude Code session and return a provider that spends it, one user message per
- * computer-use turn. Started EAGERLY (before the first screenshot) so the CLI's own boot is paid
+ * computer-use turn. Started eagerly (before the first screenshot) so the CLI's own boot is paid
  * while the sandbox is still settling rather than inside turn one.
  */
 export async function startClaudeSession(
@@ -390,7 +390,7 @@ export function turnFromResult(result: JsonObject): CuaTurn {
     result.is_error === true ||
     (typeof result.subtype === "string" && result.subtype !== "success")
   ) {
-    // A turn that errored is a BROKEN turn, never an empty one: an empty turn reads to the loop
+    // A turn that errored is a broken turn, never an empty one: an empty turn reads to the loop
     // as "the participant chose to do nothing".
     throw new Error(
       `Claude Code turn ended ${String(result.subtype ?? "in error")}: ${String(result.result ?? "").slice(0, 160)}`,

@@ -1,14 +1,14 @@
 // Digest-only evidence for a captured comms thread (#297). Proves "the verification mail arrived and
-// the persona could act on it" WITHOUT persisting raw PHI. Written as an adapter-artifact
+// the persona could act on it" without persisting raw PHI. Written as an adapter-artifact
 // (humanish.comms-thread.v1), so it inherits the bundle's existence-verify + public-safety scan.
 //
 // Digest discipline (deliberate, see below): addresses + links are digested (high entropy → the digest
-// is not reversible). The subject is DIGESTED too, not stored as text — redactText only scrubs
+// is not reversible). The subject is digested too instead of stored as text, because redactText only scrubs
 // secret-SHAPED tokens/paths, not free-form PII (the #108 gap), so a subject like "results for <name>"
 // would pass through verbatim; a sha256-16 keeps a PII subject non-reversible while still letting you
-// correlate identical subjects. OTP CODES are a COUNT ONLY, never digested — a sha256 of a 6-digit code
+// correlate identical subjects. OTP codes are a count only, never digested: a sha256 of a 6-digit code
 // has ~10^6 preimages and is trivially brute-forced back to the code, so a "code digest" would leak it.
-// Net: NO raw address/subject/link/OTP text ever lands in the artifact. Same caution as the lobby code.
+// Net: no raw address/subject/link/OTP text ever lands in the artifact. Same caution as the lobby code.
 
 import type { CommsMessage } from "./types.js";
 import { digestText } from "../evidence/redaction.js";
@@ -26,7 +26,7 @@ interface CommsThreadEntry {
   subjectDigest?: string;
   /** sha256-16 of each actionable link (high-entropy → non-reversible). */
   linkDigests: string[];
-  /** COUNT ONLY — a short OTP's digest is reversible, so the code itself never lands here. */
+  /** Count only: a short OTP's digest is reversible, so the code itself never lands here. */
   codeCount: number;
   sentAt: number;
   deliveredAt: number;

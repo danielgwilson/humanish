@@ -1,14 +1,14 @@
-// `humanish comms catch` (#328): run the email catch on the OPERATOR's own host.
+// `humanish comms catch` (#328): run the email catch on the operator's own host.
 //
 // Why this exists. The in-sandbox catch only works when humanish provisions the subject itself —
 // it clones the app into a sandbox, injects the email-API base URL at boot, and hosts the catch
-// alongside it. An adopter whose study runs against their OWN deployed environment (an app-url or
+// alongside it. An adopter whose study runs against their own deployed environment (an app-url or
 // operator-provisioned plane) hands humanish a URL instead, so humanish never boots the app and
 // has nowhere to put a catch. Before this, a `comms:` block on that route was warned inert and the
 // personas simply stalled at the verification screen.
 //
 // The fix is to let the adopter host the same catch and declare it (`comms.email.external`).
-// Shipping it as a COMMAND rather than a spec matters: the adopter runs the identical
+// Shipping it as a command rather than a spec matters: the adopter runs the identical
 // implementation humanish deploys in-sandbox, so the capture shape, the inbox surface, and the
 // drain contract cannot drift between the two planes. Point the app's email-API base URL at this
 // server and point the lab's `catchBaseUrl` at it too.
@@ -41,7 +41,7 @@ export interface CommsCatchHostOptions {
   dir: string;
   /** Bearer token required on GET /deliveries. Strongly recommended when the host is reachable. */
   token?: string;
-  /** SECOND port for the READ-ONLY inbox listener bound to 0.0.0.0, so a persona on another machine
+  /** Second port for the read-only inbox listener bound to 0.0.0.0, so a persona on another machine
    *  (or on a participant's desktop) can reach the inbox. Omit to stay loopback-only. */
   inboxPort?: number;
   /** Optional loopback SMTP listener sharing the HTTP capture and inbox pipeline. */
@@ -61,7 +61,7 @@ const DEFAULT_RENDER_INTERVAL_MS = 3_000;
  * Render the persona-facing inbox surface from the catch's own deliveries file into `surfaceDir`.
  *
  * This is the half that was missing on an adopter-hosted plane (#380). The catch serves /inbox and
- * /api/inbox as STATIC FILES; in-sandbox, humanish-as-host renders those files on a cadence. On a
+ * /api/inbox as static files; in-sandbox, humanish-as-host renders those files on a cadence. On a
  * plane humanish does not provision there is no such host, so nothing wrote them and every persona
  * that reached /inbox got `message not found` against a catch whose /health was green — the funnel
  * dead-ended at a technically-healthy service.
@@ -92,7 +92,7 @@ export async function renderInboxSurfaceLocally(args: {
   }));
   const messages = await inboxMessagesFrom(sends, recipients);
   const files = buildInboxSurface(messages, { recipients: addresses });
-  // A reused catch directory can change recipients or truncate its delivery log. Remove ONLY files
+  // A reused catch directory can change recipients or truncate its delivery log. Remove only files
   // recorded as generated routes, so old recipient/message URLs cannot survive that change.
   const manifestPath = path.join(args.surfaceDir, ".inbox-files.json");
   let previous: unknown = [];
@@ -147,7 +147,7 @@ export async function runCommsCatchHost(
   await mkdir(surfaceDir, { recursive: true });
   await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
 
-  // Render the EMPTY inbox before the server is announced, so /inbox resolves to the "No messages
+  // Render the empty inbox before the server is announced, so /inbox resolves to the "No messages
   // yet." page from the first request instead of a bare `message not found` (#380) — a persona reads
   // that 404 as a broken product and reports a blocker that is really just an empty mailbox.
   await renderInboxSurfaceLocally({

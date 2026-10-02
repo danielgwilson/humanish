@@ -328,7 +328,7 @@ interface PreparedText {
 /**
  * Preparation: the owner check, a CDP session (recorded on the handle as soon as it exists, so
  * disposal detaches a partial acquisition), the owned top frame, an isolated world, and the
- * PREPARE probe.
+ * `PREPARE` probe.
  */
 async function acquireIsolatedWorld(
   settings: TextPortSettings,
@@ -389,7 +389,7 @@ function disposePrepared(
 }
 
 /**
- * The handle for one preparation. paste inserts the text once: owner check, RECHECK probe, owner
+ * The handle for one preparation. paste inserts the text once: owner check, `RECHECK` probe, owner
  * check, check, then insertText. close is the handle's disposal.
  */
 function preparedHandle(

@@ -11,7 +11,7 @@
 //   sandbox lifecycle (kill-on-timeout) owns their reclamation.
 // - Readiness is an explicit curl probe against the declared URL.
 //
-// Log tails are returned RAW; callers must pass them through redaction before persisting
+// Log tails are returned raw; callers must pass them through redaction before persisting
 // (build output can echo env values and paths).
 
 import { runOrThrow, shellQuote, throwOnExit, type Shell } from "./shell.js";
@@ -53,7 +53,7 @@ export interface DetachedStepResult {
   ok: boolean;
   exitCode?: number;
   timedOut: boolean;
-  /** Capped, UNREDACTED log tail — redact before persisting. */
+  /** Capped, unredacted log tail; redact before persisting. */
   logTail: string;
 }
 
@@ -119,7 +119,7 @@ export async function readDetachedLog(
 }
 
 /**
- * Run a BOUNDED step (install/build) detached, polling its atomic status file until it
+ * Run a bounded step (install/build) detached, polling its atomic status file until it
  * exits or the budget runs out. On timeout the process group is killed and the log tail is
  * still captured so failures stay diagnosable.
  */
@@ -184,7 +184,7 @@ export async function startDetachedProcess(
 }
 
 /**
- * Poll a URL from INSIDE the sandbox until it answers 2xx/3xx or the budget runs out.
+ * Poll a URL from inside the sandbox until it answers 2xx/3xx or the budget runs out.
  * Returns true when the subject is ready.
  */
 export async function probeUrl(
