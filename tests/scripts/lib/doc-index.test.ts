@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { findPreambleLines, findUnindexedDocs } from "../../../scripts/lib/doc-index.js";
+import {
+  citesEvidenceOnly,
+  findHistoryLinks,
+  findPreambleLines,
+  findUnindexedDocs,
+} from "../../../scripts/lib/doc-index.js";
 
 function unindexed(files: Record<string, string>): string[] {
   return findUnindexedDocs(Object.keys(files), (path) => files[path]);
@@ -16,7 +21,7 @@ describe("findUnindexedDocs", () => {
     ).toEqual([]);
   });
 
-  it("accepts a page its folder's README.md links, when docs/README.md links that README", () => {
+  it("accepts a page its folder's `README.md` links, when `docs/README.md` links that index", () => {
     expect(
       unindexed({
         "docs/README.md": "- [contracts](contracts/README.md)\n",
@@ -27,7 +32,7 @@ describe("findUnindexedDocs", () => {
     ).toEqual([]);
   });
 
-  it("names a page no index links, and a folder README docs/README.md does not link", () => {
+  it("names a page no index links, and a folder index `docs/README.md` does not link", () => {
     expect(
       unindexed({
         "docs/README.md": "- [engineering](principles/engineering.md)\n",
@@ -49,17 +54,28 @@ describe("findUnindexedDocs", () => {
     ).toEqual(["docs/principles/actor-fidelity.md"]);
   });
 
-  it("skips history folders and files outside docs/, but checks docs/goals/current.md", () => {
+  it("accepts a page a `README.md` two folders up links", () => {
+    expect(
+      unindexed({
+        "docs/README.md": "- [evidence](evidence/README.md)\n",
+        "docs/evidence/README.md": "- [run](computer-use/run-2026-09-01.md)\n",
+        "docs/evidence/computer-use/run-2026-09-01.md": "# Run\n",
+        "docs/evidence/computer-use/unlisted-2026-09-02.md": "# Unlisted\n",
+      }),
+    ).toEqual(["docs/evidence/computer-use/unlisted-2026-09-02.md"]);
+  });
+
+  it("skips docs/history/ and files outside docs/, but checks docs/status.md", () => {
     expect(
       unindexed({
         "docs/README.md": "",
-        "docs/goals/old/receipt.md": "# Receipt\n",
-        "docs/plans/plan.md": "# Plan\n",
-        "docs/goals/current.md": "# Current\n",
+        "docs/history/goals/old/receipt.md": "# Receipt\n",
+        "docs/history/plans/plan.md": "# Plan\n",
+        "docs/status.md": "# Current\n",
         "README.md": "# humanish\n",
         "site/content/docs/index.mdx": "# Docs\n",
       }),
-    ).toEqual(["docs/goals/current.md"]);
+    ).toEqual(["docs/status.md"]);
   });
 });
 
@@ -79,5 +95,28 @@ describe("findPreambleLines", () => {
 
   it("finds nothing on a page that opens with its scope", () => {
     expect(findPreambleLines("# Policy\n\nThis page is the policy reference.\n")).toEqual([]);
+  });
+});
+
+describe("findHistoryLinks", () => {
+  it("names lines in `README.md` and site pages that link into docs/history/", () => {
+    const readme = [
+      "[record](docs/evidence/computer-use/run-2026-09-01.md)",
+      "[old goal](docs/history/goals/x/goal.md)",
+      "[url](https://github.com/danielgwilson/humanish/blob/main/docs/history/plans/p.md)",
+      "[status](docs/status.md)",
+    ].join("\n");
+    expect(findHistoryLinks("README.md", readme)).toEqual([2, 3]);
+    expect(findHistoryLinks("site/content/docs/x.mdx", "[a](../../../docs/history/r.md)")).toEqual([
+      1,
+    ]);
+  });
+
+  it("applies to `README.md` and site pages only", () => {
+    expect(
+      ["README.md", "site/content/docs/x.mdx", "docs/status.md", "AGENTS.md"].filter(
+        citesEvidenceOnly,
+      ),
+    ).toEqual(["README.md", "site/content/docs/x.mdx"]);
   });
 });

@@ -58,12 +58,12 @@ describe("release readiness", () => {
       "docs/assets",
       "docs/contracts",
       "docs/decisions",
-      "docs/goals/current.md",
+      "docs/status.md",
       "docs/principles",
       "docs/product",
       "docs/ramp",
       "docs/release",
-      "docs/roadmap",
+      "docs/history/roadmap",
       "examples",
       "skills",
       "README.md",
@@ -88,7 +88,7 @@ describe("release readiness", () => {
 
   it("keeps local machine paths out of the ramp and goal docs", async () => {
     const ramp = await readFile("docs/ramp/README.md", "utf8");
-    const goals = await readFile("docs/goals/current.md", "utf8");
+    const goals = await readFile("docs/status.md", "utf8");
     const forbidden = [
       ["", "Users", ""].join("/"),
       ["local", "git"].join("_"),

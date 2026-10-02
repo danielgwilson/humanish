@@ -70,7 +70,7 @@ binaries: the advertised tools, all 18 injected denials, both question tools and
 the participant Code Mode lifecycle matched, and 0.157.1 no longer offers the
 nested `skills__list` and `skills__read`. That probe's 0.154.0 inventory matched
 `residual-tool-inventory` exactly. The
-[requalification receipt](../../../docs/goals/computer-use-actor/receipts/codex-cli-0.157.1-requalification-2026-09-30.md)
+[requalification receipt](../../../docs/evidence/computer-use/codex-cli-0.157.1-requalification-2026-09-30.md)
 records the method and the live checks.
 
 IDs, paths, timestamps, and client naming are normalized. Account identifiers,

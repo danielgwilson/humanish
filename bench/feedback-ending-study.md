@@ -57,7 +57,7 @@ Score separately: attempted runs, completed tasks with saved-state evidence,
 participant messages, accepted closing reports, feedback candidates and their
 meaning, process exits, cost uncertainty, and provider cleanup. A candidate is a
 review draft, not a confirmed defect. See the
-[dated receipt](../docs/goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md)
+[dated receipt](../docs/evidence/computer-use/structured-closing-report-2026-09-05.md)
 for both the successful report recovery and false positives exposed by controls.
 
 ## Run from a source checkout

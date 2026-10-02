@@ -8,7 +8,7 @@
 // that cannot happen: enumerateLocalTree() builds one entries array, and both
 // the hash and the tar file list are derived from that same array.
 //
-// See docs/goals/local-tree-subject/goal.md ("Packing design") for the full
+// See docs/history/goals/local-tree-subject/goal.md ("Packing design") for the full
 // contract implemented here. Node builtins only, no npm dependencies.
 
 import { execFileSync } from "node:child_process";

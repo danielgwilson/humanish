@@ -6,7 +6,7 @@ description: >
   capturing a frame every 10 s and requesting no model turn; then the participant continues and adds
   a second task. The bundle's trace carries the window (started/complete notices, six dwell frames),
   and no model turn is requested during it. Receipt:
-  docs/goals/computer-use-actor/receipts/dwell-window-2026-09-04.md.
+  docs/evidence/computer-use/dwell-window-2026-09-04.md.
   Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.05.
 subject:
   source: clone
