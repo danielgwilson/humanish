@@ -70,7 +70,8 @@ describe("native transport while closing", () => {
       stdin: new PassThrough(),
       stdout: new PassThrough(),
       stderr: new PassThrough(),
-      kill: vi.fn(),
+      // true: the signal was delivered, as ChildProcess.kill reports it.
+      kill: vi.fn(() => true),
       pid: 12345,
     });
     const deadline = new RestrictedCodexDeadline(5000);
@@ -93,9 +94,9 @@ describe("native transport while closing", () => {
       interrupt ? { threadId: "thread-1", turnId: "turn-1" } : undefined,
     );
     const send = (value: unknown) => child.stdout.write(`${JSON.stringify(value)}\n`);
-    const finish = async () => {
-      child.emit("exit", 0, null);
-      child.emit("close", 0, null);
+    const finish = async (code: number | null = 0, signal: NodeJS.Signals | null = null) => {
+      child.emit("exit", code, signal);
+      child.emit("close", code, signal);
       expect(await closed).toBe(true);
       deadline.close();
     };
@@ -133,14 +134,60 @@ describe("native transport while closing", () => {
     await cut.finish();
   });
 
-  it("reports the size of a last frame cut off after humanish stopped the process", async () => {
+  const partial = '{"method":"item/completed","params":{"item":{"type":"commandExec';
+
+  it.each([
+    ["by that signal", null, "SIGTERM"],
+    ["with an exit code after it", 0, null],
+  ] as const)(
+    "reports the size of a frame cut off when humanish's SIGTERM ended the process %s",
+    async (_, code, signal) => {
+      const t = closingTransport(false);
+      await vi.waitFor(() => expect(t.child.kill).toHaveBeenCalledWith("SIGTERM"));
+      t.child.stdout.end(partial);
+      await t.finish(code, signal);
+      await vi.waitFor(() => expect(t.truncated).toHaveBeenCalledWith(Buffer.byteLength(partial)));
+      expect(t.losses).not.toHaveBeenCalled();
+    },
+  );
+
+  it("records a frame cut off when the process ended by a signal humanish did not send", async () => {
     const t = closingTransport(false);
     await vi.waitFor(() => expect(t.child.kill).toHaveBeenCalledWith("SIGTERM"));
-    const partial = '{"method":"item/completed","params":{"item":{"type":"commandExec';
     t.child.stdout.end(partial);
-    await vi.waitFor(() => expect(t.truncated).toHaveBeenCalledWith(Buffer.byteLength(partial)));
-    expect(t.losses).not.toHaveBeenCalled();
-    await t.finish();
+    await t.finish(null, "SIGSEGV");
+    await vi.waitFor(() => expect(t.losses).toHaveBeenCalledWith("codex_protocol_error"));
+    expect(t.truncated).not.toHaveBeenCalled();
+  });
+
+  it("records a frame cut off by a process that exited before humanish closed it", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      kill: vi.fn(() => true),
+      pid: 12345,
+    });
+    const deadline = new RestrictedCodexDeadline(5000);
+    const transport = new RestrictedCodexTransport(
+      ownCodexProcess(child as unknown as ChildProcessWithoutNullStreams),
+      deadline,
+    );
+    const losses = vi.fn();
+    const truncated = vi.fn();
+    transport.onPolicyFailure = losses;
+    transport.onTruncatedFrame = truncated;
+    // The scoped review's sequence: a partial frame, an exit on its own, then humanish closes.
+    child.stdout.write(partial);
+    child.emit("exit", 0, null);
+    const closed = transport.close();
+    child.stdout.end();
+    await vi.waitFor(() => expect(losses).toHaveBeenCalledWith("codex_protocol_error"));
+    expect(child.kill).not.toHaveBeenCalled();
+    expect(truncated).not.toHaveBeenCalled();
+    child.emit("close", 0, null);
+    expect(await closed).toBe(true);
+    deadline.close();
   });
 
   it("records a line it could not check", async () => {

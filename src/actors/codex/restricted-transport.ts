@@ -103,21 +103,31 @@ export function retainUnclosedChild(closed: Promise<void>): void {
 }
 export const hasUnclosedChildren = (): boolean => unclosedChildren.size > 0;
 
+/** How the process exited: its exit code, or the signal that ended it. */
+interface OwnedCodexExit {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+}
 export interface OwnedCodexProcess {
   child: ChildProcessWithoutNullStreams;
   closed: Promise<void>;
   isClosed(): boolean;
   hasExited(): boolean;
-  /** humanish began stopping the process (closeOwnedCodexProcess): its stdin ended, signals follow. */
-  stopRequested(): boolean;
-  requestStop(): void;
+  /** Resolves with the 'exit' event's code and signal. */
+  readonly exit: Promise<OwnedCodexExit>;
+  /** The signals humanish delivered while the process was still running (signalOwnedChild). */
+  signalsSent(): readonly NodeJS.Signals[];
+  recordSignal(signal: NodeJS.Signals): void;
 }
 export function ownCodexProcess(child: ChildProcessWithoutNullStreams): OwnedCodexProcess {
   let closed = false,
-    exited = false,
-    stopping = false;
-  child.once("exit", () => {
-    exited = true;
+    exited = false;
+  const sent: NodeJS.Signals[] = [];
+  const exit = new Promise<OwnedCodexExit>((resolve) => {
+    child.once("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      exited = true;
+      resolve({ code, signal });
+    });
   });
   const completion = new Promise<void>((resolve) => {
     child.once("close", () => {
@@ -130,9 +140,10 @@ export function ownCodexProcess(child: ChildProcessWithoutNullStreams): OwnedCod
     closed: completion,
     isClosed: () => closed,
     hasExited: () => exited,
-    stopRequested: () => stopping,
-    requestStop: () => {
-      stopping = true;
+    exit,
+    signalsSent: () => sent,
+    recordSignal: (signal) => {
+      sent.push(signal);
     },
   };
 }
@@ -159,13 +170,13 @@ async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boo
 function signalOwnedChild(owned: OwnedCodexProcess, signal: NodeJS.Signals): void {
   if (owned.hasExited() || owned.isClosed()) return;
   try {
-    owned.child.kill(signal);
+    // kill() is true when the signal was delivered.
+    if (owned.child.kill(signal)) owned.recordSignal(signal);
   } catch {
     /* Closing is still checked below. */
   }
 }
 export async function closeOwnedCodexProcess(owned: OwnedCodexProcess): Promise<boolean> {
-  owned.requestStop();
   owned.child.stdin.end();
   signalOwnedChild(owned, "SIGTERM");
   if (!owned.isClosed()) await settlesWithin(owned.closed, 1500);
@@ -247,9 +258,11 @@ export class RestrictedCodexTransport {
         this.frame(line);
       }
     });
-    // A last frame without its newline is parsed when it is whole JSON. One cut off after humanish
-    // stopped the process was cut by that stop, so it is a warning with its size; any other cut-off
-    // frame went unchecked.
+    // A last frame without its newline is parsed when it is whole JSON. A cut-off frame is a
+    // warning with its size only when humanish's own signal cut it: the signal reached the running
+    // process before its output ended, and the process then exited by that signal or with a code.
+    // Any other cut-off frame (an exit on its own, a crash, a signal humanish did not send) went
+    // unchecked.
     child.stdout.on("end", () => {
       const rest = this.line + this.decoder.end();
       this.line = "";
@@ -257,9 +270,20 @@ export class RestrictedCodexTransport {
       const last = lines.pop();
       for (const line of lines) this.frame(line);
       if (last === undefined) return;
-      if (this.owned.stopRequested() && !isJson(last))
-        this.onTruncatedFrame(Buffer.byteLength(last));
-      else this.frame(last);
+      if (isJson(last)) {
+        this.frame(last);
+        return;
+      }
+      if (this.owned.signalsSent().length === 0) {
+        this.failUninspected("codex_protocol_error");
+        return;
+      }
+      const bytes = Buffer.byteLength(last);
+      void this.owned.exit.then(({ code, signal }) => {
+        const ours = signal === null ? code !== null : this.owned.signalsSent().includes(signal);
+        if (ours) this.onTruncatedFrame(bytes);
+        else this.failUninspected("codex_protocol_error");
+      });
     });
     child.stderr.on("data", (chunk: Buffer) => {
       this.stderrBytes += chunk.length;

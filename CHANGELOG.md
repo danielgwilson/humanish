@@ -131,12 +131,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   Every refusal in a participant's session, including one after its last request, during shutdown or
   in a debrief whose failure the run tolerates, also fails the run at close, and so does output that
   could not be checked (malformed, past a limit, or a last frame cut off by anything but humanish's
-  own stop): `status.json` `outcome.execution.failures` gets a `provider-policy` entry naming the
+  own signal): `status.json` `outcome.execution.failures` gets a `provider-policy` entry naming the
   participant, and the result's `ok` is false; a Codex-account analysis that had completed fails
-  with the refusal's code, `analysis_codex_tool_call` for a disallowed item. A last frame cut off
-  after humanish stopped the app-server is a run warning with its byte count. A method humanish does
-  not know that carries no item does not stop the run: participant runs and `humanish analyze` list
-  such methods with counts in their warnings.
+  with the refusal's code, `analysis_codex_tool_call` for a disallowed item. A last frame cut off by
+  humanish's own signal, delivered to the running app-server and ending it, is a run warning with
+  its byte count. A method humanish does not know that carries no item does not stop the run:
+  participant runs and `humanish analyze` list such methods with counts in their warnings.
 
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 
