@@ -1,4 +1,4 @@
-// A dry run relabelled live, for tests of commands that refuse a preview: feedback drafts and
+// A dry run relabelled live, for tests of commands that refuse a dry run: feedback drafts and
 // analysis. No provider runs; the evidence stays the dry run's synthetic bundle.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";

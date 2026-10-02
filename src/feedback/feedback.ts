@@ -114,7 +114,7 @@ async function draftFeedbackBound(
     };
   }
 
-  // A preview exercised no product, so it has nothing to report upstream; analyze refuses it the
+  // A dry run exercised no product, so it has nothing to report upstream; analyze refuses it the
   // same way (ANALYSIS_REQUIRES_LIVE_RUN).
   if (context.loaded.bundle.mode !== "live") {
     return {
@@ -126,7 +126,7 @@ async function draftFeedbackBound(
         run: runInput,
         error: {
           code: "HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN",
-          message: `Run ${context.storedRunId} is a preview, which tests no product behavior. Feedback drafts need a live run; humanish lab list shows the live labs.`,
+          message: `Run ${context.storedRunId} is a dry run, which tests no product behavior. Feedback drafts need a live run.`,
         },
       },
     };

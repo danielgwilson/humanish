@@ -122,7 +122,7 @@ export function buildDraft(
 
   // A bundle without a candidate gets a draft that describes the run that happened, built from the
   // same review lines the stakeholder surfaces show (participants and tasks keep their
-  // denominators). Feedback refuses a preview before it gets here.
+  // denominators). Feedback refuses a dry run before it gets here.
   const participantEndings = participantOutcomeDetails(bundle.streams);
   const review = withCuaReviewProvenance(bundle.review, bundle.streams);
   const actualLines = [

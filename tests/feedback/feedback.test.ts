@@ -65,9 +65,9 @@ async function runCli(
 }
 
 describe("feedback issue drafts", () => {
-  it("refuses a preview with HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN and writes no draft", async () => {
+  it("refuses a dry run with HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN and writes no draft", async () => {
     await withFixtureCopy(async (cwd) => {
-      const runId = "feedback-preview";
+      const runId = "feedback-dry-run";
       await runDryRun({ cwd, dryRun: true, runId });
       for (const command of ["draft", "issue", "issue-url", "verify"]) {
         const result = await runCli([

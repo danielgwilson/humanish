@@ -143,9 +143,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   - Each installed local agent has its own row, `local agent codex` and `local agent claude`.
     Before, one `local agents` row joined both into one line. With no agent installed, the
     `local agents` row stays.
-- `humanish feedback draft`, `verify`, `issue` and `issue-url` refuse a preview with
+- `humanish feedback draft`, `verify`, `issue` and `issue-url` refuse a dry run with
   `HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN`, as `analyze` refuses one with `ANALYSIS_REQUIRES_LIVE_RUN`.
-  Before, a preview produced a "Dry-run contract proof needs product-evidence follow-up" draft.
+  Before, a dry run produced a "Dry-run contract proof needs product-evidence follow-up" draft.
   - The issue body drops the "public-safe simulation harness coverage" paragraph and the "GitHub
     mutation", "Substrate" and "Production data" lines. Its evidence list names each file by its
     path inside the run, such as "screenshot screenshots/step-003.png", without the
