@@ -1,4 +1,5 @@
 import { listenOnLoopback, PortInUseError } from "./listen.js";
+import { runNotFoundMessage } from "../run/run-not-found.js";
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import path from "node:path";
@@ -401,7 +402,10 @@ export async function serveObserverLibrary(
     if (!resolved || !pinned) {
       return {
         ok: false,
-        error: { code: "HUMANISH_RUN_NOT_FOUND", message: `Run not found: ${options.entryRunId}` },
+        error: {
+          code: "HUMANISH_RUN_NOT_FOUND",
+          message: await runNotFoundMessage(cwd, options.entryRunId),
+        },
       };
     }
     if (options.safe && (await admission.admit(resolved)) === null) {

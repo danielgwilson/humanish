@@ -106,6 +106,22 @@ The Unreleased section holds the full notes for the next version until it is tag
     `unpricedRuns` or `incompleteRunEstimates`, and its `runEstimatedUsd` is 0. Before, each
     preview counted as unpriced, with incomplete accounting. A dry run that records an unknown
     (null) figure stays unpriced.
+- Run output names real commands and says what happened in words.
+  - A lab run starts with `humanish run <lab>: dry run finished` (or `live run finished`, or
+    `failed`) and a `route:` line (`computer-use`, `terminal`, `scripted` or `shared-world`). Before,
+    it named commands that do not exist, such as `humanish lab cua dry-run`, and repeated the lab on
+    a `lab:` line, which is gone. A dry-run participant reads "dry run, nothing ran live" in place of
+    `contract_proof_only`, and a failed one reads "not ok" in place of `not-ok`.
+  - The analysis line prints a sentence, for example "analysis: skipped for dry runs" in place of
+    "analysis: skipped (AUTOMATIC_ANALYSIS_DRY_RUN)". `--json` output keeps the reason code.
+  - `humanish review` prints the verdict, the summary, the gaps as a list and the `review.json` path.
+    Before, it printed the review as raw JSON without `--json`. A dry run's verdict reads "preview
+    only; no product behavior was tested".
+  - Bare `humanish run` says "humanish run needs a lab. List labs with humanish lab list, or run
+    humanish run --dry-run for a sample bundle." (`HUMANISH_LIVE_RUN_UNIMPLEMENTED`, unchanged).
+  - A missing run reads "No runs in <dir> yet; start one with humanish run first-run" in a project
+    with no runs, and "No run <id>; humanish runs lists them" otherwise, in `verify`, `cleanup`,
+    `feedback`, `observe`, `export` and `serve`. Before, each said "Run not found: <id>".
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
