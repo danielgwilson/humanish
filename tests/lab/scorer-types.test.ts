@@ -4,7 +4,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { BrowserLabScoringContext } from "../../src/lab/adapter-extension.js";
-import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js";
+import {
+  browserScorer,
+  terminalScorer,
+  type AdapterScorerModule,
+} from "../../src/lab/adapter-scorer-loader.js";
 import type { TerminalProductScoringContext } from "../../src/routes/terminal/types.js";
 import type { RunAdapterScore, RunFeedbackCandidate } from "../../src/run/bundle.js";
 import type { RunLabOptions } from "../../src/run-lab.js";
@@ -17,7 +21,7 @@ const score = (summary: string): RunAdapterScore => ({
   summary,
 });
 
-/** Scorers typed for one context, or for both, assign without a cast. */
+/** Inline scorers, scorers typed for one context through its helper, and union scorers compile. */
 function accepted(): RunLabOptions[] {
   const browser = {
     score: (ctx: BrowserLabScoringContext) => score(`${ctx.backend} ${ctx.laneCount}`),
@@ -30,29 +34,47 @@ function accepted(): RunLabOptions[] {
     score: (ctx) => score("backend" in ctx ? ctx.backend : ctx.transcript),
   };
   return [
-    { cwd: "/x", scorer: browser },
-    { cwd: "/x", scorer: terminal },
+    { cwd: "/x", scorer: browserScorer(browser) },
+    { cwd: "/x", scorer: terminalScorer(terminal) },
     { cwd: "/x", scorer: either },
-    { cwd: "/x", scorer: { score: (ctx: BrowserLabScoringContext) => score(ctx.runDir) } },
+    // Inline literals keep their contextual types: a literal schema and a typed ctx.
+    {
+      cwd: "/x",
+      scorer: {
+        score: () => ({
+          schema: "humanish.adapter-score.v1",
+          namespace: "n",
+          status: "pass",
+          score: 1,
+          summary: "s",
+        }),
+      },
+    },
+    { cwd: "/x", scorer: { score: (ctx) => score(ctx.runId) } },
   ];
 }
 
-/** A module whose functions read different contexts fits no route, so it is refused. */
+/** A scorer typed for one context, passed bare or mixed with the other, is refused. */
 function refused(): unknown[] {
+  const browser = { score: (ctx: BrowserLabScoringContext) => score(ctx.backend) };
   const mixed = {
     score: (ctx: BrowserLabScoringContext) => score(ctx.backend),
     deriveFeedback: (ctx: TerminalProductScoringContext): RunFeedbackCandidate[] =>
       ctx.transcript ? [] : [],
   };
   return [
-    // @ts-expect-error a browser score beside a terminal deriveFeedback
-    { cwd: "/x", scorer: mixed } satisfies RunLabOptions,
+    // @ts-expect-error a browser-typed scorer needs browserScorer to say what it was written for
+    { cwd: "/x", scorer: browser } satisfies RunLabOptions,
+    // @ts-expect-error a browser score beside a terminal deriveFeedback fits neither helper
+    browserScorer(mixed),
+    // @ts-expect-error the same module, as a terminal scorer
+    terminalScorer(mixed),
   ];
 }
 
 describe("RunLabOptions.scorer", () => {
-  it("takes a scorer typed for either context, or for both", () => {
-    expect(accepted()).toHaveLength(4);
-    expect(refused()).toHaveLength(1);
+  it("takes inline scorers, union scorers, and narrowed ones through their helper", () => {
+    expect(accepted()).toHaveLength(5);
+    expect(refused()).toHaveLength(3);
   });
 });

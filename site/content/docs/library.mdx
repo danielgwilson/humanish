@@ -84,10 +84,10 @@ An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser route
 [scorer example](https://github.com/danielgwilson/humanish/tree/main/examples/scorer) does both.
 Every scoring context carries `ctx.bundle` and `ctx.runId`.
 
-The type parameter names the context the functions read:
-`AdapterScorerModule<BrowserLabScoringContext>` for computer use and shared world, and
-`AdapterScorerModule<TerminalProductScoringContext>` for terminal runs. Either passes as `scorer`
-without a cast. The default, the union of both, is for a scorer that narrows `ctx` at runtime.
+A scorer written for one context passes through a helper that names it:
+`scorer: browserScorer({ score: (ctx: BrowserLabScoringContext) => … })` for computer use and
+shared world, and `terminalScorer(…)` with `TerminalProductScoringContext` for terminal runs. An
+inline scorer, or one that narrows `ctx` at runtime, passes as it is.
 
 ## Removed and deprecated exports
 
