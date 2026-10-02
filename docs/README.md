@@ -25,7 +25,7 @@ reference under `docs/` by what it is for. To make a first change, start with
   accept `actors[0].tasks`.
 - [architecture/external-public-shared-world.md](architecture/external-public-shared-world.md) and
   [architecture/terminal-product-route.md](architecture/terminal-product-route.md): two routes in
-  depth. Both keep dated slice notes beside the current rules.
+  depth.
 - [architecture/restricted-codex-analysis.md](architecture/restricted-codex-analysis.md) and
   [product/automatic-analysis.md](product/automatic-analysis.md): study analysis.
 - [release/public-readiness-standard.md](https://github.com/danielgwilson/humanish/blob/main/docs/release/public-readiness-standard.md): what may appear in

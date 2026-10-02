@@ -243,8 +243,8 @@ does not yet detect free-form PII or PHI such as names, emails,
 phone numbers, dates of birth, or medical identifiers. Keeping those out depends
 on using synthetic data and on review, so `redaction: passed` means the
 automated secret and path scan found no matches, not that the artifact was
-certified free of PII or PHI. A first-class PII/PHI detector is on the roadmap
-([#108](https://github.com/danielgwilson/humanish/issues/108)).
+certified free of PII or PHI. A first-class PII/PHI detector is
+[planned](https://github.com/danielgwilson/humanish/issues/108).
 
 `humanish verify --json` also reports `shareSafety.status`:
 
