@@ -252,6 +252,9 @@ describe("selected lab setup without paid dispatch", () => {
         )!.message;
         expect(message).toContain(`\`${path.join(bin, "codex")}\``);
         expect(message).toContain(notCodex);
+        // Neither in a project nor npm's global prefix: whatever installed it replaces it.
+        expect(message).toContain("Update it with the tool that installed it");
+        expect(message).not.toContain("npm install -g");
       });
     } finally {
       readiness.mockRestore();
