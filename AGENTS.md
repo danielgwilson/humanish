@@ -61,7 +61,8 @@ the file to read first. Keep these layout rules:
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
   PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis,
   and no em dashes (`—`, or two hyphens between spaces): use a colon, a comma or two sentences.
-  `prose:check` counts violations in `src/`.
+  `prose:check` counts violations in comments and test names under `src/`, `tests/`, `scripts/`
+  and `tui/`.
 - Tests assert behavior. Do not pin prose in docs or comments with `toContain`. The default test
   timeout is 20 s. Provider-API fixtures come from captured wire shapes.
 - New dependencies go in the pnpm catalog (`pnpm-workspace.yaml`) when more than one workspace
