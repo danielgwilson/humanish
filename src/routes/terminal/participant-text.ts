@@ -1,6 +1,6 @@
 import type { ActorTraceItem } from "../../actors/contract.js";
 import { normalizeLocalActorTranscript } from "../../run/terminal-contract.js";
-import { MESSAGE_CHARS, TEXT_ITEMS_BYTES, TEXT_ITEMS_MAX } from "./types.js";
+import { MESSAGE_CHARS, PENDING_LINE_CHARS, TEXT_ITEMS_BYTES, TEXT_ITEMS_MAX } from "./types.js";
 
 // Analysis may quote message and reasoning items as the participant's own words, so these items
 // carry only the agent's text. Command output, usage records and harness lines stay in the
@@ -82,9 +82,14 @@ export function createTerminalParticipantReader(sanitize: (text: string) => stri
   finish(): TerminalParticipantText;
 } {
   let pending = "";
+  // Set while the rest of an over-long line is skipped, up to its newline.
+  let skipping = false;
+  let droppedLines = 0;
   const participantIds = new Set<string>();
   const messageIds = new Set<string>();
   const done = new Set<string>();
+  // Completed or left-out items; later events for them are ignored.
+  const closed = new Set<string>();
   const texts = new Map<string, { kind: "message" | "reasoning"; number: number; text: string }>();
   const numbers = { message: 0, reasoning: 0 };
   let left = 0;
@@ -95,9 +100,12 @@ export function createTerminalParticipantReader(sanitize: (text: string) => stri
       if (isParticipantItem(item)) participantIds.add(id);
       const kind =
         item.type === "agent_message" ? "message" : item.type === "reasoning" ? "reasoning" : null;
-      if (kind === null || !nonempty(item.text) || done.has(id)) continue;
+      if (kind === null || !nonempty(item.text) || closed.has(id)) continue;
       if (kind === "message") messageIds.add(id);
-      if (event === "item.completed") done.add(id);
+      if (event === "item.completed") {
+        done.add(id);
+        closed.add(id);
+      }
       // Redact the decoded text before cutting it, so a cut cannot split a value past the patterns.
       const clean = [...sanitize(withoutMarkerLines(item.text))];
       const text = (clean.length > MESSAGE_CHARS ? clean.slice(0, MESSAGE_CHARS) : clean).join("");
@@ -107,30 +115,42 @@ export function createTerminalParticipantReader(sanitize: (text: string) => stri
         continue;
       }
       texts.set(id, { kind, number: previous?.number ?? ++numbers[kind], text });
-      // Older finished items beyond the count limit are left out as the stream arrives, so a long
-      // stream cannot hold every message in memory.
-      if (texts.size > TEXT_ITEMS_MAX)
-        for (const key of texts.keys())
-          if (done.has(key)) {
-            texts.delete(key);
-            left += 1;
-            break;
-          }
+      // The oldest item beyond the count limit is left out as the stream arrives, finished or not,
+      // so a long stream cannot hold every message in memory.
+      if (texts.size > TEXT_ITEMS_MAX) {
+        const oldest = texts.keys().next().value!;
+        texts.delete(oldest);
+        closed.add(oldest);
+        left += 1;
+      }
     }
   };
 
   return {
     append(raw) {
       if (result) return;
+      if (skipping) {
+        const end = raw.indexOf("\n");
+        if (end < 0) return;
+        skipping = false;
+        raw = raw.slice(end + 1);
+      }
       pending += raw;
       const end = pending.lastIndexOf("\n");
-      if (end < 0) return;
-      take(pending.slice(0, end));
-      pending = pending.slice(end + 1);
+      if (end >= 0) {
+        take(pending.slice(0, end));
+        pending = pending.slice(end + 1);
+      }
+      // A line with no newline in sight is dropped, so one runaway line cannot grow without bound.
+      if (pending.length > PENDING_LINE_CHARS) {
+        pending = "";
+        skipping = true;
+        droppedLines += 1;
+      }
     },
     finish() {
       if (result) return result;
-      take(pending);
+      if (!skipping) take(pending);
       pending = "";
       const entries = [...texts.entries()];
       let start = entries.length;
@@ -150,15 +170,27 @@ export function createTerminalParticipantReader(sanitize: (text: string) => stri
         title: kind === "message" ? "agent message" : "agent reasoning",
         text,
       }));
+      const notices: Array<[string, string]> = [];
       if (left > 0)
+        notices.push([
+          "agent text truncated",
+          `Kept the last ${kept.length} of ${kept.length + left} agent message and reasoning items, within ${TEXT_ITEMS_MAX} items and ${TEXT_ITEMS_BYTES / 1024} KiB. The terminal transcript keeps the captured stream.`,
+        ]);
+      if (droppedLines > 0)
+        notices.push([
+          "agent output lines skipped",
+          `Skipped ${droppedLines} stdout line(s) that ran past ${PENDING_LINE_CHARS} characters without a newline. Items on those lines are not in this trace or its counts.`,
+        ]);
+      notices.forEach(([title, text], index) =>
         items.push({
-          id: "notice-001",
+          id: `notice-${String(index + 1).padStart(3, "0")}`,
           kind: "notice",
           lifecycle: "completed",
           status: "truncated",
-          title: "agent text truncated",
-          text: `Kept the last ${kept.length} of ${kept.length + left} agent message and reasoning items, within ${TEXT_ITEMS_MAX} items and ${TEXT_ITEMS_BYTES / 1024} KiB. The terminal transcript keeps the captured stream.`,
-        });
+          title,
+          text,
+        }),
+      );
       result = { items, messages: messageIds.size, participantItems: participantIds.size };
       return result;
     },
