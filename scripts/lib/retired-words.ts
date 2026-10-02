@@ -34,8 +34,6 @@ export const EXEMPT_PATHS = [
   "src/run/shared-world-shape.ts",
   // The saved stream record's simId, checked when a bundle is read.
   "src/run/stream-shape.ts",
-  // Deprecated exports, named as they were published, until the next minor removes them.
-  "src/deprecated.ts",
 ];
 
 export function isCounted(path: string): boolean {

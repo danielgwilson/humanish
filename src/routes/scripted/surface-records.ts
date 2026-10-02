@@ -77,7 +77,7 @@ export function scriptedSurfaceRecords(
     embed: lastScreenshot
       ? { kind: "screenshot", url: `../${lastScreenshot}`, title: `${surface.label} (raw)` }
       : { kind: "placeholder", title: surface.label },
-    // REAL emulated viewport: isMobile/deviceScaleFactor genuinely render on this route
+    // Real emulated viewport: isMobile/deviceScaleFactor genuinely render on this route
     // (playwright emulation), unlike the e2b-desktop route's prompt-signal-only fidelity.
     viewport: surface.viewport,
     ui: {

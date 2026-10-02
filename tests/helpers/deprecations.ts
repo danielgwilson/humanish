@@ -5,12 +5,19 @@
 // The state lives on globalThis, so a test file that imports this module sees the same state as
 // the setup file even if the two imports evaluate it separately.
 
-/** The deprecation codes humanish emits: src/deprecated.ts and src/lab/adapter-extension.ts. */
-export const HUMANISH_DEPRECATION_CODES = [
-  "HUMANISH_DEPRECATED_EXPORT",
-  "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED",
-] as const;
-export type HumanishDeprecationCode = (typeof HUMANISH_DEPRECATION_CODES)[number];
+/**
+ * A humanish DeprecationWarning's code. The guard holds back every DeprecationWarning whose code
+ * has this prefix, so a new deprecation needs no entry here.
+ */
+export type HumanishDeprecationCode = `HUMANISH_${string}`;
+
+/** True for a warning of type DeprecationWarning whose code starts with HUMANISH_. */
+export function isHumanishDeprecation(
+  type: unknown,
+  code: unknown,
+): code is HumanishDeprecationCode {
+  return type === "DeprecationWarning" && typeof code === "string" && code.startsWith("HUMANISH_");
+}
 
 interface DeprecationGuardState {
   /** Codes the running test allows. Cleared after each test. */

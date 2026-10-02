@@ -6,6 +6,7 @@ import {
   MODEL_RATES,
   PRICING_SCHEMA,
   estimateActorCost,
+  estimateAggregatedTurnCost,
   estimateDesktopCost,
   round6,
   type DesktopRate,
@@ -326,5 +327,49 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
     const cost = estimateActorCost({ input: 5000, output: 100 }, "tiered-model", rates);
     expect(cost.estimatedCostUsd).toBeCloseTo(5000 * 4e-6 + 100 * 10e-6, 6);
     expect(cost.breakdown?.longContextTurns).toBeUndefined();
+  });
+});
+
+describe("estimateAggregatedTurnCost", () => {
+  // Codex turn.completed usage from a 0.107.0 live terminal run: one turn summing every request.
+  const turn = { input: 294_603, cachedInput: 262_238, cacheWriteInput: 32_329, output: 1_526 };
+  const usage = { ...turn, total: turn.input + turn.output, turns: [turn] };
+
+  it("prices a 294k aggregated turn at base rates and labels the estimate", () => {
+    const rate = MODEL_RATES["gpt-5.6-sol"]!;
+    const full = turn.input - turn.cachedInput - turn.cacheWriteInput;
+    const estimate = estimateAggregatedTurnCost(usage, "gpt-5.6-sol");
+    expect(estimate).toMatchObject({
+      modelId: "gpt-5.6-sol",
+      basis: "aggregated_turns_base_rate",
+      ratesAsOf: rate.asOf,
+      source: rate.source,
+    });
+    expect(estimate.breakdown).toEqual({
+      inputUsd: round6(
+        full * rate.inputUsdPerToken +
+          turn.cachedInput * rate.cachedInputUsdPerToken! +
+          turn.cacheWriteInput * rate.cacheWriteUsdPerToken!,
+      ),
+      outputUsd: round6(turn.output * rate.outputUsdPerToken),
+      inputTokens: turn.input,
+      outputTokens: turn.output,
+      cachedInputTokens: turn.cachedInput,
+      cacheWriteInputTokens: turn.cacheWriteInput,
+    });
+    // Read as one request, the same turn crosses the long-context threshold and doubles.
+    const asOneRequest = estimateActorCost(usage, "gpt-5.6-sol");
+    expect(asOneRequest.breakdown?.longContextTurns).toBe(1);
+    expect(estimate.estimatedCostUsd!).toBeLessThan(asOneRequest.estimatedCostUsd!);
+  });
+
+  it("labels nothing it could not price", () => {
+    for (const estimate of [
+      estimateAggregatedTurnCost(usage, "codex"),
+      estimateAggregatedTurnCost(undefined, "gpt-5.6-sol"),
+    ]) {
+      expect(estimate.estimatedCostUsd).toBeNull();
+      expect(estimate.basis).toBeUndefined();
+    }
   });
 });

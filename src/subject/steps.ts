@@ -59,7 +59,7 @@ export function emitPhaseCompleted(
 }
 
 /** Default phase-boundary sink (stderr): one line per event, prefixed with the participant id
- *  ONLY when laneCount > 1. Single-participant emission is unconditional: total single-participant silence for the
+ *  only when laneCount > 1. Single-participant emission is unconditional: total single-participant silence for the
  *  whole clone/install/build/ready boot is the bug this event stream exists to close.
  *  Overridable via LabDeps.subjectPhaseSink so deterministic tests capture instead of writing to
  *  the real stderr. */

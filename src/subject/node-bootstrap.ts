@@ -57,13 +57,13 @@ export const NODE_BOOTSTRAP_COMMAND = [
   "for executable in node npm npx; do",
   `  sudo -n ln -sfn "$node_target/bin/$executable" "/usr/local/bin/$executable"`,
   "done",
-  // Keep global product executables on the existing ordinary/sudo PATH (#679). The new
+  // Keep global product executables on the existing ordinary/sudo `PATH` (#679). The new
   // versioned distribution is the only config we modify; no user/global npmrc or profile.
   `sudo -n "$node_target/bin/node" -e '${NODE_NPM_PREFIX_SCRIPT}' "$node_target/lib/node_modules/npm/npmrc"`,
   "hash -r",
   `node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)' && npm --version >/dev/null`,
-  // Product installation already uses sudo; detect a template whose sudo PATH cannot see Node
-  // rather than changing global PATH or permissions to make it look supported.
+  // Product installation already uses sudo; detect a template whose sudo `PATH` cannot see Node
+  // rather than changing global `PATH` or permissions to make it look supported.
   `sudo -n node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)' && sudo -n npm --version >/dev/null`,
   "fi",
 ].join("\n");

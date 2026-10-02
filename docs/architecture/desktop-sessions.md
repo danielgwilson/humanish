@@ -85,8 +85,8 @@ described in [local browser studies](local-browser-runtime.md).
 
 The `runSession` testing hook for independent participants now receives a constructed
 `executor` instead of `desktop`/`executorOptions`. A hook should consume the
-normal `CuaActorSessionOptions` executor or delegate to `runCuaActorSession`.
-Library calls directly using `runCuaActorSession({ desktop, executorOptions })`
-still work but warn as deprecated; use `runComputerUseLoop`. A custom in-process
+normal `CuaActorSessionOptions` executor or delegate to the internal
+`runCuaActorSession`. The `runCuaActorSession` export was removed in 0.107.0; a
+library caller uses `runComputerUseLoop`. A custom in-process
 executor now goes through `RunLabOptions.inProcess`, which replaces the
 removed `cuaHooks.buildExecutor`.

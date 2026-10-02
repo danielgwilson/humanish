@@ -111,10 +111,6 @@
       ]
     },
     "warnings": [
-      "Browser window bounds could not be measured for participant lane-01; the live stream will use the full desktop.",
-      "Physical browser containment is unverified for participant lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-      "Browser outer bounds could not be measured for participant lane-01.",
-      "Browser CSS viewport could not be measured for participant lane-01; stream.viewport is omitted instead of copying the requested screen resolution.",
       "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
@@ -126,7 +122,8 @@
     }
   },
   "<stderr>": [
-    "humanish: Persona first-time-visitor has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context)."
+    "humanish: Persona first-time-visitor has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
+    "humanish computer-use: Chrome DevTools answered on 127.0.0.1:9222 ([ms])"
   ],
   "../latest.json": {
     "schema": "humanish.latest-run.v1",
@@ -308,13 +305,13 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 4
+      "warnings": 0
     },
     "laneGroups": [],
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed viewport desktopGeometry ui actor artifacts",
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
@@ -477,6 +474,12 @@
           "url": "screenshots/turn-01.png",
           "title": "CUA desktop (raw)"
         },
+        "viewport": {
+          "width": 1280,
+          "height": 713,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
         "desktopGeometry": {
           "screen": {
             "requested": {
@@ -489,12 +492,19 @@
               "source": "xdpyinfo"
             }
           },
-          "warnings": [
-            "Browser window bounds could not be measured for participant lane-01; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for participant lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for participant lane-01.",
-            "Browser CSS viewport could not be measured for participant lane-01; stream.viewport is omitted instead of copying the requested screen resolution."
-          ]
+          "browserWindow": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 800,
+            "source": "xwininfo"
+          },
+          "viewport": {
+            "width": 1280,
+            "height": 713,
+            "deviceScaleFactor": 1,
+            "source": "cdp"
+          }
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
@@ -673,38 +683,11 @@
         "streamId": "stream-001"
       },
       {
-        "id": "event-003-geometry-warning",
+        "id": "event-003-phase-cua-lab-browser-devtools",
         "at": "[ts]",
-        "level": "warn",
-        "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for participant lane-01; the live stream will use the full desktop.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-004-geometry-warning",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for participant lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-005-geometry-warning",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for participant lane-01.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-006-geometry-warning",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for participant lane-01; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "level": "info",
+        "type": "cua-lab.browser.devtools.completed",
+        "message": "Chrome DevTools answered on 127.0.0.1:9222 (100ms)",
         "simId": "sim-001",
         "streamId": "stream-001"
       }
@@ -765,7 +748,7 @@
     "cost": {
       "schema": "humanish.run-cost-summary.v1",
       "currency": "usd",
-      "estimatedTotalUsd": 0.00444,
+      "estimatedTotalUsd": 0.00888,
       "ratesAsOf": "2026-09-05",
       "fullyEstimated": false,
       "placeholder": false,
@@ -780,11 +763,11 @@
         {
           "kind": "desktop-minutes",
           "laneId": "lane-01",
-          "estimatedCostUsd": 0.00444,
+          "estimatedCostUsd": 0.00888,
           "ratesAsOf": "2026-09-05",
           "source": "e2b.dev/pricing",
           "desktop": {
-            "minutes": 0.5,
+            "minutes": 1,
             "durationBasis": "host-acquired-to-cleanup",
             "resources": {
               "cpuCount": 8,
@@ -800,8 +783,8 @@
         "output": 0,
         "total": 0
       },
-      "desktopMinutes": 0.5,
-      "note": "Estimated 0.00444 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+      "desktopMinutes": 1,
+      "note": "Estimated 0.00888 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
     }
   },
   "sandbox-receipts.ndjson": [
@@ -831,7 +814,7 @@
         "reachedGoal": 1,
         "reportedFriction": 0
       },
-      "estimatedCostUsd": 0.00444,
+      "estimatedCostUsd": 0.00888,
       "ok": true,
       "execution": {
         "succeeded": true,

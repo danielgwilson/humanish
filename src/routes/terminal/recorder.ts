@@ -29,7 +29,7 @@ export function createTerminalRecorder(args: {
     0,
     ...knownSecretValues.map((value) => value.length - 1),
   );
-  const interventions: InterventionRecord[] = []; // ALWAYS empty while no assisted-input path ships.
+  const interventions: InterventionRecord[] = []; // Always empty while no assisted-input path ships.
   // Reads the agent's text from the raw stdout in memory; it keeps only sanitized decoded text.
   const participantText = createTerminalParticipantReader(sanitize);
   let transcriptBytes = 0;
@@ -46,13 +46,13 @@ export function createTerminalRecorder(args: {
       return;
     }
     transcriptBytes += Buffer.byteLength(raw, "utf8");
-    // Scrub THEN redact at the SOURCE (safety contract item 5). Only the participant reader below
+    // Scrub, then redact, at the source (safety contract item 5). Only the participant reader below
     // sees the raw bytes, and it stores none of them.
     terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
     if (stream === "stdout") participantText.append(raw);
   };
 
-  // E2B can stream every byte through callbacks AND return the same complete output (#667).
+  // E2B can stream every byte through callbacks and return the same complete output (#667).
   // Track transport delivery, independently per stream, rather than deduplicating participant
   // lines or equal usage records. Hash raw callback bytes before redaction/truncation so the
   // comparison cannot confuse two values that redact identically or lose capped-away delivery.

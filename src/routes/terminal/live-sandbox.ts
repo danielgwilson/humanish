@@ -218,7 +218,7 @@ export class LiveTerminalSandbox {
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs } = this;
     // --- Runtime bootstrap: no runtime env; openai-egress proxy capability is already available. ---
-    // The stock desktop needs Node/npm on PATH before npx can run Codex. Reuse a working
+    // The stock desktop needs Node/npm on `PATH` before npx can run Codex. Reuse a working
     // installation or install the pinned official binary after checksum verification (#674).
     // No raw runtime key touches this step; the egress proxy, when selected, is already available.
     const bootstrapStartedAt = now();
@@ -280,7 +280,7 @@ export class LiveTerminalSandbox {
       runtime.versionStatus = "verified";
       recordLifecycle(
         "terminal-lab.runtime.version",
-        `Codex requested ${runtime.requestedVersion}, observed ${observed}; exact version selected for execution. Model ${runtime.requestedModel ?? "runtime default (unobserved)"}; reasoning effort ${runtime.requestedReasoningEffort ?? "runtime default (unobserved)"}.`,
+        `Codex requested ${runtime.requestedVersion}, observed ${observed}; exact version selected for execution. Model ${runtime.requestedModel ?? "unrecorded"} (${runtime.modelStatus}); reasoning effort ${runtime.requestedReasoningEffort ?? "runtime default (unobserved)"}.`,
       );
     } catch (error) {
       runtime.versionStatus = "failed";
@@ -302,14 +302,14 @@ export class LiveTerminalSandbox {
     // --- Optional product setup (no runtime env), before the Codex exec. ---
     // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
     // and a failure fails the run closed rather than handing the agent a half-built world. It
-    // exists so a study can put the participant IN a prepared project — asking an agent what
+    // exists so a study can put the participant in a prepared project: asking an agent what
     // studies a project contains, in an empty directory, measures the lab and not the product
     // (learned the hard way on the desktop route, labs/tui-self-study.yaml).
     const install = plan.product.install;
     if (install === undefined) return true;
 
     // An optional local file, put on the machine before the install runs, so a study can meet a
-    // build that is not published yet. Read and checked HERE rather than trusted from the
+    // build that is not published yet. It is read and checked here, so nothing is trusted from the
     // manifest: this puts a file from the operator's disk onto a machine an autonomous agent is
     // about to drive, so it stays inside the project, must be a regular file, and is size-capped.
     let uploadAssignment = "";
@@ -339,7 +339,7 @@ export class LiveTerminalSandbox {
           destination,
           bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
         );
-        // Inlined into the command string rather than passed as `envs`: the ONLY call on this
+        // Inlined into the command string rather than passed as `envs`: the only call on this
         // route that carries envs is the keyed codex exec, and that invariant is worth more than
         // the convenience of a second envs channel.
         uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD=${shellQuote(destination)}; `;
@@ -409,7 +409,7 @@ export class LiveTerminalSandbox {
       prompt: composedPrompt,
       runtimeAuth: runtimeEnv.mode,
       version: runtime.observedVersion!,
-      ...(model === undefined ? {} : { model }),
+      model,
       ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     });
     const commandDigest = digestText(codexCommand);
@@ -455,14 +455,14 @@ export class LiveTerminalSandbox {
       at: nowIso(),
       label: "codex-exec",
       commandDigest,
-      envNames: Object.keys(runtimeEnv.envs), // NAMES only — the credential evidence (item 4).
+      envNames: Object.keys(runtimeEnv.envs), // Names only: the credential evidence (item 4).
       ...(exitCode === undefined ? {} : { exitCode }),
       ...(this.timedOut ? { timedOut: true } : {}),
       durationMs,
     });
 
-    // Score by the verdict-nonce marker over the SCRUBBED+REDACTED, NORMALIZED transcript — the
-    // exact same logic the local-actor routes use (extractLocalActorVerdict/normalizeLocalActorTranscript).
+    // Score by the verdict-nonce marker over the scrubbed, redacted and normalized transcript, with
+    // the exact same logic the local-actor routes use (extractLocalActorVerdict/normalizeLocalActorTranscript).
     const rawTranscript = terminalEvents.map((e) => e.chunk).join("");
     const normalizedTranscript = normalizeLocalActorTranscript(rawTranscript);
     const markerStatus = extractLocalActorVerdict(normalizedTranscript, verdictNonce);
@@ -493,8 +493,8 @@ export class LiveTerminalSandbox {
       );
     } else {
       // No nonce-verified verdict: the agent did not (credibly) report a terminal status. A run
-      // that exited 0 but printed no verified marker is BLOCKED evidence (the failure IS the
-      // evidence — still structurally verifiable), not a silent pass.
+      // that exited 0 but printed no verified marker is blocked evidence: the failure is the
+      // evidence, and it stays structurally verifiable.
       this.status = "blocked";
       this.completionReason = "gave_up";
       this.reason = `codex exec exit=${exitCode ?? "null"} but no nonce-verified HUMANISH_ACTOR_VERDICT marker was emitted; recorded as blocked (the missing verdict is the evidence).`;
@@ -521,7 +521,7 @@ export class LiveTerminalSandbox {
     const { now, sanitize, warnings } = this.inputs;
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs } = this;
-    // --- Safety contract item 8: PROVEN cleanup, BY EXACT ID, never Sandbox.list. ---
+    // --- Safety contract item 8: proven cleanup, by exact id, never Sandbox.list. ---
     this.cleanup = await teardownSandbox({
       allocation: this.allocation,
       sandboxModule: this.module,
@@ -558,17 +558,17 @@ function buildCodexExecCommand(args: {
   prompt: string;
   runtimeAuth: LabRuntimeAuth;
   version: string;
-  model?: string;
+  model: string;
   reasoningEffort?: import("../../actors/reasoning-effort.js").ReasoningEffort;
 }): string {
-  // The prompt is passed via a heredoc on stdin of a wrapper? NO, stdin is DISABLED (item 7), so
+  // stdin is disabled (item 7), so no heredoc on a wrapper's stdin carries the prompt;
   // the prompt rides as the final positional arg, shell-quoted. codex exec --json runs once and
   // exits (no interactive loop). --skip-git-repo-check: the workdir is a fresh scratch dir.
   // Pinned via npx (never an ambient/preinstalled `codex` binary, which the stock @e2b/desktop
   // image does not ship, per issue #159); npm_config_update_notifier=false silences npx's own
   // update check so it cannot leak into the captured stdout the scorer/redactor parse.
   const quotedPrompt = shellQuote(args.prompt);
-  // --dangerously-bypass-approvals-and-sandbox: codex's OWN inner sandbox is
+  // --dangerously-bypass-approvals-and-sandbox: codex's own inner sandbox is
   // redundant here and blocks the network/file access the study mission needs.
   // The E2B sandbox is the trust boundary (the disposable machine), and exec mode has no
   // interactive approval channel at all.

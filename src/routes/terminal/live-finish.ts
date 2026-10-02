@@ -9,7 +9,7 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../../run/paths.js";
-import { estimateActorCost } from "../../run/pricing.js";
+import { estimateAggregatedTurnCost } from "../../run/pricing.js";
 import {
   normalizeLocalActorTranscript,
   TERMINAL_EVENTS_ARTIFACT,
@@ -84,11 +84,11 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   // the combined event order that the transcript uses; either view can assemble a split value.
   scrubSplitKnownValues(terminalEvents, knownSecretValues, discardedPrefixes);
 
-  // Build the actor trace FIRST (the cost ledger reads its tokenUsage).
+  // Build the actor trace first (the cost ledger reads its tokenUsage).
   const normalizedTranscript = normalizeLocalActorTranscript(
     terminalEvents.map((e) => e.chunk).join(""),
   );
-  // Parsed from the FULL stream, not the tail: usage records arrive once per turn and the tail
+  // Parsed from the full stream: usage records arrive once per turn, and the tail
   // would drop all but the last (#531).
   const terminalTokenUsage = parseTerminalTokenUsage(normalizedTranscript);
   const trace = buildTerminalActorTrace({
@@ -108,8 +108,9 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
     runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
   });
-  // Codex tokens stay unpriced: the route records its model as `codex`, which has no rate.
-  trace.estimatedCost = estimateActorCost(trace.tokenUsage, trace.provider);
+  // Priced from the model the route passed to Codex. turn.completed sums a turn's requests, so the
+  // estimate uses base rates and says so.
+  trace.estimatedCost = estimateAggregatedTurnCost(trace.tokenUsage, runtime.requestedModel);
   return { normalizedTranscript, trace };
 }
 
@@ -131,9 +132,9 @@ async function settleLiveLedgers(
   const runPaths = inputs.run.paths;
   const { recordLifecycle, lifecycle, commandLog, interventions, terminalEvents } = inputs.recorder;
   // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
-  // The cost ledger is DERIVED, with the null discipline: provider spend from the trace's
-  // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null by
-  // default (core has no signal). The costProbe hook lets tests or adapters inject KNOWN
+  // The cost ledger is derived, with the null discipline: provider spend from the trace's
+  // tokenUsage.costUsd when present (else null = not measured), product/media/payment null by
+  // default (core has no signal). The costProbe hook lets tests or adapters inject known
   // spend to exercise the fail-closed cap without a real billable run.
   const injectedLines = costProbe?.(
     trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd },
@@ -156,9 +157,9 @@ async function settleLiveLedgers(
     `Cost ledger: known total ${cost.knownTotalUsd} USD${cost.fullyMeasured ? " (fully measured)" : " (lower bound)"}.${measuredSpend.length > 0 ? ` ${measuredSpend}` : ""} ${proofVerdict}`,
   );
 
-  // FULL caps enforcement (fail-closed, NOT advisory): if a KNOWN spend line exceeds maxUsd (or a
+  // Fail-closed caps enforcement: if a known spend line exceeds maxUsd (or a
   // known job count exceeds maxJobs), the run fails closed — never a green result. Unknowns (null)
-  // do NOT trip the cap (we cannot claim a violation we did not measure) but never grant a pass
+  // never trip the cap (we cannot claim a violation we did not measure) but never grant a pass
   // either (the no-spend proof reports them as unmeasured). maxMinutes is already wall-clock-
   // enforced above. A blown cap is an execution failure: the agent's own status stays the
   // verdict, and the result's ok is false.
@@ -173,7 +174,7 @@ async function settleLiveLedgers(
     runtime,
     lifecycle,
     commandLog,
-    interventions, // ALWAYS present, ALWAYS empty while no assisted-input path ships.
+    interventions, // Always present, and always empty while no assisted-input path ships.
     cleanup: session.cleanup,
     cost,
     noSpendProof,
