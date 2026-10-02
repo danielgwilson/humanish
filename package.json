@@ -92,7 +92,7 @@
     "format:check": "oxfmt --check",
     "lint": "node scripts/check-lint-cap.mjs --max-warnings=442",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=357 --max-fix-tags=22 --max-caps=1716 --max-lane-comments=164",
+    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=357 --max-fix-tags=22 --max-caps=1715 --max-lane-comments=20",
     "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=143 --max-seat=6 --max-role=52 --max-sim=33 --max-study=9"
   },
   "dependencies": {

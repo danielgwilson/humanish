@@ -1,5 +1,5 @@
-// The first half of an E2B desktop lane's preparation: acquire the sandbox, verify its screen, and
-// provision the subject. Each step fills the lane's state; a step that cannot proceed throws.
+// The first half of an E2B desktop participant's preparation: acquire the sandbox, verify its screen, and
+// provision the subject. Each step fills the participant's state; a step that cannot proceed throws.
 
 import { redactText } from "../../../evidence/redaction.js";
 import { provisionCloneSubject } from "../../../subject/clone.js";
@@ -20,8 +20,8 @@ export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
 } as const;
 
 /**
- * Create the lane's sandbox, record its resources, run the adopter's prepare hook, and attach the
- * lane's inbox and comms catch. Returns the sandbox, which the later steps drive.
+ * Create the participant's sandbox, record its resources, run the adopter's prepare hook, and attach the
+ * participant's inbox and comms catch. Returns the sandbox, which the later steps drive.
  */
 export async function acquireParticipantDesktop(
   ctx: E2BParticipantContext,
@@ -87,7 +87,7 @@ export async function acquireParticipantDesktop(
         });
       },
     },
-    // The receipt is on disk before any work, so `humanish reclaim` can kill this lane's
+    // The receipt is on disk before any work, so `humanish reclaim` can kill this participant's
     // sandbox by exact id after an interrupt.
     receipt: { root: deps.artifactRoot, participantId: spec.planned.id, now: deps.now },
   });
@@ -125,7 +125,7 @@ export async function acquireParticipantDesktop(
 }
 
 /**
- * Verify the lane's screen in the sandbox. A mismatch fails the lane closed unless the run records
+ * Verify the participant's screen in the sandbox. A mismatch fails the participant closed unless the run records
  * requested and verified geometry side by side.
  */
 export async function verifyParticipantScreen(
@@ -156,7 +156,7 @@ export async function verifyParticipantScreen(
   }
   if (screenGeometry.error && screenGeometry.verified) {
     // record-evidence policy: the bundle keeps requested vs verified as separate facts and
-    // discloses the divergence instead of failing this lane's world mid-flight.
+    // discloses the divergence instead of failing this participant's world mid-flight.
     const mismatchWarning = deps.scrubKnownValues(
       `Participant ${spec.planned.id} requested a ${spec.planned.device.resolution[0]}x${spec.planned.device.resolution[1]} screen but xdpyinfo reports ${screenGeometry.verified.width}x${screenGeometry.verified.height}; recording requested vs verified separately instead of failing the participant closed.`,
     );

@@ -20,7 +20,7 @@ export interface LiveTraceFlush {
 }
 
 /**
- * Incremental live flush (#441): as each lane's loop reports its recorded-so-far items,
+ * Incremental live flush (#441): as each participant's loop reports its recorded-so-far items,
  * rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
  * Observer's 5s poll sees the timeline grow. Throttled (one write per interval, trailing
  * write guaranteed). `write` is the run's `writeSnapshot`, which serializes writes and refuses
@@ -39,14 +39,14 @@ export function startLiveTraceFlush(args: {
   const streamIdByParticipant = new Map(
     participantRuns.map((spec) => [spec.planned.id, spec.streamId]),
   );
-  // The persona each lane is running, so the live flush can say who is in it.
+  // The persona each participant is running, so the live flush can say who is in it.
   const personaByStream = new Map(
     participantRuns
       .map((spec) => [spec.streamId, spec.persona?.id] as const)
       .filter((entry): entry is readonly [string, string] => typeof entry[1] === "string"),
   );
   const liveItemsByStream = new Map<string, ActorTraceItem[]>();
-  // Running token usage per lane, so a run in flight can price itself instead of reporting the
+  // Running token usage per participant, so a run in flight can price itself instead of reporting the
   // cost as unknown until the moment it ends.
   const liveUsageByStream = new Map<string, ActorTokenUsage>();
   const liveMetadataByStream = new Map<string, CuaLiveMetadata>();
@@ -72,8 +72,8 @@ export function startLiveTraceFlush(args: {
                 liveActor: {
                   schema: "humanish.live-actor.v1" as const,
                   updatedAt,
-                  // WHO is in this lane, carried while the run is live. Without it a surface
-                  // watching a live run can only name the lane, and "CUA browser — observer-live-
+                  // WHO this participant is, carried while the run is live. Without it a
+                  // surface watching a live run can only name the participant id, and "CUA browser — observer-live-
                   // check" is the harness talking about itself where the participant should be.
                   ...(personaByStream.get(stream.id) === undefined
                     ? {}
@@ -139,7 +139,7 @@ export function startLiveTraceFlush(args: {
 }
 
 /**
- * The live desktop views (runtime stream URLs) lanes report, attached to whichever Observer shows
+ * The live desktop views (runtime stream URLs) participants report, attached to whichever Observer shows
  * the run. The URLs carry auth, so they live in memory and on the Observer result, never in run
  * artifacts.
  */

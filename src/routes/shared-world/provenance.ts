@@ -41,7 +41,7 @@ export function publicSafeRouteLabel(entry: string | undefined): string {
 /**
  * Build the ONE subject sandbox's provenance (invariant 5): clone (repo + optional commit) or
  * local-tree (archiveSha256 + optional commit/dirty from the once-per-run host-packed archive -
- * archiveSha256 IS the pin; there is only ONE archive, so no per-lane unanimity math applies,
+ * archiveSha256 IS the pin; there is only ONE archive, so no per-participant unanimity math applies,
  * unlike the cua fan-out route). Used for both the in-progress and final bundle: the archive
  * never changes mid-run (packed before any sandbox exists).
  */

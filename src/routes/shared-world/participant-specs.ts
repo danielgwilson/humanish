@@ -230,10 +230,10 @@ export function participantRunDeps(
     // A seat visits the shared app and provisions no subject, so it reports no phase of its own.
     reportSubjectPhase: defaultSubjectPhaseSink,
     ...(runBudget === undefined ? {} : { runBudget }),
-    // Concurrent lanes are independent evidence seats: a requested-vs-verified screen
-    // mismatch is recorded as separate facts + a warning instead of failing the lane's
+    // Concurrent participants are independent evidence seats: a requested-vs-verified screen
+    // mismatch is recorded as separate facts + a warning instead of failing the participant's
     // device claim closed, so one seat's window-manager drift cannot abort the whole
-    // live multi-actor world (the single-lane/fan-out routes keep fail-closed).
+    // live multi-actor world (the single-participant/fan-out routes keep fail-closed).
     screenMismatchPolicy: "record-evidence",
   };
 }

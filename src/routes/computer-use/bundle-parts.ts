@@ -138,7 +138,7 @@ export function participantFeedbackCandidates(args: {
   return candidates;
 }
 
-/** Human-readable provenance line for the single-lane subject.provenance event (invariant 5):
+/** Human-readable provenance line for the single-participant subject.provenance event (invariant 5):
  *  claims "cloned/packed and served" ONLY when it actually happened. */
 export function subjectProvenanceMessage(
   provenance: CuaSubjectProvenanceArg,
