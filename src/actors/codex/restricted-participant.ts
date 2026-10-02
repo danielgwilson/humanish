@@ -33,6 +33,7 @@ import {
   parseParticipantFinal,
 } from "./restricted-participant-policy.js";
 import { truncatedFrameWarning, unknownNotificationsWarning } from "./restricted-notifications.js";
+import { protocolAdditionsWarning, protocolIncompatibilityMessage } from "./protocol-compat.js";
 
 export type ParticipantProviderCloseResult = {
   status: "confirmed" | "unconfirmed";
@@ -295,6 +296,8 @@ export interface ParticipantReadiness {
   errorCode: RestrictedCodexAnalysisErrorCode | null;
   /** The release the launch admitted. */
   cliVersion?: string;
+  /** How the release's schema differs from the fields humanish reads, when that refused it. */
+  protocolIncompatibilities?: readonly string[];
   /** The model thread/start resolved from the operator's configuration or the declared model. */
   resolvedModel?: string;
   authentication?: "chatgpt-account" | "api-key";
@@ -340,6 +343,9 @@ export async function checkRestrictedCodexParticipantReadiness(options: {
     ready: errorCode === null && result.status === "completed",
     errorCode,
     ...(session.cliVersion === undefined ? {} : { cliVersion: session.cliVersion }),
+    ...(session.protocolIncompatibilities === undefined
+      ? {}
+      : { protocolIncompatibilities: session.protocolIncompatibilities }),
     ...(session.resolvedModel === undefined ? {} : { resolvedModel: session.resolvedModel }),
     ...(session.authentication === undefined ? {} : { authentication: session.authentication }),
   };
@@ -453,6 +459,10 @@ function sessionReport(
   session: RestrictedCodexSession,
 ): Pick<ParticipantProviderCloseResult, "warnings" | "refusal"> {
   const warnings = [
+    session.protocolIncompatibilities === undefined
+      ? undefined
+      : protocolIncompatibilityMessage(session.cliVersion, session.protocolIncompatibilities),
+    protocolAdditionsWarning(session.cliVersion, session.protocolAdditions),
     unknownNotificationsWarning(session.unknownNotifications, session.cliVersion),
     truncatedFrameWarning(session.truncatedFrameBytes),
   ].filter((warning) => warning !== undefined);

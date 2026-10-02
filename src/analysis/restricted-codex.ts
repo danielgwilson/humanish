@@ -39,7 +39,17 @@ export async function bindCodexAnalysisCliVersion(
 export async function checkRestrictedCodexAnalysisReadiness(
   input: { signal?: AbortSignal; timeoutMs?: number } = {},
   options: RestrictedCodexSessionOptions = {},
-): Promise<{ ready: boolean; errorCode: RestrictedCodexAnalysisErrorCode | null }> {
+): Promise<{
+  ready: boolean;
+  errorCode: RestrictedCodexAnalysisErrorCode | null;
+  protocolIncompatibilities?: readonly string[];
+}> {
   const result = await checkRestrictedCodexSessionReadiness(input, options);
-  return { ready: result.status === "completed", errorCode: result.errorCode };
+  return {
+    ready: result.status === "completed",
+    errorCode: result.errorCode,
+    ...(result.protocolIncompatibilities === undefined
+      ? {}
+      : { protocolIncompatibilities: result.protocolIncompatibilities }),
+  };
 }

@@ -35,6 +35,22 @@ release stay readable.
 Readiness validates the installation and effective profile without submitting a
 model turn; it does not guarantee current quota or model access.
 
+Each launch also checks the release's app-server schema. After `--version`, the launcher runs
+`codex app-server generate-json-schema --experimental` into its private work directory, bounded
+at 15 seconds and 64 KiB of output, and removes the schema after reading it.
+[`src/actors/codex/protocol-contract.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/protocol-contract.ts)
+lists each method humanish calls with the params fields it sends and the response fields it reads,
+and each notification and server request it consumes. The schema does not link a response to its
+method, so the table names each response definition. A field humanish reads that is gone or
+allows another type, a value humanish compares against that the release dropped, a params field
+the release newly requires, or a missing method or definition refuses the launch as
+`codex_incompatible_release` before app-server starts, and the refusal lists each change. A value
+beyond those the admitted releases offer, such as a new item type, is recorded on the result and
+reported as a warning; a new item type that arrives is still refused by the item allowlist.
+The check covers only
+the listed fields. It does not attest the binary, and the `config/read` keys the schema leaves
+untyped are checked by exact value after launch.
+
 ## Authority and request limits
 
 The host creates a private temporary Codex home and links only the existing

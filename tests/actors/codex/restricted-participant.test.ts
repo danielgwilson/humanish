@@ -25,6 +25,8 @@ const { run, sessionClose, metadata } = vi.hoisted(() => ({
     unknownNotifications: {} as Record<string, number>,
     policyRefusal: undefined as string | undefined,
     truncatedFrameBytes: undefined as number | undefined,
+    protocolIncompatibilities: undefined as string[] | undefined,
+    protocolAdditions: undefined as string[] | undefined,
   },
   run: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),
@@ -56,6 +58,12 @@ vi.mock("../../../src/actors/codex/restricted-session.js", () => ({
     },
     get truncatedFrameBytes() {
       return metadata.truncatedFrameBytes;
+    },
+    get protocolIncompatibilities() {
+      return metadata.protocolIncompatibilities;
+    },
+    get protocolAdditions() {
+      return metadata.protocolAdditions;
     },
   })),
 }));
@@ -116,6 +124,8 @@ beforeEach(() => {
   metadata.unknownNotifications = {};
   metadata.policyRefusal = undefined;
   metadata.truncatedFrameBytes = undefined;
+  metadata.protocolIncompatibilities = undefined;
+  metadata.protocolAdditions = undefined;
   sessionClose.mockReset().mockResolvedValue(true);
   createSession.mockClear();
 });
@@ -814,6 +824,20 @@ describe("restricted participant guards and receipts", () => {
         "Codex output was cut off when humanish stopped the app-server: 40 bytes of an unfinished last frame were not checked.",
       ],
       refusal: "codex_tool_call",
+    });
+  });
+
+  it("reports the protocol check's refusal detail and recorded additions on close", async () => {
+    metadata.cliVersion = "0.161.0";
+    metadata.protocolIncompatibilities = ["turn/start response turn.id is no longer in the schema"];
+    metadata.protocolAdditions = ["item/completed item.type now also allows futureItem"];
+    const h = createRestrictedCodexParticipant();
+    await expect(h.close()).resolves.toEqual({
+      status: "confirmed",
+      warnings: [
+        "Codex CLI 0.161.0 changed the app-server protocol humanish uses: turn/start response turn.id is no longer in the schema.",
+        "Codex CLI 0.161.0's app-server schema has values humanish has not seen: item/completed item.type now also allows futureItem. humanish recorded them and continued.",
+      ],
     });
   });
 

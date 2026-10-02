@@ -7,6 +7,7 @@ import type { PlanResult } from "./plan-types.js";
 import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
+import { protocolIncompatibilityMessage } from "../actors/codex/protocol-compat.js";
 import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
@@ -31,6 +32,8 @@ type CodexReadiness = {
   refusedExecutable?: RefusedCodexExecutable;
   /** Where the `codex` on `PATH` was installed, for the command that replaces it. */
   installation?: CodexInstallation;
+  /** How the release's app-server schema differs from the fields humanish reads. */
+  protocolIncompatibilities?: readonly string[];
 };
 
 /** npm's global prefix (`npm prefix -g`), or undefined when npm does not answer. */
@@ -100,7 +103,8 @@ async function withCodexRecoveryDetails(
 ): Promise<CodexReadiness> {
   if (
     checked.errorCode !== "codex_unavailable" &&
-    checked.errorCode !== "codex_unsupported_version"
+    checked.errorCode !== "codex_unsupported_version" &&
+    checked.errorCode !== "codex_incompatible_release"
   )
     return checked;
   const installation = await codexInstallation(env);
@@ -129,6 +133,8 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
   switch (readiness.errorCode) {
     case "codex_unsupported_version":
       return codexVersionRecovery(readiness.detectedCliVersion, readiness.installation);
+    case "codex_incompatible_release":
+      return `${protocolIncompatibilityMessage(readiness.detectedCliVersion, readiness.protocolIncompatibilities ?? [])} ${codexInstallAdvice(readiness.installation)} Then sign in with a ChatGPT account (\`codex login\`).`;
     case "codex_login_required":
       return "Codex is installed but not signed in. Run `codex login` and sign in with a ChatGPT account.";
     case "codex_unsupported_auth":
