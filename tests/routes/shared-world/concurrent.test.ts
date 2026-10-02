@@ -494,8 +494,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       config,
       dryRun,
       env,
-      deps,
-      automaticAnalysis: { run: analyze },
+      deps: { ...deps, analysis: { run: analyze } },
     });
     expect(analyze).toHaveBeenCalledTimes(dryRun ? 0 : 1);
     expect(result.automaticAnalysis?.reason).toBe(
@@ -1175,7 +1174,9 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       dryRun: false,
       env,
       deps,
-      emit: (event) => emitted.push(event),
+      emit: (event) => {
+        if (event.type === "subject-phase") emitted.push(event);
+      },
     });
 
     expect(result.ok).toBe(true);
@@ -2039,8 +2040,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       config: localTreeConcurrentConfig(3, 3),
       dryRun: false,
       env,
-      deps,
-      automaticAnalysis: { run: analysis },
+      deps: { ...deps, analysis: { run: analysis } },
     });
 
     expect(result.ok).toBe(false);
@@ -2746,8 +2746,7 @@ describe("concurrent shared-world run directory goldens", () => {
       config: concurrentConfig(3, 3),
       dryRun,
       env,
-      deps,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      deps: { ...deps, analysis: { run: automaticAnalysisBoundary() } },
     }).finally(stderr.stop);
     // Seats tear down in parallel, so their sandbox receipts append in completion order.
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", result.runId), {
@@ -2778,8 +2777,7 @@ describe("concurrent run lifetime", () => {
         config: concurrentConfig(3, 3),
         dryRun: false,
         env,
-        deps,
-        automaticAnalysis: { run: analysis },
+        deps: { ...deps, analysis: { run: analysis } },
         onObserverReady: async () => {
           throw failure;
         },

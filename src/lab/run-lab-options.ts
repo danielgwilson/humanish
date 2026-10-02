@@ -1,86 +1,20 @@
 // The typed homes on RunLabOptions. runLab calls normalizeRunLabOptions first: it refuses an option
-// the route cannot honor, keeps the typed options the route reads, and maps analysisSignal and
-// onEvent into the automatic-analysis hooks, the one internal bag left. The package's runLab
-// refuses every bag (removedOptionRefusal).
+// the route cannot honor and otherwise passes the typed options to the route, with env copied and
+// onEvent turned into the emitter. The package's runLab refuses the removed bags
+// (removedOptionRefusal).
 
 import path from "node:path";
 
-import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../routes/computer-use/types.js";
 import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted/types.js";
 import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types.js";
 import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
-import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
-import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
 import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
-import {
-  knownSecretValues,
-  labEventEmitter,
-  type LabEvent,
-  type ParticipantRef,
-  type SetupTarget,
-} from "./run-lab-events.js";
+import { knownSecretValues, labEventEmitter, type LabEvent } from "./run-lab-events.js";
 import { rosterOf } from "./parse/actors.js";
-
-/** What `createProvider` receives for each participant. */
-export interface ProviderContext {
-  readonly config: LabConfig;
-  readonly participant: ParticipantRef;
-  readonly executor: CuaExecutor;
-}
-
-export type ProviderFactory = (ctx: ProviderContext) => Promise<CuaProvider>;
-
-/** The caller's executor for an in-process run, built once for the run's single participant. */
-export interface InProcessDriver {
-  executor: (ctx: { config: LabConfig; appUrl: string }) => Promise<CuaExecutor>;
-}
-
-export type StreamEvent =
-  /** Runtime only: `url` carries an auth key and must never be persisted. */
-  | {
-      type: "ready";
-      participantId: string;
-      sandboxId: string;
-      simId: string;
-      streamId: string;
-      url: string;
-    }
-  | { type: "ended"; participantId: string; simId: string; streamId: string };
-
-/** The options with a typed home, common to every route. */
-export interface RunLabHomes {
-  /** Keys and subject env for the run. Defaults to process.env. */
-  env?: Readonly<Record<string, string | undefined>>;
-  /**
-   * Scores the assembled evidence: computer use, shared world and terminal. A scorer written for
-   * one context passes through `browserScorer` or `terminalScorer`; one that narrows `ctx` at
-   * runtime passes as it is.
-   */
-  scorer?: AdapterScorerModule;
-  /** E2B only. Runs after the sandbox exists and before provisioning, once per target. */
-  prepareDesktop?: (desktop: E2BDesktopSandbox, target: SetupTarget) => Promise<void>;
-  /**
-   * Passive. Never awaited; a throw or a rejected promise becomes a run warning. It observes and
-   * changes no output: subject phases still go to stderr.
-   */
-  onEvent?: (event: LabEvent) => void | Promise<void>;
-  /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
-  onStream?: (event: StreamEvent) => Promise<void> | void;
-  /** Cancels post-run analysis only. */
-  analysisSignal?: AbortSignal;
-}
-
-/** Brain and in-process driving. An in-process executor needs a provider: it returns no frame. */
-export type RunLabDriving =
-  | { inProcess?: undefined; createProvider?: ProviderFactory }
-  | {
-      inProcess: InProcessDriver;
-      createProvider: ProviderFactory;
-    };
 
 type Refusal = {
   ok: false;
@@ -90,8 +24,7 @@ type Refusal = {
 
 type Normalized = {
   ok: true;
-  /** The options with each typed home mapped into the route's bag and removed, except on a route
-   *  that reads its homes directly (terminal, scripted). */
+  /** The options the route reads: onEvent removed, env copied, rerun.participantIds renamed. */
   options: InternalRunLabOptions;
   /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
   warnings: string[];
@@ -198,8 +131,8 @@ function unsupportedOption(
 }
 
 /**
- * Refuse what the route cannot honor, then map the typed options into the route's bag. Nothing
- * here touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
+ * Refuse what the route cannot honor, copy env, and build the emitter onEvent receives through.
+ * Nothing here touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
  */
 export function normalizeRunLabOptions(
   config: LabConfig,
@@ -214,7 +147,7 @@ export function normalizeRunLabOptions(
   if (olderRerunIds !== undefined) warnOlderRerunName();
 
   const warnings: string[] = [];
-  const { env, scorer, prepareDesktop, onEvent, onStream, analysisSignal, ...legacy } = options;
+  const { env, onEvent, ...forwarded } = options;
   // The route gets this copy, so it is the env a warning is scrubbed against, whatever the caller
   // does to its own object afterwards.
   const forwardedEnv = env === undefined ? undefined : { ...env };
@@ -222,41 +155,16 @@ export function normalizeRunLabOptions(
     knownSecretValues(config, options, forwardedEnv),
   );
 
-  const normalized: InternalRunLabOptions = { ...legacy };
+  // Every route reads its typed options directly, and onEvent reaches it as `emit`. unsupportedOption
+  // already refused an option no route reads; the preview route reads no env.
+  const normalized: InternalRunLabOptions = { ...forwarded };
+  if (route !== "preview" && forwardedEnv !== undefined) normalized.env = forwardedEnv;
   const participantIds = options.rerun?.participantIds;
   if (options.rerun !== undefined && participantIds !== undefined) {
     const { participantIds: _ids, ...rerun } = options.rerun;
     normalized.rerun = { ...rerun, laneIds: participantIds };
   }
-  const analysis = withMapped(legacy.automaticAnalysis, {
-    ...(analysisSignal === undefined
-      ? {}
-      : { deps: { ...legacy.automaticAnalysis?.deps, signal: analysisSignal } }),
-    ...(emit === undefined
-      ? {}
-      : {
-          onStart: () => {
-            emit({ type: "analysis-started" });
-            return () => emit({ type: "analysis-finished" });
-          },
-        }),
-  });
-  if (analysis !== undefined) normalized.automaticAnalysis = analysis;
-  // Every route reads its typed options directly. Every scoring route reads scorer, and computer
-  // use and shared world read onStream. createProvider and inProcess stay in `legacy`: only
-  // computer use accepts them. unsupportedOption already refused prepareDesktop where no route
-  // reads it.
-  if (scorer !== undefined) normalized.scorer = scorer;
-  if (onStream !== undefined) normalized.onStream = onStream;
-  if (route !== "preview" && forwardedEnv !== undefined) normalized.env = forwardedEnv;
-  if (prepareDesktop !== undefined) normalized.prepareDesktop = prepareDesktop;
   return { ok: true, options: normalized, warnings, emit };
-}
-
-/** A bag with typed options mapped over it. With nothing to map, it is the same object. */
-function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
-  if (Object.keys(mapped).length === 0) return bag;
-  return { ...bag, ...mapped } as T;
 }
 
 /** A refusal in the route's own result envelope, before any run exists. */

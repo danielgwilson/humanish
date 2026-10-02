@@ -11,6 +11,7 @@ import type {
   ScriptedBrowserLike,
 } from "../actors/scripted-browser/types.js";
 import type { CuaActorSessionOptions } from "../actors/computer-use/actor.js";
+import type { AutomaticAnalysisDeps, runAutomaticAnalysis } from "../analysis/automatic.js";
 import type { CuaLoopResult } from "../actors/computer-use/loop.js";
 import type { renderObserver } from "../observer/render.js";
 import type { TerminalCostProbe } from "../routes/terminal/types.js";
@@ -67,6 +68,15 @@ export interface LabDeps {
    * the single-frame OpenAI read.
    */
   readonly readLobbyCodeFromFrame?: (frame: Buffer, apiKey: string) => Promise<string | undefined>;
+  /**
+   * Every route: post-run analysis in place of the real one. `run` replaces
+   * the real analysis runner, and `deps` (provider fetch, keys, clock) reach the analysis only,
+   * never a participant.
+   */
+  readonly analysis?: {
+    readonly run?: typeof runAutomaticAnalysis;
+    readonly deps?: AutomaticAnalysisDeps;
+  };
   /** Scripted: runs one surface's session in place of the scripted-browser actor. */
   readonly runScriptedSession?: (
     options: ScriptedBrowserSessionOptions,

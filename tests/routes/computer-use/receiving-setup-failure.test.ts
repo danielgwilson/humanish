@@ -73,13 +73,14 @@ describe("computer-use email receiving setup failure", () => {
       cwd,
       config: realEmailCloneConfig(),
       dryRun: false,
-      automaticAnalysis: { run: analysis },
       env: {
         OPENAI_API_KEY: "synthetic-openai",
         E2B_API_KEY: "synthetic-e2b",
         AGENTMAIL_API_KEY: "synthetic-management-key",
       },
       deps: {
+        analysis: { run: analysis },
+
         desktopModule: async () => module,
       },
     });

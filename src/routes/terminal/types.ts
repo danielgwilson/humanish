@@ -1,7 +1,5 @@
-import {
-  type AutomaticAnalysisHooks,
-  type AutomaticAnalysisResult,
-} from "../../analysis/automatic-completion.js";
+import type { LabEvent } from "../../lab/run-lab-events.js";
+import { type AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type {
   ActorCompletionReason,
   ActorRuntimeProvenance,
@@ -125,7 +123,10 @@ export interface TerminalScorer {
 }
 
 export interface RunTerminalProductLabOptions {
-  automaticAnalysis?: AutomaticAnalysisHooks;
+  /** Cancels post-run analysis only. */
+  analysisSignal?: AbortSignal;
+  /** Reports the analysis window to onEvent; built by normalizeRunLabOptions. */
+  emit?: (event: LabEvent) => void;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */

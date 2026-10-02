@@ -406,7 +406,7 @@ describe("the run's start and its token", () => {
       { cwd, runId: "replaced", dryRun: false },
       finished,
       analysis.config,
-      { run },
+      { deps: { analysis: { run } } },
     );
     expect(result.automaticAnalysis).toEqual({
       state: "failed",
