@@ -15,7 +15,7 @@ import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
-import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../src/index.js";
+import type { RunAdapterScore, RunBundle } from "../../src/index.js";
 
 // ---------------------------------------------------------------------------------------------
 // Shared fixtures.
@@ -581,15 +581,15 @@ describe("browser routes flip AND stamp provenance", () => {
       feedbackCandidates: [],
       noSpend: { satisfied: false },
     }) as unknown as RunBundle;
-  const ctxFor = (bundle: RunBundle): BrowserLabScoringContext => ({
+  const ctxFor = (bundle: RunBundle): Parameters<typeof applyBrowserScorer>[0]["context"] => ({
     bundle,
     runDir: "/ignored/runDir",
     labId: "lab",
     runId: "run",
     actor: "openai-computer-use",
-    backend: "cua",
+    route: "computer-use",
     dryRun: true,
-    laneCount: 1,
+    participantCount: 1,
   });
 
   it("a DECLARED fail score is a failure the fold turns into a fail, and stamps provenance", async () => {

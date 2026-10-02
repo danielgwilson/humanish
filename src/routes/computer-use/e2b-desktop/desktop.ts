@@ -14,15 +14,11 @@ import {
 import { openParticipantSurface, startParticipantMedia, startParticipantStream } from "./start.js";
 import { desktopEvidenceOf, newParticipantState, type E2BParticipantContext } from "./state.js";
 import { finishE2BDesktop } from "./teardown.js";
-import {
-  participantServeUrl,
-  type CuaParticipantDeps,
-  type DesktopParticipantRun,
-} from "../types.js";
+import { participantServeUrl, type E2BDesktopDeps, type DesktopParticipantRun } from "../types.js";
 
 export function createE2BParticipantDesktop(
   spec: DesktopParticipantRun,
-  deps: CuaParticipantDeps,
+  deps: E2BDesktopDeps,
   warnings: string[],
 ): ParticipantDesktop {
   const targetUrl = spec.planned.targetUrl ?? deps.appUrl;

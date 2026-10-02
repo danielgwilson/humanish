@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getActor } from "../../../src/actors/registry.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import type {
@@ -83,7 +82,6 @@ async function fixture() {
     residual: parsed.config,
     labId: parsed.config.id,
     caps: {},
-    descriptor: getActor("openai-computer-use"),
     brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
     appUrl: "http://127.0.0.1:3000/",
     subject: { kind: "app-url", appUrl: "http://127.0.0.1:3000/", publicTargets: false },

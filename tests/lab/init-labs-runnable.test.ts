@@ -11,7 +11,7 @@ import { runInit } from "../../src/lab/init.js";
 import { starterFilesFor } from "../../src/lab/init-templates.js";
 import { resolveLabManifest, listLabManifests } from "../../src/lab/discover.js";
 import { runLab } from "../../src/run-lab.js";
-import { selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { isLocalBrowserLab } from "../../src/substrates/local/runtime-config.js";
 
@@ -123,7 +123,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
         `${file.path} dry run: ${dry.error?.code} ${dry.error?.message}`,
       ).not.toBe(false);
 
-      if (selectLabBackend(config) !== "cua") continue;
+      if (routeOf(config) !== "computer-use") continue;
       // Past admission the run asks for its desktop: the local study's for a local browser lab,
       // the E2B module for a hosted one. Either throws here, so no desktop is created.
       const admitted = new Error("admission passed; no desktop is created in this test");

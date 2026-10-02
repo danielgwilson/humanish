@@ -1,0 +1,147 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { applyBrowserScorer, type BrowserScorer } from "../../src/lab/adapter-extension.js";
+import type { BrowserLabScoringContext, RunBundle } from "../../src/index.js";
+import { allowDeprecationsInThisTest } from "../helpers/deprecations.js";
+
+const CODE = "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED";
+
+const bundle = (): RunBundle =>
+  ({
+    review: { verdict: "pass", summary: "ok", gaps: [] as string[] },
+    feedbackCandidates: [],
+    noSpend: { satisfied: false },
+  }) as unknown as RunBundle;
+
+/** Runs a scorer whose three hooks each call `read` on the context, and returns what it read. */
+async function readThroughScorer(
+  route: "computer-use" | "shared-world",
+  read: (ctx: BrowserLabScoringContext) => unknown,
+): Promise<unknown[]> {
+  const seen: unknown[] = [];
+  const scorer: BrowserScorer = {
+    score: (ctx) => {
+      seen.push(read(ctx));
+      return {
+        schema: "humanish.adapter-score.v1",
+        namespace: "fields",
+        status: "pass",
+        score: 1,
+        summary: "ok",
+      };
+    },
+    deriveFeedback: (ctx) => {
+      seen.push(read(ctx));
+      return [];
+    },
+    deriveArtifacts: (ctx) => {
+      seen.push(read(ctx));
+      return [];
+    },
+  };
+  const current = bundle();
+  await applyBrowserScorer({
+    scorer,
+    bundle: current,
+    context: {
+      bundle: current,
+      runDir: "/ignored/runDir",
+      labId: "lab",
+      runId: "run",
+      actor: "openai-computer-use",
+      route,
+      dryRun: true,
+      participantCount: 3,
+    },
+    sanitize: (text) => text,
+    warnings: [],
+  });
+  return seen;
+}
+
+const deprecationCodes = (spy: { mock: { calls: unknown[][] } }): unknown[] =>
+  spy.mock.calls
+    .map(([, options]) => (options as { code?: unknown } | undefined)?.code)
+    .filter((code) => code === CODE);
+
+describe("BrowserLabScoringContext", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("gives a scorer participantCount and route without a warning", async () => {
+    const spy = vi.spyOn(process, "emitWarning");
+
+    expect(
+      await readThroughScorer("computer-use", (ctx) => [ctx.route, ctx.participantCount]),
+    ).toEqual([
+      ["computer-use", 3],
+      ["computer-use", 3],
+      ["computer-use", 3],
+    ]);
+    expect(await readThroughScorer("shared-world", (ctx) => ctx.route)).toEqual([
+      "shared-world",
+      "shared-world",
+      "shared-world",
+    ]);
+    expect(deprecationCodes(spy)).toEqual([]);
+  });
+
+  it("copies and serializes without reading the deprecated fields", async () => {
+    const spy = vi.spyOn(process, "emitWarning");
+
+    const [copies] = await readThroughScorer("computer-use", (ctx) => ({
+      spread: { ...ctx },
+      assigned: Object.assign({}, ctx),
+      json: JSON.parse(JSON.stringify(ctx)) as Record<string, unknown>,
+      cloned: structuredClone(ctx),
+      keys: Object.keys(ctx),
+      declared: "laneCount" in ctx && "backend" in ctx,
+    }));
+
+    const { spread, assigned, json, cloned, keys, declared } = copies as {
+      spread: Record<string, unknown>;
+      assigned: Record<string, unknown>;
+      json: Record<string, unknown>;
+      cloned: Record<string, unknown>;
+      keys: string[];
+      declared: boolean;
+    };
+    for (const copy of [spread, assigned, json, cloned]) {
+      expect(copy).toMatchObject({ route: "computer-use", participantCount: 3 });
+      expect(copy).not.toHaveProperty("laneCount");
+      expect(copy).not.toHaveProperty("backend");
+    }
+    expect(keys).not.toContain("laneCount");
+    expect(keys).not.toContain("backend");
+    expect(declared).toBe(true);
+    expect(deprecationCodes(spy)).toEqual([]);
+  });
+
+  it("still fills laneCount and backend, and warns once per field", async () => {
+    allowDeprecationsInThisTest(CODE, "reads the deprecated fields on purpose");
+    const spy = vi.spyOn(process, "emitWarning");
+
+    const computerUse = await readThroughScorer("computer-use", (ctx) => [
+      ctx.backend,
+      ctx.laneCount,
+    ]);
+    const sharedWorld = await readThroughScorer("shared-world", (ctx) => ctx.backend);
+
+    expect(computerUse).toEqual([
+      ["cua", 3],
+      ["cua", 3],
+      ["cua", 3],
+    ]);
+    expect(sharedWorld).toEqual([
+      "concurrent-shared-world",
+      "concurrent-shared-world",
+      "concurrent-shared-world",
+    ]);
+    expect(deprecationCodes(spy)).toEqual([CODE, CODE]);
+    expect(spy.mock.calls.map(([message]) => message)).toEqual([
+      "BrowserLabScoringContext.backend is deprecated and is removed in the next minor. Use route.",
+      "BrowserLabScoringContext.laneCount is deprecated and is removed in the next minor. Use participantCount.",
+    ]);
+  });
+});

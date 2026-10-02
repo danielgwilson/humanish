@@ -6,16 +6,15 @@ import {
 } from "../../src/lab/validation.js";
 import {
   resolveSeatUrl,
-  routesToComputerUse,
-  routesToConcurrentSharedWorld,
+  isComputerUseComposition,
+  isSharedWorldComposition,
   isProvisionedScriptedBrowserComposition,
-  routesToScriptedBrowser,
-  routesToSharedWorld,
+  isScriptedBrowserComposition,
 } from "../../src/lab/routing.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { declaredParticipantIds } from "../../src/lab/plan-participants.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 
 describe("parseLabConfig (humanish.lab.v2)", () => {
   it("refuses a clone lab whose actor can neither drive nor script the served app", () => {
@@ -1430,7 +1429,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       if (!result.ok) return;
       // It routes to the cua backend, but the in-process route launches no E2B desktop, so the
       // template can never be consumed here → it must warn, never be silently ignored.
-      expect(routesToComputerUse(result.config)).toBe(true);
+      expect(isComputerUseComposition(result.config)).toBe(true);
       expect(result.warnings.join(" ")).toContain("execution.desktop.template");
     });
   });
@@ -1623,9 +1622,9 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(routesToScriptedBrowser(result.config)).toBe(true);
+      expect(isScriptedBrowserComposition(result.config)).toBe(true);
       expect(isProvisionedScriptedBrowserComposition(result.config)).toBe(true);
-      expect(selectLabBackend(result.config)).toBe("scripted");
+      expect(routeOf(result.config)).toBe("scripted");
       expect(result.warnings).toEqual([]);
     });
 
@@ -2044,9 +2043,9 @@ describe("parseLabConfig (local-app subject — issue #148)", () => {
       source: "local-app",
       appUrl: "http://localhost:5173/",
     });
-    expect(routesToComputerUse(result.config)).toBe(true);
-    expect(routesToScriptedBrowser(result.config)).toBe(false);
-    expect(selectLabBackend(result.config)).toBe("cua");
+    expect(isComputerUseComposition(result.config)).toBe(true);
+    expect(isScriptedBrowserComposition(result.config)).toBe(false);
+    expect(routeOf(result.config)).toBe("computer-use");
     // The actor prompt fields are consumed on this route (composeInstructions): no inert warning.
     expect(result.warnings).toEqual([]);
   });
@@ -2057,7 +2056,7 @@ describe("parseLabConfig (local-app subject — issue #148)", () => {
       execution: { target: "local", timeoutMs: 60000 },
     });
     expect(explicit.ok).toBe(true);
-    if (explicit.ok) expect(selectLabBackend(explicit.config)).toBe("cua");
+    if (explicit.ok) expect(routeOf(explicit.config)).toBe("computer-use");
   });
 
   it("accepts loopback variants (127.0.0.1, [::1], https)", () => {
@@ -2255,8 +2254,8 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject.topology).toBe("shared-world");
-    expect(routesToSharedWorld(result.config)).toBe(true);
-    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
+    expect(isSharedWorldComposition(result.config)).toBe(true);
+    expect(routeOf(result.config)).toBe("shared-world");
     expect(sharedWorldValidationReason(result.config)).toBeNull();
     expect(result.warnings).toEqual([]);
     // The roster IS the role roster (no parallel roles[] field).
@@ -2281,8 +2280,8 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     if (!result.ok) return;
     expect(result.config.subject.source).toBe("local-tree");
     expect(result.config.subject.topology).toBe("shared-world");
-    expect(routesToSharedWorld(result.config)).toBe(true);
-    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
+    expect(isSharedWorldComposition(result.config)).toBe(true);
+    expect(routeOf(result.config)).toBe("shared-world");
     expect(sharedWorldValidationReason(result.config)).toBeNull();
     expect(result.warnings).toEqual([]);
   });
@@ -2299,8 +2298,8 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(routesToConcurrentSharedWorld(result.config)).toBe(true);
-    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
+    expect(isSharedWorldComposition(result.config)).toBe(true);
+    expect(routeOf(result.config)).toBe("shared-world");
     expect(concurrentSharedWorldValidationReason(result.config)).toBeNull();
   });
 
@@ -2327,7 +2326,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
+    expect(routeOf(result.config)).toBe("shared-world");
     expect(result.config.execution?.desktop?.browser).toBe("chrome");
     expect(result.warnings).toEqual([]);
   });
@@ -2385,7 +2384,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(routesToSharedWorld(result.config)).toBe(true);
+    expect(isSharedWorldComposition(result.config)).toBe(true);
     expect(sharedWorldValidationReason(result.config)).toBeNull();
     expect(
       result.config.actors[0]?.lanes?.map((lane) => [
@@ -2409,9 +2408,9 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     const result = parseLabConfig({ ...sw, subject });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(routesToSharedWorld(result.config)).toBe(false);
-    expect(routesToComputerUse(result.config)).toBe(true);
-    expect(selectLabBackend(result.config)).toBe("cua");
+    expect(isSharedWorldComposition(result.config)).toBe(false);
+    expect(isComputerUseComposition(result.config)).toBe(true);
+    expect(routeOf(result.config)).toBe("computer-use");
     // entry is now inert (per-lane-worlds has no per-role entry) and warns.
     expect(result.warnings.join("\n")).toContain("actors[0].lanes[].entry");
     expect(result.warnings.join("\n")).toContain("subject.state.checkpoint");
@@ -2586,8 +2585,8 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     expect(appUrl.ok).toBe(true);
     if (appUrl.ok) {
       expect(appUrl.warnings.join("\n")).toContain("subject.topology");
-      expect(routesToSharedWorld(appUrl.config)).toBe(false);
-      expect(selectLabBackend(appUrl.config)).toBe("cua");
+      expect(isSharedWorldComposition(appUrl.config)).toBe(false);
+      expect(routeOf(appUrl.config)).toBe("computer-use");
     }
 
     // Every existing route still parses + routes unchanged (regression guard).
@@ -2615,11 +2614,11 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     });
     for (const result of [synthetic, scripted, terminal]) {
       expect(result.ok).toBe(true);
-      if (result.ok) expect(routesToSharedWorld(result.config)).toBe(false);
+      if (result.ok) expect(isSharedWorldComposition(result.config)).toBe(false);
     }
-    if (synthetic.ok) expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    if (scripted.ok) expect(selectLabBackend(scripted.config)).toBe("scripted");
-    if (terminal.ok) expect(selectLabBackend(terminal.config)).toBe("terminal");
+    if (synthetic.ok) expect(routeOf(synthetic.config)).toBe("preview");
+    if (scripted.ok) expect(routeOf(scripted.config)).toBe("scripted");
+    if (terminal.ok) expect(routeOf(terminal.config)).toBe("terminal");
   });
 });
 
@@ -2665,9 +2664,9 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
     const result = parseLabConfig(validConcurrent());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(routesToConcurrentSharedWorld(result.config)).toBe(true);
-    expect(routesToSharedWorld(result.config)).toBe(true); // concurrent is a shared-world subtype
-    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
+    expect(isSharedWorldComposition(result.config)).toBe(true);
+    expect(isSharedWorldComposition(result.config)).toBe(true); // concurrent is a shared-world subtype
+    expect(routeOf(result.config)).toBe("shared-world");
     expect(concurrentSharedWorldValidationReason(result.config)).toBeNull();
     expect(result.warnings).toEqual([]);
   });
@@ -2693,8 +2692,8 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
       expect(allParallel.config.execution?.concurrency).toBe(
         allParallel.config.actors[0]?.lanes?.length,
       );
-      expect(routesToConcurrentSharedWorld(allParallel.config)).toBe(true);
-      expect(selectLabBackend(allParallel.config)).toBe("concurrent-shared-world");
+      expect(isSharedWorldComposition(allParallel.config)).toBe(true);
+      expect(routeOf(allParallel.config)).toBe("shared-world");
       // No waves warning: the filled default equals the seat count.
       expect(allParallel.warnings.filter((w) => w.includes("caps a"))).toEqual([]);
     }
@@ -2763,7 +2762,7 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
     });
     expect(offRoute.ok).toBe(true);
     if (offRoute.ok) {
-      expect(routesToConcurrentSharedWorld(offRoute.config)).toBe(false);
+      expect(isSharedWorldComposition(offRoute.config)).toBe(false);
       expect(offRoute.warnings.join("\n")).toContain("subject.exposure");
     }
   });
@@ -2785,9 +2784,9 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
     });
     for (const result of [synthetic, fanout]) {
       expect(result.ok).toBe(true);
-      if (result.ok) expect(routesToConcurrentSharedWorld(result.config)).toBe(false);
+      if (result.ok) expect(isSharedWorldComposition(result.config)).toBe(false);
     }
-    if (fanout.ok) expect(selectLabBackend(fanout.config)).toBe("cua");
+    if (fanout.ok) expect(routeOf(fanout.config)).toBe("computer-use");
   });
 });
 
@@ -2819,8 +2818,8 @@ describe("parseLabConfig (local-tree subject - issue #261)", () => {
     expect(result.config.subject.source).toBe("local-tree");
     expect(result.config.subject.serve?.start).toBe("pnpm start");
     expect(result.config.subject.serve?.url).toBe("http://127.0.0.1:3000/");
-    expect(routesToComputerUse(result.config)).toBe(true);
-    expect(selectLabBackend(result.config)).toBe("cua");
+    expect(isComputerUseComposition(result.config)).toBe(true);
+    expect(routeOf(result.config)).toBe("computer-use");
     expect(result.warnings).toEqual([]);
   });
 

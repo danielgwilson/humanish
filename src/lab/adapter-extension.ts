@@ -13,6 +13,9 @@ import { isRecord } from "../run/type-guards.js";
 
 type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 
+/** The routes that call a browser scorer. */
+type BrowserScorerRoute = "computer-use" | "shared-world";
+
 /**
  * Product-agnostic scoring context for browser/computer-use routes. Product-specific
  * evidence/rubrics stay in the adopter's repo; core provides the assembled bundle
@@ -29,9 +32,68 @@ export interface BrowserLabScoringContext {
   labId: string;
   runId: string;
   actor: string;
+  /** The route that ran the participants. */
+  route: BrowserScorerRoute;
+  /**
+   * @deprecated Use `route`. `cua` is `computer-use` and `concurrent-shared-world` is
+   * `shared-world`. Reading it warns once per process; the next minor removes it.
+   */
   backend: BrowserAdapterBackend;
   dryRun: boolean;
+  /** How many participants the run had. */
+  participantCount: number;
+  /**
+   * @deprecated Use `participantCount`, which has the same value. Reading it warns once per
+   * process; the next minor removes it.
+   */
   laneCount: number;
+}
+
+/** The context a route passes to applyBrowserScorer; the deprecated fields derive from it. */
+type BrowserScoringFacts = Omit<BrowserLabScoringContext, "backend" | "laneCount">;
+
+const OLDER_BACKEND: Record<BrowserScorerRoute, BrowserAdapterBackend> = {
+  "computer-use": "cua",
+  "shared-world": "concurrent-shared-world",
+};
+
+const warnedFields = new Set<string>();
+
+function warnOlderField(name: string, replacement: string): void {
+  if (warnedFields.has(name)) return;
+  warnedFields.add(name);
+  process.emitWarning(
+    `BrowserLabScoringContext.${name} is deprecated and is removed in the next minor. Use ${replacement}.`,
+    { type: "DeprecationWarning", code: "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED" },
+  );
+}
+
+/**
+ * The scorer's context: the facts, plus the older `backend` and `laneCount` as getters that warn
+ * once when a scorer reads them. They are not enumerable, so a spread, `Object.assign`,
+ * `JSON.stringify` or `structuredClone` of the context skips them and warns about no field the
+ * code never named. `"backend" in ctx` still finds them. Core never reads them.
+ */
+function scorerContext(facts: BrowserScoringFacts): BrowserLabScoringContext {
+  return Object.defineProperties(
+    { ...facts },
+    {
+      backend: {
+        enumerable: false,
+        get: () => {
+          warnOlderField("backend", "route");
+          return OLDER_BACKEND[facts.route];
+        },
+      },
+      laneCount: {
+        enumerable: false,
+        get: () => {
+          warnOlderField("laneCount", "participantCount");
+          return facts.participantCount;
+        },
+      },
+    },
+  ) as BrowserLabScoringContext;
 }
 
 /** The scorer functions a computer-use or shared-world run calls: `RunLabOptions.scorer`. */
@@ -79,7 +141,7 @@ export function declaredScorerThrew(detail: string): string {
 
 export async function applyBrowserScorer(args: {
   scorer: BrowserScorer | undefined;
-  context: BrowserLabScoringContext;
+  context: BrowserScoringFacts;
   bundle: RunBundle;
   sanitize: (text: string) => string;
   warnings: string[];
@@ -101,10 +163,10 @@ export async function applyBrowserScorer(args: {
   // The scorer sees a READ-ONLY view of the bundle: it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws in the scorer's strict-mode ESM and is caught below as
   // a hook failure). The seam still stamps the REAL bundle.
-  const scoringContext: BrowserLabScoringContext = {
+  const scoringContext = scorerContext({
     ...context,
     bundle: frozenBundleView(context.bundle),
-  };
+  });
 
   const scrubValue = <T>(value: T): T => {
     const encoded = JSON.stringify(value);

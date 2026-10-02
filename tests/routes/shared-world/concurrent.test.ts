@@ -33,9 +33,9 @@ import {
 } from "../../../src/lab/validation.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
+import { isSharedWorldComposition } from "../../../src/lab/routing.js";
 import { prepareLab, runLab } from "../../../src/run-lab.js";
-import { selectLabBackend } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/lab/plan.js";
 import { sharedWorldRouteRun } from "../../../src/cli/commands/lab-route-shared-world.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import {
@@ -463,10 +463,10 @@ function concurrentFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     namespace: CONCURRENT_ADAPTER_NAMESPACE,
     status: "fail",
     score: 20,
-    summary: `${ctx.backend} adapter found no product-level concurrent success evidence.`,
+    summary: `${ctx.route} adapter found no product-level concurrent success evidence.`,
     data: {
-      backend: ctx.backend,
-      laneCount: ctx.laneCount,
+      route: ctx.route,
+      participantCount: ctx.participantCount,
     },
   };
 }
@@ -1409,8 +1409,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
             {
               schema: "example.concurrent-readback.v1",
               status: "review-required",
-              backend: ctx.backend,
-              laneCount: ctx.laneCount,
+              route: ctx.route,
+              participantCount: ctx.participantCount,
             },
             null,
             2,
@@ -1447,7 +1447,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(CONCURRENT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
-    expect(bundle.adapterScore?.data?.backend).toBe("concurrent-shared-world");
+    expect(bundle.adapterScore?.data?.route).toBe("shared-world");
     expect(bundle.adapterArtifacts?.[0]?.path).toBe("adapter/concurrent-readback.json");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(
@@ -1716,7 +1716,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const config = concurrentConfig(3, 3);
-    expect(selectLabBackend(config)).toBe("concurrent-shared-world");
+    expect(routeOf(config)).toBe("shared-world");
     const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
     expect(outcome.route).toBe("shared-world");
     if (outcome.route !== "shared-world") return;
@@ -2142,7 +2142,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     deps.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
     const config = localTreeConcurrentConfig(3, 3);
-    expect(selectLabBackend(config)).toBe("concurrent-shared-world");
+    expect(routeOf(config)).toBe("shared-world");
     const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
     expect(outcome.route).toBe("shared-world");
     if (outcome.route !== "shared-world") return;
@@ -2409,8 +2409,8 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
 
   it("is well-formed: parses, routes to concurrent, and passes the synthetic/seeded/0.0.0.0 validations", () => {
     const config = loadLiveLab();
-    expect(routesToConcurrentSharedWorld(config)).toBe(true);
-    expect(selectLabBackend(config)).toBe("concurrent-shared-world");
+    expect(isSharedWorldComposition(config)).toBe(true);
+    expect(routeOf(config)).toBe("shared-world");
     expect(concurrentSharedWorldValidationReason(config)).toBeNull();
     expect(config.subject.exposure).toBe("synthetic");
     expect(config.subject.serve?.start).toContain("0.0.0.0");

@@ -89,7 +89,7 @@ function buildParticipantSummary(
 
 /**
  * The computer-use lab result for a finished run. The run passes only when the Observer rendered,
- * every lane passed (dry-run lanes pass as contracts), and no adapter score or declared scorer
+ * every participant passed (dry-run participants pass as contracts), and no adapter score or declared scorer
  * verdict failed; otherwise the error names the first reason.
  */
 function cuaLabResult(args: {
@@ -135,7 +135,8 @@ function cuaLabResult(args: {
     adapterWarnings,
   } = args;
   const participantCount = participantRuns.length;
-  // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
+  // Participant-level pass: dry-run participants are contract-ok; live ones need a passed,
+  // engaged session.
   const participantOk = (outcome: ParticipantRunOutcome | undefined): boolean =>
     participantOutcomeOk(outcome, dryRun);
   const adapterFailure = adapterScoreFailureMessage(bundle);
@@ -176,7 +177,7 @@ function cuaLabResult(args: {
           outcome?.providerPolicyError ??
           (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
-            : // The lane result (toParticipantResult) named this refusal; the N=1 envelope fell through to
+            : // The participant result (toParticipantResult) named this refusal; the N=1 envelope fell through to
               // "did not produce a terminal session", which is false — it produced one and refused it.
               outcome?.selfReportedBlocker
               ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
@@ -250,7 +251,7 @@ function cuaLabResult(args: {
 }
 
 /**
- * The run's execution failures: each lane whose session failed in the harness, each provider whose
+ * The run's execution failures: each participant whose session failed in the harness, each provider whose
  * cleanup is unconfirmed or that reported a disallowed item after its last request, each sandbox
  * whose release is unconfirmed, and an Observer that failed.
  */
@@ -299,8 +300,8 @@ function computerUseExecutionFailures(
 }
 
 /**
- * execution.caps.maxUsd is enforced inside each lane's loop independently, so an N-lane fan-out can
- * spend up to N × maxUsd before any lane aborts, while the run cost summary reports the larger
+ * execution.caps.maxUsd is enforced inside each participant's loop independently, so an
+ * N-participant fan-out can spend up to N × maxUsd before any participant aborts, while the run cost summary reports the larger
  * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
  */
 function participantCapWarning(
@@ -328,7 +329,7 @@ export async function finishCuaRun(
   const { runId } = run;
   const participantCount = participantRuns.length;
   const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = ran;
-  // Per-lane subject projections (invariant 5).
+  // Per-participant subject projections (invariant 5).
   const subjects = projectParticipantSubjects({ ...subjectArgs, outcomes, dryRun });
 
   const aggregate = aggregateCuaSubject({ subjects, outcomes, participantCount, dryRun });
@@ -363,9 +364,9 @@ export async function finishCuaRun(
       labId: plan.labId,
       runId,
       actor: descriptor.id,
-      backend: "cua",
+      route: "computer-use",
       dryRun,
-      laneCount: participantCount,
+      participantCount,
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,

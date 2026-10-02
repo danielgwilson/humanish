@@ -24,14 +24,14 @@ const score = (summary: string): RunAdapterScore => ({
 /** Inline scorers, scorers typed for one context through its helper, and union scorers compile. */
 function accepted(): RunLabOptions[] {
   const browser = {
-    score: (ctx: BrowserLabScoringContext) => score(`${ctx.backend} ${ctx.laneCount}`),
+    score: (ctx: BrowserLabScoringContext) => score(`${ctx.route} ${ctx.participantCount}`),
     deriveFeedback: (_ctx: BrowserLabScoringContext): RunFeedbackCandidate[] => [],
   };
   const terminal = {
     score: (ctx: TerminalProductScoringContext) => score(ctx.transcript),
   };
   const either: AdapterScorerModule = {
-    score: (ctx) => score("backend" in ctx ? ctx.backend : ctx.transcript),
+    score: (ctx) => score("route" in ctx ? ctx.route : ctx.transcript),
   };
   return [
     { cwd: "/x", scorer: browserScorer(browser) },
@@ -56,9 +56,9 @@ function accepted(): RunLabOptions[] {
 
 /** A scorer typed for one context, passed bare or mixed with the other, is refused. */
 function refused(): unknown[] {
-  const browser = { score: (ctx: BrowserLabScoringContext) => score(ctx.backend) };
+  const browser = { score: (ctx: BrowserLabScoringContext) => score(ctx.route) };
   const mixed = {
-    score: (ctx: BrowserLabScoringContext) => score(ctx.backend),
+    score: (ctx: BrowserLabScoringContext) => score(ctx.route),
     deriveFeedback: (ctx: TerminalProductScoringContext): RunFeedbackCandidate[] =>
       ctx.transcript ? [] : [],
   };

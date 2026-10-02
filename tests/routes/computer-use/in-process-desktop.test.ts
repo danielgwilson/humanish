@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import type { CuaExecutor, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
-import { getActor } from "../../../src/actors/registry.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
@@ -58,7 +57,6 @@ async function fixture() {
     residual: parsed.config,
     labId: parsed.config.id,
     caps: {},
-    descriptor: getActor("openai-computer-use"),
     brain: { kind: "caller" },
     appUrl: "http://127.0.0.1:3000/",
     subject: { kind: "app-url", appUrl: "http://127.0.0.1:3000/", publicTargets: false },
