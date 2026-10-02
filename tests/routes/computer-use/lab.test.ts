@@ -330,10 +330,10 @@ function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     namespace: BROWSER_ADAPTER_NAMESPACE,
     status: "fail",
     score: 12,
-    summary: `${ctx.backend} actor stopped before product evidence.`,
+    summary: `${ctx.route} actor stopped before product evidence.`,
     data: {
-      backend: ctx.backend,
-      laneCount: ctx.laneCount,
+      route: ctx.route,
+      participantCount: ctx.participantCount,
       productAcceptance: "missing",
     },
   };
@@ -2629,7 +2629,7 @@ describe("runCuaActorLab", () => {
                   schema: "example.adapter-state-proof.v1",
                   runId: ctx.runId,
                   status: "failed-product-acceptance",
-                  backend: ctx.backend,
+                  route: ctx.route,
                 },
                 null,
                 2,

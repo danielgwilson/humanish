@@ -463,10 +463,10 @@ function concurrentFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     namespace: CONCURRENT_ADAPTER_NAMESPACE,
     status: "fail",
     score: 20,
-    summary: `${ctx.backend} adapter found no product-level concurrent success evidence.`,
+    summary: `${ctx.route} adapter found no product-level concurrent success evidence.`,
     data: {
-      backend: ctx.backend,
-      laneCount: ctx.laneCount,
+      route: ctx.route,
+      participantCount: ctx.participantCount,
     },
   };
 }
@@ -1409,8 +1409,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
             {
               schema: "example.concurrent-readback.v1",
               status: "review-required",
-              backend: ctx.backend,
-              laneCount: ctx.laneCount,
+              route: ctx.route,
+              participantCount: ctx.participantCount,
             },
             null,
             2,
@@ -1447,7 +1447,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(CONCURRENT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
-    expect(bundle.adapterScore?.data?.backend).toBe("concurrent-shared-world");
+    expect(bundle.adapterScore?.data?.route).toBe("shared-world");
     expect(bundle.adapterArtifacts?.[0]?.path).toBe("adapter/concurrent-readback.json");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(

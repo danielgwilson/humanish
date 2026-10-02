@@ -35,7 +35,7 @@ import {
 } from "../run/contained-output.js";
 
 /** The read-model context a loaded scorer sees — the terminal or browser scoring context. The module
- *  narrows it at runtime (`"product" in ctx` ⇒ terminal; `"backend" in ctx` ⇒ browser). */
+ *  narrows it at runtime (`"product" in ctx` ⇒ terminal; `"route" in ctx` ⇒ browser). */
 export type AdapterScoringContext = TerminalProductScoringContext | BrowserLabScoringContext;
 
 /**

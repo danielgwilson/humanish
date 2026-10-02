@@ -21,11 +21,7 @@ import { writeContainedOutputFile } from "../../../run/contained-output.js";
 import type { Shell } from "../../../substrates/shell.js";
 import type { ReadyParticipantDesktop } from "../participant-desktop.js";
 import { inboxRecipientFor, participantHasInboxRecipient } from "../participant-desktop.js";
-import {
-  participantServeUrl,
-  type CuaParticipantDeps,
-  type DesktopParticipantRun,
-} from "../types.js";
+import { participantServeUrl, type E2BDesktopDeps, type DesktopParticipantRun } from "../types.js";
 import { addressedRecipients } from "../../../lab/parse/comms.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
@@ -174,7 +170,7 @@ export async function startCommsCatch(
 export async function attachReceivingInbox(
   shell: Shell,
   spec: DesktopParticipantRun,
-  deps: CuaParticipantDeps & { receiving: NonNullable<CuaParticipantDeps["receiving"]> },
+  deps: E2BDesktopDeps & { receiving: NonNullable<E2BDesktopDeps["receiving"]> },
   targetUrl: string,
 ): Promise<string> {
   const serveUrl = participantServeUrl(deps.subject);
@@ -207,7 +203,7 @@ function optionalAddress(address: string | undefined): { address?: string } {
 /** The inbox the persona is told about: real receiving, the captured catch, or an external inbox. */
 export function participantInbox(args: {
   spec: DesktopParticipantRun;
-  deps: CuaParticipantDeps;
+  deps: E2BDesktopDeps;
   receivingInboxUrl: string | undefined;
   comms: ParticipantComms | undefined;
   catchReady: boolean;
@@ -243,7 +239,7 @@ export async function drainCommsEvidence(args: {
   comms: ParticipantComms;
   deployed: DeployedCommsCatch;
   spec: DesktopParticipantRun;
-  deps: CuaParticipantDeps;
+  deps: E2BDesktopDeps;
   warnings: string[];
 }): Promise<string | undefined> {
   const { comms, deps, spec, warnings } = args;
