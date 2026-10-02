@@ -20,8 +20,8 @@ import { parse as parseYaml } from "yaml";
 const CODEX = { id: "codex", label: "Codex" } as const;
 const CLAUDE = { id: "claude", label: "Claude Code" } as const;
 
-// #505: `humanish init` wrote twenty files and stopped, and the only lab that could run was a $0
-// dry run — the two live ones were templates containing `your-org/your-app`. Three independent
+// `humanish init` wrote twenty files and stopped, and the only study that could run was a $0
+// dry run: the two live ones were templates containing `your-org/your-app`. Three independent
 // sources landed on the same wall: a participant in our own TUI study walked to the Start row and
 // found a placeholder URL, an adoption review concluded "the funnel is broken at the first live
 // run", and the release-gate participant said it unprompted.
@@ -77,7 +77,7 @@ describe("what to do next, resolved against this machine", () => {
     expect(mac.at(-1)?.why).toContain("Lima 2.2+");
   });
 
-  it("asks for the ONE credential a live study always needs, when it is missing", () => {
+  it("asks for the one credential a live study always needs, when it is missing", () => {
     const steps = firstRunSteps({
       hasE2bKey: false,
       hasProviderKey: true,
@@ -91,7 +91,7 @@ describe("what to do next, resolved against this machine", () => {
     expect(steps.at(-1)?.why).toContain("Local browsers are unavailable on this host");
   });
 
-  it("offers the real run when the machine can do one — by key OR by signed-in agent", () => {
+  it("offers the real run when the machine can do one: by key or by signed-in agent", () => {
     const byKey = firstRunSteps({
       hasE2bKey: true,
       hasProviderKey: true,
@@ -126,8 +126,8 @@ describe("what to do next, resolved against this machine", () => {
   });
 
   it("folds the optional desktop SDK into the step when the project does not have it", () => {
-    // Found by running the PUBLISHED artifact cold: `npx humanish` does not install the optional
-    // peer, so "run try-live" stopped with "install this other package first" — the same dead end
+    // Found by running the published artifact cold: `npx humanish` does not install the optional
+    // peer, so "run try-live" stopped with "install this other package first": the same dead end
     // one layer down. Two local runs had passed only because they resolved it from the repo.
     const missing = firstRunSteps({
       hasE2bKey: true,
@@ -147,10 +147,10 @@ describe("what to do next, resolved against this machine", () => {
     expect(present.at(-1)?.command).toBe("npx humanish run try-live");
   });
 
-  it("tells an npx one-shot to install humanish TOO, because the peer alone cannot be found", () => {
-    // `npx humanish@latest` resolves its optional peer relative to ITSELF, not the project, so
+  it("tells an npx one-shot to install humanish too, because the peer alone cannot be found", () => {
+    // `npx humanish@latest` resolves its optional peer relative to itself, not the project, so
     // "npm i -D @e2b/desktop" there installs something Node will never look at. This cost two cold
-    // verification runs before the difference was spotted — both "failed" identically while the
+    // verification runs before the difference was spotted: both "failed" identically while the
     // advice on screen was impossible to follow.
     const viaNpx = firstRunSteps({
       hasE2bKey: true,
@@ -173,7 +173,7 @@ describe("what to do next, resolved against this machine", () => {
     expect(installed.at(-1)?.command).toBe("npm i -D @e2b/desktop && npx humanish run try-live");
   });
 
-  it("stays SHORT — a list of options is the same as no guidance", () => {
+  it("stays short: a list of options is the same as no guidance", () => {
     for (const env of [
       {
         hasE2bKey: false,
@@ -232,7 +232,7 @@ describe("the starter live lab is written for the brain this machine has", () =>
     ).toBe("local-agent");
   });
 
-  it("prefers the provider key when there is one — it is the calibrated path", () => {
+  it("prefers the provider key when there is one: it is the calibrated path", () => {
     expect(
       starterActorFor({
         hasE2bKey: true,
@@ -261,7 +261,7 @@ describe("init finds a provider key the way every other command does", () => {
   // A value no real provider would issue; the assertions check it never leaves the key store.
   const fakeKey = "test-openai-key-not-real";
 
-  /** A home, a project and a PATH that holds a Codex CLI reporting a ChatGPT login, or nothing. */
+  /** A home, a project and a `PATH` that holds a Codex CLI reporting a ChatGPT login, or nothing. */
   async function machine(options: { signedInAgent: boolean | "claude" }) {
     const root = await mkdtemp(path.join(tmpdir(), "humanish-init-keys-"));
     const home = path.join(root, "home");
@@ -349,7 +349,7 @@ describe("init finds a provider key the way every other command does", () => {
 });
 
 describe("init leaves instructions for the next coding agent", () => {
-  // Each init gets the project as its HOME. init reads the e2b login from env.HOME, so a test
+  // Each init gets the project as its `HOME`. init reads the e2b login from `env.HOME`, so a test
   // env without one would read the machine's own ~/.e2b/config.json.
   async function project(): Promise<string> {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-firstrun-"));
@@ -472,21 +472,21 @@ describe("init leaves instructions for the next coding agent", () => {
     }
   });
 
-  it("creates AGENTS.md when there is none", async () => {
+  it("creates agents.md when there is none", async () => {
     const cwd = await project();
     try {
       await runInit({ cwd, yes: true, env: { HOME: cwd } });
       const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
       expect(agents).toContain(AGENTS_SECTION_MARKER);
       expect(agents).toContain("humanish run first-run");
-      // The agent must know the human surface exists AND that it is not for the agent.
+      // The agent must know the human surface exists and that it is not for the agent.
       expect(agents).toContain("humanish tui");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
   });
 
-  it("APPENDS to an existing AGENTS.md and never rewrites what someone else wrote", async () => {
+  it("appends to an existing agents.md and never rewrites what someone else wrote", async () => {
     const cwd = await project();
     try {
       await writeFile(
@@ -504,7 +504,7 @@ describe("init leaves instructions for the next coding agent", () => {
     }
   });
 
-  it("is idempotent — a second init does not append the section twice", async () => {
+  it("is idempotent: a second init does not append the section twice", async () => {
     const cwd = await project();
     try {
       await runInit({ cwd, yes: true, env: { HOME: cwd } });
@@ -526,7 +526,7 @@ describe("init leaves instructions for the next coding agent", () => {
     }
   });
 
-  it("says nothing about next steps on a dry run — there is no 'next' until something was written", () => {
+  it("says nothing about next steps on a dry run: there is no 'next' until something was written", () => {
     expect(agentsSection()).toContain(AGENTS_SECTION_MARKER);
   });
 });

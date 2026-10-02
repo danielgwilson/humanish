@@ -27,7 +27,7 @@ function cloneLab(email: unknown) {
 }
 
 describe("comms.email.smtp", () => {
-  it("accepts an SMTP-only lab — no HTTP base URL needed for an app that speaks SMTP", () => {
+  it("accepts an SMTP-only study: no HTTP base URL needed for an app that speaks SMTP", () => {
     const parsed = cloneLab({ smtp: { hostEnv: "SMTP_HOST", portEnv: "SMTP_PORT" } });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -58,7 +58,7 @@ describe("comms.email.smtp", () => {
     });
   });
 
-  it("lets a lab declare BOTH transports, for an app that could use either", () => {
+  it("lets a study declare both transports, for an app that could use either", () => {
     const parsed = cloneLab({
       injectEnv: "RESEND_BASE_URL",
       smtp: { hostEnv: "SMTP_HOST", portEnv: "SMTP_PORT" },

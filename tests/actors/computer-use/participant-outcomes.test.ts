@@ -4,8 +4,8 @@
 // and a participant who is the subject. Fusing the participant into the harness produced two bugs
 // that these tests pin shut.
 //
-// `gave_up` mapped to `failed`, so a persona abandoning a task — the single most valuable thing a
-// usability study produces — was recorded as the instrument breaking.
+// `gave_up` mapped to `failed`, so a persona abandoning a task (the most valuable thing a
+// usability study produces) was recorded as the instrument breaking.
 //
 // `budget_reached` mapped to `passed`, so a session that ran out before reaching its goal was
 // reported green. That is why "raise the timeout" kept landing on the operator instead of on the

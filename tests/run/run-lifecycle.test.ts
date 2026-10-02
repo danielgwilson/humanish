@@ -562,7 +562,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
   });
 });
 
-// Run.finish moves .humanish/runs/latest.json after it publishes the bundle (ARCHITECTURE.md, step
+// Run.finish moves .humanish/runs/latest.json after it publishes the bundle (architecture.md, step
 // 6). That holds only while it is the one writer: writePreparedRunLatestPointer is the only write
 // of the pointer, and only src/run/run.ts calls it.
 describe("the latest-run pointer", () => {

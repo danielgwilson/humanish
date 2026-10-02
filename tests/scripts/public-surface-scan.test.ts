@@ -100,9 +100,9 @@ describe("public-surface commit email policy", () => {
   }, 45_000);
 
   it("does not judge fork commits fetched from GitHub pull refs", async () => {
-    // A clone that has fetched pull refs carries commits from FORKS. Those are authored by
+    // A clone that has fetched pull refs carries commits from forks. Those are authored by
     // external contributors whose addresses are their own business and already public on GitHub,
-    // and judging them failed our gate on somebody's normal gmail — for a contribution we should
+    // and judging them failed our gate on somebody's normal gmail: for a contribution we should
     // welcome. Their commits are judged when the PR is proposed, which is when it matters to us.
     const root = await createGitHistory(["noreply@github.com"]);
     try {
@@ -148,7 +148,7 @@ describe("public-surface commit email policy", () => {
 
   it("scopes a tag publish to the history being published, not every branch in the repo", async () => {
     // A release publishes main. Walking `--all` also walks unmerged feature branches, so a branch
-    // someone else is still working on could block a release of code it is not part of — which is
+    // someone else is still working on could block a release of code it is not part of, which is
     // exactly what happened: an in-flight branch with an unapproved author held up a tag of clean
     // main. Narrowing loses nothing, because that branch is still judged when it is proposed.
     const root = await createGitHistory(["noreply@github.com"]);
@@ -178,7 +178,7 @@ describe("public-surface commit email policy", () => {
       expect(theirs.status, theirs.stderr).toBe(0);
       spawnSync("git", ["checkout", "--quiet", "-"], { cwd: root });
 
-      // The local sweep still sees it — nothing is hidden from the person working in the repo.
+      // The local sweep still sees it: nothing is hidden from the person working in the repo.
       const sweep = runScan(root);
       expect(sweep.status).toBe(1);
       expect(sweep.stderr).toContain("nope@example.test");
@@ -192,7 +192,7 @@ describe("public-surface commit email policy", () => {
     }
   }, 45_000);
 
-  it("still rejects an unapproved author that IS part of what a tag publishes", async () => {
+  it("still rejects an unapproved author that is part of what a tag publishes", async () => {
     // The narrowing must not become a hole: anything in the published history is still judged.
     const root = await createGitHistory(["noreply@github.com", "nope@example.test"]);
     try {

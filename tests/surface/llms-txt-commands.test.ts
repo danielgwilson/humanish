@@ -5,7 +5,7 @@ import type { Command } from "commander";
 
 import { createProgram } from "../../src/cli/program.js";
 
-// #513: humanish.dev/llms.txt documented four commands while the CLI shipped eighteen. The whole
+// Humanish.dev/llms.txt documented four commands while the CLI shipped eighteen. The whole
 // premise of this product is that a coding agent sets it up for someone, and llms.txt is the
 // surface those agents read. Missing from it were the entire `lab` system, which is how anything
 // real is run, and `tui`, which is the human surface an agent is supposed to hand off to.
@@ -67,7 +67,7 @@ describe("llms.txt documents the CLI that actually ships", () => {
       path.resolve(import.meta.dirname, "..", "..", "site", "public", "llms.txt"),
       "utf8",
     );
-    // #495 measured an agent handed a human-shaped job and neither half of the handoff worked.
+    // A study handed an agent a human-shaped job, and neither half of the handoff worked.
     const tuiRow = text.split("\n").find((line) => line.startsWith("- `humanish tui`:"))!;
     expect(tuiRow).toMatch(/human/i);
     expect(tuiRow).toMatch(/refuses detected agent sessions/i);

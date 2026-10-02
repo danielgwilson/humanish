@@ -116,7 +116,7 @@ describe("observer rendering", () => {
 
       const html = await readFile(path.join(cwd, observerPath), "utf8");
       // The workspace artifact with this run's snapshot injected (no placeholder left,
-      // no network references — the durability property the rebuild exists for).
+      // no network references: the durability property the rebuild exists for).
       expect(html).toContain("<title>humanish Observer — observer-proof</title>");
       expect(html).toContain('id="observer-data"');
       expect(html).toContain("contract_proof_only");
@@ -341,7 +341,7 @@ describe("observer rendering", () => {
 
   it("exposed watch is scoped to the attached run: only it is listed and reachable; loopback still serves the whole library", async () => {
     await withRunBundle(async (cwd) => {
-      // A second, UNATTACHED run lives alongside the attached one in .humanish/runs/.
+      // A second, unattached run lives alongside the attached one in .humanish/runs/.
       await runDryRun({ cwd, dryRun: true, runId: "other-run" });
 
       const rawGet = (
@@ -372,7 +372,7 @@ describe("observer rendering", () => {
           request.end();
         });
 
-      // Attach to the FIRST run explicitly (result.run === "observer-proof").
+      // Attach to the first run explicitly (result.run === "observer-proof").
       const rendered = await renderObserver(cwd, "observer-proof");
       expect(rendered.run).toBe("observer-proof");
 
@@ -416,7 +416,7 @@ describe("observer rendering", () => {
         await exposedServer.close();
       }
 
-      // (loopback) The full library is still served, byte-identical to today: other runs listed AND reachable.
+      // (loopback) The full library is still served, byte-identical to today: other runs listed and reachable.
       const loopbackServer = await serveObserver(rendered, { port: 0 });
       try {
         const history = JSON.parse(

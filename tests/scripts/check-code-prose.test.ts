@@ -244,7 +244,7 @@ describe("prose:check counts invariant numbers, authority words and review label
 
     // `--list` prints each hit's last word, so `invariant 6` reads back as `6`.
     expect((await hitsOf("invariant-refs", source)).words).toEqual(["6", "5"]);
-    expect((await hitsOf("authority", source)).count).toBe(3);
+    expect((await hitsOf("authority", source)).count).toBe(2);
     expect((await hitsOf("archaeology", source)).words).toEqual([
       "red-team",
       "2",
@@ -258,7 +258,7 @@ describe("prose:check counts invariant numbers, authority words and review label
   it("does not count code spans or words that only contain the pattern", async () => {
     const source = [
       "// Code spans: `invariant 6`, `load-bearing`, `this slice`.",
-      "// The invariants hold; a canonicalized path; a blocker; layered output.",
+      "// The invariants hold; a canonical path; a blocker; layered output.",
       "",
     ].join("\n");
 

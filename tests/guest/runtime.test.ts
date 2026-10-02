@@ -22,7 +22,7 @@ function fixture() {
   return { ...p, owner, close, execute, observe, marker, desktop, createDesktop };
 }
 describe("one guest runtime lifecycle", () => {
-  it("installs the dispatcher before immediate HELLO and closes exact desktop after EOF", async () => {
+  it("installs the dispatcher before immediate `HELLO` and closes exact desktop after EOF", async () => {
     const f = fixture();
     const running = runGuestRuntime({
       transport: f.right,
@@ -129,7 +129,7 @@ describe("one guest runtime lifecycle", () => {
     expect(f.close).toHaveBeenCalledOnce();
     f.left.destroy();
   });
-  it("withholds READY until initial navigation finishes and forwards only the admitted URL", async () => {
+  it("withholds `READY` until initial navigation finishes and forwards only the admitted URL", async () => {
     const f = fixture();
     let finish!: () => void;
     const navigation = new Promise<void>((resolve) => {

@@ -1,7 +1,7 @@
-// #371: the clone/local-tree route must provide the runtime a serve pipeline needs.
+// The clone/local-tree route must provide the runtime a serve pipeline needs.
 //
 // The stock E2B desktop template ships python3 and curl but no Node, so `serve.install: pnpm
-// install` died with exit 127 AFTER a sandbox had been created and paid for — and said only
+// install` died with exit 127 after a sandbox had been created and paid for, and said only
 // "subject install failed". These pin the detection, because being wrong in the strict direction
 // costs a paid sandbox and a cryptic exit code.
 import { describe, expect, it } from "vitest";
