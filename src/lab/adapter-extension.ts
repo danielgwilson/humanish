@@ -8,6 +8,7 @@ import type {
   RunScorerProvenance,
 } from "../run/bundle.js";
 import { isRunAdapterScore } from "../run/bundle-shape.js";
+import { withDeprecatedFields } from "./deprecated-fields.js";
 import { isRunFeedbackCandidate } from "../run/feedback-shape.js";
 import { isRecord } from "../run/type-guards.js";
 
@@ -57,41 +58,14 @@ const OLDER_BACKEND: Record<BrowserScorerRoute, BrowserAdapterBackend> = {
   "shared-world": "concurrent-shared-world",
 };
 
-const warnedFields = new Set<string>();
-
-function warnOlderField(name: string, replacement: string): void {
-  if (warnedFields.has(name)) return;
-  warnedFields.add(name);
-  process.emitWarning(
-    `BrowserLabScoringContext.${name} is deprecated and is removed in the next minor. Use ${replacement}.`,
-    { type: "DeprecationWarning", code: "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED" },
-  );
-}
-
-/**
- * The scorer's context: the facts, plus the older `backend` and `laneCount` as getters that warn
- * once when a scorer reads them. They are not enumerable, so a spread, `Object.assign`,
- * `JSON.stringify` or `structuredClone` of the context skips them and warns about no field the
- * code never named. `"backend" in ctx` still finds them. Core never reads them.
- */
+/** The scorer's context: the facts, plus the older `backend` and `laneCount` (deprecated-fields.ts). */
 function scorerContext(facts: BrowserScoringFacts): BrowserLabScoringContext {
-  return Object.defineProperties(
+  return withDeprecatedFields(
     { ...facts },
+    { name: "BrowserLabScoringContext", code: "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED" },
     {
-      backend: {
-        enumerable: false,
-        get: () => {
-          warnOlderField("backend", "route");
-          return OLDER_BACKEND[facts.route];
-        },
-      },
-      laneCount: {
-        enumerable: false,
-        get: () => {
-          warnOlderField("laneCount", "participantCount");
-          return facts.participantCount;
-        },
-      },
+      backend: { replacement: "route", read: () => OLDER_BACKEND[facts.route] },
+      laneCount: { replacement: "participantCount", read: () => facts.participantCount },
     },
   ) as BrowserLabScoringContext;
 }

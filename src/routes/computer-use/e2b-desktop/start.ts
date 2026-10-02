@@ -20,6 +20,7 @@ import { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-record
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
+import { streamEvent } from "../../../lab/run-lab-homes.js";
 
 /** Start the declared speech worker and screen recording. A recording that cannot start is a warning. */
 export async function startParticipantMedia(
@@ -224,14 +225,16 @@ export async function startParticipantStream(
     });
     if (typeof candidateStreamUrl === "string" && candidateStreamUrl.trim().length > 0) {
       state.streamUrl = candidateStreamUrl;
-      await deps.onStream({
-        type: "ready",
-        participantId: spec.planned.id,
-        sandboxId: desktop.sandboxId,
-        simId: spec.recordId,
-        streamId: spec.streamId,
-        url: candidateStreamUrl,
-      });
+      await deps.onStream(
+        streamEvent({
+          type: "ready",
+          participantId: spec.planned.id,
+          sandboxId: desktop.sandboxId,
+          recordId: spec.recordId,
+          streamId: spec.streamId,
+          url: candidateStreamUrl,
+        }),
+      );
     } else {
       warnings.push(
         "Live desktop stream started but did not return a usable watch URL; Observer will fall back to screenshots.",

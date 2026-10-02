@@ -57,7 +57,7 @@ interface ScriptedBundleArgs {
 }
 
 /**
- * Project the scripted lab run into a humanish.run-bundle.v1 (no schema change — a new
+ * Project the scripted lab run into a humanish.run-bundle.v1 (no schema change: a new
  * producer only). The load-bearing line is `stream.actor = result.trace`: the provider-neutral
  * ActorTrace seam the Observer renders and verifyRun's engagement check reads. Exported for
  * the bundle-builder tests.

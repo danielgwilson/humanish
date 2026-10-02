@@ -1,4 +1,4 @@
-// The concurrent shared-world lab backend (#164 phase 2): N persona participants drive one shared,
+// The concurrent shared-world lab route: N persona participants drive one shared,
 // mutable service plane at the same time. A recomposition of shipped
 // pieces + the getHost wrapper:
 //
@@ -6,9 +6,9 @@
 //     0.0.0.0, exposed via getHost(port) → a tokenless reachable URL (the headless service host;
 //     no GUI seat).
 //   - N actor desktop sandboxes: fan-out's runCuaParticipant machinery (per-participant device/persona, by-id
-//     teardown) bounded by execution.concurrency, each browser pointed at the getHost URL —
+//     teardown) bounded by execution.concurrency, each browser pointed at the getHost URL and
 //     driving the shared service at the same time. Independent: no pipeline gate, no
-//     fail-fast — one actor's failure must not block the swarm or corrupt the "M of N" outcomes.
+//     fail-fast: one actor's failure must not block the swarm or corrupt the "M of N" outcomes.
 //   - A background prober snapshots the subject DB checkpoint digests on a cadence → a stateSeries
 //     of the shared world evolving under load.
 //   - All N+1 sandboxes torn down by exact id in a finally, never through Sandbox.list.
@@ -20,10 +20,10 @@
 // `best-effort-causal-attribution`, `non-deterministic-shared-state`,
 // `window-and-snapshot-granularity`, `contention-observed-not-proven-safe`,
 // `state-change-not-isolated-to-actors`. laneWindows + stateSeries are independent series with no
-// per-delta→actor field — causation under concurrency is structurally inexpressible.
+// per-delta→actor field, so causation under concurrency is structurally inexpressible.
 //
 // Capability and proof: the deterministic $0 gate proves the plumbing + the honesty
-// contract — the real mapWithConcurrency produces genuinely overlapping laneWindows (a rendezvous
+// contract: the real mapWithConcurrency produces genuinely overlapping laneWindows (a rendezvous
 // latch in the fake session forces two participant fns in-flight while the real orchestrator clock
 // measures the windows). Every generated bundle describes only its own observations; no one run
 // establishes scale, repeatability, or adopter-harness replacement.
@@ -105,7 +105,7 @@ export function sharedWorldLabRefusal(
     actor: config.actors[0]?.type ?? "",
     participantCount: declared.length,
     // The parser fills concurrency for multi-seat labs, so this fallback serves only library
-    // callers: every declared seat runs at once unless the author declared a cap (#350).
+    // callers: every declared seat runs at once unless the author declared a cap.
     concurrency: config.execution?.concurrency ?? Math.max(1, declared.length),
     dryRun,
     runId: options.runId,

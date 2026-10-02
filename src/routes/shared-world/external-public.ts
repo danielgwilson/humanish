@@ -1,4 +1,4 @@
-// External-public plane (#164 phase 2): no subject sandbox, no getHost, no prober. The shared plane
+// External-public plane: no subject sandbox, no getHost, no prober. The shared plane
 // is the operator-declared public deployment (publicAppUrl); each seat opens it directly and reaches
 // the shared session through the real UI. A host-first barrier extracts the /lobby/CODE from the host
 // seat's CDP-observed URL (onObservedUrl) and threads it into the follower missions; a follower fails
