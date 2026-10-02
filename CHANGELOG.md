@@ -18,6 +18,21 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- The first commands a newcomer runs say the right thing.
+  - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
+    init --yes" and ".gitignore does not list .humanish/; run humanish init --yes". Before, these
+    failed rows printed the sentence for a pass, such as "committed humanish/ source directory is
+    present and safe to read".
+  - A mistyped command prints one line, for example "error: unknown command 'verfy'. Did you mean
+    'verify'?", and exits 1. Before, it printed "too many arguments" and the whole help.
+  - `humanish --help` lists examples that pass on a freshly initialized project: `init --yes`,
+    `run first-run`, `observe --run latest --open`, `doctor --lab try-live`, `run try-live` and
+    `verify --json`. The `watch --lab .humanish/labs/local.yaml` example, which failed with
+    `HUMANISH_LAB_NOT_FOUND`, is gone from the root, `watch` and `lab run` help.
+  - Bare `humanish` suggests `init --yes` in a new project, then `run first-run` and
+    `doctor --lab local-browser` (or `try-live` where local browsers do not run) until there is a
+    run. Before, it suggested watching the first lab alphabetically, a template whose subject is a
+    placeholder.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;

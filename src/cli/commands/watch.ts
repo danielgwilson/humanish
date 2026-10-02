@@ -96,7 +96,6 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
         "Happy path:",
         "  humanish watch",
         "  humanish watch first-run",
-        "  humanish watch --lab .humanish/labs/local.yaml",
         "",
         "Watch a live CUA run from your phone (tunnel-edge auth):",
         "  humanish watch my-cua-lab --expose --tunnel ngrok --oauth google --allow-email you@example.com",
