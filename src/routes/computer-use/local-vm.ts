@@ -30,7 +30,6 @@ import type { PreparedOutputRoot } from "../../run/contained-output.js";
 const e2bDesktopHooks = [
   "prepareDesktop",
   "loadDesktopModule",
-  "onRuntimeStreamReady",
   "packLocalTree",
 ] as const satisfies readonly (keyof CuaActorLabHooks)[];
 

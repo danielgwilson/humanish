@@ -1,11 +1,13 @@
 // The concurrent shared-world route's schema constants, attribution limits, options and result
 // types, and the per-seat result the planes collect.
 
+import type { LabDeps } from "../../lab/lab-deps.js";
+import type { LabEvent } from "../../lab/run-lab-events.js";
+import type { RunLabHomes } from "../../lab/run-lab-options.js";
 import type { SharedWorldJudgment } from "../../run/judge.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import type { BrowserScorer } from "../../lab/adapter-extension.js";
-import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import type {
@@ -68,6 +70,12 @@ export interface RunConcurrentSharedWorldLabOptions {
   runId?: string;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   hooks?: SharedWorldLabHooks;
+  /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
+  onStream?: NonNullable<RunLabHomes["onStream"]>;
+  /** Reports subject phases to onEvent; built by normalizeRunLabOptions. */
+  emit?: (event: LabEvent) => void;
+  /** Test seams. */
+  deps?: LabDeps;
   /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
   /** Present only when the scorer was CONFIG-DECLARED and loaded by the CLI (#316);
@@ -337,23 +345,6 @@ export interface SharedWorldLabHooks {
     desktop: E2BDesktopSandbox,
     lane?: { laneId: string; laneIndex: number; laneCount: number },
   ) => Promise<void>;
-  /**
-   * Awaited after a seat's live desktop stream starts. The URL carries an auth key and must never
-   * be persisted. A rejection becomes a run warning, as on the computer-use route.
-   */
-  onRuntimeStreamReady?: (stream: {
-    laneId: string;
-    sandboxId: string;
-    simId: string;
-    streamId: string;
-    url: string;
-  }) => Promise<void> | void;
-  /** Awaited after a seat's sandbox is gone, for seats whose stream started. Rejections are swallowed. */
-  onRuntimeStreamEnded?: (stream: {
-    laneId: string;
-    simId: string;
-    streamId: string;
-  }) => Promise<void> | void;
   /** The per-seat computer-use session runner (default: the resolved actor descriptor's). */
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /** The operator environment (keys + subject env values). Defaults to process.env. */
@@ -361,14 +352,6 @@ export interface SharedWorldLabHooks {
   renderObserverFn?: typeof renderObserver;
   /** Injected clock/sleep for the detached-step polling (tests only). */
   detachedTimers?: DetachedTimers;
-  /**
-   * Subject-provisioning phase sink (mirrors CuaActorLabHooks.onPhase): one call per
-   * started/completed boundary during the ONE shared-plane provision (clone route: clone, install,
-   * build, serve start, ready, subject.state seed-step groups; local-tree route: upload, extract,
-   * install, build, serve start, ready, seed-step groups - no clone phase). Defaults to one stderr
-   * line per event. Override in tests to capture instead of writing to real stderr.
-   */
-  onPhase?: (event: SubjectPhaseEvent) => void;
   /**
    * CONCURRENT route only (#164 phase 2): the harness clock used to MEASURE each actor's laneWindow
    * [start,end] (default Date.now). The deterministic heart test does NOT override this — overlap is

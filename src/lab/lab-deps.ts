@@ -14,6 +14,14 @@ import type { renderObserver } from "../observer/render.js";
 import type { TerminalCostProbe } from "../routes/terminal/types.js";
 import type { DetachedTimers } from "../substrates/detached.js";
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
+import type { SubjectPhaseEvent } from "../subject/steps.js";
+
+/** The participant a computer-use subject phase belongs to, with the route's field names. */
+export interface PhaseParticipant {
+  readonly laneId: string;
+  readonly laneIndex: number;
+  readonly laneCount: number;
+}
 
 export interface LabDeps {
   /** Loads the E2B SDK. Defaults to loadE2BDesktopModule. */
@@ -24,6 +32,12 @@ export interface LabDeps {
   readonly now?: () => number;
   /** Clock and sleep for detached provisioning steps. */
   readonly detachedTimers?: DetachedTimers;
+  /**
+   * Computer use and shared world: where subject-provisioning phases go in place of stderr. A
+   * computer-use phase names its participant; a shared-world plane's names none. onEvent still
+   * receives every phase.
+   */
+  readonly subjectPhaseSink?: (event: SubjectPhaseEvent, participant?: PhaseParticipant) => void;
   /** Scripted: runs one surface's session in place of the scripted-browser actor. */
   readonly runScriptedSession?: (
     options: ScriptedBrowserSessionOptions,

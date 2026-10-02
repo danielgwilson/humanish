@@ -23,6 +23,9 @@ import type {
   ActorTraceItem,
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
+import type { LabDeps, PhaseParticipant } from "../../lab/lab-deps.js";
+import type { LabEvent } from "../../lab/run-lab-events.js";
+import type { RunLabHomes } from "../../lab/run-lab-options.js";
 import { type BrowserScorer } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
@@ -104,42 +107,6 @@ export interface CuaActorLabHooks {
     desktop: E2BDesktopSandbox,
     lane: { laneId: string; laneIndex: number; laneCount: number },
   ) => Promise<void>;
-  /**
-   * Pre-flight hook: receives the resolved lane plan BEFORE any sandbox or provider call (dry-run
-   * AND live). The engine also prints the plan to stderr; this seam lets tests assert it without
-   * scraping stderr. Identical plan in dry-run, marked $0.
-   */
-  onPreflight?: (plan: CuaParticipantPlan) => void;
-  /**
-   * Live subject-provisioning phase sink: one call per started/completed boundary (clone,
-   * upload/extract, install, build, serve start, ready, and each subject.state seed-step
-   * group). Defaults to one stderr line per event, prefixed with the lane id when laneCount > 1
-   * (single-lane emission is unconditional: single-lane silence for the whole boot is the bug
-   * this event stream closes). Override in tests to capture instead of writing to real stderr.
-   */
-  onPhase?: (
-    event: SubjectPhaseEvent,
-    ctx: { laneId: string; laneIndex: number; laneCount: number },
-  ) => void;
-  /**
-   * Runtime-only live desktop stream callback. The URL carries an auth key and must never be
-   * persisted into run artifacts; callers use it to hydrate an attached Observer server.
-   */
-  onRuntimeStreamReady?: (stream: {
-    laneId: string;
-    sandboxId: string;
-    simId: string;
-    streamId: string;
-    url: string;
-  }) => Promise<void> | void;
-  /** Fired when a lane's sandbox is gone (finished or torn down): the live stream URL is now a
-   *  dead noVNC page, so the watch overlay must stop serving it and let the tile fall back to
-   *  recorded evidence (#357). Fired only for lanes whose onRuntimeStreamReady fired. */
-  onRuntimeStreamEnded?: (stream: {
-    laneId: string;
-    simId: string;
-    streamId: string;
-  }) => Promise<void> | void;
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /**
@@ -232,6 +199,12 @@ export interface RunCuaActorLabOptions {
   /** runLab's local VM study, for an app-url lab on the local target. */
   localVm?: LocalVmInput;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
+  /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
+  onStream?: NonNullable<RunLabHomes["onStream"]>;
+  /** Reports the plan and subject phases to onEvent; built by normalizeRunLabOptions. */
+  emit?: (event: LabEvent) => void;
+  /** Test seams. */
+  deps?: LabDeps;
   /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
   /** Present only when the scorer was CONFIG-DECLARED and loaded by the CLI (#316);
@@ -588,6 +561,10 @@ export interface CuaParticipantDeps {
    *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
   now: () => number;
   hooks: CuaActorLabHooks;
+  /** Receives each live stream's ready and ended: the Observer's tracker, then the caller's onStream. */
+  onStream: NonNullable<RunLabHomes["onStream"]>;
+  /** Reports a subject phase to the phase sink (stderr by default) and to onEvent. */
+  reportSubjectPhase: (event: SubjectPhaseEvent, participant: PhaseParticipant) => void;
   /** Lane-0 only: signal the pipeline gate after provisioning succeeds (true) or fails (false). */
   signalProvisioned?: (ok: boolean) => void;
   /**

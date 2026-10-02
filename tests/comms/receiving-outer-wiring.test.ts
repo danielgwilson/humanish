@@ -190,6 +190,9 @@ function desktopModule(events: string[], failCreate: boolean, world: FakeWorld) 
   return { module, created, killed };
 }
 
+/** Keeps subject phases off the test's stderr. */
+const quietPhases = { subjectPhaseSink: () => undefined };
+
 describe("configured receiving through exported study runners", () => {
   const roots: string[] = [];
   afterEach(async () => {
@@ -377,7 +380,6 @@ describe("configured receiving through exported study runners", () => {
       },
       loadDesktopModule: async () => sandbox.module,
       runSession,
-      onPhase: () => undefined,
       detachedTimers: { now: () => 0, sleep: async () => undefined },
       proberCadenceMs: 100_000,
       handoffDeadlineMs: 1500,
@@ -401,8 +403,8 @@ describe("configured receiving through exported study runners", () => {
       }),
     };
     const result = route.startsWith("cua-")
-      ? await runCuaActorLab({ cwd, config, dryRun: false, hooks })
-      : await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
+      ? await runCuaActorLab({ cwd, config, dryRun: false, hooks, deps: quietPhases })
+      : await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks, deps: quietPhases });
     expect(events.indexOf("receiving-acquire")).toBeGreaterThanOrEqual(0);
     expect(events.indexOf("receiving-acquire")).toBeLessThan(events.indexOf("desktop-create"));
     expect(finish).toHaveBeenCalledOnce();

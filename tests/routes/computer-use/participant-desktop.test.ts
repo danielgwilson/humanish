@@ -102,7 +102,9 @@ async function fixture() {
       throw new Error("Unexpected participant dispatch");
     }),
     now: Date.now,
-    hooks: { loadDesktopModule, onPhase: () => undefined },
+    hooks: { loadDesktopModule },
+    onStream: async () => undefined,
+    reportSubjectPhase: () => undefined,
     signalProvisioned: (ready) => {
       order.push(`gate:${ready}`);
     },

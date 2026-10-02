@@ -3,7 +3,8 @@ import type { CuaLiveMetadata } from "../../actors/computer-use/loop.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import { type ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type { RunBundle } from "../../run/bundle.js";
-import type { CuaActorLabHooks, DesktopParticipantRun } from "./types.js";
+import type { RunLabHomes } from "../../lab/run-lab-options.js";
+import type { DesktopParticipantRun } from "./types.js";
 
 export interface LiveTraceFlush {
   /** Record a participant's recorded-so-far items; the bundle rewrite follows on the flush
@@ -142,8 +143,9 @@ export function startLiveTraceFlush(args: {
  * the run. The URLs carry auth, so they live in memory and on the Observer result, never in run
  * artifacts.
  */
-export function trackRuntimeStreams(hooks: CuaActorLabHooks): {
-  hooks: CuaActorLabHooks;
+export function trackRuntimeStreams(onStream: RunLabHomes["onStream"] | undefined): {
+  /** Records each stream for the Observer, after the caller's onStream. */
+  onStream: NonNullable<RunLabHomes["onStream"]>;
   /** From now on, keep this live Observer's stream list current. */
   showIn: (observer: ObserverResult & { ok: true }) => void;
   /** Give the final Observer every stream the run reported. */
@@ -152,22 +154,13 @@ export function trackRuntimeStreams(hooks: CuaActorLabHooks): {
   let liveObserver: (ObserverResult & { ok: true }) | undefined;
   const urls: ObserverRuntimeStreamUrl[] = [];
   return {
-    hooks: {
-      ...hooks,
-      onRuntimeStreamReady: async (stream) => {
-        await hooks.onRuntimeStreamReady?.(stream);
-        urls.push({ streamId: stream.streamId, url: stream.url });
-        if (liveObserver) attachObserverRuntimeStreamUrls(liveObserver, urls);
-      },
-      onRuntimeStreamEnded: async (stream) => {
-        await hooks.onRuntimeStreamEnded?.(stream);
-        // Mark, never remove: the tile needs to KNOW the live view ended (and say so) rather than
-        // have the stream silently vanish from the overlay (#357).
-        for (const entry of urls) {
-          if (entry.streamId === stream.streamId) entry.ended = true;
-        }
-        if (liveObserver) attachObserverRuntimeStreamUrls(liveObserver, urls);
-      },
+    onStream: async (event) => {
+      await onStream?.(event);
+      if (event.type === "ready") urls.push({ streamId: event.streamId, url: event.url });
+      // Mark, never remove: the tile needs to KNOW the live view ended (and say so) rather than
+      // have the stream silently vanish from the overlay (#357).
+      else for (const entry of urls) if (entry.streamId === event.streamId) entry.ended = true;
+      if (liveObserver) attachObserverRuntimeStreamUrls(liveObserver, urls);
     },
     showIn: (observer) => {
       liveObserver = observer;

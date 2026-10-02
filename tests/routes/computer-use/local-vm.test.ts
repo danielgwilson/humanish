@@ -68,7 +68,6 @@ describe("local study bindings", () => {
 
   it("keeps the caller's hooks next to its own desktop lane", async () => {
     const score = vi.fn();
-    const onPhase = vi.fn();
     const deriveArtifacts = vi.fn();
     const scorerProvenance: RunScorerProvenance = {
       schema: "humanish.scorer-provenance.v1",
@@ -82,21 +81,15 @@ describe("local study bindings", () => {
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: true,
-      cuaHooks: { onPhase },
       scorer: { score, deriveArtifacts },
       scorerProvenance,
     });
 
     const hooks = studyHooks(study);
     expect(study.options.scorerProvenance).toBe(scorerProvenance);
-    // The scorer stays on the options; the study forwards the caller's own hook to its function.
+    // The scorer stays on the options.
     expect(study.options.scorer?.score).toBe(score);
     expect(study.options.scorer?.deriveArtifacts).toBe(deriveArtifacts);
-    hooks.onPhase!(
-      { at: "", type: "phase", message: "m" },
-      { laneId: "lane-01", laneIndex: 0, laneCount: 1 },
-    );
-    expect(onPhase).toHaveBeenCalledOnce();
     // The desktop goes to the run as localVm, not through the hooks.
     expect(hooks.buildProvider).toBeUndefined();
     expect(hooks.runSession).toBeUndefined();

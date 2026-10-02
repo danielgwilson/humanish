@@ -1,4 +1,6 @@
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
+import { phaseEvent, type LabEvent } from "../../../src/lab/run-lab-events.js";
+import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -1121,7 +1123,7 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].viewport).toBeUndefined();
   });
 
-  it("pins a symlink cwd before onPreflight can retarget the alias", async () => {
+  it("pins a symlink cwd before a plan event handler can retarget the alias", async () => {
     const physicalA = path.join(cwd, "project-a");
     const physicalB = path.join(cwd, "project-b");
     const cwdAlias = path.join(cwd, "project-alias");
@@ -1142,12 +1144,11 @@ describe("runCuaActorLab", () => {
       config: cuaConfig(),
       dryRun: true,
       runId,
-      hooks: {
-        onPreflight: () => {
-          preflightCalls += 1;
-          unlinkSync(cwdAlias);
-          symlinkSync(physicalB, cwdAlias, "dir");
-        },
+      emit: (event) => {
+        if (event.type !== "plan") return;
+        preflightCalls += 1;
+        unlinkSync(cwdAlias);
+        symlinkSync(physicalB, cwdAlias, "dir");
       },
     });
 
@@ -1951,19 +1952,22 @@ describe("runCuaActorLab", () => {
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const phases: string[] = [];
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
-        onPhase: (event) => phases.push(event.type),
-        runSession: async (options) =>
-          runCuaActorSession({
-            ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-          }),
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+          loadDesktopModule: async () => module,
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
       },
-    });
+      { subjectPhaseSink: (event) => phases.push(event.type) },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     expect(attempts).toBe(2);
@@ -3185,16 +3189,13 @@ describe("runCuaActorLab", () => {
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
       cwd,
+      // #357 lifecycle: ready fires while the sandbox lives and ended after its teardown.
+      // The pair lets the watch overlay stop serving a dead stream URL.
+      onStream: (event) => {
+        streamLifecycle.push(`${event.type}:${event.streamId}`);
+      },
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        // #357 lifecycle: ready must fire while the sandbox lives, ended after its teardown —
-        // the pair is what lets the watch overlay stop serving a dead stream URL.
-        onRuntimeStreamReady: (stream) => {
-          streamLifecycle.push(`ready:${stream.streamId}`);
-        },
-        onRuntimeStreamEnded: (stream) => {
-          streamLifecycle.push(`ended:${stream.streamId}`);
-        },
         loadDesktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions = options.instructions;
@@ -4169,33 +4170,41 @@ describe("runCuaActorLab", () => {
     }
   });
 
-  it("clone route: onPhase (injected capture sink) emits the ordered started/completed sequence for clone/install/build/ready (#263)", async () => {
+  it("clone route: the injected phase sink and onEvent both receive the ordered started/completed sequence for clone/install/build/ready (#263)", async () => {
     const config = cloneCuaConfig();
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
-    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number; message: string }> =
-      [];
+    const phaseEvents: SubjectPhaseEvent[] = [];
     const phaseCtxs: Array<{ laneId: string; laneIndex: number; laneCount: number }> = [];
+    const emitted: LabEvent[] = [];
 
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        runSession: async (options) =>
-          runCuaActorSession({
-            ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-          }),
-        // The default sink is process.stderr.write; a test-injected sink replaces it entirely
-        // (the CuaActorLabHooks seam this closes #263 with) so the ordering below is captured
-        // deterministically instead of scraping stderr.
-        onPhase: (event, ctx) => {
-          phaseEvents.push(event);
-          phaseCtxs.push(ctx);
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        onEvent: (event) => {
+          if (event.type === "subject-phase") emitted.push(event);
+        },
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
         },
       },
-    });
+      // The default sink is process.stderr.write. The subjectPhaseSink seam replaces it so the
+      // ordering below is captured deterministically instead of scraping stderr. onEvent observes
+      // the same phases beside the sink, so they stay on stderr when a caller sets it.
+      {
+        subjectPhaseSink: (event, ctx) => {
+          phaseEvents.push(event);
+          phaseCtxs.push(ctx!);
+        },
+      },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
@@ -4215,6 +4224,14 @@ describe("runCuaActorLab", () => {
       "cua-lab.subject.ready.started",
       "cua-lab.subject.ready.completed",
     ]);
+    expect(emitted).toEqual(
+      phaseEvents.map((event) =>
+        phaseEvent(event, {
+          kind: "participant",
+          participant: { id: "lane-01", index: 0, count: 1 },
+        }),
+      ),
+    );
 
     // Started events (including the lone serve.started) carry neither ok nor durationMs;
     // every completed event on this all-succeeding fake run carries both.
@@ -4365,21 +4382,26 @@ describe("runCuaActorLab", () => {
     });
     const { module } = makeFakeModule(sandbox);
     const phaseEvents: Array<{ type: string; ok?: boolean; message: string }> = [];
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        runSession: async (options) =>
-          runCuaActorSession({
-            ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-          }),
-        onPhase: (event) => {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      },
+      {
+        subjectPhaseSink: (event) => {
           phaseEvents.push(event);
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     expect(statusReads).toEqual(["first", "retry"]);
@@ -4783,19 +4805,22 @@ describe("Chrome DevTools readiness after launch", () => {
           : undefined,
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
-        onPhase: () => undefined,
-        runSession: async (options) =>
-          runCuaActorSession({
-            ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-          }),
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+          loadDesktopModule: async () => module,
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
       },
-    });
+      { subjectPhaseSink: () => undefined },
+    );
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
@@ -5401,28 +5426,33 @@ describe("buildSingleParticipantBundle", () => {
       expect(verified.ok).toBe(true);
     });
 
-    it("live (single lane): onPhase (injected capture sink) emits the upload/extract phase boundaries, then install/build/ready (#263)", async () => {
+    it("live (single lane): the injected phase sink emits the upload/extract phase boundaries, then install/build/ready (#263)", async () => {
       const config = localTreeCuaConfig();
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
       const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
-          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-          runSession: async (options) =>
-            runCuaActorSession({
-              ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-            }),
-          onPhase: (event) => {
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          cuaHooks: {
+            env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+            loadDesktopModule: async () => module,
+            packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+            runSession: async (options) =>
+              runCuaActorSession({
+                ...options,
+                openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              }),
+          },
+        },
+        {
+          subjectPhaseSink: (event) => {
             phaseEvents.push(event);
           },
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       expect(outcome.result.ok).toBe(true);
 
@@ -5555,7 +5585,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(capWarning).toContain("maxTotalUsd");
     });
 
-    it("live fan-out (2 lanes): onPhase captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {
+    it("live fan-out (2 lanes): the injected phase sink captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {
       const config = localTreeCuaConfig({ count: 2 });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
@@ -5564,22 +5594,27 @@ describe("buildSingleParticipantBundle", () => {
         ctx: { laneId: string; laneCount: number };
       }> = [];
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
-          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-          runSession: async (options) =>
-            runCuaActorSession({
-              ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-            }),
-          onPhase: (event, ctx) => {
-            phaseCalls.push({ event, ctx });
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          cuaHooks: {
+            env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+            loadDesktopModule: async () => module,
+            packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+            runSession: async (options) =>
+              runCuaActorSession({
+                ...options,
+                openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              }),
           },
         },
-      });
+        {
+          subjectPhaseSink: (event, ctx) => {
+            phaseCalls.push({ event, ctx: ctx! });
+          },
+        },
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       expect(outcome.result.ok).toBe(true);
 
@@ -5710,7 +5745,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(message).toContain("tar: unexpected end of archive");
     });
 
-    it("failing extract: onPhase emits a completed event with ok false before the lane fails (#263)", async () => {
+    it("failing extract: the injected phase sink receives a completed event with ok false before the lane fails (#263)", async () => {
       const config = localTreeCuaConfig();
       const sandbox = makeFakeSandbox({
         commandHandler: cloneCommandHandler((command) => {
@@ -5723,20 +5758,25 @@ describe("buildSingleParticipantBundle", () => {
       const { module } = makeFakeModule(sandbox);
       const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
-          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-          onPhase: (event) => {
-            phaseEvents.push(event);
-          },
-          runSession: async () => {
-            throw new Error("runSession must not be reached: extract should fail first");
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          cuaHooks: {
+            env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+            loadDesktopModule: async () => module,
+            packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+            runSession: async () => {
+              throw new Error("runSession must not be reached: extract should fail first");
+            },
           },
         },
-      });
+        {
+          subjectPhaseSink: (event) => {
+            phaseEvents.push(event);
+          },
+        },
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       expect(outcome.result.ok).toBe(false);
 
@@ -6124,14 +6164,18 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     const provider = { ...makeStateProvider(), close: vi.fn(async () => undefined) };
     const buildExecutor = vi.fn(async () => stateExecutor);
     const buildProvider = vi.fn(async (_context: { executor: CuaExecutor }) => provider);
+    const onStream = vi.fn();
 
     const outcome = await runLab(localAppConfig(), {
       cwd,
+      onStream,
       cuaHooks: { loadDesktopModule: async () => module, buildExecutor, buildProvider },
     });
 
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     expect(outcome.result.ok).toBe(true);
+    // No desktop starts in process, so no stream event fires.
+    expect(onStream).not.toHaveBeenCalled();
     expect(buildExecutor).toHaveBeenCalledOnce();
     expect(buildProvider).toHaveBeenCalledOnce();
     expect(buildProvider.mock.calls[0]![0].executor).toBe(stateExecutor);
@@ -6776,7 +6820,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const observerData = (await served.json()) as {
       streams: Array<{ transport?: string; url?: string; embed?: { kind: string } }>;
     };
-    // #357: the run is OVER (the lane tore down and fired onRuntimeStreamEnded), so the server no
+    // #357: the run is OVER (the lane tore down and reported its stream ended), so the server no
     // longer injects the now-dead stream URL — the tile falls back to recorded evidence and the
     // stream says why (liveEnded). Serving the URL here was exactly the "board full of 'sandbox
     // not found'" failure the field run hit.
