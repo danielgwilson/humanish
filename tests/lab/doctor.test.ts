@@ -187,6 +187,37 @@ describe("selected lab setup without paid dispatch", () => {
     }
   });
 
+  it("names each protocol change when a Codex release fails the schema check", async () => {
+    const manifest =
+      lab("local-agent")
+        .replace("https://preview.example.test/", "http://localhost:3000/")
+        .replace("target: e2b-desktop", "target: local") +
+      "\nreview:\n  analysis:\n    provider: codex\n";
+    await project(manifest, async (cwd) => {
+      const result = await labSetupChecks({
+        cwd,
+        lab: "preview",
+        env: keyless,
+        agents: [],
+        keyPresent: () => false,
+        localRuntimeReadiness: async () => ({ ok: true, installed: true, message: "Ready" }),
+        codexAnalysisReadiness: async () => ({
+          ready: false,
+          errorCode: "codex_incompatible_release",
+          detectedCliVersion: "0.160.0",
+          protocolIncompatibilities: ["turn/start response turn.id is no longer in the schema"],
+        }),
+      });
+      for (const name of ["local participant authentication", "post-run analysis"]) {
+        const check = result.checks.find((item) => item.name === name)!;
+        expect(check.ok, name).toBe(false);
+        expect(check.message, name).toContain(
+          `Codex CLI 0.160.0 changed the app-server protocol humanish uses: turn/start response turn.id is no longer in the schema. Install the newest with \`npm install -g @openai/codex@${defaultCodexCliVersion()}\`. Then sign in with a ChatGPT account (\`codex login\`).`,
+        );
+      }
+    });
+  });
+
   const localCodexLab =
     lab("local-agent")
       .replace("https://preview.example.test/", "http://localhost:3000/")

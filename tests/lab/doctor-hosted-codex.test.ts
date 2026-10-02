@@ -94,6 +94,21 @@ describe("doctor's hosted Codex participant check", () => {
     expect(row.message).toContain("an API key, which bills its usage to that key");
   });
 
+  it("adds the schema values a passing handshake recorded to the ready row", async () => {
+    const row = await participantRow(hostedLab(), async () => ({
+      ready: true,
+      errorCode: null,
+      cliVersion: "0.161.0",
+      resolvedModel: "operator-model",
+      authentication: "chatgpt-account",
+      protocolAdditions: ["item/completed item.type now also allows futureItem"],
+    }));
+    expect(row.ok).toBe(true);
+    expect(row.message).toContain(
+      "Codex CLI 0.161.0's app-server schema has values humanish has not seen: item/completed item.type now also allows futureItem. humanish recorded them and continued.",
+    );
+  });
+
   it("gives an unadmitted release the command that replaces the binary it found", async () => {
     const row = await participantRow(hostedLab(), async () => ({
       ready: false,

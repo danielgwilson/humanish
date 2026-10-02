@@ -6,14 +6,40 @@ import { fileURLToPath } from "node:url";
 import readline from "node:readline";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
-const [scenario, trace, operation] = process.argv.slice(2);
+const [scenario, trace, command, subcommand] = process.argv.slice(2);
+// `app-server generate-json-schema` writes the protocol check's schema and starts no session.
+const operation = command === "app-server" && subcommand === "generate-json-schema" ? "generate-json-schema" : command;
 const capture = name => JSON.parse(fs.readFileSync(path.join(directory, name), "utf8"));
 // `version-X.Y.Z` reports that release consistently from --version, initialize and thread start.
 const consistentVersion = scenario.startsWith("version-") ? scenario.slice("version-".length) : null;
 const write = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 const note = value => fs.appendFileSync(trace, `${JSON.stringify(value)}\n`);
 note({ operation, pid: process.pid, envKeys: Object.keys(process.env), cwd: process.cwd(), home: process.env.HOME });
-if (operation === "--version") {
+if (operation === "generate-json-schema") {
+  // Writes the trimmed 0.160.0 schema (app-server-schema/), or a scenario's change to it.
+  const out = process.argv[process.argv.indexOf("--out") + 1];
+  const source = path.join(directory, "app-server-schema");
+  if (scenario === "hang-generate-json-schema") setInterval(() => undefined, 1000);
+  else if (scenario === "schema-exit") process.exit(3);
+  else if (scenario !== "schema-missing") {
+    fs.mkdirSync(out, { recursive: true });
+    for (const name of fs.readdirSync(source)) fs.copyFileSync(path.join(source, name), path.join(out, name));
+    const v2File = path.join(out, "codex_app_server_protocol.v2.schemas.json");
+    const v2 = JSON.parse(fs.readFileSync(v2File, "utf8"));
+    // schema-incompatible: thread/start's reply no longer names its thread. It also adds the
+    // item type below, which a refused launch must not report as recorded.
+    if (scenario === "schema-incompatible") delete v2.definitions.Thread.properties.id;
+    // schema-addition (and participant-schema-addition): a thread item type no admitted release has.
+    if (scenario.endsWith("schema-addition") || scenario === "schema-incompatible")
+      v2.definitions.ThreadItem.oneOf.push({ type: "object", required: ["type"], properties: { type: { type: "string", enum: ["synthetic_new_item"] } } });
+    fs.writeFileSync(v2File, JSON.stringify(v2));
+    // schema-special-file: a schema file that is a link to an endless device.
+    if (scenario === "schema-special-file") {
+      fs.rmSync(path.join(out, "ClientRequest.json"));
+      fs.symlinkSync("/dev/zero", path.join(out, "ClientRequest.json"));
+    }
+  }
+} else if (operation === "--version") {
   if (scenario === "hang-version") setInterval(() => undefined, 1000);
   else if (scenario === "large-version") process.stdout.write("x".repeat(5000));
   else console.log(scenario === "wrong-version" ? "codex-cli 0.0.1" : `codex-cli ${consistentVersion ?? "0.157.1"}`);

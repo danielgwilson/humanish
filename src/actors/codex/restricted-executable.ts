@@ -176,6 +176,56 @@ async function locateExecutable(
   );
 }
 
+/**
+ * Writes this release's app-server schema (`app-server generate-json-schema --experimental`) into
+ * `out`, for the protocol check. False when the release exits without one. Bounded like the
+ * version check: 15 seconds, and a few kilobytes of output, which it does not otherwise read.
+ */
+export async function generateProtocolSchema(
+  file: string,
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+  out: string,
+  spawnFn: RestrictedCodexSpawn,
+  deadline: RestrictedCodexDeadline,
+): Promise<boolean> {
+  deadline.check();
+  const owned = ownCodexProcess(
+    spawnFn(file, ["app-server", "generate-json-schema", "--experimental", "--out", out], {
+      cwd,
+      env,
+      detached: false,
+      stdio: ["pipe", "pipe", "pipe"],
+    }),
+  );
+  let bytes = 0,
+    exitCode: number | null = null;
+  const timer = setTimeout(() => deadline.stop("timeout"), 15_000);
+  const count = (chunk: Buffer) => {
+    bytes += chunk.length;
+    if (bytes > 65_536) deadline.stop("response_too_large");
+  };
+  owned.child.on("error", () => deadline.stop("codex_unavailable"));
+  owned.child.stdin.on("error", () => deadline.stop("codex_unavailable"));
+  owned.child.stdout.on("data", count);
+  owned.child.stderr.on("data", count);
+  owned.child.on("exit", (code) => {
+    exitCode = code;
+  });
+  try {
+    owned.child.stdin.end();
+    await deadline.wait(owned.closed);
+    return exitCode === 0;
+  } finally {
+    clearTimeout(timer);
+    if (!(await closeOwnedCodexProcess(owned))) {
+      retainUnclosedChild(owned.closed);
+      // oxlint-disable-next-line no-unsafe-finally -- a Codex process that did not close invalidates the check
+      throw new RestrictedCodexStop("codex_cleanup_failed");
+    }
+  }
+}
+
 /** Returns the detected release after checking it against the admitted list. */
 export async function checkVersion(
   file: string,
