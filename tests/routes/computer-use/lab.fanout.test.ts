@@ -1,4 +1,5 @@
 import { deriveStudyFacts } from "../../../src/cli/telemetry.js";
+import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import { draftFeedback } from "../../../src/feedback/feedback.js";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -1679,6 +1680,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         ...passingHooks(handle),
         runSession: async (options) =>
           runCuaActorSession({ ...options, provider: scriptedEnding(ending) }),
+      },
+      scorer: {
         score: () => ({
           schema: "humanish.adapter-score.v1",
           namespace: "fold-proof",
@@ -1882,7 +1885,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const handle = makeFanoutModule();
     const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
       cwd,
-      cuaHooks: passingHooks(handle, { score: fanoutFailScore }),
+      cuaHooks: passingHooks(handle),
+      scorer: browserScorer({ score: fanoutFailScore }),
     });
 
     expect(outcome.backend).toBe("cua");

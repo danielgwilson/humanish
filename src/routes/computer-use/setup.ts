@@ -36,7 +36,6 @@ import { projectParticipantSubjects, subjectProvenanceArg } from "./subject-proj
 import {
   CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabErrorCode,
-  type CuaActorLabHooks,
   type CuaActorLabResult,
   type CuaParticipantDeps,
   type CuaParticipantPlan,
@@ -130,7 +129,6 @@ export interface CuaParticipantsSetup {
 
 /** What only finishCuaRun reads besides the participants' outcomes. */
 export interface CuaFinishFacts {
-  hooks: CuaActorLabHooks;
   rerunLineage: RunRerunLineage | undefined;
   publicRepo: string | undefined;
   subjectArgs: Omit<Parameters<typeof projectParticipantSubjects>[0], "outcomes" | "dryRun">;
@@ -426,7 +424,7 @@ export async function startCuaRun(
       },
       fail: admitted.fail,
     },
-    finish: { hooks, rerunLineage: admitted.rerunLineage, publicRepo, subjectArgs },
+    finish: { rerunLineage: admitted.rerunLineage, publicRepo, subjectArgs },
   };
 }
 

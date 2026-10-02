@@ -1,4 +1,5 @@
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
+import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
@@ -2571,6 +2572,8 @@ describe("runCuaActorLab", () => {
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
+      },
+      scorer: browserScorer({
         score: failingBrowserScore,
         deriveFeedback: browserFeedback,
         deriveArtifacts: async (ctx) => {
@@ -2600,7 +2603,7 @@ describe("runCuaActorLab", () => {
             },
           ];
         },
-      },
+      }),
     });
 
     expect(outcome.backend).toBe("cua");
@@ -2666,6 +2669,8 @@ describe("runCuaActorLab", () => {
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
+      },
+      scorer: {
         score: () =>
           ({
             schema: "humanish.adapter-score.v1",

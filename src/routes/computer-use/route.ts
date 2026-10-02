@@ -28,7 +28,8 @@ import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.j
 import { type FinishedRun, runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
-import { computerUseInputWithScorer } from "../../lab/route-inputs.js";
+import { browserRouteScorer } from "../../lab/adapter-scorer-loader.js";
+import { withLateScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import { planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
@@ -116,11 +117,10 @@ export async function admitComputerUsePlan(
   return {
     ok: true,
     run: async (scorer) => {
-      const running = computerUseInputWithScorer(input, scorer);
-      // The scorer's hooks wrap the admitted bag, so the runSession, provider and desktop the
-      // checks admitted stay the ones the run uses.
-      const admitted = { ...admission.admitted, hooks: running.hooks ?? admission.admitted.hooks };
-      return cuaOutcome(await runAdmittedCuaRun(plan, running, admitted));
+      // The scorer joins the input only; the runSession, provider and desktop the checks admitted
+      // stay the ones the run uses.
+      const running = withLateScorer(input, scorer, browserRouteScorer);
+      return cuaOutcome(await runAdmittedCuaRun(plan, running, admission.admitted));
     },
   };
 }

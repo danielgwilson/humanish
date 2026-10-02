@@ -33,7 +33,8 @@ export interface BrowserLabScoringContext {
   laneCount: number;
 }
 
-export interface BrowserLabAdapterHooks {
+/** The scorer functions a computer-use or shared-world run calls: `RunLabOptions.scorer`. */
+export interface BrowserScorer {
   /**
    * Browser-route extension seam (#165): a thin adapter may score the assembled
    * browser/shared-world evidence without forking core. The score is stored as
@@ -75,21 +76,21 @@ export function declaredScorerThrew(detail: string): string {
   return `Declared product scorer threw before returning a verdict (${detail}); a crashed declared gate is recorded as a fail, never a silent pass.`;
 }
 
-export async function applyBrowserAdapterHooks(args: {
-  hooks: BrowserLabAdapterHooks | undefined;
+export async function applyBrowserScorer(args: {
+  scorer: BrowserScorer | undefined;
   context: BrowserLabScoringContext;
   bundle: RunBundle;
   sanitize: (text: string) => string;
   warnings: string[];
-  hookLabel: string;
   /** Present only when the scorer was CONFIG-DECLARED (#316); core-stamped onto the bundle as
    *  evidence of which out-of-tree module was loaded. Absent for library callers. Its presence also
    *  makes a THROWING or MALFORMED scorer a failure — a declared gate that cannot render a pass is
    *  a fail, never a silent green. */
   scorerProvenance?: RunScorerProvenance;
 }): Promise<ScorerOutcome> {
-  const { hooks, context, bundle, sanitize, warnings, hookLabel, scorerProvenance } = args;
-  if (!hooks?.score && !hooks?.deriveFeedback && !hooks?.deriveArtifacts) return { failures: [] };
+  const { scorer, context, bundle, sanitize, warnings, scorerProvenance } = args;
+  if (!scorer?.score && !scorer?.deriveFeedback && !scorer?.deriveArtifacts)
+    return { failures: [] };
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
   // still loaded and attempted). A VALID status:"fail" is a failure (library + declared, the
@@ -110,9 +111,9 @@ export async function applyBrowserAdapterHooks(args: {
   };
 
   const failures: string[] = [];
-  if (hooks.score) {
+  if (scorer?.score) {
     try {
-      const score = await hooks.score(scoringContext);
+      const score = await scorer.score(scoringContext);
       const cleaned = scrubValue(score);
       if (isAdapterScoreShape(cleaned)) {
         bundle.adapterScore = cleaned;
@@ -120,29 +121,27 @@ export async function applyBrowserAdapterHooks(args: {
         if (message !== undefined) failures.push(message);
       } else {
         warnings.push(
-          `${hookLabel}.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.`,
+          `scorer.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.`,
         );
         if (declared) failures.push(DECLARED_SCORER_MALFORMED);
       }
     } catch (error) {
       const detail = sanitize(error instanceof Error ? error.message : String(error));
-      warnings.push(
-        `${hookLabel}.score threw (${detail}); dropped so the bundle stays verifiable.`,
-      );
+      warnings.push(`scorer.score threw (${detail}); dropped so the bundle stays verifiable.`);
       if (declared) failures.push(declaredScorerThrew(detail));
     }
   }
 
-  if (hooks.deriveFeedback) {
+  if (scorer?.deriveFeedback) {
     try {
-      const candidates = await hooks.deriveFeedback(scoringContext);
+      const candidates = await scorer.deriveFeedback(scoringContext);
       const accepted: RunFeedbackCandidate[] = [];
       for (const candidate of Array.isArray(candidates) ? candidates : []) {
         const cleaned = scrubValue(candidate);
         if (isAdapterFeedbackCandidateShape(cleaned)) accepted.push(cleaned);
         else
           warnings.push(
-            `${hookLabel}.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.`,
+            `scorer.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.`,
           );
       }
       if (accepted.length > 0) {
@@ -150,21 +149,21 @@ export async function applyBrowserAdapterHooks(args: {
       }
     } catch (error) {
       warnings.push(
-        `${hookLabel}.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
+        `scorer.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
       );
     }
   }
 
-  if (hooks.deriveArtifacts) {
+  if (scorer?.deriveArtifacts) {
     try {
-      const artifacts = await hooks.deriveArtifacts(scoringContext);
+      const artifacts = await scorer.deriveArtifacts(scoringContext);
       const accepted: RunAdapterArtifact[] = [];
       for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
         const cleaned = scrubValue(artifact);
         if (isAdapterArtifactShape(cleaned)) accepted.push(cleaned);
         else
           warnings.push(
-            `${hookLabel}.deriveArtifacts returned an artifact that is not a well-formed humanish.adapter-artifact.v1 (non-empty namespace + label + local path + supported kind); dropped so the bundle stays verifiable.`,
+            `scorer.deriveArtifacts returned an artifact that is not a well-formed humanish.adapter-artifact.v1 (non-empty namespace + label + local path + supported kind); dropped so the bundle stays verifiable.`,
           );
       }
       if (accepted.length > 0) {
@@ -172,7 +171,7 @@ export async function applyBrowserAdapterHooks(args: {
       }
     } catch (error) {
       warnings.push(
-        `${hookLabel}.deriveArtifacts threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
+        `scorer.deriveArtifacts threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
       );
     }
   }

@@ -50,6 +50,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   always gives such a lab its local desktop, so only a library caller using `inProcess` sees the
   change. The desktop check moved from planning to admission, so a local-browser lab can be planned
   without one (#1359).
+- A scorer's warnings about a dropped output name `scorer.score`, `scorer.deriveFeedback` and
+  `scorer.deriveArtifacts`. They named the removed `cuaHooks`, `sharedWorldHooks` and
+  `terminalHooks` bags (#PRNUM).
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
   `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
   (#1336).

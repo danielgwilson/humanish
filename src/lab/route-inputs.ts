@@ -2,10 +2,13 @@
 // hook bag, the automatic-analysis hooks and the declared scorer's provenance.
 
 import type { InternalRunLabOptions } from "../run-lab.js";
-import type { LabDeps } from "./lab-deps.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
-import { terminalRouteScorer } from "./adapter-scorer-loader.js";
-import { scorerHooks } from "./run-lab-options.js";
+import {
+  browserRouteScorer,
+  terminalRouteScorer,
+  type AdapterScorerModule,
+} from "./adapter-scorer-loader.js";
+import type { LabDeps } from "./lab-deps.js";
 import type { ComputerUseRunInput } from "../routes/computer-use/types.js";
 import type { ScriptedRunInput } from "../routes/scripted/types.js";
 import type { SharedWorldRunInput } from "../routes/shared-world/types.js";
@@ -23,7 +26,7 @@ export function computerUseInput(options: InternalRunLabOptions): ComputerUseRun
     ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
     ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
     ...(options.localVm === undefined ? {} : { localVm: options.localVm }),
-    ...scorerOf(options),
+    ...scorerOf(options, browserRouteScorer),
   };
 }
 
@@ -46,9 +49,8 @@ export function terminalInput(options: InternalRunLabOptions, deps: LabDeps): Te
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
     ...(options.env === undefined ? {} : { env: options.env }),
-    ...(options.scorer === undefined ? {} : { scorer: terminalRouteScorer(options.scorer) }),
     deps,
-    ...scorerOf(options),
+    ...scorerOf(options, terminalRouteScorer),
   };
 }
 
@@ -60,58 +62,29 @@ export function sharedWorldInput(options: InternalRunLabOptions): SharedWorldRun
     ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
     ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
-    ...scorerOf(options),
+    ...scorerOf(options, browserRouteScorer),
   };
 }
 
 /** A scorer the CLI loads after the route's local checks, and the provenance it stamps on the run. */
 export type LateScorer = Pick<InternalRunLabOptions, "scorer" | "scorerProvenance">;
 
-/** The computer-use input with a scorer loaded after admission (see withLateScorer). */
-export function computerUseInputWithScorer(
-  input: ComputerUseRunInput,
-  late: LateScorer | undefined,
-): ComputerUseRunInput {
-  const hooks = late?.scorer === undefined ? undefined : scorerHooks(late.scorer);
-  return withLateScorer(input, hooks, late);
-}
-
-/** The shared-world input with a scorer loaded after admission (see withLateScorer). */
-export function sharedWorldInputWithScorer(
-  input: SharedWorldRunInput,
-  late: LateScorer | undefined,
-): SharedWorldRunInput {
-  const hooks = late?.scorer === undefined ? undefined : scorerHooks(late.scorer);
-  return withLateScorer(input, hooks, late);
-}
-
-/** The terminal input with a scorer loaded after admission, and the scorer's provenance. */
-export function terminalInputWithScorer(
-  input: TerminalRunInput,
-  late: LateScorer | undefined,
-): TerminalRunInput {
-  if (late === undefined) return input;
-  return {
-    ...input,
-    ...(late.scorer === undefined ? {} : { scorer: terminalRouteScorer(late.scorer) }),
-    ...(late.scorerProvenance === undefined ? {} : { scorerProvenance: late.scorerProvenance }),
-  };
-}
+/** Narrows RunLabOptions.scorer to the context the route passes (adapter-scorer-loader.ts). */
+type NarrowScorer<S> = (scorer: AdapterScorerModule) => S;
 
 /**
- * `input` with the scorer's hooks over its hook bag, as normalizeRunLabOptions maps a scorer the
- * caller passes up front, and the scorer's provenance. The bag's other members stay the same
- * objects the route's checks already read.
+ * A route's input with a scorer loaded after admission, and the scorer's provenance, as if the
+ * caller had passed them up front. The rest of the input is the one the route's checks admitted.
  */
-function withLateScorer<I extends { hooks?: object; scorerProvenance?: RunScorerProvenance }>(
+export function withLateScorer<S, I extends { scorer?: S; scorerProvenance?: RunScorerProvenance }>(
   input: I,
-  hooks: Partial<NonNullable<I["hooks"]>> | undefined,
   late: LateScorer | undefined,
+  narrow: NarrowScorer<S>,
 ): I {
   if (late === undefined) return input;
   return {
     ...input,
-    ...(hooks === undefined ? {} : { hooks: { ...input.hooks, ...hooks } }),
+    ...(late.scorer === undefined ? {} : { scorer: narrow(late.scorer) }),
     ...(late.scorerProvenance === undefined ? {} : { scorerProvenance: late.scorerProvenance }),
   };
 }
@@ -122,8 +95,11 @@ function analysisOf(options: InternalRunLabOptions) {
     : { automaticAnalysis: options.automaticAnalysis };
 }
 
-function scorerOf(options: InternalRunLabOptions) {
-  return options.scorerProvenance === undefined
-    ? {}
-    : { scorerProvenance: options.scorerProvenance };
+function scorerOf<S>(options: InternalRunLabOptions, narrow: NarrowScorer<S>) {
+  return {
+    ...(options.scorer === undefined ? {} : { scorer: narrow(options.scorer) }),
+    ...(options.scorerProvenance === undefined
+      ? {}
+      : { scorerProvenance: options.scorerProvenance }),
+  };
 }

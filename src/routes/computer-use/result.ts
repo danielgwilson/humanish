@@ -1,7 +1,4 @@
-import {
-  adapterScoreFailureMessage,
-  applyBrowserAdapterHooks,
-} from "../../lab/adapter-extension.js";
+import { adapterScoreFailureMessage, applyBrowserScorer } from "../../lab/adapter-extension.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
@@ -315,7 +312,7 @@ export async function finishCuaRun(
 ): Promise<CuaActorLabResult> {
   const { plan, input, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
-  const { hooks, rerunLineage, publicRepo, subjectArgs } = finish;
+  const { rerunLineage, publicRepo, subjectArgs } = finish;
   const { dryRun } = plan;
   const appUrl = plannedAppUrl(plan.runner.subject);
   const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
@@ -348,8 +345,8 @@ export async function finishCuaRun(
   });
 
   const adapterWarnings: string[] = [];
-  const scorerResult = await applyBrowserAdapterHooks({
-    hooks,
+  const scorerResult = await applyBrowserScorer({
+    scorer: input.scorer,
     bundle,
     context: {
       bundle,
@@ -363,7 +360,6 @@ export async function finishCuaRun(
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
-    hookLabel: "cuaHooks",
     ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
   // The one final verdict fold: scoring can only make the judged verdict stricter.
