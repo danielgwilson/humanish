@@ -120,4 +120,4 @@
   description: Parked until later.
 - name: raise-cap
   color: "D93F0B"
-  description: "This PR raises a cap in package.json; its body has a 'Cap raise:' line saying why"
+  description: "This PR raises a cap in package.json or scripts/caps.json; its body has a 'Cap raise:' line saying why"
