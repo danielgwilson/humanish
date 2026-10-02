@@ -61,7 +61,7 @@ export function emitPhaseCompleted(
 /** Default phase-boundary sink (stderr): one line per event, prefixed with the lane id ONLY
  *  when laneCount > 1. Single-lane emission is unconditional: total single-lane silence for the
  *  whole clone/install/build/ready boot is the bug this event stream exists to close.
- *  Overridable via CuaActorLabHooks.onPhase so deterministic tests capture instead of writing to
+ *  Overridable via LabDeps.subjectPhaseSink so deterministic tests capture instead of writing to
  *  the real stderr. */
 export function defaultSubjectPhaseSink(
   event: SubjectPhaseEvent,

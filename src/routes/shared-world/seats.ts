@@ -1,6 +1,7 @@
 // Builds each participant's actor spec and mission, resolves its entry URL, derives the session
 // and sandbox time budgets, and records a follower that never received the host's lobby code.
 
+import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { pricedModel } from "../../lab/plan-base.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
@@ -17,7 +18,12 @@ import type {
   DesktopParticipantRun,
   ParticipantRunOutcome,
 } from "../computer-use/types.js";
-import type { LiveParticipants, PlaneContext, SharedWorldLabHooks } from "./types.js";
+import type {
+  LiveParticipants,
+  PlaneContext,
+  SharedWorldLabHooks,
+  SharedWorldRunInput,
+} from "./types.js";
 import { resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -165,11 +171,8 @@ export function startParticipantFlush(
   });
 }
 
-/**
- * The caller's desktop hooks, plus the runtime stream URLs each seat reports to the live Observer.
- * The Observer learns of a stream before the caller's stream hook runs.
- */
-function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveParticipants): CuaActorLabHooks {
+/** The caller's desktop hooks each seat's participant runner reads. */
+function participantDesktopHooks(hooks: SharedWorldLabHooks): CuaActorLabHooks {
   return {
     ...(hooks.loadDesktopModule ? { loadDesktopModule: hooks.loadDesktopModule } : {}),
     ...(hooks.detachedTimers ? { detachedTimers: hooks.detachedTimers } : {}),
@@ -180,23 +183,25 @@ function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveParticipants):
             hooks.prepareDesktop!(desktop, participant),
         }
       : {}),
-    onRuntimeStreamReady: (stream) => {
-      live.streamUrls.push({ streamId: stream.streamId, url: stream.url });
-      if (live.observer) {
-        attachObserverRuntimeStreamUrls(live.observer, live.streamUrls);
-      }
-      return hooks.onRuntimeStreamReady?.(stream);
-    },
-    onRuntimeStreamEnded: (stream) => {
-      // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
-      for (const entry of live.streamUrls) {
-        if (entry.streamId === stream.streamId) entry.ended = true;
-      }
-      if (live.observer) {
-        attachObserverRuntimeStreamUrls(live.observer, live.streamUrls);
-      }
-      return hooks.onRuntimeStreamEnded?.(stream);
-    },
+  };
+}
+
+/**
+ * The runtime stream URLs each seat reports to the live Observer. The Observer learns of a stream
+ * before the caller's onStream runs.
+ */
+function participantStreams(
+  onStream: SharedWorldRunInput["onStream"],
+  live: LiveParticipants,
+): NonNullable<SharedWorldRunInput["onStream"]> {
+  return (event) => {
+    if (event.type === "ready") live.streamUrls.push({ streamId: event.streamId, url: event.url });
+    // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
+    else
+      for (const entry of live.streamUrls)
+        if (entry.streamId === event.streamId) entry.ended = true;
+    if (live.observer) attachObserverRuntimeStreamUrls(live.observer, live.streamUrls);
+    return onStream?.(event);
   };
 }
 
@@ -241,7 +246,10 @@ export function participantRunDeps(
     brain: ctx.plan.brain,
     ...(receiving ? { receiving } : {}),
     now: ctx.now,
-    hooks: runtimeStreamHooks(ctx.hooks, live),
+    hooks: participantDesktopHooks(ctx.hooks),
+    onStream: participantStreams(ctx.input.onStream, live),
+    // A seat visits the shared app and provisions no subject, so it reports no phase of its own.
+    reportSubjectPhase: defaultSubjectPhaseSink,
     ...(runBudget === undefined ? {} : { runBudget }),
     // Concurrent lanes are independent evidence seats: a requested-vs-verified screen
     // mismatch is recorded as separate facts + a warning instead of failing the lane's

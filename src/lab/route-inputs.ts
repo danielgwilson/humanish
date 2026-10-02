@@ -9,12 +9,17 @@ import {
   type AdapterScorerModule,
 } from "./adapter-scorer-loader.js";
 import type { LabDeps } from "./lab-deps.js";
+import type { LabEvent } from "./run-lab-events.js";
 import type { ComputerUseRunInput } from "../routes/computer-use/types.js";
 import type { ScriptedRunInput } from "../routes/scripted/types.js";
 import type { SharedWorldRunInput } from "../routes/shared-world/types.js";
 import type { TerminalRunInput } from "../routes/terminal/types.js";
 
-export function computerUseInput(options: InternalRunLabOptions): ComputerUseRunInput {
+export function computerUseInput(
+  options: InternalRunLabOptions,
+  deps: LabDeps,
+  emit: LabEmit | undefined,
+): ComputerUseRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
@@ -26,6 +31,8 @@ export function computerUseInput(options: InternalRunLabOptions): ComputerUseRun
     ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
     ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
     ...(options.localVm === undefined ? {} : { localVm: options.localVm }),
+    ...observersOf(options, emit),
+    deps,
     ...scorerOf(options, browserRouteScorer),
   };
 }
@@ -54,7 +61,11 @@ export function terminalInput(options: InternalRunLabOptions, deps: LabDeps): Te
   };
 }
 
-export function sharedWorldInput(options: InternalRunLabOptions): SharedWorldRunInput {
+export function sharedWorldInput(
+  options: InternalRunLabOptions,
+  deps: LabDeps,
+  emit: LabEmit | undefined,
+): SharedWorldRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
@@ -62,6 +73,8 @@ export function sharedWorldInput(options: InternalRunLabOptions): SharedWorldRun
     ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
     ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+    ...observersOf(options, emit),
+    deps,
     ...scorerOf(options, browserRouteScorer),
   };
 }
@@ -86,6 +99,17 @@ export function withLateScorer<S, I extends { scorer?: S; scorerProvenance?: Run
     ...input,
     ...(late.scorer === undefined ? {} : { scorer: narrow(late.scorer) }),
     ...(late.scorerProvenance === undefined ? {} : { scorerProvenance: late.scorerProvenance }),
+  };
+}
+
+/** Reports a LabEvent to onEvent without waiting (normalizeRunLabOptions builds it). */
+type LabEmit = (event: LabEvent) => void;
+
+/** The caller's stream callback and the run's event emitter, for the routes that report them. */
+function observersOf(options: InternalRunLabOptions, emit: LabEmit | undefined) {
+  return {
+    ...(options.onStream === undefined ? {} : { onStream: options.onStream }),
+    ...(emit === undefined ? {} : { emit }),
   };
 }
 

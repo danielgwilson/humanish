@@ -224,8 +224,9 @@ export async function startParticipantStream(
     });
     if (typeof candidateStreamUrl === "string" && candidateStreamUrl.trim().length > 0) {
       state.streamUrl = candidateStreamUrl;
-      await deps.hooks.onRuntimeStreamReady?.({
-        laneId: spec.planned.id,
+      await deps.onStream({
+        type: "ready",
+        participantId: spec.planned.id,
         sandboxId: desktop.sandboxId,
         simId: spec.recordId,
         streamId: spec.streamId,

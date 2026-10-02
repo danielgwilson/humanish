@@ -179,8 +179,9 @@ export async function finishE2BDesktop(
     // break teardown.
     if (state.streamUrl !== undefined) {
       try {
-        await deps.hooks.onRuntimeStreamEnded?.({
-          laneId: spec.planned.id,
+        await deps.onStream({
+          type: "ended",
+          participantId: spec.planned.id,
           simId: spec.recordId,
           streamId: spec.streamId,
         });

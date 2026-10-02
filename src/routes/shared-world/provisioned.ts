@@ -24,7 +24,8 @@ import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.j
 import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
-import { defaultSharedWorldPhaseSink } from "../../subject/steps.js";
+import { defaultSharedWorldPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
+import { phaseEvent } from "../../lab/run-lab-events.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import {
@@ -261,11 +262,15 @@ class SubjectPlane {
   // (clone route), or upload/extract the once-per-run packed archive + the SAME shared serve
   // pipeline (local-tree route).
   async provision(): Promise<void> {
-    const { plan, hooks, requestTimeoutMs, scrubKnownValues } = this.ctx;
+    const { plan, requestTimeoutMs, scrubKnownValues } = this.ctx;
     const { serve, timers, stateStepRecords } = this.setup;
     const state = planeStateOf(plan);
     const subjectShell = this.subjectShell!;
-    const onSubjectPhase = hooks.onPhase ?? defaultSharedWorldPhaseSink;
+    const sink = this.ctx.input.deps?.subjectPhaseSink ?? defaultSharedWorldPhaseSink;
+    const onSubjectPhase = (event: SubjectPhaseEvent): void => {
+      sink(event);
+      this.ctx.input.emit?.(phaseEvent(event, { kind: "subject" }));
+    };
     if (this.setup.localTreeRoute) {
       await provisionLocalTreeSubject(subjectShell, {
         archiveBuffer: this.setup.localTreeArchiveBuffer!,

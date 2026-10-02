@@ -102,6 +102,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   but rerun selection read the trace status, `passed`, and answered that nothing needed a rerun.
   Fan-out bundles now record each participant's judged status as `streams[].judgedStatus`, and
   rerun selection reads it; an older bundle without it keeps the previous rule.
+- A terminal scorer's score whose `data` is not an object (an array, a string, a number or `null`)
+  is dropped with a warning (#1366). Before, the terminal route attached it to `run.json` as
+  `adapterScore`, and `humanish verify` then refused the bundle. A declared scorer that returns one
+  now fails the run with the malformed-scorer gap, as on the browser routes.
 
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 

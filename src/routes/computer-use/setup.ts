@@ -30,6 +30,8 @@ import { liveCuaRejection } from "./preflight.js";
 import { cuaDescriptorOf, declaredAppUrl, plannedAppUrl, type ComputerUseRefusal } from "./plan.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
+import { participantOf, phaseEvent, planEvent } from "../../lab/run-lab-events.js";
+import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
 import { projectParticipantSubjects, subjectProvenanceArg } from "./subject-projection.js";
@@ -153,7 +155,7 @@ export async function admitCuaRun(
   const projectRoot = await bindProject(input.cwd);
   const cwd = projectRoot.physicalPath;
   const hooks = input.hooks ?? {};
-  const streams = trackRuntimeStreams(hooks);
+  const streams = trackRuntimeStreams(input.onStream);
   const env = hooks.env ?? process.env;
 
   const { subject, desktop } = plan.runner;
@@ -223,13 +225,13 @@ export async function admitCuaRun(
   const { participantRuns, participantPlan, rerunLineage } = participants;
   const participantCount = participantRuns.length;
 
-  // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). The hook fires for
-  // every N (observable + testable); the stderr table prints for fan-out (N>1) so single-lane
-  // runs stay as quiet as they always were.
+  // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). onEvent gets it for
+  // every N; the stderr table prints for fan-out (N>1) so single-lane runs stay as quiet as they
+  // always were.
   if (participantCount > 1) {
     emitPreflightPlan(participantPlan, plan.labId);
   }
-  hooks.onPreflight?.(participantPlan);
+  input.emit?.(planEvent(participantPlan));
   await assertPreparedSelectedOutputDirectory(projectRoot);
 
   // Read keys once into locals (names only; values never logged or persisted).
@@ -488,7 +490,22 @@ function cuaParticipantDeps(
           },
         }),
     now: hooks.now ?? Date.now,
-    hooks: streams.hooks,
+    hooks,
+    onStream: streams.onStream,
+    reportSubjectPhase: subjectPhaseReporter(input),
+  };
+}
+
+/** Each subject phase goes to the phase sink, stderr by default, and to onEvent. */
+function subjectPhaseReporter(
+  input: ComputerUseRunInput,
+): CuaParticipantDeps["reportSubjectPhase"] {
+  const sink = input.deps?.subjectPhaseSink ?? defaultSubjectPhaseSink;
+  return (event, participant) => {
+    sink(event, participant);
+    input.emit?.(
+      phaseEvent(event, { kind: "participant", participant: participantOf(participant) }),
+    );
   };
 }
 

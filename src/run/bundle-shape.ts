@@ -226,7 +226,7 @@ function isRunScorerProvenance(value: unknown): value is RunScorerProvenance {
   );
 }
 
-function isRunAdapterScore(value: unknown): value is RunAdapterScore {
+export function isRunAdapterScore(value: unknown): value is RunAdapterScore {
   return (
     isRecord(value) &&
     value.schema === "humanish.adapter-score.v1" &&

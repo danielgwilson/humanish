@@ -9,11 +9,17 @@ import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { routeOf } from "../../src/lab/plan.js";
-import type { LabEvent } from "../../src/lab/run-lab-events.js";
-import { normalizeRunLabOptions } from "../../src/lab/run-lab-options.js";
+import {
+  participantOf,
+  phaseEvent,
+  planEvent,
+  type LabEvent,
+} from "../../src/lab/run-lab-events.js";
+import { normalizeRunLabOptions, type StreamEvent } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import type { CuaLaneSpec } from "../../src/routes/computer-use/legacy-lane-spec.js";
+import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 
@@ -38,6 +44,8 @@ const scorer: AdapterScorerModule = {
   }),
 };
 const prepareDesktop = async (): Promise<void> => undefined;
+/** A fresh plan event with no participants: a poisoning test redefines its fields. */
+const emptyPlan = (): LabEvent => ({ type: "plan", route: "computer-use", participants: [] });
 const desktop = {} as E2BDesktopSandbox;
 
 function normalize(labConfig: LabConfig, options: Partial<InternalRunLabOptions>) {
@@ -330,46 +338,35 @@ describe("each new option lands in the bag the route reads", () => {
 });
 
 describe("stream, rerun and analysis options land where the route reads them", () => {
-  it("onStream receives both stream events, and the route awaits its promise", async () => {
-    const events: unknown[] = [];
-    const hooks = normalized(config("cuAppUrl"), {
-      onStream: async (event) => {
-        events.push(event);
-        if (event.type === "ended") throw new Error("ended handler failed");
-      },
-    }).cuaHooks!;
-    await hooks.onRuntimeStreamReady!({
-      laneId: "lane-01",
+  it("onStream reaches the route as given", () => {
+    const onStream = (): void => undefined;
+    for (const labConfig of [config("cuAppUrl"), localVm(), config("sharedProvisioned")])
+      expect(normalized(labConfig, { onStream }).onStream).toBe(onStream);
+  });
+
+  it("the route awaits onStream before it records the stream, and a rejection reaches the route", async () => {
+    const events: StreamEvent[] = [];
+    const streams = trackRuntimeStreams(async (event) => {
+      events.push(event);
+      if (event.type === "ended") throw new Error("ended handler failed");
+    });
+    const ready: StreamEvent = {
+      type: "ready",
+      participantId: "lane-01",
       sandboxId: "sbx",
       simId: "sim-001",
       streamId: "stream-001",
       url: "https://stream.invalid/key",
-    });
-    await expect(
-      hooks.onRuntimeStreamEnded!({ laneId: "lane-01", simId: "sim-001", streamId: "stream-001" }),
-    ).rejects.toThrow("ended handler failed");
-    expect(events).toEqual([
-      {
-        type: "ready",
-        participantId: "lane-01",
-        sandboxId: "sbx",
-        simId: "sim-001",
-        streamId: "stream-001",
-        url: "https://stream.invalid/key",
-      },
-      { type: "ended", participantId: "lane-01", simId: "sim-001", streamId: "stream-001" },
-    ]);
-  });
-
-  it("onStream is left unset where no E2B stream starts", () => {
-    const onStream = (): void => undefined;
-    expect(normalized(localVm(), { onStream }).cuaHooks?.onRuntimeStreamReady).toBeUndefined();
-    const inProcessHooks = normalized(config("cuLocalApp"), {
-      onStream,
-      inProcess,
-      createProvider,
-    });
-    expect(inProcessHooks.cuaHooks?.onRuntimeStreamReady).toBeUndefined();
+    };
+    await streams.onStream(ready);
+    const ended: StreamEvent = {
+      type: "ended",
+      participantId: "lane-01",
+      simId: "sim-001",
+      streamId: "stream-001",
+    };
+    await expect(streams.onStream(ended)).rejects.toThrow("ended handler failed");
+    expect(events).toEqual([ready, ended]);
   });
 
   it("rerun.participantIds becomes rerun.laneIds", () => {
@@ -395,22 +392,23 @@ describe("stream, rerun and analysis options land where the route reads them", (
   });
 
   it("the fields still mapped into the bag are gone from what the computer-use route receives", () => {
+    const onStream = (): void => undefined;
     const options = normalized(config("cuAppUrl"), {
       env: {},
       scorer,
       prepareDesktop,
       onEvent: () => undefined,
-      onStream: () => undefined,
+      onStream,
       analysisSignal: AbortSignal.abort(),
       createProvider,
     });
-    // scorer stays: every scoring route reads it directly.
+    // scorer and onStream stay: the routes read them directly.
     expect(options.scorer).toBe(scorer);
+    expect(options.onStream).toBe(onStream);
     for (const key of [
       "env",
       "prepareDesktop",
       "onEvent",
-      "onStream",
       "analysisSignal",
       "createProvider",
       "inProcess",
@@ -440,17 +438,20 @@ describe("onEvent is passive", () => {
     durationMs: 5,
   };
 
-  it("maps the plan, subject phases and the analysis window, in order", () => {
+  it("emits the plan, subject phases and the analysis window, in order", () => {
     const events: LabEvent[] = [];
-    const options = normalized(config("cuAppUrl"), { onEvent: (event) => void events.push(event) });
-    options.cuaHooks!.onPreflight!(plan);
-    options.cuaHooks!.onPhase!(phase, { laneId: "lane-01", laneIndex: 0, laneCount: 1 });
-    const finish = options.automaticAnalysis!.onStart!();
+    const result = normalize(config("cuAppUrl"), { onEvent: (event) => void events.push(event) });
+    if (!result.ok) throw new Error(result.message);
+    result.emit!(planEvent(plan));
+    result.emit!(
+      phaseEvent(phase, {
+        kind: "participant",
+        participant: participantOf({ laneId: "lane-01", laneIndex: 0, laneCount: 1 }),
+      }),
+    );
+    const finish = result.options.automaticAnalysis!.onStart!();
     if (typeof finish === "function") finish();
-    const shared = normalized(config("sharedProvisioned"), {
-      onEvent: (event) => void events.push(event),
-    });
-    shared.sharedWorldHooks!.onPhase!(phase);
+    result.emit!(phaseEvent(phase, { kind: "subject" }));
     expect(events).toEqual([
       {
         type: "plan",
@@ -487,29 +488,10 @@ describe("onEvent is passive", () => {
     ]);
   });
 
-  it("observes subject phases without taking them off stderr", () => {
-    const lines: string[] = [];
-    const write = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
-      lines.push(String(chunk));
-      return true;
-    });
-    try {
-      const events: LabEvent[] = [];
-      const onEvent = (event: LabEvent): void => void events.push(event);
-      normalized(config("cuAppUrl"), { onEvent }).cuaHooks!.onPhase!(phase, {
-        laneId: "lane-02",
-        laneIndex: 1,
-        laneCount: 2,
-      });
-      normalized(config("sharedProvisioned"), { onEvent }).sharedWorldHooks!.onPhase!(phase);
-      expect(events).toHaveLength(2);
-    } finally {
-      write.mockRestore();
-    }
-    expect(lines).toEqual([
-      "humanish cua [lane-02]: cloned (5ms)\n",
-      "humanish shared-world (concurrent): cloned (5ms)\n",
-    ]);
+  it("is left unset without onEvent", () => {
+    const result = normalize(config("cuAppUrl"), {});
+    if (!result.ok) throw new Error(result.message);
+    expect(result.emit).toBeUndefined();
   });
 
   it("a throw or a rejected promise becomes a redacted warning", async () => {
@@ -521,7 +503,7 @@ describe("onEvent is passive", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    expect(() => result.options.cuaHooks!.onPreflight!(plan)).not.toThrow();
+    expect(() => result.emit!(planEvent(plan))).not.toThrow();
     expect(() => result.options.automaticAnalysis!.onStart!()).not.toThrow();
     await new Promise((resolve) => setImmediate(resolve));
     expect(result.warnings).toHaveLength(2);
@@ -574,7 +556,7 @@ describe("an onEvent warning carries no known secret", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
+    result.emit!(emptyPlan());
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).not.toContain(password);
     expect(result.warnings[0]).not.toContain(openaiKey);
@@ -591,13 +573,12 @@ describe("an onEvent warning carries no known secret", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
+    result.emit!(emptyPlan());
     expect(result.warnings[0]).not.toContain(password);
   });
 });
 
 describe("an onEvent failure never escapes", () => {
-  const plan = { lanes: [] } as unknown as CuaParticipantPlan;
   const fallback = "RunLabOptions.onEvent failed on plan: the thrown value has no message";
 
   it("a thrown value with no string form becomes a warning", () => {
@@ -607,7 +588,7 @@ describe("an onEvent failure never escapes", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    expect(() => result.options.cuaHooks!.onPreflight!(plan)).not.toThrow();
+    expect(() => result.emit!(emptyPlan())).not.toThrow();
     expect(result.warnings).toEqual([fallback]);
   });
 
@@ -619,7 +600,7 @@ describe("an onEvent failure never escapes", () => {
         onEvent: () => Promise.reject(Object.create(null)),
       });
       if (!result.ok) throw new Error(result.message);
-      result.options.cuaHooks!.onPreflight!(plan);
+      result.emit!(emptyPlan());
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(unhandled).not.toHaveBeenCalled();
       expect(result.warnings).toEqual([fallback]);
@@ -642,18 +623,9 @@ describe("the in-process check sees the legacy executor too", () => {
       if (!result.ok) expect(result.message).toContain("RunLabOptions.prepareDesktop");
     }
   });
-
-  it("leaves onStream unset beside cuaHooks.buildExecutor", () => {
-    const hooks = normalized(config("cuAppUrl"), {
-      cuaHooks: legacyInProcess,
-      onStream: () => undefined,
-    }).cuaHooks!;
-    expect(hooks.onRuntimeStreamReady).toBeUndefined();
-  });
 });
 
 describe("an onEvent callback that rewrites its event", () => {
-  const plan = { lanes: [] } as unknown as CuaParticipantPlan;
   const poison = (event: LabEvent): void => {
     Object.defineProperty(event, "type", {
       get() {
@@ -670,7 +642,7 @@ describe("an onEvent callback that rewrites its event", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    expect(() => result.options.cuaHooks!.onPreflight!(plan)).not.toThrow();
+    expect(() => result.emit!(emptyPlan())).not.toThrow();
     expect(result.warnings).toEqual(["RunLabOptions.onEvent failed on plan: handler failed"]);
   });
 
@@ -685,7 +657,7 @@ describe("an onEvent callback that rewrites its event", () => {
         },
       });
       if (!result.ok) throw new Error(result.message);
-      result.options.cuaHooks!.onPreflight!(plan);
+      result.emit!(emptyPlan());
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(unhandled).not.toHaveBeenCalled();
       expect(result.warnings).toEqual([
@@ -722,7 +694,7 @@ describe("secret values are read only when a warning needs them", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
+    result.emit!(emptyPlan());
     expect(result.warnings).toEqual([
       "RunLabOptions.onEvent failed on plan: the thrown value has no message",
     ]);
@@ -744,7 +716,7 @@ describe("the scrub covers every env the run could read", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
+    result.emit!(emptyPlan());
     expect(result.warnings[0]).not.toContain(hostPassword);
   });
 
@@ -757,7 +729,7 @@ describe("the scrub covers every env the run could read", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
+    result.emit!(emptyPlan());
     expect(result.warnings[0]).not.toContain(analysisKey);
   });
 });
@@ -775,7 +747,7 @@ describe("the scrub covers the env the route received", () => {
     if (!result.ok) throw new Error(result.message);
     env.APP_PASSWORD = "synthetic-replaced-password-17";
     expect(result.options.cuaHooks!.env!.APP_PASSWORD).toBe(initial);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
+    result.emit!(emptyPlan());
     expect(result.warnings[0]).not.toContain(initial);
   });
 });

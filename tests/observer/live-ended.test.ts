@@ -53,7 +53,7 @@ describe("withRuntimeStreamUrls lifecycle (#357)", () => {
     const before = withRuntimeStreamUrls(observerData(), runtime);
     expect((before.streams[1] as unknown as Record<string, unknown>).liveEnded).toBeUndefined();
 
-    runtime[1]!.ended = true; // the lane's teardown fired onRuntimeStreamEnded
+    runtime[1]!.ended = true; // the lane's teardown reported its stream ended
     const after = withRuntimeStreamUrls(observerData(), runtime);
     expect((after.streams[0] as unknown as Record<string, unknown>).liveEnded).toBeUndefined();
     expect((after.streams[1] as unknown as Record<string, unknown>).liveEnded).toBe(true);
