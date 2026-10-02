@@ -26,6 +26,12 @@
 // - `title-case-headers`: a Title Case header (`## How It Works`) in a root `*.md` file, outside
 //   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
 //   verb phrases (`## Read the results`).
+// - `string-*`: em dashes, issue references and caps, plus `a later slice`, harness rationale words
+//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`) and `(s)` plurals, counted
+//   in src string literals and template text: what a person reads in an error, a warning or
+//   command output. Model prompts and the terminal's transcoding table are not counted
+//   (`STRING_EXCLUDED`), nor is the statement after a `prose-check: model prompt` comment, nor a
+//   string literal type.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -79,10 +85,33 @@ const { values } = parseArgs({
   },
 });
 
+// Files whose strings are not read by a person: model prompts, and the table that maps characters
+// a terminal cannot render to ASCII stand-ins.
+const STRING_EXCLUDED = new Set([
+  "src/analysis/execute.ts",
+  "src/routes/computer-use/participant-prompt.ts",
+  "src/routes/shared-world/lobby-code.ts",
+  "src/routes/terminal/encoding.ts",
+]);
+
+// Kinds counted in src string literals and template text. A CSS color (`color:#111`,
+// `solid #111}`) and an HTML entity (`&#39;`) are not issue references, and `http(s)` is a URL
+// scheme, not a plural.
+const STRING_KINDS = {
+  "string-em-dashes": /—/g,
+  "string-issue-refs": /(?<![&:\w])(?<!TODO\()#\d{1,5}(?![\w;}])/g,
+  "string-slice": /\b(?:a|later|this|first|next) slice\b/gi,
+  "string-rationale":
+    /\b(?:fails? closed|fail-closed|by construction|hollow|honest(?:ly|y)?|safety lie)\b/gi,
+  "string-plural-s": /[a-z](?<!\bhttp)\(s\)/g,
+};
+const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps"];
+
 /** Every hit, keyed by its cap path in scripts/caps.json: `prose.src.caps`, `prose.tests.caps`, ... */
 const hits = new Map([
   ...ROOTS.flatMap((root) => KINDS.map((kind) => [`prose.${root}.${kind}`, []])),
   ["prose.markdown.title-case-headers", []],
+  ...STRING_KIND_NAMES.map((kind) => [`prose.src.${kind}`, []]),
 ]);
 
 /** Counts each kind in one piece of prose. `at` turns a match into its `file:line word` entry. */
@@ -103,6 +132,63 @@ function scan(text, root, at, { testName }) {
     for (const match of prose.matchAll(pattern)) add(kind, match);
   }
   if (testName) for (const match of prose.matchAll(SERIES_CODE)) add("series-codes", match);
+}
+
+// A comment holding this marks the statement right after it as text a model reads, which is tuned
+// for the model and is not a message to a person.
+const PROMPT_MARK = /prose-check: model prompt/;
+
+/** The [start, end) ranges of the statements a `prose-check: model prompt` comment marks. */
+function promptRanges(parsed, text) {
+  const marks = parsed.comments.filter((c) => PROMPT_MARK.test(c.value)).map((c) => c.end);
+  const ranges = [];
+  if (marks.length === 0) return ranges;
+  const visit = (node) => {
+    if (node === null || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const child of node) visit(child);
+      return;
+    }
+    // The program can start at its first statement, so it never counts as the marked one.
+    if (node.type !== "Program" && typeof node.start === "number") {
+      for (const end of marks) {
+        if (node.start >= end && /^\s*$/.test(text.slice(end, node.start))) {
+          ranges.push([node.start, node.end]);
+        }
+      }
+    }
+    for (const [key, child] of Object.entries(node)) if (key !== "parent") visit(child);
+  };
+  visit(parsed.program);
+  return ranges;
+}
+
+/** Every string literal and template text in a program, with its offset in the file. */
+function* stringsOf(node) {
+  if (node === null || typeof node !== "object") return;
+  // A string literal type (`mode: "fail-closed" | "record-evidence"`) names a value, not a message.
+  if (node.type === "TSLiteralType") return;
+  if (Array.isArray(node)) {
+    for (const child of node) yield* stringsOf(child);
+    return;
+  }
+  if (node.type === "Literal" && typeof node.value === "string") {
+    yield { text: node.value, start: node.start };
+  } else if (node.type === "TemplateElement") {
+    yield { text: node.value.cooked ?? node.value.raw, start: node.start };
+  }
+  for (const [key, child] of Object.entries(node)) if (key !== "parent") yield* stringsOf(child);
+}
+
+/** Counts the string kinds in one src string. Code spans inside it are not counted. */
+function scanString(text, at) {
+  const prose = blankCodeSpans(text);
+  for (const [kind, pattern] of Object.entries(STRING_KINDS)) {
+    for (const match of prose.matchAll(pattern)) hits.get(`prose.src.${kind}`).push(at(match));
+  }
+  for (const match of prose.matchAll(CAPS_RUN)) {
+    if (isCapsEmphasis(match[0])) hits.get("prose.src.string-caps").push(at(match));
+  }
 }
 
 const TEST_CALLS = new Set(["it", "test", "describe"]);
@@ -149,6 +235,13 @@ for (const root of ROOTS) {
       // comment.value starts after the opening `//` or `/*`.
       const at = (match) => `${file}:${lineOf(comment.start + 2 + match.index)} ${match[0]}`;
       scan(comment.value, root, at, { testName: false });
+    }
+    if (root === "src" && !STRING_EXCLUDED.has(file)) {
+      const prompts = promptRanges(parsed, text);
+      for (const string of stringsOf(parsed.program)) {
+        if (prompts.some(([start, end]) => string.start >= start && string.start < end)) continue;
+        scanString(string.text, (match) => `${file}:${lineOf(string.start)} ${match[0]}`);
+      }
     }
     // Most source files make no test call; skip their syntax tree walk.
     if (!TEST_CALL_TEXT.test(text)) continue;

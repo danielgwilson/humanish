@@ -24,8 +24,20 @@ const KINDS = [
 ] as const;
 const ROOTS = ["src", "tests", "scripts", "tui"] as const;
 const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui"] as const;
+/** Kinds counted in src string literals only. */
+const STRING_KINDS = [
+  "string-em-dashes",
+  "string-issue-refs",
+  "string-slice",
+  "string-rationale",
+  "string-plural-s",
+  "string-caps",
+] as const;
 /** A count named for its kind and root suffix: `caps` for src, `caps-tests` for the tests root. */
-type Count = `${(typeof KINDS)[number]}${(typeof ROOT_SUFFIXES)[number]}` | "title-case-headers";
+type Count =
+  | `${(typeof KINDS)[number]}${(typeof ROOT_SUFFIXES)[number]}`
+  | (typeof STRING_KINDS)[number]
+  | "title-case-headers";
 
 /** A fixture scripts/caps.json: every count capped at 0 except the ones given, minus `omit`. */
 function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = []): string {
@@ -33,7 +45,7 @@ function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = [])
     ROOTS.map((root, index) => [
       root,
       Object.fromEntries(
-        KINDS.flatMap((kind) => {
+        [...KINDS, ...(root === "src" ? STRING_KINDS : [])].flatMap((kind) => {
           const count = `${kind}${ROOT_SUFFIXES[index]!}` as Count;
           return omit.includes(count) ? [] : [[kind, caps[count] ?? 0]];
         }),
@@ -340,5 +352,99 @@ describe("prose:check counts Title Case headers in the root markdown files", () 
       "  README.md:8 ## Release Status",
     ]);
     expect(status).toBe(1);
+  });
+});
+
+describe("prose:check counts prose in src strings apart from comments", () => {
+  const source = [
+    "// A comment \u2014 counted as a comment, never as a string.",
+    'const a = "Stopped \u2014 the cap was reached (#581); fail closed.";',
+    "const b = `Retry ${n} turn(s) in a later slice; the run is NOT ready.`;",
+    'const c = "Rerun with `--max-usd 0 \u2014 turn(s)` to see it.";',
+    "",
+  ].join("\n");
+
+  it("counts each string kind in literals and template text", async () => {
+    const [dashes, refs, caps, slice, rationale, plural, commentDashes] = await Promise.all([
+      hitsOf("string-em-dashes", source),
+      hitsOf("string-issue-refs", source),
+      hitsOf("string-caps", source),
+      hitsOf("string-slice", source),
+      hitsOf("string-rationale", source),
+      hitsOf("string-plural-s", source),
+      hitsOf("em-dashes", source),
+    ]);
+
+    expect(dashes.words).toEqual(["\u2014"]);
+    expect(refs.words).toEqual(["#581"]);
+    expect(caps.words).toEqual(["NOT"]);
+    expect(slice.count).toBe(1);
+    expect(rationale.count).toBe(1);
+    expect(plural.words).toEqual(["n(s)"]);
+    expect(commentDashes.count).toBe(1);
+  });
+
+  it("does not count CSS colors, HTML entities, http(s) or code spans", async () => {
+    const markup = [
+      'const css = "a{color:#111;border:1px solid #222}";',
+      'const quote = "&#39;";',
+      'const help = "Run `humanish run \u2014 later slice (#12)`.";',
+      'const url = "a public http(s) URL";',
+      "",
+    ].join("\n");
+    const [refs, dashes, slice, plural] = await Promise.all([
+      hitsOf("string-issue-refs", markup),
+      hitsOf("string-em-dashes", markup),
+      hitsOf("string-slice", markup),
+      hitsOf("string-plural-s", markup),
+    ]);
+
+    expect(refs.count).toBe(0);
+    expect(dashes.count).toBe(0);
+    expect(slice.count).toBe(0);
+    expect(plural.count).toBe(0);
+  });
+
+  it("counts strings only under src", async () => {
+    const hits = await hitsOf("string-em-dashes", 'const a = "x \u2014 y";\n', "tests/fixture.ts");
+    expect(hits.count).toBe(0);
+  });
+
+  it("skips the statement after a `prose-check: model prompt` comment, and nothing else", async () => {
+    const prompted = [
+      "// prose-check: model prompt (the participant model reads this)",
+      'const prompt = "Reply with ONLY a JSON object \u2014 nothing else.";',
+      'const message = "The run stopped \u2014 the cap was reached.";',
+      "",
+    ].join("\n");
+    const [dashes, caps] = await Promise.all([
+      hitsOf("string-em-dashes", prompted),
+      hitsOf("string-caps", prompted),
+    ]);
+
+    expect(dashes.count).toBe(1);
+    expect(caps.count).toBe(0);
+  });
+
+  it("does not count string literal types", async () => {
+    const hits = await hitsOf(
+      "string-rationale",
+      'type Policy = "fail-closed" | "record-evidence";\nconst note = "the run fails closed";\n',
+    );
+    expect(hits.count).toBe(1);
+  });
+
+  it("fails both above and below the string-em-dashes cap", async () => {
+    const others = {
+      "em-dashes": 1,
+      "string-issue-refs": 1,
+      "string-caps": 1,
+      "string-slice": 1,
+      "string-rationale": 1,
+      "string-plural-s": 1,
+    } as const;
+    expect(await exitWith({ ...others, "string-em-dashes": 1 }, source)).toBe(0);
+    expect(await exitWith({ ...others, "string-em-dashes": 0 }, source)).toBe(1);
+    expect(await exitWith({ ...others, "string-em-dashes": 2 }, source)).toBe(1);
   });
 });
