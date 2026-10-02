@@ -14,7 +14,7 @@ import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { defaultSharedWorldPhaseSink, defaultSubjectPhaseSink } from "../subject/steps.js";
-import { browserRouteScorer, type AdapterScorerModule } from "./adapter-scorer-loader.js";
+import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
 import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
@@ -256,12 +256,12 @@ export function normalizeRunLabOptions(
   });
   if (analysis !== undefined) normalized.automaticAnalysis = analysis;
   const envHome = forwardedEnv === undefined ? {} : { env: forwardedEnv };
-  const scoring = scorer === undefined ? {} : scorerHooks(scorer);
+  // Every scoring route reads scorer itself.
+  if (scorer !== undefined) normalized.scorer = scorer;
   switch (route) {
     case "computer-use": {
       const hooks = withMapped(legacy.cuaHooks, {
         ...envHome,
-        ...scoring,
         ...computerUseHooks(
           config,
           {
@@ -280,7 +280,6 @@ export function normalizeRunLabOptions(
     case "shared-world": {
       const hooks = withMapped(legacy.sharedWorldHooks, {
         ...envHome,
-        ...scoring,
         ...sharedWorldHooks({ prepareDesktop, onStream }, emit),
       });
       if (hooks !== undefined) normalized.sharedWorldHooks = hooks;
@@ -289,7 +288,6 @@ export function normalizeRunLabOptions(
     case "terminal":
       // The terminal route reads its typed options directly.
       if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
-      if (scorer !== undefined) normalized.scorer = scorer;
       break;
     case "scripted":
       // The scripted route reads its typed options directly.
@@ -306,17 +304,6 @@ export function normalizeRunLabOptions(
 function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
   if (Object.keys(mapped).length === 0) return bag;
   return { ...bag, ...mapped } as T;
-}
-
-export function scorerHooks(
-  runLabScorer: AdapterScorerModule,
-): Pick<CuaActorLabHooks, "score" | "deriveFeedback" | "deriveArtifacts"> {
-  const scorer = browserRouteScorer(runLabScorer);
-  return {
-    ...(scorer.score === undefined ? {} : { score: scorer.score }),
-    ...(scorer.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
-    ...(scorer.deriveArtifacts === undefined ? {} : { deriveArtifacts: scorer.deriveArtifacts }),
-  };
 }
 
 /** The route awaits what these return, so onStream keeps the old hooks' barrier and errors. */

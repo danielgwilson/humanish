@@ -23,7 +23,7 @@ import type {
   ActorTraceItem,
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
-import { type BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
+import { type BrowserScorer } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
@@ -94,7 +94,7 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
  * what `subject.serve` declares (or to provision an app-url subject entirely). The rest are
  * DI seams so CI drives the full path with fakes at zero network/zero spend.
  */
-export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
+export interface CuaActorLabHooks {
   /**
    * Runs after sandbox creation and before subject provisioning / browser launch. Widened
    * back-compatibly with per-lane context so a library caller can provision the right app-url
@@ -232,8 +232,10 @@ export interface RunCuaActorLabOptions {
   /** runLab's local VM study, for an app-url lab on the local target. */
   localVm?: LocalVmInput;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
-  /** Present only when the browser-route scorer hooks were CONFIG-DECLARED and loaded by the CLI
-   *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */
+  /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
+  scorer?: BrowserScorer;
+  /** Present only when the scorer was CONFIG-DECLARED and loaded by the CLI (#316);
+   *  core-stamped onto the bundle as evidence. Absent for library callers. */
   scorerProvenance?: RunScorerProvenance;
 }
 

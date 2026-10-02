@@ -243,26 +243,16 @@ describe("runLab returns an option refusal in the route's own envelope and write
 describe("each new option lands in the bag the route reads", () => {
   const lane = { laneId: "lane-02", laneIndex: 1, laneCount: 3 };
 
-  it("scorer goes to the browser bags whole and stays on the options for terminal", () => {
+  it("scorer stays on the options for every scoring route", () => {
     const module: AdapterScorerModule = {
       score: scorer.score!,
       deriveFeedback: () => [],
       deriveArtifacts: () => [],
     };
-    const cua = normalized(config("cuAppUrl"), { scorer: module }).cuaHooks!;
-    expect([cua.score, cua.deriveFeedback, cua.deriveArtifacts]).toEqual([
-      module.score,
-      module.deriveFeedback,
-      module.deriveArtifacts,
-    ]);
-    const shared = normalized(config("sharedProvisioned"), { scorer: module }).sharedWorldHooks!;
-    expect([shared.score, shared.deriveFeedback, shared.deriveArtifacts]).toEqual([
-      module.score,
-      module.deriveFeedback,
-      module.deriveArtifacts,
-    ]);
-    // The terminal route reads scorer itself and never calls deriveArtifacts.
-    expect(normalized(config("terminal"), { scorer: module }).scorer).toBe(module);
+    for (const base of ["cuAppUrl", "sharedProvisioned", "terminal"] as const)
+      expect(normalized(config(base), { scorer: module }).scorer).toBe(module);
+    // The bags no longer carry scoring functions.
+    expect(normalized(config("cuAppUrl"), { scorer: module }).cuaHooks).toBeUndefined();
   });
 
   it("env goes to the route's bag, beside the bag's other fields", async () => {
@@ -404,7 +394,7 @@ describe("stream, rerun and analysis options land where the route reads them", (
     );
   });
 
-  it("the new fields are gone from what the route receives", () => {
+  it("the fields still mapped into the bag are gone from what the computer-use route receives", () => {
     const options = normalized(config("cuAppUrl"), {
       env: {},
       scorer,
@@ -414,9 +404,10 @@ describe("stream, rerun and analysis options land where the route reads them", (
       analysisSignal: AbortSignal.abort(),
       createProvider,
     });
+    // scorer stays: every scoring route reads it directly.
+    expect(options.scorer).toBe(scorer);
     for (const key of [
       "env",
-      "scorer",
       "prepareDesktop",
       "onEvent",
       "onStream",

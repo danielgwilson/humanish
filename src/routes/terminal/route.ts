@@ -52,7 +52,8 @@ import { planTerminalLab, type TerminalRefusal } from "./plan.js";
 import { runDryTerminalLab } from "./dry-run.js";
 import { checkLiveTerminalMachine, runLiveTerminalSession } from "./session.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
-import { terminalInputWithScorer } from "../../lab/route-inputs.js";
+import { terminalRouteScorer } from "../../lab/adapter-scorer-loader.js";
+import { withLateScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import {
   type LiveTerminalAuth,
@@ -149,7 +150,10 @@ export async function admitTerminalPlan(
     ok: true,
     run: async (scorer) =>
       terminalOutcome(
-        await runAdmittedTerminalRun(admission.admitted, terminalInputWithScorer(input, scorer)),
+        await runAdmittedTerminalRun(
+          admission.admitted,
+          withLateScorer(input, scorer, terminalRouteScorer),
+        ),
       ),
   };
 }

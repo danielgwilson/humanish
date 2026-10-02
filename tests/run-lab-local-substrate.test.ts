@@ -67,13 +67,16 @@ describe("local browser study selection", () => {
     const outcome = await runLab(config, {
       cwd,
       dryRun: false,
-      cuaHooks: { score },
+      cuaHooks: {},
+      scorer: {
+        score,
+      },
       scorerProvenance,
     });
 
     expect(localVm).toHaveBeenCalledOnce();
     const options = localVm.mock.calls[0]![0];
-    expect(options.cuaHooks?.score).toBe(score);
+    expect(options.scorer?.score).toBe(score);
     expect(options.scorerProvenance).toBe(scorerProvenance);
     expect(options.config.execution?.target).toBe("local");
     expect(options.config.subject.appUrl).toBe(config.subject.appUrl);

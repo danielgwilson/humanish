@@ -49,7 +49,8 @@ import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
-import { sharedWorldInputWithScorer } from "../../lab/route-inputs.js";
+import { browserRouteScorer } from "../../lab/adapter-scorer-loader.js";
+import { withLateScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
@@ -137,7 +138,11 @@ export async function admitSharedWorldPlan(
     ok: true,
     run: async (scorer) =>
       sharedWorldOutcome(
-        await runAdmittedSharedWorldRun(plan, sharedWorldInputWithScorer(input, scorer), config),
+        await runAdmittedSharedWorldRun(
+          plan,
+          withLateScorer(input, scorer, browserRouteScorer),
+          config,
+        ),
       ),
   };
 }
