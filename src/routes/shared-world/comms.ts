@@ -81,8 +81,8 @@ export async function prepareExternalComms(
   | {
       ok: false;
       code:
-        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID"
-        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE";
+        | "HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID"
+        | "HUMANISH_SHARED_WORLD_COMMS_CATCH_UNREACHABLE";
       message: string;
     }
 > {
@@ -104,7 +104,7 @@ export async function prepareExternalComms(
   if (tokenRefusal !== undefined)
     return {
       ok: false,
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID",
+      code: "HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID",
       message: tokenRefusal,
     };
   // Fail closed before any actor sandbox is created: a comms lab whose catch is unreachable
@@ -113,7 +113,7 @@ export async function prepareExternalComms(
   if (!dryRun && !(await externalCatchHealthy(externalComms))) {
     return {
       ok: false,
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
+      code: "HUMANISH_SHARED_WORLD_COMMS_CATCH_UNREACHABLE",
       message: `The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`,
     };
   }

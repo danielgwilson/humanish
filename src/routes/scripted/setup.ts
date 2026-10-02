@@ -113,7 +113,7 @@ export async function prepareScriptedRun(
   if (!scenario.ok) {
     return {
       ok: false,
-      result: failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message),
+      result: failed("HUMANISH_SCRIPTED_SCENARIO_INVALID", scenario.message),
     };
   }
   const journey = scenario.journey;
@@ -124,7 +124,7 @@ export async function prepareScriptedRun(
     return {
       ok: false,
       result: failed(
-        "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
+        "HUMANISH_SCRIPTED_KEYS_MISSING",
         `Live clone scripted-browser labs require ${missing.join(" and ")} (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(missing, env)}`,
       ),
     };
@@ -134,7 +134,7 @@ export async function prepareScriptedRun(
     return {
       ok: false,
       result: failed(
-        "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
+        "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
         `Subject env values missing for live clone scripted-browser lab: ${unsetSubjectEnv.join(", ")}.`,
       ),
     };
@@ -158,7 +158,7 @@ export async function prepareScriptedRun(
       return {
         ok: false,
         result: failed(
-          "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING",
+          "HUMANISH_SCRIPTED_BROWSER_MISSING",
           "No Chrome/Chromium browser command was found for the scripted-browser actor. Set HUMANISH_BROWSER_COMMAND to a browser binary playwright-core can launch.",
         ),
       };

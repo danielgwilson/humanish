@@ -97,7 +97,7 @@ describe("rich participant backgrounds", () => {
       );
       expect(await inspectLabManifest(root, "study")).toMatchObject({
         ok: false,
-        error: { code: "HUMANISH_LAB_INVALID" },
+        error: { code: "HUMANISH_STUDY_INVALID" },
       });
     }
     const boundary = "a".repeat(PERSONA_BACKGROUND_MAX_BYTES);

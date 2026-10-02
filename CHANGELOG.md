@@ -41,6 +41,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Error codes name the study or the route where they said lab. Only the prefix changes.
+  - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
+  - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
+  - `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is `HUMANISH_SHARED_WORLD_*`.
+  - `HUMANISH_TERMINAL_LAB_*` is `HUMANISH_TERMINAL_*`, and `HUMANISH_SCRIPTED_LAB_*` is
+    `HUMANISH_SCRIPTED_*`.
+  - `HUMANISH_LAUNCH_INVALID_LAB` is `HUMANISH_LAUNCH_INVALID_STUDY`.
+
+  A script or library caller that matches a code by its old name needs the new one. Runs saved
+  before the change keep the codes they were written with, and nothing reads a code back from a
+  saved run.
+
 - The first commands a newcomer runs say the right thing.
   - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
     init --yes" and ".gitignore does not list .humanish/; run humanish init --yes". Before, these

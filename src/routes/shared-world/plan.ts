@@ -72,20 +72,20 @@ export function planSharedWorldLab(
     ok: false,
     refusal: { route: "shared-world", code, message, ...(actor === undefined ? {} : { actor }) },
   });
-  const invalid = "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID";
+  const invalid = "HUMANISH_SHARED_WORLD_INVALID";
 
   const mediaReason = desktopMediaValidationReason(config, false);
   if (mediaReason) return refuse(invalid, mediaReason);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  if (!analysis.ok) return refuse("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
+  if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
-  if (tasksReason) return refuse("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+  if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
 
   const actorType = config.actors[0]?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor))
     return refuse(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
       `actors[0].type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
@@ -111,7 +111,7 @@ export function planSharedWorldLab(
     const model = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
     if (!MODEL_RATES[model])
       return refuse(
-        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
+        "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
         `The declared spend cap cannot be enforced for unpriced model "${model}".`,
         actor,
       );

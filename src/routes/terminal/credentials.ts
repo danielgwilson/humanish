@@ -23,9 +23,7 @@ export function buildRuntimeAuth(args: {
     }
   | {
       ok: false;
-      code:
-        | "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING"
-        | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED";
+      code: "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING" | "HUMANISH_TERMINAL_CREDENTIAL_DENIED";
       message: string;
     } {
   // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key source
@@ -50,7 +48,7 @@ export function buildRuntimeAuth(args: {
   if (ALLOWED_RUNTIME_KEY_NAMES.some((name) => isNonRuntimeCredentialName(name))) {
     return {
       ok: false,
-      code: "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED",
+      code: "HUMANISH_TERMINAL_CREDENTIAL_DENIED",
       message:
         "Internal invariant violated: a runtime-key allowlist entry is a non-runtime credential (GitHub/payment/deploy/db).",
     };
@@ -61,7 +59,7 @@ export function buildRuntimeAuth(args: {
   if (!keyName) {
     return {
       ok: false,
-      code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
+      code: "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
       message: `Live terminal-product labs declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted).`,
     };
   }

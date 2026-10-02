@@ -415,7 +415,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect(result.automaticAnalysis?.reason).toBe("synthetic_no_provider");
       expect(result.ok).toBe(false);
       expect(result.session?.completionReason).toBe("harness_error");
-      expect(result.error).toMatchObject({ code: "HUMANISH_TERMINAL_LAB_FAILED" });
+      expect(result.error).toMatchObject({ code: "HUMANISH_TERMINAL_FAILED" });
       expect(result.error?.message).toContain(`synthetic ${phase} startup failure`);
       expect(result.sandbox).toBeUndefined(); // The lane never received a handle or ID.
       expect(probe.constructed()).toBe(1);
@@ -446,7 +446,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       env: baseEnv(),
       deps: { desktopModule: async () => probe.module },
     });
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
     expect(result.error?.message).toContain("synthetic Xvfb startup failure");
     expect(JSON.stringify(result)).not.toContain("synthetic-cleanup-secret");
     expect(probe.killed).toEqual([1]);
@@ -473,7 +473,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       env: baseEnv(),
       deps: { desktopModule: async () => probe.module },
     });
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
     expect(probe.killed).toEqual([1]);
     const ledgers = JSON.parse(
       await readFile(
@@ -509,7 +509,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     });
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
     expect(result.error?.message).toContain("synthetic create response lost");
     expect(killed).toEqual([]);
     const ledgers = JSON.parse(
@@ -2057,7 +2057,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     // Fails closed as a structured lane result: the run completes (no unhandled throw escapes
     // the lane), is recorded as a harness error, and cleanup still runs.
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_FAILED");
     expect(result.session?.status).toBe("failed");
     expect(result.session?.completionReason).toBe("harness_error");
     expect(killed.length).toBe(1);
@@ -2101,7 +2101,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       ...inputs,
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_MISSING");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CAPS_MISSING");
     expect(creates.length).toBe(0); // the live key is never exercised without a cap
   });
 
@@ -2171,7 +2171,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       ...inputs,
     }).finally(stderr.stop);
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
     expect(result.sandbox?.killed).toBe(true);
     expect(result.sandbox?.remaining).toBe(1);
     expect(killed.length).toBe(1);
@@ -2260,7 +2260,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       ...inputs,
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
     expect(result.sandbox?.killed).toBe(false);
     expect(result.sandbox?.remaining).toBe(-1);
   });
@@ -2303,7 +2303,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         ...inputs,
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+      expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
       expect(result.sandbox?.killed).toBe(false);
       expect(result.sandbox?.remaining).toBe(-1);
       expect(listCalls.length).toBe(0);
@@ -2969,7 +2969,7 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
           throw new Error("synthetic exec failure");
         },
       },
-      { verdict: "fail", ok: false, code: "HUMANISH_TERMINAL_LAB_FAILED" },
+      { verdict: "fail", ok: false, code: "HUMANISH_TERMINAL_FAILED" },
     ],
     [
       // The agent wrote a passing marker before the cap check found the spend: its verdict stays
@@ -2984,19 +2984,19 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
       {
         verdict: "pass",
         ok: false,
-        code: "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED",
+        code: "HUMANISH_TERMINAL_CAPS_EXCEEDED",
         failures: ["cap", "evidence"],
       },
     ],
     [
       "a sandbox teardown it cannot prove",
       { getInfoState: "running" },
-      { verdict: "pass", ok: false, code: "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN" },
+      { verdict: "pass", ok: false, code: "HUMANISH_TERMINAL_CLEANUP_UNPROVEN" },
     ],
     [
       "a sandbox kill that throws",
       { killThrows: true },
-      { verdict: "pass", ok: false, code: "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN" },
+      { verdict: "pass", ok: false, code: "HUMANISH_TERMINAL_CLEANUP_UNPROVEN" },
     ],
     ["a dry run", { dryRun: true }, { verdict: "contract_proof_only", ok: true }],
   ])("agrees for %s", async (_, options, expected) => {

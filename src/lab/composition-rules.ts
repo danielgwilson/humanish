@@ -73,7 +73,7 @@ function thisRepoValidationReason(config: LabConfig): string | null {
 // desktop), and no public-target policy (it is always loopback; the loopback shape was already
 // enforced in parseSubject). The actual "no inProcess executor supplied" case is inherently an
 // engine-time decision (the parser cannot know whether a library caller will pass one), so
-// it fails closed in runCuaActorLab with HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR.
+// it fails closed in runCuaActorLab with HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR.
 function localAppValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "local-app") {
     const type = config.actors[0]?.type ?? "";

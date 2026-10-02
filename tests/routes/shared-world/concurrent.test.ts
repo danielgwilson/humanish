@@ -2044,7 +2044,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_FAILED");
     expect(result.error?.message).toContain("zero packable entries");
     expect(created).toHaveLength(0);
     // Packing runs before the run starts: no run directory, no run id, and a refusal is never
@@ -2061,7 +2061,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const broken = { ...valid, subject: subjectWithoutServe } as unknown as LabConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.error?.message).toContain("subject.serve");
   });
 
@@ -2085,7 +2085,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.runId).toBe("not-created");
     expect(desktopLoads).toBe(0);
   });
@@ -2109,7 +2109,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.error?.message).toContain("execution.caps.maxTotalUsd");
     expect(desktopLoads).toBe(0);
   });
@@ -2122,7 +2122,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     };
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.error?.message).toContain("subject.localTree.keep");
   });
 
@@ -2134,7 +2134,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     } as unknown as LabConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
   });
 
   it("routes through runLab to the concurrent-shared-world backend", async () => {
@@ -3056,7 +3056,7 @@ describe("concurrent shared-world run failure naming", () => {
     });
     expect(result.ok).toBe(false);
     expect(result.error).toEqual({
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      code: "HUMANISH_SHARED_WORLD_FAILED",
       message: "synthetic desktop module load failure The run bundle it left failed verification.",
     });
     const status = JSON.parse(

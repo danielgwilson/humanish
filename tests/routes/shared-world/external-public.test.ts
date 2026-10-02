@@ -936,7 +936,7 @@ describe("runSharedWorldPlan", () => {
     const config: LabConfig = { ...parsed, subject: { ...parsed.subject, env: ["SUBJECT_KEY"] } };
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.runId).toBe("not-created");
   });
 });
@@ -1051,7 +1051,7 @@ describe("handoff timeout fail-closed", () => {
       deps,
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_FAILED");
     expect(result.error?.message).toContain("physical browser containment failed");
     expect(result.error?.message).not.toContain("deadline");
     expect(created).toHaveLength(1);
@@ -1078,7 +1078,7 @@ describe("handoff timeout fail-closed", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT");
     // Only the host opened a browser (one actor sandbox); the followers failed closed without opening.
     expect(created).toHaveLength(1);
     expect(seen).toHaveLength(1); // only the host session ran
@@ -1635,7 +1635,7 @@ describe("external-public comms catch token", () => {
         deps,
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID");
       expect(probes).toEqual([]);
     } finally {
       vi.unstubAllGlobals();

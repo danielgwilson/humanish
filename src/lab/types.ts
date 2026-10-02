@@ -19,7 +19,7 @@ export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * working tree packed and provisioned in-sandbox in place of a clone (`local-tree`).
  * `local-app` routes to the cua backend and is library-assisted: a caller supplies
  * `RunLabOptions.inProcess` + `createProvider` (no built-in driver exists yet), and the engine
- * fails closed (HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
+ * fails closed (HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
 type LabSubjectSource =
@@ -614,7 +614,7 @@ type LabScenarioMode = "dry-run" | "live";
  * All values are non-negative numbers (0 is the no-spend default). Live runs require maxUsd and a
  * positive maxMinutes; maxUsd/maxJobs are checked after the session against known ledger signals
  * and maxMinutes is enforced as the command wall clock. Codex tokens are unpriced, so a live run
- * refuses a positive maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_LAB_UNPRICED_CAP).
+ * refuses a positive maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_UNPRICED_CAP).
  */
 export interface LabScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
@@ -851,7 +851,7 @@ interface LabConfigParseSuccess {
 
 export interface LabConfigParseFailure {
   ok: false;
-  error: { code: "HUMANISH_LAB_INVALID"; message: string };
+  error: { code: "HUMANISH_STUDY_INVALID"; message: string };
 }
 
 export type LabConfigParseResult = LabConfigParseSuccess | LabConfigParseFailure;
