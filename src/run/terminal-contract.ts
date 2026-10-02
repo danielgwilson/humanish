@@ -23,7 +23,7 @@ export const COST_CATEGORIES: readonly CostCategory[] = [
 /**
  * Strip ANSI/control noise from a captured terminal transcript into stable, scannable text. Pure
  * (no IO). Exported so the terminal-product route (src/routes/terminal/live-sandbox.ts) normalizes
- * its captured exec stream EXACTLY as the local-actor routes do — the verdict-nonce scorer is only
+ * its captured exec stream exactly as the local-actor routes do: the verdict-nonce scorer is only
  * sound against the same normalization the marker is matched on, so the logic must not diverge.
  */
 export function normalizeLocalActorTranscript(transcript: string): string {

@@ -70,8 +70,8 @@ export function resolveSubjectState(args: {
   }
   const declaredSeed = declared.seed ?? [];
   const external = declared.external ?? [];
-  // Dry-run: nothing executes (no sandbox) — record the DECLARED recipe: name, phase, and
-  // command digest only, with NO execution fields.
+  // Dry-run: nothing executes (no sandbox), so record the declared recipe: name, phase, and
+  // command digest only, with no execution fields.
   const seed: RunSubjectStateStepRecord[] = args.dryRun
     ? declaredSeed.map((step) => ({
         name: step.name,
@@ -100,7 +100,7 @@ export function resolveSubjectState(args: {
 }
 
 /** Build the per-participant subject projection (invariant 5). Local-tree participants all share
- *  ONE host-packed archive, so every participant's projection carries the identical archiveSha256/
+ *  one host-packed archive, so every participant's projection carries the identical archiveSha256/
  *  commit/dirty (no divergence is possible, unlike the clone route's per-participant
  *  in-sandbox commit). */
 function participantSubjectProjection(args: {

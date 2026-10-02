@@ -56,7 +56,7 @@ export interface InitResult {
   changes: InitChange[];
   warnings: string[];
   /**
-   * The next one or two commands, already resolved against THIS machine's credentials. Present on
+   * The next one or two commands, already resolved against this machine's credentials. Present on
    * an applied init; absent on a dry-run or a failure, where there is no "next" yet.
    */
   nextSteps?: string[];
@@ -164,17 +164,17 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     cwd: requestedCwd,
     changes: plan.changes,
     warnings: plan.warnings,
-    // Resolved against THIS machine, because a next step that cannot work is worse than none.
+    // Resolved against this machine, because a next step that cannot work is worse than none.
     ...(mode === "applied" ? { nextSteps: firstRunGuidance(machine) } : {}),
   };
 }
 
-// Leave instructions for the NEXT agent. AGENTS.md is the cross-vendor convention (agents.md) —
+// Leave instructions for the next agent. `AGENTS.md` is the cross-vendor convention (agents.md);
 // Codex, Claude Code, Cursor, Aider and others read it — and increasingly the thing that runs
 // `humanish init` is a coding agent doing setup on someone's behalf. Without this, the agent
 // that arrives tomorrow finds a humanish/ directory and no idea what to do with it.
 //
-// APPEND-ONLY and idempotent: an existing AGENTS.md is a file someone wrote, so humanish adds its
+// Append-only and idempotent: an existing `AGENTS.md` is a file someone wrote, so humanish adds its
 // own section once and never rewrites theirs.
 async function planAgentsFile(
   preparedProjectRoot: PreparedSelectedOutputDirectory,
@@ -379,7 +379,7 @@ async function firstRunEnvironment(
   const present = (name: string) => keys.some((key) => key.name === name && key.source !== null);
   let hasDesktopSdk = false;
   try {
-    // Resolution from the PROJECT, not from wherever humanish itself lives.
+    // Resolution starts from the project, wherever humanish itself is installed.
     const { createRequire } = await import("node:module");
     createRequire(path.join(process.cwd(), "package.json")).resolve("@e2b/desktop");
     hasDesktopSdk = true;

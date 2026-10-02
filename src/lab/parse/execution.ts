@@ -192,7 +192,7 @@ function parseDesktop(
     }
     desktop.browser = browser;
   }
-  // A custom E2B desktop template NAME or ID. Trimmed non-empty when present; deliberately NOT
+  // A custom E2B desktop template name or ID. Trimmed non-empty when present; deliberately not
   // allowlisted (any string is a valid template name/id — over-restricting would reject real
   // adopter images). An explicitly-set but blank/whitespace value is a mistake, not a template.
   if (raw.template !== undefined) {

@@ -33,7 +33,7 @@ export function parseSubject(
   }
   const subject: LabSubject = { source };
 
-  // topology is enum-validated everywhere; its SEMANTICS (shared-world requires clone × e2b-desktop
+  // topology is enum-validated everywhere; its semantics (shared-world requires clone × e2b-desktop
   // × a ≥2 roster) are enforced in the shared-world cross-validation below, and a set-but-unconsumed
   // topology warns as inert off the shared-world route (invariant 6).
   if (raw.topology !== undefined) {
@@ -43,7 +43,7 @@ export function parseSubject(
     }
     subject.topology = topology;
   }
-  // exposure is enum-validated everywhere; it is REQUIRED on the concurrent shared-world route (the
+  // exposure is enum-validated everywhere; it is required on the concurrent shared-world route (the
   // getHost synthetic-subject attestation) and warns inert elsewhere.
   if (raw.exposure !== undefined) {
     const exposure = str(raw.exposure);
@@ -88,7 +88,7 @@ function misplacedFieldFailure(
       "`subject.product` applies only to terminal-product and desktop-cli subjects (the CLI a participant studies from public surfaces).",
     );
   }
-  // appUrl is app-url/local-app-only; a terminal-product subject drives PUBLIC surfaces, not a
+  // appUrl is app-url/local-app-only; a terminal-product subject drives public surfaces instead of a
   // single loopback app — reject appUrl on it.
   if (source === "terminal-product" && raw.appUrl !== undefined) {
     return invalid(
@@ -178,7 +178,7 @@ function parseLocalTreeSubject(
   subject: LabSubject,
 ): { ok: true; value: LabSubject } | LabConfigParseFailure {
   // A local-tree subject exists to be packed and served; there is no other way to boot it, so
-  // serve is REQUIRED here. Clone subjects get the same requirement from each route's checks in
+  // serve is required here. Clone subjects get the same requirement from each route's checks in
   // parseLabConfig.
   if (raw.serve === undefined) {
     return invalid(
@@ -255,7 +255,7 @@ function parseAppSubject(
   }
   // app-url: shape-only here; the loopback-vs-public-target gate is applied in the
   // cross-validation block below, where policies.allowPublicTargets is available.
-  // local-app: an in-process local dev server — ALWAYS loopback (no public-target option),
+  // local-app: an in-process local dev server, always loopback (no public-target option),
   // so the loopback wall is enforced right here at parse.
   if (source === "local-app") {
     if (!isLoopbackUrl(appUrl)) {
@@ -386,7 +386,7 @@ function parseProduct(
   };
 }
 
-// Public-safe stance: a computer-use actor's ENTRY URL is always an app the lab owner runs on
+// Public-safe stance: a computer-use actor's entry URL is always an app the lab owner runs on
 // loopback (inside the sandbox), never an arbitrary public site. (The constraint binds the
 // entry point; a navigation watchdog for mid-session escapes is a later slice.) Exported so
 // the engine re-enforces the same boundary on configs that arrive through the library API.
@@ -467,7 +467,7 @@ function parseClone(raw: unknown): LabSubjectClone | undefined {
 /**
  * Structural parse of `subject.localTree`, mirroring parseClone. Unlike parseClone (which
  * silently drops an out-of-range depth/fanout), an invalid exclude/maxArchiveBytes value is
- * REJECTED, never silently dropped: a caller who typed an empty exclude entry or a non-positive
+ * rejected, never silently dropped: a caller who typed an empty exclude entry or a non-positive
  * maxArchiveBytes almost certainly meant something, and the archive-size cap is a safety knob,
  * not a cosmetic default.
  */

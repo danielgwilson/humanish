@@ -1,51 +1,51 @@
-// humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
+// humanish.lab.v2: a lab is a composition over code primitives. There is no hardcoded lab kind.
 //
-// HONEST SCOPE (read before trusting field names): the engine routes by
+// Scope (read before trusting field names): the engine routes by
 // subject.source × execution.target (disambiguated by the actor lane where both axes
 // collide) and consumes a deliberately small set of fields:
 //   subject.source/repos/appUrl/serve/env/state/clone.{depth,fanout,keep}, actors[0].count,
 //   execution.target + execution.desktop.codexAppServer, scenario.mode,
 //   policies.redactRepos, defaults.open.
 // On the computer-use routes (app-url × e2b-desktop, and clone × e2b-desktop with a
-// computer-use actor), `actors[0].type` IS load-bearing: it must resolve to a registered
+// computer-use actor), `actors[0].type` is load-bearing: it must resolve to a registered
 // computer-use actor, and that descriptor runs the session. Those routes also consume
 // actors[0].{mission,persona,laneFocus.instruction,model,reasoningEffort}, execution.timeoutMs,
 // execution.desktop.{browser,resolution,sandboxTimeoutMs}, and (clone)
 // subject.{serve,env,state,clone.depth}.
 // On the scripted-browser route (app-url × local-or-absent, or clone × e2b-desktop, with a
 // registered scripted-browser actor), `actors[0].type` is equally load-bearing, and the route
-// consumes scenario.ref (REQUIRED there — the committed scenario's browser steps ARE what the
+// consumes scenario.ref (required there, because the committed scenario's browser steps are what the
 // actor executes), actors[0].{persona,count}, and execution.timeoutMs. On the provisioned
 // clone slice it also consumes subject.{repos,serve,env,state,exposure,clone.depth} and
 // execution.desktop.template. actors[0].{mission,laneFocus,model} are inert on that route
 // because no model runs, and most execution.desktop.* fields remain forward-declared (device
 // presets belong to the cua route — scripted surfaces are the driver's own desktop/mobile
-// viewports where isMobile/DSF genuinely RENDER via playwright emulation).
-// On the other routes those fields remain FORWARD-DECLARED and NOT yet consumed —
+// viewports where isMobile/DSF genuinely render via playwright emulation).
+// On the other routes those fields remain forward-declared and are not yet consumed:
 // parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
 // the truth.
 //
 // NOTE on actors[0].count: it now carries ROUTE-SPECIFIC meanings — synthetic route: simCount;
 // scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
 // defaults-table single-participant row governs; count: 2 is the declared override); computer-use
-// E2B route: the HOMOGENEOUS fan-out participant count (N identical participants, each its own E2B
+// E2B route: the homogeneous fan-out participant count (N identical participants, each its own E2B
 // desktop), capped at 16; the in-process/local-app cua route stays single-participant (no E2B to
 // fan out).
 //
 // NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route, this slice): a
-// DIFFERENTIATED fan-out roster — each `{ id?, persona?, device?, instruction?, target? }` becomes one
+// differentiated fan-out roster: each `{ id?, persona?, device?, instruction?, target? }` becomes one
 // independent E2B desktop (`per-lane-worlds`, the default topology). `roster[]` is parser sugar for
 // repeated groups and is normalized into `lanes[]` before the engine sees it. `lanes|roster` XOR
-// `count` (declare a differentiated roster OR a homogeneous count, never both); `lanes|roster`
+// `count` (declare a differentiated roster or a homogeneous count, never both); `lanes|roster`
 // XOR `actors[0].laneFocus` (each entry's `instruction` is the roster's steer); `lanes[].device` XOR
 // raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight participants (default:
-// the participant count, all at once; env HUMANISH_CUA_MAX_CONCURRENCY may only LOWER it — invariant
+// the participant count, all at once; env HUMANISH_CUA_MAX_CONCURRENCY may only lower it, per invariant
 // 3). On every non-cua route normalized `lanes` are inert (warned). subject.clone.fanout is
-// REJECTED on the cua route. `lanes[].target` is app-url × computer-use ONLY: an absolute browser
+// rejected on the cua route. `lanes[].target` is app-url × computer-use only: an absolute browser
 // URL this participant opens instead of `subject.appUrl`; it is the generic setup-produced-target
 // handoff, not a service topology primitive.
 //
-// There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
+// There is deliberately no v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
 
 import {
@@ -195,10 +195,10 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
-  // Email that just works (#351): the funnel's ONLY handoff to an actor is the per-participant
+  // Email that just works (#351): the funnel's only handoff to an actor is the per-participant
   // inbox instruction, gated on recipients[]. Guessed participant ids broke a field run —
   // recipients copied from a single-participant example matched nothing, so every actor was left inbox-blind with zero
-  // signal. Omitted recipients are therefore FILLED (one deterministic address per participant);
+  // signal. Omitted recipients are therefore filled (one deterministic address per participant);
   // a recipient naming an unknown participant is a hard error listing the real ids; declared
   // recipients covering zero participants are a hard error (a guaranteed-dead funnel).
   const receivingReason = receivingEmailValidationReason(config);

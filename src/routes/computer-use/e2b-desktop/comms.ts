@@ -41,7 +41,7 @@ export interface ParticipantComms {
 
 /**
  * On an in-sandbox subject route, redirect the app's email-API sends into an in-sandbox catch
- * (loopback) so its verification mail is CAPTURED, not sent to the internet. Undefined when the
+ * (loopback) so its verification mail is captured instead of sent to the internet. Undefined when the
  * lab declares no fake email, which leaves the participant unchanged.
  */
 export function planParticipantComms(
@@ -118,23 +118,23 @@ export async function startCommsCatch(
       `comms email catch did not become ready on 127.0.0.1:${comms.port} in the subject sandbox`,
     );
   }
-  // Write the EMPTY inbox once up front so the persona's /inbox always resolves to the "No messages
-  // yet." page — never a bare 404 — the instant it navigates there, even before any mail arrives OR if
+  // Write the empty inbox once up front so the persona's /inbox always resolves to the "No messages
+  // yet." page (never a bare 404) the instant it navigates there, even before any mail arrives or if
   // the app sends to an address no declared recipient matches (the loop only re-renders on new mail).
   await writeInboxSurface(shell, deployed.surfaceDir, [], {
     originMap: comms.originMap,
     requestTimeoutMs,
   });
-  // The surface uses its OWN FakeInbox + cursor, independent of the teardown evidence drain (two
+  // The surface uses its own FakeInbox + cursor, independent of the teardown evidence drain (two
   // readers of the append-only NDJSON — no double-count).
   const stop = new AbortController();
   let renderedCount = 0;
   const loop = (async () => {
     // Render-first (so even a short session gets a populated inbox), then refresh on a cadence. The
-    // cadence uses a REAL timer, NOT the injected instant clock: this loop is unbounded, so an instant
+    // cadence uses a real timer instead of the injected instant clock: this loop is unbounded, so an instant
     // sleep would busy-spin and starve the session's own timers. `stop` interrupts the wait
     // (and clears the timer) so teardown never blocks for a full cadence. Each refresh
-    // is a full, idempotent rebuild; `renderedCount` only advances on a SUCCESSFUL render so a
+    // is a full, idempotent rebuild; `renderedCount` only advances on a successful render so a
     // transient failure retries cleanly (no duplicate emails).
     for (;;) {
       try {

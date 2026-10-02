@@ -49,9 +49,9 @@ export interface ActionHistory {
   lastActionTitle: string | undefined;
   lastMaterialActionTitle: string | undefined;
   readonly recentActionTitles: string[];
-  // Affordance classification (#369): WHICH route the actor took, recorded per dispatched action.
+  // Affordance classification (#369): which route the actor took, recorded per dispatched action.
   // Collected here because the typed text exists only at dispatch — describeCuaAction deliberately
-  // destroys it before it can reach the trace. Only the CLASS (and a scheme-shaped signal) is kept.
+  // destroys it before it can reach the trace. Only the class (and a scheme-shaped signal) is kept.
   readonly affordances: AffordanceObservation[];
   /** The loop stopped waiting on an action before the executor acknowledged it. */
   interruptedActionOutcome: boolean;
@@ -180,7 +180,7 @@ export class LoopSession {
     return this.timeoutMs - (this.now() - this.startedAtMs);
   }
 
-  // Model-authored narration: literal-scrub known provisioned values, THEN pattern-redact.
+  // Model-authored narration: literal-scrub known provisioned values, then pattern-redact.
   // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
   // alone cannot catch it — the lab's scrubKnownValues, injected as scrubText, closes that.
   redactNarration(text: string): string {

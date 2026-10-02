@@ -8,11 +8,11 @@ import type { LabConfigParseFailure, LabStateStepWhen, LabSubjectState } from ".
 import { isRecord } from "../../run/type-guards.js";
 
 /**
- * LITERAL non-secret subject env. Real apps need configuration before they will boot — a public base
+ * Literal non-secret subject env. Real apps need configuration before they will boot: a public base
  * URL, a transport selector, a feature flag — and none of that is secret. Routing it through
  * `subject.env` would force an adopter to carry a private env file just to reproduce a public study.
  *
- * These values ARE recorded in evidence (they are part of how the subject was configured), so a
+ * These values are recorded in evidence (they are part of how the subject was configured), so a
  * value that looks like a credential is refused here rather than committed to a public repo.
  */
 export function parseEnvValues(
@@ -99,7 +99,7 @@ export function parseState(
     state.checkpoint = raw.checkpoint.map((probe) => ({
       name: typeof probe.name === "string" ? probe.name.trim() : "",
       command: typeof probe.command === "string" ? probe.command.trim() : "",
-      // Preserve the redact list verbatim (literal secret values may contain commas, so do NOT
+      // Preserve the redact list verbatim (literal secret values may contain commas, so do not
       // run it through the comma-splitting strList); subjectStateInvalidReason validates the shape.
       ...(probe.redact === undefined ? {} : { redact: probe.redact as string[] }),
     }));

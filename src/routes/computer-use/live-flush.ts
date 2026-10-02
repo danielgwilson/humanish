@@ -72,7 +72,7 @@ export function startLiveTraceFlush(args: {
                 liveActor: {
                   schema: "humanish.live-actor.v1" as const,
                   updatedAt,
-                  // WHO this participant is, carried while the run is live. Without it a
+                  // Who this participant is, carried while the run is live. Without it a
                   // surface watching a live run can only name the participant id, and "CUA browser — observer-live-
                   // check" is the harness talking about itself where the participant should be.
                   ...(personaByStream.get(stream.id) === undefined
@@ -157,7 +157,7 @@ export function trackRuntimeStreams(onStream: RunLabHomes["onStream"] | undefine
     onStream: async (event) => {
       await onStream?.(event);
       if (event.type === "ready") urls.push({ streamId: event.streamId, url: event.url });
-      // Mark, never remove: the tile needs to KNOW the live view ended (and say so) rather than
+      // Mark, never remove: the tile needs to know the live view ended (and say so) rather than
       // have the stream silently vanish from the overlay (#357).
       else for (const entry of urls) if (entry.streamId === event.streamId) entry.ended = true;
       if (liveObserver) attachObserverRuntimeStreamUrls(liveObserver, urls);

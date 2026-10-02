@@ -150,7 +150,7 @@ export function formatParticipantOutcomes(
   };
   append(outcomes.abandoned, ["abandoned"], "gave up");
   append(outcomes.ranOut, ["incomplete", "timed_out"], "interrupted (stop details unavailable)");
-  // "blocked" covers an approval the run could not give AND a blocker the participant reported in
+  // "blocked" covers an approval the run could not give and a blocker the participant reported in
   // its own words, so the label names no cause.
   if (outcomes.blocked > 0) parts.push(`${outcomes.blocked} blocked`);
   append(outcomes.harnessFailed, ["failed"], "lost to a harness failure");

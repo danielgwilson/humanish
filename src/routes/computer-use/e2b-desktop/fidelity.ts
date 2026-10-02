@@ -124,7 +124,7 @@ export function participantBrowserStateObserver(args: {
     {
       targetId: args.targetId,
       // Once per participant: a dark observation channel is a gap in the instrument, and the
-      // funnel's NEVER MEASURED count needs this line to explain itself (#514).
+      // funnel's "never measured" count needs this line to explain itself (#514).
       onUnavailable: (reason) => {
         warnings.push(
           `Browser-state observer unavailable for participant ${spec.planned.id} (${redactText(deps.scrubKnownValues(reason))}); ` +
@@ -162,8 +162,8 @@ export function participantBrowserStateObserver(args: {
 
 /**
  * The participant's final browser geometry, measured while the sandbox is alive. A final capture that
- * measured EITHER field wins whole, so a partial final capture omits fields the launch-time capture
- * had (honest omission); only a final capture that measured NOTHING falls back to the launch-time
+ * measured either field wins whole, so a partial final capture omits fields the launch-time capture
+ * had (honest omission); only a final capture that measured nothing falls back to the launch-time
  * capture. Also reads the emulation holder's log into the fidelity block.
  */
 export async function finalParticipantGeometry(args: {

@@ -207,7 +207,7 @@ export async function admitCuaRun(
       ? baseRunSession
       : (options) => baseRunSession({ ...options, signal: localVmSignal });
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
-  // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
+  // so it cannot host a catch. The operator runs one, and humanish still does every other part
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
   // the participants, and writes the same digest-only evidence. Declaring `external` previously did
   // nothing on this route (and, per #387, on every other) while its docs said otherwise.
@@ -225,7 +225,7 @@ export async function admitCuaRun(
   const { participantRuns, participantPlan, rerunLineage } = participants;
   const participantCount = participantRuns.length;
 
-  // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). onEvent gets it for
+  // Pre-flight plan: before any sandbox or provider call (dry-run and live). onEvent gets it for
   // every N; the stderr table prints for fan-out (N>1) so single-participant runs stay as quiet as they
   // always were.
   if (participantCount > 1) {
@@ -252,7 +252,7 @@ export async function admitCuaRun(
   const publicRepo =
     subject.kind === "clone" ? (redactRepoLabel ? "repo-01" : subject.repo) : undefined;
 
-  // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor, and
+  // Key-gating is route-aware: the in-process route uses the caller's own model + executor, and
   // the local-agent route uses a CLI the operator has already signed in to.
   if (!dryRun && !inProcess) {
     const rejection = await liveCuaRejection({
@@ -265,8 +265,8 @@ export async function admitCuaRun(
     if (rejection) return refuse(rejection.code, rejection.message, descriptor.id);
   }
 
-  // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
-  // fan-out participant below uploads this SAME archive, so one archiveSha256 describes every
+  // Pack the working tree once per run, on the host, before any sandbox or provider call: every
+  // fan-out participant below uploads this same archive, so one archiveSha256 describes every
   // participant's digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
   // archiveSha256). A packing failure fails the run closed here, before any sandbox is
   // created and before the run directory exists.
@@ -471,7 +471,7 @@ function cuaParticipantDeps(
     redactScreenshots,
     scrubKnownValues,
     runSession,
-    // The study-level ledger exists once per RUN, shared by every participant (#299). Dry runs never
+    // The study-level ledger exists once per run, shared by every participant (#299). Dry runs never
     // spend, so they carry none.
     ...(dryRun || plan.caps.maxTotalUsd === undefined
       ? {}

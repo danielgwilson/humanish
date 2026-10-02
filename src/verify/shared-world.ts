@@ -11,8 +11,8 @@ import { isRecord } from "../run/type-guards.js";
 import { concurrentSharedWorldFindings } from "./shared-world-concurrent.js";
 
 /**
- * The `shared-world evidence` check (invariant 4 + invariant 6): a LIVE shared-world bundle's
- * interaction CLAIM must match its recorded timeline + plane provenance, and its attribution
+ * The `shared-world evidence` check (invariant 4 + invariant 6): a live shared-world bundle's
+ * interaction claim must match its recorded timeline + plane provenance, and its attribution
  * ceiling must be pinned. Mirrors validateTerminalProductEvidence: live-only (dry-run contract
  * bundles are skipped, exactly like the other live-only checks). Fail-closed on every overclaim.
  */
@@ -24,13 +24,13 @@ export function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   }
   const sw = bundle.sharedWorld;
   if (!sw) {
-    // A live bundle that DECLARES shared-world attribution but carries no evidence block is a
+    // A live bundle that declares shared-world attribution but carries no evidence block is a
     // hollow claim — fail closed. (Absent attributionClass + absent block == an ordinary bundle.)
     return bundle.attributionClass === "shared-world"
       ? ["attributionClass is shared-world but the sharedWorld evidence block is missing"]
       : [];
   }
-  // Dispatch on topologyMode FIRST; unknown/missing → fail closed.
+  // Dispatch on topologyMode first; unknown/missing → fail closed.
   const topologyMode = (sw as { topologyMode?: unknown }).topologyMode;
   if (topologyMode !== "sequential" && sw.skippedTail !== undefined) {
     return ["skippedTail is only valid on sequential shared-world evidence"];
@@ -254,8 +254,8 @@ function runSpendLimitRecorded(bundle: RunBundle, turns: Row[], tail: SkippedTai
 }
 
 /**
- * SEQUENTIAL branch: the alternating timeline must be well-formed, single-plane, digest-only, and
- * carry the sequential attributionLimits. A sequential bundle must NOT carry concurrent fields
+ * Sequential branch: the alternating timeline must be well-formed, single-plane, digest-only, and
+ * carry the sequential attributionLimits. A sequential bundle must not carry concurrent fields
  * (laneWindows).
  */
 function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
@@ -275,7 +275,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   }
   const sequence = Array.isArray(sw.sequence) ? sw.sequence : [];
 
-  // Attribution ceiling: every mandatory limit MUST be present (omission overclaims → fail).
+  // Attribution ceiling: every mandatory limit must be present (omission overclaims → fail).
   const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
   for (const required of MANDATORY_ATTRIBUTION_LIMITS) {
     if (!limits.includes(required)) {
@@ -345,7 +345,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
     }
   });
 
-  // Checkpoints: digest is sha256-16 and the record carries NO value-shaped field (digest-only).
+  // Checkpoints: digest is sha256-16 and the record carries no value-shaped field (digest-only).
   for (const checkpoint of checkpoints) {
     const name = typeof checkpoint.name === "string" ? checkpoint.name : "(unnamed)";
     if (typeof checkpoint.digest !== "string" || !COMMAND_DIGEST_PATTERN.test(checkpoint.digest)) {
@@ -375,7 +375,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
     }
   }
 
-  // Single-plane provenance: every turn shares ONE (commit, seedDigest), matching sharedWorld.plane.
+  // Single-plane provenance: every turn shares one (commit, seedDigest), matching sharedWorld.plane.
   // (plane.seedDigest + plane.envNames shape are checked in sharedWorldCommonFindings.)
   findings.push(
     ...planeProvenanceFindings(turns, sw.plane, {
@@ -385,7 +385,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
     }),
   );
 
-  // The delta-on-pass gate: a PASSED shared-world run MUST show at least one checkpoint delta —
+  // The delta-on-pass gate: a passed shared-world run must show at least one checkpoint delta;
   // otherwise the roles never interacted through shared state and the claim is hollow.
   if (
     bundle.review.verdict === "pass" &&

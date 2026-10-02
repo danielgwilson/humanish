@@ -1,12 +1,12 @@
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { selfReportedBlocker, type BlockerFacts, type SessionEnding } from "../../run/judge.js";
 
-// "can't" followed by a PERCEPTION verb describes what the screen showed, not an inability to
+// "can't" followed by a perception verb describes what the screen showed, not an inability to
 // proceed: "the canvas truncates it so you can't even read the whole thing", "I can't tell from
 // the screen whether the rename is persisted", "so I could not read its full description". Five
 // of five completed live runs on 2026-09-01 (two on drawDB, three on the planted benchmark app)
 // were refused as "not a credible pass" on exactly these sentences, every one a defect report
-// written AFTER the participant reached the goal. The more precisely a participant describes a
+// written after the participant reached the goal. The more precisely a participant describes a
 // display defect, the more likely the scan was to refuse the run — the incentive inversion #453
 // fixed for resolved arcs, back in a new shape. "could not complete", "could not connect",
 // "unable to get focus" still count: those name an inability to act.
@@ -24,19 +24,19 @@ function hasBlockerLanguage(text: string): boolean {
   );
 }
 
-/** The friction scan (inclusive): does the narrative report ANY blocker-shaped language,
+/** The friction scan (inclusive): does the narrative report any blocker-shaped language,
  *  resolved or not? Feeds the participants `reportedFriction` tally and feedback candidates. */
-// Report-shaped language: what a participant writes when it finished AND has something to say.
+// Report-shaped language: what a participant writes when it finished and has something to say.
 // Every one of the day's eleven drawDB reports (2026-09-01) opened a section "What confused me"
 // or "Accessibility defects:"; none contained a blocker word, so none became a feedback candidate
 // and a participant that had just replicated a keyboard-accessibility defect three times drafted "Live
-// study completed without a participant-reported finding". Friction is the INCLUSIVE scan; a
+// study completed without a participant-reported finding". Friction is the inclusive scan; a
 // false positive here adds a candidate a person then reads, which is the cheap direction.
 const REPORTED_DEFECT_LANGUAGE =
   /\b(defects?|bugs?|accessibilit(y|ies)|inaccessible|not (keyboard|screen.?reader)[- ]?accessible|confus(ed|ing)|hesitat(ed|ion)|unexpected(ly)?|unclear|hard to (find|tell|see|read|reach)|no (visible )?focus|overlap(ped|ping|s)?|truncat(ed|es|ion)|cut off|did nothing|nothing happened|no effect)\b/;
 
 // The friction scan's own negations (#614). "Nothing was confusing", "no defects", "not unclear"
-// are what a participant writes when it has NOTHING to report, and until 2026-09-03 each of them
+// are what a participant writes when it has nothing to report, and until 2026-09-03 each of them
 // counted as reported friction and became a feedback candidate whose "actual" was a sentence
 // reporting no problem. Only the report-shaped adjectives are negatable here: "no visible focus",
 // "not keyboard-accessible" and "did nothing" are defects and stay.
@@ -128,7 +128,7 @@ function interimMessageReportsFriction(message: string): boolean {
  *  first — failure narration the participant itself reports as overcome is friction on the
  *  road, not a blocker at the destination (#453). */
 function completionReasonBlocksVerdict(reason: string): boolean {
-  // Perception phrases are stripped for the VERDICT only: "I could not read the full description"
+  // Perception phrases are stripped for the verdict only: "I could not read the full description"
   // is friction worth a tally count and a feedback candidate (the friction scan above keeps it),
   // and it is not a reason to refuse the pass.
   return hasBlockerLanguage(
@@ -139,8 +139,8 @@ function completionReasonBlocksVerdict(reason: string): boolean {
 }
 
 // A failure segment counts as a resolved arc when the recovery is self-reported either in the
-// SAME segment ("the import failed but then went through") or — the common report shape — in the
-// immediately FOLLOWING segment as a retry/alternative that succeeded ("my first import failed
+// same segment ("the import failed but then went through") or, in the common report shape, in the
+// immediately following segment as a retry/alternative that succeeded ("my first import failed
 // with a parser error. A simpler SQL import succeeded."). The lookahead demands the retry flavor
 // on purpose: unrelated praise ("Separately, the search box worked") must never launder an
 // unresolved failure. "Login failed so I gave up" has no recovery anywhere and stays a blocker.
@@ -152,7 +152,7 @@ const RESOLUTION_TERMS =
 const RETRY_RESOLUTION =
   /\b(simpler|simplified|retry(?:ing)?|retried|second (?:attempt|try)|another (?:attempt|try|approach)|different (?:approach|way|route)|instead|then|eventually|after that)\b[^.!?\n]{0,80}\b(succeed(?:ed|s)?|success(?:ful|fully)?|worked|went through|completed|passed)\b/;
 
-/** Drop sentence/bullet segments whose failure language is part of a self-reported RESOLVED arc. */
+/** Drop sentence/bullet segments whose failure language is part of a self-reported resolved arc. */
 function stripResolvedArcSegments(text: string): string {
   const segments = text.split(/(?<=[.!?])\s+|\n+/);
   return segments
@@ -165,17 +165,17 @@ function stripResolvedArcSegments(text: string): string {
     .join(" ");
 }
 
-// Negations that DESCRIBE a defect rather than deny one. Kept out of every clause drop below.
+// Negations that describe a defect rather than deny one. Kept out of every clause drop below.
 const DEFECT_SHAPED_NEGATION =
   /\bno\s+(?:visible\s+)?focus\b|\bno\s+(?:keyboard|screen.?reader)[- ]?(?:access|path|route|way|alternative|equivalent)|\bnot\s+(?:keyboard|screen.?reader)[- ]?accessible\b|\bno\s+(?:effect|feedback|response)\b|\b(?:did|does)\s+nothing\b|\bnothing\s+happened\b/;
 
 function stripNegatedNonBlockerPhrases(text: string): string {
   return (
     text
-      // FIRST, before the narrower rules eat the "no blockers" and leave "encountered ... error"
+      // First, before the narrower rules eat the "no blockers" and leave "encountered ... error"
       // behind: "I encountered no blockers or unclear error output." refused a clean passing run on
       // 2026-09-01. A verb of encounter followed by "no" negates the whole clause, so drop the clause.
-      // ... unless the clause names a DEFECT: "the delete control had no visible focus" is a
+      // ... unless the clause names a defect: "the delete control had no visible focus" is a
       // finding, and the verb it happens to use must not decide whether it counts (#622).
       .replace(
         /\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g,
@@ -204,8 +204,8 @@ function stripNegatedNonBlockerPhrases(text: string): string {
 
 /**
  * Remove double-quoted spans and markdown blockquote lines before the blocker scan, so a persona
- * that faithfully QUOTES the subject app's own copy (e.g. a banner reading "cannot be undone") is
- * not misread as the actor reporting its OWN blocker. Only double quotes (straight and smart) and
+ * that faithfully quotes the subject app's own copy (e.g. a banner reading "cannot be undone") is
+ * not misread as the actor reporting its own blocker. Only double quotes (straight and smart) and
  * `>` blockquotes are stripped — never single quotes, which would mangle contractions like `can't`.
  */
 function stripQuotedSpans(text: string): string {
@@ -227,10 +227,10 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
 }
 
 /**
- * A goal_satisfied participant counts as a self-reported blocker ONLY when its final narrative contradicts
- * the goal AND the run's own stop predicate did NOT fire. A matched stopWhen is independent,
+ * A goal_satisfied participant counts as a self-reported blocker only when its final narrative contradicts
+ * the goal and the run's own stop predicate did not fire. A matched stopWhen is independent,
  * structured completion evidence, so it overrides a text scan of the free-form narrative — which can
- * otherwise trip on the subject app's OWN quoted copy (e.g. a relayed "cannot be undone" banner).
+ * otherwise trip on the subject app's own quoted copy (e.g. a relayed "cannot be undone" banner).
  * Resolved-arc segments never block the verdict (#453). Returns the offending reason, or undefined
  * when the participant is a clean pass. Exported for testing.
  */

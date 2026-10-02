@@ -1,8 +1,8 @@
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
-// What a lab IS, for the surface that has to describe it before you spend money (#455).
+// What a lab is, for the surface that has to describe it before you spend money (#455).
 //
-// The run index and run detail answer questions about runs. This answers a question about the LAB
+// The run index and run detail answer questions about runs. This answers a question about the lab
 // itself — what it drives, who is in it, which model, and what it is allowed to spend — which is
 // what a stakeholder reads on the screen where they decide whether to press Start.
 //
@@ -116,7 +116,7 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
   const count = actor.count ?? rosterOf(actor)?.length ?? personas.length ?? 1;
   const unique = [...new Set(personas)];
   if (unique.length === 0) return `${count} participant${count === 1 ? "" : "s"}`;
-  // Several participants of ONE persona reads as "3 × skeptical-power-user"; genuinely different people
+  // Several participants of one persona reads as "3 × skeptical-power-user"; genuinely different people
   // are named, because which personas are in a study is the study's design.
   return unique.length === 1 ? `${count} × ${unique[0]}` : unique.join(" · ");
 }

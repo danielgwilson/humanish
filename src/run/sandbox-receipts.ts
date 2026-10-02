@@ -31,7 +31,7 @@ export interface ParsedSandboxReceipt extends Omit<SandboxReceipt, "provider"> {
 }
 
 /**
- * Append one receipt. Best-effort BY DESIGN: the receipt exists to protect the run, so a failed
+ * Append one receipt. Best-effort by design: the receipt exists to protect the run, so a failed
  * receipt write must never fail the participant — the only cost of a miss is that `reclaim` cannot see
  * this id and the TTL backstop covers it instead. Containment is the same prepare step every
  * artifact write uses; append (not atomic-replace) keeps racing participants' receipts intact.

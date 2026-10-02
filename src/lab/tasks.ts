@@ -4,7 +4,7 @@
 // left "where did people get stuck" answerable only from an actor's own narration, which is the one
 // source a study should not have to take on faith.
 //
-// Real usability studies are built from discrete TASKS, each with a written success criterion, and
+// Real usability studies are built from discrete tasks, each with a written success criterion, and
 // the result is a funnel: how far each participant got before they stopped. That funnel is the
 // finding. A single pass/fail per participant throws it away.
 //
@@ -12,7 +12,7 @@
 // done when an observation satisfies it. Reusing it means a task criterion is exactly as expressive
 // as a stop condition, and an author who knows one knows the other.
 //
-// A task's completion is CORROBORATED, not self-reported. The actor saying "I signed up" does not
+// A task's completion is corroborated, not self-reported. The actor saying "I signed up" does not
 // complete a task; the observed URL, page text, or app state does. That distinction is the whole
 // reason to declare tasks at all.
 
@@ -28,10 +28,10 @@ const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
  * One task in a protocol. It has two halves that belong to two different people, and keeping them
  * apart is the point of the type.
  *
- * `goal` belongs to the PARTICIPANT. It is what they are asked to do, in their language, and it is
+ * `goal` belongs to the participant. It is what they are asked to do, in their language, and it is
  * the only half that reaches the prompt.
  *
- * `success` belongs to the RESEARCHER. It is how the task will be measured, and the participant
+ * `success` belongs to the researcher. It is how the task will be measured, and the participant
  * never sees it — a moderator does not read the success criterion aloud, because telling someone
  * how they will be judged changes what they do. A persona told "you succeed when the URL contains
  * /dashboard" will go find that URL, which measures the instruction rather than the product.
@@ -66,10 +66,10 @@ export interface TaskFunnel {
   completed: number;
   /** Declared tasks with no `done` criterion — shown to the participant, never observable. */
   unobservable: number;
-  /** The first task that was NOT observed complete: where this participant stopped. */
+  /** The first task that was not observed complete: where this participant stopped. */
   stoppedAt?: string;
   /** Per-task, in declaration order. `inputsObserved` is false when the task declares criteria
-   *  whose inputs (url, text, appState) NEVER arrived in any observation this session, so the
+   *  whose inputs (url, text, appState) never arrived in any observation this session, so the
    *  task was never actually measured. Absent when the task completed or is unobservable. */
   tasks: Array<{
     id: string;
@@ -79,13 +79,13 @@ export interface TaskFunnel {
     inputsObserved?: boolean;
   }>;
   /** Observable tasks that were never measured, because the inputs their criteria need never
-   *  arrived. Reported SEPARATELY from failures: a task nobody could observe is a gap in our
+   *  arrived. Reported separately from failures: a task nobody could observe is a gap in our
    *  instrument, and reporting it as 0-completed blames the participant for it (#514). */
   unmeasured: number;
 }
 
 /**
- * Tracks task completion across a session. Stateful on purpose: a task completes ONCE, on the first
+ * Tracks task completion across a session. Stateful on purpose: a task completes once, on the first
  * observation that satisfies it, and stays complete even if the participant navigates away — you do
  * not un-sign-up by going back to the home page.
  */
@@ -137,7 +137,7 @@ export class TaskTracker {
     const tasks = this.tasks.map((task) => {
       const completion = this.completions.get(task.id);
       const observable = task.success !== undefined;
-      // A task counts as measured when at least ONE field its criteria read was populated by some
+      // A task counts as measured when at least one field its criteria read was populated by some
       // observation. `any` semantics: any satisfiable rule needed a field we actually saw.
       const required = observable ? this.fieldsRequiredBy(task) : [];
       const inputsObserved =
@@ -174,7 +174,7 @@ export class TaskTracker {
 }
 
 /**
- * The task list as the PARTICIPANT reads it: numbered, in order, in their own language.
+ * The task list as the participant reads it: numbered, in order, in their own language.
  *
  * Reads `goal` and nothing else. The success criteria are the researcher's instrument and never
  * appear here — a participant who is told how they will be measured optimizes for the measurement,

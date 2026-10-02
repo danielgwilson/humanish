@@ -624,7 +624,7 @@ async function verifyFrozenSource(
   source: Inventory,
   runId: string,
 ): Promise<{ bundle: RunBundle } | { shareSafety: VerifyResult["shareSafety"] }> {
-  // Verify the SAME frozen bytes that will be transformed. Verifying the live
+  // Verify the same frozen bytes that will be transformed. Verifying the live
   // source and then rereading run.json permits an ABA edit to contaminate a
   // derivative whose receipt still names the first inventory's hashes.
   // Raw verification bytes stay in private OS temporary storage, even when

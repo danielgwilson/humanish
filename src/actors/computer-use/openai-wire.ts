@@ -190,9 +190,9 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
       case "computer_call": {
         const callId = optionalString(item.call_id);
         if (callId !== undefined) callIds.push(callId);
-        // The live Responses API returns the actions as an ARRAY (`item.actions`); a single
+        // The live Responses API returns the actions as an array (`item.actions`); a single
         // computer_call can carry several. (An older/alt shape used a singular `item.action` —
-        // supported as a fallback.) Reading only `item.action` silently dropped EVERY action,
+        // supported as a fallback.) Reading only `item.action` silently dropped every action,
         // which made the loop see zero actions and stop on a false `goal_satisfied`.
         const rawActions = Array.isArray(item.actions)
           ? item.actions
@@ -237,7 +237,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
   // a long session is a cache hit billed at a fraction of the full rate. Not reading it made every
   // cost line materially overstate the bill (#391).
   const usageCachedInput = optionalNumber(asRecord(usageRecord.input_tokens_details).cached_tokens);
-  // GPT-5.6+ bills cache WRITES (1.25x input) and reports them here; older models omit the field.
+  // GPT-5.6+ bills cache writes (1.25x input) and reports them here; older models omit the field.
   const usageCacheWriteInput = optionalNumber(
     asRecord(usageRecord.input_tokens_details).cache_write_tokens,
   );
@@ -368,7 +368,7 @@ export function buildInitialRequest(
  * echoed back so the model can proceed past a check the harness approved.
  *
  * The screenshot param is `Buffer | undefined` because CuaObservation.screenshot is now
- * optional (a non-vision executor omits it). This provider is a VISION model (it sets
+ * optional (a non-vision executor omits it). This provider is a vision model (it sets
  * requiresFrame), so a missing frame is a hard error here — defense-in-depth: the loop's
  * per-turn requiresFrame guard already fails closed before this is reached, but throwing keeps
  * the mapper self-validating and isolable.

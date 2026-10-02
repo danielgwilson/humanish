@@ -24,7 +24,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
   const inProcess = plan.runner.desktop === "in-process";
   const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
   const { runId, paths: runPaths } = run;
-  // A live run writes what it is doing AS IT DOES IT, whether or not anyone is currently watching.
+  // A live run writes what it is doing as it does it, whether or not anyone is currently watching.
   // This used to be gated on `options.onObserverReady` — the interactive Observer callback — so a
   // run launched by an agent (`lab run --json`), detached, or from the terminal surface recorded
   // nothing at all until it completed, and anything asking "what is this participant doing right

@@ -87,7 +87,7 @@ export async function startParticipantModel(
     // One session for the whole run, like the codex thread above (#520). The one-shot
     // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
     // started with no memory of the last. HUMANISH_LOCAL_AGENT_ONE_SHOT=1 keeps that path
-    // reachable as a MEASUREMENT switch: MemTrapBench (2026-08) reports memory frameworks
+    // reachable as a measurement switch: MemTrapBench (2026-08) reports memory frameworks
     // degrading agent performance by 10-40% on some tasks, so "remembers" has to be measured
     // against "does not" on the same lab, not assumed. The trace records which one ran.
     const oneShot =
@@ -177,8 +177,8 @@ export function participantSessionOptions(
       : { stopWhen: spec.planned.limits.stopWhen }),
     ...(spec.planned.limits.dwell === undefined ? {} : { dwell: spec.planned.limits.dwell }),
     ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
-    // The STUDY budget (#299): this participant notes its own running estimate on the shared
-    // ledger and stops when the RUN total crosses the cap — independent of the per-participant
+    // The study budget (#299): this participant notes its own running estimate on the shared
+    // ledger and stops when the run total crosses the cap, independent of the per-participant
     // maxUsd above.
     ...(deps.runBudget === undefined
       ? {}
@@ -201,7 +201,7 @@ export function participantSessionOptions(
     ...(deps.onTrace === undefined
       ? {}
       : {
-          // Forwards the RUNNING usage as well: the participant runner is where both are known, and usage
+          // Forwards the running usage as well: the participant runner is where both are known, and usage
           // without it never reaches the flush — which is how the live cost stayed unknown.
           onTrace: (
             items: readonly ActorTraceItem[],
@@ -269,7 +269,7 @@ export async function recordParticipantTrace(
   session: CuaLoopResult,
   warnings: string[],
 ): Promise<void> {
-  // Per-participant model-token cost ESTIMATE, attached to the trace before it is persisted (the model
+  // Per-participant model-token cost estimate, attached to the trace before it is persisted (the model
   // id is authoritative here — provider.version). Kept at the lab boundary so the pure loop
   // never depends on the operator rate table. estimateActorCost declares absent (null) for an
   // unknown rate / missing usage rather than guessing.
