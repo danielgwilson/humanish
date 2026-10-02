@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { planLab } from "../../../src/lab/plan.js";
 import { runLab } from "../../../src/run-lab.js";
-import { participantRunDeps } from "../../../src/routes/shared-world/seats.js";
+import { participantRunDeps } from "../../../src/routes/shared-world/participant-specs.js";
 import type { PlaneContext } from "../../../src/routes/shared-world/types.js";
 import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
 import { admittedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";

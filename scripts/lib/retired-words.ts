@@ -1,8 +1,8 @@
-// Counts identifiers in src/ that still use the retired words. The code says participant; lane,
-// seat, role and sim survive only as contract spellings, which belong in the modules that
-// translate the manifest and the run bundle, and in the Observer that renders them. Study gives
-// way to analysis and run; what remains spells saved or wire names, such as a stop cause, an env
-// var and a summary JSON key. vocabulary:check holds each word's count to its cap.
+// Counts identifiers and file names in src/ that still use the retired words. The code says
+// participant; lane, seat, role and sim survive only as contract spellings, which belong in the
+// modules that translate the manifest and the run bundle, and in the Observer that renders them.
+// Study gives way to analysis and run; what remains spells saved or wire names, such as a stop
+// cause, an env var and a summary JSON key. vocabulary:check holds each word's count to its cap.
 import { parseSync } from "oxc-parser";
 
 export const RETIRED_WORDS = ["lane", "seat", "role", "sim", "study"] as const;
@@ -65,6 +65,27 @@ export function retiredWordOf(word: string): RetiredWord | undefined {
   return (RETIRED_WORDS as readonly string[]).includes(singular)
     ? (singular as RetiredWord)
     : undefined;
+}
+
+/**
+ * Every retired word in a path's own name: each directory below src/ and the file name without
+ * `.ts`, split on `-`, `_` and `.` and then into identifier words. A hit's line is 0, and its
+ * identifier is the path segment that spells it.
+ */
+export function findRetiredPathWords(path: string): RetiredWordHit[] {
+  const hits: RetiredWordHit[] = [];
+  for (const segment of path
+    .replace(/^src\//, "")
+    .replace(/\.ts$/, "")
+    .split("/")) {
+    for (const piece of segment.split(/[-_.]/)) {
+      for (const part of identifierWords(piece)) {
+        const word = retiredWordOf(part);
+        if (word !== undefined) hits.push({ line: 0, word, identifier: segment });
+      }
+    }
+  }
+  return hits;
 }
 
 export interface RetiredWordHit {

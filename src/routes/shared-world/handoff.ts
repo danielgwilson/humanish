@@ -15,7 +15,7 @@ import {
   participantHasInboxRecipient,
 } from "../computer-use/participant-desktop.js";
 import { withInboxMission } from "../computer-use/participant-prompt.js";
-import { runCuaParticipant } from "../computer-use/lanes.js";
+import { runCuaParticipant } from "../computer-use/participant-execution.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { extractLobbyCode, extractLobbyCodeFromNarration } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
@@ -23,7 +23,7 @@ import {
   makeBlockedFollowerOutcome,
   withLobbyCodeMission,
   type ParticipantRunDeps,
-} from "./seats.js";
+} from "./participant-specs.js";
 import type { ActorRunResult, ExternalCommsWiring } from "./types.js";
 
 // The FLOOR for the host-first handoff barrier deadline (ms). The host seat must surface a

@@ -13,7 +13,7 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import { describeQualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import { runCuaParticipant } from "../../../src/routes/computer-use/lanes.js";
+import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
 import { type CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
 import type {
   ParticipantDesktop,

@@ -44,7 +44,7 @@ import {
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import { withInboxMission } from "../computer-use/participant-prompt.js";
 import { planeStateOf } from "./plan.js";
-import { runCuaParticipant } from "../computer-use/lanes.js";
+import { runCuaParticipant } from "../computer-use/participant-execution.js";
 import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
@@ -61,7 +61,11 @@ import {
   SUBJECT_PROVISION_BUDGET_MS,
 } from "../../substrates/e2b/lifetime.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
-import { resolveActorEntryUrl, participantRunDeps, startParticipantFlush } from "./seats.js";
+import {
+  resolveActorEntryUrl,
+  participantRunDeps,
+  startParticipantFlush,
+} from "./participant-specs.js";
 import {
   CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
   type ActorRunResult,

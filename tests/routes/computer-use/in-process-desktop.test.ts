@@ -10,7 +10,7 @@ import { getActor } from "../../../src/actors/registry.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
-import { runCuaParticipant } from "../../../src/routes/computer-use/lanes.js";
+import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
 import type { CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { participantRun } from "../../helpers/participant-run.js";

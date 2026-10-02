@@ -22,7 +22,7 @@ import {
 import { declaredOriginDigestOf } from "./external-public.js";
 import { packSubjectTree, type ProvisionedPlaneSetup } from "./provisioned.js";
 import { emptyPlaneResults } from "./result.js";
-import { buildParticipantSpecs, defaultSessionTimeoutMs } from "./seats.js";
+import { buildParticipantSpecs, defaultSessionTimeoutMs } from "./participant-specs.js";
 import type {
   ConcurrentSharedWorldLabErrorCode,
   ConcurrentSharedWorldLabResult,
