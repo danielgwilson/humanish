@@ -35,7 +35,7 @@ export function describeSubjectState(
 }
 
 /**
- * Feedback candidates derived from what LIVE participants actually reported (#392).
+ * Feedback candidates derived from what live participants actually reported (#392).
  *
  * A live run's feedback draft used to fall through to a dry-run template, because no browser route
  * ever built a candidate. The candidate worth filing is the one the study produced: a participant
@@ -86,7 +86,7 @@ export function participantFeedbackCandidates(args: {
       persona_id: participant.personaId,
       actor: "computer-use",
       substrate: args.substrate,
-      // The participant is reporting on the PRODUCT: friction and abandonment are target-app
+      // The participant is reporting on the product: friction and abandonment are target-app
       // findings by the three-roles rule. A harness failure never reaches this builder — it is
       // not a participant report.
       failure_owner: "target-app",
@@ -139,7 +139,7 @@ export function participantFeedbackCandidates(args: {
 }
 
 /** Human-readable provenance line for the single-participant subject.provenance event (invariant 5):
- *  claims "cloned/packed and served" ONLY when it actually happened. */
+ *  claims "cloned/packed and served" only when it actually happened. */
 export function subjectProvenanceMessage(
   provenance: CuaSubjectProvenanceArg,
   publicAppUrl: string,

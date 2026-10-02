@@ -66,7 +66,7 @@ function browserPlace(args: SingleParticipantBundleArgs): string {
   }
 }
 
-/** Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran). */
+/** Run-level cost estimate (advisory; omitted when nothing was priced and no sandbox ran). */
 function runCost(args: SingleParticipantBundleArgs): ReturnType<typeof buildRunCostSummary> {
   return buildRunCostSummary({
     participants: args.session
@@ -107,7 +107,7 @@ function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string
         });
 
   // Honest labels (invariant 6: claims match mechanism): every screenshot label names the
-  // run's ACTUAL mode. The session trace is the evidence-of-record; the capture policy covers
+  // run's actual mode. The session trace is the evidence-of-record; the capture policy covers
   // frames written before a mid-session failure produced a trace.
   const traceScreenshotMode = args.session?.trace.redaction.screenshots;
   const screenshotMode: "raw" | "blurred" =
@@ -229,7 +229,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
           at: args.run.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.provenance",
-          // HONEST WORDING: claim "cloned/packed and served" only when it actually happened.
+          // Claim "cloned/packed and served" only when it actually happened.
           message: `${subjectProvenanceMessage(args.subjectProvenance, publicAppUrl, args.dryRun, args.session !== undefined)} (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
         })
       : participantEvent(SINGLE, {
@@ -237,9 +237,9 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
           at: args.run.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.declared",
-          // Invariant 5: declare what the subject WAS, including the ABSENCE of a pin. A
-          // local-app / in-process subject is an already-running LOCAL dev server the caller
-          // provisioned; it cannot be commit-pinned, so its provenance is honestly UNPINNED and
+          // Invariant 5: declare what the subject was, including the absence of a pin. A
+          // local-app / in-process subject is an already-running local dev server the caller
+          // provisioned; it cannot be commit-pinned, so its provenance is unpinned and
           // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox, or,
           // on the local VM, reaches the host's loopback from the VM's browser.
           message:
@@ -287,7 +287,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
     events.push(participantEvent(SINGLE, event));
 
   // Persisted phase trail (real boot timing, not just a coarse provenance sentence): one
-  // RunEvent per COMPLETED phase boundary (started events never persist here; they carry no
+  // RunEvent per completed phase boundary (started events never persist here; they carry no
   // durationMs). ok:false phases warn rather than error, since the failing phase's own thrown
   // error already becomes the terminal cua-lab.session.error event above.
   let phaseEventSeq = 3;
@@ -418,7 +418,7 @@ export function buildSingleParticipantBundle(args: {
   sessionError?: string;
   /**
    * The route's own credibility read of a goal_satisfied session (#476). The actor's status is
-   * evidence of what it CLAIMED; whether the harness counts the claim is decided by the route
+   * evidence of what it claimed; whether the harness counts the claim is decided by the route
    * (zero engagement, a final message that describes a blocker). The review has to say the same
    * thing the participant's exit code says, or the durable bundle reports a participant reaching the
    * goal on a run the harness refused to count.
@@ -430,7 +430,7 @@ export function buildSingleParticipantBundle(args: {
   subjectProvenance?: CuaSubjectProvenanceArg;
   /**
    * Entry kind for the non-clone subject.declared event (invariant 5 — declare what the subject
-   * WAS). "local-app": an already-running LOCAL dev server driven in-process, un-pinnable —
+   * was). "local-app": an already-running local dev server driven in-process, un-pinnable, and
    * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
    */
   entryKind?: "local-app";

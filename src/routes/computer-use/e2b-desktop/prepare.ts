@@ -178,7 +178,7 @@ export async function provisionParticipantSubject(
   const { residual, subject } = deps;
   const shell = e2bShell(desktop);
   if (subject.kind === "desktop-cli") {
-    // Prepare the runtime and any declared product install, UNKEYED. With install omitted,
+    // Prepare the runtime and any declared product install, with no keys. With install omitted,
     // the participant discovers and installs the product from its public surfaces.
     await provisionDesktopCli(shell, {
       product: subject.product.name,

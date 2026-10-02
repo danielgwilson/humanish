@@ -1,18 +1,18 @@
 // #316 — CLI-loadable adopter scorer. Resolve `review.scorer.ref` / `--scorer` to an out-of-tree
-// scorer module, load it fail-closed (typed error + exit 2, PRE-SPEND), and pick off ONLY the
+// scorer module, load it fail-closed (typed error + exit 2, before any spend), and pick off only the
 // whitelisted read-model hooks {score, deriveFeedback, deriveArtifacts}. `costProbe` is deliberately
-// NOT loadable — an injected provider cost line overwrites the core-measured one and can forge a
+// not loadable: an injected provider cost line overwrites the core-measured one and can forge a
 // satisfied no-spend proof, so it stays library-only.
 //
-// TRUST MODEL (stated plainly, no overclaims): the party who writes `review.scorer.ref` is the party
+// Trust model: the party who writes `review.scorer.ref` is the party
 // who runs `humanish lab run` in their own checkout — identical trust to humanish.lab.yml or a
-// package.json script. #316 adds ZERO new execution capability; it relocates WHERE the reference is
+// package.json script. #316 adds no new execution capability; it relocates where the reference is
 // declared. Containment is ENTRY-FILE-ONLY: `readContainedRegularFile` blocks abs/`..`/symlink/
 // hardlink/realpath-escape/TOCTOU on the entry module, but `import()` then executes the transitive
 // graph + npm deps with no clamp, and `import()` runs top-level module code before any whitelist
-// check. The whitelist bounds the WIRED HOOK SURFACE, not arbitrary import-time code; the
+// check. The whitelist bounds the wired hook surface and does not cover import-time code; the
 // trusted-in-process boundary is the actual safety carrier. The seam's output re-scrub is a
-// best-effort denylist, NOT containment. `review.scorer.ref` entries are executable code — review a
+// best-effort denylist that provides no containment. `review.scorer.ref` entries are executable code, so review a
 // PR that adds one as code, not config.
 
 import { realpath } from "node:fs/promises";
@@ -40,9 +40,9 @@ export type AdapterScoringContext = TerminalProductScoringContext | BrowserLabSc
 
 /**
  * The adopter-facing scorer module contract (#316). Export any subset of these from a `.mjs` (or a
- * `.js`/`.cjs` whose package.json type matches) — named exports OR a single default object. The
- * loader wires ONLY these three; an exported `executor`/`env`/`provisionSubject`/`costProbe` is never
- * picked up (the whitelist is the scope guard). A module exporting NONE of them is a hard load error.
+ * `.js`/`.cjs` whose package.json type matches): named exports or a single default object. The
+ * loader wires only these three; an exported `executor`/`env`/`provisionSubject`/`costProbe` is never
+ * picked up (the whitelist is the scope guard). A module exporting none of them is a hard load error.
  *
  * `C` is the context `score` and `deriveFeedback` read: `BrowserLabScoringContext` for a scorer
  * written for computer use and shared world, `TerminalProductScoringContext` for one written for
@@ -55,7 +55,7 @@ export interface AdapterScorerModule<C extends AdapterScoringContext = AdapterSc
   deriveArtifacts?: (
     ctx: BrowserLabScoringContext,
   ) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
-  // NOTE: costProbe is deliberately NOT loadable via config/flag — see the trust model above.
+  // NOTE: costProbe is deliberately not loadable via config/flag; see the trust model above.
 }
 
 /**
@@ -105,7 +105,7 @@ export type AdapterScorerLoadResult =
   | { ok: true; hooks: AdapterScorerModule; provenance: RunScorerProvenance }
   | { ok: false; error: { code: AdapterScorerLoadErrorCode; message: string } };
 
-/** The routes whose hooks bag can carry the loaded scorer. A declared scorer on ANY other route
+/** The routes whose hooks bag can carry the loaded scorer. A declared scorer on any other route
  *  (scripted or preview) aborts at load — a gate that cannot run must never green-pass. */
 const SCORER_CAPABLE_ROUTES: ReadonlySet<LabRoute> = new Set<LabRoute>([
   "terminal",
@@ -120,7 +120,7 @@ const SCORER_EXTENSIONS: ReadonlySet<string> = new Set([".mjs", ".js", ".cjs"]);
 /**
  * Resolve + load a config-declared scorer module. Resolution clones scenario.ref exactly
  * (prepareSelectedOutputDirectory → cwd-clamp → readContainedRegularFile), then `import()`s the
- * entry file in a BROAD try/catch. The digest is over the readContainedRegularFile ENTRY bytes.
+ * entry file in a broad try/catch. The digest is over the readContainedRegularFile entry bytes.
  */
 export async function loadAdapterScorer(args: {
   cwd: string;
@@ -134,7 +134,7 @@ export async function loadAdapterScorer(args: {
     error: { code, message },
   });
 
-  // A declared gate that cannot run on this route must ABORT (never silently green-pass).
+  // A declared gate that cannot run on this route must abort (never silently green-pass).
   if (!SCORER_CAPABLE_ROUTES.has(route)) {
     return fail(
       "HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND",
@@ -186,7 +186,7 @@ export async function loadAdapterScorer(args: {
   }
   const relPosix = relative.split(path.sep).join("/");
 
-  // Fail-closed containment gate on the ENTRY file only: rejects symlink, nlink>1, realpath-escape,
+  // Fail-closed containment gate on the entry file only: rejects symlink, nlink>1, realpath-escape,
   // TOCTOU. Its returned bytes are the digest input.
   const bytes = await readContainedRegularFile(root, relPosix);
   if (!bytes) {
@@ -197,8 +197,8 @@ export async function loadAdapterScorer(args: {
   }
   const digest = digestText(bytes.toString("utf8"));
 
-  // Import the entry module in a BROAD try/catch (ERR_MODULE_NOT_FOUND / SyntaxError / ERR_REQUIRE_ESM
-  // / top-level throw). import() executes the transitive graph — the cwd clamp guards only the ENTRY
+  // Import the entry module in a broad try/catch (ERR_MODULE_NOT_FOUND / SyntaxError / ERR_REQUIRE_ESM
+  // / top-level throw). import() executes the transitive graph, and the cwd clamp guards only the entry
   // file; out-of-tree/transitive code is acceptable only because of the trust boundary above.
   let mod: Record<string, unknown>;
   try {
@@ -218,10 +218,10 @@ export async function loadAdapterScorer(args: {
     );
   }
 
-  // mod.default ?? mod, then pick off ONLY the whitelist. An exported executor/env/costProbe is never
-  // wired — the whitelist is the scope guard. `exports` records the hooks ACTUALLY WIRED for this
+  // mod.default ?? mod, then pick off only the whitelist. An exported executor/env/costProbe is never
+  // wired; the whitelist is the scope guard. `exports` records the hooks actually wired for this
   // backend: deriveArtifacts is browser-only, so on the terminal route it is neither wired nor
-  // recorded (a scorer that exported ONLY deriveArtifacts there wires nothing and fails closed below,
+  // recorded (a scorer that exported only deriveArtifacts there wires nothing and fails closed below,
   // never a silent no-op).
   const picked = (mod.default ?? mod) as Record<string, unknown>;
   const terminalRoute = route === "terminal";

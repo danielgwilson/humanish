@@ -49,8 +49,8 @@ export interface CuaActorSessionOptions {
 
   /**
    * DI seams — inject to bypass live construction (CI uses these for zero-spend tests; library
-   * callers use them to drive a state-driven, non-vision flow). NOTE: a STATE executor (one
-   * whose observe() returns no screenshot — see CuaObservation.screenshot optional) MUST be
+   * callers use them to drive a state-driven, non-vision flow). NOTE: a state executor (one
+   * whose observe() returns no screenshot; see CuaObservation.screenshot optional) must be
    * paired with a NON-vision provider (requiresFrame falsey). The default OpenAI provider is
    * vision-based and would fail closed against a screenshot-less observation. See
    * docs/architecture/state-driven-executor.md.
@@ -68,7 +68,7 @@ export interface CuaActorSessionOptions {
   idleSteps?: number;
   noProgressSteps?: number;
   /**
-   * Redact persisted screenshots (blur+downscale). Default FALSE — full fidelity for local use.
+   * Redact persisted screenshots (blur+downscale). Default `false`: full fidelity for local use.
    * Set true for unowned subjects or share-as-is bundles. The provider always sees raw frames.
    */
   redactScreenshots?: boolean;

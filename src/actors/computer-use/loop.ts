@@ -60,7 +60,7 @@ interface Conversation {
   previousResponseId: string | undefined;
   previousExecution: CuaTurnRequest["previousExecution"];
   // Acks granted for the previous turn's safety checks. They must ride the
-  // NEXT request (the one carrying that call's computer_call_output), so they
+  // next request (the one carrying that call's computer_call_output), so they
   // are staged here rather than written onto the request already sent.
   acknowledgedSafetyChecks: CuaSafetyCheck[] | undefined;
   contextHint: string | undefined;

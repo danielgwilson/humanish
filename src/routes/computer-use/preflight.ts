@@ -40,7 +40,7 @@ export async function liveCuaRejection(args: {
   const missing = missingKeys(requirements, env);
   if (missing.length > 0) {
     // The moment someone new actually hits the wall. If a signed-in coding agent is sitting
-    // right there, say so HERE rather than making them go and find an API key — that detour is
+    // right there, say so here rather than making them go and find an API key; that detour is
     // where most people trying humanish stop.
     const suggestion = missing.includes("OPENAI_API_KEY")
       ? await (async () => {
@@ -60,7 +60,7 @@ export async function liveCuaRejection(args: {
   }
   // A caller's createProvider makes the brain `caller`, so only the lab's own local agent is checked.
   if (localAgent) {
-    // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
+    // Refuse here, before a sandbox exists. "codex is not installed" discovered after the
     // machine is paid for is the same information delivered at the worst possible moment.
     const refusal = await localAgentRefusal({ agent: localAgent, env, caps });
     if (refusal) return { code: LOCAL_AGENT_REFUSAL_CODES[refusal.kind], message: refusal.message };
@@ -72,10 +72,10 @@ export async function liveCuaRejection(args: {
       message: `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
     };
   }
-  // FAIL-CLOSED CAP TENSION (discipline #3): a maxUsd cap needs a MEASURABLE per-turn estimate.
+  // Fail-closed cap (discipline #3): a maxUsd cap needs a measurable per-turn estimate.
   // If the operator set execution.caps.maxUsd but src/run/pricing.ts has no rate for the resolved
   // model, the loop could not enforce the cap — and silently running uncapped would break the
-  // runaway-retry protection. Refuse at PREFLIGHT (before any sandbox/spend) rather than run
+  // runaway-retry protection. Refuse at preflight (before any sandbox/spend) rather than run
   // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
   // src/run/pricing.ts (the honest place) or removes the cap.
   if (caps.maxUsd !== undefined || caps.maxTotalUsd !== undefined) {
@@ -88,9 +88,9 @@ export async function liveCuaRejection(args: {
       };
     }
   }
-  // Adopter-hosted comms catch (#380): fail closed BEFORE any sandbox is created — a comms lab
+  // Adopter-hosted comms catch (#380): fail closed before any sandbox is created, because a comms lab
   // whose catch is unreachable collects nothing while every participant still spends. The probe asserts
-  // OUR service marker in /health, so an adopter's proxy answering 200 for everything cannot
+  // humanish's own service marker in /health, so an adopter's proxy answering 200 for everything cannot
   // pass for a catch.
   const tokenRefusal =
     externalCommsConfig === undefined

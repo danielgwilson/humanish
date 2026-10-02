@@ -130,11 +130,11 @@ export interface ScorerOutcome {
   failures: string[];
 }
 
-/** A DECLARED scorer that returned a malformed value never rendered a verdict. */
+/** A declared scorer that returned a malformed value never rendered a verdict. */
 export const DECLARED_SCORER_MALFORMED =
   "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
 
-/** A DECLARED scorer that threw never rendered a verdict. `detail` is already sanitized. */
+/** A declared scorer that threw never rendered a verdict. `detail` is already sanitized. */
 export function declaredScorerThrew(detail: string): string {
   return `Declared product scorer threw before returning a verdict (${detail}); a crashed declared gate is recorded as a fail, never a silent pass.`;
 }
@@ -147,7 +147,7 @@ export async function applyBrowserScorer(args: {
   warnings: string[];
   /** Present only when the scorer was CONFIG-DECLARED (#316); core-stamped onto the bundle as
    *  evidence of which out-of-tree module was loaded. Absent for library callers. Its presence also
-   *  makes a THROWING or MALFORMED scorer a failure — a declared gate that cannot render a pass is
+   *  makes a throwing or malformed scorer a failure: a declared gate that cannot render a pass is
    *  a fail, never a silent green. */
   scorerProvenance?: RunScorerProvenance;
 }): Promise<ScorerOutcome> {
@@ -156,13 +156,13 @@ export async function applyBrowserScorer(args: {
     return { failures: [] };
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
-  // still loaded and attempted). A VALID status:"fail" is a failure (library + declared, the
-  // pre-#316 (#165) path); a DECLARED scorer that THROWS or returns MALFORMED is one too (below).
+  // still loaded and attempted). A valid status:"fail" is a failure (library + declared, the
+  // pre-#316 (#165) path); a declared scorer that throws or returns a malformed value is one too (below).
   if (scorerProvenance) bundle.scorerProvenance = scorerProvenance;
 
   // The scorer sees a READ-ONLY view of the bundle: it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws in the scorer's strict-mode ESM and is caught below as
-  // a hook failure). The seam still stamps the REAL bundle.
+  // a hook failure). The seam still stamps the real bundle.
   const scoringContext = scorerContext({
     ...context,
     bundle: frozenBundleView(context.bundle),
@@ -261,7 +261,7 @@ export function adapterScoreFailureMessage(bundle: RunBundle): string | undefine
  * Deep-freeze a structured clone so a loaded scorer sees a READ-ONLY bundle: it cannot mutate
  * noSpend/cost/review in place to launder a verdict (which would defeat the costProbe-not-loadable
  * guarantee). A tamper attempt throws in the scorer's strict-mode ESM and is caught as a hook failure.
- * Legitimate read-only scoring is unaffected. The seam always stamps the REAL bundle, never this view.
+ * Legitimate read-only scoring is unaffected. The seam always stamps the real bundle, never this view.
  */
 export function frozenBundleView(bundle: RunBundle): RunBundle {
   const clone = structuredClone(bundle);
