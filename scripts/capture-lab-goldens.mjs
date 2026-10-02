@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Capture golden run bundles for the built-in labs — the faithfulness oracle for the
+// Capture golden run bundles for the built-in studies: the faithfulness oracle for the
 // labs-as-config refactor. Run on the pre-refactor commit to lock current behavior, and
 // again after the refactor: the new engine must reproduce these (see tests/lab-golden.test.ts).
 //
-// Goldens are stored RAW (with the pinned run-id); normalization (run-id + timestamps +
+// Goldens are stored raw (with the pinned run-id); normalization (run-id + timestamps +
 // durations) happens identically in the test on both sides, so the committed fixture stays
 // human-diffable.
 import { execFileSync } from "node:child_process";

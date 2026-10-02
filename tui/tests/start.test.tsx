@@ -82,7 +82,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
 }
 
 /**
- * Returns the surface AND the frame the keypress produced. `surface.last` is the frame from
+ * Returns the surface and the frame the keypress produced. `surface.last` is the frame from
  * construction, so reading it after pressing a key asserts against the previous screen.
  */
 async function openLab(options: TuiOptions, columns = 80) {
@@ -236,7 +236,7 @@ describe("starting a run", () => {
 
     expect(started).toHaveLength(1);
     expect(started[0]?.mode).toBe("dry-run");
-    // Started by the HANDLE that `humanish lab run` resolves, never by the declared id — those are
+    // Started by the handle that `humanish lab run` resolves, never by the declared id: those are
     // different strings whenever a manifest's filename differs from the id inside it.
     expect(started[0]?.lab).toBe("signup-flow");
   });
@@ -248,7 +248,7 @@ describe("starting a run", () => {
 
     const armed = await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
     // A person reads the prompt before pressing again. Confirming faster than a human can read is
-    // key auto-repeat, and the surface refuses it — see the auto-repeat test below.
+    // key auto-repeat, and the surface refuses it: see the auto-repeat test below.
     await new Promise((resolve) => setTimeout(resolve, 450));
     // Nothing has been spent yet, and the prompt repeats the cost rather than assuming the row
     // above was read.
@@ -270,7 +270,7 @@ describe("starting a run", () => {
     await surface.press(KEY.down, (frame) => frame.includes("❯ Start a live run"));
     await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
 
-    // Asserts what the frame CONTAINS, not only what it lacks: Ink writes blank control frames, and
+    // Asserts what the frame contains, not only what it lacks: Ink writes blank control frames, and
     // a bare negation matches those trivially.
     const cancelled = await surface.press(
       KEY.escape,
@@ -296,7 +296,7 @@ describe("starting a run", () => {
   });
 
   it("offers no way to start a lab that has no manifest here", async () => {
-    // Its runs are still readable evidence, but there is no file to run — so the action is absent
+    // Its runs are still readable evidence, but there is no file to run, so the action is absent
     // rather than present and failing.
     const { started, options } = harness({
       listLabs: async () => ({
@@ -322,7 +322,7 @@ describe("starting a run", () => {
 describe("what a lab may claim about a live run", () => {
   it("never quotes dry-run history beside a control that spends money", async () => {
     // The defect this pins, found on a real run: a lab whose only history is dry runs showed
-    // "0s · 1 run" next to Start a live run — which reads as "a live run is free and instant".
+    // "0s · 1 run" next to Start a live run, which reads as "a live run is free and instant".
     const dryOnly = [
       {
         runId: "dryrun-1",
@@ -387,7 +387,7 @@ describe("what a lab may claim about a live run", () => {
     const { surface, frame } = await openLab(options);
     surface.unmount();
 
-    // The live run's own figures, undiluted by the dry run beside it — a median over both would
+    // The live run's own figures, undiluted by the dry run beside it: a median over both would
     // report $0.60 and a minute, neither of which anything ever cost or took.
     const headline = frame.split("\n").find((line) => line.includes("median")) ?? "";
     expect(headline).toContain("~$1.20 median");
@@ -412,8 +412,8 @@ describe("what the surface says about the run it just started", () => {
 
   it("shows the run, instead of reporting it as no longer on disk", async () => {
     // The poll read the index into a local and navigated without publishing it, so the run screen
-    // looked the new run up in the PRE-LAUNCH snapshot and reported the run it had just read as
-    // missing — on every single start, and on a live run that is the frame right after committing
+    // looked the new run up in the pre-launch snapshot and reported the run it had just read as
+    // missing: on every single start, and on a live run that is the frame right after committing
     // real spend, which invites starting it again.
     let launched = false;
     const { options } = harness({
@@ -449,7 +449,7 @@ describe("what the surface says about the run it just started", () => {
 
   it("does not adopt a stale run that merely shares the recycled pid", async () => {
     // A pid is not an identity. Pids are recycled, and a finished run keeps its pid in status.json
-    // forever, so a week-old record can carry the pid the kernel just handed this child — and the
+    // forever, so a week-old record can carry the pid the kernel just handed this child, and the
     // surface would present that old failed run as the study just started.
     const stale = {
       runId: "cua-2026-08-12T09-00-00-000Z-deadbeef",
@@ -513,7 +513,7 @@ describe("what the surface says about the run it just started", () => {
 
   it("keeps the price on the live row when the keys are missing (labs/tui-self-study.yaml)", async () => {
     // A participant studying this screen reported it: "switching the TUI to live mode displayed no
-    // estimate or budget — only missing-key warnings". Whether a run is worth setting keys up FOR
+    // estimate or budget: only missing-key warnings". Whether a run is worth setting keys up for
     // is the decision being made at that moment, so the number has to survive the blocker.
     const { options } = harness({
       readLabSummary: async () => ({

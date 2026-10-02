@@ -1,4 +1,4 @@
-// Compiled CLI/default-loader regression for #708 and the deterministic part of #581.
+// The compiled CLI and default loader exit cleanly after a desktop startup failure, with verified evidence.
 // Run after build. No keys, provider allocation, model calls, or forced product exit.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

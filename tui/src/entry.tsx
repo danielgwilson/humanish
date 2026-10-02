@@ -1,4 +1,4 @@
-// The bundle's only export surface (#455). `humanish tui` imports exactly this.
+// The bundle's only export surface. `humanish tui` imports exactly this.
 
 import { render } from "ink";
 import React from "react";
@@ -10,9 +10,9 @@ import { App } from "./app.js";
 /**
  * A stdout that a non-UTF-8 terminal can read.
  *
- * ONE choke point instead of a fallback at every glyph. Ink composes frames from dozens of strings
+ * One choke point instead of a fallback at every glyph. Ink composes frames from dozens of strings
  * across every screen, and a surface where most glyphs degrade and three do not is worse than
- * either extreme — it looks broken in a way that reads as a bug in the tool. A participant at a
+ * either extreme: it looks broken in a way that reads as a bug in the tool. A participant at a
  * stock desktop is where this came from: they read `humanish ��� run realistic synthetic personas`
  * off the screen and reported it (labs/tui-self-study.yaml).
  *
@@ -55,17 +55,17 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number | 
       // only add a way for a stray write to corrupt the frame.
       patchConsole: false,
       exitOnCtrlC: true,
-      // The CLI has already refused unless BOTH streams are real TTYs, so by the time this runs an
+      // The CLI has already refused unless both streams are real TTYs, so by the time this runs an
       // interactive terminal is established fact. Ink would otherwise consult `is-in-ci` and drop to
-      // writing one frame at unmount — turning a human's session on a CI runner into a dead screen
-      // because of an environment variable that says nothing about whether THIS invocation has a
+      // writing one frame at unmount: turning a human's session on a CI runner into a dead screen
+      // because of an environment variable that says nothing about whether this invocation has a
       // terminal.
       interactive: true,
     },
   );
 
   if (options.exitAfterFirstFrame === true) {
-    // Smoke path: prove the surface mounts, renders real data, and tears down — without a human.
+    // Smoke path: prove the surface mounts, renders real data, and tears down, without a human.
     // The extra turn lets Ink's writer flush the committed frame before the tree goes away.
     await firstFrame;
     await new Promise((resolve) => setImmediate(resolve));

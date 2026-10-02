@@ -9,7 +9,7 @@ import { PALETTE } from "../palette.js";
  * Held back through rev 8 on the grounds that a surface needing a help screen has already failed.
  * That is a good principle and it was applied too literally: a person who cannot remember whether
  * Escape backs out or quits does not need the design fixed, they need one line of text. The legend
- * at the bottom of every screen still carries the keys that matter THERE; this carries all of them,
+ * at the bottom of every screen still carries the keys that matter there; this carries all of them,
  * including the ones a legend has no room to explain.
  */
 export function HelpScreen({

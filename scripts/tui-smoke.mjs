@@ -1,8 +1,8 @@
-// Load the BUILT TUI bundle and render one real frame (#455).
+// Load the built TUI bundle and render one real frame.
 //
 // Unit tests cover the CLI's refusals with a fake module; they cannot catch what actually breaks in
 // a bundled Ink app, which is everything that happens at load: a CommonJS dependency that needs a
-// real `require`, an optional peer left as a bare import, a WASM layout engine that did not get
+// real `require`, an optional peer left as a bare import, a wasm layout engine that did not get
 // inlined. Every one of those produces a bundle that builds cleanly, passes every unit test, and
 // crashes the first time a person runs `npx humanish tui`.
 //
@@ -83,10 +83,10 @@ try {
   const output = frames.join("");
   const expectations = [
     ["the product name", "humanish"],
-    // A bare temp directory is NOT a humanish project, and the surface has to say that rather than
-    // "no labs here" — which someone in the wrong directory cannot act on.
+    // A bare temp directory is not a humanish project, and the surface has to say that rather than
+    // "no labs here", which someone in the wrong directory cannot act on.
     ["the empty state", "not a humanish project"],
-    // The empty state now OFFERS setup instead of naming a command to go type elsewhere (#505).
+    // The empty state now offers setup instead of naming a command to go type elsewhere.
     ["the offered next step", "Set up humanish here"],
     ["the key hints", "q quit"],
   ];

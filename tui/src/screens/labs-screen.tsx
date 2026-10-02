@@ -18,7 +18,7 @@ export interface LabsScreenProps {
   /** Advances the spinner on live rows. */
   tick: number;
   /**
-   * runId -> participant label, for LIVE runs only. The index cannot carry this (it never opens a
+   * runId -> participant label, for live runs only. The index cannot carry this (it never opens a
    * bundle, which is the point of it), and a live lab that says "1 running" instead of who is in
    * there answers the less interesting half of the question. Live runs are few, so reading detail
    * for just those is affordable where reading it for the whole list would not be.
@@ -39,9 +39,9 @@ export interface LabsScreenProps {
 }
 
 /**
- * The home. Objects first — every lab in the project, whether or not it has ever run.
+ * The home. Objects first: every study in the project, whether or not it has ever run.
  *
- * A LAB SOMEONE IS WORKING IN SAYS WHO AND FOR HOW LONG, not what it is costing. That is the whole
+ * A study someone is working in says who and for how long, not what it is costing. That is the whole
  * reason the run board dissolved into this list: "is anything happening, and to whom" is answered
  * here, so the parallel-runs question needs no separate screen. Cost belongs one level in, on the
  * screen where you decide to spend it.
@@ -82,9 +82,9 @@ export function LabsScreen({
           <Text dimColor>A project is a humanish/ directory of studies and personas,</Text>
           <Text dimColor>kept beside the app they study.</Text>
         </Box>
-        {/* An ACTION, not an instruction to leave. The person reading this has just arrived, and
+        {/* An action, not an instruction to leave. The person reading this has just arrived, and
             telling them to cd elsewhere and type a command was a dead end at exactly the moment
-            they were most likely to give up (#505). It arms first: it writes into their directory
+            they were most likely to give up. It arms first: it writes into their directory
             and touches package.json, which is not something to do on one keystroke. */}
         <Box marginTop={1}>
           <Text {...color(PALETTE.accent)} bold>
@@ -138,7 +138,7 @@ export function LabsScreen({
       {window.end < rows.length ? (
         <Text dimColor>{`  ↓ ${rows.length - window.end} more`}</Text>
       ) : null}
-      {/* A global destination, and a peer rather than a lifecycle state — it is somewhere you go,
+      {/* A global destination, and a peer rather than a lifecycle state: it is somewhere you go,
           not something the app decides you are in. */}
       <Box marginTop={1}>
         <Text
@@ -157,7 +157,7 @@ export function LabsScreen({
           </Text>
         </Box>
       ) : null}
-      {/* ONE description line, at the foot, following the cursor — the same rule the all-runs
+      {/* One description line, at the foot, following the cursor: the same rule the all-runs
           screen uses for thinking. Twenty labs each carrying their own blurb is a wall nobody
           reads; the one you are pointing at is the one you are asking about. It sits last so it
           reads as a detail bar for the selection rather than as another list item. Added because
@@ -174,7 +174,7 @@ export function LabsScreen({
 
 /**
  * What the cursor is pointing at, in the manifest's own words. A lab that declares no description
- * says so plainly rather than borrowing its title back — an echo of the row above it would read
+ * says so plainly rather than borrowing its title back: an echo of the row above it would read
  * like an answer while adding nothing.
  */
 function describe(row: LabRow | undefined, peerSelected: boolean): string {
@@ -235,7 +235,7 @@ function LabRowView({
 
 /**
  * What a live lab says about itself: the participant, and how long they have been at it. A person
- * scanning this list wants to know who is in there — not a count, and not a running total.
+ * scanning this list wants to know who is in there: not a count, and not a running total.
  */
 function liveStatus(
   row: LabRow,
