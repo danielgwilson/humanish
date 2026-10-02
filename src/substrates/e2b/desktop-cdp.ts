@@ -28,7 +28,7 @@ export interface ChromeCdpEndpoint {
 }
 
 /**
- * Mobile emulation on later tabs (#623): the holder attaches to every page target Chrome opens
+ * Mobile emulation on later tabs: the holder attaches to every page target Chrome opens
  * after the launch page, so a tab the participant opens later should lay out at the phone width
  * too. The first observation on each new target reads that page's own report; a target that
  * reports the requested width is recorded through `onCovered`, and one that does not (or cannot be
@@ -49,15 +49,15 @@ export interface ChromeEmulationDrift {
 /**
  * The URL / title / page-text / scroll observer behind stopWhen and task criteria. One probe per
  * observation, run on the sandbox's python3 (see src/substrates/e2b/cdp-probe.ts for why not
- * node: #514).
+ * node).
  *
- * "active": follow the participant to whatever tab they are driving now — never pin the state
+ * "active": follow the participant to whatever tab they are driving now; never pin the state
  * observer to the launch tab (a verification link that opened in a new tab left a pinned observer
  * reading the old tab forever).
  *
  * `onUnavailable` fires once, on the first probe that could not read the page, with the reason.
  * The observer still degrades to `{}` for the loop; the callback is how a participant says out loud that
- * url/text criteria are not being measured, instead of letting the funnel report 0/N (#514).
+ * url/text criteria are not being measured, instead of letting the funnel report 0/N.
  */
 export function makeChromeBrowserStateObserver(
   desktop: E2BDesktopSandbox,
@@ -164,7 +164,7 @@ export const DEFAULT_MOBILE_USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
 /**
- * Apply mobile emulation (#221) to the participant's launch page and read back what the page reports.
+ * Apply mobile emulation to the participant's launch page and read back what the page reports.
  * Fails closed: a request that cannot be applied throws, because a desktop run labelled mobile is
  * the over-trust this feature exists to prevent. A read-back that cannot be taken is a warning
  * (the emulation was applied; only the proof is missing).
@@ -232,7 +232,7 @@ export async function applyMobileEmulation(
   }
   const applied = announced;
   // Viewport/touch read-back proves context settings, not gesture equivalence. Two hosted
-  // replicas and a native-X conversion-toggle control reproduced reset click counts (#676).
+  // replicas and a native-X conversion-toggle control reproduced reset click counts.
   const warnings: string[] = request.touch
     ? [
         "Mobile emulation uses desktop pointer-to-touch conversion, which can differ for repeated taps. Confirm gesture failures with direct or native touch input before attributing them to the app.",

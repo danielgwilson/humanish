@@ -1,4 +1,4 @@
-// The inbox surface for captured mail (#297): the pages a computer-use participant opens to read a
+// The inbox surface for captured mail: the pages a computer-use participant opens to read a
 // captured verification email and follow its link. The pages are minimal semantic HTML (native
 // links and tables, black on white, large targets), because vision participants read a simple
 // inbox more reliably than a webmail client. The default view is the app's real captured email,
@@ -65,7 +65,7 @@ function replaceOriginBoundary(text: string, from: string, to: string): string {
 }
 
 /** Rewrite a URL's origin per the map (origins are exact strings the harness minted). Leaves
- *  non-matching URLs — including sibling origins sharing a prefix — untouched. */
+ *  non-matching URLs (including sibling origins sharing a prefix) untouched. */
 export function rewriteOrigin(url: string, originMap: OriginMap = []): string {
   let out = url;
   for (const [from, to] of originMap) out = replaceOriginBoundary(out, from, to);
@@ -93,7 +93,7 @@ function safePort(url: string | undefined): string | undefined {
 /**
  * Build the [internalOrigin → reachableOrigin] rewrite rows for a run. The app-under-test bakes its own
  * origin into the verify links it emails (usually its loopback serve origin); the persona reaches the
- * app at a possibly-different origin — the same loopback on the CUA route (identity, a no-op), the
+ * app at a possibly-different origin: the same loopback on the CUA route (identity, a no-op), the
  * harness-minted getHost URL on the shared-world route (where the rewrite is required). Emits the serve
  * origin plus its loopback aliases at the serve port (127.0.0.1 / localhost / 0.0.0.0) so an app that
  * stamps `localhost` still rewrites, and (because the harness cannot infer an absolute public base URL
@@ -272,7 +272,7 @@ const PAGE_CSS =
   ".inbox-list tr{padding:12px 0;border-bottom:1px solid #ddd}.inbox-list td{padding:3px 0;border:0}" +
   ".inbox-list td:first-child a{display:block;min-height:32px;font-weight:600}.inbox-list td[data-label]::before{content:attr(data-label) ': ';font-size:13px;color:#666}}";
 
-/** The surface CSP — the browser-enforced, load-bearing protection against the app-authored email running
+/** The surface CSP: the browser-enforced, load-bearing protection against the app-authored email running
  *  script or hijacking navigation on the surface page. `script-src 'none'` blocks inline handlers,
  *  `javascript:` URLs, and any injected <script>; `object-src`/`frame-src 'none'` block plugins/frames;
  *  `base-uri 'none'` blocks <base> reroot. Images/styles stay permissive so the real email still renders.
@@ -485,7 +485,7 @@ function inboxListJson(
  * Build every served file for the inbox surface from the normalized messages. The host writes each to
  * `<servedDir>/<path>`; the in-sandbox catch serves `<servedDir>/<pathname>`, falling back to
  * `<pathname>/index` (so a URL like `/inbox` maps to the `inbox/index` file while `/inbox/{id}` stays a
- * directory) — standard web-server index semantics that avoid a file-vs-directory path collision. The
+ * directory), standard web-server index semantics that avoid a file-vs-directory path collision. The
  * URLs the persona actually sees stay clean (`/inbox`, `/inbox/{id}`, `/inbox/{id}/synth`). Content type
  * is inferred from the `/api/` prefix. Message ids are `comms-NNNN` (never `index`/`latest`), so leaf
  * filenames never collide with an id.

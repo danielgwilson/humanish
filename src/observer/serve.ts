@@ -337,7 +337,7 @@ export interface ServeLibraryOptions {
   expose: boolean;
   // Edge auth (ngrok --oauth or an operator --public-url) is decided by the CLI's validateExposure
   // and passed in: it drives the mode label (exposed vs share-safe-open). humanish carries no
-  // in-process auth — the gate lives at the tunnel/proxy edge.
+  // in-process auth; the gate lives at the tunnel/proxy edge.
   edgeAuthed: boolean;
   publicOrigin?: string;
   entryRunId?: string;
@@ -472,7 +472,7 @@ export async function serveObserverLibrary(
     port = await listenOnLoopback(server, options.port);
   } catch (error) {
     if (error instanceof PortInUseError) {
-      // The most expected failure a serve command has, named instead of HUMANISH_UNEXPECTED (#484).
+      // The most expected failure a serve command has, named instead of HUMANISH_UNEXPECTED.
       return { ok: false, error: { code: "HUMANISH_SERVE_PORT_IN_USE", message: error.message } };
     }
     throw error;

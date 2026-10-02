@@ -65,7 +65,7 @@ function quantizedGrid(data: Buffer, srcW: number, srcH: number): number[] {
     }
   }
   // Stretch this frame's own range across the full scale before quantizing. Without this a light UI
-  // occupies a sliver at the top of 0..255 and quantizes to a near-constant (#383).
+  // occupies a sliver at the top of 0..255 and quantizes to a near-constant.
   //
   // The endpoints are trimmed rather than the raw min/max: a handful of extreme cells must not be
   // able to rescale the whole frame, or a blinking text cursor would rewrite every cell and read as

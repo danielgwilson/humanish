@@ -12,7 +12,7 @@
 // the real step executor at $0 with zero browser dependence. playwright-core stays the lazy
 // production default behind launchPlaywrightChromium.
 //
-// Spend posture: nothing in this module can spend provider money — no provider client is
+// Spend posture: nothing in this module can spend provider money: no provider client is
 // importable from this code path. tokenUsage on every projected trace records zeros as an
 // affirmative $0 declaration that is true by mechanism.
 
@@ -135,11 +135,11 @@ class ScriptedJourneyTimeoutError extends Error {
  *   affords this exact journey", nothing about user behavior);
  * - a step's expectation evaluated false, a step target missing/unactionable, or an
  *   unreachable subject -> failed / step_failed (the harness executed faithfully; the subject
- *   did not satisfy the script — distinct from actor_error/harness_error);
+ *   did not satisfy the script, distinct from actor_error/harness_error);
  * - journey exceeded timeoutMs -> timed_out / timed_out;
  * - browser launch/import crash -> failed / harness_error;
  * - gave_up / blocked_approval are unreachable from this actor (no persona patience, no
- *   approvals exist on a deterministic replay) — asserted in tests.
+ *   approvals exist on a deterministic replay), asserted in tests.
  */
 export async function runScriptedBrowserSession(
   options: ScriptedBrowserSessionOptions,
@@ -588,7 +588,7 @@ async function projectScriptedActorTrace(args: {
     status: args.status,
     completionReason: args.completionReason,
     reason: redactText(args.reason),
-    // No session/model ids exist on a deterministic replay — absence declared by omission.
+    // No session/model ids exist on a deterministic replay; absence declared by omission.
     ids: {},
     counts: {
       steps: args.journey.steps.length,

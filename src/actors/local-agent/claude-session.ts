@@ -1,6 +1,6 @@
 // One Claude Code process as the computer-use brain, instead of a fresh `claude -p` per turn.
 //
-// Why (#520): `actors[].localAgent: codex` already runs through a persistent app-server thread,
+// Why: `actors[].localAgent: codex` already runs through a persistent app-server thread,
 // so the participant remembers what it tried. `claude` spawned `claude -p` per turn, so every
 // turn started cold. Measured on the same lab with the same credentials (n=1 each): one-shot,
 // 188 actions over 90 turns and never finished; a thread that remembers, 21 actions over 8 turns
@@ -305,7 +305,7 @@ export async function startClaudeSession(
         "stream-json",
         // Required for stream-json output in -p mode; it is what makes the per-turn `result` visible.
         "--verbose",
-        // Read is the only tool it needs — the screenshot — and the only one it gets.
+        // Read is the only tool it needs (the screenshot) and the only one it gets.
         "--allowedTools",
         "Read",
         ...(options.model === undefined ? [] : ["--model", options.model]),
@@ -431,7 +431,7 @@ export function turnFromResult(result: JsonObject): CuaTurn {
     ...(typeof parsed.message === "string" && parsed.message.length > 0
       ? { message: parsed.message }
       : {}),
-    // Claude Code reports its token counts per turn (#531). They are recorded as counts; the
+    // Claude Code reports its token counts per turn. They are recorded as counts; the
     // run's cost line stays "not priced", because a subscription is not a rate card.
     ...(input === undefined && output === undefined
       ? {}

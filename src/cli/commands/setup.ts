@@ -113,7 +113,7 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
 }
 
 /**
- * `humanish telemetry status|enable|disable` — the opt-out the convention requires, plus a `status`
+ * `humanish telemetry status|enable|disable`: the opt-out the convention requires, plus a `status`
  * that prints the exact document that would be sent. "You can read what we collect" is what makes
  * default-on honest rather than merely lawful.
  */
@@ -399,7 +399,7 @@ function formatInitHuman(result: InitResult): string {
   if (result.mode === "needs-confirmation") {
     lines.push("", "Run with --dry-run --json to inspect or --yes to apply.");
   } else if (result.ok && result.nextSteps !== undefined) {
-    // Twenty files and no next step is where the funnel died (#505). Increasingly the reader here
+    // Twenty files and no next step is where the funnel died. Increasingly the reader here
     // is a coding agent doing setup for someone, and an agent does what stdout tells it to.
     lines.push(...result.nextSteps);
   }

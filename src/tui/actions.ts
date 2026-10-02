@@ -1,9 +1,9 @@
 import { requestAutomaticAnalysisCancellation } from "../analysis/automatic.js";
-// The two things a run card can do (#455 rev 8).
+// The two things a run card can do.
 //
 // The mock's run screen is an outcome card with actions, not a field list, and an action that does
-// nothing is worse than no action — so this ships the two that are genuinely implementable today
-// and nothing else. `Share…` waits for the export contract (#471) rather than appearing as a
+// nothing is worse than no action, so this ships the two that are genuinely implementable today
+// and nothing else. `Share…` waits for the export contract rather than appearing as a
 // control that fails.
 
 import { readFile } from "node:fs/promises";
@@ -232,7 +232,7 @@ export async function stopRun(
   }
 
   // Is it actually still there? A pid whose process is already gone means the run died without
-  // finalizing — nothing to stop, and the record will read as interrupted on its own.
+  // finalizing: nothing to stop, and the record will read as interrupted on its own.
   try {
     process.kill(pid, 0);
   } catch {

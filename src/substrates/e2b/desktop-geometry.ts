@@ -441,7 +441,7 @@ export async function captureDesktopBrowserGeometry(args: {
       : undefined;
   const browserWindow = physicalWindow ?? chromeGeometry?.browserWindow;
   const viewport = chromeGeometry?.viewport;
-  // The fill check reads the X window when it was measured: under mobile emulation (#221) the
+  // The fill check reads the X window when it was measured: under mobile emulation the
   // page's window.outerWidth reports the emulated screen (414), which is not a fill failure.
   const fillBounds = physicalWindow;
   if (!browserWindow) {
@@ -462,7 +462,7 @@ export async function captureDesktopBrowserGeometry(args: {
   }
   if (!viewport) {
     // Name the cause, not only the symptom: the same dead DevTools channel that loses the viewport
-    // loses every url/text observation, and a reader of the bundle should learn that here (#514).
+    // loses every url/text observation, and a reader of the bundle should learn that here.
     const cause =
       cdpUnavailable === undefined ? "" : ` DevTools probe: ${redactText(cdpUnavailable)}.`;
     warnings.push(

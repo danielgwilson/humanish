@@ -70,7 +70,7 @@ export interface ObserverServeOptions {
   /** Restrict history and evidence routes to the selected run. Exposed viewers always do this. */
   scope?: "run" | "library";
   // Exposed mode: when true, the live server enforces the same DNS-rebinding defense as the
-  // run-library surface — a strict Host allowlist (loopback names seeded at bind, extended by
+  // run-library surface: a strict Host allowlist (loopback names seeded at bind, extended by
   // addPublicOrigin, 421 otherwise) plus the shared security headers on every response. Loopback
   // default (false) keeps local Host handling permissive. Frame-denial headers always apply.
   exposed?: boolean;
@@ -473,10 +473,10 @@ export async function serveObserver(
   };
 }
 
-// ---- The Observer (#426): a prebuilt self-contained single-file app (observer/ workspace) ----
+// ---- The Observer: a prebuilt self-contained single-file app (observer/ workspace) ----
 // carrying one JSON slot; rendering a run = injecting its snapshot (observer/scripts/inject.ts
-// is the reference implementation this mirrors). The seam lives here because every surface —
-// observe, watch, serve, and the lab call sites — funnels through renderObserverHtml. The
+// is the reference implementation this mirrors). The seam lives here because every surface
+// (observe, watch, serve, and the lab call sites) funnels through renderObserverHtml. The
 // legacy string-concat renderer was deleted at cutover (2026-08-16); rollback is a version pin.
 
 /** The host facts that decide whether a desktop browser can open a target. */

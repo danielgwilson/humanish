@@ -1,6 +1,6 @@
-// `humanish comms catch` (#328): run the email catch on the operator's own host.
+// `humanish comms catch`: run the email catch on the operator's own host.
 //
-// Why this exists. The in-sandbox catch only works when humanish provisions the subject itself —
+// Why this exists. The in-sandbox catch only works when humanish provisions the subject itself:
 // it clones the app into a sandbox, injects the email-API base URL at boot, and hosts the catch
 // alongside it. An adopter whose study runs against their own deployed environment (an app-url or
 // operator-provisioned plane) hands humanish a URL instead, so humanish never boots the app and
@@ -13,7 +13,7 @@
 // drain contract cannot drift between the two planes. Point the app's email-API base URL at this
 // server and point the lab's `catchBaseUrl` at it too.
 //
-// Runtime: the catch is a python3 stdlib server with no dependencies (that was the 0.29.0 lesson —
+// Runtime: the catch is a python3 stdlib server with no dependencies (that was the 0.29.0 lesson:
 // a co-located catcher must use a runtime the environment guarantees). This command writes the
 // same script and runs it in the foreground until interrupted.
 import { spawn } from "node:child_process";
@@ -46,9 +46,9 @@ export interface CommsCatchHostOptions {
   inboxPort?: number;
   /** Optional loopback SMTP listener sharing the HTTP capture and inbox pipeline. */
   smtpPort?: number;
-  /** Restrict the rendered inbox to these addresses. Omit to render whatever the app actually mailed
-   *  — a standalone catch has no lab roster to read recipients from, and an operator who forgets to
-   *  name one should not get a healthy catch that renders an empty inbox forever (#380). */
+  /** Restrict the rendered inbox to these addresses. Omit to render whatever the app actually mailed;
+   *  a standalone catch has no lab roster to read recipients from, and an operator who forgets to
+   *  name one should not get a healthy catch that renders an empty inbox forever. */
   recipients?: string[];
   /** Inbox re-render cadence in ms (test seam). */
   renderIntervalMs?: number;
@@ -60,10 +60,10 @@ const DEFAULT_RENDER_INTERVAL_MS = 3_000;
 /**
  * Render the persona-facing inbox surface from the catch's own deliveries file into `surfaceDir`.
  *
- * This is the half that was missing on an adopter-hosted plane (#380). The catch serves /inbox and
+ * This is the half that was missing on an adopter-hosted plane. The catch serves /inbox and
  * /api/inbox as static files; in-sandbox, humanish-as-host renders those files on a cadence. On a
  * plane humanish does not provision there is no such host, so nothing wrote them and every persona
- * that reached /inbox got `message not found` against a catch whose /health was green — the funnel
+ * that reached /inbox got `message not found` against a catch whose /health was green, so the funnel
  * dead-ended at a technically-healthy service.
  *
  * Rebuilding from scratch each pass is deliberate and matches refreshInboxSurface: a fresh channel per
@@ -79,7 +79,7 @@ export async function renderInboxSurfaceLocally(args: {
   try {
     text = await readFile(args.deliveriesPath, "utf8");
   } catch {
-    text = ""; // no mail captured yet — still render, so /inbox answers "No messages yet."
+    text = ""; // no mail captured yet; still render, so /inbox answers "No messages yet."
   }
   const sends = parseDeliveriesNdjson(text);
   const addresses =
@@ -148,7 +148,7 @@ export async function runCommsCatchHost(
   await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
 
   // Render the empty inbox before the server is announced, so /inbox resolves to the "No messages
-  // yet." page from the first request instead of a bare `message not found` (#380) — a persona reads
+  // yet." page from the first request instead of a bare `message not found`, because a persona reads
   // that 404 as a broken product and reports a blocker that is really just an empty mailbox.
   await renderInboxSurfaceLocally({
     deliveriesPath,

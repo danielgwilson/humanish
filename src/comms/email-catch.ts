@@ -1,6 +1,6 @@
-// A VENDOR-NEUTRAL loopback catch server for email-send APIs (#297). An app hardwired to a hosted
+// A VENDOR-NEUTRAL loopback catch server for email-send APIs. An app hardwired to a hosted
 // email provider is redirected into the fake bus with one env var and no code change: point the app's
-// API base URL at this server. The catch does not depend on, or name itself after, any one vendor —
+// API base URL at this server. The catch does not depend on, or name itself after, any one vendor:
 // it normalizes each provider's distinct wire shape (Resend's flat body, SendGrid's nested
 // personalizations, Postmark's TitleCase, a custom app's own JSON) to one shape via pluggable
 // profiles, and routes the result into a CommsChannel. Resend-compatible and SendGrid-compatible out
@@ -29,7 +29,7 @@ interface NormalizedSend {
  * delivery; a profile only knows how one provider (or a custom app) shapes its send request.
  */
 export interface EmailSendProfile {
-  /** Descriptive name (e.g. "generic", "sendgrid"). Not a dependency — just a label. */
+  /** Descriptive name (e.g. "generic", "sendgrid"). Not a dependency, just a label. */
   name: string;
   /** Request paths (method POST) this profile accepts a send on. */
   sendPaths: string[];
@@ -249,7 +249,7 @@ export async function startEmailCatchServer(
     const sends = profile.parse(path, parsed);
     if (sends.length === 0) {
       // A well-formed request that names no deliverable recipient (empty body, or a shape the profile
-      // could not resolve to a send) — return a bad-request rather than a fabricated success id.
+      // could not resolve to a send): return a bad-request rather than a fabricated success id.
       respondJson(res, 422, { error: "no deliverable message in request" });
       return;
     }

@@ -1,14 +1,14 @@
-// Starting a run from the terminal surface (#455).
+// Starting a run from the terminal surface.
 //
 // The run must outlive the surface. A study can take minutes and costs real money, so a run
 // started from the TUI cannot be a child of the TUI's event loop: closing the surface, or losing
 // the SSH session it is running over, must not kill it. So this spawns the CLI the same way a
-// person would type it — detached, in its own process group, with its output going to a file
+// person would type it: detached, in its own process group, with its output going to a file
 // rather than to a terminal that may be about to disappear.
 //
 // The surface then learns what happened the same way any other reader does: from `status.json`.
 // It does not hold a handle to the run, parse its stdout, or track it in memory. That is what
-// makes the surface restartable — quit the TUI mid-run, reopen it, and the run is still there,
+// makes the surface restartable: quit the TUI mid-run, reopen it, and the run is still there,
 // because the filesystem was always the source of truth rather than a process handle.
 
 import { spawn, type SpawnOptions } from "node:child_process";
@@ -22,13 +22,13 @@ import { prepareManagedHumanishOutputDirectory } from "../run/contained-output.j
 
 /**
  * A lab handle is the manifest filename, which is what `humanish lab run` resolves. Restricted to
- * characters a manifest name can actually contain, and — the part that matters — never allowed to
+ * characters a manifest name can actually contain, and (the part that matters) never allowed to
  * begin with `-`, because argv is positional: a lab called `--json` would otherwise be handed to
  * the CLI as a flag. There is no shell involved, so this is the whole injection surface.
  *
  * A leading underscore is allowed: `_wip.yaml` is an ordinary way to name a work-in-progress
  * manifest, `humanish lab run _wip` resolves it, and refusing it here would leave the surface
- * listing a lab it will not start. A leading dot stays out — that names a hidden file, not a lab.
+ * listing a lab it will not start. A leading dot stays out: that names a hidden file, not a lab.
  */
 const SAFE_LAB_HANDLE = /^[A-Za-z0-9_][A-Za-z0-9._:-]*$/;
 
@@ -120,8 +120,8 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     const logDir = await prepareManagedHumanishOutputDirectory(cwd, "launches");
     const stamp = launchedAt.replace(/[:.]/g, "-");
     logPath = path.join(logDir.physicalPath, `${stamp}-${options.lab}.log`);
-    // O_NOFOLLOW so a symlink planted at this path cannot redirect a run's output — which may carry
-    // provider error text — outside the project, and cannot defeat the 0600 mode by pointing at a
+    // O_NOFOLLOW so a symlink planted at this path cannot redirect a run's output (which may carry
+    // provider error text) outside the project, and cannot defeat the 0600 mode by pointing at a
     // file that already exists with looser permissions. O_CREAT|O_APPEND keeps ordinary reuse
     // working; only a symlink is refused (ELOOP).
     handle = await open(
@@ -169,7 +169,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     const child = spawnFn(process.execPath, args, spawnOptions);
     // A spawn failure is delivered asynchronously as an 'error' event (EAGAIN, EMFILE, ENOMEM, a
     // vanished node binary). An 'error' event with no listener is re-thrown by EventEmitter as an
-    // uncaught exception — which would tear down the whole surface, the one thing this module
+    // uncaught exception, which would tear down the whole surface, the one thing this module
     // promises never to do. The run is already unref'd and unobserved, so recording it is all that
     // is available; the operator learns about it from the launch log and the missing record.
     child.on("error", () => {
@@ -203,7 +203,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
   }
 }
 
-/** Read the tail of a launch log — the only account of a run that died before writing evidence. */
+/** Read the tail of a launch log: the only account of a run that died before writing evidence. */
 export async function readLaunchLogTail(logPath: string, maxBytes = 4_000): Promise<string> {
   try {
     const handle = await open(logPath, "r");

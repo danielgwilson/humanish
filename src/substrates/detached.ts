@@ -1,7 +1,7 @@
 // Detached process management over a Shell, the primitive behind serving a subject app in the
 // sandbox. A foreground command hits its deadline on long-running work, so long work runs detached:
 //
-// - Scripts are written via `writeFile`, never heredocs — which eliminates the
+// - Scripts are written via `writeFile`, never heredocs, which eliminates the
 //   sentinel-collision bug class (a command line that equals the heredoc terminator) by
 //   construction.
 // - Bounded steps (install/build) run detached with an ATOMICALLY-written status file
@@ -40,7 +40,7 @@ export function detachedTimersOf(options: DetachedTimers): DetachedTimers {
 export interface DetachedStepOptions extends DetachedTimers {
   /** Short [a-z0-9-] label; names the script/status/log files under /tmp. */
   name: string;
-  /** The shell command to run (the lab author's own command — package.json-script trust). */
+  /** The shell command to run (the lab author's own command: package.json-script trust). */
   command: string;
   cwd?: string;
   /** Wall-clock budget for the step. */
@@ -103,7 +103,7 @@ async function writeAndLaunch(
   throwOnExit(await shell.start(`bash ${shellQuote(scriptPath)}`, { requestTimeoutMs }));
 }
 
-/** Read the capped log tail for a step (raw — caller redacts). */
+/** Read the capped log tail for a step (raw; caller redacts). */
 export async function readDetachedLog(
   shell: Shell,
   name: string,

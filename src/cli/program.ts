@@ -58,7 +58,7 @@ interface UnexpectedErrorEnvelope {
   schema: typeof CLI_RESPONSE_SCHEMA;
   ok: false;
   error: {
-    /** HUMANISH_PORT_IN_USE (#484): a bind failed because the port is held; every command that
+    /** HUMANISH_PORT_IN_USE: a bind failed because the port is held; every command that
      *  opens a loopback server (watch, observe, run --open, serve) reports it under one code. */
     code: "HUMANISH_UNEXPECTED" | "HUMANISH_PORT_IN_USE";
     message: string;
@@ -150,7 +150,7 @@ async function recordCommandTelemetry(
 
 /**
  * HUMANISH_DEBUG_HANDLES=1: after a command's handler settles, name what is still keeping the
- * process alive (#581). A live terminal run wrote its result 64 s in and the CLI stayed up for
+ * process alive. A live terminal run wrote its result 64 s in and the CLI stayed up for
  * sixteen more minutes; nothing in the bundle could say what held it, and an in-process probe of
  * the run found nothing of ours. This is the one line that answers it next time: the resource
  * types Node reports, once, to stderr, after one macrotask so settled work has cleared.
@@ -171,7 +171,7 @@ function reportActiveHandles(command: Command, io: CliIo): void {
   }).unref?.();
 }
 
-/** `lab run`, not `run`, so the two are distinguishable — and nothing else from the invocation. */
+/** `lab run`, not `run`, so the two are distinguishable, and nothing else from the invocation. */
 function commandPath(command: Command): string {
   const parts: string[] = [];
   let current: Command | null = command;
@@ -205,7 +205,7 @@ class HumanishCommand extends Command {
       // The notice is awaited; the send is not. They have opposite requirements: disclosure must
       // never be lost (a silent default-on collector is indefensible), and a metric must never
       // make anyone wait. The first version put both in the fire-and-forget path, and the notice
-      // lost the race with process exit — a real participant ran this build and never saw it.
+      // lost the race with process exit: a real participant ran this build and never saw it.
       const noticed = announceTelemetryOnce(this, cliIo);
       const finish = (ok: boolean): void => {
         void recordCommandTelemetry(this, ok, Date.now() - startedAt, lastExitCode);
@@ -243,14 +243,14 @@ class HumanishCommand extends Command {
 function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown): void {
   const message = redactText(error instanceof Error ? error.message : String(error));
   // A taken port is the most expected thing a serving command meets; it gets its own code rather
-  // than the catch-all's (#484). The message already names the port and whose it is.
+  // than the catch-all's. The message already names the port and whose it is.
   const code: UnexpectedErrorEnvelope["error"]["code"] =
     error instanceof PortInUseError ? "HUMANISH_PORT_IN_USE" : "HUMANISH_UNEXPECTED";
 
   if (wantsJson(command)) {
     if (invocationEnvelopeAlreadyWritten(command)) {
       // Some result already went to stdout for this invocation before the
-      // failure landed -- e.g. `codex app-server --keep-open --json` writes its
+      // failure landed, e.g. `codex app-server --keep-open --json` writes its
       // "running" envelope via writeResult, then a later `await` can still
       // reject (src/actors/codex/app-server-ui.ts's persistState() write can fail on
       // either branch of that command's completion handling). Appending a
@@ -298,7 +298,7 @@ function commandsDeclaring(root: Command, flag: string): string[] {
 /**
  * Enrich commander's flag rejections with where the flag actually lives. A bare "unknown option"
  * is accurate and unhelpful in the same way `no labs here yet` was: it reports a fact about this
- * command and says nothing the reader can act on. Silence is preserved when no sibling has it —
+ * command and says nothing the reader can act on. Silence is preserved when no sibling has it:
  * inventing a suggestion would be worse than none.
  */
 export function withSiblingFlagHint(text: string, root: Command): string {
@@ -342,7 +342,7 @@ export function createProgram(
   };
   const program = new HumanishCommand(undefined, cliIo);
 
-  // Bare `humanish` orients instead of printing sixteen subcommands (#367). --help is untouched;
+  // Bare `humanish` orients instead of printing sixteen subcommands. --help is untouched;
   // this is only what happens when no command was chosen at all.
   program.action(async (options: { json?: boolean }) => {
     const state = await readOrientation(".");
@@ -366,8 +366,8 @@ export function createProgram(
       // A rejected flag should name the command that would have taken it. Found by a real
       // first-contact study (labs/first-contact.yaml): a participant reached for
       // `humanish run --no-open` by analogy with `lab run`, got a bare "unknown option", and
-      // filed it as a documentation mismatch. The flag is genuinely absent — `run` opens
-      // nothing — but "unknown" says that badly, because the reader's actual question is
+      // filed it as a documentation mismatch. The flag is genuinely absent (`run` opens
+      // nothing), but "unknown" says that badly, because the reader's actual question is
       // "then where does it live?".
       outputError: (text, write) => write(withSiblingFlagHint(text, program)),
     })

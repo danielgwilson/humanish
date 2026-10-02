@@ -111,7 +111,7 @@ const SYNTHETIC_CAMERA_COMMAND = `mkdir -p ${SANDBOX_MEDIA_DIR} && ffmpeg -y -lo
 
 /**
  * Put the declared camera feed in the sandbox and return the Chromium flags that present it as a
- * capture device (#509). Fails closed: a feed that cannot be produced (no ffmpeg on the image, an
+ * capture device. Fails closed: a feed that cannot be produced (no ffmpeg on the image, an
  * unreadable host file) is named before the browser launches, because a participant told it has
  * a camera and finds none reports the instrument's gap as the product's.
  */

@@ -33,8 +33,8 @@ export interface ObserverRuntimeStreamUrl {
   streamId: string;
   url: string;
   /** Set when the participant's sandbox is gone (finished or torn down). An ended stream's live URL is a
-   *  dead noVNC page — the overlay stops injecting it so the tile falls back to the recorded
-   *  evidence (keyframe replay/screenshot) instead of rendering "sandbox not found" (#357). */
+   *  dead noVNC page; the overlay stops injecting it so the tile falls back to the recorded
+   *  evidence (keyframe replay/screenshot) instead of rendering "sandbox not found". */
   ended?: boolean;
 }
 
@@ -245,7 +245,7 @@ async function withLocalRunStatus(
   }
 }
 
-/** internal: exported for the #357 lifecycle tests. */
+/** internal: exported for the stream lifecycle tests. */
 export function withRuntimeStreamUrls(
   data: ObserverData,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[],

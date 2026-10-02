@@ -134,9 +134,9 @@ export interface E2BDesktopSandbox {
   /** Open a file or URL with the desktop's default application (present on @e2b/desktop >= 1.x). */
   open?(fileOrUrl: string): Promise<void>;
   /**
-   * Map an in-sandbox port to a reachable host URL — `https://<port>-<sandboxId>.e2b.app`,
+   * Map an in-sandbox port to a reachable host URL, `https://<port>-<sandboxId>.e2b.app`,
    * tokenless (no authKey, unlike `stream.getUrl`). The base `e2b` SDK (v2.27.0) implements this;
-   * the wrapper just exposes it. Used by the concurrent shared-world topology (#164 phase 2) to
+   * the wrapper just exposes it. Used by the concurrent shared-world topology to
    * expose the one subject service plane to N actor sandboxes. Optional: older SDKs may lack it, so
    * the concurrent backend fails closed when it is absent rather than calling a missing method.
    */
@@ -222,7 +222,7 @@ export class E2BDesktopStartupError extends Error {
 }
 
 /**
- * Preserve ownership before the desktop SDK starts Xvfb/XFCE (#581). Its public generic create
+ * Preserve ownership before the desktop SDK starts Xvfb/XFCE. Its public generic create
  * constructs `new this(...)` through the base SDK, then awaits desktop startup. Newer SDKs
  * attempt their own kill before rejecting create; older SDKs leave cleanup to the caller.
  * Both paths share one bounded cleanup result so an internal kill cannot delay our deadline

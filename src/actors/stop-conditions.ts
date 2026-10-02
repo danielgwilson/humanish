@@ -20,7 +20,7 @@ export interface StopWhen {
 }
 
 /**
- * A declared observation window (#510): once `when` matches (or at the start, when `when` is
+ * A declared observation window: once `when` matches (or at the start, when `when` is
  * absent), the harness holds the page for `ms`, captures a frame every `everyMs`, takes no action
  * and requests no model turn, then hands control back to the participant (`then: continue`) or
  * ends the session (`then: stop`). Bounded by the session budget: a window that would outlast it
