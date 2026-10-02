@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.106.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.107.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only; no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -1205,7 +1205,9 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
 - `humanish.actor-estimated-cost.v1` (`ActorTrace.estimatedCost`): one participant's
   token-derived model cost, with `estimatedCostUsd` (or `null` + `reason`
   `no_rate_for_model`/`no_token_usage`/`account_billing_unknown`), `ratesAsOf`, `source`, `modelId`,
-  optional `placeholder`, and a `breakdown`.
+  optional `placeholder`, and a `breakdown`. `basis: aggregated_turns_base_rate` marks usage that
+  arrived as turn totals, such as Codex `turn.completed`, priced at the base tier because no single
+  request's size is known; the run summary's `model-tokens` line carries the same `basis`.
 - `humanish.run-cost-summary.v1` (`RunBundle.cost`): the sum of every participant's
   `model-tokens` lines PLUS `desktop-minutes` lines. New independent CUA runs
   price each owned desktop separately; concurrent shared-world runs add one line per participant
@@ -1219,9 +1221,10 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   unconfirmed allocation adds `desktop_lifetime_incomplete` as a second null line.
   Live terminal-product runs emit the same summary: one `desktop-minutes` line for
   the E2B shell sandbox (its acquired-to-cleanup span and `e2b.getInfo` size) and
-  one `model-tokens` line for the Codex participant, which stays `null` with
-  `no_rate_for_model` (model `codex`) or `no_token_usage`. The terminal trace
-  records that same null `estimatedCost`. The sandbox line is not part of the
+  one `model-tokens` line for the Codex participant, priced from the model the route passed
+  to Codex (`gpt-5.6-sol` unless the lab declares one) with `basis:
+aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bundles record
+  `no_rate_for_model` (model `codex`). The terminal trace records the same `estimatedCost`. The sandbox line is not part of the
   terminal cost ledger, whose lines are checked against `scenario.caps.maxUsd`.
 
 The summary follows the SAME null discipline as the terminal cost ledger above.
@@ -1356,9 +1359,9 @@ on, and any failed or stalled request stops the session; both stop with `harness
 `stopCause: usage_unreported`, and the label “provider usage unavailable.” It is not recorded as a
 crossed threshold. `singleDispatch: true` disables the OpenAI adapter's HTTP and
 policy-negotiation retries, so each turn makes at most one request.
-`runCuaActorSession({ requireReportedUsageForSpendCap: true })` sets `singleDispatch` itself and
-is deprecated in this minor. It also attaches `trace.estimatedCost` for an injected
-account-billed provider, which the composition does not. The loop cancels its owned request signal when a
+This composition replaces `runCuaActorSession`, which set `singleDispatch` itself and was removed
+in 0.107.0. Unlike `runCuaActorSession`, it attaches no `trace.estimatedCost` for an injected
+account-billed provider. The loop cancels its owned request signal when a
 request ends or its timeout wins; injected providers must honor cancellation
 and remain responsible for their own internal dispatch. Known usage remains in
 the trace alongside an explicit unknown. Reported zero input and output counts
@@ -1474,6 +1477,23 @@ bag field's job went:
 `cuaHooks.createDesktopLane` has no replacement: a run's desktop is E2B, the local VM or in
 process. The bags' other fields were test seams with no public replacement. `scorer` keeps the
 route-specific verdict rules in the next section.
+
+0.107.0 also removed these exports from `humanish`. A removed function no longer warns; an import
+of it fails.
+
+| Removed export                                                                                                                                 | Use                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runDryRun`, `RunOptions`, `RunResult`                                                                                                         | `runLab(config, options)` on a `this-repo` lab; its result is `LabResult<"preview">`                                                                                                                                                                                                                                                   |
+| `runCuaActorSession`                                                                                                                           | `runComputerUseLoop` with `createOpenAiResponsesProvider({ singleDispatch: true })`, `redaction: defaultRedactionHooks` and `now: Date.now`, which `runCuaActorSession` defaulted (the composition above). A caller that passed `desktop` and `executorOptions` writes its own `CuaExecutor`: the E2B desktop executor is not exported |
+| `CuaActorLabResult`, `ScriptedBrowserLabResult`, `TerminalProductLabResult`, `ConcurrentSharedWorldLabResult`                                  | `LabResult<"computer-use">`, `LabResult<"scripted">`, `LabResult<"terminal">`, `LabResult<"shared-world">`                                                                                                                                                                                                                             |
+| `SubjectPhaseEvent`                                                                                                                            | the `subject-phase` `LabEvent` through `onEvent`. Its `type` is `"subject-phase"`; the phase that was `type` is `name`, and `target` is `{ kind: "subject" }` or `{ kind: "participant", participant }`. `message`, `at`, `ok` and `durationMs` are unchanged                                                                          |
+| `LabOutcome.backend`, `LabBackend`                                                                                                             | `outcome.route`                                                                                                                                                                                                                                                                                                                        |
+| `selectLabBackend`, the `routesTo*` predicates, `actorResolvesToTerminal`                                                                      | `routeOf(config)`                                                                                                                                                                                                                                                                                                                      |
+| `resolveLabDryRun`                                                                                                                             | `RunLabOptions.dryRun`; without it, `scenario.mode` decides                                                                                                                                                                                                                                                                            |
+| `cuaLaneCount`                                                                                                                                 | the `plan` `LabEvent`, which lists every participant                                                                                                                                                                                                                                                                                   |
+| `resolveSeatUrl`                                                                                                                               | `parseLabConfig`, which refuses a participant entry that is not same-origin loopback; build the URL with `new URL(entry, serveUrl)`                                                                                                                                                                                                    |
+| `cuaLaneValidationReason`, `sharedWorldValidationReason`, `concurrentSharedWorldValidationReason`, `externalPublicSharedWorldValidationReason` | `parseLabConfig`, which returns the same reason                                                                                                                                                                                                                                                                                        |
+| `MAX_CUA_LANES`                                                                                                                                | none; `parseLabConfig` refuses a roster of more than 16 participants                                                                                                                                                                                                                                                                   |
 
 ## Product-Adapter Extension Seam
 

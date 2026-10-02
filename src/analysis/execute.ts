@@ -176,7 +176,7 @@ function inputError(input: AnalysisInput): string | null {
 }
 
 /**
- * Local admission ESTIMATE, not a provider-enforced billed-spend guarantee. No token-count API
+ * Local admission estimate, not a provider-enforced billed-spend guarantee. No token-count API
  * call, credential, or network access. One UTF-8 byte/token for all text/schema plus framing is
  * intentionally conservative. Each high-detail image is priced from its PNG size by the vision
  * guide's patch formula (see image-tokens.ts), or at the 3,000-token ceiling when its size or the

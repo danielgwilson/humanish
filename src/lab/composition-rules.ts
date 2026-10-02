@@ -67,9 +67,9 @@ function thisRepoValidationReason(config: LabConfig): string | null {
   return null;
 }
 
-// local-app route: an already-running LOCAL dev server driven IN-PROCESS via a custom
+// local-app route: an already-running local dev server driven in-process via a custom
 // CuaExecutor (no clone, no E2B desktop). Parse-validated fail-closed: a computer-use actor
-// only, execution.target local or absent (NEVER e2b-desktop — the whole point is to skip the
+// only, execution.target local or absent (never e2b-desktop, because the route exists to skip the
 // desktop), and no public-target policy (it is always loopback; the loopback shape was already
 // enforced in parseSubject). The actual "no inProcess executor supplied" case is inherently an
 // engine-time decision (the parser cannot know whether a library caller will pass one), so
@@ -96,7 +96,7 @@ function localAppValidationReason(config: LabConfig): string | null {
   return null;
 }
 
-// app-url routes: the actor type is a REAL dispatch key (registry-resolved). The actor LANE
+// app-url routes: the actor type is a real dispatch key (registry-resolved). The actor lane
 // picks the substrate: a scripted-browser actor runs locally against the declared loopback
 // app; a computer-use actor drives a hosted desktop browser. Fail closed on mis-configs.
 function appUrlValidationReason(config: LabConfig): string | null {
@@ -130,7 +130,7 @@ function appUrlValidationReason(config: LabConfig): string | null {
       if (!actorResolvesToComputerUse(type)) {
         return `actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
       }
-      // Multi-participant fan-out is CONSUMED on this route (`per-lane-worlds`; the shared cua
+      // Multi-participant fan-out is consumed on this route (`per-lane-worlds`; the shared cua
       // cross-validation below enforces `lanes`/`count` XOR rules, the 16 cap, and the
       // per-participant target gates, and the allowPublicTargets+N>1 rejection for ambiguous one-target
       // fan-out).
@@ -208,7 +208,7 @@ function scriptedBrowserValidationReason(config: LabConfig): string | null {
 }
 
 // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
-// clones AND serves the subject in-sandbox, then drives it. Scripted-browser actors were checked
+// clones and serves the subject in-sandbox, then drives it. Scripted-browser actors were checked
 // above.
 function cloneComputerUseValidationReason(config: LabConfig): string | null {
   if (
@@ -226,7 +226,7 @@ function cloneComputerUseValidationReason(config: LabConfig): string | null {
     if (!REPO_SLUG_PATTERN.test(repo)) {
       return `subject.repos[0] must be an owner/repo slug (got "${repo}").`;
     }
-    // Fan-out is CONSUMED here: N participants each clone the SAME single repo into their own
+    // Fan-out is consumed here: N participants each clone the same single repo into their own
     // E2B desktop (`per-lane-worlds`). The shared cua cross-validation below enforces the
     // `lanes`/`count` rules and the 16 cap; the single-repo rule above is unchanged.
   }
@@ -235,7 +235,7 @@ function cloneComputerUseValidationReason(config: LabConfig): string | null {
 
 // local-tree route: packs and uploads the operator's own working tree, then serves it exactly
 // like a computer-use clone subject. The scripted-browser route has no packed-working-tree
-// mode, so e2b-desktop + a computer-use actor are the ONLY combination this source supports.
+// mode, so e2b-desktop + a computer-use actor are the only combination this source supports.
 // `subject.serve` is already required at parse time (parseSubject); the repos/clone rejection
 // also already happened there (local-tree never carries git slugs).
 function localTreeValidationReason(config: LabConfig): string | null {
@@ -252,7 +252,7 @@ function localTreeValidationReason(config: LabConfig): string | null {
 
 // desktop-cli route: a computer-use participant studies a CLI/TUI the way a person does — at a
 // desktop, in a terminal window, by looking at it. The sibling of terminal-product, and the
-// distinction is the POPULATION, not the product: terminal-product sends an autonomous agent
+// distinction is the population: terminal-product sends an autonomous agent
 // through a pipe with stdin disabled, which is the honest way to study what an agent meets and
 // structurally cannot study an interactive surface. This route sends someone who can see it.
 //
@@ -283,7 +283,7 @@ function desktopCliValidationReason(config: LabConfig): string | null {
   return null;
 }
 
-// terminal-product route: a real autonomous agent studies a CLI/product from PUBLIC surfaces
+// terminal-product route: a real autonomous agent studies a CLI/product from public surfaces
 // inside an E2B shell. Fail-closed (invariant 6 — a field that cannot act on this route is an
 // honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
 // (absent defaults to e2b-terminal — the only honest target for an in-sandbox agent), one
@@ -301,7 +301,7 @@ function terminalValidationReason(config: LabConfig): string | null {
       return "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1.";
     }
   } else if (config.execution?.target === "e2b-terminal") {
-    // e2b-terminal is the terminal-product substrate ONLY. Any other source declaring it is a
+    // e2b-terminal is the terminal-product substrate only. Any other source declaring it is a
     // mis-config — reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
     return "`execution.target: e2b-terminal` requires `subject.source: terminal-product` with a registered terminal actor.";
   } else if (actorResolvesToTerminal(config.actors[0]?.type)) {

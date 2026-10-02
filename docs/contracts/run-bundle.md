@@ -267,12 +267,14 @@ A local scripted run (no model request, no hosted desktop) is such a run; a scri
 a provisioned clone records the clone's desktop as a `laneId: subject` line. A live bundle
 without `cost` has an unmeasured spend. A live terminal run's `cost` prices the E2B terminal
 sandbox as a `desktop-minutes` line from its acquired-to-cleanup span and `e2b.getInfo` size.
-Its Codex `model-tokens` line stays `null` (`no_rate_for_model` with model `codex`, or
-`no_token_usage` when Codex reported none): the participant prices against its provider id `codex`
-even when `actors[0].model` is passed as `--model`, and `terminal-ledgers.json` counts those
-tokens without a price.
-So a terminal total is a lower bound (`fullyEstimated: false`), and the unpriced tokens are
-not $0. Each participant's own estimate also rides its
+Its Codex `model-tokens` line prices the agent's tokens from the model passed as `--model`
+(`actors[0].model`, else `gpt-5.6-sol`). Codex reports usage per turn, summed over the turn's
+requests, so the line prices every token at the base tier and carries
+`basis: aggregated_turns_base_rate`. It stays `null` with `no_token_usage` when Codex reported
+none. `terminal-ledgers.json` still counts those tokens without a price, because its provider line
+takes only provider-reported cost. Bundles written before 0.107.0 price against the provider id
+`codex` and record `no_rate_for_model`, so their total is a lower bound
+(`fullyEstimated: false`) and the unpriced tokens are not $0. Each participant's own estimate also rides its
 `stream.actor.estimatedCost` (`humanish.actor-estimated-cost.v1`), kept distinct
 from the reserved provider-returned `tokenUsage.costUsd`. See
 [`schemas.md`](schemas.md) → Run Cost Summary And Estimated Actor Cost.

@@ -94,7 +94,7 @@ A browser scorer's context also carries `ctx.route` (`computer-use` or `shared-w
 removed in the next minor. The first time a scorer reads each one, it prints a
 `DeprecationWarning` with code `HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED`.
 
-## Removed and deprecated exports
+## Removed exports
 
 The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab` and
 `runConcurrentSharedWorld`, their option types, and the hook bag types are removed, along with the
@@ -102,6 +102,9 @@ The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProduct
 Use `runLab` with the options above. A JavaScript caller that still passes a bag is refused with
 `HUMANISH_LAB_OPTION_UNSUPPORTED`, naming the option to use.
 
-`runDryRun`, the route result types and `runCuaActorSession` still work in this minor and print
-one `DeprecationWarning` each. They are removed in the next minor. `LabOutcome.backend` and
-`LabBackend` are removed; narrow on `outcome.route`.
+0.107.0 removed `runDryRun`, `runCuaActorSession`, the route result types, `LabOutcome.backend`,
+`LabBackend`, `selectLabBackend`, the `routesTo*` predicates and the lab helpers that
+`parseLabConfig` and `routeOf` cover. Use `runLab` and its `LabResult<route>`,
+`runComputerUseLoop`, `outcome.route` and `routeOf(config)`.
+[Library options](https://github.com/danielgwilson/humanish/blob/main/docs/contracts/schemas.md#library-options-runlaboptions)
+names the replacement for each.

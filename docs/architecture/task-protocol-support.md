@@ -23,12 +23,10 @@ Custom session hooks remain caller-owned implementations of that same contract;
 this preflight does not certify arbitrary hook behavior.
 
 The parser reports `HUMANISH_LAB_INVALID` with the unsupported field path. `runLab`
-and the deprecated direct route runners report `HUMANISH_LAB_TASKS_UNSUPPORTED` in
-their failure envelopes, from `planLab` (`src/lab/plan.ts`) and each route's plan.
+reports `HUMANISH_LAB_TASKS_UNSUPPORTED` in the route's failure envelope, from
+`planLab` (`src/lab/plan.ts`) and each route's plan.
 Refusal precedes run storage, source preparation, user hooks, local processes,
-sandbox allocation, and model calls. No task content appears in the error. The
-deprecated synthetic API, `runDryRun`, accepts no lab config or tasks. Its lab
-declaration boundary is `runLab`.
+sandbox allocation, and model calls. No task content appears in the error.
 
 A future route gains support only after proving participant goals, hidden criteria,
 observation-backed completion, honest missing-input treatment, and per-participant

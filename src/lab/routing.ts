@@ -66,7 +66,7 @@ export function registeredTerminalActors(): string[] {
 /**
  * The declared fan-out participant count on the computer-use route: a `lanes[]` roster's length, else
  * a homogeneous `count`, else 1. The single source of truth shared by the parser, the engine,
- * and the pre-flight plan so the participant count is computed ONE way everywhere.
+ * and the pre-flight plan so the participant count is computed the same way everywhere.
  */
 export function cuaLaneCount(config: LabConfig): number {
   const actor = config.actors[0];
@@ -126,11 +126,11 @@ export function isComputerUseComposition(config: LabConfig): boolean {
 
 /**
  * True when this config routes to the SHARED-WORLD backend (#164): a clone or local-tree subject
- * on a hosted desktop whose first actor resolves to a computer-use actor AND that declares the
+ * on a hosted desktop whose first actor resolves to a computer-use actor and that declares the
  * `shared-world` topology. Mirror of isComputerUseComposition; the single source of truth shared by
- * routeOf (which checks it BEFORE the cua route) and the warning logic. Every
+ * routeOf (which checks it before the cua route) and the warning logic. Every
  * shared-world study runs its participants at once (`execution.concurrency` >= 2). The same
- * clone/local-tree × e2b-desktop × computer-use composition WITHOUT `topology: shared-world` stays per-lane-worlds
+ * clone/local-tree × e2b-desktop × computer-use composition without `topology: shared-world` stays per-lane-worlds
  * (the cua route) — the topology declaration is the override switch.
  */
 export function isSharedWorldComposition(config: LabConfig): boolean {
@@ -150,9 +150,9 @@ export function isProvisionedSharedWorldComposition(config: LabConfig): boolean 
 }
 
 /**
- * The EXTERNAL-PUBLIC shared-world shape (#164 phase 2): a real PUBLIC deployment used DIRECTLY as
+ * The external-public shared-world shape (#164 phase 2): a real public deployment used directly as
  * the shared plane — `source: app-url` + `topology: shared-world` + a computer-use actor on
- * e2b-desktop + `policies.allowPublicTargets: true`. NO getHost, NO clone, NO subject sandbox, NO
+ * e2b-desktop + `policies.allowPublicTargets: true`. No getHost, no clone, no subject sandbox, no
  * seed. The operator-ownership attestation `subject.publicTarget` is required (validated in
  * externalPublicSharedWorldValidationReason, not here — this predicate is the router only, so a
  * half-declared external-public config still routes here to get its precise fail-closed reason

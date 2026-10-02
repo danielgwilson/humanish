@@ -166,7 +166,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
-      "message": "scenario.caps.maxUsd=1 cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
+      "message": "scenario.caps.maxUsd=1 cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

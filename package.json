@@ -1,6 +1,6 @@
 {
   "name": "humanish",
-  "version": "0.106.1",
+  "version": "0.107.0",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
   "keywords": [
     "agent-harness",
@@ -92,8 +92,8 @@
     "format:check": "oxfmt --check",
     "lint": "node scripts/check-lint-cap.mjs --max-warnings=442",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=357 --max-fix-tags=9 --max-caps=1201 --max-lane-comments=20",
-    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=143 --max-seat=6 --max-role=52 --max-sim=33 --max-study=9"
+    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=357 --max-fix-tags=0 --max-caps=804 --max-lane-comments=20",
+    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=137 --max-seat=4 --max-role=52 --max-sim=33 --max-study=9"
   },
   "dependencies": {
     "commander": "^15.0.0",

@@ -38,7 +38,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                                             |
 | `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                             |
 | `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                                                   |
-| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                                              |
+| `actors[0].model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                        |
 | `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                                   |
 | `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE                              |
 | `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                     |
@@ -71,16 +71,24 @@ and reclaims its owned sandbox. When the version is omitted, the probe resolves
 
 `actor.json`, the bundle's terminal actor, and `terminal-ledgers.json` retain
 `humanish.actor-runtime.v1`: requested and observed versions, verification status,
-declared model/effort, and the usage granularity. The observed executable version
-also appears as `providerVersion`. An undeclared model stays explicitly
-`runtime_default_unobserved`; humanish does not label the runtime name as a model.
+the requested model and where it came from, declared effort, and the usage granularity.
+The observed executable version also appears as `providerVersion`.
+
+Codex's `--json` stream does not name the model it used, and its built-in default can change
+with any release. So the route always passes `--model`: the lab's `actors[0].model`
+(`modelStatus: declared`), or humanish's participant default `gpt-5.6-sol`
+(`modelStatus: humanish_default`). Bundles written before 0.107.0 record
+`runtime_default_unobserved` with no requested model.
 Dry runs record declarations only, in a `terminal-lab.runtime.declared` event.
 
 These settings make a study's request reproducible, but do not attest the actual
-provider model or add a provider spending limit. Codex `turn.completed` usage can
-aggregate several model requests, so humanish does not use a declared model to
-infer per-request pricing tiers or fill in unknown costs. Runtime-token costs
-and the studied product's no-spend boundary still need separate interpretation.
+provider model or add a provider spending limit. humanish prices the agent's tokens from the
+requested model. Codex `turn.completed` usage sums every request in a turn, so no request's own
+size is known and no per-request long-context tier can be applied. The estimate prices every token
+at the base tier, with cached input at the cached rate, and says so with
+`basis: aggregated_turns_base_rate`. It is an estimate, not a measurement. The cost ledger
+checked against `scenario.caps.maxUsd` keeps the provider line unmeasured, and the studied
+product's no-spend boundary still needs separate interpretation.
 
 ## Runtime auth: raw-key placement and remaining provider access
 

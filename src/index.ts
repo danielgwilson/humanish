@@ -48,27 +48,3 @@ export type { AdapterScorerModule, AdapterScoringContext } from "./lab/adapter-s
 export type { BrowserLabScoringContext } from "./lab/adapter-extension.js";
 export type { TerminalProductScoringContext } from "./routes/terminal/types.js";
 export type { RunAdapterArtifact, RunAdapterScore } from "./run/bundle.js";
-
-// Deprecated this minor, removed in the next.
-export {
-  actorResolvesToTerminal,
-  concurrentSharedWorldValidationReason,
-  cuaLaneCount,
-  cuaLaneValidationReason,
-  externalPublicSharedWorldValidationReason,
-  MAX_CUA_LANES,
-  resolveLabDryRun,
-  resolveSeatUrl,
-  runCuaActorSession,
-  runDryRun,
-  sharedWorldValidationReason,
-} from "./deprecated.js";
-export type {
-  ConcurrentSharedWorldLabResult,
-  CuaActorLabResult,
-  RunOptions,
-  RunResult,
-  ScriptedBrowserLabResult,
-  SubjectPhaseEvent,
-  TerminalProductLabResult,
-} from "./deprecated.js";

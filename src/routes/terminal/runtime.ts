@@ -35,14 +35,14 @@ export function buildRuntimeVersionCommand(requestedVersion?: string): string {
 
 export function buildRuntimeExecPrefix(
   version: string,
-  model?: string,
+  model: string,
   reasoningEffort?: ReasoningEffort,
 ): string {
   if (!isExactRuntimeVersion(version))
     throw new Error("Codex execution requires a verified exact runtime version.");
   return (
     `npm_config_update_notifier=false npx -y ${TERMINAL_RUNTIME_PACKAGE}@${version} exec` +
-    (model === undefined ? "" : ` --model ${shellQuote(model)}`) +
+    ` --model ${shellQuote(model)}` +
     (reasoningEffort === undefined
       ? ""
       : ` -c ${shellQuote(`model_reasoning_effort=${JSON.stringify(reasoningEffort)}`)}`)
@@ -51,7 +51,8 @@ export function buildRuntimeExecPrefix(
 
 export function declaredRuntimeProvenance(args: {
   version?: string;
-  model?: string;
+  model: string;
+  modelSource: "declared" | "humanish_default";
   reasoningEffort?: ReasoningEffort;
 }): ActorRuntimeProvenance {
   return {
@@ -59,8 +60,8 @@ export function declaredRuntimeProvenance(args: {
     package: TERMINAL_RUNTIME_PACKAGE,
     requestedVersion: args.version ?? "latest",
     versionStatus: "unobserved",
-    ...(args.model === undefined ? {} : { requestedModel: args.model }),
-    modelStatus: args.model === undefined ? "runtime_default_unobserved" : "declared",
+    requestedModel: args.model,
+    modelStatus: args.modelSource,
     ...(args.reasoningEffort === undefined
       ? {}
       : { requestedReasoningEffort: args.reasoningEffort }),

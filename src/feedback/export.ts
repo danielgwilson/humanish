@@ -3,7 +3,7 @@
 // A run is a directory. Sharing it meant a tunnel (`serve --expose`) or a hand-zipped bundle,
 // neither of which is "send one thing". The Observer is already a single-file artifact with the
 // run's data inlined; what keeps it from travelling is the screenshots it references by path.
-// Export embeds each unique raster once and writes ONE .html that opens offline.
+// Export embeds each unique raster once and writes one .html that opens offline.
 //
 // Share safety is the point, not a step: export runs verify inside the flow and refuses a bundle
 // that is not share_ready. A local_only bundle (raw screenshots) exports only with an explicit

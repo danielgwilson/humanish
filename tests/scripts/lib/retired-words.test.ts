@@ -102,14 +102,14 @@ describe("retired vocabulary count", () => {
         "src/run/bundle.md",
         "src/lab/parse/actors.ts",
         "src/run/bundle-shape.ts",
-        "src/deprecated.ts",
+        "src/lab/keys.ts",
         // A file exemption covers that file only.
-        "src/deprecated.ts.backup.ts",
+        "src/lab/keys.ts.backup.ts",
         "src/lab/types.ts.generated.ts",
       ].filter(isCounted),
     ).toEqual([
       "src/routes/computer-use/lanes.ts",
-      "src/deprecated.ts.backup.ts",
+      "src/lab/keys.ts.backup.ts",
       "src/lab/types.ts.generated.ts",
     ]);
   });
