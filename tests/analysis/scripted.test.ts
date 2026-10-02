@@ -7,8 +7,8 @@ import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../sr
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { writeAnalysis } from "../../src/analysis/store.js";
 import {
-  listStudyAnalysisExecutions,
-  writeStudyAnalysisExecutionReceipt,
+  listAnalysisExecutions,
+  writeAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
 import { loadAnalysis } from "../../src/analysis/load.js";
 import {
@@ -215,7 +215,7 @@ describe("versioned scripted capture evidence", () => {
     expect(legacy.inputDigest).not.toBe(current.inputDigest);
     const artifact = syntheticArtifact(legacy, "legacy-analysis");
     await writeAnalysis(prepared, artifact);
-    await writeStudyAnalysisExecutionReceipt(prepared, artifact);
+    await writeAnalysisExecutionReceipt(prepared, artifact);
     const artifactPath = path.join(
       prepared.physicalRunRoot,
       "analysis/legacy-analysis/analysis.json",
@@ -226,7 +226,7 @@ describe("versioned scripted capture evidence", () => {
     );
     const before = await Promise.all([readFile(artifactPath), readFile(receiptPath)]);
     expect(await loadAnalysis(prepared)).toMatchObject({ state: "ready", analysis: artifact });
-    expect((await listStudyAnalysisExecutions(prepared)).receipts[0]).toMatchObject({
+    expect((await listAnalysisExecutions(prepared)).receipts[0]).toMatchObject({
       inputDigest: legacy.inputDigest,
     });
     expect(await Promise.all([readFile(artifactPath), readFile(receiptPath)])).toEqual(before);

@@ -1,7 +1,7 @@
 import { physicalCwdOf, validatePreparedRunRootIdentity } from "../run/paths.js";
 import { FinishedRun } from "../run/run.js";
 import type { AnalysisConfig } from "./types.js";
-import { runAutomaticStudyAnalysis, type AutomaticAnalysisDeps } from "./automatic.js";
+import { runAutomaticAnalysis, type AutomaticAnalysisDeps } from "./automatic.js";
 import type { AutomaticAnalysisOutcome } from "./job.js";
 
 export interface AutomaticAnalysisHooks {
@@ -9,7 +9,7 @@ export interface AutomaticAnalysisHooks {
   deps?: AutomaticAnalysisDeps;
   /** Called after the source is finalized; the returned cleanup always runs. */
   onStart?: () => void | (() => void);
-  run?: typeof runAutomaticStudyAnalysis;
+  run?: typeof runAutomaticAnalysis;
 }
 
 export interface AutomaticAnalysisResult {
@@ -75,7 +75,7 @@ export async function completeAutomaticAnalysis<
       };
     }
     const sourceCwd = physicalCwdOf(prepared);
-    const automaticAnalysis = await (hooks?.run ?? runAutomaticStudyAnalysis)(
+    const automaticAnalysis = await (hooks?.run ?? runAutomaticAnalysis)(
       sourceCwd,
       finished.runId,
       config,

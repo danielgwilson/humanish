@@ -22,9 +22,9 @@ import {
   writeAnalysis,
 } from "../../src/analysis/store.js";
 import {
-  beginStudyAnalysisExecution,
-  listStudyAnalysisExecutions,
-  writeStudyAnalysisExecutionReceipt,
+  beginAnalysisExecution,
+  listAnalysisExecutions,
+  writeAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
 import { loadAnalysis } from "../../src/analysis/load.js";
 import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
@@ -479,9 +479,9 @@ describe("immutable study analysis store", () => {
       path.join(prepared.physicalRunRoot, "run.json"),
       Buffer.concat([source, Buffer.from("\n")]),
     );
-    await writeStudyAnalysisExecutionReceipt(prepared, artifact);
+    await writeAnalysisExecutionReceipt(prepared, artifact);
     await expect(writeAnalysis(prepared, artifact)).rejects.toThrow("ANALYSIS_SOURCE_CHANGED");
-    const execution = await listStudyAnalysisExecutions(prepared);
+    const execution = await listAnalysisExecutions(prepared);
     expect(execution.warnings).toEqual([]);
     expect(execution.receipts).toHaveLength(1);
     expect(execution.receipts[0]).toMatchObject({
@@ -507,7 +507,7 @@ describe("immutable study analysis store", () => {
     ]) {
       expect(saved).not.toContain(text);
     }
-    await expect(writeStudyAnalysisExecutionReceipt(prepared, artifact)).rejects.toThrow(
+    await expect(writeAnalysisExecutionReceipt(prepared, artifact)).rejects.toThrow(
       "ANALYSIS_ID_EXISTS",
     );
   });
@@ -515,10 +515,8 @@ describe("immutable study analysis store", () => {
   it("finalizes only the exact pre-dispatch directory it claimed", async () => {
     const { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion } = artifact;
     const context = { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion };
-    const finalize = await beginStudyAnalysisExecution(prepared, context);
-    await expect(beginStudyAnalysisExecution(prepared, context)).rejects.toThrow(
-      "ANALYSIS_ID_EXISTS",
-    );
+    const finalize = await beginAnalysisExecution(prepared, context);
+    await expect(beginAnalysisExecution(prepared, context)).rejects.toThrow("ANALYSIS_ID_EXISTS");
     const target = path.join(prepared.physicalRunRoot, "analysis-attempts", id);
     const original = `${target}-original`;
     await rename(target, original);
@@ -530,7 +528,7 @@ describe("immutable study analysis store", () => {
 
   it("rejects a final receipt with a different dispatch context without replacing the start", async () => {
     const { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion } = artifact;
-    const finalize = await beginStudyAnalysisExecution(prepared, {
+    const finalize = await beginAnalysisExecution(prepared, {
       id,
       runId,
       sourceRunSha256,
@@ -544,19 +542,19 @@ describe("immutable study analysis store", () => {
     const target = path.join(prepared.physicalRunRoot, "analysis-attempts", id);
     await expect(access(path.join(target, "receipt.json"))).rejects.toThrow();
     await finalize(artifact);
-    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect((await listAnalysisExecutions(prepared)).receipts).toHaveLength(1);
   });
 
   it("retains the dispatch binding after the caller mutates its input object", async () => {
     const { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion } = artifact;
     const context = { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion };
-    const finalize = await beginStudyAnalysisExecution(prepared, context);
+    const finalize = await beginAnalysisExecution(prepared, context);
     for (const key of Object.keys(context)) delete (context as Record<string, unknown>)[key];
     await expect(finalize({ ...artifact, id: "different-attempt" })).rejects.toThrow(
       "ANALYSIS_ID_MISMATCH",
     );
     await finalize(artifact);
-    expect((await listStudyAnalysisExecutions(prepared)).receipts[0]?.id).toBe(id);
+    expect((await listAnalysisExecutions(prepared)).receipts[0]?.id).toBe(id);
   });
 
   it("retains failed execution accounting and rejects malformed receipt text", async () => {
@@ -566,8 +564,8 @@ describe("immutable study analysis store", () => {
       result: null,
       error: "analysis_provider_failed",
     };
-    await writeStudyAnalysisExecutionReceipt(prepared, failed);
-    expect((await listStudyAnalysisExecutions(prepared)).receipts[0]?.status).toBe("failed");
+    await writeAnalysisExecutionReceipt(prepared, failed);
+    expect((await listAnalysisExecutions(prepared)).receipts[0]?.status).toBe("failed");
     const target = path.join(
       prepared.physicalRunRoot,
       "analysis-attempts",
@@ -579,7 +577,7 @@ describe("immutable study analysis store", () => {
       target,
       JSON.stringify({ ...receipt, privateTranscript: "Synthetic disallowed extra field" }),
     );
-    expect(await listStudyAnalysisExecutions(prepared)).toEqual({
+    expect(await listAnalysisExecutions(prepared)).toEqual({
       receipts: [],
       warnings: ["ANALYSIS_RECEIPT_INVALID"],
     });
@@ -587,13 +585,13 @@ describe("immutable study analysis store", () => {
 
   it("rejects linked execution receipts and cross-run execution IDs", async () => {
     await expect(
-      writeStudyAnalysisExecutionReceipt(prepared, {
+      writeAnalysisExecutionReceipt(prepared, {
         ...artifact,
         runId: "different-study",
         inputDigest: digestAnalysisInput({ ...artifact, runId: "different-study" }),
       }),
     ).rejects.toThrow("ANALYSIS_ID_MISMATCH");
-    await writeStudyAnalysisExecutionReceipt(prepared, artifact);
+    await writeAnalysisExecutionReceipt(prepared, artifact);
     const target = path.join(
       prepared.physicalRunRoot,
       "analysis-attempts",
@@ -604,7 +602,7 @@ describe("immutable study analysis store", () => {
     await writeFile(outside, await readFile(target));
     await rm(target);
     await symlink(outside, target);
-    expect(await listStudyAnalysisExecutions(prepared)).toEqual({
+    expect(await listAnalysisExecutions(prepared)).toEqual({
       receipts: [],
       warnings: ["ANALYSIS_RECEIPT_UNREADABLE"],
     });

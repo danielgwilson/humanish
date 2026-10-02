@@ -4,8 +4,8 @@ import type { RunIndexEntry } from "./run-index.js";
 import { contradictsAccountBilling } from "../verify/costs.js";
 import { EVIDENCE_LIMITS } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "./study-files.js";
-import { readAutomaticStudyAnalysisAccounting } from "../analysis/job.js";
-import { readStudyAnalysisAccountingRecords } from "../analysis/store-executions.js";
+import { readAutomaticAnalysisAccounting } from "../analysis/job.js";
+import { readAnalysisAccountingRecords } from "../analysis/store-executions.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
 
 /** Additive accounting for retained attempts. Null means no estimate, never an invented zero. */
@@ -114,8 +114,8 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
     }
 
     const [history, automatic] = await Promise.all([
-      readStudyAnalysisAccountingRecords(prepared),
-      readAutomaticStudyAnalysisAccounting(prepared),
+      readAnalysisAccountingRecords(prepared),
+      readAutomaticAnalysisAccounting(prepared),
     ]);
     analysisWarnings.push(...history.warnings);
     const records = new Map(history.records.map((record) => [record.id, record]));

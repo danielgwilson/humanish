@@ -1,6 +1,6 @@
 import { containsSensitive } from "../evidence/redaction.js";
 import type { LoadedAnalysis } from "./types.js";
-import { AUTOMATIC_ANALYSIS_DIRECTORY, projectAutomaticStudyAnalysisView } from "./job.js";
+import { AUTOMATIC_ANALYSIS_DIRECTORY, projectAutomaticAnalysisView } from "./job.js";
 import { ANALYSIS_DIRECTORY, ANALYSIS_EXECUTION_DIRECTORY } from "./store.js";
 
 /** True for the analysis record files, matched by name inside their directories. Any other file
@@ -45,7 +45,7 @@ export function analysisSharingProblems(loaded: LoadedAnalysis): {
 /** Unsafe generated text is quarantined without hiding the original recording. */
 export function projectShareCheckedAnalysis(loaded: LoadedAnalysis): LoadedAnalysis {
   const { automatic: _automatic, ...evidence } = loaded;
-  const automatic = projectAutomaticStudyAnalysisView(loaded.automatic);
+  const automatic = projectAutomaticAnalysisView(loaded.automatic);
   const safe = automatic === undefined ? evidence : { ...evidence, automatic };
   return analysisSharingProblems(safe).sensitive
     ? {

@@ -19,7 +19,7 @@ import {
 import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { readAnalysisVersion } from "./store.js";
-import { readStudyAnalysisExecution } from "./store-executions.js";
+import { readAnalysisExecution } from "./store-executions.js";
 import { hashAnalysisValue } from "./validation.js";
 import { ANALYSIS_ID_PATTERN, SHA256_HEX_PATTERN } from "./types.js";
 
@@ -152,9 +152,7 @@ function parseJob(bytes: Buffer, runId: string): JobRecord {
 }
 
 /** Also guards direct HTML projection callers, not only the contained-file reader. */
-export function projectAutomaticStudyAnalysisView(
-  value: unknown,
-): AutomaticAnalysisView | undefined {
+export function projectAutomaticAnalysisView(value: unknown): AutomaticAnalysisView | undefined {
   if (value === undefined) return undefined;
   const parsed = jobSchema
     .pick({ state: true, analysisId: true, reason: true, updatedAt: true })
@@ -178,9 +176,7 @@ async function bindJob(
 }
 
 /** Minimal historical accounting, without source validation, execution or liveness inference. */
-export async function readAutomaticStudyAnalysisAccounting(
-  prepared: PreparedRunArtifactPaths,
-): Promise<
+export async function readAutomaticAnalysisAccounting(prepared: PreparedRunArtifactPaths): Promise<
   | {
       attemptId: string;
       analysisId: string | null;
@@ -210,7 +206,7 @@ export async function readAutomaticStudyAnalysisAccounting(
 }
 
 /** Read-only projection. A stale timestamp or persisted claim never authorizes execution. */
-export async function readAutomaticStudyAnalysisPrepared(
+export async function readAutomaticAnalysisPrepared(
   prepared: PreparedRunArtifactPaths,
   now = Date.now(),
 ): Promise<AutomaticAnalysisView | undefined> {
@@ -264,7 +260,7 @@ async function terminalResultMatches(
     value.inputDigest === record.inputDigest &&
     value.configDigest === record.configDigest &&
     value.promptVersion === record.promptVersion;
-  const receipt = await readStudyAnalysisExecution(prepared, record.analysisId);
+  const receipt = await readAnalysisExecution(prepared, record.analysisId);
   if (!receipt || !matches(receipt) || hashAnalysisValue(receipt) !== record.receiptSha256)
     return false;
   if (record.state === "failed" && record.reason === "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED")
@@ -304,7 +300,7 @@ export interface AutomaticAnalysisJob {
 }
 
 /** The directory is permanent, including after interrupted/failed writes. Never re-open it as a writer. */
-export async function claimAutomaticStudyAnalysis(
+export async function claimAutomaticAnalysis(
   prepared: PreparedRunArtifactPaths,
   metadata: { configDigest: string; promptVersion: string },
 ): Promise<AutomaticAnalysisJob | null> {
@@ -391,7 +387,7 @@ export async function claimAutomaticStudyAnalysis(
 }
 
 /** A scoped cancellation request, never a PID signal and never permission to create a new job. */
-export async function requestAutomaticStudyAnalysisCancellationPrepared(
+export async function requestAutomaticAnalysisCancellationPrepared(
   prepared: PreparedRunArtifactPaths,
 ): Promise<AutomaticAnalysisCancellation> {
   try {
