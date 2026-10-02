@@ -98,7 +98,9 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           {capsLine(summary)}
         </Text>
         <Box flexGrow={1} />
-        {summary?.keysReady === undefined ? null : (
+        {summary?.planRefusal !== undefined ? (
+          <Text {...color(PALETTE.warn)}>refused ✗</Text>
+        ) : summary?.keysReady === undefined ? null : (
           <Text {...color(summary.keysReady ? PALETTE.ok : PALETTE.warn)}>
             {summary.keysReady ? "keys ✓" : "keys ✗"}
           </Text>
@@ -122,6 +124,15 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         </Text>
       ) : null}
       {summary?.communications ? <Text color={PALETTE.warn}>{summary.communications}</Text> : null}
+      {summary?.planRefusal === undefined ? null : (
+        // A lab that will not plan lists no keys. The planner's message is what `lab run` would
+        // print, so it stands where the missing keys would, and wraps for the same reason.
+        <Box width={columns}>
+          <Text wrap="wrap" {...color(PALETTE.warn)}>
+            A live run is refused: {summary.planRefusal}
+          </Text>
+        </Box>
+      )}
       {summary?.keysReady === false ? (
         // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
         // in a shell they sourced, a password manager, another project — and what they need is the
@@ -240,7 +251,8 @@ function StartRow({
   const live = mode === "live";
   const blocked =
     live &&
-    (summary?.keysReady === false ||
+    (summary?.planRefusal !== undefined ||
+      summary?.keysReady === false ||
       summary?.runtime?.ok === false ||
       summary?.participantReadiness?.ok === false);
   const accent = live ? PALETTE.warn : PALETTE.accent;
@@ -258,12 +270,20 @@ function StartRow({
       <Text dimColor={!blocked} {...color(blocked ? PALETTE.warn : undefined)}>
         {live
           ? blocked
-            ? `${expectationLine(row.liveExpectation)} · ${summary?.keysReady === false ? "needs keys" : summary?.runtime?.ok === false ? "needs runtime setup" : "needs Codex login"}`
+            ? `${expectationLine(row.liveExpectation)} · ${blocker(summary)}`
             : expectationLine(row.liveExpectation)
           : "free · no keys, no spend"}
       </Text>
     </Box>
   );
+}
+
+/** Why the live row is blocked, the most basic reason first. */
+function blocker(summary: LabSummary | null | undefined): string {
+  if (summary?.planRefusal !== undefined) return "refused";
+  if (summary?.keysReady === false) return "needs keys";
+  if (summary?.runtime?.ok === false) return "needs runtime setup";
+  return "needs Codex login";
 }
 
 function RunList({

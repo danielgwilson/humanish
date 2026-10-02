@@ -65,6 +65,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   automatic analysis records `skipped` with `AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED`, which the CLI
   line, the TUI and the Observer all show, and the command still exits 2. Before, status.json
   showed nothing, and the analysis read `failed` (`AUTOMATIC_ANALYSIS_FAILED`) with no record.
+- `humanish doctor --lab` plans the lab with the planner `humanish lab run` uses, in the lab's own
+  scenario mode. A lab the planner refuses now fails doctor's `live route` row with the planner's
+  message: for example a live terminal lab without `scenario.caps`, or an `execution.timeoutMs`
+  whose sandbox deadline passes 60 minutes. Before, doctor reported the lab's keys as if the run
+  could start. The TUI's lab screen shows the planner's message in place of the missing keys,
+  `refused ✗` in place of `keys ✗`, and marks the live row `refused` as it marked `needs keys`.
+  Doctor and the TUI now read the key and subject env names from the plan's requirements; they
+  are unchanged for every committed lab.
+- A lab whose inline `personas` entry refers to its own YAML anchor no longer overflows the stack
+  while it is planned. `lab run` threw `RangeError`; a dry run of such a lab now completes, and
+  doctor and the TUI, which now plan the lab, report its keys.
 - An adopter-hosted email catch's warnings no longer carry a provisioned value or the catch's
   bearer token (#1343). Shared-world runs only pattern-redacted a failed drain's error, and
   neither route removed the catch token, its encoded forms (percent-encoded, JSON-escaped, hex, or

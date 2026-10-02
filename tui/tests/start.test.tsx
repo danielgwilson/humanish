@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import React from "react";
 import { describe, expect, it } from "vitest";
 
@@ -5,6 +8,7 @@ import { App } from "../src/app.js";
 import type { LaunchRunOptions } from "../../src/tui/launch.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import { KEY, renderToText } from "../src/testing/render-to-text.js";
+import { readLabSummary } from "../../src/lab/summary.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
 // Starting a run is the only thing this surface does that spends money, so the interaction is
@@ -528,6 +532,64 @@ describe("what the surface says about the run it just started", () => {
     expect(frame).toContain("Start a LIVE run");
     expect(frame).toContain("~$1.20 median");
   });
+});
+
+describe("a lab whose live plan is refused", () => {
+  it.each([45, 80])(
+    "shows an uncapped terminal lab's planner refusal in place of its keys at %i columns",
+    async (columns) => {
+      // A live terminal lab without scenario.caps parses, and the planner refuses it. The real
+      // summary reads it, so the screen shows the message `humanish lab run` would print.
+      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-tui-refusal-"));
+      try {
+        await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
+        await writeFile(
+          path.join(cwd, "humanish/labs/uncapped.yaml"),
+          JSON.stringify({
+            schema: "humanish.lab.v2",
+            id: "uncapped",
+            subject: {
+              source: "terminal-product",
+              product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
+            },
+            actors: [{ type: "codex-exec", mission: "Use the CLI." }],
+            execution: {
+              target: "e2b-terminal",
+              runtimeAuth: "openai-env",
+              terminal: { transport: "exec-stream", stdin: "disabled" },
+            },
+            scenario: { mode: "live" },
+          }),
+        );
+        const { options } = harness({
+          readLabSummary: (_cwd, _lab, summaryOptions) =>
+            readLabSummary(cwd, "uncapped", summaryOptions),
+        });
+        const { surface } = await openLab(options, columns);
+        try {
+          // The message wraps at 45 columns, so the wait reads it with its line breaks as spaces.
+          const frame = await surface.press(
+            KEY.down,
+            (candidate) =>
+              candidate.includes("refused ✗") &&
+              candidate.replace(/\s+/g, " ").includes("in force"),
+          );
+          const text = frame.replace(/\s+/g, " ");
+          expect(text).toContain("A live run is refused: A live terminal-product run");
+          expect(text).toContain("scenario.caps");
+          expect(frame).not.toContain("keys ✓");
+          expect(frame).not.toContain("not found");
+          // At 45 columns the live row wraps, so its "refused" lands on the next line.
+          expect(text).toMatch(/Start a LIVE .*~\$1\.20 median · 1 run · (run )?refused/);
+          expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
+        } finally {
+          surface.unmount();
+        }
+      } finally {
+        await rm(cwd, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 /** Local copy of the intent-based navigation helper (this file predates the shared one). */

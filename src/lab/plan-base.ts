@@ -19,9 +19,12 @@ export type Base = Omit<
   "route" | "actor" | "runner" | "concurrency" | "sessionBudgetMs" | "sandboxMs" | "caps" | "rerun"
 >;
 
-function deepFreeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null) {
-    for (const child of Object.values(value)) deepFreeze(child);
+// A YAML alias can make a parsed record contain itself (an inline persona that names its own
+// anchor), and structuredClone keeps the cycle, so each object is frozen once.
+function deepFreeze<T>(value: T, frozen = new WeakSet<object>()): T {
+  if (typeof value === "object" && value !== null && !frozen.has(value)) {
+    frozen.add(value);
+    for (const child of Object.values(value)) deepFreeze(child, frozen);
     Object.freeze(value);
   }
   return value;

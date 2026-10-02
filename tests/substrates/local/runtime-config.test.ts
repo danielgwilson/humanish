@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { labKeyRequirements } from "../../../src/lab/doctor.js";
+import { planCliRun } from "../../../src/lab/doctor.js";
+import { requiredKeys } from "../../../src/lab/requirements.js";
+import type { LabConfig } from "../../../src/lab/types.js";
 
 const base = {
   schema: "humanish.lab.v2",
@@ -11,8 +13,15 @@ const base = {
   scenario: { mode: "live" },
 };
 
+/** The provider keys doctor and the TUI report for a live run, read from the lab's plan. */
+async function liveKeys(config: LabConfig): Promise<string[]> {
+  const planned = await planCliRun(config, process.cwd());
+  if (!planned.ok) throw new Error(planned.refusal.message);
+  return requiredKeys(planned.planned.plan.requirements, () => false);
+}
+
 describe("local browser lab configuration", () => {
-  it("uses account analysis and the supported desktop without provider keys", () => {
+  it("uses account analysis and the supported desktop without provider keys", async () => {
     const parsed = parseLabConfig(base);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -21,28 +30,22 @@ describe("local browser lab configuration", () => {
       review: { analysis: { provider: "codex" } },
       execution: { desktop: { resolution: [960, 720] } },
     });
-    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false)).toEqual({
-      desktop: false,
-      keys: [],
-    });
+    expect(await liveKeys(parsed.config)).toEqual([]);
   });
-  it("requires only the model API key for local API participants", () => {
+  it("requires only the model API key for local API participants", async () => {
     const parsed = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use" }] });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false)).toEqual({
-      desktop: false,
-      keys: ["OPENAI_API_KEY"],
-    });
+    expect(await liveKeys(parsed.config)).toEqual(["OPENAI_API_KEY"]);
     expect(parsed.config.review?.analysis).toBeUndefined();
   });
-  it("admits an external captured inbox without mailbox-provider credentials", () => {
+  it("admits an external captured inbox without mailbox-provider credentials", async () => {
     const parsed = parseLabConfig({
       ...base,
       comms: { email: { external: { catchBaseUrl: "http://127.0.0.1:8025" } } },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config.comms?.email?.kind).toBe("fake");
-    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false).keys).toEqual([]);
+    expect(await liveKeys(parsed.config)).toEqual([]);
     for (const email of [
       { injectEnv: "MAIL_BASE_URL" },
       { kind: "real", connection: "agentmail" },
@@ -50,15 +53,12 @@ describe("local browser lab configuration", () => {
       expect(parseLabConfig({ ...base, comms: { email } }).ok).toBe(false);
     }
   });
-  it("admits optional native camera and conversation without adding provider keys", () => {
+  it("admits optional native camera and conversation without adding provider keys", async () => {
     const media = { camera: { source: "synthetic" }, microphone: { source: "speech" } };
     const parsed = parseLabConfig({ ...base, execution: { target: "local", desktop: { media } } });
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config.execution?.desktop?.media).toEqual(media);
-    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false)).toEqual({
-      desktop: false,
-      keys: [],
-    });
+    expect(await liveKeys(parsed.config)).toEqual([]);
   });
   it("rejects unsupported file devices and model providers before running", () => {
     for (const media of [
@@ -97,16 +97,14 @@ describe("local browser lab configuration", () => {
       "Local browser targets must use localhost or 127.0.0.1 on a port above 1023.",
     );
   });
-  it("preserves explicit analysis opt-out and hosted routing", () => {
+  it("preserves explicit analysis opt-out and hosted routing", async () => {
     const local = parseLabConfig({ ...base, review: { analysis: false } });
     expect(local.ok && local.config.review?.analysis).toBe(false);
     const hosted = parseLabConfig({ ...base, execution: { target: "e2b-desktop" } });
     if (!hosted.ok) throw new Error(hosted.error.message);
     expect(hosted.config.review?.analysis).toBeUndefined();
     expect(hosted.config.execution?.desktop).toBeUndefined();
-    expect(labKeyRequirements(hosted.config, "computer-use", false, () => false).keys).toEqual([
-      "E2B_API_KEY",
-    ]);
+    expect(await liveKeys(hosted.config)).toEqual(["E2B_API_KEY"]);
   });
   it.each([
     { execution: { target: "local", timeoutMs: 20 * 60_000 + 1 } },
