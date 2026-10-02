@@ -5,12 +5,19 @@
 // the first refusal, and records each piece of state as soon as it exists so the session's
 // teardown (restricted-session.ts) cleans up a launch that fails partway.
 
-import { chmod, mkdir, mkdtemp, realpath, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import type { CuaProviderFailurePhase } from "../computer-use/provider-error.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
-import { checkVersion, childEnvironment, resolveExecutable } from "./restricted-executable.js";
+import {
+  checkVersion,
+  childEnvironment,
+  generateProtocolSchema,
+  resolveExecutable,
+} from "./restricted-executable.js";
+import { checkProtocol, loadProtocolSchema } from "./protocol-compat.js";
+import { protocolContract, type ProtocolContractHost } from "./protocol-contract.js";
 import {
   admitsRestrictedCodexConfig,
   admitsRestrictedCodexThread,
@@ -70,6 +77,10 @@ export interface LaunchState {
   cliVersion: string | undefined;
   /** Notification methods this humanish does not know that carried no item, by count. */
   unknownNotifications: Map<string, number>;
+  /** How the release's schema differs from the fields humanish reads; set when that refuses. */
+  protocolIncompatibilities: string[] | undefined;
+  /** Schema values beyond the baseline, recorded at launch. */
+  protocolAdditions: string[] | undefined;
 }
 
 /** An admitted value, or the refusal a launch stops with. */
@@ -239,6 +250,53 @@ export function admitMcpStatus(reply: Record<string, unknown>): Admission<void> 
   return { value: undefined };
 }
 
+/**
+ * The release's own app-server schema against the fields humanish reads and sends
+ * (protocol-contract.ts), generated into the private work directory on every launch. A change
+ * there refuses as codex_incompatible_release; a value beyond the baseline is recorded when the
+ * launch is admitted. Reading the schema waits on the deadline; a stop leaves the directory to
+ * the session's teardown, which removes the whole work directory.
+ */
+async function admitProtocol(
+  file: string,
+  env: NodeJS.ProcessEnv,
+  state: LaunchState,
+  spawnFn: RestrictedCodexSpawn,
+  deadline: RestrictedCodexDeadline,
+  host: ProtocolContractHost,
+): Promise<void> {
+  const directory = path.join(state.work!, "schema");
+  const generated = await generateProtocolSchema(
+    file,
+    env,
+    state.cwd,
+    directory,
+    spawnFn,
+    deadline,
+  );
+  const schema = generated
+    ? await deadline.wait(loadProtocolSchema(directory).catch(() => undefined))
+    : undefined;
+  const result =
+    schema === undefined
+      ? {
+          incompatibilities: [
+            generated
+              ? "its generated app-server schema could not be read"
+              : "it did not generate an app-server schema",
+          ],
+          additions: [],
+        }
+      : checkProtocol(schema, protocolContract(host));
+  await rm(directory, { recursive: true, force: true });
+  deadline.check();
+  if (result.incompatibilities.length > 0) {
+    state.protocolIncompatibilities = result.incompatibilities;
+    throw new RestrictedCodexStop("codex_incompatible_release");
+  }
+  state.protocolAdditions = result.additions;
+}
+
 /** The host's Codex auth.json, which a private home links to instead of copying. */
 async function hostAuthFile(options: LaunchOptions, sourceEnv: NodeJS.ProcessEnv): Promise<string> {
   const authHome =
@@ -286,6 +344,10 @@ export async function launchAdmittedAppServer(
     settings.admittedVersions,
     options.cliVersion,
   );
+  await admitProtocol(file, env, state, spawnFn, deadline, {
+    reasoningEffort,
+    platform: settings.platform,
+  });
   const configMode = {
     participantCodeMode: participant !== undefined,
     reasoningEffort,

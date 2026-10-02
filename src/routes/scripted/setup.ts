@@ -145,12 +145,12 @@ export async function prepareScriptedRun(
   const persona: ActorPersonaRef = {
     id: plan.personaId ?? "scripted-journey",
     traitsApplied: [],
-    // The step manifest IS the "prompt" on this route; the digest binds the trace to the
+    // The step manifest is the "prompt" on this route; the digest binds the trace to the
     // committed scenario text.
     promptDigest: journey.sourceDigest.slice(0, 16),
   };
 
-  // Live runs need a browser BEFORE any actuation (unless one is injected).
+  // Live runs need a browser before any actuation (unless one is injected).
   let browserCommand = deps.browserCommand;
   if (!dryRun && !deps.launchBrowser && !browserCommand) {
     const resolved = await resolveBrowserCommand();

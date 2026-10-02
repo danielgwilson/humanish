@@ -1,8 +1,8 @@
-// EXTERNAL-PUBLIC plane (#164 phase 2): NO subject sandbox, NO getHost, NO prober. The shared plane
+// External-public plane (#164 phase 2): no subject sandbox, no getHost, no prober. The shared plane
 // is the operator-declared public deployment (publicAppUrl); each seat opens it directly and reaches
 // the shared session through the real UI. A host-first barrier extracts the /lobby/CODE from the host
 // seat's CDP-observed URL (onObservedUrl) and threads it into the follower missions; a follower fails
-// closed WITHOUT opening if the host never yields a code within the handoff deadline.
+// closed without opening if the host never yields a code within the handoff deadline.
 
 import { liveObserverResult } from "../../observer/live.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
@@ -34,11 +34,11 @@ export interface ExternalPublicPlaneOutcome {
 }
 
 /**
- * The operator-DECLARED origin (from subject.appUrl) — recorded for evidence/reference ONLY. The
- * operator-OWNERSHIP claim rests on the subject.publicTarget.authorized attestation + this declared
- * appUrl, NOT on digest equality (blocker 2): a normal cross-origin redirect (apex->www, http->https;
- * lobby-trivia.example.test 307-redirects) makes the seats' OBSERVED origin differ from the declared one, which
- * is expected and MUST NOT fail the run. Persisted digest-only (never the raw origin).
+ * The operator-declared origin (from subject.appUrl), recorded for evidence and reference only. The
+ * operator-ownership claim rests on the subject.publicTarget.authorized attestation + this declared
+ * appUrl; digest equality plays no part (blocker 2): a normal cross-origin redirect (apex->www, http->https;
+ * lobby-trivia.example.test 307-redirects) makes the seats' observed origin differ from the declared one, which
+ * is expected and must not fail the run. Persisted digest-only (never the raw origin).
  */
 export function declaredOriginDigestOf(publicAppUrl: string): string | undefined {
   return publicAppUrl ? hostOriginDigest(publicAppUrl) : undefined;
@@ -51,9 +51,9 @@ export async function runExternalPublicPlane(
 ): Promise<ExternalPublicPlaneOutcome> {
   const { plan, deps: seams, actorSpecs, concurrency, warnings } = ctx;
   const participants = plan.plane.participants;
-  // publicAppUrl is the operator-declared shared plane; its ORIGIN is persisted digest-only
-  // (publicOriginDigest), never raw (the raw URL + the runtime observed lobby CODE never land —
-  // TENSION 3). The latch code is scrubbed from all narration.
+  // publicAppUrl is the operator-declared shared plane; its origin is persisted digest-only
+  // (publicOriginDigest), never raw (the raw URL and the runtime observed lobby code never land in
+  // the bundle). The latch code is scrubbed from all narration.
   const publicAppUrl = plan.plane.kind === "external-public" ? plan.plane.appUrl : "";
   const declaredOriginDigest = declaredOriginDigestOf(publicAppUrl);
   const handoff = new LobbyHandoff({
@@ -67,7 +67,7 @@ export async function runExternalPublicPlane(
     openaiApiKey: ctx.openaiApiKey,
   });
   const deps: HandoffParticipantDeps = {
-    // Scrub the latched lobby CODE (known once the host resolves it) from ALL narration.
+    // Scrub the latched lobby code (known once the host resolves it) from all narration.
     runDeps: participantRunDeps(ctx, live, handoff.scrub),
     publicAppUrl,
     inbox,
@@ -89,8 +89,8 @@ export async function runExternalPublicPlane(
     subject: { source: "app-url", envNames: [], state: { provenance: "external-public" } },
     seedDigest: ctx.seedDigest,
     planeClass: "external-public",
-    // Pre-fan-out snapshot: no seat has observed an origin yet, so the OBSERVED publicOriginDigest
-    // is not available; surface the DECLARED origin for the live Observer's reference.
+    // Pre-fan-out snapshot: no seat has observed an origin yet, so the observed publicOriginDigest
+    // is not available; surface the declared origin for the live Observer's reference.
     ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
   };
   const inProgressBundle = buildConcurrentSharedWorldBundle({
@@ -112,7 +112,7 @@ export async function runExternalPublicPlane(
   let runError: string | undefined;
   let commsArtifactPath: string | undefined;
   // Split the roster into the designated host and the followers, preserving each follower's
-  // ORIGINAL plan index so results land back in plan order (validation guarantees EXACTLY ONE host).
+  // original plan index so results land back in plan order (validation allows exactly one host).
   const hostIndex = participants.findIndex((participant) => participant.host === true);
   const followerEntries = actorSpecs
     .map((spec, index) => ({ spec, index }))

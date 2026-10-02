@@ -70,7 +70,7 @@ export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
  * The read-only evidence a thin adapter's scorer/feedback hook sees (the layer-6 extension seam,
  * issue #154 acceptance #8). It is the FULLY-ASSEMBLED, redacted, verifiable evidence — the live run
  * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
- * interventions/cleanup/cost/no-spend). Every member is an EXPORTED public type, so a thin adapter
+ * interventions/cleanup/cost/no-spend). Every member is an exported public type, so a thin adapter
  * types against `import("humanish")` alone — never a deep `src/` import. The adapter reads this
  * to score the product attempt and derive feedback; it cannot mutate core's evidence (the route
  * attaches only the namespaced `RunAdapterScore` it returns + the feedback candidates it derives).
@@ -83,8 +83,8 @@ export interface TerminalProductScoringContext {
   /** The persisted terminal-product ledgers (lifecycle/command/interventions/cleanup/cost/no-spend). */
   ledgers: TerminalLedgers;
   /**
-   * The FULL normalized transcript of the in-sandbox agent session — scrubbed (literal known
-   * values) then redacted (shape patterns) AT THE SOURCE, capped at MAX_TRANSCRIPT_BYTES, and
+   * The full normalized transcript of the in-sandbox agent session, scrubbed (literal known
+   * values) then redacted (shape patterns) at the source, capped at MAX_TRANSCRIPT_BYTES, and
    * byte-identical to the persisted terminal-transcript.txt artifact. The trace's transcriptTail
    * is a ~2KB projection of this; a scorer needs the whole session so a rubric can find
    * command-tier evidence anywhere in it, not only in the tail window (#341).
@@ -110,13 +110,13 @@ export type TerminalCostProbe = (context: {
 /** The scorer functions a terminal run calls: `RunLabOptions.scorer` without `deriveArtifacts`. */
 export interface TerminalScorer {
   /**
-   * THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8: "product-adapter hooks WITHOUT forking
+   * The layer-6 extension seam (issue #154 acceptance #8: "product-adapter hooks without forking
    * core"). A thin in-repo/out-of-tree adapter registers a product scorer here. The route calls it
    * (when provided) over the fully-assembled evidence and attaches the returned, ADAPTER-NAMESPACED
-   * `RunAdapterScore` to `bundle.adapterScore` WITHOUT core knowing any product noun (the score is
-   * namespaced + its component breakdown rides in `data`). When NO scorer is given, the default
-   * mission-based verdict (`review`) is unchanged. This is the SEAM the adopter's scorecard plugs
-   * into — NOT a built-in product scorer (that lives in the adopter's repo).
+   * `RunAdapterScore` to `bundle.adapterScore` without core knowing any product noun (the score is
+   * namespaced + its component breakdown rides in `data`). When no scorer is given, the default
+   * mission-based verdict (`review`) is unchanged. The adopter's scorecard plugs in here; product
+   * scorers live in the adopter's repo, and core ships none.
    */
   score?: (ctx: TerminalProductScoringContext) => RunAdapterScore | Promise<RunAdapterScore>;
   /**
@@ -146,8 +146,8 @@ export interface RunTerminalProductLabOptions {
   runId?: string;
   /**
    * The operator environment the route reads the runtime key from (and from which it asserts no
-   * banned credential is requested). Defaults to process.env. The runtime key is injected ONLY
-   * into command-scoped `codex` env or an external header transform — NEVER Sandbox.create envs (the credential
+   * banned credential is requested). Defaults to process.env. The runtime key goes only
+   * into command-scoped `codex` env or an external header transform, and never into Sandbox.create envs (the credential
    * boundary); tests plant a fake key here and assert it never reaches metadata/global env/artifacts.
    */
   env?: Readonly<Record<string, string | undefined>>;
@@ -155,10 +155,10 @@ export interface RunTerminalProductLabOptions {
   /** Test seams: the E2B module, the Observer renderer, the clock and the cost probe. */
   deps?: LabDeps;
   /**
-   * Present ONLY when the scorer was CONFIG-DECLARED and loaded by the CLI (#316). Its presence
-   * is the "declared" marker: a config-declared terminal scorer returning status:"fail" FLIPS
+   * Present only when the scorer was config-declared and loaded by the CLI (#316). Its presence
+   * is the "declared" marker: a config-declared terminal scorer returning status:"fail" flips
    * bundle.review.verdict (like the browser routes), and one that throws becomes a visible review.gaps
-   * entry. A LIBRARY caller passing `scorer` leaves this ABSENT and keeps today's purely
+   * entry. A library caller passing `scorer` leaves this absent and keeps today's purely
    * additive terminal behavior (verdict unchanged). Core-computed, never adopter-supplied.
    */
   scorerProvenance?: RunScorerProvenance;
@@ -166,7 +166,7 @@ export interface RunTerminalProductLabOptions {
 
 export interface TerminalProductLabResult extends AutomaticAnalysisResult {
   schema: typeof TERMINAL_PRODUCT_LAB_SCHEMA;
-  /** True when the bundle verified AND (dry-run, or the live session reached a terminal verdict
+  /** True when the bundle verified and (dry-run, or the live session reached a terminal verdict
    *  without a harness error + cleanup was proven). The agent's pass/fail is evidence, not the
    *  lab's exit code. */
   ok: boolean;
@@ -184,7 +184,7 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
     completionReason: ActorCompletionReason;
     reason: string;
   };
-  /** Live-only: the sandbox lifecycle proof (the key/auth value is NEVER surfaced here). */
+  /** Live-only: the sandbox lifecycle proof (the key/auth value is never surfaced here). */
   sandbox?: {
     sandboxId: string;
     killed: boolean;
@@ -197,10 +197,10 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
   cost?: {
     knownTotalUsd: number;
     fullyMeasured: boolean;
-    /** Per-category USD: a known number, or null = NOT MEASURED (never coerced to 0). */
+    /** Per-category USD: a known number, or null = not measured (never coerced to 0). */
     lines: Record<"product" | "media" | "payment" | "provider", number | null>;
   };
-  /** Live-only: the no-spend proof DERIVED from the ledger. */
+  /** Live-only: the no-spend proof derived from the ledger. */
   noSpend?: {
     satisfied: boolean;
     maxUsd: number | null;
@@ -232,7 +232,7 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
 }
 
 // ===========================================================================
-// LIVE PATH
+// Live path
 // ===========================================================================
 
 /** Substrate lifecycle ledger entry (create/readiness/exec/cleanup events with timestamps). */
@@ -243,14 +243,14 @@ export interface LifecycleRecord {
   message: string;
 }
 
-/** Command-log ledger entry: which command ran, with what exit/duration (NEVER its env values). */
+/** Command-log ledger entry: which command ran, with what exit/duration (never its env values). */
 export interface CommandLogRecord {
   at: string;
   /** A public-safe label for the command (e.g. "codex-exec"); the full argv is bound by digest only. */
   label: string;
   /** sha256-12 of the exact command string — pins "same recipe" without persisting it. */
   commandDigest: string;
-  /** The env var NAMES injected command-scoped (values NEVER persisted) — the credential evidence. */
+  /** The env var names injected command-scoped (values never persisted): the credential evidence. */
   envNames: string[];
   exitCode?: number;
   timedOut?: boolean;
@@ -261,13 +261,13 @@ export interface CommandLogRecord {
 export interface TerminalEventRecord {
   at: string;
   stream: "stdout" | "stderr";
-  /** ALREADY scrubbed (literal known values) THEN redacted (shape patterns) at the source. */
+  /** Already scrubbed (literal known values), then redacted (shape patterns) at the source. */
   chunk: string;
 }
 
 /**
- * One operator intervention (assisted-input event). The current route ships NO assisted-input
- * path, so this ledger is ALWAYS empty — but always PRESENT (the safety contract: empty-present is
+ * One operator intervention (assisted-input event). The current route ships no assisted-input
+ * path, so this ledger is always empty, and always present (the safety contract: empty-present is
  * the contract, an absent ledger fails verify). A future assisted path can fill this shape.
  */
 export interface InterventionRecord {
@@ -278,14 +278,14 @@ export interface InterventionRecord {
 }
 
 /**
- * One cost line of the spend ledger. THE NULL DISCIPLINE (issue #154, the cost/no-spend asks):
- * three distinct states are crisply modeled and NEVER conflated —
- *   - `usd: 0`     => KNOWN to be zero. A measured-and-zero spend (we metered this category and it
+ * One cost line of the spend ledger. The null discipline (issue #154, the cost/no-spend asks):
+ * three distinct states are kept apart:
+ *   - `usd: 0`     => known to be zero. A measured-and-zero spend (we metered this category and it
  *                     billed nothing). The no-spend proof may legitimately assert this is zero.
- *   - `usd: null`  => NOT MEASURED. This run carries no spend signal for the category. `null` is
+ *   - `usd: null`  => not measured. This run carries no spend signal for the category. `null` is
  *                     written explicitly (never undefined-omitted, never guessed to 0). The no-spend
- *                     proof must list this line as UNMEASURED and must NOT claim it is zero.
- *   - line ABSENT  => NOT APPLICABLE to this route/run (n/a). The line simply does not appear in
+ *                     proof must list this line as unmeasured and must not claim it is zero.
+ *   - line absent  => not applicable to this route/run (n/a). The line simply does not appear in
  *                     `lines`. (The current route emits all four lines, so absence is reserved for
  *                     future routes that genuinely have no such category.)
  * `null` vs missing-key is the load-bearing distinction: a missing key means "this category does not
@@ -293,7 +293,7 @@ export interface InterventionRecord {
  * it". A no-spend proof that claimed zero on a `null` line would claim more than it measured.
  */
 export interface CostLine {
-  /** known zero (0) | not measured (null). The key is ALWAYS present when the line is applicable. */
+  /** known zero (0) | not measured (null). The key is always present when the line is applicable. */
   usd: number | null;
   /** Optional billable-unit count, same discipline: a known count, or null = not measured. */
   count?: number | null;
@@ -303,7 +303,7 @@ export interface CostLine {
     | "no-spend-signal"
     | "operator-cap"
     | "unmeasured"
-    /** Tokens were COUNTED but no rate could price them, so `usd` stays null while the note
+    /** Tokens were counted but no rate could price them, so `usd` stays null while the note
      *  carries the measured token totals (#531). Distinct from "unmeasured", which means no
      *  signal at all. */
     | "unpriced-token-usage";
@@ -312,40 +312,40 @@ export interface CostLine {
 }
 
 /**
- * The spend ledger (a block of `TerminalLedgers`). The no-spend PROOF is DERIVED from this — never
- * asserted independently. Every applicable category appears as a line; unknowns are `null`.
+ * The spend ledger (a block of `TerminalLedgers`). The no-spend proof is derived from this and
+ * never asserted independently. Every applicable category appears as a line; unknowns are `null`.
  */
 export interface TerminalCostLedger {
   schema: "humanish.terminal-cost-ledger.v1";
   /** USD currency unit (recorded explicitly so a future multi-currency route is unambiguous). */
   currency: "usd";
   lines: Record<CostCategory, CostLine>;
-  /** Sum of the KNOWN (non-null) lines. null lines contribute NOTHING and are NOT guessed as 0. */
+  /** Sum of the known (non-null) lines. Null lines contribute nothing and are never guessed as 0. */
   knownTotalUsd: number;
-  /** True when every applicable line is measured (no null). When false, knownTotalUsd is a LOWER
-   *  bound, not the full spend — the no-spend proof says so honestly. */
+  /** True when every applicable line is measured (no null). When false, knownTotalUsd is a lower
+   *  bound on the spend, and the no-spend proof says so. */
   fullyMeasured: boolean;
 }
 
 /**
- * The no-spend proof, DERIVED from the cost ledger (issue #154: "derived from a ledger, not
- * asserted"). It is honest about what it knows: it lists the KNOWN-zero lines it can vouch for and,
- * separately, the UNMEASURED (null) lines it CANNOT vouch for. `satisfied` is true only when every
- * KNOWN line is zero (a known non-zero line fails it); but a proof with unmeasured lines explicitly
- * says it could not measure them — it never claims zero on a line the ledger marks null.
+ * The no-spend proof, derived from the cost ledger (issue #154: "derived from a ledger, not
+ * asserted"). It lists the known-zero lines it can vouch for and, separately, the unmeasured
+ * (null) lines it cannot vouch for. `satisfied` is true only when every known line is zero (a
+ * known non-zero line fails it). A proof with unmeasured lines says it could not measure them;
+ * it never claims zero on a line the ledger marks null.
  */
 export interface NoSpendProof {
   schema: "humanish.terminal-no-spend-proof.v1";
   /** The maxUsd cap this proof was evaluated against (the no-spend scenario declares maxUsd: 0). */
   maxUsd: number | null;
-  /** True iff every KNOWN (measured) line is <= maxUsd (for a no-spend run, == 0). */
+  /** True iff every known (measured) line is <= maxUsd (for a no-spend run, == 0). */
   satisfied: boolean;
-  /** Categories the ledger MEASURED and found at (known) zero — the proof CAN vouch for these. */
+  /** Categories the ledger measured and found at (known) zero: the proof can vouch for these. */
   knownZeroLines: CostCategory[];
   /** Categories the ledger measured with a known NON-zero spend (these break `satisfied`). */
   knownNonZeroLines: CostCategory[];
-  /** Categories the ledger marks `null` (NOT MEASURED). The proof explicitly lists these and does
-   *  NOT claim they are zero — it claims only that this run could not measure them. */
+  /** Categories the ledger marks `null` (not measured). The proof lists these and does not claim
+   *  they are zero; it claims only that this run could not measure them. */
   unmeasuredLines: CostCategory[];
   /** Sum of the known lines (== 0 for a satisfied no-spend run). */
   knownTotalUsd: number;
@@ -359,25 +359,25 @@ export interface TerminalLedgers {
   runtime?: ActorRuntimeProvenance;
   lifecycle: LifecycleRecord[];
   commandLog: CommandLogRecord[];
-  /** ALWAYS present; ALWAYS empty while no assisted-input path ships — the safety contract. */
+  /** Always present, and always empty while no assisted-input path ships (the safety contract). */
   interventions: InterventionRecord[];
   cleanup: {
     /** True when exact-id kill resolved, including the startup guard's acquired-instance kill
      *  (found-and-killed or already gone both prove absence; see `remaining`/`reason`). */
     killed: boolean;
-    /** BY-ID proof, NEVER derived from Sandbox.list: 0 = confirmed reclaimed (kill(id) RESOLVED
-     *  -- returned true "found and killed" OR false "404, exact id already gone" -- and, when the
+    /** By-id proof, never derived from Sandbox.list: 0 = confirmed reclaimed (kill(id) resolved,
+     *  returning true "found and killed" or false "404, exact id already gone", and, when the
      *  SDK exposes it, getInfo(id) did not report a live sandbox); 1 = getInfo(id) still reports
-     *  this exact sandbox running/paused (NOT reclaimed); -1 = kill(id) itself failed, threw, or
+     *  this exact sandbox running/paused (still present); -1 = kill(id) itself failed, threw, or
      *  was unavailable (the server-side kill-on-timeout is the backstop). */
     remaining: number;
     /** Honest, human-readable statement of which by-id signal produced `remaining`. */
     reason: string;
   };
   /** The spend ledger. Unknowns are `null`, never guessed; the no-spend proof
-   *  below is DERIVED from it. */
+   *  below is derived from it. */
   cost: TerminalCostLedger;
-  /** The no-spend proof DERIVED from `cost`. Never an independent assertion. */
+  /** The no-spend proof derived from `cost`. Never an independent assertion. */
   noSpendProof: NoSpendProof;
 }
 

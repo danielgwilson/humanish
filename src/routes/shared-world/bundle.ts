@@ -47,7 +47,7 @@ import {
 } from "./types.js";
 
 /** Max windows live at the same instant (sweep over start/end points). The honest simultaneity
- *  count: the participant COUNT says how many existed; this says how many ever ran at once. */
+ *  count: the participant count says how many existed; this says how many ever ran at once. */
 export function maxSimultaneousWindows(
   windows: Array<{ startedAt: number; endedAt: number }>,
 ): number {
@@ -167,8 +167,8 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
         ? `packed working tree (archiveSha256 ${args.subject.archiveSha256}${args.subject.dirty === true ? ", dirty working tree" : args.subject.dirty === false ? ", clean working tree" : ""})`
         : "packed working tree (archive digest unresolved; provisioning failed before resolution)"
       : `clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}`;
-  // External-public plane provenance is HONESTLY different: an operator-declared, operator-OWNED
-  // public deployment humanish neither provisioned nor seeded — NO getHost, NO clone, NO synthetic
+  // External-public plane provenance differs: an operator-declared, operator-owned public
+  // deployment humanish neither provisioned nor seeded, with no getHost, no clone and no synthetic
   // attestation (claiming synthetic on a real site is a lie). The origin persists digest-only.
   // planSharedWorldLab refuses an external-public plane without a declared owner; the fallback
   // says so rather than naming one.
@@ -203,7 +203,7 @@ function sharedWorldEvidence(
   outcomes: SharedWorldOutcome[];
 } {
   const { plan, dryRun, actorSpecs, actorResults } = args;
-  // Build the concurrent shared-world evidence block. routeHostDigest is sha256-16 of the ORIGIN each
+  // Build the concurrent shared-world evidence block. routeHostDigest is sha256-16 of the origin each
   // seat reached: on getHost the seat URL the actor drove (verify confirms == plane.hostDigest); on
   // external-public the seat's CDP-OBSERVED URL origin (verify confirms == plane.publicOriginDigest).
   const fallbackHostDigest = external
@@ -230,7 +230,7 @@ function sharedWorldEvidence(
     };
   });
 
-  // Option A (external-public): NO authoritative shared-state proof — OMIT stateSeries entirely (there
+  // Option A (external-public): no authoritative shared-state proof, so stateSeries is omitted (there
   // is no in-sandbox filesystem to digest; concurrency is proven by temporal co-occupancy + lobby
   // convergence). The provisioned-getHost plane keeps its authoritative in-sandbox checkpoint series.
   const stateSeries: SharedWorldStateSnapshot[] | undefined = external
@@ -258,13 +258,13 @@ function sharedWorldEvidence(
   });
 
   // The plane block is plane-class-specific. getHost: harness-minted hostDigest + synthetic
-  // attestation. external-public: operator-declared publicOriginDigest, NO hostDigest, NO exposure
-  // (claiming synthetic on a real site would be a lie — verify asserts both ABSENT there).
+  // attestation. external-public: operator-declared publicOriginDigest, no hostDigest, no exposure
+  // (claiming synthetic on a real site would be false; verify asserts both are absent there).
   const plane: SharedWorldPlane = external
     ? {
         seedDigest: args.seedDigest,
         envNames: [],
-        // publicOriginDigest is the OBSERVED convergence origin; declaredOriginDigest records the
+        // publicOriginDigest is the observed convergence origin; declaredOriginDigest records the
         // operator-declared origin for reference (a redirect makes them differ — not a failure).
         ...(args.publicOriginDigest === undefined
           ? {}
@@ -293,7 +293,7 @@ function sharedWorldEvidence(
       ? [...EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS]
       : [...CONCURRENT_ATTRIBUTION_LIMITS],
     laneWindows: windows,
-    // Option A: external-public carries NO stateSeries.
+    // Option A: external-public carries no stateSeries.
     ...(stateSeries === undefined ? {} : { stateSeries }),
     outcomes,
     ...(args.lobbyConvergenceDigest === undefined
@@ -356,7 +356,7 @@ function concurrencyReview(
   const convergenceLabel = external
     ? `; lobby convergence ${args.lobbyConvergenceDigest ? "PROVEN (all participants reached one /lobby/CODE)" : "not observed"}`
     : "";
-  // The count that matters is how many participants were LIVE AT ONCE, not how many exist —
+  // The count that matters is how many participants were live at once, which can be fewer than exist:
   // a 6-participant run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
   const capForReport = plan.concurrency;
   const maxLive = maxSimultaneousWindows(windows);
@@ -368,7 +368,7 @@ function concurrencyReview(
     message: `Concurrency: ${windows.length} participant(s)${dryRun ? " (dry-run contract; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
   });
 
-  // The judge's verdict (judgeSharedWorld): every seat produced a terminal, engaged PASSED session.
+  // The judge's verdict (judgeSharedWorld): every seat produced a terminal, engaged, passed session.
   // Mission endpoint and completion reasons are reported separately below; `outcomes[].ok` is not
   // renamed into mission success (#364).
   const verdict = args.judgment.verdict;
@@ -377,7 +377,7 @@ function concurrencyReview(
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
-    // Plane-class-aware: the external-public plane has NO getHost/clone/seed and carries NO
+    // Plane-class-aware: the external-public plane has no getHost/clone/seed and carries no
     // authoritative state series, so its summary must not claim a getHost-exposed plane (dry-run) nor
     // report "state delta(s) under load" (live) — it reports lobby convergence instead.
     summary: dryRun
@@ -402,7 +402,7 @@ function concurrencyReview(
   return review;
 }
 
-/** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
+/** Project the concurrent run into a humanish.run-bundle.v1 with the concurrent shared-world block. */
 export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): RunBundle {
   const {
     plan,
@@ -417,7 +417,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
   // Public-safe label only — neither the raw getHost URL (provisioned) nor the raw public origin
-  // (external-public) lands in the bundle. The plane identity is a DIGEST (plane.hostDigest on
+  // (external-public) lands in the bundle. The plane identity is a digest (plane.hostDigest on
   // getHost; plane.publicOriginDigest on external-public).
   const appUrl = external ? "[external-public-plane]" : "[provisioned-subject]";
   const planeCommit = external ? undefined : dryRun ? undefined : args.subjectCommit;
@@ -547,7 +547,7 @@ function concurrentCostSummary(
   });
 }
 
-/** The declared (dry-run) state digest: the probe RECIPE (command digests), no run. */
+/** The declared (dry-run) state digest: the probe recipe (command digests), no run. */
 function declaredStateDigest(state: LabSubjectState | undefined): string {
   const probes = state?.checkpoint ?? [];
   return combineCheckpointDigest(

@@ -6,10 +6,10 @@ import { COST_CATEGORIES, type CostCategory } from "../../run/terminal-contract.
 import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
 
 /**
- * Build the spend ledger from the captured session. THE NULL DISCIPLINE (issue #154):
+ * Build the spend ledger from the captured session. The null discipline (issue #154):
  *   - The `provider` line is populated from the actor trace's tokenUsage.costUsd when the trace
- *     CARRIES it (a measured value, incl. a measured 0). When the trace carries NO costUsd, the
- *     provider line is `null` = NOT MEASURED (never guessed to 0 just because no-spend was intended).
+ *     carries it (a measured value, incl. a measured 0). When the trace carries no costUsd, the
+ *     provider line is `null` = not measured (never guessed to 0 just because no-spend was intended).
  *   - product/media/payment are `null` by default: core has no signal for those categories; an
  *     adapter may provide one through the shipped costProbe seam.
  * `injectedLines` lets a test or adapter supply known spend for a category,
@@ -61,7 +61,7 @@ export function buildCostLedger(args: {
     provider: args.injectedLines?.provider ?? providerLine,
   };
 
-  // knownTotalUsd sums ONLY the non-null lines. A null line contributes NOTHING — it is never
+  // knownTotalUsd sums only the non-null lines. A null line contributes nothing and is never
   // coerced to 0 (that would let an unmeasured category masquerade as a measured zero).
   let knownTotalUsd = 0;
   let fullyMeasured = true;
@@ -124,7 +124,7 @@ export function describeMeasuredSpend(
     .join(" ");
 }
 
-/** Derive the no-spend proof from the ledger. It is HONEST: it vouches for known-zero lines and
+/** Derive the no-spend proof from the ledger. It vouches for known-zero lines and
  *  explicitly lists the unmeasured (null) lines it cannot vouch for — never claiming zero on null. */
 export function buildNoSpendProof(
   ledger: TerminalCostLedger,
@@ -140,8 +140,8 @@ export function buildNoSpendProof(
     else if (usd === 0) knownZeroLines.push(category);
     else knownNonZeroLines.push(category);
   }
-  // satisfied only when every KNOWN line is within the cap (for a no-spend run, maxUsd 0 => every
-  // known line must be exactly 0). Unmeasured lines do NOT make it satisfied — they are reported
+  // satisfied only when every known line is within the cap (for a no-spend run, maxUsd 0 => every
+  // known line must be exactly 0). Unmeasured lines never make it satisfied; they are reported
   // separately as the proof's honest blind spot.
   const cap = maxUsd ?? 0;
   const satisfied = knownNonZeroLines.length === 0 && ledger.knownTotalUsd <= cap;
@@ -166,9 +166,9 @@ export function buildNoSpendProof(
 }
 
 /**
- * Full caps enforcement (fail-closed, not advisory). Returns a structured violation when a KNOWN
+ * Fail-closed caps enforcement. Returns a structured violation when a known
  * (measured) spend line exceeds maxUsd, or a known billable-job count exceeds maxJobs. Unknowns
- * (`null`) NEVER trip the cap (we cannot claim a violation we did not measure) — but they also never
+ * (`null`) never trip the cap (we cannot claim a violation we did not measure), and they also never
  * grant a green pass: the no-spend proof reports them as unmeasured. maxMinutes is wall-clock and is
  * enforced separately (runWithWallClock); it is not a ledger-derived cap.
  */

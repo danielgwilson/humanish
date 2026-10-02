@@ -42,6 +42,7 @@ export interface AnalysisProviderResult {
     | "codex_busy"
     | "codex_unavailable"
     | "codex_unsupported_version"
+    | "codex_incompatible_release"
     | "codex_unsupported_platform"
     | "codex_login_required"
     | "codex_unsupported_auth"
@@ -62,6 +63,10 @@ export interface AnalysisProviderResult {
   unknownNotifications?: Readonly<Record<string, number>>;
   /** Codex only: bytes of a last frame cut off when humanish stopped the app-server. */
   truncatedFrameBytes?: number;
+  /** Codex only: how the release's app-server schema differs from the fields humanish reads. */
+  protocolIncompatibilities?: readonly string[];
+  /** Codex only: schema values beyond the baseline humanish knows. */
+  protocolAdditions?: readonly string[];
 }
 
 export type AnalysisProvider = (

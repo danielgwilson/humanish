@@ -43,9 +43,9 @@ interface ScriptedBrowserLabSession {
 
 export interface ScriptedBrowserLabResult extends AutomaticAnalysisResult {
   schema: typeof SCRIPTED_BROWSER_LAB_SCHEMA;
-  /** True when the bundle verified AND (dry-run, or every session reached a terminal verdict
-   * without a harness error). The subject failing the script is successful EVIDENCE, not a lab
-   * failure. */
+  /** True when the bundle verified and (dry-run, or every session reached a terminal verdict
+   * without a harness error). The subject failing the script is successful evidence, and the lab
+   * does not fail for it. */
   ok: boolean;
   cwd: string;
   labId: string;

@@ -9,15 +9,15 @@ import { type SharedWorldCheckpoint } from "../../run/shared-world-evidence.js";
 // Per-checkpoint probe budget (read-only aggregate probes are fast).
 const CHECKPOINT_TIMEOUT_MS = 60_000;
 
-/** Combine a snapshot's per-probe digests into ONE sha256-16 (digest-only; no raw value). */
+/** Combine a snapshot's per-probe digests into one sha256-16 (digest-only; no raw value). */
 export function combineCheckpointDigest(parts: string[]): string {
   return commandDigestOf(parts.join("\n"));
 }
 
 /**
- * Run ONE checkpoint snapshot LIVE: each declared probe runs read-only via the detached
+ * Run one checkpoint snapshot live: each declared probe runs read-only via the detached
  * primitive; its stdout is literal-scrubbed (provisioned values + the probe's declared redact
- * literals, folded into `scrub`) then pattern-redacted, then digested. Only the COMBINED digest
+ * literals, folded into `scrub`) then pattern-redacted, then digested. Only the combined digest
  * persists — never the raw value (the seed-step lockdown). Unique step names per snapshot prevent
  * stale-status reuse across snapshots.
  */
@@ -53,7 +53,7 @@ export async function runCheckpointSnapshot(args: {
   };
 }
 
-/** sha256-16 over the ordered seed-step command digests — the seeded-state RECIPE identity. */
+/** sha256-16 over the ordered seed-step command digests: the seeded-state recipe identity. */
 export function seedRecipeDigest(state: LabSubjectState | undefined): string {
   const seed = state?.seed ?? [];
   return commandDigestOf(

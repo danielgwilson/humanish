@@ -141,6 +141,7 @@ const codexRecovery: Record<string, string> = {
     "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then explicitly retry.",
   analysis_codex_unavailable: `The qualified Codex CLI is unavailable. Install a qualified Codex CLI (${describeQualifiedCodexCliVersions()}) and sign in with a ChatGPT account, then retry --provider codex.`,
   analysis_codex_unsupported_version: `Codex account analysis requires a qualified CLI version (${describeQualifiedCodexCliVersions()}). Other versions have not passed this tool-policy contract.`,
+  analysis_codex_incompatible_release: `This Codex CLI release changed app-server protocol fields humanish reads, so no request was sent; the warnings name each change. Install a release humanish was tested with (${describeQualifiedCodexCliVersions()}), then retry.`,
   analysis_codex_unsupported_platform:
     "This platform has not qualified the restricted Codex account launcher.",
   analysis_codex_login_required:
