@@ -2,8 +2,8 @@ import CoverCanvas from "./cover-canvas";
 
 /**
  * PersonaLane — one lane of a run: the keyframe a persona saw, its verbatim
- * final report, and an honest status chip. Failed lanes render as muted
- * "gave up" states, never hidden. The screenshot sits under a resolve-cover
+ * final report, and a status chip. Failed lanes render as muted
+ * "gave up" states and stay visible. The screenshot sits under a resolve-cover
  * veil that dissolves when the lane activates (reduced motion sees the
  * finished screenshot).
  *

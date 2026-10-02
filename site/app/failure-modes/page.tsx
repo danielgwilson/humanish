@@ -54,7 +54,7 @@ export default function FailureModes() {
   return (
     <>
       <Nav base="/" />
-      <main>
+      <main id="main">
         <section className="band">
           <h1 className="rev">
             Known <em>failure modes</em>
@@ -295,10 +295,10 @@ export default function FailureModes() {
               <b>What humanish does:</b> reports ship verbatim and sit next to the trace that
               produced them, so the words can be checked against the actions. The Excalidraw
               study&rsquo;s three passing participants reported, in full, &ldquo;Done&rdquo;,
-              &ldquo;Done.&rdquo; and &ldquo;Done&rdquo; &mdash; worth nearly nothing on their own,
-              which is the reason they are published beside 28 screenshots, ordered action traces,
-              and lifecycle events rather than as a testimonial. humanish does not ask personas to
-              rate, score, or recommend the product.
+              &ldquo;Done.&rdquo; and &ldquo;Done&rdquo;. On their own those words are worth nearly
+              nothing, which is the reason they are published beside 28 screenshots, ordered action
+              traces, and lifecycle events rather than as a testimonial. humanish does not ask
+              personas to rate, score, or recommend the product.
             </p>
           </div>
 
@@ -356,11 +356,11 @@ export default function FailureModes() {
               <code>cua-2026-08-08T21-39-07-933Z-56b68f47</code>) graded <code>share_ready</code> at
               16/16 and produced a draft. The draft was wrong. Its <code>actual</code> field read
               &ldquo;This dry-run produced a contract-proof bundle only; no browser or product
-              behavior was exercised&rdquo; &mdash; on a live run with 15 redacted screenshots and a
-              real action trace. The participant&rsquo;s own outcome, its gave-up reason, the
-              subject URL, and the screenshot counts appear nowhere in the draft. Filed as{" "}
-              <Issue n={392} />. The share-safety gate worked. The drafter did not. Until #392
-              closes, read the bundle, not the draft.
+              behavior was exercised&rdquo;, on a live run with 15 redacted screenshots and a real
+              action trace. The participant&rsquo;s own outcome, its gave-up reason, the subject
+              URL, and the screenshot counts appear nowhere in the draft. Filed as <Issue n={392} />{" "}
+              and fixed in 0.42.0 by <Issue n={418} />: a live run&rsquo;s draft now describes the
+              run that happened. The share-safety gate worked throughout.
             </p>
           </div>
 
