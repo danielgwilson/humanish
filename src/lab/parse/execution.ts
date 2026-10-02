@@ -45,7 +45,7 @@ export function parseExecution(
     return desktopResult;
   }
   if (desktopResult.value) execution.desktop = desktopResult.value;
-  // Reuse the terminal route's caps parser (same shape, not a fork) — a malformed budget is a hard
+  // Reuse the terminal route's caps parser (same shape, not a fork); a malformed budget is a hard
   // error, never silently dropped (a cap that silently does nothing would be a safety lie).
   const capsResult = parseCaps(raw.caps);
   if (!capsResult.ok) {
@@ -111,7 +111,7 @@ function parseTerminal(
     const transport = str(raw.transport);
     if (transport !== "exec-stream") {
       // "pty" is deliberately rejected: stdin is disabled, so the capture is a non-interactive
-      // exec stream — an interactive-PTY label would overstate the mechanism (invariant 6 + the
+      // exec stream, and an interactive-PTY label would overstate the mechanism (invariant 6 + the
       // goal packet's PTY ruling). True duplex PTY does not ship.
       return invalid(
         "`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; true duplex PTY transport is not supported.",
@@ -126,7 +126,7 @@ function parseTerminal(
     }
     if (stdin === "sent") {
       // Assisted input is forbidden until the interventions ledger + comparability flag + verify
-      // check exist (safety contract item 7) — shipping it now would let an assisted run pose as
+      // check exist (safety contract item 7); shipping it now would let an assisted run pose as
       // autonomous green proof.
       return invalid(
         "`execution.terminal.stdin: sent` (assisted input) is not supported — the current route cannot capture assisted input with a non-comparable marker. stdin is disabled by default.",
@@ -193,7 +193,7 @@ function parseDesktop(
     desktop.browser = browser;
   }
   // A custom E2B desktop template name or ID. Trimmed non-empty when present; deliberately not
-  // allowlisted (any string is a valid template name/id — over-restricting would reject real
+  // allowlisted (any string is a valid template name/id; over-restricting would reject real
   // adopter images). An explicitly-set but blank/whitespace value is a mistake, not a template.
   if (raw.template !== undefined) {
     const template = str(raw.template);
@@ -300,8 +300,8 @@ export function parseScenario(
 
 /**
  * Parse `scenario.caps`. Returns a parse failure on a malformed value rather than silently
- * dropping a budget declaration (a cap that silently does nothing would be a safety lie —
- * invariant 6). Each cap must be a non-negative finite number.
+ * dropping a budget declaration (a cap that silently does nothing would be a safety lie
+ * under invariant 6). Each cap must be a non-negative finite number.
  */
 function parseCaps(
   raw: unknown,

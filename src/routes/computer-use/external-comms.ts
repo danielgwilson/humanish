@@ -5,7 +5,7 @@ import { participantHasInboxRecipient } from "./participant-desktop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
 
 /**
- * Adopter-hosted drain (#380): once per run, after every participant finished, because the catch is one
+ * Adopter-hosted drain: once per run, after every participant finished, because the catch is one
  * shared external endpoint, not a per-sandbox file. Same routing and digest-only artifact as
  * the in-sandbox drain; the artifact is registered on every participant that declared a recipient
  * address, since the thread carries each inbox's mail. A drain failure never fails the run.

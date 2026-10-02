@@ -1,12 +1,12 @@
 // The registry-facing wrapper for the OpenAI Computer Use (CUA) actor. runComputerUseLoop needs
 // fully-constructed provider/executor instances; exposing that raw through the actor registry
 // would leak adapter construction to every call site. So runCuaActorSession takes intent-level
-// fields and constructs the provider/executor internally — with DI seams (provider/executor/now)
+// fields and constructs the provider/executor internally, with DI seams (provider/executor/now)
 // so CI can drive the real loop with fakes and zero network/zero spend (mirrors how the Claude
 // adapter injects its queryFn).
 //
 // The loop already returns a fully-formed ActorTrace at result.trace, so there is no separate
-// toActorTrace mapper — runCuaActorSession returns the CuaLoopResult unchanged.
+// toActorTrace mapper: runCuaActorSession returns the CuaLoopResult unchanged.
 
 import type { ActorPersonaRef, ActorTokenUsage, ActorTraceItem } from "../contract.js";
 import {
@@ -37,7 +37,7 @@ export interface CuaActorSessionOptions {
   instructions: string;
   /** Provenance of the persona this actor embodies (id + applied traits + prompt digest). */
   persona: ActorPersonaRef;
-  /** Hard wall-clock runaway guard — the only count-free hard stop the loop honors. */
+  /** Hard wall-clock runaway guard: the only count-free hard stop the loop honors. */
   timeoutMs: number;
   signal?: AbortSignal;
 
@@ -48,7 +48,7 @@ export interface CuaActorSessionOptions {
   executorOptions?: E2BDesktopExecutorOptions;
 
   /**
-   * DI seams — inject to bypass live construction (CI uses these for zero-spend tests; library
+   * DI seams: inject to bypass live construction (CI uses these for zero-spend tests; library
    * callers use them to drive a state-driven, non-vision flow). NOTE: a state executor (one
    * whose observe() returns no screenshot; see CuaObservation.screenshot optional) must be
    * paired with a NON-vision provider (requiresFrame falsey). The default OpenAI provider is
@@ -78,17 +78,17 @@ export interface CuaActorSessionOptions {
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
   /** Deterministic harness-owned stop guards evaluated between model turns. */
   stopWhen?: StopWhen;
-  /** A declared observation window (#510), forwarded to the loop. */
+  /** A declared observation window, forwarded to the loop. */
   dwell?: DwellWindow;
-  /** The lab's declared protocol; the loop records a corroborated task funnel on the trace (#414).
-   *  Only the `success` criteria are read here — the participant-facing goals are already composed
+  /** The lab's declared protocol; the loop records a corroborated task funnel on the trace.
+   *  Only the `success` criteria are read here; the participant-facing goals are already composed
    *  into `instructions` upstream, and the criteria never reach the prompt. */
   tasks?: readonly LabTask[];
   /** FAIL-CLOSED spend cap (USD) threaded to the loop; absent = uncapped. See CuaLoopOptions.maxUsd. */
   maxUsd?: number;
   /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
-  /** RUN-LEVEL spend guard threaded to the loop (#299). See CuaLoopOptions.overRunBudget. */
+  /** RUN-LEVEL spend guard threaded to the loop. See CuaLoopOptions.overRunBudget. */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /** Stricter unknown-usage policy for capped sessions (see CuaLoopOptions); it also makes the
    *  OpenAI provider send one HTTP dispatch per turn. Library-only. */
@@ -100,7 +100,7 @@ export interface CuaActorSessionOptions {
   onMessage?: (text: string) => void;
   /** RUNTIME-ONLY per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
   onScreenshot?: (frame: Buffer) => void;
-  /** Per-turn trace snapshot callback threaded to the loop (#441); see CuaLoopOptions.onTrace. */
+  /** Per-turn trace snapshot callback threaded to the loop; see CuaLoopOptions.onTrace. */
   onTrace?: (
     items: readonly ActorTraceItem[],
     usage: ActorTokenUsage,

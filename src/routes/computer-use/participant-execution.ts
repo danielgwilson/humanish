@@ -178,7 +178,7 @@ export async function runCuaParticipant(
  * become `blocked` with a pinned reason + a fail-fast event; mission verdicts never trip it).
  * Each participant tears down its own sandbox by id; nothing here ever enumerates.
  *
- * Exported for the #342 total-runner tests: the injectable runner lets a test make one participant
+ * Exported for the total-runner tests: the injectable runner lets a test make one participant
  * throw (the exact class the guard exists for) without a live sandbox. Production always uses
  * the default.
  */
@@ -217,10 +217,10 @@ export async function runCuaParticipants(
       if (failFast.tripped) {
         return skippedOutcome(spec, `skipped: ${failFast.reason}`);
       }
-      // The participant runner is total (#342): every exit path returns a recorded outcome. Without this
+      // The participant runner is total: every exit path returns a recorded outcome. Without this
       // guard, one participant's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
       // already torn down) rejected the whole map while sibling workers kept launching sandboxes
-      // nobody would ever record — the run spent money and then reported nothing.
+      // nobody would ever record, so the run spent money and then reported nothing.
       let outcome: ParticipantRunOutcome;
       try {
         outcome = await runParticipant(spec, {
@@ -238,7 +238,7 @@ export async function runCuaParticipants(
             : {}),
         });
       } catch (error) {
-        // The first participant may have thrown before signaling the provisioning gate — release the followers as
+        // The first participant may have thrown before signaling the provisioning gate; release the followers as
         // blocked rather than leaving them awaiting a gate that will never settle.
         if (index === 0) rejectGate?.();
         const detail = redactText(toErrorMessage(error));

@@ -51,7 +51,7 @@ export interface LabListEntry {
   title?: string;
   /**
    * The manifest's own first sentence. The list is where someone decides which study to open, and a
-   * list of names cannot answer "what is this one" for a project with twenty labs in it — the
+   * list of names cannot answer "what is this one" for a project with twenty labs in it; the
    * stakeholder feedback that added this was, verbatim, "so i know wtf they are".
    */
   description?: string;

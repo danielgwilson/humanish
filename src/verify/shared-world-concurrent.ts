@@ -36,7 +36,7 @@ const EXTERNAL_PUBLIC_EXTRA_LIMITS = [
   "concurrency-by-temporal-co-occupancy-only",
 ] as const;
 
-// Any seeded/synthetic limit on this class is a getHost claim leaking onto a real public site — forbid
+// Any seeded/synthetic limit on this class is a getHost claim leaking onto a real public site; forbid
 // it alongside the sequential family. (A synthetic attestation on a plane the harness did not seed is a lie.)
 const EXTERNAL_PUBLIC_FORBIDDEN_LIMITS = [
   "sequential-only",
@@ -59,7 +59,7 @@ export function concurrentSharedWorldFindings(
 ): string[] {
   // The plane-class discriminator. Absent means the provisioned-getHost plane. Every
   // getHost-specific assertion (hostDigest, exposure: synthetic, seeded provenance, state-delta on
-  // pass) is gated on this — it never leaks onto the external-public class, and the external-public
+  // pass) is gated on this, so it never leaks onto the external-public class, and the external-public
   // assertions never leak onto getHost.
   const planeClass = (sw as { planeClass?: string }).planeClass;
   if (planeClass === "external-public") {
@@ -286,7 +286,7 @@ function participantWindows(windows: Row[]): { startedAt: number; endedAt: numbe
 /**
  * The concurrency-on-pass gate: a passed concurrent run must show genuine overlap (≥2 laneWindows
  * overlapping in time) and a stateSeries delta whose timestamp is at or after the start of an
- * overlap interval — otherwise it was not actually concurrent, or the world never changed under
+ * overlap interval. Otherwise it was not actually concurrent, or the world never changed under
  * contention (a hollow concurrent claim). The facts come from concurrencyFacts, which the judge
  * also reads.
  */
@@ -435,7 +435,7 @@ function externalPublicPlaneFindings(
     );
   }
   // declaredOriginDigest is recorded for evidence only. Validate its shape when present, but never
-  // assert it equals the observed origin — a cross-origin redirect is normal and expected.
+  // assert it equals the observed origin: a cross-origin redirect is normal and expected.
   if (
     plane.declaredOriginDigest !== undefined &&
     (typeof plane.declaredOriginDigest !== "string" ||

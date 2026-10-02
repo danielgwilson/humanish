@@ -9,7 +9,7 @@ import { isRecord } from "../../run/type-guards.js";
 
 /**
  * Literal non-secret subject env. Real apps need configuration before they will boot: a public base
- * URL, a transport selector, a feature flag — and none of that is secret. Routing it through
+ * URL, a transport selector, a feature flag, and none of that is secret. Routing it through
  * `subject.env` would force an adopter to carry a private env file just to reproduce a public study.
  *
  * These values are recorded in evidence (they are part of how the subject was configured), so a
@@ -39,7 +39,7 @@ export function parseEnvValues(
       return invalid(`\`subject.envValues.${name}\` must be a string, number, or boolean.`);
     }
     // Reuse the redaction module's own detector rather than inventing a second opinion about what
-    // a secret looks like — the two must never disagree about the same string.
+    // a secret looks like; the two must never disagree about the same string.
     if (containsSensitive(value)) {
       return invalid(
         `\`subject.envValues.${name}\` looks like a secret or a local path, and these values are committed with the lab and recorded in evidence. Declare the NAME in \`subject.env\` instead — those values come from the caller's environment and never persist.`,
@@ -53,7 +53,7 @@ export function parseEnvValues(
 /**
  * Structural parse of `subject.state` into a candidate LabSubjectState. Deliberately keeps
  * unrecognized `when`/`timeoutMs` values in the candidate (instead of silently dropping
- * them) so subjectStateInvalidReason rejects them — a state declaration that silently does
+ * them) so subjectStateInvalidReason rejects them: a state declaration that silently does
  * less than it says would violate invariant 6.
  */
 export function parseState(
@@ -121,9 +121,9 @@ const STATE_STEP_WHENS: readonly LabStateStepWhen[] = [
 
 /**
  * Semantic validation for `subject.state`, shared by parseLabConfig and the engine
- * (runCuaActorLab re-enforces it on configs that arrive through the library API). Returns
+ * (the route re-enforces it on configs that arrive through runLab). Returns
  * the failure message, or null when the declaration is valid. Reads the candidate
- * defensively — library callers can hand the engine arbitrarily-shaped objects.
+ * defensively: library callers can hand the engine arbitrarily-shaped objects.
  */
 export function subjectStateInvalidReason(
   state: LabSubjectState,

@@ -139,7 +139,7 @@ export class DesktopObserver {
     }
   }
 
-  // An executor without stallRecovery "fail_closed" gets one retry of a stalled observe (#480).
+  // An executor without stallRecovery "fail_closed" gets one retry of a stalled observe.
   // One that cannot safely replay a pending request opts out, so even a shorter outer bound stops
   // without retrying.
   private async observeBounded(label: string): Promise<CuaObservation> {
@@ -232,7 +232,7 @@ export class DesktopObserver {
     if (taskTracker === undefined) return;
     for (const completion of taskTracker.observe(stopObservationOf(observation), turnNumber)) {
       // The id is researcher-authored config and the kinds are rule-type names; the matched values
-      // (a URL, page text) never appear here — the same discipline as the stopWhen notice.
+      // (a URL, page text) never appear here: the same discipline as the stopWhen notice.
       this.session.trace.record("notice", () =>
         notice(
           "matched",
@@ -245,7 +245,7 @@ export class DesktopObserver {
     }
   }
 
-  // The declared observation window (#510). The harness holds, looks, and takes nothing back to
+  // The declared observation window. The harness holds, looks, and takes nothing back to
   // the model: no action, no turn, no tokens. It runs once, cut to whatever session budget is
   // left, and says in the trace that the time was deliberate.
   private async dwellIfDue(

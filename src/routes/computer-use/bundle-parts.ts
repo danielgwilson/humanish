@@ -35,16 +35,16 @@ export function describeSubjectState(
 }
 
 /**
- * Feedback candidates derived from what live participants actually reported (#392).
+ * Feedback candidates derived from what live participants actually reported.
  *
  * A live run's feedback draft used to fall through to a dry-run template, because no browser route
  * ever built a candidate. The candidate worth filing is the one the study produced: a participant
  * who reported friction on the way (the most valuable thing a run captures), or one who stopped
- * trying. A clean pass files nothing here — feedback exists to carry findings, and a run without
+ * trying. A clean pass files nothing here: feedback exists to carry findings, and a run without
  * any falls back to an honest live summary in the draft layer instead of a template.
  *
- * Everything quoted is already scrub+redacted — participant messages and `session.reason` pass
- * through redactNarration in the loop — and passes redactText again here as defense-in-depth.
+ * Everything quoted is already scrub+redacted (participant messages and `session.reason` pass
+ * through redactNarration in the loop) and passes redactText again here as defense-in-depth.
  */
 export function participantFeedbackCandidates(args: {
   runId: string;
@@ -87,7 +87,7 @@ export function participantFeedbackCandidates(args: {
       actor: "computer-use",
       substrate: args.substrate,
       // The participant is reporting on the product: friction and abandonment are target-app
-      // findings by the three-roles rule. A harness failure never reaches this builder — it is
+      // findings by the three-roles rule. A harness failure never reaches this builder; it is
       // not a participant report.
       failure_owner: "target-app",
       summary,

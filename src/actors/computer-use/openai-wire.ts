@@ -191,7 +191,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
         const callId = optionalString(item.call_id);
         if (callId !== undefined) callIds.push(callId);
         // The live Responses API returns the actions as an array (`item.actions`); a single
-        // computer_call can carry several. (An older/alt shape used a singular `item.action` —
+        // computer_call can carry several. (An older/alt shape used a singular `item.action`,
         // supported as a fallback.) Reading only `item.action` silently dropped every action,
         // which made the loop see zero actions and stop on a false `goal_satisfied`.
         const rawActions = Array.isArray(item.actions)
@@ -235,7 +235,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
   // Of the input tokens, how many the provider served from its prompt cache. This loop threads
   // state with previous_response_id and re-sends a growing warm prefix every turn, so most input on
   // a long session is a cache hit billed at a fraction of the full rate. Not reading it made every
-  // cost line materially overstate the bill (#391).
+  // cost line materially overstate the bill.
   const usageCachedInput = optionalNumber(asRecord(usageRecord.input_tokens_details).cached_tokens);
   // GPT-5.6+ bills cache writes (1.25x input) and reports them here; older models omit the field.
   const usageCacheWriteInput = optionalNumber(
@@ -288,7 +288,7 @@ export interface OpenAiCuContext {
   instructions: string;
   reasoningEffort: ReasoningEffort;
   maxOutputTokens?: number;
-  /** When set, request provider-sanctioned reasoning summaries (#427). Absent = do not ask. */
+  /** When set, request provider-sanctioned reasoning summaries. Absent = do not ask. */
   reasoningSummary?: OpenAiReasoningSummary;
   safetyIdentifier?: string;
 }
@@ -304,12 +304,12 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
     // instructions, a provider that does not fully retain prior state can drift
     // into asking the operator what to do.
     instructions: ctx.instructions,
-    // The Responses API `computer` tool takes no display/environment fields — the model infers
+    // The Responses API `computer` tool takes no display/environment fields; the model infers
     // resolution from the screenshots it is sent. (Sending display_* returns a 400
     // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
     tools: [{ type: "computer" }],
     truncation: "auto",
-    // `summary` asks for the provider-SANCTIONED reasoning summary items (#427) — the
+    // `summary` asks for the provider-SANCTIONED reasoning summary items; the
     // capture side never scrapes or reconstructs raw chain-of-thought. Parsed by
     // parseOpenAiResponse into turn.reasoning; the loop records them as redacted
     // `kind: "reasoning"` trace items.
@@ -369,7 +369,7 @@ export function buildInitialRequest(
  *
  * The screenshot param is `Buffer | undefined` because CuaObservation.screenshot is now
  * optional (a non-vision executor omits it). This provider is a vision model (it sets
- * requiresFrame), so a missing frame is a hard error here — defense-in-depth: the loop's
+ * requiresFrame), so a missing frame is a hard error here as defense-in-depth: the loop's
  * per-turn requiresFrame guard already fails closed before this is reached, but throwing keeps
  * the mapper self-validating and isolable.
  */

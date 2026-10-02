@@ -40,7 +40,7 @@ export async function validateTerminalProductEvidence(
   }
   const findings: string[] = [];
   // Detect the terminal-product route by its unique actor-trace protocol ("terminal-exec") instead of
-  // the broad stream.kind "terminal" — the existing local codex-exec/TUI routes also use terminal
+  // the broad stream.kind "terminal": the existing local codex-exec/TUI routes also use terminal
   // streams (with a different protocol) and must not be held to this route's ledger contract.
   const terminalStreams = bundle.streams.filter(
     (stream) =>
@@ -74,7 +74,7 @@ export async function validateTerminalProductEvidence(
   }
 
   // Interventions ledger: must be present (an array). Empty is valid and expected (stdin disabled,
-  // no assisted-input path) — but absent fails, so an assisted run can never masquerade as one
+  // no assisted-input path), but absent fails, so an assisted run can never masquerade as one
   // without an interventions record.
   if (!Array.isArray(ledgers.interventions)) {
     findings.push(
@@ -85,7 +85,7 @@ export async function validateTerminalProductEvidence(
   // Cleanup proof: the sandbox must be killed and proven reclaimed by exact ID (remaining===0).
   // humanish never calls Sandbox.list to derive this field; a live run that cannot prove teardown
   // fails closed (remaining===1 still-present-unconfirmed, remaining===-1 kill(id) itself
-  // failed -- the server-side kill-on-timeout is the backstop for both).
+  // failed; the server-side kill-on-timeout is the backstop for both).
   const cleanup = isRecord(ledgers.cleanup) ? ledgers.cleanup : undefined;
   if (!cleanup) {
     findings.push("cleanup proof is missing");
@@ -96,7 +96,7 @@ export async function validateTerminalProductEvidence(
   }
 
   // The redacted exec-stream + normalized transcript artifacts must be written (the producer
-  // always writes them on the live path, even empty for a no-output blocked run — so absence is a
+  // always writes them on the live path, even empty for a no-output blocked run, so absence is a
   // real evidence gap, while emptiness is legitimate and keeps blocked runs verifiable).
   if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_EVENTS_ARTIFACT))) {
     findings.push(`missing terminal event stream artifact (${TERMINAL_EVENTS_ARTIFACT})`);
@@ -132,7 +132,7 @@ export async function validateTerminalProductEvidence(
  * carry both (fail closed if absent on a live run). The load-bearing honesty check: the no-spend
  * proof may not claim zero on a line the ledger marks `null`
  * (unmeasured): a proof can never claim more than the ledger measured. And the observed known
- * spend may not exceed the declared cap (the proof's own maxUsd) — fail-closed, not advisory.
+ * spend may not exceed the declared cap (the proof's own maxUsd): fail-closed, not advisory.
  * The null discipline is enforced here too: a present line's `usd` must be a number or literally
  * null (never undefined/omitted), so "not measured" can never be silently dropped.
  */
@@ -153,7 +153,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   }
 
   // The null discipline: every applicable category line must be present with `usd` as a number or
-  // literally null. `undefined`/omitted is forbidden — that would silently lose the "not measured"
+  // literally null. `undefined`/omitted is forbidden because it would silently lose the "not measured"
   // distinction. Track which categories the ledger marks null so the no-spend proof cannot lie about them.
   const nullCategories = new Set<string>();
   for (const category of COST_CATEGORIES) {
@@ -186,7 +186,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
 
   // Honesty check: the no-spend proof must not claim zero on a line the ledger marks `null`. A
   // knownZeroLines entry that is actually unmeasured in the ledger means the proof claimed more than
-  // it measured — fail closed.
+  // it measured, so it fails closed.
   const knownZeroLines = Array.isArray(proof.knownZeroLines) ? proof.knownZeroLines : [];
   for (const category of knownZeroLines) {
     if (nullCategories.has(String(category))) {
@@ -207,7 +207,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
     );
   }
   // A proof that asserts `satisfied:true` while a known line is non-zero (knownNonZeroLines) is
-  // self-contradictory — reject it (the proof's own derived state must be internally consistent).
+  // self-contradictory; reject it (the proof's own derived state must be internally consistent).
   const knownNonZeroLines = Array.isArray(proof.knownNonZeroLines) ? proof.knownNonZeroLines : [];
   if (proof.satisfied === true && knownNonZeroLines.length > 0) {
     findings.push(
@@ -359,7 +359,7 @@ function hasStopWhenObservationEvidence(items: unknown[], screenshotCount: numbe
         item.screenshotRef.path.length > 0,
     );
   if (!hasScreenshot) return false;
-  // A matched stopWhen, or a declared dwell window that ended the session (#510): both are
+  // A matched stopWhen, or a declared dwell window that ended the session: both are
   // structured, harness-owned completion, with frames behind them.
   return items.some(
     (item) =>

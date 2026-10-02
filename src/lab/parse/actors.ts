@@ -352,7 +352,7 @@ function parseParticipantEntries(
 
 /**
  * The researcher's protocol. Each task carries what the participant is asked to do and, optionally,
- * the observation that proves it happened — reusing `stopWhen`, so a criterion is exactly as
+ * the observation that proves it happened, reusing `stopWhen`, so a criterion is exactly as
  * expressive as a stop condition and an author who knows one knows the other.
  *
  * A task with no `success` is allowed on purpose: some things you ask a participant to do (think
@@ -397,7 +397,7 @@ function parseTasks(
   return { ok: true, value: tasks };
 }
 
-/** The bounds a dwell window (#510) must sit inside: at least one frame, at most an hour. */
+/** The bounds a dwell window must sit inside: at least one frame, at most an hour. */
 const DWELL_MIN_MS = 1_000;
 
 const DWELL_MAX_MS = 3_600_000;

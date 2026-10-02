@@ -58,7 +58,7 @@ export type ParticipantDesktopFactory = (
 ) => ParticipantDesktop;
 
 /** The participant's addressed comms recipient, when one exists: the gate and the address source for the
- *  inbox instruction (#351). A participant told to check an inbox it can never receive into would stall,
+ *  inbox instruction. A participant told to check an inbox it can never receive into would stall,
  *  so no addressed recipient means no instruction. */
 export function inboxRecipientFor(
   commsEmail: LabCommsEmail,
@@ -72,7 +72,7 @@ export function inboxRecipientFor(
 
 /** True when a participant has a declared comms recipient with an address, so the drain can actually match the
  *  mail the persona will be told to read. Gates the inbox instruction to participants that can receive
- *  mail — a participant told to check an inbox it can never receive into would just stall. */
+ *  mail; a participant told to check an inbox it can never receive into would just stall. */
 export function participantHasInboxRecipient(
   commsEmail: LabCommsEmail,
   participantId: string,
