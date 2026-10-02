@@ -6,6 +6,8 @@ export interface ScriptedLocatorLike {
   first(): ScriptedLocatorLike;
   fill(value: string, options?: { timeout?: number }): Promise<void>;
   click(options?: { timeout?: number }): Promise<void>;
+  /** Focuses the element and presses the key, as Playwright's Locator.press does. */
+  press(key: string, options?: { timeout?: number }): Promise<void>;
   count(): Promise<number>;
   waitFor(options?: { state?: "visible"; timeout?: number }): Promise<void>;
   isVisible(options?: { timeout?: number }): Promise<boolean>;
@@ -17,6 +19,8 @@ export interface ScriptedPageLike {
     options?: { waitUntil?: "domcontentloaded"; timeout?: number },
   ): Promise<unknown>;
   locator(selector: string): ScriptedLocatorLike;
+  /** Presses a key on whatever element has focus. */
+  keyboard: { press(key: string): Promise<void> };
   waitForTimeout(ms: number): Promise<void>;
   waitForFunction(fn: string, arg: unknown, options?: { timeout?: number }): Promise<unknown>;
   screenshot(options: { path: string; fullPage: boolean }): Promise<unknown>;
@@ -76,6 +80,7 @@ export interface BrowserSurfaceCapture {
 export type BrowserPersonaAction =
   | "goto"
   | "click"
+  | "press"
   | "fill"
   | "assertText"
   | "waitForText"
@@ -122,6 +127,8 @@ export interface BrowserPersonaStepManifest {
   path?: string;
   selector?: string;
   value?: string;
+  /** A press step's key, in Playwright's key syntax ("Enter", "Tab", "Control+A"). */
+  key?: string;
 }
 
 export interface BrowserPersonaJourney {
