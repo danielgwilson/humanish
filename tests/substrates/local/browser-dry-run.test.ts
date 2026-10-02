@@ -61,7 +61,7 @@ describe("local browser dry-run", () => {
       namespace: "example-adapter",
       status: "pass",
       score: 100,
-      summary: `Scored ${"laneCount" in ctx ? ctx.laneCount : 0} lane.`,
+      summary: `Scored ${"participantCount" in ctx ? ctx.participantCount : 0} participant.`,
     }));
     const onEvent = vi.fn((_event: LabEvent) => {});
 
@@ -78,7 +78,7 @@ describe("local browser dry-run", () => {
     expect(outcome.result.ok).toBe(true);
     expect(onEvent.mock.calls.filter(([event]) => event.type === "plan")).toHaveLength(1);
     expect(score).toHaveBeenCalledOnce();
-    expect(score.mock.calls[0]![0]).toMatchObject({ backend: "cua", dryRun: true });
+    expect(score.mock.calls[0]![0]).toMatchObject({ route: "computer-use", dryRun: true });
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
     ) as RunBundle;

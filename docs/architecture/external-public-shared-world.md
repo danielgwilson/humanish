@@ -57,6 +57,11 @@ threaded through `CuaActorSessionOptions` → `CuaParticipantDeps` → the concu
 code; no lobby-trivia change. The CDP URL read later proved unreliable on E2B desktops, so the
 host's code can now also come from its narration or its screen (step 2).
 
+`onObservedUrl`, `onMessage` and `onScreenshot` are deprecated on `CuaLoopOptions`, and the next
+minor removes them. A `runComputerUseLoop` caller that used them wraps the executor's `observe`
+(for `url` and `screenshot`) or the provider's `nextTurn` (for `reasoning` and `message`). The
+handoff still passes all three.
+
 Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
 
 1. **Designated host.** Exactly one roster entry carries `host: true` (validated). Its mission = create

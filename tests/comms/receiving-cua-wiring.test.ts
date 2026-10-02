@@ -2,7 +2,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { getActor } from "../../src/actors/registry.js";
 import { runCuaParticipant } from "../../src/routes/computer-use/participant-execution.js";
 import { type CuaParticipantDeps } from "../../src/routes/computer-use/types.js";
 import type {
@@ -103,7 +102,6 @@ describe("real inbox wiring through the actual CUA lane", () => {
           residual: parsed.config,
           labId: parsed.config.id,
           caps: {},
-          descriptor: getActor("openai-computer-use"),
           brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
           appUrl: "http://127.0.0.1:3000/",
           subject: { kind: "app-url", appUrl: "http://127.0.0.1:3000/", publicTargets: false },

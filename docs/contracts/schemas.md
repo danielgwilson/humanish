@@ -117,7 +117,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   (invariant 5). `serve`/`clone`/`state`/`repos`/`appUrl` are rejected on a
   terminal-product subject (a field that cannot act on the route is a parse
   error, not silently dropped). See
-  [`docs/architecture/terminal-product-lane.md`](../architecture/terminal-product-lane.md);
+  [`docs/architecture/terminal-product-route.md`](../architecture/terminal-product-route.md);
 - `subject.state` (clone or local-tree subjects, computer-use route): the
   subject's state story. `state.seed[]` declares ordered, bounded
   seed/migration/fixture steps (`{ name, command, when: before-build |
@@ -172,7 +172,7 @@ dwell? }`. The parser expands it into
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
   CAP on participants in flight at once. When omitted, every participant runs
   simultaneously: independent participants resolve it from the final participant count,
-  after any `--count` override, and the parser fills `concurrency = laneCount`
+  after any `--count` override, and the parser fills `concurrency = participantCount`
   for multi-participant shared-world labs. Total sessions and spend are identical either way; only wall-clock
   and simultaneity differ. Declaring a value below the participant count runs participants in
   waves and emits a warning saying so, because a green waved run is otherwise
@@ -401,7 +401,7 @@ where a dry-run participant is ok as contract evidence and a live participant mu
 error, engaged, and no self-reported blocker.
 
 Explicit failed-participant reruns are supported on the CUA fan-out route via
-`humanish lab run <lab> --rerun-failed-from <run-id> [--lanes <participant-ids>]`, where a
+`humanish lab run <lab> --rerun-failed-from <run-id> [--participants <ids>]`, where a
 participant id is a declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position.
 The source run must be a live CUA fan-out bundle. humanish creates a NEW run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
@@ -409,7 +409,7 @@ the source verdict unchanged, and records lineage as `run.rerun` plus a
 `cua-lab.fanout.rerun` event: source run id, selected participant ids, and previous participant
 statuses/reasons. This is intentionally not automatic retry; a passing rerun is a
 nondeterminism candidate for human/product scoring, not a rewrite of the old run.
-Without `--lanes`, a participant is selected when its stream's `judgedStatus` is not `passed`.
+Without `--participants`, a participant is selected when its stream's `judgedStatus` is not `passed`.
 That field is the judge's status (`judgedStatus` in `src/run/judge.ts`), so a goal_satisfied
 session that reported a blocker counts as blocked. A source bundle without `judgedStatus` falls back
 to the stream's trace status, its actor status and completion reason, and a zero-action check.
@@ -568,7 +568,7 @@ feedbackCandidates: []
 ## Shared-World Evidence
 
 The shared-world topology (#164) is the DECLARED override of the `per-lane-worlds`
-default: N distinct actor ROLES drive ONE provisioned, mutable service plane (one
+default: N distinct participants drive ONE provisioned, mutable service plane (one
 app + one seeded DB) so their actions interact through shared state. The ONE
 subject plane is provisioned via `subject.source: clone` (a fresh `git clone`) or
 `subject.source: local-tree` (the operator's own working tree, packed on the host
@@ -613,8 +613,8 @@ cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
     predecessor must have a matching `harness_error`, explicit `session_error`,
     `usage_unreported`, or measured `study_spend_limit`. Only the last cause
     carries budget figures, using the same per-participant estimates as the
-    tracker. Blocked participants need matching simulation, stream and blocked-event
-    evidence, with no actor, trace, screenshot or invented timeline turn.
+    tracker. Blocked participants need a matching `simulations[]` entry, stream and
+    blocked-event evidence, with no actor, trace, screenshot or invented timeline turn.
     Historical bundles without this field still require every role in the timeline.
   - `timeline: (checkpoint | turn)[]`: a harness-clocked, strictly alternating
     timeline that starts `cp-baseline`, alternates checkpoint → turn → checkpoint,
@@ -672,7 +672,7 @@ synthetic-subject gate); stateSeries snapshots are digest-only (allowed-keys tri
 all laneWindows share ONE plane provenance; and the CONCURRENCY-ON-PASS gate: a PASSED
 run MUST show ≥2 overlapping laneWindows AND a stateSeries delta whose timestamp is
 AT/AFTER an overlap interval start (otherwise it was not actually concurrent, or the
-world never changed under load). The per-role no-engagement guard applies to both.
+world never changed under load). The per-participant no-engagement guard applies to both.
 Checkpoints / stateSeries persist digest-only by DEFAULT until the #108 PII/PHI
 detector lands.
 
@@ -1560,7 +1560,7 @@ terminal-agent candidate names its substrate honestly; browser candidates use
 the existing `e2b-desktop` substrate. The routes invoke hooks over FULLY-ASSEMBLED,
 redacted evidence (`TerminalProductScoringContext` or
 `BrowserLabScoringContext`: `bundle`, runtime-only `runDir`, run identifiers,
-actor/backend metadata; all exported public types), scrub+redact returned
+actor and route metadata; all exported public types), scrub+redact returned
 payloads, and DROP any malformed score, candidate, or artifact reference with a
 warning so a bad extension never poisons a verifiable bundle. On the terminal
 route the context also carries `transcript`: the FULL normalized session

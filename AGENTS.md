@@ -34,10 +34,10 @@ diff.
 
 Three counts are held to caps in package.json: oxlint warnings (`lint`, `--max-warnings`), comment
 prose (`prose:check`) and the retired words lane, seat, role, sim and study in `src/` identifiers
-(`vocabulary:check`). Each checker fails when a count is above its cap or below it, so the PR that
-reduces a count lowers its cap to the new count; the failure names the flag and the value. CI's
-`caps` workflow fails a PR that raises or removes a cap against the base branch, unless the PR has
-the `raise-cap` label and a `Cap raise:` line in its body that says why.
+and file names (`vocabulary:check`). Each checker fails when a count is above its cap or below it,
+so the PR that reduces a count lowers its cap to the new count; the failure names the flag and the
+value. CI's `caps` workflow fails a PR that raises or removes a cap against the base branch, unless
+the PR has the `raise-cap` label and a `Cap raise:` line in its body that says why.
 
 ## Layout
 

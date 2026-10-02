@@ -390,7 +390,7 @@ removed from `RunLabOptions`. The adapter records its product nouns ONLY
 under an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
 `RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
 is hardcoded into a core enum. Default (no hook) behavior is unchanged. See
-[`terminal-product-lane.md`](./terminal-product-lane.md#slice-4-the-product-adapter-extension-seam-layer-6)
+[`terminal-product-route.md`](./terminal-product-route.md#slice-4-the-product-adapter-extension-seam-layer-6)
 for the full seam and the thin-adapter conformance proof.
 
 ## Making personas load-bearing

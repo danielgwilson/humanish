@@ -195,14 +195,13 @@ export function participantRunDeps(
   live: LiveParticipants,
   scrubKnownValues: (text: string) => string,
 ): ParticipantRunDeps {
-  const { config, descriptor, env, receiving, runBudget } = ctx;
+  const { config, env, receiving, runBudget } = ctx;
   return {
     onTrace: (participantId, items, usage, metadata) =>
       live.flush?.flush(participantId, items, usage, metadata),
     residual: ctx.plan.residual,
     labId: ctx.plan.labId,
     caps: ctx.plan.caps,
-    descriptor,
     subject: {
       kind: "shared-app",
       ...(config.subject.serve?.url === undefined ? {} : { serveUrl: config.subject.serve.url }),

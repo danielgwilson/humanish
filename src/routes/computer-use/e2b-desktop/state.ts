@@ -24,7 +24,7 @@ import type { ParticipantComms, RunningCommsCatch } from "./comms.js";
 import type { ParticipantFidelity } from "./fidelity.js";
 import type {
   CuaActorLabErrorCode,
-  CuaParticipantDeps,
+  E2BDesktopDeps,
   DesktopParticipantRun,
   SandboxReleaseFact,
 } from "../types.js";
@@ -32,7 +32,7 @@ import type {
 /** What every step of one lane reads: its spec, the run's dependencies and where it points. */
 export interface E2BParticipantContext {
   readonly spec: DesktopParticipantRun;
-  readonly deps: CuaParticipantDeps;
+  readonly deps: E2BDesktopDeps;
   readonly warnings: string[];
   readonly targetUrl: string;
   readonly desktopCliRoute: boolean;
