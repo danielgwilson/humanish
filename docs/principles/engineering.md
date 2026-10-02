@@ -1,6 +1,6 @@
 # Engineering principles
 
-These are the judgment calls behind the rules in [AGENTS.md](../../AGENTS.md). Read them
+These are the judgment calls behind the rules in [AGENTS.md](https://github.com/danielgwilson/humanish/blob/main/AGENTS.md). Read them
 before adding a service, mode, dependency or new boundary.
 
 ## Engineering Judgment
@@ -48,7 +48,7 @@ low maintenance cost, alongside correctness, privacy and security.
 
 ## Working And Resuming
 
-- Read the [ramp](../ramp/README.md), current task and relevant component
+- Read the [ramp](https://github.com/danielgwilson/humanish/blob/main/docs/ramp/README.md), current task and relevant component
   instructions. Read detailed contracts for the boundary being changed, not every
   historical roadmap. Consult the invariants for security/evidence changes and the
   release procedure before publishing.
@@ -58,7 +58,7 @@ low maintenance cost, alongside correctness, privacy and security.
   treat an old plan as authorization to resume paused or rejected work.
 - When granted autonomous shipping authority, push, open the PR, address reviews
   and required checks, merge when green, fast-forward main and clean up the task
-  worktree/branch. Follow [the release procedure](../release/publish.md)
+  worktree/branch. Follow [the release procedure](https://github.com/danielgwilson/humanish/blob/main/docs/release/publish.md)
   when a release is authorized; do not add new approval steps on your own.
 - Stay on `0.x` until the maintainer explicitly chooses 1.0. The next minor
   after `0.99.0` is `0.100.0`; routine shipping authority does not authorize 1.0.
