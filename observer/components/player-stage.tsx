@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { PlayerFrame, PlayerRow } from "@/lib/player-model";
-import { useDecodedImage } from "@/lib/use-decoded-image";
+import { useDecodedImage, type DecodedImageState } from "@/lib/use-decoded-image";
 
 export type Zoom = "fit" | "actual" | number;
 export interface Size {
@@ -38,6 +38,22 @@ export function pinPosition(coord: { x: number; y: number }, viewport: Size): CS
   };
 }
 
+/** The stage's recorded frame and the proportions that size it, from one render. */
+function useRecordedFrame(
+  href: string | null,
+  viewport: Size | undefined,
+  recordDimensions: (size: Size) => void,
+): { image: DecodedImageState; recordedDimensions: Size } {
+  const image = useDecodedImage(href);
+  // Raster dimensions are authoritative; viewport is only a stable loading fallback.
+  const recordedDimensions = image.decoded ?? viewport ?? { width: 1280, height: 800 };
+  // A later live view keeps the last decoded proportions until its own capture is measured.
+  useEffect(() => {
+    if (image.decoded) recordDimensions(image.decoded);
+  }, [image.decoded, recordDimensions]);
+  return { image, recordedDimensions };
+}
+
 export function PlayerStage({
   frame,
   count,
@@ -71,6 +87,11 @@ export function PlayerStage({
   const recordDimensions = useCallback(
     (size: Size) => setCaptureDimensions({ ...size, label }),
     [label],
+  );
+  const { image, recordedDimensions } = useRecordedFrame(
+    !live && frame ? frame.href : null,
+    viewport,
+    recordDimensions,
   );
   useEffect(() => {
     if (!captureHref) return;
@@ -113,8 +134,8 @@ export function PlayerStage({
   // Mid-run bundles may omit desktopGeometry/viewport. The recorded raster still
   // establishes the actual screen proportions, including redacted/downscaled images.
   const liveDimensions = captureDimensions?.label === label ? captureDimensions : viewport;
-  const fitDimensions = liveDimensions ?? { width: 1280, height: 800 };
-  const fitHeight = (available.width * fitDimensions.height) / fitDimensions.width + 24;
+  // The live view is sized from the measured stage; recorded fit is sized by CSS from the stage's
+  // current box, so a measurement one frame behind can never shrink a recorded frame.
   const liveSize = fittedSize(liveDimensions ?? { width: 1280, height: 800 }, available, "fit");
   return (
     <div
@@ -122,7 +143,9 @@ export function PlayerStage({
       role="region"
       ref={stageRef}
       data-fit-recording={!live && zoom === "fit" && frame ? "" : undefined}
-      style={{ "--fit-stage-height": `${fitHeight}px` } as CSSProperties}
+      style={
+        { "--fit-ratio": recordedDimensions.height / recordedDimensions.width } as CSSProperties
+      }
       tabIndex={live ? -1 : 0}
       aria-label={
         zoom === "fit" || live ? "Evidence stage" : "Zoomed evidence; scroll or drag to pan"
@@ -193,10 +216,10 @@ export function PlayerStage({
             frame={frame}
             count={count}
             viewport={viewport}
-            available={available}
+            image={image}
+            dimensions={recordedDimensions}
             zoom={zoom}
             pins={pins}
-            onDimensions={recordDimensions}
           />
         ) : (
           <p className="evidence-empty" role="status">
@@ -212,29 +235,31 @@ function RecordedImage({
   frame,
   count,
   viewport,
-  available,
+  image,
+  dimensions,
   zoom,
   pins,
-  onDimensions,
 }: {
   frame: PlayerFrame;
   count: number;
   viewport: Size | undefined;
-  available: Size;
+  image: DecodedImageState;
+  dimensions: Size;
   zoom: Zoom;
   pins: PlayerRow[];
-  onDimensions: (size: Size) => void;
 }) {
-  const { decoded, slots, status, loaded, errored, retry } = useDecodedImage(frame.href);
-  // Raster dimensions are authoritative; viewport is only a stable loading fallback.
-  const dimensions = decoded ?? viewport ?? { width: 1280, height: 800 };
-  const size = fittedSize(dimensions, available, zoom);
-  useEffect(() => {
-    if (decoded) onDimensions(decoded);
-  }, [decoded, onDimensions]);
+  const { decoded, slots, status, loaded, errored, retry } = image;
+  // Fit is sized by CSS from the stage container and the stage's --fit-ratio. Zoom levels are the
+  // raster size times a factor and need no measurement.
+  const factor = zoom === "fit" || zoom === "actual" ? 1 : zoom;
+  const size: CSSProperties | undefined =
+    zoom === "fit"
+      ? undefined
+      : { width: dimensions.width * factor, height: dimensions.height * factor };
   return (
     <div
       className="stage-box evidence-image"
+      data-fit={zoom === "fit" ? "" : undefined}
       style={size}
       data-image-state={status}
       data-retained-image={decoded && status === "loading" ? "" : undefined}
@@ -289,10 +314,8 @@ function RecordedImage({
             const position = row.coord ? pinPosition(row.coord, viewport) : null;
             const fraction = (row.coord?.x ?? 0) / viewport.width;
             const side = fraction > 0.5 ? "left" : "right";
-            const room = Math.max(
-              32,
-              (side === "left" ? fraction : 1 - fraction) * size.width - 20,
-            );
+            // The frame box is a size container, so the tip's room follows the box's own width.
+            const room = side === "left" ? fraction : 1 - fraction;
             return position ? (
               <span
                 key={row.id}
@@ -301,7 +324,10 @@ function RecordedImage({
                 data-tip-vertical={(row.coord?.y ?? 0) / viewport.height > 0.75 ? "above" : "below"}
                 style={position}
               >
-                <span className="tip" style={{ maxWidth: Math.min(180, room) }}>
+                <span
+                  className="tip"
+                  style={{ maxWidth: `min(180px, max(32px, calc(${room} * 100cqw - 20px)))` }}
+                >
                   {row.title}
                 </span>
               </span>

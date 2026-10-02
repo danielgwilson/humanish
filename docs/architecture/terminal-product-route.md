@@ -1,4 +1,4 @@
-# Terminal-product real-agent route (issue #154)
+# Terminal-product route
 
 The live terminal-product route has shipped since `0.8.0`, with the in-sandbox runtime,
 command-scoped credential placement, exact-id cleanup proof, an interventions ledger, a cost and
@@ -213,45 +213,17 @@ keyed off that capability, plus the deny-by-default credential allowlist, the
 positive-allowlist sandbox metadata, the cleanup proof, the interventions ledger,
 and a minimal fail-closed cap.
 
-## Historical SLICE 1 scope (DRY-RUN only when shipped)
+## Test seams
 
-At SLICE 1, `runTerminalProductLab` implemented only the dry-run path: it built a valid
-`humanish.run-bundle.v1` contract bundle, honestly labeled contract-only, with:
+The route reads `env` and `scorer` from its options (`src/routes/terminal/types.ts`), and a test
+passes its seams (`desktopModule`, `renderObserver`, `now`, `costProbe`) as `LabDeps`
+(`src/lab/lab-deps.ts`).
 
-- the subject declared as a terminal-product with its public surfaces, provenance
-  **UNPINNED** (the agent drives public surfaces, not a clone; invariant 5);
-- the author mission recorded as plaintext (public-safe committed lab text) + a
-  **digest** of the full composed prompt (nothing beyond the author mission goes
-  plaintext);
-- the caps / deny-by-default policies / runtime-auth channel recorded as
-  declarations (names only; invariant 1);
-- a terminal-kind stream that is an honest **contract placeholder**: stdin
-  disabled, empty tail, `transport: snapshot`, **not** `pty` (captured
-  non-interactive exec output is never an interactive PTY; invariant 6 + the
-  goal packet's PTY ruling). SLICE 2 later added redacted exec-stream capture;
-- empty/placeholder ledgers (substrate lifecycle, command log, terminal event
-  stream, interventions, cost) that SLICE 2/3 later filled.
+## The product-adapter extension seam
 
-The dry-run bundle passed the existing `verifyRun`. Terminal-specific verifier
-checks (terminal/transcript presence, lifecycle, cleanup, interventions,
-metadata allowlist, no-credential-in-artifacts, no-spend) landed in SLICE 2/3.
-
-At SLICE 1, a non-dry-run call returned a structured
-`HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` failure before launch or spend.
-SLICE 2 implemented the real session.
-
-SLICE 1 declared the DI seams SLICE 2 needed (`loadModule`, `buildSandbox`,
-`runtimeAuthEnv`, `detachedTimers`) on a terminal hook bag; only the dry-run path was
-implemented in that slice. The bag is gone. The route reads `env` and `scorer` from its
-options (`src/routes/terminal/types.ts`), and a test passes its seams (`desktopModule`,
-`renderObserver`, `now`, `costProbe`) as `LabDeps` (`src/lab/lab-deps.ts`).
-
-## SLICE 4: the product-adapter extension seam (layer 6)
-
-This route is proof-roadmap **layer 6**: an adopter attaches product-specific
-scoring + feedback as a THIN in-repo extension WITHOUT forking core. SLICE 4
-ships the SEAM. Core ships no built-in product scorer; the adopter's scorecard
-lives in the adopter's repo:
+An adopter attaches product-specific scoring and feedback as a thin in-repo extension, without
+forking core. Core ships the seam and no built-in product scorer; the adopter's scorecard lives in
+the adopter's repo:
 
 - **Exported contract types** a thin adapter types against from the package barrel
   (`humanish`) alone, never through a deep `src/` import: `RunBundle`,
