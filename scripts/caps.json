@@ -15,12 +15,12 @@
       "history": 18,
       "series-codes": 0,
       "name-refs": 0,
-      "string-em-dashes": 154,
-      "string-issue-refs": 10,
+      "string-em-dashes": 122,
+      "string-issue-refs": 9,
       "string-slice": 10,
-      "string-rationale": 28,
-      "string-plural-s": 57,
-      "string-caps": 278
+      "string-rationale": 20,
+      "string-plural-s": 56,
+      "string-caps": 247
     },
     "tests": {
       "issue-refs": 0,

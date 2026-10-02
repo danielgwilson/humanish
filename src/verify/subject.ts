@@ -46,7 +46,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
   // its seed records, and a failed migration must not hide behind the external marker).
   if (live && bundle.review.verdict === "pass" && seed.some((record) => record.ok !== true)) {
     findings.push(
-      "review verdict is pass but a recorded seed step did not complete ok — a passed live run cannot carry failed or unexecuted state steps",
+      "the review verdict is pass, but a recorded seed step did not complete; a passed live run cannot have failed or skipped state steps",
     );
   }
 
@@ -54,11 +54,13 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
     case "seeded": {
       if (!live) {
         findings.push(
-          'state marker "seeded" on a dry-run bundle — a contract bundle cannot claim executed state',
+          'state marker "seeded" on a dry-run bundle: a dry run executes no state steps',
         );
       }
       if (seed.length === 0) {
-        findings.push('state marker "seeded" with zero seed step records is a hollow state claim');
+        findings.push(
+          'state marker "seeded" with no seed step records claims state the run did not set up',
+        );
       }
       for (const record of seed) {
         if (!COMMAND_DIGEST_PATTERN.test(record.commandDigest)) {
@@ -81,7 +83,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
         if (!SUBJECT_ENV_NAME_PATTERN.test(name)) {
           // Deliberately does not echo the entry: a malformed entry may be a value.
           findings.push(
-            "externalEnvNames carries an entry that is not an env var NAME shape (values must never appear in evidence)",
+            "externalEnvNames has an entry that is not an environment variable name; evidence may hold names only, never values",
           );
         }
       }
@@ -103,17 +105,17 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
       // contradicts the "no subject sandbox" invariant of this plane class.
       if (subject.source !== "app-url") {
         findings.push(
-          'state marker "external-public" requires subject.source "app-url" — the external-public plane is a real public deployment, not a clone/local-tree subject',
+          'state marker "external-public" needs subject.source "app-url": an external-public app is a public deployment, not a clone or local-tree subject',
         );
       }
       if (seed.length > 0) {
         findings.push(
-          'state marker "external-public" cannot carry seed step records — the external-public plane is neither provisioned nor seeded by the harness',
+          'state marker "external-public" cannot carry seed step records: humanish neither provisions nor seeds a public deployment',
         );
       }
       if ((state.externalEnvNames ?? []).length > 0) {
         findings.push(
-          'state marker "external-public" cannot carry externalEnvNames — the plane is operator-owned, not an uncontrolled external channel',
+          'state marker "external-public" cannot carry externalEnvNames: the operator runs this app, so there is no external state to declare',
         );
       }
       break;
@@ -145,6 +147,6 @@ export function undeclaredSubjectStateWarnings(bundle: RunBundle): string[] {
     return [];
   }
   return [
-    `Subject env is provisioned (${stateRelevantEnvNames.join(", ")}) but no state story is declared; if any name points at external state, declare subject.state.external (recorded UNPINNED) or seed in-sandbox state with subject.state.seed.`,
+    `Subject env is provisioned (${stateRelevantEnvNames.join(", ")}) but no state is declared. If a name points at external state, declare it in subject.state.external (recorded as unpinned), or seed the state in the sandbox with subject.state.seed.`,
   ];
 }

@@ -1321,7 +1321,7 @@
         "total": 0
       },
       "desktopMinutes": "[desktopMinutes]",
-      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+      "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
     }
   },
   "sandbox-receipts.ndjson": [

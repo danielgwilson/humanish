@@ -1307,8 +1307,8 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(verify.ok).toBe(true);
       expect(verify.checks.find((entry) => entry.name === "actor engagement")?.ok).toBe(true);
       expect(verify.warnings).toHaveLength(1);
-      expect(verify.warnings[0]).toContain("FULL-FIDELITY (raw)");
-      expect(verify.warnings[0]).toContain("NOT publish-safe");
+      expect(verify.warnings[0]).toContain("are unblurred");
+      expect(verify.warnings[0]).toContain("not safe to publish as it is");
       expect(verify.shareSafety.status).toBe("local_only");
       expect(verify.shareSafety.reasons.map((reason) => reason.code)).toContain("RAW_SCREENSHOTS");
       expect(
@@ -1326,12 +1326,12 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(jsonBody.shareSafety.reasons.map((reason) => reason.code)).toContain(
         "RAW_SCREENSHOTS",
       );
-      expect(jsonBody.warnings[0]).toContain("FULL-FIDELITY (raw)");
+      expect(jsonBody.warnings[0]).toContain("are unblurred");
       const human = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd]);
       expect(human.exitCode).toBe(0);
       expect(human.stdout).toMatch(/^verified raw-posture-live · local_only · \d+ checks passed\n/);
       expect(human.stdout).toContain("share-safety: RAW_SCREENSHOTS: ");
-      expect(human.stdout).toContain("warning: Screenshots are FULL-FIDELITY (raw)");
+      expect(human.stdout).toContain("warning: Screenshots on ");
     });
   });
 
@@ -1469,7 +1469,7 @@ describe("verify: subject state provenance", () => {
       });
       const empty = await verifyRun(cwd, "state-seeded-empty");
       expect(stateCheck(empty)?.ok).toBe(false);
-      expect(stateCheck(empty)?.message).toContain("hollow");
+      expect(stateCheck(empty)?.message).toContain("claims state the run did not set up");
 
       await writeCuaRunFixture(cwd, "state-seeded-bad-digest", {
         dryRun: false,
@@ -1519,7 +1519,7 @@ describe("verify: subject state provenance", () => {
       });
       const value = await verifyRun(cwd, "state-unpinned-value");
       expect(stateCheck(value)?.ok).toBe(false);
-      expect(stateCheck(value)?.message).toContain("not an env var NAME shape");
+      expect(stateCheck(value)?.message).toContain("not an environment variable name");
       expect(stateCheck(value)?.message).not.toContain(leakedValue);
     });
   });
@@ -1557,7 +1557,7 @@ describe("verify: subject state provenance", () => {
       const verify = await verifyRun(cwd, "state-unpinned-failed-seed");
       expect(verify.ok).toBe(false);
       expect(stateCheck(verify)?.ok).toBe(false);
-      expect(stateCheck(verify)?.message).toContain("passed live run cannot carry failed");
+      expect(stateCheck(verify)?.message).toContain("passed live run cannot have failed");
     });
   });
 
@@ -1571,7 +1571,9 @@ describe("verify: subject state provenance", () => {
       const verify = await verifyRun(cwd, "state-undeclared-env");
       expect(verify.ok).toBe(true);
       expect(stateCheck(verify)?.ok).toBe(true);
-      const stateWarnings = verify.warnings.filter((warning) => warning.includes("no state story"));
+      const stateWarnings = verify.warnings.filter((warning) =>
+        warning.includes("no state is declared"),
+      );
       expect(stateWarnings).toHaveLength(1);
       expect(stateWarnings[0]).toContain("DATABASE_URL");
       expect(stateWarnings[0]).not.toContain("GITHUB_TOKEN");

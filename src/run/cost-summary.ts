@@ -198,8 +198,8 @@ function costNote(args: CostArgs, totals: ReturnType<typeof costTotals>): string
   const { estimatedTotalUsd, anyNull, placeholder, minRatesAsOf } = totals;
   const estimateNote =
     estimatedTotalUsd === null
-      ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. ${args.participants.some((participant) => participant.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/run/pricing.ts to estimate this model."}`
-      : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
+      ? `No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. ${args.participants.some((participant) => participant.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/run/pricing.ts to estimate this model."}`
+      : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (a lower bound: some lines are unmeasured or unpriced)" : ""}${placeholder ? "; it uses a placeholder rate, so confirm the rate before relying on the amount" : ""}. Every figure multiplies usage by a rate table (rates as of ${minRatesAsOf}, the oldest rate used), so it is an estimate and not the provider's charge.`;
   return (
     estimateNote +
     ((args.desktops?.length ?? 0) > 0
@@ -269,7 +269,7 @@ export function spendFreeCostSummary(): RunCostSummary {
     breakdown: [],
     tokenUsage: { input: 0, output: 0, total: 0 },
     desktopMinutes: null,
-    note: "No model request and no hosted desktop: this run spent $0 by construction.",
+    note: "This run made no model request and used no hosted desktop, so it cost $0.",
   };
 }
 

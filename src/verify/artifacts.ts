@@ -285,7 +285,7 @@ export function rawScreenshotPostureWarnings(
   }
 
   return [
-    `Screenshots are FULL-FIDELITY (raw) or carry no redaction claim on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`,
+    `Screenshots on ${rawStreamIds.join(", ")} are unblurred, or do not say whether they were blurred. That is fine for local use, but the bundle is not safe to publish as it is: verify ok does not mean share-ready. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.`,
   ];
 }
 

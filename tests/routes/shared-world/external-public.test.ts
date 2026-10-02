@@ -905,7 +905,7 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     expect(verify.ok).toBe(false);
     const check = verify.checks.find((c) => c.name === "shared-world evidence");
     expect(check?.ok).toBe(false);
-    expect(check?.message).toContain("did not converge on ONE OBSERVED origin");
+    expect(check?.message).toContain("were observed on more than one origin");
   });
 });
 
@@ -1121,14 +1121,14 @@ const externalPublicInversions: ReadonlyArray<readonly [string, ExternalMutation
     (b) => {
       (b.sharedWorld!.plane as { exposure?: string }).exposure = "synthetic";
     },
-    "exposure must be ABSENT",
+    "exposure must be absent",
   ],
   [
     "fails closed when a routeHostDigest diverges (seats did not converge on ONE observed origin)",
     (b) => {
       b.sharedWorld!.laneWindows![1]!.routeHostDigest = "0000000000000000";
     },
-    "did not converge on ONE OBSERVED origin",
+    "were observed on more than one origin",
   ],
   [
     "fails closed when a required external-public attributionLimit is missing",
