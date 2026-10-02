@@ -1,4 +1,4 @@
-// Off-app email for one E2B desktop participant (#297): the in-sandbox catch the subject app sends to, the
+// Off-app email for one E2B desktop participant: the in-sandbox catch the subject app sends to, the
 // persona's inbox surface, the real-email receiving surface, and the evidence drained at teardown.
 
 import { setTimeout as delay } from "node:timers/promises";
@@ -72,7 +72,7 @@ export function planParticipantComms(
 /** The env the subject app reads to reach the catch, injected at sandbox create so it boots with it. */
 export function participantCommsEnv(comms: ParticipantComms | undefined): Record<string, string> {
   if (comms === undefined) return {};
-  // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
+  // injectEnv is absent on an adopter-hosted plane: there is no subject env to inject
   // because the operator points their own app at their own catch.
   const env: Record<string, string> =
     comms.email.injectEnv === undefined
@@ -126,7 +126,7 @@ export async function startCommsCatch(
     requestTimeoutMs,
   });
   // The surface uses its own FakeInbox + cursor, independent of the teardown evidence drain (two
-  // readers of the append-only NDJSON — no double-count).
+  // readers of the append-only NDJSON, so no double-count).
   const stop = new AbortController();
   let renderedCount = 0;
   const loop = (async () => {
@@ -277,7 +277,7 @@ export async function drainCommsEvidence(args: {
         `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
       );
     } else {
-      // Zero captures is the silent-broken shape (#351): the app never posted to the catch at
+      // Zero captures is the silent-broken shape: the app never posted to the catch at
       // all, so the personas stared at an empty inbox. Most common cause: the app does not
       // actually read the declared injectEnv var for its email API base URL.
       const transportHint = comms.email.smtp

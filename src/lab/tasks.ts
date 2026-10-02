@@ -1,6 +1,6 @@
 // Tasks: the researcher's protocol, expressed as config (docs/principles/three-roles.md).
 //
-// A lab could declare a prose `mission` and nothing else. That is a brief, not a protocol — and it
+// A lab could declare a prose `mission` and nothing else. That is a brief, not a protocol, and it
 // left "where did people get stuck" answerable only from an actor's own narration, which is the one
 // source a study should not have to take on faith.
 //
@@ -32,7 +32,7 @@ const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
  * the only half that reaches the prompt.
  *
  * `success` belongs to the researcher. It is how the task will be measured, and the participant
- * never sees it — a moderator does not read the success criterion aloud, because telling someone
+ * never sees it. A moderator does not read the success criterion aloud, because telling someone
  * how they will be judged changes what they do. A persona told "you succeed when the URL contains
  * /dashboard" will go find that URL, which measures the instruction rather than the product.
  */
@@ -64,7 +64,7 @@ export interface TaskFunnel {
   total: number;
   /** Tasks observed complete. */
   completed: number;
-  /** Declared tasks with no `done` criterion — shown to the participant, never observable. */
+  /** Declared tasks with no `done` criterion: shown to the participant, never observable. */
   unobservable: number;
   /** The first task that was not observed complete: where this participant stopped. */
   stoppedAt?: string;
@@ -80,19 +80,19 @@ export interface TaskFunnel {
   }>;
   /** Observable tasks that were never measured, because the inputs their criteria need never
    *  arrived. Reported separately from failures: a task nobody could observe is a gap in our
-   *  instrument, and reporting it as 0-completed blames the participant for it (#514). */
+   *  instrument, and reporting it as 0-completed blames the participant for it. */
   unmeasured: number;
 }
 
 /**
  * Tracks task completion across a session. Stateful on purpose: a task completes once, on the first
- * observation that satisfies it, and stays complete even if the participant navigates away — you do
+ * observation that satisfies it, and stays complete even if the participant navigates away; you do
  * not un-sign-up by going back to the home page.
  */
 export class TaskTracker {
   private readonly completions = new Map<string, TaskCompletion>();
   /** Which observation fields were ever populated this session. A criterion whose field never
-   *  arrived was never evaluated against anything, however many turns ran (#514). */
+   *  arrived was never evaluated against anything, however many turns ran. */
   private readonly fieldsSeen = new Set<"url" | "text" | "appState">();
 
   constructor(private readonly tasks: readonly LabTask[]) {}
@@ -152,12 +152,12 @@ export class TaskTracker {
         ...(observable && completion === undefined ? { inputsObserved } : {}),
       };
     });
-    // Where they stopped is the first task not observed complete — the thing a researcher reads
+    // Where they stopped is the first task not observed complete, the thing a researcher reads
     // first. An unobservable task cannot be "where they stopped", because nothing could have
     // proven otherwise; skipping it avoids blaming a participant for a gap in the protocol.
     // A task we never measured cannot be "where they stopped" either, for the same reason an
     // unobservable one cannot: nothing could have proven otherwise, so naming it blames the
-    // participant for our gap (#514).
+    // participant for our gap.
     const stoppedAt = tasks.find(
       (task) => task.observable && !task.completed && task.inputsObserved !== false,
     )?.id;
@@ -177,7 +177,7 @@ export class TaskTracker {
  * The task list as the participant reads it: numbered, in order, in their own language.
  *
  * Reads `goal` and nothing else. The success criteria are the researcher's instrument and never
- * appear here — a participant who is told how they will be measured optimizes for the measurement,
+ * appear here: a participant who is told how they will be measured optimizes for the measurement,
  * and the study stops being about the product. A test pins this, because it is the kind of leak a
  * later convenience change makes without noticing.
  */
@@ -195,7 +195,7 @@ export function formatTaskFunnel(funnel: TaskFunnel): string {
   const unobservable =
     funnel.unobservable === 0 ? "" : `, ${funnel.unobservable} with no completion criterion`;
   // Named separately from failures. "0/3 completed" alone reads as "no participant managed it",
-  // which is the wrong story when the criterion was never evaluated against anything (#514).
+  // which is the wrong story when the criterion was never evaluated against anything.
   const unmeasured =
     funnel.unmeasured === 0
       ? ""

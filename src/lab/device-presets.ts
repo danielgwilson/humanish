@@ -13,7 +13,7 @@ import type { LabConfig } from "./types.js";
 // Neither a preset nor browser emulation establishes physical-device or touch fidelity.
 //
 // One more route constraint: Chrome won't render a window narrower than ~500 CSS px, so the rendered
-// screen width is floored to MIN_DESKTOP_RENDER_WIDTH in resolveParticipantDevice — a sub-500 preset (mobile
+// screen width is floored to MIN_DESKTOP_RENDER_WIDTH in resolveParticipantDevice: a sub-500 preset (mobile
 // 414, small-mobile 360, narrow-mobile 320) is rendered on a 500-wide screen the window fits exactly
 // (otherwise the 500-wide window overflowed the narrow screen and clipped the page). These preset
 // widths remain the requested device identity (prompt + metadata). Opt-in mobile emulation sets
@@ -36,13 +36,13 @@ export interface DevicePreset {
  * the per-line notes record where the two reference sims agree vs. diverge.
  */
 export const DEVICE_PRESETS = {
-  // phone — both reference sims agree
+  // phone: both reference sims agree
   mobile: { width: 414, height: 896, isMobile: true, deviceScaleFactor: 3 },
-  // small phone — both reference sims agree
+  // small phone: both reference sims agree
   "small-mobile": { width: 360, height: 740, isMobile: true, deviceScaleFactor: 3 },
   // older narrow phone
   "narrow-mobile": { width: 320, height: 700, isMobile: true, deviceScaleFactor: 2 },
-  // tablet — both reference sims agree
+  // tablet: both reference sims agree
   tablet: { width: 820, height: 1180, isMobile: false, deviceScaleFactor: 2 },
   // laptop baseline (the in-house desktop screen; close to the 1440x960 dry-run surface in
   // src/run/dry-run.ts)
@@ -55,7 +55,7 @@ export type DevicePresetName = keyof typeof DEVICE_PRESETS;
 
 /**
  * Default device for a run that does not declare one. `desktop` (1440x950) is the median
- * first-run laptop screen — the in-house desktop default, within 10px of the 1440x960 dry-run
+ * first-run laptop screen, the in-house desktop default, within 10px of the 1440x960 dry-run
  * surface in src/run/dry-run.ts. `wide` (1920x1080), the most-common external monitor, is one
  * keystroke away (`execution.desktop.device: wide`) but is deliberately not the default,
  * because the median device a first-time user arrives on is a laptop, not a 1080p monitor.
@@ -82,7 +82,7 @@ export function resolveDevicePreset(name: DevicePresetName | undefined): DeviceP
  * narrow-mobile 320) gets a 500-wide screen the window fits exactly, with no clip. The device preset keeps
  * its true identity (isMobile, nominal width) for the persona prompt + metadata; only the rendered
  * screen is floored. True sub-500 CSS-viewport rendering (page laid out at 414 regardless of window
- * width, via CDP device-metric emulation) is the separate #221 upgrade.
+ * width, via CDP device-metric emulation) is the separate mobileEmulation option.
  */
 export const MIN_DESKTOP_RENDER_WIDTH = 500;
 
@@ -94,7 +94,7 @@ export function floorRenderResolution(resolution: readonly [number, number]): [n
 /**
  * Resolve a participant's device + rendered resolution (most-specific wins, exactly as the
  * single-participant path always has): a raw execution.desktop.resolution escape hatch (only legal
- * when no roster entry sets a device — XOR enforced at parse) → the participant's named device → the run-wide
+ * when no roster entry sets a device; XOR enforced at parse) → the participant's named device → the run-wide
  * execution.desktop.device → the default preset. A raw resolution is an unnamed custom desktop
  * (non-mobile, DSF 1): we never claim a named preset's mobile/DPR for hand-set geometry. The rendered
  * `resolution` is floored to MIN_DESKTOP_RENDER_WIDTH so the browser window fits its X screen (no clip);

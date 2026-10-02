@@ -25,7 +25,7 @@ export function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   const sw = bundle.sharedWorld;
   if (!sw) {
     // A live bundle that declares shared-world attribution but carries no evidence block is a
-    // hollow claim — fail closed. (Absent attributionClass + absent block == an ordinary bundle.)
+    // hollow claim, so it fails closed. (Absent attributionClass + absent block == an ordinary bundle.)
     return bundle.attributionClass === "shared-world"
       ? ["attributionClass is shared-world but the sharedWorld evidence block is missing"]
       : [];

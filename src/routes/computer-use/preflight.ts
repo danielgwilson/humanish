@@ -74,7 +74,7 @@ export async function liveCuaRejection(args: {
   }
   // Fail-closed cap (discipline #3): a maxUsd cap needs a measurable per-turn estimate.
   // If the operator set execution.caps.maxUsd but src/run/pricing.ts has no rate for the resolved
-  // model, the loop could not enforce the cap — and silently running uncapped would break the
+  // model, the loop could not enforce the cap, and silently running uncapped would break the
   // runaway-retry protection. Refuse at preflight (before any sandbox/spend) rather than run
   // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
   // src/run/pricing.ts (the honest place) or removes the cap.
@@ -88,7 +88,7 @@ export async function liveCuaRejection(args: {
       };
     }
   }
-  // Adopter-hosted comms catch (#380): fail closed before any sandbox is created, because a comms lab
+  // Adopter-hosted comms catch: fail closed before any sandbox is created, because a comms lab
   // whose catch is unreachable collects nothing while every participant still spends. The probe asserts
   // humanish's own service marker in /health, so an adopter's proxy answering 200 for everything cannot
   // pass for a catch.

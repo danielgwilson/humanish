@@ -99,7 +99,7 @@ function scorerContext(facts: BrowserScoringFacts): BrowserLabScoringContext {
 /** The scorer functions a computer-use or shared-world run calls: `RunLabOptions.scorer`. */
 export interface BrowserScorer {
   /**
-   * Browser-route extension seam (#165): a thin adapter may score the assembled
+   * Browser-route extension seam: a thin adapter may score the assembled
    * browser/shared-world evidence without forking core. The score is stored as
    * namespaced `bundle.adapterScore`; product-specific component detail belongs
    * in `data`, not in core enums or review text.
@@ -145,7 +145,7 @@ export async function applyBrowserScorer(args: {
   bundle: RunBundle;
   sanitize: (text: string) => string;
   warnings: string[];
-  /** Present only when the scorer was CONFIG-DECLARED (#316); core-stamped onto the bundle as
+  /** Present only when the scorer was config-declared; core-stamped onto the bundle as
    *  evidence of which out-of-tree module was loaded. Absent for library callers. Its presence also
    *  makes a throwing or malformed scorer a failure: a declared gate that cannot render a pass is
    *  a fail, never a silent green. */
@@ -157,7 +157,7 @@ export async function applyBrowserScorer(args: {
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
   // still loaded and attempted). A valid status:"fail" is a failure (library + declared, the
-  // pre-#316 (#165) path); a declared scorer that throws or returns a malformed value is one too (below).
+  // original path); a declared scorer that throws or returns a malformed value is one too (below).
   if (scorerProvenance) bundle.scorerProvenance = scorerProvenance;
 
   // The scorer sees a READ-ONLY view of the bundle: it cannot mutate noSpend/cost/review in place to

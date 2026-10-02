@@ -25,7 +25,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
   const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
   const { runId, paths: runPaths } = run;
   // A live run writes what it is doing as it does it, whether or not anyone is currently watching.
-  // This used to be gated on `options.onObserverReady` — the interactive Observer callback — so a
+  // This used to be gated on `options.onObserverReady` (the interactive Observer callback), so a
   // run launched by an agent (`lab run --json`), detached, or from the terminal surface recorded
   // nothing at all until it completed, and anything asking "what is this participant doing right
   // now" got silence for the whole run. Who reads the evidence is not the run's business; the
@@ -51,7 +51,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
     streams.showIn(liveObserver);
     if (input.onObserverReady) await input.onObserverReady(liveObserver);
 
-    // Incremental live flush (#441): as each participant's loop reports its recorded-so-far items,
+    // Incremental live flush: as each participant's loop reports its recorded-so-far items,
     // rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
     // Observer's 5s poll sees the timeline grow. The run refuses any snapshot once the final
     // write began; the route stops the flush timer on every exit below.

@@ -57,7 +57,7 @@ export function posInt(value: unknown): number | undefined {
   return undefined;
 }
 
-/** A non-negative finite number (0 allowed — caps default to 0 = no-spend). Accepts a numeric
+/** A non-negative finite number (0 allowed; caps default to 0 = no-spend). Accepts a numeric
  *  string too, since YAML scalars can arrive as strings. */
 export function nonNegNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {

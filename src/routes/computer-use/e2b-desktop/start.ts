@@ -71,13 +71,13 @@ export async function openParticipantSurface(
   if (subject.kind === "desktop-cli") {
     // A terminal window, opened the way the browser is opened on every other route: the
     // participant arrives at a desktop with the thing they were asked to use already in front
-    // of them. They can still open another from the dock — that is the point of a desktop.
+    // of them. They can still open another from the dock; that is the point of a desktop.
     await openDesktopTerminal(desktop, deps.requestTimeoutMs, subject.product.workdir);
     await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
     return;
   }
   const requestedMedia = residual.execution?.desktop?.media;
-  // A declared camera (#509) is in place before the browser starts: the feed is generated or
+  // A declared camera is in place before the browser starts: the feed is generated or
   // uploaded first, and a feed that cannot be produced fails the participant closed here.
   const mediaEvidence =
     requestedMedia === undefined
@@ -116,7 +116,7 @@ export async function openParticipantSurface(
   state.browserLaunched = true;
   noteDevToolsReadiness(ctx, browserLaunch.devTools, emulationFlags.length > 0);
   await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
-  // Mobile fidelity (#221) is applied outside startParticipantStream's best-effort catch, so a request
+  // Mobile fidelity is applied outside startParticipantStream's best-effort catch, so a request
   // that cannot be applied fails the participant closed.
   state.fidelity = await applyParticipantMobileFidelity({
     desktop,

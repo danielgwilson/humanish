@@ -319,18 +319,16 @@ function singleReview(
   stream: RunStream,
 ): ReviewSummary {
   const { reason } = view;
-  // A funnel with a denominator of one is still the funnel — and its absence stays honest: no
+  // A funnel with a denominator of one is still the funnel, and its absence stays honest: no
   // declared protocol (or a dry run) means no `tasks` field, never an empty one.
   const singleRunTasks =
     args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
       ? aggregateTaskFunnels([args.session.trace.taskFunnel])
       : undefined;
-  // What happened to the participant, as the route judged it — the same rule the fan-out roll-up
-  // applies (participantStatusForOutcome). Before #476 this read the actor's own status, so a
-  // run the route refused as "not a credible pass" was written up as verdict pass, 1/1 reached
-  // the goal, and every projection of the bundle (Observer tally, `runs`, the status index)
-  // repeated it. Found on a real drawDB run whose participant wrote "Blocked after partial
-  // completion".
+  // What happened to the participant, as the route judged it: the same rule the fan-out roll-up
+  // applies (participantStatusForOutcome). Reading the actor's own status instead would write up
+  // a run the route refused as "not a credible pass" as verdict pass, 1/1 reached the goal, and
+  // every projection of the bundle (Observer tally, `runs`, the status index) would repeat it.
   const participantStatus: ActorStatus | undefined =
     args.session === undefined
       ? undefined
@@ -411,13 +409,13 @@ export function buildSingleParticipantBundle(args: {
    * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").
    * When a session ran, its trace's `redaction.screenshots` is the evidence-of-record and
    * wins; this fallback keeps labels honest for frames written before a mid-session failure
-   * (no trace exists to testify then). Defaults to "raw" — the engine default.
+   * (no trace exists to testify then). Defaults to "raw", the engine default.
    */
   captureRedaction?: "raw" | "blurred";
   session?: CuaLoopResult;
   sessionError?: string;
   /**
-   * The route's own credibility read of a goal_satisfied session (#476). The actor's status is
+   * The route's own credibility read of a goal_satisfied session. The actor's status is
    * evidence of what it claimed; whether the harness counts the claim is decided by the route
    * (zero engagement, a final message that describes a blocker). The review has to say the same
    * thing the participant's exit code says, or the durable bundle reports a participant reaching the
@@ -429,7 +427,7 @@ export function buildSingleParticipantBundle(args: {
    * + digests only, never values or command text), including the subject's state story. */
   subjectProvenance?: CuaSubjectProvenanceArg;
   /**
-   * Entry kind for the non-clone subject.declared event (invariant 5 — declare what the subject
+   * Entry kind for the non-clone subject.declared event (invariant 5: declare what the subject
    * was). "local-app": an already-running local dev server driven in-process, un-pinnable, and
    * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
    */
@@ -502,8 +500,8 @@ export function buildSingleParticipantBundle(args: {
     },
     artifacts: bundleArtifacts(),
     review,
-    // What the participant reported, when it reported anything (#392). Dry-run and in-progress
-    // bundles carry none — there is no participant yet to quote.
+    // What the participant reported, when it reported anything. Dry-run and in-progress
+    // bundles carry none: there is no participant yet to quote.
     feedbackCandidates:
       args.dryRun || args.inProgress === true
         ? []
@@ -536,7 +534,7 @@ export function buildSingleParticipantBundle(args: {
       ? {}
       : { providerResources: args.providerResources }),
     // Structured subject provenance (invariant 5): code pin + state story. Uniform and
-    // honest on app-url bundles too — the caller minted the URL, its state is the caller's.
+    // honest on app-url bundles too: the caller minted the URL, its state is the caller's.
     // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
     // shaped, so no reconstruction is needed beyond the app-url fallback.
     subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } },
