@@ -393,7 +393,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -410,7 +410,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -427,7 +427,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",

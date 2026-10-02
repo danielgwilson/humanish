@@ -64,8 +64,8 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish init`: Set up committed humanish/ source files and ignored .humanish/ runtime state.
 - `humanish doctor`: Explain project readiness and missing humanish setup.
 - `humanish run`: Run a study, as a dry run or with live participants. This is the everyday command.
-- `humanish watch`: Run a study, open its Observer and keep the shell attached. With --run, watch a saved run in place of a new one.
-- `humanish observe`: Open a saved run in the Observer, served on http://127.0.0.1.
+- `humanish watch`: Run a study, open its Observer and keep the shell attached.
+- `humanish observe`: Open a saved run in the Observer, served on http://127.0.0.1. With --all, serve the run library.
 - `humanish verify`: Check a run's evidence and share safety.
 - `humanish review`: Show a run's review: verdict, summary and gaps.
 - `humanish analyze`: Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.
@@ -107,7 +107,6 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish telemetry status`: What is collected, and whether it is on.
 - `humanish telemetry enable`: Turn anonymous usage collection on.
 - `humanish telemetry disable`: Turn anonymous usage collection off.
-- `humanish serve`: Serve your run library on http://127.0.0.1, optionally shared through an authenticated tunnel. With --run, it opens on that run.
 - `humanish tui`: Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect <lab> --json and humanish runs --json.
 
 <!-- humanish-cli:end -->

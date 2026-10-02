@@ -25,12 +25,13 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     parent
       .command("watch")
       .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
-      .description(
-        "Run a study, open its Observer and keep the shell attached. With --run, watch a saved run in place of a new one.",
-      )
+      .description("Run a study, open its Observer and keep the shell attached.")
       .summary("Run a study and follow it in the Observer.")
       .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
-      .option("--run <id>", "Watch an existing run id or latest pointer."),
+      // Removed in 0.109.0: watch --run stays one minor, hidden; observe --run shows a saved run.
+      .addOption(
+        new Option("--run <id>", "Deprecated: use humanish observe --run <id>.").hideHelp(),
+      ),
   )
     .option(
       "--expose",
@@ -69,7 +70,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--safe",
-      "Not applicable to watch: a live run is never share_ready, so --safe (a `serve` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain).",
+      "Not applicable to watch: a live run is never share_ready, so --safe (an `observe --all` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain).",
     )
     .addHelpText(
       "after",
@@ -87,8 +88,8 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
         "Agent/CI path:",
         "  humanish watch --json --no-open",
         "",
-        "Existing evidence:",
-        "  humanish watch --run latest --detach",
+        "Saved runs:",
+        "  humanish observe --run latest",
       ].join("\n"),
     )
     .action((labArg, options, command) => handleWatch(io, labArg, options, command));
@@ -108,6 +109,9 @@ interface WatchOptions extends LabCommandOptions {
   safe?: boolean;
 }
 
+const WATCH_RUN_DEPRECATION =
+  "warning: humanish watch --run is deprecated and is removed in the next minor. Use humanish observe --run <id>.\n";
+
 type WatchRefusal = { code: NonNullable<RunResult["error"]>["code"]; message: string };
 
 async function handleWatch(
@@ -117,6 +121,7 @@ async function handleWatch(
   command: Command,
 ): Promise<void> {
   const options = parsed;
+  if (options.run !== undefined) io.writeErr(WATCH_RUN_DEPRECATION);
   const lab = options.lab ?? labArg;
   if (options.lab !== undefined && labArg !== undefined) {
     refuseWatch(command, io, options.cwd, {
@@ -155,16 +160,16 @@ async function handleWatch(
 
   // Exposure is only meaningful for a live computer-use study run (it serves the live desktop). The
   // non-lab watch path (existing evidence, or a fresh synthetic run) has no live desktop to
-  // stream, so exposure flags there are refused rather than silently ignored; use `serve`.
+  // stream, so exposure flags there are refused rather than silently ignored; use `observe --all`.
   if (watchExposeRequested(options)) {
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
       message:
-        "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish serve --expose`.",
+        "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish observe --all --expose`.",
     });
     return;
   }
-  // --safe is a `serve` library filter; watch shows one run and has nothing it could filter.
+  // --safe is an `observe --all` library filter; watch shows one run and has nothing to filter.
   if (options.safe === true) {
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",

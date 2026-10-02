@@ -1005,6 +1005,7 @@ interface ServeEnvelope {
   oauth?: { provider: string; allowEmails: string[]; allowDomains: string[] };
   runsListed: number;
   shareReadyCount?: number;
+  entryRunId?: string;
   warnings: string[];
   error?: { code: string; message: string };
 }
@@ -1110,37 +1111,53 @@ function findFreePort(): Promise<number> {
 }
 
 describe("humanish serve command", () => {
-  it("serves the run library over loopback with a machine envelope, then tears down once on SIGTERM", async () => {
-    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
-      await seedDryRunBundle(cwd, "serve-loopback-run");
+  // `serve` is the hidden alias of `observe --all` until 0.109.0; both serve the same library.
+  it.each([[["observe", "--all"]], [["serve"]]])(
+    "%j serves the run library over loopback with a machine envelope, then tears down once on SIGTERM",
+    async (command) => {
+      await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+        await seedDryRunBundle(cwd, "serve-loopback-run");
 
-      const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
-      const cli = startAttachedCli(["serve", "--cwd", cwd, "--json", "--no-open"]);
-      await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
+        const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
+        const cli = startAttachedCli([
+          ...command,
+          "--run",
+          "serve-loopback-run",
+          "--cwd",
+          cwd,
+          "--json",
+          "--no-open",
+        ]);
+        await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
-      const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
-      expect(envelope.schema).toBe("humanish.serve-result.v1");
-      expect(envelope.ok).toBe(true);
-      expect(envelope.mode).toBe("loopback");
-      expect(envelope.safe).toBe(false);
-      expect(envelope.host).toBe("127.0.0.1");
-      expect(envelope.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
-      expect(envelope.oauth).toBeUndefined();
-      expect(envelope.runsListed).toBe(1);
+        const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
+        expect(envelope.schema).toBe("humanish.serve-result.v1");
+        expect(envelope.ok).toBe(true);
+        expect(envelope.mode).toBe("loopback");
+        expect(envelope.safe).toBe(false);
+        expect(envelope.host).toBe("127.0.0.1");
+        expect(envelope.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+        expect(envelope.oauth).toBeUndefined();
+        expect(envelope.runsListed).toBe(1);
+        expect(envelope.entryRunId).toBe("serve-loopback-run");
+        expect(cli.stderr().split("humanish serve is deprecated").length - 1).toBe(
+          command[0] === "serve" ? 1 : 0,
+        );
 
-      // Mirror the watch signal test: deliver SIGTERM twice; the stop path must
-      // run exactly once and exit with exitCodeForSignal(SIGTERM).
-      const listeners = sigtermListenersSince(preexisting);
-      expect(listeners).toHaveLength(1);
-      for (const listener of listeners) listener("SIGTERM");
-      for (const listener of listeners) listener("SIGTERM");
-      await cli.finished;
+        // Mirror the watch signal test: deliver SIGTERM twice; the stop path must
+        // run exactly once and exit with exitCodeForSignal(SIGTERM).
+        const listeners = sigtermListenersSince(preexisting);
+        expect(listeners).toHaveLength(1);
+        for (const listener of listeners) listener("SIGTERM");
+        for (const listener of listeners) listener("SIGTERM");
+        await cli.finished;
 
-      expect(cli.exitCode()).toBe(143);
-      expect(cli.stderr().split("observe stopped").length - 1).toBe(1);
-      expect(cli.stderr()).not.toContain("cleanup failed");
-    });
-  });
+        expect(cli.exitCode()).toBe(143);
+        expect(cli.stderr().split("observe stopped").length - 1).toBe(1);
+        expect(cli.stderr()).not.toContain("cleanup failed");
+      });
+    },
+  );
 
   it("rejects conflicting or unsafe serve option combinations with exit 2 and exact error codes (fail-closed matrix)", async () => {
     await withTempApp(
@@ -1184,7 +1201,15 @@ describe("humanish serve command", () => {
         ];
 
         for (const row of matrix) {
-          const result = await runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...row.args]);
+          const result = await runCli([
+            "observe",
+            "--all",
+            "--cwd",
+            cwd,
+            "--json",
+            "--no-open",
+            ...row.args,
+          ]);
           const envelope = JSON.parse(result.stdout) as ServeEnvelope;
           expect(result.exitCode, `exit code for: ${row.args.join(" ")}`).toBe(2);
           expect(envelope.error?.code, `error code for: ${row.args.join(" ")}`).toBe(row.code);
@@ -1205,7 +1230,7 @@ describe("humanish serve command", () => {
           // The flags are gone: commander refuses the unknown option (a non-zero exit, surfaced here as
           // a thrown error), rather than silently accepting a no-op: the pre-1.0 breaking change.
           await expect(
-            runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...removed]),
+            runCli(["observe", "--all", "--cwd", cwd, "--json", "--no-open", ...removed]),
           ).rejects.toThrow();
         }
       },
@@ -1216,7 +1241,16 @@ describe("humanish serve command", () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
       await seedDryRunBundle(cwd, "serve-entry-run");
 
-      const result = await runCli(["serve", "--run", "nope", "--cwd", cwd, "--json", "--no-open"]);
+      const result = await runCli([
+        "observe",
+        "--all",
+        "--run",
+        "nope",
+        "--cwd",
+        cwd,
+        "--json",
+        "--no-open",
+      ]);
       const envelope = JSON.parse(result.stdout) as ServeEnvelope;
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
@@ -1239,7 +1273,8 @@ describe("humanish serve command", () => {
       );
 
       const result = await runCli([
-        "serve",
+        "observe",
+        "--all",
         "--safe",
         "--run",
         "serve-blocked-run",
@@ -1262,7 +1297,8 @@ describe("humanish serve command", () => {
 
       const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
       const cli = startAttachedCli([
-        "serve",
+        "observe",
+        "--all",
         "--cwd",
         cwd,
         "--expose",
@@ -1311,7 +1347,8 @@ describe("humanish serve command", () => {
       try {
         const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
         const cli = startAttachedCli([
-          "serve",
+          "observe",
+          "--all",
           "--cwd",
           cwd,
           "--safe",
@@ -1370,7 +1407,8 @@ describe("humanish serve command", () => {
       try {
         const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
         const cli = startAttachedCli([
-          "serve",
+          "observe",
+          "--all",
           "--cwd",
           cwd,
           "--expose",
@@ -1433,7 +1471,8 @@ describe("humanish serve command", () => {
         process.env.PATH = emptyDir;
         try {
           const result = await runCli([
-            "serve",
+            "observe",
+            "--all",
             "--cwd",
             cwd,
             "--expose",
