@@ -1,6 +1,6 @@
 # Find the right doc
 
-Start with the reading order in [CONTRIBUTING.md](../CONTRIBUTING.md#read-these-in-order). This page
+To make a first change, start with [CONTRIBUTING.md](../CONTRIBUTING.md#make-your-first-change). This page
 sorts everything under `docs/` by what it is for. Nothing here moves files; a folder that holds more
 than one kind is split file by file.
 
