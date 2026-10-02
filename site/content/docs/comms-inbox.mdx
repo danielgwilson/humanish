@@ -92,11 +92,12 @@ GIF or WebP bytes. The generic `/emails` payload can also carry runtime-only
 attachment fields are not converted; unsupported or missing CID references show an
 explicit unavailable-image placeholder instead of pretending capture succeeded.
 
-Captured images are limited to 12 entries, 1 MiB each and 2 MiB total. The renderer
-checks canonical base64 and the declared raster format's signature before creating a
-data URL. This is not a full image decoder; malformed raster content can still fail
-in the browser. Inline data URLs receive the same per-image checks. SVG, arbitrary
-attachment URLs and local paths are not fetched or converted.
+Captured images are limited to 12 entries, 1 MiB each and 2 MiB total. Before creating
+a data URL, the renderer checks that the base64 re-encodes to the same text and that
+the bytes carry the declared raster format's signature. This is not a full image
+decoder; malformed raster content can still fail in the browser. Inline data URLs
+receive the same per-image checks. SVG, arbitrary attachment URLs and local paths are
+not fetched or converted.
 
 HTTP(S) images remain browser loads with `no-referrer`. humanish does not fetch or
 proxy them server-side. Relative image URLs use the existing declared origin-rewrite

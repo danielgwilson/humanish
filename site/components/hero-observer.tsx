@@ -132,7 +132,7 @@ export default function HeroObserver({
     >
       <div className="ho-bar">
         <span className="lane-id">
-          <b>Example ·</b> {participants} synthetic players in one game lobby
+          <b>Example ·</b> {participants} synthetic participants in one game lobby
         </span>
         <span className="ho-bar-end">
           <span className="chip chip-dot">{play ? `Replay ${speed}×` : "Replay"}</span>

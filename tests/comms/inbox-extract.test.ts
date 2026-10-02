@@ -4,7 +4,7 @@ import { extractLinks, extractOtpCodes } from "../../src/comms/extract.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
 import { startEmailCatchServer, type EmailCatchServer } from "../../src/comms/email-catch.js";
 
-// A realistic user-signup verification email (magic link + OTP) — the exact shape an app's signup
+// A realistic user-signup verification email (magic link + OTP): the exact shape an app's signup
 // flow emails. Used across the extraction + end-to-end tests. No external app/repo involved.
 const VERIFICATION_HTML = [
   "<html><body>",
@@ -28,8 +28,8 @@ describe("comms extraction (magic link + OTP from a verification email)", () => 
     expect(extractLinks("")).toEqual([]);
   });
 
-  it("extractOtpCodes prefers the LABELED code and ignores incidental numbers (e.g. the year)", () => {
-    // "verification code: 481920" is labeled → returned; the "(ref 2026)" year is NOT a labeled code.
+  it("extractOtpCodes prefers the labeled code and ignores incidental numbers (e.g. the year)", () => {
+    // "verification code: 481920" is labeled → returned; the "(ref 2026)" year is not a labeled code.
     expect(extractOtpCodes(VERIFICATION_HTML)).toEqual(["481920"]);
     expect(extractOtpCodes("Your one-time passcode is 8A3F2K.")).toEqual(["8A3F2K"]);
     expect(extractOtpCodes("Your OTP: 4821")).toEqual(["4821"]);
@@ -40,9 +40,9 @@ describe("comms extraction (magic link + OTP from a verification email)", () => 
     expect(extractOtpCodes("Order #7 total $12 shipped")).toEqual([]); // no 4-8 digit isolated run
   });
 
-  it("extractOtpCodes does not capture a labeled prose WORD (no digit) as a code", () => {
-    expect(extractOtpCodes("Your code is INVALID.")).toEqual([]); // "INVALID" has no digit → not a code
-    expect(extractOtpCodes("verification code AB12CD")).toEqual(["AB12CD"]); // alphanumeric WITH a digit is fine
+  it("extractOtpCodes does not capture a labeled prose word (no digit) as a code", () => {
+    expect(extractOtpCodes("Your code is INVALID.")).toEqual([]); // "invalid" has no digit → not a code
+    expect(extractOtpCodes("verification code AB12CD")).toEqual(["AB12CD"]); // alphanumeric with a digit is fine
   });
 });
 
@@ -59,13 +59,13 @@ describe("FakeInbox (the in-process bus)", () => {
 
   it("provisionAddress registers an explicit declared recipient address (idempotent by value) that deliverRaw resolves", async () => {
     const bus = new FakeInbox();
-    // A declared local part distinct from what provision("user") would auto-generate — proving an
-    // ARBITRARY declared address is honored (not just the default actor-id-keyed one).
+    // A declared local part distinct from what provision("user") would auto-generate: proving an
+    // arbitrary declared address is honored (not just the default actor-id-keyed one).
     const a = await bus.provisionAddress("user", "user-07@example.test");
     expect(a.value).toBe("user-07@example.test");
     expect(a.participantId).toBe("user");
     expect(a.digest).toMatch(/^[0-9a-f]{16}$/);
-    // Idempotent by value (case-insensitive): re-declaring returns the SAME inbox (never resets its queue).
+    // Idempotent by value (case-insensitive): re-declaring returns the same inbox (never resets its queue).
     await bus.deliverRaw({
       from: "no-reply@example.test",
       to: ["user-07@example.test"],
@@ -75,7 +75,7 @@ describe("FakeInbox (the in-process bus)", () => {
     const again = await bus.provisionAddress("user", "USER-07@example.test");
     expect(again.value).toBe("user-07@example.test");
     expect(await bus.poll(again)).toHaveLength(1); // queue preserved across the idempotent re-declare
-    // The app's send to a DIFFERENT address is dropped (only the declared literal resolves).
+    // The app's send to a different address is dropped (only the declared literal resolves).
     expect(
       await bus.deliverRaw({
         from: "no-reply@example.test",
@@ -85,7 +85,7 @@ describe("FakeInbox (the in-process bus)", () => {
     ).toHaveLength(0);
   });
 
-  it("routes an INGRESS delivery to the addressed inbox and extracts link + code; poll is since-scoped", async () => {
+  it("routes an ingress delivery to the addressed inbox and extracts link + code; poll is since-scoped", async () => {
     let clock = 100;
     const bus = new FakeInbox({ now: () => clock });
     const user = await bus.provision("user-07");
@@ -151,7 +151,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
     server = await startEmailCatchServer(bus, { idFor: (n) => `test-${n}` });
 
     // Exactly what an app does when its email-API base URL is pointed at us via one env var: a
-    // POST /emails with the common flat body shape (which Resend uses). No SDK dep — byte-identical.
+    // POST /emails with the common flat body shape (which Resend uses). No SDK dep: byte-identical.
     const res = await fetch(`${server.url}/emails`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer dummy-api-key" },
@@ -175,12 +175,12 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
     expect(server.received[0]!.to).toEqual([user.value]);
   });
 
-  it("is genuinely vendor-neutral: the SAME server also captures SendGrid's nested POST /v3/mail/send shape", async () => {
+  it("is genuinely vendor-neutral: the same server also captures SendGrid's nested POST /v3/mail/send shape", async () => {
     const bus = new FakeInbox();
     const user = await bus.provision("user-08");
     server = await startEmailCatchServer(bus);
 
-    // A structurally DIFFERENT wire shape (nested personalizations + typed content) — not a rename.
+    // A structurally different wire shape (nested personalizations + typed content): not a rename.
     const res = await fetch(`${server.url}/v3/mail/send`, {
       method: "POST",
       headers: { "content-type": "application/json" },

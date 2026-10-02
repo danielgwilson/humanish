@@ -1,5 +1,5 @@
 // The in-sandbox DevTools probe, run the way a sandbox runs it: the real python3, against a real
-// headless Chrome. The #514 root cause was an interpreter that was not there, so the contract is
+// headless Chrome. A missing interpreter once blinded the probe, so the contract is
 // executed, never simulated. Chrome-backed cases skip (loudly) where no Chrome binary exists.
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createServer, type Server } from "node:http";
@@ -144,7 +144,7 @@ describe("chrome-cdp-probe: port resolution under the real python3", () => {
   );
 
   it.skipIf(!python3)(
-    "a dead endpoint is reported as unavailable WITH the reason, not as an empty success",
+    "a dead endpoint is reported as unavailable with the reason, not as an empty success",
     async () => {
       // Nothing listens on this port; the probe must say so instead of printing {}.
       const result = await runProbe({
@@ -163,7 +163,7 @@ function signalGroup(group: number, signal: NodeJS.Signals): void {
   try {
     process.kill(-group, signal);
   } catch {
-    // ESRCH: nothing left in the group.
+    // Esrch: nothing left in the group.
   }
 }
 
@@ -188,7 +188,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   let browser: ChildProcess | undefined;
   let cdpPort = 0;
   // Set once the page is readable through the socket. A runner where Chrome never comes up in
-  // time is not a defect in the probe, so those cases SKIP with a note instead of failing (the
+  // time is not a defect in the probe, so those cases skip with a note instead of failing (the
   // node-22 main leg on 2026-09-03 waited 20 s for DevToolsActivePort and failed five cases).
   let chromeUp = false;
 
@@ -577,7 +577,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
           return ctx.skip("the hold-mode applier did not come up on this runner");
         }
         expect(parseChromeCdpProbeOutput(announce).unavailable, announce).toBeUndefined();
-        // A second tab, opened the way a target=_blank link opens one, AFTER the holder attached.
+        // A second tab, opened the way a target=_blank link opens one, after the holder attached.
         // Chrome's legacy endpoint needs PUT; the reply is the new target's /json entry.
         const created = (await (
           await fetch(`http://127.0.0.1:${cdpPort}/json/new?${pageUrl}?second`, { method: "PUT" })
@@ -585,7 +585,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         expect(typeof created.id, JSON.stringify(created)).toBe("string");
         const secondId = created.id as string;
         openedTab = secondId;
-        // The page's own read-back on THAT target: the phone viewport, DPR and touch, never inherited
+        // The page's own read-back on that target: the phone viewport, DPR and touch, never inherited
         // from the window (the launch page is emulated by its own session).
         let read = await runProbe({
           mode: "fidelity",
@@ -863,7 +863,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(reasons).toEqual(["CDP endpoint 127.0.0.1:9222/json unreachable (URLError)"]);
   });
 
-  // A fake desktop whose "state" probe reports the launch tab first and OTHER-TAB afterwards, and
+  // A fake desktop whose "state" probe reports the launch tab first and other-tab afterwards, and
   // whose "fidelity" probe on that tab answers with the given read-back (or exits non-zero).
   function driftingDesktop(fidelityStdout: string | undefined): {
     desktop: E2BDesktopSandbox;
@@ -948,7 +948,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(covered).toEqual([
       ["OTHER-TAB", { innerWidth: 414, devicePixelRatio: 3, maxTouchPoints: 5 }],
     ]);
-    // The read-back was taken ONCE for the new target, pinned to its id, not on every observation.
+    // The read-back was taken once for the new target, pinned to its id, not on every observation.
     const fidelityReads = commands().filter((command) => command.includes('"mode":"fidelity"'));
     expect(fidelityReads).toHaveLength(1);
     expect(fidelityReads[0]).toContain('"targetId":"OTHER-TAB"');

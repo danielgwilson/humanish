@@ -90,10 +90,10 @@ function workingRuntime(
 }
 
 describe("humanish tui: the one command that refuses instead of degrading", () => {
-  it("refuses a non-interactive stdout, and names the commands that DO answer the question", async () => {
+  it("refuses a non-interactive stdout, and names the commands that do answer the question", async () => {
     // The agent path. Every other humanish command is built to be driven by a program; this one
     // cannot be, and a TUI that rendered frames into a pipe would poison a transcript with escape
-    // codes and read as a hang. So it fails closed — and the refusal is only useful if it says
+    // codes and read as a hang. So it fails closed, and the refusal is only useful if it says
     // where to go instead.
     const result = await runCli(["tui", "--json"], workingRuntime({ stdout: fakeTty(false) }));
     const parsed = JSON.parse(result.stdout) as {
@@ -108,7 +108,7 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
     expect(result.exitCode).toBe(2);
   });
 
-  it("refuses a non-interactive stdin too — a piped-in keystream is not an operator", async () => {
+  it("refuses a non-interactive stdin too: a piped-in keystream is not an operator", async () => {
     const result = await runCli(
       ["tui", "--json"],
       workingRuntime({ stdin: fakeTty(false) as unknown as NodeJS.ReadStream }),
@@ -119,7 +119,7 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
     expect(result.exitCode).toBe(2);
   });
 
-  it("refuses an unsupported Node WITHOUT implying the rest of the CLI is broken", async () => {
+  it("refuses an unsupported Node without implying the rest of the CLI is broken", async () => {
     const result = await runCli(["tui", "--json"], workingRuntime({ nodeVersion: "v20.11.0" }));
     const parsed = JSON.parse(result.stdout) as { error: { code: string; message: string } };
     expect(parsed.error.code).toBe("HUMANISH_TUI_UNSUPPORTED_NODE");
@@ -390,7 +390,7 @@ describe("the Node floor is stated once and read by everyone", () => {
 describe("an agent session, even with a real terminal (labs/handed-a-human-surface.yaml)", () => {
   // Measured, not assumed. `codex exec` allocates a PTY for the commands it runs, so the TTY check
   // passed and the TUI opened: the study watched the agent navigate the labs list, open a lab, and
-  // — its own words — "accidentally trigger a zero-cost dry run while navigating". A TTY says a
+  // in its own words, "accidentally trigger a zero-cost dry run while navigating". A TTY says a
   // terminal exists; it does not say a person is reading it.
   it("refuses, names the marker that gave it away, and points at the JSON commands", async () => {
     const result = await runCli(
@@ -407,7 +407,7 @@ describe("an agent session, even with a real terminal (labs/handed-a-human-surfa
     // Names the evidence, so the reader can check the claim rather than take it.
     expect(parsed.error.message).toContain("CODEX_SESSION_ID");
     expect(parsed.error.message).toContain("Codex");
-    // Including `lab list --json` — the study asked "what studies does this project have", and the
+    // Including `lab list --json`: the study asked "what studies does this project have", and the
     // old refusal named neither of the commands that answer that.
     expect(parsed.error.message).toContain("humanish lab list --json");
     expect(parsed.error.message).toContain("humanish runs --json");
@@ -421,7 +421,7 @@ describe("an agent session, even with a real terminal (labs/handed-a-human-surfa
     expect(result.exitCode).toBe(0);
   });
 
-  it("treats a blanked marker as absent — a wrapper that unsets one means it", async () => {
+  it("treats a blanked marker as absent: a wrapper that unsets one means it", async () => {
     const runtime = workingRuntime({ env: { CLAUDECODE: "", AI_AGENT: "0" } });
     const result = await runCli(["tui"], runtime);
     expect(runtime.seen).toHaveLength(1);

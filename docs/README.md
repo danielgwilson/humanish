@@ -7,8 +7,6 @@ reference under `docs/` by what it is for. To make a first change, start with
 ## Follow a guide to do a task
 
 - [ramp/README.md](ramp/README.md): current state, how to pick work and the quality bar.
-- [product/lobby-trivia-3player-external-public.md](product/lobby-trivia-3player-external-public.md):
-  a worked example of the external-public shared-world lab.
 - [release/publish.md](release/publish.md): check a release candidate, tag it and publish it.
 
 ## Look up what the code does now

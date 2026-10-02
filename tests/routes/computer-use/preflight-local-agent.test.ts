@@ -1,7 +1,7 @@
 // A local-agent participant's CLI is checked before any sandbox exists. A missing CLI is refused as
 // AGENT_MISSING; one that is signed out or cannot report its sign-in status as AGENT_SIGNIN_REQUIRED;
 // a release below the floor as ACTOR_UNSUPPORTED; and a dollar cap on a ChatGPT-account Codex as
-// UNPRICED_CAP. Each message names the fix. A fake `codex` on a temporary PATH stands in for each.
+// UNPRICED_CAP. Each message names the fix. A fake `codex` on a temporary `PATH` stands in for each.
 
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,7 +18,7 @@ afterAll(async () => {
   await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-/** A directory to use as PATH, holding a `codex` that runs `script`, or empty when it is undefined. */
+/** A directory to use as `PATH`, holding a `codex` that runs `script`, or empty when it is undefined. */
 async function pathWithCodex(script: string | undefined): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-local-agent-"));
   dirs.push(dir);
@@ -30,7 +30,7 @@ async function pathWithCodex(script: string | undefined): Promise<string> {
   return dir;
 }
 
-/** liveCuaRejection for a local-agent participant whose PATH is `dir`. */
+/** liveCuaRejection for a local-agent participant whose `PATH` is `dir`. */
 function rejection(dir: string, caps: { maxUsd?: number } = {}) {
   return liveCuaRejection({
     caps,
@@ -53,7 +53,7 @@ const signedIn = (version: string) =>
   ].join("\n");
 
 describe("a local-agent participant's CLI at preflight", () => {
-  it("is refused as AGENT_MISSING when the CLI is not on PATH", async () => {
+  it("is refused as AGENT_MISSING when the CLI is not on `PATH`", async () => {
     const refusal = await rejection(await pathWithCodex(undefined));
     expect(refusal?.code).toBe("HUMANISH_CUA_LAB_AGENT_MISSING");
     expect(refusal?.message).toContain("needs the codex CLI on PATH and signed in");

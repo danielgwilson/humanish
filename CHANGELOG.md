@@ -8,6 +8,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Study files can use the format `schema: humanish.study.v3`.
+  - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
+    `scripted`) and `mode:` (`dry-run` or `live`).
+  - It has one `actor:` object and one top-level `caps:` block.
+  - `participants:` is a count, `{ count, instruction }`, or a list of participants. A list entry
+    with `count: n` and an `id` stands for n participants `<id>-01` to `<id>-NN`.
+  - The scripted route takes `surfaces: [desktop]` or `surfaces: [desktop, mobile]`.
+  - A field the declared route does not read is an error that names the route. So is a route the
+    subject and actor do not take.
+  - A v3 file goes where a lab file goes today, under `humanish/labs/`. `humanish.lab.v2` files
+    parse as before, with the same warnings.
+  - `LabConfig.schema` holds the file's schema, so its type is now
+    `"humanish.lab.v2" | "humanish.study.v3"`.
+
 ### Removed
 
 - `docs/assets/humanish-drawdb-hero.png` and `docs/assets/humanish-observer-hero.png` from the

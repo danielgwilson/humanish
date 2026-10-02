@@ -18,7 +18,7 @@ import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 
 const live = { scenario: { mode: "live" } };
 
-// Each live plan shape whose requirements list a key. The test env has no PATH, so a local-agent
+// Each live plan shape whose requirements list a key. The test env has no `PATH`, so a local-agent
 // shape's sign-in probe finds no CLI and spawns nothing; its key checks come first anyway.
 const localAgent = { type: "local-agent", localAgent: "codex" };
 const shapes: Record<string, RawLab> = {

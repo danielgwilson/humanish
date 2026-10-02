@@ -9,13 +9,13 @@ import { observerArtifactNeedsBuild } from "../../src/observer/artifact.js";
 import { OBSERVER_DATA_SCHEMA } from "../../src/observer/data.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 
-// The Observer render path post-cutover (#426): renderObserverHtml is the one choke
+// The Observer render path post-cutover: renderObserverHtml is the one choke
 // point every surface funnels through, and the prebuilt workspace artifact is the only
-// renderer — no flag, no legacy fallback; rollback is a version pin.
+// renderer: no flag, no legacy fallback; rollback is a version pin.
 //
 // No pre-build here on purpose: in a repo checkout a missing or stale workspace
-// artifact AUTO-BUILDS (the fresh-pull failure mode), so running this suite cold —
-// exactly what CI's root test job does — exercises that path for real every run.
+// artifact auto-builds (the fresh-pull failure mode), so running this suite cold:
+// exactly what CI's root test job does: exercises that path for real every run.
 
 async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-artifact-"));

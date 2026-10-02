@@ -1,6 +1,6 @@
-// #414 wired into the LIVE loop: a run with a declared protocol emits its funnel.
+// The task funnel in the live loop: a run with a declared protocol emits its funnel.
 //
-// The tasks model shipped pure and tested first, deliberately — the previous two features both had
+// The tasks model shipped pure and tested first, deliberately: the previous two features both had
 // holes only a real run exposed. This is the wiring's deterministic half: the loop corroborates
 // task completion from the same observations stopWhen reads, the funnel lands on the trace, the
 // study roll-up carries a denominator on every number, and the success criteria never reach the
@@ -87,8 +87,8 @@ function monotonicClock(step = 1000): () => number {
   return () => (t += step);
 }
 
-// A three-task signup protocol. The criterion VALUES ("/register", "check your email",
-// "/dashboard") are the researcher's instrument — the tests below assert they appear in neither
+// A three-task signup protocol. The criterion values ("/register", "check your email",
+// "/dashboard") are the researcher's instrument: the tests below assert they appear in neither
 // the prompt nor the persisted trace.
 const PROTOCOL: LabTask[] = [
   {
@@ -166,7 +166,7 @@ describe("the live loop corroborates the protocol", () => {
     // Turn-stamped: signup completed on turn 1's observation, the notice on turn 2, dashboard on 3.
     expect(funnel!.tasks.map((task) => task.turn)).toEqual([1, 2, 3]);
 
-    // The trace narrates WHICH task completed, never WHAT counted as proof.
+    // The trace narrates which task completed, never what counted as proof.
     const notices = result.trace.items.filter(
       (item) => item.kind === "notice" && item.title.startsWith("task completed:"),
     );
@@ -215,7 +215,7 @@ describe("the live loop corroborates the protocol", () => {
     expect(funnel!.stoppedAt).toBe("see-verify-notice");
   });
 
-  it("emits no funnel when the lab declared no protocol — honest absence, not an empty one", async () => {
+  it("emits no funnel when the study declared no protocol: honest absence, not an empty one", async () => {
     const provider = new RepeatProvider({
       actions: [],
       pendingSafetyChecks: [],
@@ -319,7 +319,7 @@ describe("the study roll-up keeps its denominators", () => {
     expect(formatRunTaskFunnel(study!)).toBe("tell-us-what-confused-you (no completion criterion)");
   });
 
-  it("returns undefined when no session measured a funnel — absence, never zeros", () => {
+  it("returns undefined when no session measured a funnel: absence, never zeros", () => {
     expect(aggregateTaskFunnels([])).toBeUndefined();
   });
 });

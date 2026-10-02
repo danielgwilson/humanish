@@ -34,7 +34,7 @@ const FILES = [
   event("mkdir", "<codex-home>/tmp/arg0/codex-arg0<tmp>"),
 ];
 
-// The ordered log behind FILES: each open succeeded on the very path it named.
+// The ordered log behind files: each open succeeded on the very path it named.
 const FILE_LOG = FILES.map((key) => {
   const [op, ...paths] = JSON.parse(key) as string[];
   return { op: op!, paths, ok: true, ...(op === "write" ? { resolved: paths[0] } : {}) };

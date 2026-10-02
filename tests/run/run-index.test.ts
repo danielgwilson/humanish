@@ -54,8 +54,8 @@ describe("run index: list and classify without parsing bundles", () => {
 
     expect(byId.get("r-live")?.liveness).toBe("running");
     expect(byId.get("r-live")?.derivedFrom).toBe("status");
-    // A `running` record that stopped being touched is INTERRUPTED — the shape a dropped
-    // connection leaves — never quietly reported as still working.
+    // A `running` record that stopped being touched is interrupted: the shape a dropped
+    // connection leaves, never quietly reported as still working.
     expect(byId.get("r-stale")?.liveness).toBe("interrupted");
     const done = byId.get("r-done");
     expect(done?.liveness).toBe("finished");
@@ -149,7 +149,7 @@ describe("run index: list and classify without parsing bundles", () => {
     expect(cache.size).toBe(1);
 
     // Same file, much later: the cached facts still apply, but the run has gone stale and must
-    // now read as interrupted — liveness is time-dependent and is recomputed on every read.
+    // now read as interrupted: liveness is time-dependent and is recomputed on every read.
     const later = await readRunIndex(cwd, { cache, nowMs: NOW + 600_000 });
     expect(later.runs[0]?.liveness).toBe("interrupted");
   });

@@ -20,8 +20,8 @@ descriptor `runSession` is a fail-closed compatibility entry. Live execution is
 owned by `runTerminalProductLab`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
-#955 removed the `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and
-the `in-process-sdk` protocol. No lab route dispatched either descriptor, and a
+The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and the
+`in-process-sdk` protocol were removed. No lab route dispatched either descriptor, and a
 lab that names one now fails to parse. A signed-in Claude Code drives computer-use studies
 through `local-agent`, which plugs into the provider-neutral `CuaProvider` port
 (`src/actors/computer-use/loop/types.ts`, re-exported from `loop.ts`).
@@ -61,7 +61,7 @@ API surface.
    Agent SDK, Stagehand). The existing Codex app-server integration is the
    reference adapter. `pi-agent-core` was planned as the first in-process-SDK
    adapter to prove both shapes early; it shipped only as a trace mapper with no
-   route, and #955 removed it.
+   route, and was removed.
 
 2. **One normalized evidence schema: `humanish.actor-trace.v1`.** Four producers map
    their records onto one `ActorTrace` with a typed `items[]`:
@@ -78,7 +78,7 @@ API surface.
    The Codex app-server still writes its own `humanish.codex-app-server-trace.v1` record
    (`CodexAppServerTrace` in `src/actors/codex/app-server-trace.ts`), which
    `codexResultToActorTrace` converts. The Claude Agent SDK `ToolUse`/`ToolResult` and pi
-   `tool_execution_*` mappers went with their adapters in #955.
+   `tool_execution_*` mappers were removed with their adapters.
 
 3. **A run is multi-turn within one trace; it stops on goal, abandonment, unrecoverable
    failure, or a wall-clock safety timeout, never on a turn cap.** Turn count is explicitly
@@ -93,7 +93,7 @@ API surface.
 4. **Redaction is injected once, never re-implemented per adapter.** Every
    adapter receives `RedactionHooks` (the shared secret/path/prompt-digest
    redaction, plus screenshot redaction) and must route all persisted evidence
-   through it. This is also where the remaining consolidation of #107 lands.
+   through it.
 
 5. **The registry refuses capability mismatches.** Each adapter declares
    `ActorCapabilities`. A scenario that needs `producesScreenshots` (a GUI
@@ -284,14 +284,14 @@ export interface Actor {
   public-safe: redacted message, coarse loop phase, last normalized UI action,
   and last screenshot reference only. Do not persist raw stacks, env values,
   target URLs, or unredacted provider payloads in the trace.
-- **Capabilities.** Declare them honestly. Routing refuses an actor whose `lanes` or
+- **Capabilities.** Declare only what the actor does. Routing refuses an actor whose `lanes` or
   `producesScreenshots` do not fit the route; the other capabilities are not checked.
-- **Cost (estimate vs. charge).** `tokenUsage.costUsd` stays RESERVED for a
+- **Cost (estimate vs. charge).** `tokenUsage.costUsd` stays reserved for a
   real, provider-returned charge (the codex path); a bare `costUsd`
   always means "the provider billed this". The optional `estimatedCost`
-  (`humanish.actor-estimated-cost.v1`) is a SEPARATE, differently-named field: a
+  (`humanish.actor-estimated-cost.v1`) is a separate, differently-named field: a
   token-derived rate-table multiply from the operator-editable `src/run/pricing.ts`,
-  labeled honestly as an estimate and projected up into `RunBundle.cost` (see
+  labeled as an estimate and projected up into `RunBundle.cost` (see
   [`../contracts/schemas.md`](../contracts/schemas.md) → Run Cost Summary And
   Estimated Actor Cost). The CUA lab computes and attaches `estimatedCost` at the
   lab boundary before persisting the trace, so the pure computer-use loop never
@@ -303,8 +303,8 @@ export interface Actor {
 `scripted-browser` is the deterministic, model-free browser-actuation route, distinct from
 `computer-use` (raw pixels + a model deciding actions). The registered
 `scripted-browser` actor (`src/actors/scripted-browser/`) replays a committed scenario's
-browser steps with playwright against a loopback app; the steps ARE the behavior, so
-`byoModel: false` means there is NO model, and `tokenUsage` records zeros as an affirmative
+browser steps with playwright against a loopback app; the steps are the behavior, so
+`byoModel: false` means there is no model, and `tokenUsage` records zeros as an affirmative
 $0 declaration that is true by mechanism (no provider client is importable from that code
 path). Its trace keeps the concrete driver name `provider: "browser-persona"` (matching the
 native `humanish.browser-persona-trace.v1` it also emits) with `protocol: "scripted-steps"`.
@@ -319,16 +319,16 @@ has no persona patience and no approvals.
 
 ### The time budget vs. a stuck timeout (`budget_reached`)
 
-`execution.timeoutMs` is a GENEROUS wall-clock SAFETY cap, not a goal. An open-ended
+`execution.timeoutMs` is a generous wall-clock safety cap, not a goal. An open-ended
 "watch it play" session has no success predicate, because productive play is the outcome. So
 the computer-use loop distinguishes two ways to hit the cap:
 
-- **`budget_reached`**: the deadline was reached AFTER at least one material (non-idle)
+- **`budget_reached`**: the deadline was reached after at least one material (non-idle)
   action, or a spend, adapter or token limit ended the session. This maps to `ActorStatus:
 "incomplete"`: the participant did not reach the goal, and the harness did not fail.
   `participantOutcomeOk` is false, the verdict is `fail`, and the CLI exits `2`. The trace
   `reason` and optional `stopCause` say which limit ended the session.
-- **`timed_out`**: the deadline was reached with ZERO material actions (a hung provider, an
+- **`timed_out`**: the deadline was reached with zero material actions (a hung provider, an
   idle-only stall). This maps to `ActorStatus: "timed_out"`, `participantOutcomeOk` is false, the
   verdict is `timed_out`, and the CLI exits `2`.
 
@@ -375,7 +375,7 @@ transport-agnostic" intent above: the computer-use loop does not require a scree
 model. A library caller can drive an **already-running local app** through its in-process JS
 contract (`window.app.getState()` etc.) with a custom `CuaExecutor` (screenshot optional,
 `appState` as the progress signal) paired with a **non-vision** `CuaProvider` (`requiresFrame`
-falsey), keeping the whole lab composition with NO E2B desktop and NO clone. See
+falsey), keeping the whole lab composition with no E2B desktop and no clone. See
 [`state-driven-executor.md`](./state-driven-executor.md) for the port, both entry points
 (`runComputerUseLoop` and `runLab` + `inProcess`/`createProvider`), the `subject.source:
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
@@ -383,20 +383,20 @@ appState-is-runtime-only stance.
 
 ## The product-adapter extension seam
 
-The terminal-product route carries the proof-roadmap layer-6 deliverable: a product adopter
-attaches product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
+The terminal-product route has a product-adapter extension seam: a product adopter
+attaches product-specific scoring + feedback as a thin in-repo extension without forking
 core. The seam is exported contract types (`RunBundle`, `RunFeedbackCandidate`,
 `RunAdapterScore`, `ActorTrace`, `AdapterScorerModule` and the terminal-route
 `TerminalProductScoringContext`) plus a registrable scorer module, `RunLabOptions.scorer`,
 with optional `score` and `deriveFeedback`. The older `terminalHooks` and `cuaHooks` bags were
-removed from `RunLabOptions`. The adapter records its product nouns ONLY
-under an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
+removed from `RunLabOptions`. The adapter records its product nouns only
+under an adapter-namespaced block (`RunFeedbackCandidate.adapter` /
 `RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
 is hardcoded into a core enum. Default (no hook) behavior is unchanged. See
 [`terminal-product-route.md`](./terminal-product-route.md#the-product-adapter-extension-seam)
 for the full seam and the thin-adapter conformance proof.
 
-## Making personas load-bearing
+## Making personas change the actor's behavior
 
 The original bug, now fixed: `loadDryRunInputs` (`src/run/dry-run-inputs.ts`) parsed
 persona YAML down to `{ id, name, source, sourceDigest }` and discarded `summary`,
@@ -456,7 +456,7 @@ traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }`
    - Stagehand remains roadmap. This rule once planned a pi binding (`systemPrompt` +
      `beforeToolCall`) and a Claude Agent SDK one (`systemPrompt` + `allowedTools`). pi
      shipped only as a trace mapper, the Claude Agent SDK descriptor never had a route, and
-     #955 removed both.
+     both were removed.
 
    None of these uses a `max_turns`-style cap as the persona stop condition.
 
@@ -510,7 +510,7 @@ Non-obvious tradeoffs to revisit with real-run data:
 - `persona-fidelity` treats a `gave_up` with no cited friction as a fidelity
   failure, not an accepted stop, so the model cannot quietly quit for no reason.
 
-This keeps patience load-bearing and reproducible without ever using elapsed
+So patience decides when a run stops, reproducibly, without ever using elapsed
 turns as a stop signal.
 
 ## Capability matrix (target adapters)
@@ -527,7 +527,7 @@ turns as a stop signal.
 - Protocol/version drift across four moving harnesses. Pin every binary/SDK and
   assert the init handshake; the registry refuses an actor whose declared
   capabilities do not satisfy the scenario.
-- Screenshot PII in the computer-use route. Redaction binds the PUBLISH
+- Screenshot PII in the computer-use route. Redaction binds the publish
   boundary, not capture (0.6.0): raw frames stay local in gitignored
   `.humanish/` and are never emitted by a publish command (this repo's CI
   binary-asset scan also blocks them from commit);
@@ -546,4 +546,4 @@ turns as a stop signal.
 
 - Self-driving harness principles: `docs/principles/self-driving-harness.md`.
 - Observer architecture: `docs/architecture/observer.md`.
-- Related issues: shared redaction module (#107), PII/PHI detector (#108).
+- Open issue: [a PII/PHI detector for the redaction gate](https://github.com/danielgwilson/humanish/issues/108).

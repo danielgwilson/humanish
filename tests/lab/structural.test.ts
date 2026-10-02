@@ -19,8 +19,8 @@ const cliSources = readdirSync(path.join(ROOT, "src/cli"), { recursive: true, en
   .filter((rel) => rel.endsWith(".ts"))
   .map((rel) => path.join("src/cli", rel));
 
-// RUNG 1 (necessity via deletion): there is exactly ONE path. The closed `kind` enum, the kind
-// switch, and the three per-kind command functions must not exist — if any survived, the
+// Rung 1 (necessity via deletion): there is exactly one path. The closed `kind` enum, the kind
+// switch, and the three per-kind command functions must not exist: if any survived, the
 // refactor would be cosmetic.
 describe("lab refactor structural necessity (rung 1)", () => {
   const labs = read("src/lab/discover.ts");
@@ -55,9 +55,9 @@ describe("lab refactor structural necessity (rung 1)", () => {
   });
 });
 
-// RUNG 3 (expressiveness / no-overfit): a brand-new composition the engine never saw as a
-// built-in must work config-only — parse + route with ZERO engine edits — AND the engine must
-// actually CONSUME the config, not merely route a label (otherwise a "3 kinds in disguise"
+// Rung 3 (expressiveness / no-overfit): a brand-new composition the engine never saw as a
+// built-in must work config-only (parse + route with zero engine edits) and the engine must
+// actually consume the config, not merely route a label (otherwise a "3 kinds in disguise"
 // engine would pass an expressiveness test that never executes).
 describe("lab config expressiveness (rung 3)", () => {
   it("a clone+e2b composition with a free-form actor label is refused at parse", () => {
@@ -86,11 +86,11 @@ describe("lab config expressiveness (rung 3)", () => {
     expect(result.error.message).toContain('Got "codex-migrator"');
   });
 
-  it("the COMMITTED scripted-demo lab parses with zero warnings, routes to the scripted backend, and its scenario.ref resolves to executable committed steps", async () => {
+  it("the committed scripted-demo study parses with zero warnings, routes to the scripted backend, and its scenario.ref resolves to executable committed steps", async () => {
     const resolved = await resolveLabManifest(ROOT, "scripted-demo");
     expect(resolved.ok).toBe(true);
     if (!resolved.ok) return;
-    // Every field in the committed example is consumed on this route — zero warnings.
+    // Every field in the committed example is consumed on this route: zero warnings.
     expect(resolved.warnings).toEqual([]);
     expect(resolved.config.actors[0]?.type).toBe("scripted-browser");
     expect(resolved.config.actors[0]?.count).toBe(2);
@@ -109,7 +109,7 @@ describe("lab config expressiveness (rung 3)", () => {
     expect(parsed.journey?.scenarioId).toBe("scripted-first-run");
   });
 
-  it("synthetic behavior is a FUNCTION of config (actor count -> simCount), not just a parsed label", async () => {
+  it("synthetic behavior is a function of config (actor count -> simCount), not just a parsed label", async () => {
     const base = (count: number) =>
       parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,

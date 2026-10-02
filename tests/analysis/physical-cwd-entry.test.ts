@@ -38,7 +38,7 @@ const wirePath = new URL(
 );
 
 // The analyze entry points bind the physical project before resolving the run, as the routes do
-// (#1012). An alias retargeted mid-analyze must not abort the analysis or reach the other project.
+//. An alias retargeted mid-analyze must not abort the analysis or reach the other project.
 describe("analysis entry points given a symlinked project", () => {
   let base: string;
   let original: string;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { detectAgentSession } from "../../src/actors/agent-session.js";
 
-// Every marker here was OBSERVED in a live session, never guessed: a marker that is wrong refuses
+// Every marker here was observed in a live session, never guessed: a marker that is wrong refuses
 // a person for no reason. Claude Code was read off a running session; Codex off the study sandbox
 // by a names-only `env | cut -d= -f1` probe that never touched a value.
 
@@ -39,8 +39,8 @@ describe("who is driving this terminal", () => {
   });
 
   it("does not claim absence is proof of a person", () => {
-    // Documented, not enforced: undefined means no runner ANNOUNCED itself. The refusal is written
-    // to match — it says what was detected, never "you are a human".
+    // Documented, not enforced: undefined means no runner announced itself. The refusal is written
+    // to match: it says what was detected, never "you are a human".
     expect(detectAgentSession({ SOME_UNKNOWN_AGENT: "1" })).toBeUndefined();
   });
 });

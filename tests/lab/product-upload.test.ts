@@ -16,7 +16,7 @@ function lab(product: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
-describe("subject.product.upload — meeting a build that is not published yet", () => {
+describe("subject.product.upload: meeting a build that is not published yet", () => {
   it("accepts a project-relative file", () => {
     const parsed = parseLabConfig(
       lab({ upload: "humanish-0.57.0.tgz", install: 'npm i -g "$HUMANISH_PRODUCT_UPLOAD"' }),
@@ -40,7 +40,7 @@ describe("subject.product.upload — meeting a build that is not published yet",
     expect(parsed.ok).toBe(false);
   });
 
-  it("stays optional — every existing terminal lab parses unchanged", () => {
+  it("stays optional: every existing terminal study parses unchanged", () => {
     const parsed = parseLabConfig(lab({ install: "true" }));
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.subject.product?.upload).toBeUndefined();

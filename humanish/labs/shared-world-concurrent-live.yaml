@@ -1,19 +1,18 @@
 schema: humanish.lab.v2
 id: shared-world-concurrent-live
-title: Concurrent shared-world live rung (synthetic shared task board)
-description: >
-  THREE distinct personas drive ONE provisioned, mutable service plane SIMULTANEOUSLY (#164 phase
-  2) — backed by a REAL synthetic app, not a placeholder. ONE subject sandbox clones THIS public
-  repo, serves the committed fixture `humanish/fixtures/shared-world-app` on 0.0.0.0, seeds it with
-  a few generic starter tasks, and exposes it via getHost; then 3 actor desktop sandboxes each open
-  that ONE getHost URL AT ONCE and add a task to the shared board. A background prober runs the
-  read-only checkpoint probe (an AGGREGATE: task count + a sha256-16 hash, never row contents) on a
-  cadence → a stateSeries showing the shared task count GROW under concurrent load.
-  The cloned commit is recorded as the plane's provenance (the schema has no ref field — the pin is
-  the recorded commit, not a config-pinned ref). Dry-run (the default) emits ONE verified concurrent
-  shared-world bundle at $0 — no sandboxes, no provider tokens. A LIVE run needs OPENAI_API_KEY +
-  E2B_API_KEY and scenario.mode: live; it is wired in tests/concurrent-shared-world-lab.live.test.ts
-  (gated on HUMANISH_LIVE_SHARED_WORLD=1) and is run as a separately-authorized paid receipt.
+title: "Concurrent shared world, live: three participants on a synthetic task board"
+description: >-
+  Three personas drive one provisioned, mutable service at the same time, backed by a synthetic app.
+  One subject sandbox clones this public repo, serves the committed fixture
+  humanish/fixtures/shared-world-app on 0.0.0.0, seeds it with a few starter tasks and exposes it
+  through getHost; three participant desktops then open that URL at once and each add a task to the
+  shared board. A background prober runs the read-only checkpoint probe, an aggregate of the task
+  count and a sha256-16 hash with no row contents, on a cadence: a stateSeries that shows the shared
+  task count grow under concurrent load. The cloned commit is recorded as the plane's provenance;
+  the lab schema has no ref field, so the recorded commit is the pin. A dry run, the default, writes
+  one verified concurrent shared-world bundle at no cost. A live run needs OPENAI_API_KEY,
+  E2B_API_KEY and scenario.mode: live; tests/routes/shared-world/concurrent.live.test.ts runs it
+  when HUMANISH_LIVE_SHARED_WORLD=1, as a separately authorized paid run.
 subject:
   source: clone
   topology: shared-world # the declared override of the per-lane-worlds default (#164)

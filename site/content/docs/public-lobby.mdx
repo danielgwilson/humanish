@@ -1,0 +1,91 @@
+---
+title: Run three phone participants in one public lobby
+description: Point a shared-world study at a public multiplayer app you operate, and watch three phone-sized participants create and join one lobby at the same time.
+---
+
+`humanish/labs/lobby-trivia-3player.yaml` is a worked example of the external-public shared-world
+route. Three phone-sized participants play the same multiplayer lobby on a public deployment at
+once, and one Observer shows all three. Point `subject.appUrl` and `subject.publicTarget` at a
+deployment you own or operate.
+
+## What the study does
+
+- The public site is the shared plane. humanish clones nothing, starts no subject sandbox and seeds
+  no data.
+- The participant marked `host: true` creates the lobby first. humanish reads the `/lobby/CODE` path
+  from the host's browser and puts the code into the other participants' missions. Those
+  participants join through the app's own Join flow, because visiting `/lobby/CODE` directly does
+  not make a visitor a member.
+- The study passes when all three participants reach the same `/lobby/CODE`
+  (`lobbyConvergenceDigest`, a digest only) and their sessions overlap in time.
+
+## Make the participants phone-sized
+
+The participants use the `mobile` (414×896) and `small-mobile` (360×740) presets. Without mobile
+emulation, a hosted desktop renders both at 500 CSS px wide, because Chrome refuses a narrower
+window, so the two presets lay out the same and only the heights differ. The participants also get
+no touch input, and the device pixel ratio stays in the prompt and the metadata.
+
+Add mobile emulation to the study so each participant gets its preset's real viewport:
+
+```yaml
+execution:
+  desktop:
+    fidelity:
+      mobileEmulation: true
+```
+
+With it, each Chrome or Chromium participant on a mobile preset browses at its preset width (414
+or 360 CSS px), with the preset's device pixel ratio, touch events and a mobile user agent. The run
+bundle records what the page reported under `desktopGeometry.fidelity`. Emulation is still not a
+physical phone. [Mobile emulation](/docs/computer-use#mobile-emulation) lists the settings and the
+read-back.
+
+## Run it
+
+A dry run is the default. It costs nothing and checks the study's plumbing and its evidence
+contract without sandboxes or model tokens:
+
+```bash
+npx humanish lab run lobby-trivia-3player
+```
+
+For a live run, set `scenario.mode: live` in the study, then run it with `OPENAI_API_KEY` and
+`E2B_API_KEY` available:
+
+```bash
+npx humanish watch lobby-trivia-3player --env-file .env.local
+```
+
+To watch from a phone, serve the run's Observer through an authenticated edge:
+
+```bash
+npx humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com
+```
+
+`watch --expose` streams live desktops only on the computer-use route, so a shared-world run is
+watched through `serve`.
+
+## What the evidence claims
+
+The operator attests to owning or operating the deployment
+(`subject.publicTarget: { owner, authorized: true }`); humanish cannot verify that. The run
+records `shared-world` attribution, N participants on one plane, and `humanish verify` checks that
+it claims nothing stronger:
+
+- provenance is `external-public`, because humanish seeded nothing;
+- there is no synthetic attestation, because a public site is not synthetic;
+- the operator controls the plane, and humanish only observed it;
+- there is no authoritative shared-state proof;
+- concurrency rests on overlapping sessions and the observed lobby convergence.
+
+One run says nothing about adoption, scale or repeatability.
+
+## Check the app before a live run
+
+The lobby mechanics in this study were read from the app's source at the time it was written: the
+create and join calls that lead to `/lobby/CODE`, the six-character code alphabet
+`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, and the rule that a direct visit does not join. A new deploy can
+change them. Check the two places the study depends on: the lobby-code pattern
+(`/\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/`, which tolerates a locale prefix, a query and a hash) and the
+wording of the join mission the other participants follow.

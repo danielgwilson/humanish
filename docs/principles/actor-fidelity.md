@@ -21,7 +21,7 @@ Whether that is a defect depends entirely on a question the harness never asked:
   finding about how legible the surface is to its actual users.
 
 The proof roadmap already anticipated this: its strongest evidence class,
-`user-census`, is defined as "the users of the product ARE agents, and the lab runs
+`user-census`, is defined as "the users of the product are agents, and the lab runs
 real production harnesses." This page is the layer that makes the distinction
 operable.
 
