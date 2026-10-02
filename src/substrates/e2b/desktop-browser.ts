@@ -17,12 +17,12 @@ import { e2bShell } from "./shell.js";
 // a cold browser and page load to paint (2 s captured a blank desktop; the render needs 6-9 s).
 export const DESKTOP_SETTLE_MS = 8_000;
 
-/** The DevTools port every Chromium lane launches with; see `chrome_debug_flags` below. */
+/** The DevTools port every Chromium participant launches with; see `chrome_debug_flags` below. */
 export const CHROME_DEVTOOLS_PORT = 9222;
 
 /**
  * How long the launch command waits for Chrome's DevTools port to answer. Six live launches on the
- * stock desktop answered in 4.8-7.7 s; two device-emulated lanes failed when it had not answered
+ * stock desktop answered in 4.8-7.7 s; two device-emulated participants failed when it had not answered
  * about 11 s after launch, and a CI leg once waited 20 s for the port marker.
  */
 const CHROME_DEVTOOLS_READY_MS = 30_000;
@@ -96,7 +96,7 @@ while True:
 /**
  * The shell step that waits for DevTools after a Chromium launch. `pid` is a shell word (the
  * launch script passes "$launch_pid"). Without python3 it prints nothing, which reads as no
- * readiness evidence: the lane keeps its previous behavior.
+ * readiness evidence: the participant keeps its previous behavior.
  */
 export function chromeDevToolsReadinessCommand(args: {
   pid: string;
@@ -138,7 +138,7 @@ export interface DesktopBrowserEvidence {
 
 export type DesktopBrowserFamily = "chromium" | "firefox" | "unknown";
 
-/** Runtime-only identity for the exact browser process started by this lane. */
+/** Runtime-only identity for the exact browser process started for this participant. */
 export interface DesktopBrowserLaunchIdentity {
   processId: string;
   profileDir: string;
@@ -167,7 +167,7 @@ export async function findVisibleBrowserWindowId(
   if (browserFamily === "unknown") return undefined;
   // The candidate loop keeps the LAST identity match: with a launch identity the match is
   // unique anyway, and without one every family candidate matches, so the newest visible
-  // window of the launched family wins (the window this lane just opened).
+  // window of the launched family wins (the window this participant just opened).
   const finder =
     browserFamily === "firefox"
       ? [

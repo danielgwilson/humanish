@@ -15,7 +15,7 @@
 //
 // The script takes ONE JSON argument and prints ONE JSON line. Failures print
 // `{"unavailable": "<reason>"}` with exit 0 so the caller can say WHY the channel is dark instead
-// of swallowing an exit code; the TypeScript side turns that into a lane warning that names the
+// of swallowing an exit code; the TypeScript side turns that into a participant warning that names the
 // consequence ("url/text criteria will read as NEVER MEASURED").
 
 import { shellQuote } from "../shell.js";
@@ -28,7 +28,7 @@ export interface ChromeCdpProbeArgs {
   cdpPort?: number;
   /** The launched profile dir; the probe re-reads DevToolsActivePort at observe time. */
   profileDir?: string;
-  /** The URL this lane opened; attributes the page when no target id is pinned yet. */
+  /** The URL this participant opened; attributes the page when no target id is pinned yet. */
   targetUrl: string;
   /** The pinned page target id from the launch-time geometry capture. */
   targetId?: string;
@@ -47,7 +47,7 @@ export interface ChromeCdpProbeArgs {
    * "state": url/title/text/scrollY. "geometry": outer window + CSS viewport. "port": resolution
    * only. "emulate": apply mobile emulation (#221) to the selected page and exit (the overrides that
    * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": the same over a browser-level
-   * socket, then stay attached until killed (how a lane keeps them for its whole life) and attach
+   * socket, then stay attached until killed (how a participant keeps them for its whole life) and attach
    * to every page target Chrome opens later, sending it the same overrides and a reload the moment
    * it exists, never pausing it (#623). "fidelity": read
    * back what the page reports about itself (UA, DPR, viewport, touch), the proof for the bundle.

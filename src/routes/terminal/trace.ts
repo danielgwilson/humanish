@@ -69,9 +69,9 @@ export function tailOf(text: string): string {
 }
 
 /**
- * Project the live terminal session into the provider-neutral humanish.actor-trace.v1 (lane
+ * Project the live terminal session into the provider-neutral humanish.actor-trace.v1 (`lane`
  * "terminal", protocol "terminal-exec"). counts.actions/messages drive the no-engagement honesty
- * guard (a real run bumps them; a no-op is caught). No screenshots on this lane.
+ * guard (a real run bumps them; a no-op is caught). No screenshots on this route.
  */
 export function buildTerminalActorTrace(args: {
   persona: ActorPersonaRef;

@@ -1,6 +1,6 @@
 import type { RunBundle } from "../run/bundle.js";
 
-/** A rerun bundle must link each selected lane to its prior status and a fan-out rerun event. */
+/** A rerun bundle must link each selected participant to its prior status and a fan-out rerun event. */
 export function rerunLineageFindings(bundle: RunBundle): string[] {
   const rerun = bundle.rerun;
   if (!rerun) {

@@ -143,7 +143,7 @@ export const RETRY_AFTER_CAP_MS = 60_000;
  * Parse a Retry-After header (delay-seconds or an HTTP-date) into milliseconds from `now`;
  * undefined when absent or unreadable. OpenAI's 2026-09-02 change added `429 slow_down` and
  * `503 server_is_overloaded`, both of which may carry it; a fixed 200/400/800 ms backoff against
- * a 20 s hint burns every retry inside the hint and ends the lane for nothing.
+ * a 20 s hint burns every retry inside the hint and ends the participant's session for nothing.
  */
 export function retryAfterMs(value: string | null | undefined, now: number): number | undefined {
   if (value === null || value === undefined) return undefined;
@@ -156,7 +156,7 @@ export function retryAfterMs(value: string | null | undefined, now: number): num
 }
 
 /**
- * The provider error codes a lane's reason may name. Read from a non-ok body, which is never
+ * The provider error codes a participant's reason may name. Read from a non-ok body, which is never
  * kept or logged (it can echo the input); only a code on this list crosses over.
  */
 const NAMED_PROVIDER_ERROR_CODES = [

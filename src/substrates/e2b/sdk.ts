@@ -2,8 +2,8 @@
 // real @e2b/desktop Sandbox. Every desktop route launches through this one seam; the peer dep is
 // optional and lazily loaded, so it stays out of the published tarball and CI.
 //
-// E2BDesktopSandbox is the command, file, stream, launch and input subset the lanes use; `open` is
-// optional because older SDKs lack it (the computer-use lane then falls back to launch). It
+// E2BDesktopSandbox is the command, file, stream, launch and input subset the participants use; `open` is
+// optional because older SDKs lack it (the computer-use route then falls back to launch). It
 // satisfies the executor's E2BDesktopLike port (src/substrates/e2b/desktop-executor.ts) as is.
 
 import { sep } from "node:path";

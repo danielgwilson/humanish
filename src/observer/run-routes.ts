@@ -32,7 +32,7 @@ import {
 export interface ObserverRuntimeStreamUrl {
   streamId: string;
   url: string;
-  /** Set when the lane's sandbox is gone (finished or torn down). An ended stream's live URL is a
+  /** Set when the participant's sandbox is gone (finished or torn down). An ended stream's live URL is a
    *  dead noVNC page — the overlay stops injecting it so the tile falls back to the recorded
    *  evidence (keyframe replay/screenshot) instead of rendering "sandbox not found" (#357). */
   ended?: boolean;

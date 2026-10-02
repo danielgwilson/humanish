@@ -351,7 +351,7 @@ function terminalParticipant(
   return { simulation, stream };
 }
 
-/** The run bundle around the lane: the fields both builders fill the same way. */
+/** The run bundle around the terminal session: the fields both builders fill the same way. */
 function terminalRunBundle(
   args: TerminalBundleCommon,
   parts: {

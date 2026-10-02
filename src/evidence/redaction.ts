@@ -129,7 +129,7 @@ export function publicPathForTrace(value: string, rootCwd: string): string {
 // ---------------------------------------------------------------------------
 // Screenshot redaction.
 //
-// Computer-use lanes capture raw desktop frames that can contain secrets, PII,
+// Computer-use participants capture raw desktop frames that can contain secrets, PII,
 // or a logged-in third-party UI. A raw frame must never reach a public artifact.
 // redactScreenshot is the fail-closed primitive that gates that surface. It
 // always returns a freshly re-encoded, downscaled, box-blurred thumbnail (or a

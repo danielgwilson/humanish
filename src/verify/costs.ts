@@ -6,7 +6,7 @@ import type { RunBundle } from "../run/bundle.js";
 import { round6 } from "../run/pricing.js";
 import type { RunStream } from "../run/streams.js";
 
-/** Account lanes must never acquire a price through an aggregate or ambiguous model line. */
+/** Account-billed participants must never acquire a price through an aggregate or ambiguous model line. */
 export function contradictsAccountBilling(
   streams: readonly {
     id?: string;
@@ -38,7 +38,7 @@ export function contradictsAccountBilling(
  * Verify the LABELING/provenance of any cost figure a bundle CLAIMS — never its magnitude. Returns
  * [] (pass) unless a dollar claim lacks its provenance (invariant 6) or a total misreports its
  * known lines. ABSENCE always passes (fail-open on display, discipline #3): a bundle with no cost,
- * a null estimate, or a lane without estimatedCost is fine. A NON-NULL figure must carry its
+ * a null estimate, or a participant without estimatedCost is fine. A NON-NULL figure must carry its
  * ratesAsOf date + source; a NUMBER total must equal round6(sum of ONLY the non-null lines) and a
  * null line may never be coerced to 0. A null estimate must be declared honestly (a reason + null
  * ratesAsOf), mirroring the terminal no-spend proof's null-discipline. Account-billed participants

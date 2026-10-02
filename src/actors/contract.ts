@@ -47,7 +47,7 @@ export type ActorStatus = (typeof ACTOR_STATUSES)[number];
 /**
  * What the PARTICIPANT said happened, in a field rather than a paragraph (#570). Providers whose
  * reply is schema-constrained (the local-agent routes) fill it on their final turn; a free-text
- * provider leaves it absent and the lane falls back to reading the closing message. `reached`:
+ * provider leaves it absent and the route falls back to reading the closing message. `reached`:
  * the task is finished. `blocked`: something in the app stopped the participant. `not_reached`:
  * the participant stopped for another reason (gave up, ran out of ideas).
  */
@@ -413,7 +413,7 @@ export interface ActorTrace {
   /**
    * ADDITIVE + OPTIONAL record of HOW the model was asked to run (humanish.model-settings.v1,
    * #497). `ids.model` says which model; this says the reasoning effort the request actually
-   * carried. Present on lanes whose provider declares settings; absent everywhere else and on
+   * carried. Present on traces whose provider declares settings; absent everywhere else and on
    * every pre-existing bundle, and its absence is tolerated by verify.
    *
    * It exists because effort was a silent constant: unreachable from a lab, so every run took the
@@ -427,7 +427,7 @@ export interface ActorTrace {
    * ADDITIVE + OPTIONAL affordance record (humanish.affordance-use.v1, #369): which KIND of route
    * this actor took — pointer, keyboard, url-navigation, script-execution, devtools,
    * browser-internal, observation — as per-class counts over the run's dispatched actions.
-   * Present on computer-use lanes that dispatched at least one action; absent elsewhere and on
+   * Present on computer-use traces that dispatched at least one action; absent elsewhere and on
    * every pre-existing bundle (its absence is tolerated by verify). The harness records the class
    * and states NO verdict: whether a class is faithful depends on the population the study
    * declares, which is product semantics and belongs to the adopter's scorer. See
@@ -445,7 +445,7 @@ export interface ActorTrace {
   /**
    * ADDITIVE + OPTIONAL (#570): the outcome the participant declared on its final turn, when its
    * provider's reply carries the field. Absent on free-text providers and on every older bundle.
-   * The lane reads this before it reads the closing paragraph; three regex patches in one month
+   * The route reads this before it reads the closing paragraph; three regex patches in one month
    * (#453, #549, #565) each fixed a false refusal and each left the next shape unhandled.
    */
   declaredOutcome?: ParticipantDeclaredOutcome;
@@ -466,11 +466,11 @@ export interface ActorTrace {
    *  Known tokenUsage remains usable as a partial total. Absence is not proof of completeness. */
   interactionUsageIncomplete?: true;
   /**
-   * ADDITIVE + OPTIONAL token-derived cost ESTIMATE for this lane (humanish.actor-estimated-cost.v1).
+   * ADDITIVE + OPTIONAL token-derived cost ESTIMATE for this trace (humanish.actor-estimated-cost.v1).
    * Distinct from `tokenUsage.costUsd`, which is RESERVED for a real provider-returned charge: a
    * bare `costUsd` always means "the provider billed this", while `estimatedCost.estimatedCostUsd`
    * is a rate-table multiply named honestly as an estimate (invariant 6). Absent on the Codex
-   * app-server and scripted lanes and on every pre-existing bundle; the terminal lane records a
+   * app-server and scripted traces and on every pre-existing bundle; the terminal trace records a
    * null estimate. Its absence is tolerated by verify (fail-open on display). A `null`
    * estimatedCostUsd is DECLARED ABSENT (unknown rate / no usage), never 0.
    */
