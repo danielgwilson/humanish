@@ -17,6 +17,7 @@ import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-re
 import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type {
+  BundleRun,
   RunBundle,
   RunScorerProvenance,
   RunSubjectProvenance,
@@ -25,7 +26,6 @@ import type {
 import type { RunScope } from "../../run/run.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
 import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import type { LiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
   CuaParticipantDeps,
@@ -253,14 +253,12 @@ export interface ExternalCommsWiring {
 export interface ConcurrentBundleArgs {
   /** The run's judgment (judgeSharedWorldRun over the other fields). */
   judgment: SharedWorldJudgment;
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   plan: SharedWorldPlan;
   descriptor: CuaActorDescriptor;
-  createdAt: string;
   dryRun: boolean;
   inProgress?: boolean;
-  runId: string;
   source: RunBundle["source"];
   actorSpecs: DesktopParticipantRun[];
   actorResults: ActorRunResult[];

@@ -43,6 +43,8 @@ interface Run {
   readonly runId: string;
   readonly createdAt: string;
   readonly mode: "dry-run" | "live";
+  /** The manifest the run came from (#455); bundleHead copies it into the bundle. */
+  readonly lab?: RunLabProvenance;
   /** Routes write their evidence files through these and hand them to lanes. */
   readonly paths: PreparedRunArtifactPaths;
   /**
@@ -272,6 +274,7 @@ export async function runScope<T>(
       runId,
       createdAt,
       mode: options.mode,
+      ...(options.lab === undefined ? {} : { lab: options.lab }),
       paths,
       writeSnapshot(bundle) {
         if (closed) return refuse("The run scope has closed.");

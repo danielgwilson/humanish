@@ -63,9 +63,8 @@ export async function runDryTerminalLab(args: {
   const policies = plan.residual.policies;
   const judgment = judgeTerminal({ dryRun: true, participant: undefined });
   const bundle = buildTerminalProductBundle({
-    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    run,
     actorId: plan.actor,
-    createdAt,
     dryRun: true,
     labId: plan.labId,
     ...(plan.title ? { labTitle: plan.title } : {}),
@@ -82,7 +81,6 @@ export async function runDryTerminalLab(args: {
       allowPaymentCredentials: policies?.allowPaymentCredentials ?? false,
       allowGitHubMutation: policies?.allowGitHubMutation ?? false,
     },
-    runId,
     source,
     verdict: judgment.verdict,
   });

@@ -6,8 +6,7 @@
 import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
-import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import type { RunLabProvenance } from "../../run/status.js";
+import type { BundleRun, RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
 import { desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
@@ -25,13 +24,12 @@ import type {
 
 /** What every bundle of one run shares, in progress or final. */
 export interface CuaRunBundleBase {
-  lab?: RunLabProvenance;
+  /** The run every bundle of it belongs to. */
+  run: BundleRun;
   participantRuns: DesktopParticipantRun[];
   descriptor: CuaActorDescriptor;
   appUrl: string;
-  createdAt: string;
   plan: ComputerUsePlan;
-  runId: string;
   source: RunBundle["source"];
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
@@ -88,23 +86,20 @@ interface CuaRunBundleState {
  * the participant plan and each participant's subject. Both argument mappings are here.
  */
 export function buildCuaRunBundle(base: CuaRunBundleBase, state: CuaRunBundleState): RunBundle {
-  const lab = base.lab === undefined ? {} : { lab: base.lab };
   const inProgress = state.inProgress === undefined ? {} : { inProgress: true };
   if (isOneParticipantRun(base))
     return buildSingleParticipantBundle(singleParticipantArgs(base, state));
   return buildCuaFanoutBundle({
     verdict: state.judgment.verdict,
-    ...lab,
+    run: base.run,
     specs: base.participantRuns,
     ...(state.outcomes === undefined ? {} : { outcomes: state.outcomes }),
     subjects: state.subjects,
     aggregateSubject: state.aggregateSubject,
     descriptor: base.descriptor,
     appUrl: base.appUrl,
-    createdAt: base.createdAt,
     dryRun: state.dryRun,
     plan: base.plan,
-    runId: base.runId,
     source: base.source,
     participantPlan: base.participantPlan,
     ...(base.rerun === undefined ? {} : { rerun: base.rerun }),
@@ -126,7 +121,7 @@ function singleParticipantArgs(
   return {
     verdict: state.judgment.verdict,
     realEmail: plan.residual.comms?.email?.kind === "real",
-    ...(base.lab === undefined ? {} : { lab: base.lab }),
+    run: base.run,
     actorId: base.descriptor.id,
     appUrl: spec.planned.targetUrl ?? base.appUrl,
     participantId: spec.planned.id,
@@ -137,7 +132,6 @@ function singleParticipantArgs(
     ...(spec.planned.labels.caseGroup === undefined
       ? {}
       : { caseGroup: spec.planned.labels.caseGroup }),
-    createdAt: base.createdAt,
     dryRun: state.dryRun,
     labId: plan.labId,
     ...(plan.title ? { labTitle: plan.title } : {}),
@@ -155,7 +149,6 @@ function singleParticipantArgs(
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
     isMobile: spec.planned.device.preset.isMobile,
-    runId: base.runId,
     screenshots: outcome?.screenshots ?? [],
     captureRedaction: base.redactScreenshots ? "blurred" : "raw",
     ...(outcome?.session ? { session: outcome.session } : {}),
@@ -178,7 +171,7 @@ function singleParticipantArgs(
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
     providerResources: providerResourcesForOutcome({
       outcome,
-      createdAt: base.createdAt,
+      createdAt: base.run.createdAt,
       ids: spec,
       participantId: spec.planned.id,
     }),
