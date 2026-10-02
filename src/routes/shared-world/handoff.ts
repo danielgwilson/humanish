@@ -249,7 +249,7 @@ export class LobbyHandoff {
     publicOriginDigest: string | undefined;
     lobbyConvergenceDigest: string | undefined;
   } {
-    // Observed-origin convergence proof (blocker 2): the convergence claim is about what the seats
+    // Observed-origin convergence proof: the convergence claim is about what the seats
     // observed. Digest each observing seat's origin and require one shared origin; that agreement is
     // the convergence proof and becomes plane.publicOriginDigest. A normal
     // cross-origin redirect (declared apex -> observed www) is therefore tolerated: the seats still

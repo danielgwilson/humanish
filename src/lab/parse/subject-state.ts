@@ -54,7 +54,7 @@ export function parseEnvValues(
  * Structural parse of `subject.state` into a candidate LabSubjectState. Deliberately keeps
  * unrecognized `when`/`timeoutMs` values in the candidate (instead of silently dropping
  * them) so subjectStateInvalidReason rejects them: a state declaration that silently does
- * less than it says would violate invariant 6.
+ * less than it says would claim more than its mechanism does.
  */
 export function parseState(
   raw: unknown,
@@ -108,7 +108,7 @@ export function parseState(
 }
 
 // The step name interpolates into in-sandbox script/status/log paths (`subject-state-<name>`);
-// the strict shape is load-bearing, exactly like the repo slug.
+// so the shape is strict, exactly like the repo slug.
 const STATE_STEP_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 const STATE_STEP_NAME_MAX_CHARS = 40;

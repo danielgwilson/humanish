@@ -233,7 +233,7 @@ function fanoutSubjectEvents(
   const events: RunEvent[] = [];
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
     events.push(participantEvent(spec, event));
-  // Per-participant subject provenance (invariant 5).
+  // Per-participant subject provenance.
   if (args.plan.runner.subject.kind === "clone" && args.publicRepo) {
     record({
       id: nextEventId(`subject-${spec.planned.id}`),

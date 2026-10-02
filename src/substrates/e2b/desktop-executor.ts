@@ -61,7 +61,7 @@ export interface E2BDesktopLike {
       stdout?: string;
     }>;
   };
-  /** Optional file surface used to transfer typed text without shell-quoting it. */
+  /** Optional file surface for transferring typed text without shell-quoting it. */
   files?: {
     write(
       path: string,

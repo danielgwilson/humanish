@@ -67,7 +67,7 @@ export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
 export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
 
 /**
- * The read-only evidence a thin adapter's scorer/feedback hook sees (the layer-6 extension seam).
+ * The read-only evidence a thin adapter's scorer/feedback hook sees (the adapter extension seam).
  * It is the fully assembled, redacted, verifiable evidence: the live run
  * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
  * interventions/cleanup/cost/no-spend). Every member is an exported public type, so a thin adapter
@@ -110,7 +110,7 @@ export type TerminalCostProbe = (context: {
 /** The scorer functions a terminal run calls: `RunLabOptions.scorer` without `deriveArtifacts`. */
 export interface TerminalScorer {
   /**
-   * The layer-6 extension seam: product-adapter hooks without forking
+   * The adapter extension seam: product-adapter hooks without forking
    * core. A thin in-repo/out-of-tree adapter registers a product scorer here. The route calls it
    * (when provided) over the fully-assembled evidence and attaches the returned, adapter-namespaced
    * `RunAdapterScore` to `bundle.adapterScore` without core knowing any product noun (the score is
@@ -288,7 +288,7 @@ export interface InterventionRecord {
  *   - line absent  => not applicable to this route/run (n/a). The line simply does not appear in
  *                     `lines`. (The current route emits all four lines, so absence is reserved for
  *                     future routes that genuinely have no such category.)
- * `null` vs missing-key is the load-bearing distinction: a missing key means "this category does not
+ * `null` vs missing-key is the distinction that matters: a missing key means "this category does not
  * exist for this run"; a present key with `null` means "this category exists but we did not measure
  * it". A no-spend proof that claimed zero on a `null` line would claim more than it measured.
  */

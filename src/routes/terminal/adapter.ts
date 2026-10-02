@@ -16,7 +16,7 @@ import {
 import type { TerminalLedgers, TerminalScorer, TerminalProductScoringContext } from "./types.js";
 
 /**
- * Run the layer-6 product-adapter extension seam over the assembled
+ * Run the product-adapter extension seam over the assembled
  * evidence and attach its results to the bundle in place, without core knowing any product noun.
  * The review is not touched here: the returned failures are folded into it by the caller.
  *

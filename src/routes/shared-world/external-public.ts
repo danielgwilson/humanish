@@ -36,7 +36,7 @@ export interface ExternalPublicPlaneOutcome {
 /**
  * The operator-declared origin (from subject.appUrl), recorded for evidence and reference only. The
  * operator-ownership claim rests on the subject.publicTarget.authorized attestation + this declared
- * appUrl; digest equality plays no part (blocker 2): a normal cross-origin redirect (apex->www, http->https;
+ * appUrl; digest equality plays no part: a normal cross-origin redirect (apex->www, http->https;
  * lobby-trivia.example.test 307-redirects) makes the seats' observed origin differ from the declared one, which
  * is expected and must not fail the run. Persisted digest-only (never the raw origin).
  */

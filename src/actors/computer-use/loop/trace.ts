@@ -120,7 +120,7 @@ export function loopResult(
     : session.redactScreenshots
       ? `${counts.screenshots} screenshot(s) redacted to blurred thumbnails via RedactionHooks`
       : `${counts.screenshots} full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle`;
-  // Self-describing artifact (invariant 6): when any observation carried structured app state,
+  // Self-describing artifact: when any observation carried structured app state,
   // the trace says how the loop handled it: it fed progress and task checks and was not written to
   // the trace. The appState itself never appears in this bundle.
   const notes = session.observedAppState

@@ -6,7 +6,7 @@ import { COMMAND_DIGEST_PATTERN, SUBJECT_ENV_NAME_PATTERN } from "../run/shared-
 import { ARCHIVE_SHA256_PATTERN } from "../run/bundle-shape.js";
 
 /**
- * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's subject claim
+ * The `subject state provenance` check: a bundle's subject claim
  * must match its recorded evidence. A bundle without a subject block passes untouched.
  * Live-vs-dry-run is judged from bundle.mode, exactly like
  * noEngagementActorFindings. Covers both the state story (seed/external) and, for the

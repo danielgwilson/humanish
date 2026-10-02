@@ -166,7 +166,7 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   /** Max participants observed live at the same instant (live only): the honest simultaneity number; a
    *  6-participant run capped at 3 reports 3 here, never 6. */
   maxSimultaneousLanes?: number;
-  /** Subject provenance (invariant 5): the one shared plane. */
+  /** Subject provenance: the one shared plane. */
   subject?: RunSubjectProvenance;
   roles: ConcurrentSharedWorldParticipantResult[];
   observer?: ObserverResult;
