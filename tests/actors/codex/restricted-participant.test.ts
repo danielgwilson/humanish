@@ -23,7 +23,7 @@ const { run, sessionClose, metadata } = vi.hoisted(() => ({
     pendingInferenceUsage: undefined as { input: number; output: number }[] | undefined,
     cliVersion: undefined as string | undefined,
     unknownNotifications: {} as Record<string, number>,
-    unreportedRefusal: undefined as string | undefined,
+    policyRefusal: undefined as string | undefined,
   },
   run: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),
@@ -50,8 +50,8 @@ vi.mock("../../../src/actors/codex/restricted-session.js", () => ({
     get unknownNotifications() {
       return metadata.unknownNotifications;
     },
-    get unreportedRefusal() {
-      return metadata.unreportedRefusal;
+    get policyRefusal() {
+      return metadata.policyRefusal;
     },
   })),
 }));
@@ -110,7 +110,7 @@ beforeEach(() => {
   metadata.pendingInferenceUsage = undefined;
   metadata.cliVersion = undefined;
   metadata.unknownNotifications = {};
-  metadata.unreportedRefusal = undefined;
+  metadata.policyRefusal = undefined;
   sessionClose.mockReset().mockResolvedValue(true);
   createSession.mockClear();
 });
@@ -799,7 +799,7 @@ describe("restricted participant guards and receipts", () => {
   it("reports unknown notification methods and a refusal after the last request on close", async () => {
     metadata.cliVersion = "0.160.0";
     metadata.unknownNotifications = { "thread/futureProgress/updated": 3 };
-    metadata.unreportedRefusal = "codex_tool_call";
+    metadata.policyRefusal = "codex_tool_call";
     const h = createRestrictedCodexParticipant();
     await expect(h.close()).resolves.toEqual({
       status: "confirmed",

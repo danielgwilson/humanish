@@ -57,10 +57,12 @@ feature toggle alone did not. humanish also refuses raw tool calls, unexpected
 host RPCs and asynchronous question messages before accepting any report. Every
 item an app-server notification carries (`item`, `items`, `turn.items`,
 `thread.turns[].items`) passes the item allowlist whatever its method, from the
-launch handshake until the app-server exits. A refusal no request reports, between
-requests or during shutdown, fails the analysis or the participant's run. A method
-humanish does not know that carries no item is counted in the run's warnings and
-does not refuse. The actual notification/denial captures and provenance are in
+launch handshake until the app-server exits. Output that arrives after a request
+stopped, or during shutdown, is still read for the item policy. Every refusal, and
+any output that could not be checked, is kept for the session's close: it fails a
+participant's run even when a step that tolerates a failed request absorbed it,
+and it fails an analysis that had completed. A method humanish does not know that
+carries no item is counted in the run's warnings and does not refuse. The actual notification/denial captures and provenance are in
 [`tests/fixtures/restricted-codex`](https://github.com/danielgwilson/humanish/blob/46330116726f74080fa18947c36da4fb4b333805/tests/fixtures/restricted-codex/README.md).
 
 Each analyst or readiness request owns a separate child process, temporary home

@@ -82,8 +82,8 @@ describe("native transport while closing", () => {
     const notifications = vi.fn();
     const losses = vi.fn();
     transport.onRequest = requests;
-    transport.onClosingNotification = notifications;
-    transport.onUninspected = losses;
+    transport.onPolicyOnlyNotification = notifications;
+    transport.onPolicyFailure = losses;
     const written: string[] = [];
     child.stdin.on("data", (chunk: Buffer) => written.push(chunk.toString()));
     const closed = transport.close({ threadId: "thread-1", turnId: "turn-1" });
@@ -152,13 +152,51 @@ describe("native transport between requests", () => {
       deadline,
     );
     const losses = vi.fn();
-    transport.onUninspected = losses;
+    transport.onPolicyFailure = losses;
     child.stdout.write("{not-json}\n");
     await vi.waitFor(() => expect(losses).toHaveBeenCalledWith("codex_protocol_error"));
     expect(deadline.code).toBe("codex_protocol_error");
     deadline.close();
     child.stdin.destroy();
     child.stdout.destroy();
+    child.stderr.destroy();
+  });
+});
+
+describe("native transport after its deadline stopped", () => {
+  it("keeps checking notifications after a reply to no request stopped it", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      kill: vi.fn(),
+      pid: 12345,
+    });
+    const deadline = new RestrictedCodexDeadline(5000);
+    const transport = new RestrictedCodexTransport(
+      ownCodexProcess(child as unknown as ChildProcessWithoutNullStreams),
+      deadline,
+    );
+    const notifications = vi.fn();
+    const policyOnly = vi.fn();
+    const failures = vi.fn();
+    transport.onNotification = notifications;
+    transport.onPolicyOnlyNotification = policyOnly;
+    transport.onPolicyFailure = failures;
+    child.stdout.write(`${JSON.stringify({ id: 5, result: {} })}\n`);
+    child.stdout.end(
+      `${JSON.stringify({ id: 6, result: {} })}\n` +
+        JSON.stringify({
+          method: "item/completed",
+          params: { item: { type: "commandExecution" } },
+        }),
+    );
+    await vi.waitFor(() => expect(policyOnly).toHaveBeenCalledOnce());
+    expect(deadline.code).toBe("codex_protocol_error");
+    expect(notifications).not.toHaveBeenCalled();
+    expect(failures).not.toHaveBeenCalled();
+    deadline.close();
+    child.stdin.destroy();
     child.stderr.destroy();
   });
 });

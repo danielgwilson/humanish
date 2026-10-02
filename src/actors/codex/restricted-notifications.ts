@@ -263,31 +263,25 @@ export interface NotificationSessionState {
   /** The request in flight's deadline, or undefined between requests. */
   readonly activeDeadline: RestrictedCodexDeadline | undefined;
   readonly transport: RestrictedCodexTransport | undefined;
-  /** A policy refusal no request reported; a request that fails with it clears it. */
-  unreportedRefusal: RestrictedCodexAnalysisErrorCode | undefined;
+  /**
+   * The first policy refusal or unchecked output in the session, whenever it happened and whether
+   * or not a request reported it: a caller that tolerates a request's failure (the debrief) must
+   * not absorb it.
+   */
+  policyRefusal: RestrictedCodexAnalysisErrorCode | undefined;
 }
 type Participant = { readonly tool: { readonly name: string } } | undefined;
 
-/** Records a refusal no request will report: none is active, or the active one stopped already. */
-export function noteUnreported(
-  state: NotificationSessionState,
-  code: RestrictedCodexAnalysisErrorCode,
-): void {
-  const deadline = state.activeDeadline;
-  if (deadline === undefined || (deadline.code !== null && deadline.code !== code))
-    state.unreportedRefusal ??= code;
-}
-
 /**
- * A policy refusal: the active request stops with `code`, pending RPCs are rejected, and between
- * requests the next request fails with it. A refusal no request can report is recorded.
+ * A policy refusal: it is recorded, the active request stops with `code`, pending RPCs are
+ * rejected, and between requests the next request fails with it.
  */
 export function refuseSession(
   state: NotificationSessionState,
   code: RestrictedCodexAnalysisErrorCode,
 ): void {
+  state.policyRefusal ??= code;
   state.activeDeadline?.stop(code);
-  noteUnreported(state, code);
   state.transport?.refuse(code);
 }
 
@@ -303,18 +297,27 @@ export function idleNotifications(
   );
 }
 
-/** While the transport closes: the item policy only, and a refusal waits for the session's close. */
-export function closingNotifications(
+/**
+ * Installs the session's handlers on a new transport, before its first request: notifications
+ * outside a turn, notifications once the transport stopped or is closing, and policy failures
+ * the transport finds itself.
+ */
+export function installSessionHandlers(
   participant: Participant,
   state: NotificationSessionState,
-): (method: string, params: Record<string, unknown>) => void {
-  return idleNotificationHandler(
+  transport: RestrictedCodexTransport,
+): void {
+  transport.onNotification = idleNotifications(participant, state);
+  transport.onPolicyOnlyNotification = idleNotificationHandler(
     notificationPolicyOf(participant),
     (method) => countUnknownNotification(state.unknownNotifications, method),
     (code) => {
-      state.unreportedRefusal ??= code;
+      state.policyRefusal ??= code;
     },
   );
+  transport.onPolicyFailure = (code) => {
+    state.policyRefusal ??= code;
+  };
 }
 
 /** A server request outside a turn is refused; the transport answers it and stops the request. */
@@ -322,7 +325,7 @@ function idleRequests(
   state: NotificationSessionState,
 ): NonNullable<RestrictedCodexTransport["onRequest"]> {
   return async () => {
-    noteUnreported(state, "codex_tool_call");
+    state.policyRefusal ??= "codex_tool_call";
     throw new RestrictedCodexStop("codex_tool_call");
   };
 }

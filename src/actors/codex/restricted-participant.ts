@@ -397,7 +397,7 @@ function sessionReport(
   session: RestrictedCodexSession,
 ): Pick<ParticipantProviderCloseResult, "warnings" | "refusal"> {
   const warning = unknownNotificationsWarning(session.unknownNotifications, session.cliVersion);
-  const refusal = session.unreportedRefusal;
+  const refusal = session.policyRefusal;
   return {
     ...(warning === undefined ? {} : { warnings: [warning] }),
     ...(refusal === undefined ? {} : { refusal }),

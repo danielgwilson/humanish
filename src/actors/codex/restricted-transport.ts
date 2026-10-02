@@ -179,11 +179,11 @@ export class RestrictedCodexTransport {
   private eventCount = 0;
   private closing = false;
   onNotification: (method: string, params: Record<string, unknown>) => void = () => undefined;
-  /** Notifications that arrive after close() began: no turn handles them, only the policy. */
-  onClosingNotification: (method: string, params: Record<string, unknown>) => void = () =>
+  /** Notifications after the deadline stopped or close began: no turn handles them, only the policy. */
+  onPolicyOnlyNotification: (method: string, params: Record<string, unknown>) => void = () =>
     undefined;
-  /** Output that could not be checked (failUninspected); the session records it if no request will. */
-  onUninspected: (code: RestrictedCodexAnalysisErrorCode) => void = () => undefined;
+  /** A server request with no handler, or output that could not be checked (failUninspected). */
+  onPolicyFailure: (code: RestrictedCodexAnalysisErrorCode) => void = () => undefined;
   onRequest:
     | ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>)
     | undefined;
@@ -198,28 +198,10 @@ export class RestrictedCodexTransport {
     child.on("error", () => this.fail("codex_process_failed"));
     child.stdin.on("error", () => this.fail("codex_process_failed"));
     child.on("close", () => this.fail("codex_process_failed"));
-    // A last frame without its newline: parsed when it is whole JSON, otherwise it went unchecked.
-    child.stdout.on("end", () => {
-      const rest = this.line + this.decoder.end();
-      this.line = "";
-      if (rest.length === 0 || (!this.closing && this.deadline.code !== null)) return;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(rest) as unknown;
-      } catch {
-        this.failUninspected("codex_protocol_error");
-        return;
-      }
-      try {
-        this.message(parsed);
-      } catch {
-        this.fail("codex_protocol_error");
-      }
-    });
+    // Output is read until the process exits. Once the deadline stops or close begins, it is read
+    // for the item policy only (message); only the byte and frame limits stop reading, and they
+    // count as unchecked output.
     child.stdout.on("data", (chunk: Buffer) => {
-      // While closing, lines are still read, so a notification sent during shutdown passes the
-      // item policy (onClosingNotification); the byte and event limits still apply.
-      if (!this.closing && this.deadline.code !== null) return;
       this.stdoutBytes += chunk.length;
       if (
         this.stdoutBytes >
@@ -234,26 +216,17 @@ export class RestrictedCodexTransport {
         return;
       }
       while (this.line.includes("\n")) {
-        const split = this.line.indexOf("\n"),
-          line = this.line.slice(0, split);
+        const split = this.line.indexOf("\n");
+        const line = this.line.slice(0, split);
         this.line = this.line.slice(split + 1);
-        let parsed: unknown;
-        try {
-          parsed = line.length === 0 ? undefined : (JSON.parse(line) as unknown);
-        } catch {
-          parsed = undefined;
-        }
-        if (parsed === undefined) {
-          this.failUninspected("codex_protocol_error");
-          return;
-        }
-        try {
-          this.message(parsed);
-        } catch {
-          this.fail("codex_protocol_error");
-        }
-        if (this.deadline.code !== null && !this.closing) return;
+        this.frame(line);
       }
+    });
+    // A last frame without its newline is parsed when it is whole JSON, otherwise it went unchecked.
+    child.stdout.on("end", () => {
+      const rest = this.line + this.decoder.end();
+      this.line = "";
+      for (const line of rest.split("\n")) if (line.length > 0) this.frame(line);
     });
     child.stderr.on("data", (chunk: Buffer) => {
       this.stderrBytes += chunk.length;
@@ -271,13 +244,30 @@ export class RestrictedCodexTransport {
     this.stderrBytes = 0;
     this.eventCount = 0;
   }
+  /** One line of output: a malformed line could not be checked. */
+  private frame(line: string): void {
+    let parsed: unknown;
+    try {
+      parsed = line.length === 0 ? undefined : (JSON.parse(line) as unknown);
+    } catch {
+      parsed = undefined;
+    }
+    if (parsed === undefined) {
+      this.failUninspected("codex_protocol_error");
+      return;
+    }
+    try {
+      this.message(parsed);
+    } catch {
+      this.fail("codex_protocol_error");
+    }
+  }
   /**
    * Output that could not be checked: past a byte, frame or event limit, malformed, or cut off.
-   * onUninspected lets the session record it when no request will report it: between requests,
-   * or while closing, when fail stops nothing.
+   * The session records it through onPolicyFailure, whatever state the transport is in.
    */
   private failUninspected(code: RestrictedCodexAnalysisErrorCode): void {
-    this.onUninspected(code);
+    this.onPolicyFailure(code);
     this.fail(code);
   }
   /**
@@ -298,10 +288,12 @@ export class RestrictedCodexTransport {
       this.failUninspected("codex_protocol_error");
       return;
     }
+    // After the deadline stopped or close began, output is read for the item policy only.
+    const policyOnly = this.closing || this.deadline.code !== null;
     if (value.id !== undefined && typeof value.method === "string") {
-      // While closing, a server request is declined unhandled: its turn is being interrupted, so a
-      // tool call that crossed the interrupt runs nothing and is not a policy refusal.
-      if (this.closing) {
+      // A server request is then declined unhandled: its turn is over or being interrupted, so a
+      // tool call that crossed the stop runs nothing and is not a policy refusal.
+      if (policyOnly) {
         try {
           this.write({
             id: value.id,
@@ -313,8 +305,10 @@ export class RestrictedCodexTransport {
         return;
       }
       if (!this.onRequest || ++this.eventCount > CODEX_MAX_EVENTS) {
+        const code = this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_tool_call";
+        this.onPolicyFailure(code);
         this.write({ id: value.id, error: { code: -32601, message: "Host request is disabled" } });
-        this.fail(this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_tool_call");
+        this.fail(code);
         return;
       }
       const id = value.id;
@@ -346,7 +340,8 @@ export class RestrictedCodexTransport {
     if (typeof value.id === "number" && value.method === undefined) {
       const pending = this.pending.get(value.id);
       if (!pending) {
-        this.fail("codex_protocol_error");
+        // A late reply, such as an interrupt's after its wait, carries no item.
+        if (!policyOnly) this.fail("codex_protocol_error");
         return;
       }
       this.pending.delete(value.id);
@@ -371,8 +366,8 @@ export class RestrictedCodexTransport {
       );
       return;
     }
-    if (!this.closing) this.onNotification(value.method, codexRecord(value.params));
-    else this.onClosingNotification(value.method, codexRecord(value.params));
+    if (policyOnly) this.onPolicyOnlyNotification(value.method, codexRecord(value.params));
+    else this.onNotification(value.method, codexRecord(value.params));
   }
   private write(value: unknown): void {
     if (this.owned.isClosed() || this.owned.child.stdin.destroyed)

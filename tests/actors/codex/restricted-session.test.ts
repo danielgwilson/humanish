@@ -1626,14 +1626,16 @@ describe("restricted Codex notifications outside a turn", () => {
     const f = await fixture("continuing-idle-item"),
       session = createRestrictedCodexSession(f.options);
     expect(await session.run(request)).toMatchObject({ status: "completed" });
-    expect(session.unreportedRefusal).toBeUndefined();
+    expect(session.policyRefusal).toBeUndefined();
     await writeFile(`${f.trace}.idle-item`, "");
-    await vi.waitFor(() => expect(session.unreportedRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
     expect(await session.run(request)).toMatchObject({
       errorCode: "codex_tool_call",
       dispatched: false,
     });
-    expect(session.unreportedRefusal).toBeUndefined();
+    // The record stays after a request reported it, so a caller that tolerates the failure
+    // cannot absorb it.
+    expect(session.policyRefusal).toBe("codex_tool_call");
     expect((await f.entries()).filter((entry) => entry.method === "turn/start")).toHaveLength(1);
     expect(await session.close()).toBe(true);
     expect(await readdir(f.tempRoot)).toEqual([]);
@@ -1652,12 +1654,12 @@ describe("restricted Codex notifications outside a turn", () => {
     });
     expect(await session.run(request)).toMatchObject({ status: "completed" });
     await writeFile(`${f.trace}.idle-item`, "");
-    await vi.waitFor(() => expect(session.unreportedRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
     // An unexpected login rotation makes the teardown after the refused request fail.
     rmSync(path.join(home!, "auth.json"));
     writeFileSync(path.join(home!, "auth.json"), "synthetic-rotated-login", { mode: 0o600 });
     expect(await session.run(request)).toMatchObject({ errorCode: "codex_cleanup_failed" });
-    expect(session.unreportedRefusal).toBe("codex_tool_call");
+    expect(session.policyRefusal).toBe("codex_tool_call");
   });
 
   it("records a server request between requests, and the next request reports it", async () => {
@@ -1665,12 +1667,12 @@ describe("restricted Codex notifications outside a turn", () => {
       session = createRestrictedCodexSession(f.options);
     expect(await session.run(request)).toMatchObject({ status: "completed" });
     await writeFile(`${f.trace}.idle-request`, "");
-    await vi.waitFor(() => expect(session.unreportedRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
     expect(await session.run(request)).toMatchObject({
       errorCode: "codex_tool_call",
       dispatched: false,
     });
-    expect(session.unreportedRefusal).toBeUndefined();
+    expect(session.policyRefusal).toBe("codex_tool_call");
     expect(await session.close()).toBe(true);
   });
 
@@ -1696,7 +1698,7 @@ describe("restricted Codex notifications outside a turn", () => {
     expect(await session.close()).toBe(true);
     expect(await pending).toMatchObject({ status: "cancelled" });
     expect((await f.entries()).some((entry) => entry.method === "turn/interrupt")).toBe(true);
-    expect(session.unreportedRefusal).toBe("codex_tool_call");
+    expect(session.policyRefusal).toBe("codex_tool_call");
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 });
@@ -1707,12 +1709,9 @@ describe("restricted Codex output it could not check", () => {
       session = createRestrictedCodexSession(f.options);
     expect(await session.run(request)).toMatchObject({ status: "completed" });
     await writeFile(`${f.trace}.idle-malformed`, "");
-    await vi.waitFor(
-      () => expect(session.unreportedRefusal).toBe("codex_protocol_error"),
-      AFTER_SPAWN,
-    );
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_protocol_error"), AFTER_SPAWN);
     expect(await session.close()).toBe(true);
-    expect(session.unreportedRefusal).toBe("codex_protocol_error");
+    expect(session.policyRefusal).toBe("codex_protocol_error");
   });
 
   it("fails a completed one-shot request when its last frame is cut off at shutdown", async () => {
@@ -1723,5 +1722,15 @@ describe("restricted Codex output it could not check", () => {
       output: null,
     });
     expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+});
+
+describe("restricted Codex refusals a request reported", () => {
+  it("keeps the refusal of a request that failed in its turn", async () => {
+    const f = await fixture("raw-tool"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ errorCode: "codex_tool_call" });
+    expect(session.policyRefusal).toBe("codex_tool_call");
+    await session.close();
   });
 });

@@ -72,9 +72,6 @@ export interface LaunchState {
   unknownNotifications: Map<string, number>;
 }
 
-/** The session's policy for notifications outside a dispatched turn (restricted-notifications). */
-type IdleNotifications = (method: string, params: Record<string, unknown>) => void;
-
 /** An admitted value, or the refusal a launch stops with. */
 export type Admission<T> =
   | { readonly value: T }
@@ -267,7 +264,7 @@ export async function launchAdmittedAppServer(
   deadline: RestrictedCodexDeadline,
   frameLimit: number,
   enter: (phase: CuaProviderFailurePhase) => void,
-  idle: IdleNotifications,
+  install: (transport: RestrictedCodexTransport) => void,
 ): Promise<RestrictedCodexTransport> {
   const { options, sourceEnv, participant, operatorAuth, reasoningEffort, spawnFn } = settings;
   const file = await resolveExecutable(options, sourceEnv);
@@ -318,8 +315,8 @@ export async function launchAdmittedAppServer(
     }),
   );
   const launched = new RestrictedCodexTransport(owned, deadline, frameLimit);
-  // Notifications are checked from the first byte, before initialize returns.
-  launched.onNotification = idle;
+  // The session's handlers check output from the first byte, before initialize returns.
+  install(launched);
   state.transport = launched;
   enter("initialize");
   const initialize = await launched.rpc("initialize", {

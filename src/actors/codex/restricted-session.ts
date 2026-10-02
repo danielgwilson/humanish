@@ -48,11 +48,10 @@ import {
 } from "./restricted-executable.js";
 import { RestrictedCodexTurn } from "./restricted-turn.js";
 import {
-  closingNotifications,
   countUnknownNotification,
   detachTurn,
   idleNotifications,
-  noteUnreported,
+  installSessionHandlers,
   notificationPolicyOf,
   refuseSession,
 } from "./restricted-notifications.js";
@@ -128,7 +127,7 @@ export async function runRestrictedCodexSession(
       ...noted,
     };
   // A disallowed item while the app-server shut down fails a request that had completed.
-  const refusal = session.unreportedRefusal;
+  const refusal = session.policyRefusal;
   return refusal !== undefined && result.errorCode === null
     ? { ...restrictedCodexFailure(refusal, result.dispatched, result.usage), ...noted }
     : { ...result, ...noted };
@@ -277,10 +276,10 @@ export interface RestrictedCodexSession {
   /** Notification methods this humanish does not know that carried no item, by count. */
   readonly unknownNotifications?: Readonly<Record<string, number>>;
   /**
-   * A policy refusal no request reported: between requests, while closing, or after the request
-   * stopped for another reason. A participant's close fails the run with it.
+   * The first policy refusal or unchecked output in the session, whether or not a request reported
+   * it. A participant's close fails the run with it.
    */
-  readonly unreportedRefusal?: RestrictedCodexAnalysisErrorCode | undefined;
+  readonly policyRefusal?: RestrictedCodexAnalysisErrorCode | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -312,8 +311,8 @@ interface SessionState extends LaunchState {
   closed: boolean;
   /** False once a request reported codex_cleanup_failed (each request; teardown). */
   cleanupTrusted: boolean;
-  /** A policy refusal no request reported (noteUnreported); a request that fails with it clears it. */
-  unreportedRefusal: RestrictedCodexAnalysisErrorCode | undefined;
+  /** The first policy refusal or unchecked output (restricted-notifications); never cleared. */
+  policyRefusal: RestrictedCodexAnalysisErrorCode | undefined;
 }
 
 /** Teardown: close the app-server, unlink the auth link and remove the task directory. */
@@ -321,7 +320,6 @@ async function disposeSession(settings: SessionSettings, state: SessionState): P
   // Each field is read at its use, after the awaits before it, as the session always has.
   let cleaned = state.cleanupTrusted;
   if (state.transport) {
-    state.transport.onClosingNotification = closingNotifications(settings.participant, state);
     cleaned = (await state.transport.close(state.interrupt).catch(() => false)) && cleaned;
     if (!cleaned) retainUnclosedChild(state.transport!.owned.closed);
   }
@@ -431,9 +429,8 @@ async function runTurn(
         (next) => {
           phase = next;
         },
-        idleNotifications(participant, state),
+        (transport) => installSessionHandlers(participant, state, transport),
       );
-      state.transport.onUninspected = (code) => noteUnreported(state, code);
       selectedModel = state.identity!.model;
     } else state.transport.beginRequest(deadline, frameLimit);
     // Before dispatch the turn passes notifications to the idle handler the launch installed,
@@ -484,9 +481,6 @@ async function runTurn(
           failurePhase: "cleanup",
         };
     }
-    // This request reported the refusal it failed with; a cleanup failure replaced it, so not then.
-    if (result.errorCode !== null && result.errorCode === state.unreportedRefusal)
-      state.unreportedRefusal = undefined;
   }
   return withInferenceUsage(result, turn, participant !== undefined);
 }
@@ -556,7 +550,7 @@ export function createRestrictedCodexSession(
     interrupt: undefined,
     closed: false,
     cleanupTrusted: true,
-    unreportedRefusal: undefined,
+    policyRefusal: undefined,
   };
   let pending: Promise<RestrictedCodexResult> | undefined,
     closing: Promise<boolean> | undefined,
@@ -585,8 +579,8 @@ export function createRestrictedCodexSession(
     get unknownNotifications() {
       return Object.fromEntries(state.unknownNotifications);
     },
-    get unreportedRefusal() {
-      return state.unreportedRefusal;
+    get policyRefusal() {
+      return state.policyRefusal;
     },
     run(request, readinessOnly = false) {
       const refusal = refusedRun(settings, state, request, () => pending !== undefined);
