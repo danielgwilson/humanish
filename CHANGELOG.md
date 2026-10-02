@@ -57,7 +57,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
-- An analysis response that fails validation is kept locally for diagnosis at
+- An analysis response that fails validation is kept locally for diagnosis (#1403) at
   `.humanish/analysis-diagnostics/<run>/<analysis>.json`. Strings are scrubbed and redacted, and
   each write keeps only the newest 20 across runs. `humanish analyze` and a lab run's automatic
   analysis print the path, and the result carries it as `rejectedOutputPath`. The file is outside
