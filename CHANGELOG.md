@@ -38,7 +38,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   em dashes, and the try-live title reads "Your first live study: one participant on a demo app".
   The `cua-browser` starter names `synthetic-new-user`, a persona init writes, so its first run no
   longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
-  em dash and its all-caps word. A test now runs init and holds these files to zero of each.
+  em dash and its all-caps word. A test now runs init and holds these files to zero of each
+  (#1440).
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
