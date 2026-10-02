@@ -232,8 +232,8 @@ exactly; this hosted-desktop rule does not change that contract.
 ## Subject Provenance
 
 `subject` is an optional, additive top-level field: structured provenance for
-what the computer-use, shared-world or scripted-browser backend actually drove (code pin plus state story). It
-is absent on pre-existing bundles and on bundles from backends that have not
+what the computer-use, shared-world or scripted route actually drove (code pin plus state story). It
+is absent on pre-existing bundles and on bundles from routes that have not
 adopted it. The field shape, its three sources (`clone`, `app-url`,
 `local-tree`), and the `humanish verify` checks that guard it are the schema doc's
 job, not this one: see the `subject` entry under

@@ -381,7 +381,7 @@ carries `publication.restrictions: [real-communications]`. Verification keeps th
 run local-only regardless of screenshot redaction. See the
 [receiving contract](../architecture/real-email-receiving.md).
 
-Lab backends report results in their own schemas (`humanish.run-result.v1`,
+Lab routes report results in their own schemas (`humanish.run-result.v1`,
 `humanish.cua-lab-result.v2`, `humanish.scripted-lab-result.v1`,
 `humanish.terminal-lab-result.v1`,
 `humanish.concurrent-shared-world-lab-result.v1`); the evidence record stays
@@ -475,7 +475,7 @@ Core-owned fields:
 dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
 unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
 commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
-}`. Emitted by the computer-use and shared-world backends and the clone
+}`. Emitted by the computer-use and shared-world routes and the clone
   scripted-browser route; absent on pre-existing and other bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
   porcelain status at pack time) are local-tree-route fields, additive under
@@ -493,7 +493,7 @@ provenance` check.
 - `attributionClass` (optional, additive): `isolated | shared-world`. Absent ==
   `isolated`, so every existing bundle is byte-stable. It is the
   interaction-attribution axis (#164), independent of the persona-sampling
-  evidence classes. Set to `shared-world` by the shared-world backend, paired
+  evidence classes. Set to `shared-world` by the shared-world route, paired
   with `sharedWorld`.
 - `sharedWorld` (optional, additive): the shared-world evidence block
   (`humanish.shared-world.v1`); see [Shared-World Evidence](#shared-world-evidence)
@@ -1084,7 +1084,7 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 ## Run Status (identity + liveness index)
 
 `humanish.run-status.v1` is `status.json`, written inside each run directory by
-every backend at run start, refreshed on a fixed cadence while the run is
+every route at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
 finished | interrupted, mode, lab?, pid, startedAt, updatedAt, completedAt?,
 signal?, outcome? }`.

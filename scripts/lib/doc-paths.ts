@@ -46,8 +46,10 @@ export function buildRepoIndex(paths: Iterable<string>): RepoIndex {
 }
 
 // docs/goals/, docs/plans/ and docs/roadmap/ are dated history, so they may name files that
-// have since moved.
+// have since moved. docs/goals/current.md is the current program state, which the README links
+// and the package ships, so it is checked.
 const HISTORY_DIRECTORIES = ["docs/goals/", "docs/plans/", "docs/roadmap/"];
+const CURRENT_PAGES = new Set(["docs/goals/current.md"]);
 const ROOT_GUIDES = new Set([
   "README.md",
   "AGENTS.md",
@@ -57,7 +59,7 @@ const ROOT_GUIDES = new Set([
 ]);
 
 export function isCheckedDoc(path: string): boolean {
-  if (ROOT_GUIDES.has(path)) return true;
+  if (ROOT_GUIDES.has(path) || CURRENT_PAGES.has(path)) return true;
   if (path.startsWith("docs/") && path.endsWith(".md")) {
     return !HISTORY_DIRECTORIES.some((directory) => path.startsWith(directory));
   }

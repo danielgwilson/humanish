@@ -23,9 +23,9 @@ routes. It tests whether an autonomous agent can discover and use a CLI/product
 surface from public materials. It does not test whether a browser can click a
 local web app.
 
-It rides the established route-addition pattern (proven by the scripted-browser
-and local-app routes): a new `subject.source` × `execution.target`, a routing
-predicate, a backend enum + dispatch, a registered actor that declares the run kind in its capabilities,
+It follows the pattern the scripted-browser and local-app routes added: a new
+`subject.source` × `execution.target` pairing, a `terminal` case in `routeOf(config)`
+and its dispatch, a registered actor that declares the run kind in its capabilities,
 fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition

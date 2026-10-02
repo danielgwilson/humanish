@@ -189,8 +189,8 @@ object (`schema: LAB_CONFIG_SCHEMA`), deterministic non-vision provider,
 `stableProgressKey`, `runLab`, verification, a printed report and `finally`
 cleanup. It makes no model calls and does not demonstrate persona efficacy.
 `parseLabConfig` accepts a decoded object, not a YAML string; narrow its result
-on `.ok`, then narrow `runLab`'s result on `backend === "cua"` before accessing
-the CUA result. The example defines all helpers rather than requiring a consumer
+on `.ok`, then narrow `runLab`'s result on `route === "computer-use"` before
+reading the computer-use result. The example defines all helpers rather than requiring a consumer
 to reconstruct them.
 
 Pass `inProcess: { executor }` and `createProvider` in `RunLabOptions`. The type requires
