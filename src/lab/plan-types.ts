@@ -31,7 +31,10 @@ import type {
 export type NonEmpty<T> = readonly [T, ...T[]];
 type AtLeastTwo<T> = readonly [T, T, ...T[]];
 
-/** Something a route checks right before acquisition. Doctor, the TUI and preflight list the same set. */
+/**
+ * Something a route checks right before acquisition. Preflight refuses on, and doctor and the TUI
+ * report, the keys and subject env listed here, through src/lab/requirements.ts.
+ */
 export type Requirement =
   | { readonly kind: "key"; readonly name: "OPENAI_API_KEY" | "E2B_API_KEY" }
   /** The terminal runtime key: CODEX_API_KEY, else OPENAI_API_KEY. */

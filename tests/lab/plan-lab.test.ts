@@ -1,7 +1,7 @@
 // planLab builds the plan a lab would run under, without running anything. These tests pin the
-// plan of every committed lab, compare the plan's derived numbers and key requirements with what
-// the routes and `lab doctor` compute today, and check that each combination the plan types
-// cannot hold is refused with its route's own code.
+// plan of every committed lab, compare the plan's derived numbers with what the routes compute
+// today, and check that each combination the plan types cannot hold is refused with its route's
+// own code. `lab doctor` reads its keys from this plan (tests/lab/doctor.test.ts).
 
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -9,14 +9,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import { labKeyRequirements } from "../../src/lab/doctor.js";
 import { selectLabBackend } from "../../src/lab/plan.js";
-import { planLab, routeOf, type LabRoute } from "../../src/lab/plan.js";
-import type { LabPlan, PlanResult, Requirement } from "../../src/lab/plan-types.js";
+import { planLab, type LabRoute } from "../../src/lab/plan.js";
+import type { LabPlan, PlanResult } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { resolveCuaParticipantPlan } from "../../src/routes/computer-use/participant-runs.js";
 import { committedLabs } from "../helpers/committed-labs.js";
-import { lab as admissionLab } from "../admission/fixtures.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -105,42 +103,6 @@ describe("planLab", () => {
         sandboxMinutes: lanes.worstCaseSandboxMinutes,
       });
     }
-  });
-
-  /** Doctor's keys for a live run match the plan's key requirements. */
-  function expectDoctorMatchesPlan(config: LabConfig, id: string) {
-    const result = planLab(config, { cwd: ROOT, dryRun: false });
-    if (!result.ok) return false;
-    const requirements = result.planned.plan.requirements;
-    const doctor = labKeyRequirements(config, routeOf(config), false, () => false);
-    const keys = (name: string) =>
-      requirements.some(
-        (requirement: Requirement) =>
-          (requirement.kind === "key" && requirement.name === name) ||
-          (requirement.kind === "key-one-of" && requirement.names.some((key) => key === name)),
-      );
-    expect(keys("E2B_API_KEY"), id).toBe(doctor.desktop);
-    expect(keys("OPENAI_API_KEY"), id).toBe(doctor.keys.includes("OPENAI_API_KEY"));
-    return true;
-  }
-
-  it("asks for the keys lab doctor asks for on a live run", async () => {
-    for (const [id, config] of await committedLabs(ROOT)) expectDoctorMatchesPlan(config, id);
-  });
-
-  it.each([
-    ["sharedProvisioned", "openai-computer-use", ["E2B_API_KEY", "OPENAI_API_KEY"]],
-    ["sharedProvisioned", "local-agent", ["E2B_API_KEY"]],
-    ["sharedExternal", "openai-computer-use", ["E2B_API_KEY", "OPENAI_API_KEY"]],
-    ["sharedExternal", "local-agent", ["E2B_API_KEY", "OPENAI_API_KEY"]],
-  ] as const)("asks for the shared-world %s %s keys that doctor asks for", (base, type, keys) => {
-    const actor = type === "local-agent" ? { type, localAgent: "codex" } : undefined;
-    const parsed = parseLabConfig(admissionLab(base, { scenario: { mode: "live" } }, actor));
-    if (!parsed.ok) throw new Error(parsed.error.message);
-    expect(expectDoctorMatchesPlan(parsed.config, `${base} ${type}`)).toBe(true);
-    expect(labKeyRequirements(parsed.config, "shared-world", false, () => false).keys).toEqual(
-      keys,
-    );
   });
 
   it("refuses each combination the plan types cannot hold", () => {

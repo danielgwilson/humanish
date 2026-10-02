@@ -438,11 +438,15 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
     authStatus,
   });
 
-  async function setup(base: "sharedProvisioned" | "sharedExternal", agents: DetectedLocalAgent[]) {
+  async function setup(
+    base: "sharedProvisioned" | "sharedExternal",
+    agents: DetectedLocalAgent[],
+    actor: Record<string, unknown> = { type: "local-agent", localAgent: "codex" },
+  ) {
     const raw = admissionLab(
       base,
       { scenario: { mode: "live" }, review: { analysis: false } },
-      { type: "local-agent", localAgent: "codex" },
+      actor,
     );
     return project(stringify(raw), (cwd) =>
       labSetupChecks({
@@ -470,6 +474,14 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
     expect(result.keys).toEqual(["E2B_API_KEY", "OPENAI_API_KEY"]);
   });
 
+  it.each(["sharedProvisioned", "sharedExternal"] as const)(
+    "asks an openai participant on the %s plane for E2B and OpenAI keys",
+    async (base) => {
+      const result = await setup(base, [], { type: "openai-computer-use" });
+      expect(result).toMatchObject({ desktop: true, keys: ["E2B_API_KEY", "OPENAI_API_KEY"] });
+    },
+  );
+
   it.each([
     ["is signed out", [codex("unauthenticated")], "reports not signed in"],
     ["is not on PATH", [], "is not on this process's PATH"],
@@ -478,5 +490,65 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
     const row = result.checks.find((check) => check.name === "local participant authentication");
     expect(row).toMatchObject({ ok: false });
     expect(row?.message).toContain(message);
+  });
+});
+
+describe("doctor reads a live run's needs from the lab's plan", () => {
+  const check = (raw: Record<string, unknown>, env: NodeJS.ProcessEnv = keyless) =>
+    project(stringify(raw), (cwd) =>
+      labSetupChecks({
+        cwd,
+        lab: "humanish/labs/preview.yaml",
+        env,
+        agents: [],
+        keyPresent: () => false,
+      }),
+    );
+
+  it("reports each subject env name the plan requires, present or missing", async () => {
+    const raw = admissionLab("cuClone", {
+      scenario: { mode: "live" },
+      review: { analysis: false },
+      subject: { env: ["SYNTHETIC_SUBJECT_TOKEN"] },
+    });
+    const row = async (env: NodeJS.ProcessEnv) =>
+      (await check(raw, env)).checks.find(
+        (item) => item.name === "subject env SYNTHETIC_SUBJECT_TOKEN",
+      );
+    expect(await row(keyless)).toMatchObject({ ok: false });
+    expect(await row({ ...keyless, SYNTHETIC_SUBJECT_TOKEN: "synthetic-value" })).toEqual({
+      name: "subject env SYNTHETIC_SUBJECT_TOKEN",
+      ok: true,
+      message: "present; value not shown",
+    });
+  });
+
+  it("plans a lab whose inline persona names its own YAML anchor", async () => {
+    const persona: Record<string, unknown> = { id: "synthetic-persona" };
+    persona.self = persona;
+    const raw = admissionLab("cuAppUrl", {
+      scenario: { mode: "live" },
+      review: { analysis: false },
+      personas: [persona],
+    });
+    expect(stringify(raw)).toContain("*");
+    expect(await check(raw)).toMatchObject({
+      desktop: true,
+      keys: ["E2B_API_KEY", "OPENAI_API_KEY"],
+    });
+  });
+
+  it("fails the live route row for a lab the planner refuses", async () => {
+    // A 55-minute session derives a sandbox deadline past the 60-minute limit. The parser admits
+    // it; the planner, and so `humanish lab run`, refuses it.
+    const raw = admissionLab("cuAppUrl", {
+      scenario: { mode: "live" },
+      execution: { timeoutMs: 3_300_000 },
+    });
+    const result = await check(raw);
+    expect(result).toMatchObject({ desktop: false, keys: [] });
+    const row = result.checks.find((item) => item.name === "live route");
+    expect(row?.ok).toBe(false);
+    expect(row?.message).toContain("may not live longer than 60m");
   });
 });

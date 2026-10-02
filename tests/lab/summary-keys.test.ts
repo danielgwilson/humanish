@@ -5,6 +5,7 @@ import { stringify } from "yaml";
 import { describe, expect, it } from "vitest";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { readLabSummary } from "../../src/lab/summary.js";
+import { lab as admissionLab } from "../admission/fixtures.js";
 
 const base = {
   schema: LAB_CONFIG_SCHEMA,
@@ -74,6 +75,8 @@ describe("TUI key summary follows the configured route", () => {
         runtimeAuth: "openai-env",
         terminal: { transport: "exec-stream", stdin: "disabled" },
       },
+      // A live terminal run without a cap does not plan.
+      scenario: { mode: "live", caps: { maxUsd: 0, maxMinutes: 5 } },
     };
     expect(
       await summary(config, {
@@ -85,6 +88,45 @@ describe("TUI key summary follows the configured route", () => {
       keysReady: false,
       missingKeys: ["OPENAI_API_KEY"],
     });
+  });
+
+  it("names a clone subject's missing env after the provider keys", async () => {
+    const clone = admissionLab("cuClone", {
+      id: "key-check",
+      scenario: { mode: "live" },
+      subject: { env: ["SYNTHETIC_SUBJECT_TOKEN"] },
+    });
+    expect(await summary(clone, {})).toMatchObject({
+      keysReady: false,
+      missingKeys: ["E2B_API_KEY", "OPENAI_API_KEY", "SYNTHETIC_SUBJECT_TOKEN"],
+    });
+    expect(
+      await summary(clone, {
+        E2B_API_KEY: "synthetic-credential-desktop",
+        OPENAI_API_KEY: "synthetic-credential-model",
+        SYNTHETIC_SUBJECT_TOKEN: "synthetic-credential-subject",
+      }),
+    ).toMatchObject({ keysReady: true });
+  });
+
+  it("checks a lab whose inline persona names its own YAML anchor", async () => {
+    const persona: Record<string, unknown> = { id: "synthetic-persona" };
+    persona.self = persona;
+    expect(await summary({ ...base, personas: [persona] }, {})).toMatchObject({
+      keysReady: false,
+      missingKeys: ["E2B_API_KEY", "OPENAI_API_KEY"],
+    });
+  });
+
+  it("reports the planner's refusal in place of the keys for a lab that will not plan", async () => {
+    // A 55-minute session derives a sandbox deadline past the 60-minute limit.
+    const result = await summary(
+      { ...base, execution: { ...base.execution, timeoutMs: 3_300_000 } },
+      {},
+    );
+    expect(result.keysReady).toBeUndefined();
+    expect(result.missingKeys).toBeUndefined();
+    expect(result.planRefusal).toContain("may not live longer than 60m");
   });
 
   it("requires no provider keys for a local scripted browser", async () => {

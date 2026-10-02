@@ -2,6 +2,8 @@ import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 import type { LabConfig } from "./types.js";
 import type { LabRoute } from "./plan.js";
+import type { PlanResult } from "./plan-types.js";
+import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
 import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
@@ -97,7 +99,17 @@ export async function labSetupChecks(
       keys: [],
       checks: [...checks, { name: "live route", ok: false, message: unsupported }],
     };
-  const { desktop, keys } = labKeyRequirements(config, route, false, args.keyPresent);
+  const planned = await planCliRun(config, args.cwd);
+  if (!planned.ok)
+    return {
+      desktop: false,
+      keys: [],
+      checks: [...checks, { name: "live route", ok: false, message: planned.refusal.message }],
+    };
+  const requirements = planned.planned.plan.requirements;
+  const keys = requiredKeys(requirements, args.keyPresent);
+  // This flag controls the hosted desktop SDK check as well as its API key.
+  const desktop = keys.includes("E2B_API_KEY");
   const local = isLocalBrowserLab(config);
   // One account check, shared by the local participant row and the Codex analysis row.
   let accountReadiness: Promise<CodexReadiness> | undefined;
@@ -110,7 +122,7 @@ export async function labSetupChecks(
     checks.push(await realEmailCheck(config.comms.email.connection, keys, args));
   checks.push(...(await participantChecks(config, route, keys, local, args, checkAccount)));
   if (route === "scripted") checks.push(await scriptedBrowserCheck());
-  checks.push(...subjectEnvChecks(config, args));
+  checks.push(...subjectEnvChecks(requiredSubjectEnv(requirements), args));
   const analysis = automaticAnalysisBudget(config.review?.analysis, route);
   if (analysis) checks.push(await analysisCheck(analysis, args, checkAccount));
   checks.push(checkScope(analysis));
@@ -218,9 +230,9 @@ async function scriptedBrowserCheck(): Promise<Check> {
   };
 }
 
-/** One row per declared subject env name: present or missing, never the value. */
-function subjectEnvChecks(config: LabConfig, args: LabSetupCheckArgs): Check[] {
-  return (config.subject.env ?? []).map((name) => ({
+/** One row per subject env name the plan requires: present or missing, never the value. */
+function subjectEnvChecks(names: readonly string[], args: LabSetupCheckArgs): Check[] {
+  return names.map((name) => ({
     name: `subject env ${name}`,
     ok: !!args.env[name]?.trim() || args.keyPresent(name),
     message:
@@ -276,33 +288,12 @@ function checkScope(analysis: ReturnType<typeof automaticAnalysisBudget>): Check
   };
 }
 
-/** Required participant provider keys, shared by doctor and the TUI. Optional analysis is separate. */
-export function labKeyRequirements(
-  config: LabConfig,
-  route: LabRoute,
-  dryRun: boolean,
-  keyPresent: (name: string) => boolean,
-): { desktop: boolean; keys: string[] } {
-  if (dryRun || unsupportedCliRoute(config, route)) return { desktop: false, keys: [] };
-  // This flag controls the hosted desktop SDK check as well as its API key.
-  const desktop =
-    !isLocalBrowserLab(config) &&
-    (route === "computer-use" ||
-      route === "terminal" ||
-      route === "shared-world" ||
-      (route === "scripted" && config.subject.source === "clone"));
-  const keys = desktop ? ["E2B_API_KEY"] : [];
-  const openaiBrain = config.actors[0]?.type !== "local-agent";
-  if (route === "terminal")
-    keys.push(keyPresent("CODEX_API_KEY") ? "CODEX_API_KEY" : "OPENAI_API_KEY");
-  // Shared world's external-public plane reads the host's lobby code with the OpenAI API,
-  // whatever brain drives the participants (routes/shared-world/plan.ts).
-  else if (
-    (route === "computer-use" && openaiBrain) ||
-    (route === "shared-world" && (openaiBrain || config.subject.source === "app-url"))
-  )
-    keys.push("OPENAI_API_KEY");
-  return { desktop, keys };
+/**
+ * The lab planned with no run options, so its own scenario mode decides dry or live. Doctor and the
+ * TUI read a live run's keys and subject env from this plan's requirements.
+ */
+export async function planCliRun(config: LabConfig, cwd: string): Promise<PlanResult> {
+  return (await import("./plan.js")).planLab(config, { cwd });
 }
 
 function unsupportedCliRoute(config: LabConfig, route: LabRoute): string | undefined {
