@@ -233,8 +233,9 @@ function handshakeRequests(host: ProtocolContractHost): readonly ProtocolRequest
               "legacyManagedConfigTomlFromMdm",
             ],
           },
-          { path: "layers[].name.file", types: S },
-          { path: "layers[].name.profile", types: orNull(S), expects: [null] },
+          // admitsRestrictedCodexConfig reads the file and profile of the user layer only.
+          { path: "layers[].name.{type=user}.file", types: S },
+          { path: "layers[].name.{type=user}.profile", types: orNull(S), expects: [null] },
           { path: "layers[].disabledReason", types: orNull(S), expects: [null] },
           // A system layer must be empty (admitsRestrictedCodexConfig).
           { path: "layers[].config" },
@@ -421,12 +422,23 @@ function threadRequests(host: ProtocolContractHost): readonly ProtocolRequest[] 
 
 /** The notifications and the server request humanish consumes, and its reply to that request. */
 const MESSAGES: readonly ProtocolMessage[] = [
+  // Where the baseline carries items; a release that moves them refuses (ITEM_CARRIERS).
+  {
+    method: "thread/started",
+    definition: "ThreadStartedNotification",
+    reads: [
+      { path: "thread", types: orNull(O) },
+      { path: "thread.turns", types: orNull(A) },
+      { path: "thread.turns[].items", types: orNull(A) },
+    ],
+  },
   {
     method: "turn/started",
     definition: "TurnStartedNotification",
     reads: [
       { path: "threadId", types: S },
       { path: "turn.id", types: S },
+      { path: "turn.items", types: orNull(A) },
     ],
   },
   {
@@ -442,6 +454,7 @@ const MESSAGES: readonly ProtocolMessage[] = [
         known: ["failed", "inProgress"],
       },
       { path: "turn.error", types: orNull(O), expects: [null] },
+      { path: "turn.items", types: orNull(A) },
     ],
   },
   { method: "item/started", definition: "ItemStartedNotification", reads: startedReads },

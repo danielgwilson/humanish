@@ -40,6 +40,115 @@ const branch = (definitions: Definitions, definition: string, type: string): Nod
     (node) => (properties(node).type!.enum as string[])[0] === type,
   )!;
 
+/** Read-side changes the check refuses, each with the incompatibilities it reports. */
+const READ_CHANGES: [string, Change, string | string[]][] = [
+  [
+    "a field humanish reads",
+    (d) => delete properties(d.Thread!).id,
+    "thread/start response thread.id is no longer in the schema",
+  ],
+  [
+    "a field to `false`, which allows no value",
+    (d) => (properties(d.Thread!).id = false as unknown as Node),
+    "thread/start response thread.id is no longer in the schema",
+  ],
+  [
+    "a field's type",
+    (d) => (properties(d.TokenUsageBreakdown!).inputTokens = { type: "string" }),
+    "thread/tokenUsage/updated tokenUsage.total.inputTokens now allows string; humanish reads integer",
+  ],
+  [
+    "a container on the path to a field",
+    (d) => (d.Thread = { anyOf: [d.Thread, { type: "string" }] }),
+    [
+      "thread/start response thread now allows string; humanish reads object",
+      "thread/started thread now allows string; humanish reads object or null",
+    ],
+  ],
+  [
+    "a value humanish compares against",
+    (d) => (d.TurnStatus!.enum = ["completed", "failed", "inProgress"]),
+    "turn/completed turn.status no longer allows interrupted",
+  ],
+  [
+    "a value through an allOf that narrows it",
+    (d) => (d.TurnStatus = { allOf: [{ enum: ["completed"] }, d.TurnStatus] }),
+    "turn/completed turn.status no longer allows interrupted",
+  ],
+  [
+    "null where humanish requires it",
+    (d) => (properties(d.Thread!).path = { type: "string" }),
+    "thread/start response thread.path no longer allows null",
+  ],
+  [
+    "the selected reasoning effort",
+    (d) => (d.ReasoningEffort = { type: "string", enum: ["high"] }),
+    [
+      "config/read response config.model_reasoning_effort no longer allows low",
+      "thread/start response thread.reasoningEffort no longer allows low",
+      "thread/start response reasoningEffort no longer allows low",
+      "turn/start request effort no longer accepts low",
+    ],
+  ],
+  [
+    "a container the item policy reads in every notification",
+    (d) =>
+      (properties(d.Thread!).turns = {
+        type: "object",
+        additionalProperties: { $ref: "#/definitions/Turn" },
+      }),
+    [
+      "thread/started thread.turns now allows object; humanish reads array or null",
+      "thread/started thread.turns[].items is no longer in the schema",
+    ],
+  ],
+  [
+    "a system layer's config",
+    (d) => delete properties(d.ConfigLayer!).config,
+    "config/read response layers[].config is no longer in the schema",
+  ],
+  [
+    "the user layer's file",
+    (d) => {
+      const user = branch(d, "ConfigLayerSource", "user");
+      delete properties(user).file;
+      user.required = ["type"];
+    },
+    "config/read response layers[].name.{type=user}.file is no longer in the schema",
+  ],
+  [
+    "the name of a container that carries items",
+    (d) => {
+      properties(d.Turn!).entries = properties(d.Turn!).items!;
+      delete properties(d.Turn!).items;
+    },
+    [
+      "thread/started thread.turns[].items is no longer in the schema",
+      "turn/started turn.items is no longer in the schema",
+      "turn/completed turn.items is no longer in the schema",
+    ],
+  ],
+  [
+    "an item container in a notification outside ServerNotification",
+    (d) =>
+      (properties(d.RawResponseItemCompletedNotification!).items = {
+        type: "object",
+        additionalProperties: { $ref: "#/definitions/ThreadItem" },
+      }),
+    "rawResponseItem/completed items now allows object; humanish reads array or null",
+  ],
+  [
+    "a response definition",
+    (d) => delete d.TurnStartResponse,
+    "turn/start's response TurnStartResponse is no longer in the schema",
+  ],
+  [
+    "a notification definition",
+    (d) => delete d.AgentMessageDeltaNotification,
+    "item/agentMessage/delta's AgentMessageDeltaNotification is no longer in the schema",
+  ],
+];
+
 describe("app-server protocol check: fields humanish reads", () => {
   it("passes the trimmed 0.160.0 schema with nothing to refuse or record", async () => {
     const schema = await loadProtocolSchema(CODEX_SCHEMA_FIXTURE);
@@ -48,87 +157,21 @@ describe("app-server protocol check: fields humanish reads", () => {
     expect(checkProtocol(schema, contract)).toEqual({ incompatibilities: [], additions: [] });
   });
 
-  it.each<[string, Change, string | string[]]>([
-    [
-      "a field humanish reads",
-      (d) => delete properties(d.Thread!).id,
-      "thread/start response thread.id is no longer in the schema",
-    ],
-    [
-      "a field to `false`, which allows no value",
-      (d) => (properties(d.Thread!).id = false as unknown as Node),
-      "thread/start response thread.id is no longer in the schema",
-    ],
-    [
-      "a field's type",
-      (d) => (properties(d.TokenUsageBreakdown!).inputTokens = { type: "string" }),
-      "thread/tokenUsage/updated tokenUsage.total.inputTokens now allows string; humanish reads integer",
-    ],
-    [
-      "a container on the path to a field",
-      (d) => (d.Thread = { anyOf: [d.Thread, { type: "string" }] }),
-      [
-        "thread/start response thread now allows string; humanish reads object",
-        "thread/started thread now allows string; humanish reads object or null",
-      ],
-    ],
-    [
-      "a value humanish compares against",
-      (d) => (d.TurnStatus!.enum = ["completed", "failed", "inProgress"]),
-      "turn/completed turn.status no longer allows interrupted",
-    ],
-    [
-      "a value through an allOf that narrows it",
-      (d) => (d.TurnStatus = { allOf: [{ enum: ["completed"] }, d.TurnStatus] }),
-      "turn/completed turn.status no longer allows interrupted",
-    ],
-    [
-      "null where humanish requires it",
-      (d) => (properties(d.Thread!).path = { type: "string" }),
-      "thread/start response thread.path no longer allows null",
-    ],
-    [
-      "the selected reasoning effort",
-      (d) => (d.ReasoningEffort = { type: "string", enum: ["high"] }),
-      [
-        "config/read response config.model_reasoning_effort no longer allows low",
-        "thread/start response thread.reasoningEffort no longer allows low",
-        "thread/start response reasoningEffort no longer allows low",
-        "turn/start request effort no longer accepts low",
-      ],
-    ],
-    [
-      "a container the item policy reads in every notification",
-      (d) =>
-        (properties(d.Thread!).turns = {
-          type: "object",
-          additionalProperties: { $ref: "#/definitions/Turn" },
-        }),
-      "thread/started thread.turns now allows object; humanish reads array or null",
-    ],
-    [
-      "a system layer's config",
-      (d) => delete properties(d.ConfigLayer!).config,
-      "config/read response layers[].config is no longer in the schema",
-    ],
-    [
-      "a response definition",
-      (d) => delete d.TurnStartResponse,
-      "turn/start's response TurnStartResponse is no longer in the schema",
-    ],
-    [
-      "a notification definition",
-      (d) => delete d.AgentMessageDeltaNotification,
-      "item/agentMessage/delta's AgentMessageDeltaNotification is no longer in the schema",
-    ],
-  ])("refuses a release that changes %s", async (_change, change, incompatibility) => {
-    const result = await check(change);
-    expect(result.incompatibilities).toEqual([incompatibility].flat());
-    expect(result.additions).toEqual([]);
-  });
+  it.each(READ_CHANGES)(
+    "refuses a release that changes %s",
+    async (_change, change, incompatibility) => {
+      const result = await check(change);
+      expect(result.incompatibilities).toEqual([incompatibility].flat());
+      expect(result.additions).toEqual([]);
+    },
+  );
 
   it.each<[string, Change]>([
     ["wraps a definition in allOf with `true`", (d) => (d.Thread = { allOf: [true, d.Thread] })],
+    [
+      "changes a config layer field humanish does not read",
+      (d) => (properties(branch(d, "ConfigLayerSource", "system")).file = { type: "integer" }),
+    ],
     [
       "fixes a token count to an integer constant without a type",
       (d) => (properties(d.TokenUsageBreakdown!).inputTokens = { const: 1 }),

@@ -43,8 +43,10 @@ request deadline while reading, and removes the schema afterwards.
 lists each method humanish calls with the fields and values it sends and the response fields it
 reads, each notification and server request it consumes, the reply it sends to a tool call, and
 the containers (`items`, `turn.items`, `thread.turns[].items`) its item policy reads in every
-notification. The schema does not link a response to its method, so the table names each
-response definition. A read field is checked in every alternative the schema allows, including
+notification, including the consumed ones outside the ServerNotification union. Where the
+baseline carries items (`thread.turns[].items` in `thread/started`, `turn.items` in `turn/started`
+and `turn/completed`), the carrier is required, so a release that renames it refuses. The schema
+does not link a response to its method, so the table names each response definition. A read field is checked in every alternative the schema allows, including
 each object or array on its path; a sent field needs one alternative that still accepts it.
 `allOf` members intersect, and `false` allows no value. The launch refuses as
 `codex_incompatible_release` before app-server starts, listing each change, when a read field is

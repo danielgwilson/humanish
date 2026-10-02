@@ -401,7 +401,12 @@ export function checkProtocol(schema: ProtocolSchema, contract: ProtocolContract
       for (const rule of reply.sends)
         checkSent(schema, `${message.method} reply`, reply.definition, rule, found);
   }
-  for (const [method, params] of schema.notificationParams)
+  // The carriers in every notification, including the consumed ones outside ServerNotification.
+  const notifications = new Map(schema.notificationParams);
+  for (const message of contract.messages)
+    if (message.reply === undefined && !notifications.has(message.method))
+      notifications.set(message.method, message.definition);
+  for (const [method, params] of notifications)
     checkReads(schema, method, params, contract.itemCarriers, found);
   return { incompatibilities: [...found.incompatibilities], additions: [...found.additions] };
 }
