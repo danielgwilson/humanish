@@ -13,7 +13,6 @@ import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types
 import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
-import { defaultSharedWorldPhaseSink, defaultSubjectPhaseSink } from "../subject/steps.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
 import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
@@ -22,8 +21,6 @@ import {
   knownSecretValues,
   labEventEmitter,
   participantOf,
-  phaseEvent,
-  planEvent,
   type LabEvent,
   type ParticipantRef,
   type SetupTarget,
@@ -39,7 +36,7 @@ export interface ProviderContext {
 
 type ProviderFactory = (ctx: ProviderContext) => Promise<CuaProvider>;
 
-type StreamEvent =
+export type StreamEvent =
   /** Runtime only: `url` carries an auth key and must never be persisted. */
   | {
       type: "ready";
@@ -95,6 +92,8 @@ type Normalized = {
   options: InternalRunLabOptions;
   /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
   warnings: string[];
+  /** Calls onEvent and never waits for it, or undefined without onEvent. The routes report through it. */
+  emit: ((event: LabEvent) => void) | undefined;
 };
 
 const conflict = (home: string, old: string): Refusal => ({
@@ -256,23 +255,14 @@ export function normalizeRunLabOptions(
   });
   if (analysis !== undefined) normalized.automaticAnalysis = analysis;
   const envHome = forwardedEnv === undefined ? {} : { env: forwardedEnv };
-  // Every scoring route reads scorer itself.
+  // Every scoring route reads scorer itself, and computer use and shared world read onStream.
   if (scorer !== undefined) normalized.scorer = scorer;
+  if (onStream !== undefined) normalized.onStream = onStream;
   switch (route) {
     case "computer-use": {
       const hooks = withMapped(legacy.cuaHooks, {
         ...envHome,
-        ...computerUseHooks(
-          config,
-          {
-            prepareDesktop,
-            onStream,
-            createProvider,
-            inProcess,
-            legacyInProcess: legacy.cuaHooks?.buildExecutor !== undefined,
-          },
-          emit,
-        ),
+        ...computerUseHooks({ prepareDesktop, createProvider, inProcess }),
       });
       if (hooks !== undefined) normalized.cuaHooks = hooks;
       break;
@@ -280,7 +270,7 @@ export function normalizeRunLabOptions(
     case "shared-world": {
       const hooks = withMapped(legacy.sharedWorldHooks, {
         ...envHome,
-        ...sharedWorldHooks({ prepareDesktop, onStream }, emit),
+        ...sharedWorldHooks({ prepareDesktop }),
       });
       if (hooks !== undefined) normalized.sharedWorldHooks = hooks;
       break;
@@ -297,7 +287,7 @@ export function normalizeRunLabOptions(
     case "preview":
       break;
   }
-  return { ok: true, options: normalized, warnings };
+  return { ok: true, options: normalized, warnings, emit };
 }
 
 /** A bag with typed options mapped over it. With nothing to map, it is the same object. */
@@ -306,46 +296,12 @@ function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T
   return { ...bag, ...mapped } as T;
 }
 
-/** The route awaits what these return, so onStream keeps the old hooks' barrier and errors. */
-function streamHooks(
-  onStream: NonNullable<RunLabHomes["onStream"]>,
-): Pick<CuaActorLabHooks, "onRuntimeStreamReady" | "onRuntimeStreamEnded"> {
-  return {
-    onRuntimeStreamReady: (stream) =>
-      onStream({
-        type: "ready",
-        participantId: stream.laneId,
-        sandboxId: stream.sandboxId,
-        simId: stream.simId,
-        streamId: stream.streamId,
-        url: stream.url,
-      }),
-    onRuntimeStreamEnded: (stream) =>
-      onStream({
-        type: "ended",
-        participantId: stream.laneId,
-        simId: stream.simId,
-        streamId: stream.streamId,
-      }),
-  };
-}
-
-function computerUseHooks(
-  config: LabConfig,
-  homes: {
-    prepareDesktop: RunLabHomes["prepareDesktop"];
-    onStream: RunLabHomes["onStream"];
-    createProvider: ProviderFactory | undefined;
-    inProcess: Extract<RunLabDriving, { inProcess: object }>["inProcess"] | undefined;
-    /** The caller set the older cuaHooks.buildExecutor, so the run is in process. */
-    legacyInProcess: boolean;
-  },
-  emit: ((event: LabEvent) => void) | undefined,
-): CuaActorLabHooks {
-  const { prepareDesktop, onStream, createProvider, inProcess, legacyInProcess } = homes;
-  // A local VM study and an in-process run start no E2B stream, and the local study refuses a
-  // stream hook outright, so onStream is left unset there: it is never called.
-  const streams = !isLocalBrowserLab(config) && inProcess === undefined && !legacyInProcess;
+function computerUseHooks(homes: {
+  prepareDesktop: RunLabHomes["prepareDesktop"];
+  createProvider: ProviderFactory | undefined;
+  inProcess: Extract<RunLabDriving, { inProcess: object }>["inProcess"] | undefined;
+}): CuaActorLabHooks {
+  const { prepareDesktop, createProvider, inProcess } = homes;
   return {
     ...(prepareDesktop === undefined
       ? {}
@@ -371,48 +327,23 @@ function computerUseHooks(
       : {
           buildExecutor: ({ config: lab, appUrl }) => inProcess.executor({ config: lab, appUrl }),
         }),
-    ...(onStream !== undefined && streams ? streamHooks(onStream) : {}),
-    ...(emit === undefined
-      ? {}
-      : {
-          onPreflight: (plan) => emit(planEvent(plan)),
-          onPhase: (event, participant) => {
-            defaultSubjectPhaseSink(event, participant);
-            emit(
-              phaseEvent(event, { kind: "participant", participant: participantOf(participant) }),
-            );
-          },
-        }),
   };
 }
 
-function sharedWorldHooks(
-  homes: { prepareDesktop: RunLabHomes["prepareDesktop"]; onStream: RunLabHomes["onStream"] },
-  emit: ((event: LabEvent) => void) | undefined,
-): SharedWorldLabHooks {
-  const { prepareDesktop, onStream } = homes;
+function sharedWorldHooks(homes: {
+  prepareDesktop: RunLabHomes["prepareDesktop"];
+}): SharedWorldLabHooks {
+  const { prepareDesktop } = homes;
+  if (prepareDesktop === undefined) return {};
   return {
-    ...(prepareDesktop === undefined
-      ? {}
-      : {
-          // The provisioned plane prepares the subject sandbox with no participant, then each one.
-          prepareDesktop: (desktop, participant) =>
-            prepareDesktop(
-              desktop,
-              participant === undefined
-                ? { kind: "subject" }
-                : { kind: "participant", participant: participantOf(participant) },
-            ),
-        }),
-    ...(onStream === undefined ? {} : streamHooks(onStream)),
-    ...(emit === undefined
-      ? {}
-      : {
-          onPhase: (event) => {
-            defaultSharedWorldPhaseSink(event);
-            emit(phaseEvent(event, { kind: "subject" }));
-          },
-        }),
+    // The provisioned plane prepares the subject sandbox with no participant, then each one.
+    prepareDesktop: (desktop, participant) =>
+      prepareDesktop(
+        desktop,
+        participant === undefined
+          ? { kind: "subject" }
+          : { kind: "participant", participant: participantOf(participant) },
+      ),
   };
 }
 

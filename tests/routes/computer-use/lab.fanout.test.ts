@@ -1,4 +1,5 @@
 import { deriveStudyFacts } from "../../../src/cli/telemetry.js";
+import type { LabEvent } from "../../../src/lab/run-lab-events.js";
 import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import { draftFeedback } from "../../../src/feedback/feedback.js";
@@ -34,7 +35,6 @@ import {
   type CuaActorLabHooks,
   type DesktopParticipantRun,
   type ParticipantRunOutcome,
-  type CuaParticipantPlan,
 } from "../../../src/routes/computer-use/types.js";
 import { getActor } from "../../../src/actors/registry.js";
 import type {
@@ -404,11 +404,13 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   });
 
   it("a 4-lane roster yields ONE bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
-    const planSeen: CuaParticipantPlan[] = [];
+    const planEvents: LabEvent[] = [];
     const outcome = await runLab(fanoutConfig(), {
       cwd,
       dryRun: true,
-      cuaHooks: { onPreflight: (plan) => planSeen.push(plan) },
+      onEvent: (event) => {
+        if (event.type === "plan") planEvents.push(event);
+      },
     });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -422,11 +424,11 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(result.laneSummary?.total).toBe(4);
 
     // The pre-flight plan is observable BEFORE any provider call and marked $0 in dry-run.
-    expect(planSeen).toHaveLength(1);
-    expect(planSeen[0]?.dryRun).toBe(true);
-    expect(planSeen[0]?.laneCount).toBe(4);
-    expect(planSeen[0]?.concurrency).toBe(2);
-    expect(planSeen[0]?.waves).toBe(2);
+    expect(planEvents).toHaveLength(1);
+    expect(result.plan?.dryRun).toBe(true);
+    expect(result.plan?.laneCount).toBe(4);
+    expect(result.plan?.concurrency).toBe(2);
+    expect(result.plan?.waves).toBe(2);
 
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -1376,17 +1378,16 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       ],
     });
-    const planSeen: CuaParticipantPlan[] = [];
     const outcome = await runLab(config, {
       cwd,
-      cuaHooks: passingHooks(handle, { onPreflight: (plan) => planSeen.push(plan) }),
+      cuaHooks: passingHooks(handle),
     });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
 
     expect(outcome.result.ok).toBe(true);
     expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a", "http://127.0.0.1:3002/role-b"]);
-    expect(planSeen[0]?.lanes.map((lane) => lane.targetDigest)).toEqual([
+    expect(outcome.result.plan?.lanes.map((lane) => lane.targetDigest)).toEqual([
       expect.stringMatching(/^[a-f0-9]{16}$/),
       expect.stringMatching(/^[a-f0-9]{16}$/),
     ]);

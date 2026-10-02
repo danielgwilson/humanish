@@ -43,6 +43,7 @@ function config(base: "sharedProvisioned" | "sharedExternal", actor?: Record<str
 function planeContext(brain: PlaneContext["plan"]["brain"]): PlaneContext {
   return {
     plan: { brain, plane: { participants: [{}, {}] } },
+    input: {},
     config: { subject: {} },
     descriptor: { id: "local-agent" },
     hooks: {},

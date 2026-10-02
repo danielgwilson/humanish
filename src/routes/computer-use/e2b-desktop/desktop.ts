@@ -1,7 +1,7 @@
 // E2B owns provisioning and final evidence; the participant runner only uses the ready port. The
 // lane's steps live in prepare.ts, start.ts and teardown.ts beside this file, and fill the state
 // record in state.ts in the order below.
-import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../../subject/steps.js";
+import type { SubjectPhaseEvent } from "../../../subject/steps.js";
 import { createE2BDesktopExecutor } from "../../../substrates/e2b/desktop-executor.js";
 import type { ParticipantDesktop, ReadyParticipantDesktop } from "../participant-desktop.js";
 import { participantInbox, planParticipantComms } from "./comms.js";
@@ -44,7 +44,7 @@ export function createE2BParticipantDesktop(
     // watching stderr sees both halves of each phase; the state keeps only completed ones.
     onSubjectPhase: (event: SubjectPhaseEvent): void => {
       if (event.ok !== undefined) state.phaseRecords.push(event);
-      (deps.hooks.onPhase ?? defaultSubjectPhaseSink)(event, {
+      deps.reportSubjectPhase(event, {
         laneId: spec.planned.id,
         laneIndex: spec.planned.index,
         laneCount: deps.participantCount,
