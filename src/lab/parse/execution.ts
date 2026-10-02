@@ -111,8 +111,8 @@ function parseTerminal(
     const transport = str(raw.transport);
     if (transport !== "exec-stream") {
       // "pty" is deliberately rejected: stdin is disabled, so the capture is a non-interactive
-      // exec stream, and an interactive-PTY label would overstate the mechanism (invariant 6 + the
-      // goal packet's PTY ruling). True duplex PTY does not ship.
+      // exec stream, and an interactive-PTY label would overstate the mechanism. True duplex PTY
+      // does not ship.
       return invalid(
         "`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; true duplex PTY transport is not supported.",
       );
@@ -126,8 +126,8 @@ function parseTerminal(
     }
     if (stdin === "sent") {
       // Assisted input is forbidden until the interventions ledger + comparability flag + verify
-      // check exist (safety contract item 7); shipping it now would let an assisted run pose as
-      // autonomous green proof.
+      // check exist (the terminal route's stdin rule); shipping it now would let an assisted run
+      // pose as autonomous green proof.
       return invalid(
         "`execution.terminal.stdin: sent` (assisted input) is not supported — the current route cannot capture assisted input with a non-comparable marker. stdin is disabled by default.",
       );
@@ -300,8 +300,8 @@ export function parseScenario(
 
 /**
  * Parse `scenario.caps`. Returns a parse failure on a malformed value rather than silently
- * dropping a budget declaration (a cap that silently does nothing would be a safety lie
- * under invariant 6). Each cap must be a non-negative finite number.
+ * dropping a budget declaration (a cap that silently does nothing would claim protection it
+ * does not give). Each cap must be a non-negative finite number.
  */
 function parseCaps(
   raw: unknown,

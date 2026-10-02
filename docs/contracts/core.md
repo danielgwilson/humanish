@@ -1,8 +1,6 @@
 # Core Contract
 
-Date: 2026-06-02 (current-state note updated 2026-09-30)
-
-Status: each route mints its run id and builds its bundle, and starts the run
+Each route mints its run id and builds its bundle, and starts the run
 through the run scope in `src/run/run.ts`. `startRun` creates
 `.humanish/runs/<id>` and begins `status.json`; the `Run` it returns publishes
 `run.json`, its projections and the latest pointer. `src/run/paths.ts` holds the

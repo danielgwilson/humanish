@@ -27,7 +27,7 @@ const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] a
 // operator-attested target the harness does not control, the absence of a synthetic attestation (you
 // cannot claim synthetic on a real site), the absence of an authoritative shared-state proof (no
 // in-sandbox filesystem to digest), and concurrency evidenced by temporal co-occupancy only. Verify
-// fails closed if any is missing (an absent honest-downgrade limit overclaims), per invariant 5.
+// fails closed if any is missing (an absent honest-downgrade limit overclaims).
 const EXTERNAL_PUBLIC_EXTRA_LIMITS = [
   "external-public-plane",
   "operator-attested-target-not-harness-controlled",
@@ -200,7 +200,7 @@ function windowFindings(bundle: RunBundle, windows: Row[], routeTarget: string):
 }
 
 /**
- * The getHost plane: every actor drove exactly the harness-minted host (invariant 2), the subject is
+ * The getHost plane: every actor drove exactly the harness-minted host, the subject is
  * attested synthetic and seeded, and every laneWindow shares the plane's provenance.
  */
 function getHostPlaneFindings(
@@ -388,9 +388,9 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
 }
 
 /**
- * The external-public plane (the counterpart of invariant 2, with a weaker, disclosed claim): the seats
- * converged on one observed origin, nothing claims harness control or a synthetic seeded subject,
- * and every laneWindow shares the plane's provenance.
+ * The external-public plane (the counterpart of the harness-minted-URL rule, with a weaker,
+ * disclosed claim): the seats converged on one observed origin, nothing claims harness control
+ * or a synthetic seeded subject, and every laneWindow shares the plane's provenance.
  */
 function externalPublicPlaneFindings(
   bundle: RunBundle,

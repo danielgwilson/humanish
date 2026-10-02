@@ -103,7 +103,7 @@ function appUrlValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "app-url") {
     const type = config.actors[0]?.type ?? "";
     if (actorResolvesToScriptedBrowser(type)) {
-      // Scripted-browser route (all fail-closed per invariant 6: a field that cannot act on
+      // Scripted-browser route (all fail-closed, so claims match mechanism: a field that cannot act on
       // this route is rejected, never silently ignored).
       if (config.execution?.target !== undefined && config.execution.target !== "local") {
         return "scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice.";
@@ -256,7 +256,7 @@ function localTreeValidationReason(config: LabConfig): string | null {
 // through a pipe with stdin disabled, which is the honest way to study what an agent meets and
 // structurally cannot study an interactive surface. This route sends someone who can see it.
 //
-// Fail-closed on the pairing (invariant 6): a hosted desktop and a computer-use actor, because
+// Fail-closed on the pairing: a hosted desktop and a computer-use actor, because
 // "watch a person use a terminal" is not something the other substrates can do.
 /** A desktop-cli subject with no product to study. The computer-use planner checks this too. */
 export function desktopCliProductReason(config: LabConfig): string | null {
@@ -284,7 +284,7 @@ function desktopCliValidationReason(config: LabConfig): string | null {
 }
 
 // terminal-product route: a real autonomous agent studies a CLI/product from public surfaces
-// inside an E2B shell. Fail-closed (invariant 6: a field that cannot act on this route is an
+// inside an E2B shell. Fail-closed (claims match mechanism: a field that cannot act on this route is an
 // honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
 // (absent defaults to e2b-terminal, the only honest target for an in-sandbox agent), one
 // participant until fan-out lands.

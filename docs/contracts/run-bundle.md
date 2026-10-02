@@ -1,12 +1,10 @@
 # Run Bundle Contract
 
-Date: 2026-06-02 (current-state note updated 2026-07-14)
-
-Status: `humanish.run-bundle.v1` is the shipped evidence contract. The
-TypeScript shape in `src/run/bundle.ts` (with `streams[]` in `src/run/streams.ts` and
-`sharedWorld` as `SharedWorldEvidence` in `src/run/shared-world-evidence.ts`) and fail-closed verification in `src/verify/verify.ts` are
-authoritative; this document explains the stable public fields and extension
-rules rather than independently versioning the runtime.
+`humanish.run-bundle.v1` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
+(with `streams[]` in `src/run/streams.ts` and `sharedWorld` as `SharedWorldEvidence` in
+`src/run/shared-world-evidence.ts`) and the fail-closed checks in `src/verify/verify.ts` are the
+source of truth. This page explains the stable public fields and the extension rules; it does not
+version the runtime separately.
 
 ## Purpose
 

@@ -1,14 +1,7 @@
 # Open-Source Install Experience
 
-Date: 2026-06-01
-
-Status: product target for the first `humanish` implementation.
-
-Safety amendment (2026-07-14): the `0.15.1` package binds managed run and
-output storage to validated physical paths and treats provider IDs persisted in a
-run bundle as evidence rather than cleanup authority. The historical product target below remains useful for
-intent and sequencing, but current behavior is defined by the README and
-[`docs/goals/current.md`](../goals/current.md).
+This page records the product target set for the first `humanish` implementation. The README and
+[`docs/goals/current.md`](../goals/current.md) describe current behavior.
 
 ## Product Promise
 

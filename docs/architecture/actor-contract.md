@@ -1,20 +1,17 @@
 # Actor Contract
 
-Date: 2026-06-06 (current-state note updated 2026-09-30)
-
-Status: accepted contract with a partially open extension surface. Shipped: the evidence
-schema `humanish.actor-trace.v1` (`src/actors/contract.ts`) and a closed first-party
-registry of five descriptors (`src/actors/registry.ts`: `codex-app-server`,
-`openai-computer-use`, `local-agent`, `scripted-browser`, `codex-exec`). `actors[0].type`
-is a real dispatch key on the computer-use, scripted-browser, and terminal-product routes.
-Product scoring, feedback, and artifact hooks are extension seams, but public out-of-tree
-actor registration and its conformance certification are not shipped. Also not shipped: the
-full `Actor.run(input)` interface, `ApprovalPolicy`, `StagehandCuaActor`, and the
-`persona-fidelity` verify check. `RedactionHooks` ships in `src/evidence/redaction.ts`, and
-the computer-use loop takes it; the other adapters do not take it yet. Of the capabilities,
-routing checks `lanes` and `producesScreenshots` (`src/lab/routing.ts`): an actor that
-declares no screenshots cannot run on the computer-use or scripted-browser route. Decision
-6's capture-time screenshot stance was recanted in 0.6.0; see the inline notes and the
+Part of this contract ships and part is still open. Shipped: the evidence schema
+`humanish.actor-trace.v1` (`src/actors/contract.ts`) and a closed first-party registry of five
+descriptors (`src/actors/registry.ts`: `codex-app-server`, `openai-computer-use`, `local-agent`,
+`scripted-browser`, `codex-exec`). `actors[0].type` is a real dispatch key on the computer-use,
+scripted-browser, and terminal-product routes. Product scoring, feedback, and artifact hooks are
+extension seams, but public out-of-tree actor registration and its conformance certification are not
+shipped. Also not shipped: the full `Actor.run(input)` interface, `ApprovalPolicy`,
+`StagehandCuaActor`, and the `persona-fidelity` verify check. `RedactionHooks` ships in
+`src/evidence/redaction.ts`, and the computer-use loop takes it; the other adapters do not take it
+yet. Of the capabilities, routing checks `lanes` and `producesScreenshots` (`src/lab/routing.ts`):
+an actor that declares no screenshots cannot run on the computer-use or scripted-browser route.
+Decision 6's capture-time screenshot stance was recanted in 0.6.0; see the inline notes and the
 capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
 

@@ -1,16 +1,10 @@
 # Terminal-product real-agent route (issue #154)
 
-Date: 2026-06-16 (runtime-auth contract updated 2026-09-05)
-
-Status: live terminal-product route shipped in `0.8.0`. The in-sandbox backend,
-command-scoped credential placement, exact-id cleanup proof, an interventions ledger,
-cost/no-spend ledger, caps, and product scoring/feedback hooks are implemented;
-the kept 2026-07-09 live receipt verifies 15/15 checks and `share_ready` at a
-`$0` cap. That capability receipt is not adopter replacement: no deletion
-branch has yet removed the reference adopter's bespoke generic study harness.
-See the goal packet
-([`docs/goals/terminal-product-lane/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/goal.md))
-for the full slice plan and the safety contract.
+The live terminal-product route has shipped since `0.8.0`, with the in-sandbox runtime,
+command-scoped credential placement, exact-id cleanup proof, an interventions ledger, a cost and
+no-spend ledger, caps, and product scoring and feedback hooks. The
+[goal packet](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/goal.md)
+holds the slice plan and the safety contract.
 
 ## What this is
 

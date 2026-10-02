@@ -8,7 +8,7 @@
 // the result is a funnel: how far each participant got before they stopped. That funnel is the
 // finding. A single pass/fail per participant throws it away.
 //
-// The criterion language is `stopWhen`, unchanged and already load-bearing elsewhere: a task is
+// The criterion language is `stopWhen`, unchanged and already used by stop conditions: a task is
 // done when an observation satisfies it. Reusing it means a task criterion is exactly as expressive
 // as a stop condition, and an author who knows one knows the other.
 //

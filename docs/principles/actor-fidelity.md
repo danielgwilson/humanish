@@ -1,7 +1,7 @@
 # Actor Fidelity: whose behavior is this evidence about?
 
-Status: research digest + design position. Sources are public papers and open-source
-harnesses; every claim below carries its citation so a reader can check it.
+This page is a research digest and a design position. Its sources are public papers and
+open-source harnesses, and each claim carries its citation so a reader can check it.
 
 ## The question
 

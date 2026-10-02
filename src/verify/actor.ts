@@ -129,7 +129,7 @@ export async function validateTerminalProductEvidence(
 
 /**
  * Verifier for the terminal cost ledger and no-spend proof. A live terminal-product bundle must
- * carry both (fail closed if absent on a live run). The load-bearing honesty check: the no-spend
+ * carry both (fail closed if absent on a live run). The main check: the no-spend
  * proof may not claim zero on a line the ledger marks `null`
  * (unmeasured): a proof can never claim more than the ledger measured. And the observed known
  * spend may not exceed the declared cap (the proof's own maxUsd): fail-closed, not advisory.
@@ -298,7 +298,7 @@ const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set([
  * Independent mirror of the producer-side no-engagement guard
  * (routes/computer-use/participant-execution.ts): a live actor trace claiming goal_satisfied while
  * carrying zero action-bearing items and zero message items is a hollow run (the actor neither did
- * nor said anything) and must not verify as evidence (invariant 4: evidence verifies fail-closed).
+ * nor said anything) and must not verify as evidence: evidence verifies fail-closed.
  * Live-vs-dry-run is judged exactly as the producer judges it, from bundle.mode alone;
  * dry-run/contract bundles legitimately carry no actions and stay exempt. Engagement is accepted
  * from either surface (itemized trace items or the producer's counts), because providers differ in

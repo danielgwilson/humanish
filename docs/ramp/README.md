@@ -2,18 +2,16 @@
 
 Use this page when you are starting cold on `humanish`. It is meant to be
 useful without chat history, private notes, local machine paths, or maintainer
-context. It is the last step of the reading order in
-[CONTRIBUTING.md](../../CONTRIBUTING.md#read-these-in-order) and adds current state, how to pick
-work and the quality bar.
+context. [CONTRIBUTING.md](../../CONTRIBUTING.md#look-up-how-the-code-works) lists it with the
+other reference pages. It adds current state, how to pick work and the quality bar.
 
 ## First Read
 
-Start with three things:
+Start with two things:
 
-1. The files in [CONTRIBUTING.md's reading order](../../CONTRIBUTING.md#read-these-in-order).
-2. The current task and [`docs/goals/current.md`](../goals/current.md) for current
+1. The current task and [`docs/goals/current.md`](../goals/current.md) for current
    product status. Explicit task direction takes precedence over historical queues.
-3. Instructions in the component being changed, then its relevant contracts.
+2. Instructions in the component being changed, then its relevant contracts.
 
 Use the references below as needed. Historical plans are context, not a backlog
 to resume automatically. Keep one concise current task handoff with the requested
@@ -26,7 +24,7 @@ deferred approaches; link evidence rather than repeating its chronology.
 | Security, evidence handling or defaults    | [Invariants and defaults](../principles/invariants-and-defaults.md)                                                                                                            |
 | Observer                                   | [Observer architecture](../architecture/observer.md) and its component instructions                                                                                            |
 | Bundle formats or policy                   | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md)                                                                                                     |
-| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/open-source-readiness.md)                                                 |
+| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/publish.md)                                                               |
 | Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md), [historical delivery roadmap](../roadmap/world-class-open-source-v0.md) |
 
 ## Mental Model
@@ -200,9 +198,8 @@ Prefer work that makes humanish more believable to a new maintainer:
 - feedback drafts become more actionable;
 - public-safety gates catch a class of leak or stale residue.
 
-If no GitHub issue exists for substantial work, draft one with the repo issue
-template before building. Use labels to communicate authority, area, risk, and
-required proof.
+If no GitHub issue exists for substantial work, open one with an issue form
+before building. A maintainer labels the issue.
 
 ## Quality Bar
 
