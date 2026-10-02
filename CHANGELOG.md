@@ -67,8 +67,29 @@ The Unreleased section holds the full notes for the next version until it is tag
 - The `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` value of `TerminalProductLabResult.error.code`.
   No humanish release since 0.106.0 produces it; the terminal agent runs only inside the terminal
   route. Migration: delete any branch that matches it.
+- The exports 0.106.0 deprecated (#1411): `runDryRun`, `runCuaActorSession`,
+  `resolveLabDryRun`, `actorResolvesToTerminal`, `cuaLaneCount`, `resolveSeatUrl`,
+  `cuaLaneValidationReason`, `sharedWorldValidationReason`, `concurrentSharedWorldValidationReason`,
+  `externalPublicSharedWorldValidationReason` and `MAX_CUA_LANES`, and the types
+  `CuaActorLabResult`, `ScriptedBrowserLabResult`, `TerminalProductLabResult`,
+  `ConcurrentSharedWorldLabResult`, `RunOptions`, `RunResult` and `SubjectPhaseEvent`. Use `runLab`
+  and `LabResult<route>`, `runComputerUseLoop` with
+  `createOpenAiResponsesProvider({ singleDispatch: true })`, `routeOf`, `parseLabConfig`, and the
+  `plan` and `subject-phase` events through `onEvent`. `docs/contracts/schemas.md`, "Library
+  options", names the replacement for each. The package exports 13 values and 31 types, and no
+  export emits `HUMANISH_DEPRECATED_EXPORT` any more.
 
 ### Changed
+
+- Terminal studies that declare no `actors[0].model` now run on `gpt-5.6-sol`, humanish's
+  participant default (#1408), in place of whichever default the Codex release ships. Codex's
+  `--json` stream does not name its model, so the route now always passes `--model`. The bundle's
+  `runtime` names the model with `modelStatus` `declared` or `humanish_default`, where it was
+  `runtime_default_unobserved`. `run.json`'s `cost` and the trace's `estimatedCost` now price the
+  agent's tokens from that model. Codex reports usage per turn, summed over the turn's requests, so
+  the estimate uses base rates (cached input at the cached rate) and carries
+  `basis: aggregated_turns_base_rate`. Before, that line was `null` with `no_rate_for_model` for
+  model `codex`.
 
 - An analysis response that fails validation is kept locally for diagnosis (#1403) at
   `.humanish/analysis-diagnostics/<run>/<analysis>.json`. Known secret values are removed from every

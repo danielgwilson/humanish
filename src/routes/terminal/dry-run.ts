@@ -167,7 +167,7 @@ async function prepareDryPersona(args: {
 
 /** The declared runtime provenance as a dry-run event; nothing is observed without a sandbox. */
 function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: string): RunEvent {
-  const { version, model, reasoningEffort } = runtime;
+  const { version, model, modelSource, reasoningEffort } = runtime;
   return {
     id: "event-terminal-runtime-declared",
     at: createdAt,
@@ -177,7 +177,8 @@ function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: strin
       JSON.stringify(
         declaredRuntimeProvenance({
           ...(version === undefined ? {} : { version }),
-          ...(model === undefined ? {} : { model }),
+          model,
+          modelSource,
           ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
         }),
       ),

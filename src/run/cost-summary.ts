@@ -102,6 +102,7 @@ function modelCostLines(participants: CostParticipant[]): RunCostLine[] {
       ratesAsOf: est.ratesAsOf,
       ...(est.source === undefined ? {} : { source: est.source }),
       ...(est.placeholder ? { placeholder: true } : {}),
+      ...(est.basis === undefined ? {} : { basis: est.basis }),
     });
   }
 

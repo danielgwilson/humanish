@@ -280,7 +280,7 @@ export class LiveTerminalSandbox {
       runtime.versionStatus = "verified";
       recordLifecycle(
         "terminal-lab.runtime.version",
-        `Codex requested ${runtime.requestedVersion}, observed ${observed}; exact version selected for execution. Model ${runtime.requestedModel ?? "runtime default (unobserved)"}; reasoning effort ${runtime.requestedReasoningEffort ?? "runtime default (unobserved)"}.`,
+        `Codex requested ${runtime.requestedVersion}, observed ${observed}; exact version selected for execution. Model ${runtime.requestedModel ?? "unrecorded"} (${runtime.modelStatus}); reasoning effort ${runtime.requestedReasoningEffort ?? "runtime default (unobserved)"}.`,
       );
     } catch (error) {
       runtime.versionStatus = "failed";
@@ -409,7 +409,7 @@ export class LiveTerminalSandbox {
       prompt: composedPrompt,
       runtimeAuth: runtimeEnv.mode,
       version: runtime.observedVersion!,
-      ...(model === undefined ? {} : { model }),
+      model,
       ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     });
     const commandDigest = digestText(codexCommand);
@@ -558,7 +558,7 @@ function buildCodexExecCommand(args: {
   prompt: string;
   runtimeAuth: LabRuntimeAuth;
   version: string;
-  model?: string;
+  model: string;
   reasoningEffort?: import("../../actors/reasoning-effort.js").ReasoningEffort;
 }): string {
   // stdin is disabled (item 7), so no heredoc on a wrapper's stdin carries the prompt;

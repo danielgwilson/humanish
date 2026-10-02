@@ -400,6 +400,8 @@ export interface RunCostLine {
   ratesAsOf: string | null;
   source?: string;
   placeholder?: boolean;
+  /** A model-tokens line priced from runtime-turn totals at the base tier (ActorEstimatedCost). */
+  basis?: "aggregated_turns_base_rate";
   /** Optional allocation evidence on newer desktop lines; older aggregate lines remain valid. */
   desktop?: {
     minutes: number | null;
