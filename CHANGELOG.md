@@ -110,6 +110,8 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `humanish lab run --help` says what `--participants`, formerly `--lanes`, takes: a
   participant's declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the
   lab declares none (#1336).
+- The parse warning for `actors[0].lanes[].entry` on a lab that is not shared-world says "the
+  per-participant loopback entry" in place of "the per-role loopback entry" (#1397).
 
 ### Fixes
 
