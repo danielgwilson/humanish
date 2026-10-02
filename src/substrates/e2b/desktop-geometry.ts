@@ -79,7 +79,7 @@ export async function inspectDesktopScreenGeometry(args: {
   }
   return {
     verified: { width, height, source: "xdpyinfo" },
-    error: `HUMANISH_CUA_LAB_DEVICE_GEOMETRY: participant ${args.participantId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the participant's device geometry is unverified (fail-closed).`,
+    error: `HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY: participant ${args.participantId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the participant's device geometry is unverified (fail-closed).`,
   };
 }
 

@@ -175,7 +175,7 @@ describe("humanish CLI scaffold", () => {
         expect(result.stderr).toBe("");
         const envelope = JSON.parse(result.stdout);
         expect(envelope.ok).toBe(false);
-        expect(envelope.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(envelope.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(envelope.error.message).toContain(
           `Unknown lab field(s) in \`actors[0].${field}[0]\`: runtme`,
         );

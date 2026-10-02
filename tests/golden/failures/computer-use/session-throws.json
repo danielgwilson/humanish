@@ -68,7 +68,7 @@
           "streamUrlPresent": true
         },
         "error": {
-          "code": "HUMANISH_CUA_LAB_FAILED",
+          "code": "HUMANISH_COMPUTER_USE_FAILED",
           "message": "provider exploded mid-session"
         }
       }
@@ -107,7 +107,7 @@
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FAILED",
+      "code": "HUMANISH_COMPUTER_USE_FAILED",
       "message": "provider exploded mid-session"
     },
     "automaticAnalysisTrigger": "default",

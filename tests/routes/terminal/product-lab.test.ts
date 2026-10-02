@@ -526,7 +526,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(result.dryRun).toBe(false);
     // It is no longer the not-implemented stub: the live path is wired and fails closed on the
     // missing runtime key (never reaching sandbox creation).
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING");
     expect(result.runId).toBe("not-created");
     // No sandbox, no spend, no artifacts.
     await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
@@ -539,7 +539,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     } as LabConfig;
     const result = await runTerminalProductLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_ACTOR_UNSUPPORTED");
     expect(result.runId).toBe("not-created");
   });
 });

@@ -202,7 +202,7 @@ describe("CLI admission today", () => {
     expect(hostStderr.join("")).toMatch(/humanish local-tree: packed/);
     expect(result.exitCode).toBe(2);
     expect(JSON.parse(result.stdout)).toMatchObject({
-      error: { code: "HUMANISH_LAB_SCORER_LOAD_FAILED" },
+      error: { code: "HUMANISH_STUDY_SCORER_LOAD_FAILED" },
     });
     expect(await readdir(tmp)).toEqual([]);
     expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);

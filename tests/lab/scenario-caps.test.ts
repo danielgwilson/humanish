@@ -45,7 +45,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
       const result = parseLabConfig(computerUseLab({ [key]: 3, maxJobs: 0, maxMinutes: 12 }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(result.error.message).toContain(`execution.caps.${key}`);
     },
   );
@@ -89,7 +89,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
         );
         expect(outcome.route).toBe("computer-use");
         expect(outcome.result.ok).toBe(false);
-        expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+        expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
         expect(outcome.result.error?.message).toContain(`execution.caps.${key}`);
         expect(loads).toBe(0);
       } finally {

@@ -14,7 +14,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     },
     "automaticAnalysisTrigger": "default",
@@ -38,7 +38,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
       "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
@@ -57,7 +57,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
       "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
     "automaticAnalysisTrigger": "default",
@@ -81,7 +81,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      "code": "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
       "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -105,7 +105,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "actors[0].maxOutputTokens must be a positive safe integer."
     },
     "automaticAnalysisTrigger": "default",
@@ -129,7 +129,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
     },
     "automaticAnalysisTrigger": "default",
@@ -153,7 +153,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
     "automaticAnalysisTrigger": "default",
@@ -177,7 +177,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
     },
     "automaticAnalysisTrigger": "default",
@@ -201,7 +201,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "maxOutputTokens cannot be enforced by a custom runSession."
     },
     "automaticAnalysisTrigger": "default",
@@ -225,7 +225,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
+      "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
       "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
     },
     "automaticAnalysisTrigger": "default",
@@ -249,7 +249,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -273,7 +273,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "subject.repos[0] must be an owner/repo slug (got \"not a slug\")."
     },
     "automaticAnalysisTrigger": "default",
@@ -297,7 +297,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret."
     },
     "automaticAnalysisTrigger": "default",
@@ -321,7 +321,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
+      "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
       "message": "Live concurrent shared-world labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     },
     "automaticAnalysisTrigger": "default",
@@ -345,7 +345,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
+      "code": "HUMANISH_SHARED_WORLD_COMMS_CATCH_UNREACHABLE",
       "message": "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel."
     },
     "automaticAnalysisTrigger": "default",
@@ -369,7 +369,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     }
   },
@@ -388,7 +388,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
       "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
@@ -407,7 +407,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
       "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
     "automaticAnalysisTrigger": "default",
@@ -431,7 +431,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      "code": "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
       "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -455,7 +455,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "actors[0].maxOutputTokens must be a positive safe integer."
     },
     "automaticAnalysisTrigger": "default",
@@ -479,7 +479,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
     },
     "automaticAnalysisTrigger": "default",
@@ -503,7 +503,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
     "automaticAnalysisTrigger": "default",
@@ -527,7 +527,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
     },
     "automaticAnalysisTrigger": "default",
@@ -551,7 +551,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "maxOutputTokens cannot be enforced by a custom runSession."
     },
     "automaticAnalysisTrigger": "default",
@@ -575,7 +575,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
+      "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
       "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
     },
     "automaticAnalysisTrigger": "default",
@@ -599,7 +599,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -623,7 +623,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -647,7 +647,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "subject.repos[0] must be an owner/repo slug (got \"not a slug\")."
     },
     "automaticAnalysisTrigger": "default",
@@ -671,7 +671,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -695,7 +695,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_SHARED_WORLD_INVALID",
       "message": "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret."
     },
     "automaticAnalysisTrigger": "default",
