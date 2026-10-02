@@ -119,14 +119,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   is dropped with a warning (#1366). Before, the terminal route attached it to `run.json` as
   `adapterScore`, and `humanish verify` then refused the bundle. A declared scorer that returns one
   now fails the run with the malformed-scorer gap, as on the browser routes.
-- Codex participants and Codex-account analysis check the item in every app-server notification.
-  Before, a notification under a method humanish did not handle, or one that arrived before the
-  turn was dispatched, passed unchecked, so a native command reported that way did not stop the
-  run. Now a notification that carries a thread item goes through the item allowlist and the
-  participant's tool check whatever its method, from the start of the launch. A disallowed item
-  fails the launch or the request with `codex_tool_call`; one that arrives between requests fails
-  the next request, and one after a participant's last request is a run warning. A method humanish
-  does not know that carries no item does not stop the run: participant runs and
+- Codex participants and Codex-account analysis check the item in every app-server notification
+  (#1358). Before, a notification under a method humanish did not handle, or one that arrived
+  before the turn was dispatched, passed unchecked, so a native command reported that way did not
+  stop the run. Now a notification that carries a thread item goes through the item allowlist and
+  the participant's tool check whatever its method, from the start of the launch. A disallowed
+  item fails the launch or the request with `codex_tool_call`; one that arrives between requests
+  fails the next request, and one after a participant's last request is a run warning. A method
+  humanish does not know that carries no item does not stop the run: participant runs and
   `humanish analyze` list such methods with counts in their warnings.
 
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
