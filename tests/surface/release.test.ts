@@ -49,7 +49,7 @@ describe("release readiness", () => {
     expect(packageJson.devDependencies?.["@e2b/desktop"]).toBe("^2.4.0");
     expect(packageJson.homepage).toBe("https://github.com/danielgwilson/humanish#readme");
     expect(packageJson.bugs?.url).toBe("https://github.com/danielgwilson/humanish/issues");
-    expect(packageJson.keywords).toContain("persona-simulation");
+    expect(packageJson.keywords).toContain("user-research");
     expect(packageJson.files).toEqual([
       "AGENTS.md",
       "CHANGELOG.md",
