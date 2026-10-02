@@ -89,6 +89,11 @@ A scorer written for one context passes through a helper that names it:
 shared world, and `terminalScorer(…)` with `TerminalProductScoringContext` for terminal runs. An
 inline scorer, or one that narrows `ctx` at runtime, passes as it is.
 
+A browser scorer's context also carries `ctx.route` (`computer-use` or `shared-world`) and
+`ctx.participantCount`. The older `ctx.backend` and `ctx.laneCount` hold the same facts and are
+removed in the next minor. The first time a scorer reads each one, it prints a
+`DeprecationWarning` with code `HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED`.
+
 ## Removed and deprecated exports
 
 The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab` and

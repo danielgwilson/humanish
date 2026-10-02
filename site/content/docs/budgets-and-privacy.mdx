@@ -161,7 +161,7 @@ Keep env files and credentials out of version control. Run bundles record provis
 
 Terminal-product studies run Codex inside the sandbox. Their default `execution.runtimeAuth: openai-env` supplies the runtime key to that command, where the participant and its child processes can read and use it. Any credentials you declare for the subject app also enter its sandbox.
 
-For terminal studies, `execution.runtimeAuth: openai-egress` keeps the raw OpenAI runtime key outside the sandbox and authenticates requests through E2B's proxy. Sandbox processes can still make paid requests through that proxy; this option does not impose a provider spending limit. Read the [terminal authentication setup and limits](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/terminal-product-lane.md#runtime-auth-raw-key-placement-and-remaining-provider-access) before choosing it.
+For terminal studies, `execution.runtimeAuth: openai-egress` keeps the raw OpenAI runtime key outside the sandbox and authenticates requests through E2B's proxy. Sandbox processes can still make paid requests through that proxy; this option does not impose a provider spending limit. Read the [terminal authentication setup and limits](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/terminal-product-route.md#runtime-auth-raw-key-placement-and-remaining-provider-access) before choosing it.
 
 ## Use a signed-in coding agent
 

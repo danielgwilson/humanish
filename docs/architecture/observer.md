@@ -46,9 +46,9 @@ regardless of substrate:
 - `artifact`: artifact-only evidence stream;
 - `summary`: run-level synthesis stream.
 
-Each stream points back to a simulation and carries its own transport,
-terminal tail, UI state, artifact links, event timeline, and public-safe
-metadata.
+Each stream points back to its participant's `simulations[]` entry and carries its
+own transport, terminal tail, UI state, artifact links, event timeline, and
+public-safe metadata.
 
 ## Live Watch
 
