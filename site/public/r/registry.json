@@ -40,7 +40,7 @@
       "name": "persona-lane",
       "type": "registry:component",
       "title": "Persona lane",
-      "description": "One lane of a run: the keyframe a persona saw, its verbatim final report, and an honest status chip — failed lanes render muted, never hidden. Ships the resolve-cover canvas veil that dissolves into the screenshot (finished state under reduced motion).",
+      "description": "One lane of a run: the keyframe a persona saw, its verbatim final report, and a status chip. Failed lanes render muted and stay visible. Ships the resolve-cover canvas veil that dissolves into the screenshot (finished state under reduced motion).",
       "docs": "Import styles once in your global CSS: @import \"../styles/humanish/persona-lane.css\";. Example: <PersonaLane idx=\"01\" name=\"sticky-notes\" img=\"/lane.jpg\" alt=\"…\" reportLabel=\"Final report — verbatim\" report=\"Done.\" passed />",
       "registryDependencies": ["https://humanish.dev/r/humanish-tokens.json"],
       "files": [
