@@ -192,7 +192,7 @@ observations and follow their evidence links.
 
 Supported live studies request analysis by default when the recording finishes;
 `review.analysis: false` in the lab turns it off.
-[Automatic analysis](https://github.com/danielgwilson/humanish/blob/main/docs/product/automatic-analysis.md)
+[Automatic analysis](repo:docs/product/automatic-analysis.md)
 has the model, the $3 admission limit and the failure behavior. For an existing
 recording, inspect the admission estimate, then generate:
 
@@ -263,7 +263,7 @@ and just binds loopback behind it.
 
 In every mode the server binds `127.0.0.1`. `--expose` is refused before binding
 unless it has a reachable origin and either edge auth or `--safe`; the
-[exposure matrix](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/serve.md#fail-closed-exposure-matrix)
+[exposure matrix](repo:docs/architecture/serve.md#fail-closed-exposure-matrix)
 lists each combination and its error code.
 
 ## Watch a live run from your phone
@@ -281,4 +281,4 @@ viewer can never reach your other runs' raw evidence.
 Live E2B desktop stream URLs reach a remote viewer only on `watch --expose`, and only
 behind edge auth; `serve` never injects them (remote viewers of the library see only
 persisted evidence: screenshots, events, terminal tails). See
-[Serve architecture](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/serve.md).
+[Serve architecture](repo:docs/architecture/serve.md).

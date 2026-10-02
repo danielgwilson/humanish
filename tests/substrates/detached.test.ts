@@ -61,12 +61,12 @@ describe("runDetachedStep", () => {
 
     expect(result).toEqual({ ok: true, exitCode: 0, timedOut: false, logTail: "build ok" });
 
-    // The wrapper is a real file write — never a heredoc (no sentinel-collision class).
+    // The wrapper is a real file write, never a heredoc (no sentinel-collision class).
     const script = files.find((file) => file.path.endsWith("subject-build/run.sh"));
     expect(script).toBeDefined();
     expect(script?.data).toContain("( pnpm build )");
     expect(script?.data).toContain("cd '/home/user/subject'");
-    // Atomic status: write tmp, then mv — a poller can never read a half-written code.
+    // Atomic status: write tmp, then mv; a poller can never read a half-written code.
     expect(script?.data).toContain("status.tmp");
     expect(script?.data).toMatch(/mv .*status\.tmp.*status/);
     expect(script?.data).not.toContain("<<");

@@ -90,7 +90,7 @@ describe("shared world with a local-agent brain", () => {
       config("sharedProvisioned", localAgent),
       {
         cwd,
-        // No PATH: the codex CLI cannot be found.
+        // No `PATH`: the codex CLI cannot be found.
         env: { E2B_API_KEY: "synthetic-e2b", DATABASE_URL: "postgres://synthetic" },
       },
       {
@@ -107,7 +107,7 @@ describe("shared world with a local-agent brain", () => {
     expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
   });
 
-  /** A PATH holding a signed-in ChatGPT-account `codex` that reports `version`. */
+  /** A `PATH` holding a signed-in ChatGPT-account `codex` that reports `version`. */
   async function signedInCodex(version: string): Promise<string> {
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-sw-codex-"));
     cleanup.push(dir);

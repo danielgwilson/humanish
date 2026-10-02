@@ -4,10 +4,10 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// #358 salvage tier: interrupted runs fail cheap. The run journals every created sandbox id to
-// disk the moment create returns; `humanish reclaim` kills by those EXACT recorded ids — never by
-// enumerating the account — and records honestly what happened to each. These tests drive the
-// REAL run-dir resolution chain (a $0 dry-run creates the managed dir + latest pointer) with a
+// Salvage tier: interrupted runs fail cheap. The run journals every created sandbox id to
+// disk the moment create returns; `humanish reclaim` kills by those exact recorded ids, never by
+// enumerating the account, and records honestly what happened to each. These tests drive the
+// real run-dir resolution chain (a $0 dry-run creates the managed dir + latest pointer) with a
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
@@ -176,7 +176,7 @@ describe("sandbox receipts + humanish reclaim", () => {
         ),
     });
 
-    // One attempt per unique id, exactly the journaled ids, nothing else — and no list call exists
+    // One attempt per unique id, exactly the journaled ids, nothing else, and no list call exists
     // on the fake to begin with (the module type never offers one to reclaim).
     expect(killedIds.sort()).toEqual(["sb-alive", "sb-broken", "sb-gone"]);
     expect(result.receiptCount).toBe(4);
@@ -186,7 +186,7 @@ describe("sandbox receipts + humanish reclaim", () => {
       "sb-gone": "already-gone",
       "sb-broken": "kill-failed",
     });
-    // A kill-failed means the reclaim did NOT fully succeed — exit honest, TTL is the backstop.
+    // A kill-failed means the reclaim did not fully succeed: exit honest, TTL is the backstop.
     expect(result.ok).toBe(false);
 
     // The reclaim record lands next to the run it cleaned.

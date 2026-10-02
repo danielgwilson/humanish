@@ -6,11 +6,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// #328 functional half: comms on a plane humanish does NOT provision. The adopter runs the catch;
+// Comms on a plane humanish does not provision. The adopter runs the catch;
 // humanish points the persona at it, drains it over HTTP, and writes the same digest-only evidence.
 //
-// These tests run the REAL python catch script as a subprocess — the same bytes deployed in-sandbox
-// — so the HTTP contract (POST capture, GET /deliveries, the token guard, /health's service marker)
+// These tests run the real python catch script as a subprocess (the same bytes deployed in-sandbox),
+// so the HTTP contract (POST capture, GET /deliveries, the token guard, /health's service marker)
 // is proven against the actual implementation rather than a stub of it.
 import {
   collectExternalCommsThread,
@@ -60,9 +60,9 @@ afterAll(async () => {
 });
 
 describe("adopter-hosted comms ingress", () => {
-  it("health asserts OUR service marker, so a bare 200 from someone else's server is not a catch", async () => {
+  it("health asserts our service marker, so a bare 200 from someone else's server is not a catch", async () => {
     expect(await externalCatchHealthy({ catchBaseUrl: baseUrl })).toBe(true);
-    // A server that answers 200 with something else must NOT pass — an adopter proxy or captive
+    // A server that answers 200 with something else must not pass: an adopter proxy or captive
     // portal would otherwise let a comms lab run and collect nothing.
     expect(
       await externalCatchHealthy({ catchBaseUrl: "https://example.test" }, { timeoutMs: 1500 }),
@@ -82,7 +82,7 @@ describe("adopter-hosted comms ingress", () => {
     });
     expect(posted.ok).toBe(true);
 
-    // Without the token the drain read is refused — the capture body carries a verification link.
+    // Without the token the drain read is refused: the capture body carries a verification link.
     await expect(drainExternalCommsCatch({ catchBaseUrl: baseUrl })).rejects.toThrow(/401/);
 
     const drained = await drainExternalCommsCatch({ catchBaseUrl: baseUrl, authToken: TOKEN });
@@ -91,7 +91,7 @@ describe("adopter-hosted comms ingress", () => {
     expect(drained.cursor).toBe(1);
   });
 
-  it("collects the SAME digest-only evidence artifact the provisioned route produces", async () => {
+  it("collects the same digest-only evidence artifact the provisioned route produces", async () => {
     const channel = new FakeInbox();
     const inbox = await channel.provisionAddress("signup-01", "user@example.test");
     const collected = await collectExternalCommsThread({
@@ -137,7 +137,7 @@ describe("comms.email.external config", () => {
     comms,
   });
 
-  it("makes comms LIVE on an app-url subject instead of warning it inert", () => {
+  it("makes comms live on an app-url subject instead of warning it inert", () => {
     const result = parseLabConfig(
       appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
     );
@@ -157,7 +157,7 @@ describe("comms.email.external config", () => {
       appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
     );
     expect(withoutInject.ok).toBe(true);
-    // ...but still refuses when NOTHING declares where mail should go, and the message names every
+    // ...but still refuses when nothing declares where mail should go, and the message names every
     // transport that would satisfy it rather than only the HTTP one.
     const neither = parseLabConfig(appUrlLab({ email: {} }));
     expect(neither.ok).toBe(false);
@@ -168,7 +168,7 @@ describe("comms.email.external config", () => {
     }
   });
 
-  it("rejects a non-absolute URL and a malformed token env NAME", () => {
+  it("rejects a non-absolute URL and a malformed token env name", () => {
     const badUrl = parseLabConfig(
       appUrlLab({ email: { external: { catchBaseUrl: "/relative" } } }),
     );
@@ -204,7 +204,7 @@ describe("comms.email.external config", () => {
     expect(provisioned.ok).toBe(true);
     if (!provisioned.ok) return;
     // Two catches would exist and the app would point at humanish's, so the declared one would
-    // silently collect nothing — say so rather than letting it look wired.
+    // silently collect nothing: say so rather than letting it look wired.
     expect(provisioned.warnings.join("\n")).toContain("comms.email.external");
   });
 });

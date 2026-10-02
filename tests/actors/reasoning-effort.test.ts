@@ -49,13 +49,13 @@ describe("reasoning effort is a declarable study variable", () => {
     if (!parsed.ok) {
       expect(parsed.error.message).toContain("reasoningEffort");
       expect(parsed.error.message).toContain("xhigh");
-      // The refusal must say WHY it is not silently corrected: a downgraded effort would make the
+      // The refusal must say why it is not silently corrected: a downgraded effort would make the
       // trace claim an effort the run did not use.
       expect(parsed.error.message).toContain("model-dependent");
     }
   });
 
-  it("lets a lane override the actor default — the single-run control", () => {
+  it("lets a lane override the actor default: the single-run control", () => {
     const parsed = parseLabConfig(
       lab({
         reasoningEffort: "medium",
@@ -88,7 +88,7 @@ describe("reasoning effort is a declarable study variable", () => {
     expect(body.reasoning?.effort).toBe("xhigh");
   });
 
-  it("reports the effort the request WILL carry, including the default nobody declared", () => {
+  it("reports the effort the request will carry, including the default nobody declared", () => {
     // The whole defect this closes: the default was real and invisible. A provider that does not
     // report its resolved effort leaves the trace unable to say what produced it.
     const asked = createOpenAiResponsesProvider({ apiKey: "k", reasoningEffort: "low" });
@@ -159,7 +159,7 @@ describe("the trace records how the model was asked to run", () => {
     expect((trace.ids as { model?: string }).model).toBe("fake-model");
   });
 
-  it("records nothing when the provider declares nothing — absence stays absence", async () => {
+  it("records nothing when the provider declares nothing: absence stays absence", async () => {
     const trace = await traceFrom(settingsProvider());
     expect(trace.modelSettings).toBeUndefined();
     expect("modelSettings" in trace).toBe(false);

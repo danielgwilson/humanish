@@ -10,7 +10,7 @@ import {
 } from "../../src/lab/device-presets.js";
 
 describe("device presets", () => {
-  // Pin the LITERAL values copied from the in-house ui-sim viewport tables so they cannot
+  // Pin the literal values copied from the in-house ui-sim viewport tables so they cannot
   // silently drift back to a guess.
   it("carries the exact copied preset values", () => {
     expect(DEVICE_PRESETS).toEqual({
@@ -43,7 +43,7 @@ describe("device presets", () => {
     expect(DEVICE_PRESETS.tablet.isMobile).toBe(false);
   });
 
-  it("the guessed 1280x800 is gone — no preset matches it", () => {
+  it("the guessed 1280x800 is gone: no preset matches it", () => {
     const presets: DevicePreset[] = Object.values(DEVICE_PRESETS);
     expect(presets.some((p) => p.width === 1280 && p.height === 800)).toBe(false);
   });

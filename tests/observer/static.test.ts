@@ -30,7 +30,7 @@ async function withRunDir<T>(callback: (fixture: RunFixture) => Promise<T>): Pro
 
   try {
     await mkdir(observerDir, { recursive: true });
-    // Files inside the run dir — all of these SHOULD be reachable over loopback.
+    // Files inside the run dir: all of these should be reachable over loopback.
     await writeFile(
       path.join(observerDir, "index.html"),
       "<!doctype html><title>humanish Observer</title>",

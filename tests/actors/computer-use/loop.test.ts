@@ -97,7 +97,7 @@ function commandExitError(fields: { exitCode?: number; stderr?: string; message?
   });
 }
 
-// An executor that actuates normally but throws a caller-chosen error on selected actions —
+// An executor that actuates normally but throws a caller-chosen error on selected actions:
 // used to prove a single desktop CommandExitError is a recoverable skipped action while any
 // other throw stays fatal. `executed` records only actions that actually actuated.
 class FlakyExecutor implements CuaExecutor {
@@ -272,7 +272,7 @@ describe("runComputerUseLoop", () => {
     // initial + 2 executed turns
     expect(result.trace.counts.screenshots).toBe(3);
 
-    // #441: every item is stamped from the injected clock as it is recorded, so
+    // Every item is stamped from the injected clock as it is recorded, so
     // stamps are ISO strings and non-decreasing in recording order.
     const stamps = result.trace.items.map((item) => item.at);
     expect(stamps.every((at): at is string => typeof at === "string")).toBe(true);
@@ -280,7 +280,7 @@ describe("runComputerUseLoop", () => {
     expect(millis.every((ms) => Number.isFinite(ms))).toBe(true);
     expect([...millis].sort((a, b) => a - b)).toEqual(millis);
 
-    // #441: click-like actions carry structured pin coordinates; a type action does not.
+    // Click-like actions carry structured pin coordinates; a type action does not.
     const click = result.trace.items.find(
       (item) => item.kind === "ui_action" && item.title.startsWith("click"),
     );
@@ -463,7 +463,7 @@ describe("runComputerUseLoop", () => {
     );
   });
 
-  it("DEFAULT persists RAW full-fidelity frames (local fidelity) and never logs raw typed text", async () => {
+  it("default persists raw full-fidelity frames (local fidelity) and never logs raw typed text", async () => {
     const provider = new ScriptedProvider([
       {
         actions: [{ kind: "type", text: "hello@example.test" }],
@@ -487,14 +487,14 @@ describe("runComputerUseLoop", () => {
       // redactScreenshots omitted → defaults false → raw
     });
 
-    // Typed text (synthetic identity) is STILL never in the trace — that redaction is unconditional.
+    // Typed text (synthetic identity) is still never in the trace: that redaction is unconditional.
     expect(JSON.stringify(result.trace)).not.toContain("hello@example.test");
     // Screenshots are recorded raw (redaction: "none"), full fidelity for local use.
     const shots = result.trace.items.filter((i) => i.kind === "screenshot");
     expect(shots.length).toBeGreaterThan(0);
     expect(shots.every((i) => i.screenshotRef?.redaction === "none")).toBe(true);
     expect(result.trace.redaction.screenshots).toBe("raw");
-    // What was persisted IS the raw frame, byte-identical to what the executor produced.
+    // What was persisted is the raw frame, byte-identical to what the executor produced.
     expect(sink.written.length).toBe(shots.length);
     expect(Buffer.compare(sink.written[0]!.bytes, executor.frame)).toBe(0);
   });
@@ -527,12 +527,12 @@ describe("runComputerUseLoop", () => {
     expect(shots.length).toBeGreaterThan(0);
     expect(shots.every((i) => i.screenshotRef?.redaction === "blurred")).toBe(true);
     expect(result.trace.redaction.screenshots).toBe("blurred");
-    // Persisted bytes are the redacted thumbnail, NOT the raw frame.
+    // Persisted bytes are the redacted thumbnail, not the raw frame.
     expect(Buffer.compare(sink.written[0]!.bytes, executor.frame)).not.toBe(0);
   });
 
-  it("scrubText scrubs a KNOWN provisioned value the MODEL narrates into reasoning/message (no shape for pattern redaction)", async () => {
-    // A DB password has no secret "shape" — redactText alone cannot catch it. The lab injects
+  it("scrubText scrubs a known provisioned value the model narrates into reasoning/message (no shape for pattern redaction)", async () => {
+    // A DB password has no secret "shape": redactText alone cannot catch it. The study injects
     // scrubText so a value the model transcribes into its narration never lands raw in the trace.
     const provisionedValue = "shapeless-db-pw-7Q2x";
     const provider = new ScriptedProvider([
@@ -635,8 +635,8 @@ describe("runComputerUseLoop", () => {
   });
 
   // Issue: a single flaky desktop command must not end the whole run. The real @e2b/desktop
-  // Sandbox THROWS a CommandExitError on any non-zero exit (e.g. a Ctrl+Minus keypress exiting
-  // 2), so ONE such throw is a recoverable skipped action, not a fatal actor_error.
+  // Sandbox throws a CommandExitError on any non-zero exit (e.g. a Ctrl+Minus keypress exiting
+  // 2), so one such throw is a recoverable skipped action, not a fatal actor_error.
   it("skips a single desktop CommandExitError action (recoverable) and completes normally, not actor_error", async () => {
     const provider = new ScriptedProvider([
       {
@@ -669,10 +669,10 @@ describe("runComputerUseLoop", () => {
       now: monotonicClock(),
     });
 
-    // NOT fatal: the run reached its natural endpoint despite the failed keypress.
+    // Not fatal: the run reached its natural endpoint despite the failed keypress.
     expect(result.completionReason).toBe("goal_satisfied");
     expect(result.status).toBe("passed");
-    // The failed keypress did NOT actuate — only the click counts as a material action.
+    // The failed keypress did not actuate: only the click counts as a material action.
     expect(result.trace.counts.materialActions).toBe(1);
     expect(executor.executed).toEqual([{ kind: "click", x: 10, y: 20 }]);
     // A public-safe skipped-action notice was recorded (action label + exit code + stderr tail).
@@ -681,12 +681,12 @@ describe("runComputerUseLoop", () => {
     );
     expect(notice).toMatchObject({ kind: "notice", lifecycle: "completed", status: "error" });
     expect(notice?.text).toBe("action: keypress Control+-; exit code: 2; stderr: zoom failed");
-    // The failed action did NOT emit a completed ui_action, and the run did NOT crash.
+    // The failed action did not emit a completed ui_action, and the run did not crash.
     expect(result.trace.items.filter((item) => item.kind === "ui_action")).toHaveLength(1);
     expect(result.trace.items.some((item) => item.title === "computer-use loop error")).toBe(false);
   });
 
-  it("a NON-CommandExitError from execute() is still fatal (actor_error path byte-preserved)", async () => {
+  it("a non-CommandExitError from execute() is still fatal (actor_error path byte-preserved)", async () => {
     const provider = new ScriptedProvider([
       { actions: [{ kind: "click", x: 11, y: 22 }], pendingSafetyChecks: [], done: false },
     ]);
@@ -705,7 +705,7 @@ describe("runComputerUseLoop", () => {
 
     expect(result.completionReason).toBe("actor_error");
     expect(result.status).toBe("failed");
-    // It was NOT swallowed by the recovery path — the fatal loop-error notice is present.
+    // It was not swallowed by the recovery path: the fatal loop-error notice is present.
     expect(
       result.trace.items.some((item) => item.title === "action skipped: desktop command failed"),
     ).toBe(false);
@@ -824,7 +824,7 @@ describe("runComputerUseLoop", () => {
     });
     const blocked = await run("blocked");
     expect(blocked.trace.declaredOutcome).toBe("blocked");
-    // The actor stopped on purpose; the LANE turns a declared blocker into a blocked participant.
+    // The actor stopped on purpose; the lane turns a declared blocker into a blocked participant.
     expect(blocked.completionReason).toBe("goal_satisfied");
     const silent = await run(undefined);
     expect(silent.trace.declaredOutcome).toBeUndefined();
@@ -979,7 +979,7 @@ describe("runComputerUseLoop", () => {
     ).toBe(true);
   });
 
-  it("a raceSessionDeadline DEADLINE during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
+  it("a raceSessionDeadline deadline during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
     let t = 0;
     const now = (): number => t;
     const provider: CuaProvider = {
@@ -1014,14 +1014,14 @@ describe("runComputerUseLoop", () => {
     ).toBe(false);
   });
 
-  it("an ABORT during execute() propagates (harness_error), never swallowed as a skipped action", async () => {
+  it("an abort during execute() propagates (harness_error), never swallowed as a skipped action", async () => {
     const controller = new AbortController();
     const provider: CuaProvider = {
       id: "abort-exec",
       version: "a",
       capabilities: FAKE_CAPS,
       // Material action; signal is still un-aborted at the pre-action guard, so the abort
-      // is exercised INSIDE the execute await (through the new recovery boundary).
+      // is exercised inside the execute await (through the new recovery boundary).
       async nextTurn() {
         return { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false };
       },
@@ -1052,7 +1052,7 @@ describe("runComputerUseLoop", () => {
     ).toBe(false);
   });
 
-  it("ends as gave_up (friction backstop) — never actor_error and never an infinite loop — when EVERY action fails with CommandExitError", async () => {
+  it("ends as gave_up (friction backstop), never actor_error or an infinite loop, when every action fails with CommandExitError", async () => {
     const provider = new RepeatProvider({
       actions: [{ kind: "keypress", keys: ["Control", "-"] }],
       pendingSafetyChecks: [],
@@ -1086,15 +1086,15 @@ describe("runComputerUseLoop", () => {
     ).toBeGreaterThanOrEqual(3);
   });
 
-  // #383: a BLIND frame signature must not be able to end a lane that is working.
+  // A blind frame signature must not be able to end a lane that is working.
   //
   // This is the exact live failure, reduced. A constant stateSignature stands in for the old hash on
   // a light-themed web app, where 9 visibly different consecutive frames produced one identical
-  // value. Under the old rule — stale frame alone means no progress — the lane was ended as
+  // value. Under the old rule (stale frame alone means no progress) the lane was ended as
   // `gave_up` and the run recorded 0/2 passed, while the agent was a foreign key away from finishing
   // its mission. The backstop now needs the agent to also be repeating itself.
-  it("does NOT give up when the frame signature is blind but the agent is doing varied work", async () => {
-    // Every turn clicks somewhere new — the shape of an agent working through a form.
+  it("does not give up when the frame signature is blind but the agent is doing varied work", async () => {
+    // Every turn clicks somewhere new: the shape of an agent working through a form.
     let n = 0;
     const provider: CuaProvider = {
       id: "fake-cua",
@@ -1365,12 +1365,12 @@ describe("runComputerUseLoop", () => {
     ).toContain("last material action: click (5, 5)");
   });
 
-  it("reaches the time BUDGET (non-failure) when the wall-clock deadline hits after a material action", async () => {
+  it("reaches the time budget (non-failure) when the wall-clock deadline hits after a material action", async () => {
     let t = 0;
     const now = (): number => t;
     // The first model turn takes a material click, then jumps the clock past the deadline; iteration
-    // 2 trips it. Because at least one material action ran, this is a productive budget stop — a
-    // non-failure open-ended-watch completion, NOT a stuck timeout.
+    // 2 trips it. Because at least one material action ran, this is a productive budget stop: a
+    // non-failure open-ended-watch completion, not a stuck timeout.
     const provider: CuaProvider = {
       id: "tick",
       version: "t",
@@ -1400,7 +1400,7 @@ describe("runComputerUseLoop", () => {
     expect(result.trace.counts.turns).toBe(1);
   });
 
-  it("stays a FAILURE (timed_out) when the deadline hits after only idle turns (no material progress)", async () => {
+  it("stays a failure (timed_out) when the deadline hits after only idle turns (no material progress)", async () => {
     let t = 0;
     const now = (): number => t;
     // The model only waits/screenshots (idle), then the clock jumps past the deadline. Zero material
@@ -1516,7 +1516,7 @@ describe("runComputerUseLoop", () => {
     expect(result.trace.items.some((i) => i.kind === "approval")).toBe(true);
   });
 
-  it("carries acknowledged safety checks onto the NEXT turn's request, verbatim and one-shot", async () => {
+  it("carries acknowledged safety checks onto the next turn's request, verbatim and one-shot", async () => {
     const check = { id: "sc_9", code: "malicious_instructions", message: "be careful" };
     const provider = new ScriptedProvider([
       {
@@ -1551,7 +1551,7 @@ describe("runComputerUseLoop", () => {
     // Turn 1: nothing to acknowledge yet.
     expect(provider.seen[0]?.acknowledgedSafetyChecks).toBeUndefined();
     // Turn 2: the acks granted for turn 1's checks ride the request that carries
-    // that call's output — verbatim wire triples, not fabricated from codes.
+    // that call's output: verbatim wire triples, not fabricated from codes.
     expect(provider.seen[1]?.acknowledgedSafetyChecks).toEqual([check]);
     // Turn 3: acks are one-shot; stale acks must not be re-sent.
     expect(provider.seen[2]?.acknowledgedSafetyChecks).toBeUndefined();
@@ -1584,13 +1584,13 @@ describe("runComputerUseLoop", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Issue #148: state-driven (non-vision) executors. RUNG 2 (appState-preferred progress,
-// no-screenshot persistence, redaction.notes self-describes appState) and RUNG 3 (a
+// State-driven (non-vision) executors: appState-preferred progress,
+// no-screenshot persistence and self-describing redaction.notes, and (a
 // requiresFrame provider against a screenshot-less observation fails closed).
 // ---------------------------------------------------------------------------
 
-// A non-vision executor: returns NO screenshot and a (configurable) appState per turn, with a
-// constant stateSignature so progress can ONLY come from the appState delta.
+// A non-vision executor: returns no screenshot and a (configurable) appState per turn, with a
+// constant stateSignature so progress can only come from the appState delta.
 class StateExecutor implements CuaExecutor {
   private i = 0;
   readonly observed: CuaObservation[] = [];
@@ -1625,7 +1625,7 @@ class StateProvider implements CuaProvider {
 }
 
 describe("stableProgressKey", () => {
-  it("is order-independent: shuffled key order maps to the SAME key (no fabricated progress)", () => {
+  it("is order-independent: shuffled key order maps to the same key (no fabricated progress)", () => {
     const a = stableProgressKey({ route: "/home", turn: 3, modal: null, unread: 2 });
     const b = stableProgressKey({ unread: 2, modal: null, turn: 3, route: "/home" });
     expect(a).toBe(b);
@@ -1635,7 +1635,7 @@ describe("stableProgressKey", () => {
     expect(stableProgressKey({ route: "/home" })).not.toBe(stableProgressKey({ route: "/inbox" }));
   });
 
-  it("does NOT throw on a cyclic appState — it degrades to a bounded value", () => {
+  it("does not throw on a cyclic appState: it degrades to a bounded value", () => {
     const cyclic: Record<string, unknown> = { route: "/home" };
     cyclic.self = cyclic;
     const key = stableProgressKey(cyclic);
@@ -1643,7 +1643,7 @@ describe("stableProgressKey", () => {
     expect(key).toContain("[Circular]");
   });
 
-  it("does NOT throw on a huge/deep appState — it caps to a bounded value", () => {
+  it("does not throw on a huge/deep appState: it caps to a bounded value", () => {
     const huge: Record<string, unknown> = {};
     for (let i = 0; i < 5000; i += 1) huge[`k${i}`] = "x".repeat(64);
     let deep: Record<string, unknown> = { leaf: true };
@@ -1655,7 +1655,7 @@ describe("stableProgressKey", () => {
 });
 
 describe("runComputerUseLoop with a state-driven (non-vision) executor", () => {
-  it("persists ZERO frames, resolves redaction.screenshots to n/a, and self-describes appState in redaction.notes", async () => {
+  it("persists zero frames, resolves redaction.screenshots to n/a, and self-describes appState in redaction.notes", async () => {
     const provider = new StateProvider([
       { actions: [{ kind: "type", text: "hi" }], pendingSafetyChecks: [], done: false },
       { actions: [], pendingSafetyChecks: [], done: true, message: "done" },
@@ -1686,15 +1686,15 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor", () => {
     expect(result.trace.counts.screenshots).toBe(0);
     // (b) redaction resolves to n/a.
     expect(result.trace.redaction.screenshots).toBe("n/a");
-    // (c) redaction.notes self-describes the appState stance (doctrine fix 1, invariant 6).
+    // (c) redaction.notes self-describes the appState stance, so the claim matches the mechanism.
     expect(result.trace.redaction.notes).toContain("App state was observed");
     expect(result.trace.redaction.notes).toContain("NOT written to the trace");
-    // appState is runtime-only: it must NEVER appear in the serialized trace.
+    // appState is runtime-only: it must never appear in the serialized trace.
     expect(JSON.stringify(result.trace)).not.toContain('"route"');
     expect(JSON.stringify(result.trace)).not.toContain("appstate-marker");
   });
 
-  it("an appState delta drives progress even when the stateSignature is CONSTANT", async () => {
+  it("an appState delta drives progress even when the stateSignature is constant", async () => {
     // 8 actuating turns then stop; appState changes every turn → never trips no-progress.
     const turns: CuaTurn[] = [];
     for (let i = 0; i < 8; i += 1)
@@ -1724,7 +1724,7 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor", () => {
     expect(result.trace.counts.noProgressTurns ?? 0).toBe(0);
   });
 
-  it("the inverse trips the backstop: a CONSTANT appState (and constant signature) gives up on no progress", async () => {
+  it("the inverse trips the backstop: a constant appState (and constant signature) gives up on no progress", async () => {
     const provider = new RepeatProvider({
       actions: [{ kind: "click", x: 1, y: 1 }],
       pendingSafetyChecks: [],
@@ -1748,13 +1748,13 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor", () => {
     expect(result.reason).toContain("unchanged UI state");
   });
 
-  it("shuffled-key-order appState across turns is NOT progress (gives up)", async () => {
+  it("shuffled-key-order appState across turns is not progress (gives up)", async () => {
     const provider = new RepeatProvider({
       actions: [{ kind: "click", x: 1, y: 1 }],
       pendingSafetyChecks: [],
       done: false,
     });
-    // Same content, different key insertion order each turn — must NOT register as progress.
+    // Same content, different key insertion order each turn: must not register as progress.
     const executor = new StateExecutor(
       [
         { route: "/x", turn: 1, modal: null },
@@ -1779,7 +1779,7 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor", () => {
     expect(result.completionReason).toBe("gave_up");
   });
 
-  it("an oversized/cyclic appState does NOT crash the loop (bounded progress key)", async () => {
+  it("an oversized/cyclic appState does not crash the loop (bounded progress key)", async () => {
     const provider = new StateProvider([
       { actions: [{ kind: "type", text: "x" }], pendingSafetyChecks: [], done: false },
       { actions: [], pendingSafetyChecks: [], done: true, message: "done" },
@@ -1840,7 +1840,7 @@ describe("runComputerUseLoop vision-provider frame guard", () => {
     expect(sink.written.length).toBe(0);
   });
 
-  it("a requiresFrame provider WITH a screenshot behaves normally (no false trip)", async () => {
+  it("a requiresFrame provider with a screenshot behaves normally (no false trip)", async () => {
     class VisionProvider implements CuaProvider {
       readonly id = "vision-with-frame";
       readonly version = "v1";
@@ -1880,14 +1880,14 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     done: false,
     usage: { input: 100, output: 50 },
   };
-  // An injected PURE estimator with a fake rate (no live pricing table): $0.001 per token.
+  // An injected pure estimator with a fake rate (no live pricing table): $0.001 per token.
   const estimateTurnCostUsd = (usage: { input?: number; output?: number }): number =>
     ((usage.input ?? 0) + (usage.output ?? 0)) * 0.001;
 
   it("fails closed with an error when a stale positional estimator makes the running estimate NaN", async () => {
     const provider = new RepeatProvider(usageTurn);
     const executor = new SignatureExecutor(["a", "b", "c", "d"]);
-    // The pre-#334 positional shape: arithmetic on the usage OBJECT yields NaN.
+    // The older positional shape: arithmetic on the usage object yields NaN.
     const staleEstimator = ((input: number, output: number): number =>
       (input + output) * 0.001) as unknown as (usage: { input?: number }) => number;
     const result = await runComputerUseLoop({
@@ -1906,7 +1906,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.reason).toContain("non-finite estimate");
   });
 
-  it("aborts fail-closed the moment the running estimate crosses maxUsd, BEFORE the next model turn", async () => {
+  it("aborts fail-closed the moment the running estimate crosses maxUsd, before the next model turn", async () => {
     const provider = new RepeatProvider(usageTurn);
     const executor = new SignatureExecutor(["s0", "s1", "s2", "s3", "s4", "s5"]);
 
@@ -1923,7 +1923,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     });
 
     // Cumulative estimate: turn1 $0.15, turn2 $0.30, turn3 $0.45 > $0.35 → break at turn 3.
-    // Two material clicks executed BEFORE the cap tripped → a productive lane that hit its cost
+    // Two material clicks executed before the cap tripped → a productive lane that hit its cost
     // budget → budget_reached (incomplete), with the estimate + cap cited in the detail.
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
@@ -1931,10 +1931,10 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.reason).toContain("crossed execution.caps.maxUsd=$0.35");
     expect(result.reason).toContain("after productive activity");
     expect(result.trace.counts.materialActions).toBeGreaterThan(0);
-    // The cap fires BEFORE the next provider.nextTurn: exactly 3 turns were requested, no 4th.
+    // The cap fires before the next provider.nextTurn: exactly 3 turns were requested, no 4th.
     expect(provider.seen).toHaveLength(3);
     expect(result.trace.tokenUsage).toMatchObject({ input: 300, output: 150, total: 450 });
-    // The per-request usage ledger (#334): one record per provider turn, in order.
+    // The per-request usage ledger: one record per provider turn, in order.
     expect(result.trace.tokenUsage?.turns).toEqual([
       { input: 100, output: 50 },
       { input: 100, output: 50 },
@@ -2011,7 +2011,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     ).toEqual([]);
   });
 
-  it("is a no-op when maxUsd is unset — the loop runs to its natural completion unchanged", async () => {
+  it("is a no-op when maxUsd is unset: the loop runs to its natural completion unchanged", async () => {
     const provider = new ScriptedProvider([
       {
         actions: [{ kind: "click", x: 10, y: 20 }],
@@ -2046,7 +2046,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.trace.tokenUsage).toMatchObject({ input: 200, output: 100, total: 300 });
   });
 
-  it("cannot trip on a null (unpriceable) estimate mid-run — it runs to natural completion", async () => {
+  it("cannot trip on a null (unpriceable) estimate mid-run: it runs to natural completion", async () => {
     const provider = new ScriptedProvider([
       {
         actions: [{ kind: "click", x: 10, y: 20 }],
@@ -2073,7 +2073,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
       timeoutMs: 10_000_000,
       now: monotonicClock(),
       maxUsd: 0,
-      // A vanished rate returns null; the cap must NOT abort on it (never a silent-zero abort).
+      // A vanished rate returns null; the cap must not abort on it (never a silent-zero abort).
       estimateTurnCostUsd: () => null,
     });
 

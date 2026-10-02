@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { listenOnLoopback, PortInUseError, probePortHolder } from "../../src/observer/listen.js";
 import { freePort } from "../helpers/free-port.js";
 
-// `listen EADDRINUSE` surfaced as HUMANISH_UNEXPECTED, the catch-all for "a handler threw" (#484).
+// `listen EADDRINUSE` surfaced as HUMANISH_UNEXPECTED, the catch-all for "a handler threw".
 // Something already on the port is the most expected condition a serve command has.
 describe("listenOnLoopback", () => {
   const open: Array<{ close: (cb?: () => void) => unknown }> = [];

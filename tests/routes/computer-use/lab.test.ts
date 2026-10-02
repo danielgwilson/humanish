@@ -85,7 +85,7 @@ import { freePort } from "../../helpers/free-port.js";
 import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 
 // ---------------------------------------------------------------------------
-// Fakes. The desktop module fake serves BOTH faces of the sandbox: the
+// Fakes. The desktop module fake serves both faces of the sandbox: the
 // E2BDesktopSandbox shape the lab provisions through, and the E2BDesktopLike
 // input surface the real executor actuates. Frames are real PNGs (distinct per
 // call) so the loop's perceptual progress signature registers movement.
@@ -244,8 +244,8 @@ function makeFakeModule(sandbox: FakeSandbox): {
 } {
   const created: E2BDesktopCreateOptions[] = [];
   // Parallel to `created`: the custom desktop template each create() was called with, or undefined
-  // when called with NO template arg (the byte-stable default). Mirrors the real @e2b/desktop
-  // overload: create(opts) OR create(template, opts).
+  // when called with no template arg (the byte-stable default). Mirrors the real @e2b/desktop
+  // overload: create(opts) or create(template, opts).
   const templates: (string | undefined)[] = [];
   const killed: string[] = [];
   const module: E2BDesktopModule = {
@@ -301,7 +301,7 @@ const SUCCESS_WITH_NEGATED_BLOCKER_SESSION = [
     ],
   },
 ];
-// The 2026-08-19 drawDB run (#476): three tables created, then "could not connect the two tables
+// The 2026-08-19 drawDB run: three tables created, then "could not connect the two tables
 // because every new table appeared directly on top of the previous one". goal_satisfied, with a
 // final message that is a blocker report.
 const BLOCKED_AFTER_PARTIAL_SESSION = [
@@ -1215,7 +1215,7 @@ describe("runCuaActorLab", () => {
     expect(screenshots).toEqual([]);
   });
 
-  it("live (with fakes): registry actor drives the REAL loop/provider/executor through the lab, fills stream.actor, and tears down", async () => {
+  it("live (with fakes): registry actor drives the real loop/provider/executor through a study run, fills stream.actor, and tears down", async () => {
     const config = cuaConfig();
     const sandbox = makeFakeSandbox();
     const { module, created, killed } = makeFakeModule(sandbox);
@@ -1225,8 +1225,8 @@ describe("runCuaActorLab", () => {
 
     const deps: LabDeps = {
       desktopModule: async () => module,
-      // Wrap the REAL session: real provider (scripted transport), real executor, the lab's
-      // desktop and writeScreenshot — only the network is faked.
+      // Wrap the real session: real provider (scripted transport), real executor, the run's
+      // desktop and writeScreenshot: only the network is faked.
       runSession: async (options) => {
         sessionOptionsSeen.push(options);
         return runCuaActorSession({
@@ -1259,7 +1259,7 @@ describe("runCuaActorLab", () => {
     expect(result.session?.completionReason).toBe("goal_satisfied");
     expect(result.observer?.ok).toBe(true);
 
-    // Provisioning: metadata convention, config resolution, and NO env forwarding into the
+    // Provisioning: metadata convention, config resolution, and no env forwarding into the
     // sandbox (the model drives from outside; no key may enter the sandbox).
     expect(created).toHaveLength(1);
     expect(created[0]?.metadata?.mode).toBe(CUA_ACTOR_LAB_PROVIDER_METADATA.mode);
@@ -1326,7 +1326,7 @@ describe("runCuaActorLab", () => {
     expect(traceOnDisk).toEqual(bundle.streams[0].actor);
 
     // The runtime-only stream URL (carries an auth key) never lands anywhere: not on the
-    // result (the sandbox is dead by then — only presence is reported) nor in any artifact.
+    // result (the sandbox is dead by then: only presence is reported) nor in any artifact.
     expect("streamUrl" in result).toBe(false);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson", "actor.json"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
@@ -1563,7 +1563,7 @@ describe("runCuaActorLab", () => {
     ]);
   });
 
-  // A phone lane whose every observation reads a NEW tab (T2) the participant opened; the tab's own
+  // A phone lane whose every observation reads a new tab (T2) the participant opened; the tab's own
   // fidelity read-back is what the test varies.
   function laterTabSandbox(secondTabInnerWidth: number) {
     return makeFakeSandbox({
@@ -1786,7 +1786,7 @@ describe("runCuaActorLab", () => {
     ]);
   }, 30_000);
 
-  // A lane with a declared synthetic camera (#509): the fake desktop answers the ffmpeg feed
+  // A lane with a declared synthetic camera: the fake desktop answers the ffmpeg feed
   // generation and the Chrome launch, and the test reads what the browser was launched with.
   function cameraSandbox(ffmpegExit: number) {
     const commands: string[] = [];
@@ -2012,7 +2012,7 @@ describe("runCuaActorLab", () => {
     expect(phases).toContain("cua-lab.sandbox.create.retry");
   });
 
-  it("sandbox create is NOT retried on an auth failure: the lane fails closed on the first attempt", async () => {
+  it("sandbox create is not retried on an auth failure: the lane fails closed on the first attempt", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     let attempts = 0;
@@ -2378,7 +2378,7 @@ describe("runCuaActorLab", () => {
       },
     }) as unknown as CuaLoopResult;
 
-  it("flags a goal_satisfied lane whose OWN narrative reports a real blocker", () => {
+  it("flags a goal_satisfied lane whose own narrative reports a real blocker", () => {
     expect(
       resolveSelfReportedBlocker(
         fakeBlockerSession("I could not complete the task; the delete button was disabled"),
@@ -2409,7 +2409,7 @@ describe("runCuaActorLab", () => {
     ).toBe("abandoned");
   });
 
-  it("does NOT flag 'can't' + a perception verb: a display defect reported after the goal", () => {
+  it("does not flag 'can't' + a perception verb: a display defect reported after the goal", () => {
     // Five of five completed live runs on 2026-09-01 were refused on sentences like these. Each
     // participant had reached the goal and was describing what the screen showed.
     for (const message of [
@@ -2490,7 +2490,7 @@ describe("runCuaActorLab", () => {
     ).toBeUndefined();
   });
 
-  it("still flags an inability to ACT, which is what a blocker is", () => {
+  it("still flags an inability to act, which is what a blocker is", () => {
     for (const message of [
       "Blocked after partial completion. Could not connect the two tables because every new table appeared on top of the previous one.",
       "I could not complete the task; the delete button was disabled.",
@@ -2501,7 +2501,7 @@ describe("runCuaActorLab", () => {
     }
   });
 
-  it("does NOT flag a clean pass that says nothing blocked it", () => {
+  it("does not flag a clean pass that says nothing blocked it", () => {
     // Found on 2026-09-01 by a real benchmark run: a passing lane ended "No functional failures
     // blocked me, and cleanup left the app back at an empty list" and was downgraded from a pass
     // to a lab failure. The negation list only knew real/remaining/actual, so the ordinary
@@ -2513,7 +2513,7 @@ describe("runCuaActorLab", () => {
     ).toBeUndefined();
   });
 
-  it("does NOT flag other ordinary ways of saying it went fine", () => {
+  it("does not flag other ordinary ways of saying it went fine", () => {
     for (const message of [
       // A clean benchmark run on 2026-09-01 was refused on this exact sentence.
       "Overall, the main list actions were straightforward and worked on the first try. I encountered no blockers or unclear error output.",
@@ -2580,7 +2580,7 @@ describe("runCuaActorLab", () => {
 
   it("a defect report after demonstrated success keeps the pass and counts as friction", () => {
     // The live run-1 report shape, verbatim in structure: mission done, then a defect-notes
-    // section whose failure narration reports its OWN recovery in the same segment.
+    // section whose failure narration reports its own recovery in the same segment.
     const report = [
       "Done. Created three tables and one relationship. Final state shows Tables (3) and Relationships (1), which matches the requested task.",
       "Notes / defects observed:",
@@ -2601,7 +2601,7 @@ describe("runCuaActorLab", () => {
         ),
       ),
     ).toContain("failed");
-    // And a recovery in a DIFFERENT segment does not launder an unresolved failure.
+    // And a recovery in a different segment does not launder an unresolved failure.
     expect(
       resolveSelfReportedBlocker(
         fakeBlockerSession(
@@ -2783,7 +2783,7 @@ describe("runCuaActorLab", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("DEFAULT persists RAW screenshots (full fidelity, local) and warns the bundle is not publish-safe as-is", async () => {
+  it("default persists raw screenshots (full fidelity, local) and warns the bundle is not publish-safe as-is", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(
@@ -2818,7 +2818,7 @@ describe("runCuaActorLab", () => {
       ),
     ).toBe(true);
 
-    // Honest labels (invariant 6): a raw run must never be labeled "redacted" anywhere.
+    // Claims match mechanism: a raw run must never be labeled "redacted" anywhere.
     expect(bundle.streams[0].embed.title).toBe("CUA desktop (raw)");
     const screenshotLabels = bundle.streams[0].artifacts
       .filter((a: { kind: string }) => a.kind === "screenshot")
@@ -2872,7 +2872,7 @@ describe("runCuaActorLab", () => {
       false,
     );
 
-    // Honest labels (invariant 6): the blurred mode is named as such, not a vague "redacted".
+    // Claims match mechanism: the blurred mode is named as such, not a vague "redacted".
     expect(bundle.streams[0].embed.title).toBe("CUA desktop (blurred)");
     const screenshotLabels = bundle.streams[0].artifacts
       .filter((a: { kind: string }) => a.kind === "screenshot")
@@ -2932,7 +2932,7 @@ describe("runCuaActorLab", () => {
     expect(blocked.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
   });
 
-  it("comms:email:fake — injects the catch env, deploys the catch, and drains captured mail into a digest-only evidence artifact", async () => {
+  it("comms:email:fake: injects the catch env, deploys the catch, and drains captured mail into a digest-only evidence artifact", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
     const config: LabConfig = {
@@ -2946,7 +2946,7 @@ describe("runCuaActorLab", () => {
         },
       },
     };
-    // What the (simulated) subject app POSTed to its Resend-shaped base URL during the run — a
+    // What the (simulated) subject app POSTed to its Resend-shaped base URL during the run: a
     // verification email to the declared recipient, captured by the in-sandbox catch as NDJSON.
     const verificationHtml =
       '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
@@ -2964,7 +2964,7 @@ describe("runCuaActorLab", () => {
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        // the comms catch readiness probe must see OUR service marker (not the subject's plain READY)
+        // the comms catch readiness probe must see our service marker (not the subject's plain `READY`)
         if (command.includes(`${commsPort}/health`))
           return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
         // the teardown drain `cat`s the in-sandbox NDJSON of captured sends
@@ -3007,7 +3007,7 @@ describe("runCuaActorLab", () => {
     ).toBe(true);
 
     // The captured mail was drained + routed + written as a digest-only comms-thread artifact, and
-    // REGISTERED in the lane's stream artifacts (so the bundle's existence-verify + scan cover it).
+    // registered in the lane's stream artifacts (so the bundle's existence-verify + scan cover it).
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     const commsArtifact = bundle.streams[0].artifacts.find(
@@ -3023,15 +3023,15 @@ describe("runCuaActorLab", () => {
     expect(thread.schema).toBe("humanish.comms-thread.v1");
     expect(thread.count).toBe(1);
     expect(thread.thread[0]!.codeCount).toBe(1); // the OTP is a count, never stored
-    // Public-safety: NO raw address / link / OTP / subject text in the persisted evidence.
+    // Public-safety: no raw address / link / OTP / subject text in the persisted evidence.
     expect(threadRaw).not.toContain("user@example.test");
     expect(threadRaw).not.toContain("app.example.test/verify");
     expect(threadRaw).not.toContain("481920");
     expect(threadRaw).not.toContain("Confirm your email");
   });
 
-  it("comms:email:fake — TELLS the persona its address and inbox URL, and stays silent for a lane that has neither", async () => {
-    // The half no test covered. Capture and drain were proven; whether the ACTOR is ever told an
+  it("comms:email:fake: tells the persona its address and inbox URL, and stays silent for a lane that has neither", async () => {
+    // The half no test covered. Capture and drain were proven; whether the actor is ever told an
     // inbox exists was not. That is the gap a live run hit: mail landing in a catch nobody opened,
     // because the persona was never handed the address to sign up with or the URL to read.
     const commsPort = 8025;
@@ -3086,7 +3086,7 @@ describe("runCuaActorLab", () => {
     expect(outcome.result.ok).toBe(true);
 
     const prompt = seenInstructions[0] ?? "";
-    // The address, because the drain matches captured mail against the DECLARED address — an actor
+    // The address, because the drain matches captured mail against the declared address: an actor
     // that invents its own at signup gets an inbox that stays empty forever.
     expect(prompt).toContain("signup-a@example.test");
     // The inbox URL, because otherwise there is nowhere to go when the app says "we emailed you".
@@ -3101,7 +3101,7 @@ describe("runCuaActorLab", () => {
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain(String(commsPort));
   });
 
-  it("comms:email:fake — does NOT tell a lane about an inbox it could never receive into", async () => {
+  it("comms:email:fake: does not tell a lane about an inbox it could never receive into", async () => {
     // A lane with no addressed recipient must not be sent to an inbox that will stay empty: it
     // would refresh forever and burn the session on a promise the harness cannot keep.
     const commsPort = 8025;
@@ -3155,10 +3155,10 @@ describe("runCuaActorLab", () => {
     expect(seenInstructions[0] ?? "").not.toContain("Email inbox:");
   });
 
-  it("comms:email:fake — warns (never silently loses) when captured mail matches no declared recipient", async () => {
+  it("comms:email:fake: warns (never silently loses) when captured mail matches no declared recipient", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    // comms declared but NO recipients → the app's send is captured but matches no provisioned inbox.
+    // comms declared but no recipients → the app's send is captured but matches no provisioned inbox.
     const config: LabConfig = {
       ...base,
       comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } },
@@ -3221,7 +3221,7 @@ describe("runCuaActorLab", () => {
     ).toBeUndefined();
   });
 
-  it("comms:email:fake — tells the persona its inbox URL and renders the LIVE surface mid-run", async () => {
+  it("comms:email:fake: tells the persona its inbox URL and renders the live surface mid-run", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
     // Recipient lane must match the N=1 lane id (lane-01) for the inbox instruction to be injected.
@@ -3266,7 +3266,7 @@ describe("runCuaActorLab", () => {
       config,
       {
         cwd,
-        // #357 lifecycle: ready fires while the sandbox lives and ended after its teardown.
+        // Stream lifecycle: ready fires while the sandbox lives and ended after its teardown.
         // The pair lets the watch overlay stop serving a dead stream URL.
         onStream: (event) => {
           streamLifecycle.push(`${event.type}:${event.streamId}:${event.recordId}`);
@@ -3294,24 +3294,24 @@ describe("runCuaActorLab", () => {
     expect(outcome.result.ok).toBe(true);
     // The persona actually received the inbox URL in its prompt (loopback, same sandbox as its browser).
     expect(seenInstructions).toContain(`http://127.0.0.1:${commsPort}/inbox`);
-    // The full handoff (#351): the persona is told WHICH address to sign up with (the drain matches
+    // The full handoff: the persona is told which address to sign up with (the drain matches
     // the declared address, so an invented one would leave the inbox empty forever) and that
     // delivery can take time while stopping remains the participant's decision.
     expect(seenInstructions).toContain("Your email address is user@example.test");
     expect(seenInstructions).toContain("stop based on your situation and what you observe");
-    // The live inbox surface was rendered into the sandbox DURING the run (the mid-run loop wrote the list).
+    // The live inbox surface was rendered into the sandbox during the run (the mid-run loop wrote the list).
     expect(
       sandbox.calls.some(
         ([name, p]) =>
           name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"),
       ),
     ).toBe(true);
-    // #357 lifecycle: the lane announced its live stream while the sandbox lived, and announced
-    // the END after teardown — ready strictly before ended, one pair, same stream id.
+    // Stream lifecycle: the participant announced its live stream while the sandbox lived, and announced
+    // the end after teardown: ready strictly before ended, one pair, same stream id.
     expect(streamLifecycle).toEqual(["ready:stream-001:sim-001", "ended:stream-001:sim-001"]);
   });
 
-  it("comms:email:fake — writes an EMPTY inbox up front so /inbox never 404s before mail arrives", async () => {
+  it("comms:email:fake: writes an empty inbox up front so /inbox never 404s before mail arrives", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
     const config: LabConfig = {
@@ -3331,7 +3331,7 @@ describe("runCuaActorLab", () => {
         if (command.includes(`${commsPort}/health`))
           return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
         if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
-          return { stdout: "" }; // NO mail captured
+          return { stdout: "" }; // no mail captured
         return undefined;
       }),
     });
@@ -3368,7 +3368,7 @@ describe("runCuaActorLab", () => {
     expect(String(write![2])).toContain("No messages yet");
   });
 
-  it("honors subject.clone.keep on FAILURE: leaves the sandbox up for debugging instead of killing it", async () => {
+  it("honors subject.clone.keep on failure: leaves the sandbox up for debugging instead of killing it", async () => {
     const config = cloneCuaConfig();
     const keepConfig: LabConfig = {
       ...config,
@@ -3391,15 +3391,15 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
-    // Failure + keep → NOT killed, with a debug warning naming the sandbox.
+    // Failure + keep → not killed, with a debug warning naming the sandbox.
     expect(killed).toEqual([]);
     expect(outcome.result.sandbox?.killed).toBe(false);
     expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
   });
 
-  it("does NOT pass a goal_satisfied run with zero actions and zero messages (blank-screen honesty guard)", async () => {
-    // Model immediately returns done with no action and no message — i.e. it saw a blank/loading
-    // screen and stopped. This must NOT be reported as a pass.
+  it("does not pass a goal_satisfied run with zero actions and zero messages (blank-screen honesty guard)", async () => {
+    // Model immediately returns done with no action and no message, i.e. it saw a blank/loading
+    // screen and stopped. This must not be reported as a pass.
     const noEngagementSession = [
       { id: "r1", output: [{ type: "message", content: [] }] }, // no actions, no text
     ];
@@ -3422,13 +3422,13 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
-    // The session itself is goal_satisfied, but the LAB refuses to call zero-engagement a pass.
+    // The session itself is goal_satisfied, but a run with zero engagement is not reported as a pass.
     expect(result.session?.completionReason).toBe("goal_satisfied");
     expect(result.ok).toBe(false);
     expect(result.error?.message.toLowerCase()).toContain("no actions");
     expect(result.warnings.some((w) => w.includes("ZERO actions"))).toBe(true);
 
-    // The independent verifier reaches the same judgment from the persisted bundle alone —
+    // The independent verifier reaches the same judgment from the persisted bundle alone:
     // a hollow bundle must not verify ok even though the producer wrote redaction: passed.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(false);
@@ -3437,8 +3437,8 @@ describe("runCuaActorLab", () => {
 
   it("a participant the harness refused as 'not a credible pass' is not written up as a pass", async () => {
     // Found on a real run: the lane said ok:false / HUMANISH_CUA_LAB_FAILED / "not a credible
-    // pass", and the BUNDLE said verdict pass, 1/1 reached the goal. Every projection of the
-    // bundle — Observer tally, `humanish runs`, the status index, a share — repeated the pass.
+    // pass", and the bundle said verdict pass, 1/1 reached the goal. Every projection of the
+    // bundle (Observer tally, `humanish runs`, the status index, a share) repeated the pass.
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(
@@ -3472,14 +3472,14 @@ describe("runCuaActorLab", () => {
     expect(bundle.review.summary).toContain(
       "Recorded summary: Not counted as a pass: the participant's final message described a blocker.",
     );
-    // Zero recorded completions, 1 blocked, 1 reported friction — the honest reading of that run.
+    // Zero recorded completions, 1 blocked, 1 reported friction: the honest reading of that run.
     expect(bundle.review.participants).toMatchObject({
       total: 1,
       reachedGoal: 0,
       blocked: 1,
       reportedFriction: 1,
     });
-    // The trace keeps the claim: what the actor SAID is evidence, what the harness COUNTED is the review.
+    // The trace keeps the claim: what the actor said is evidence, what the harness counted is the review.
     expect(bundle.streams[0].actor.completionReason).toBe("goal_satisfied");
 
     // The status index copies the review verbatim, so it inherits the fix rather than needing one.
@@ -3489,7 +3489,7 @@ describe("runCuaActorLab", () => {
     expect(status.outcome?.verdict).toBe("blocked");
     expect(status.outcome?.participants).toMatchObject({ total: 1, reachedGoal: 0 });
 
-    // The evidence is sound — the harness did what it said — so verify still passes. A blocked
+    // The evidence is sound (the harness did what it said) so verify still passes. A blocked
     // participant is a finding, not a broken instrument.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
@@ -3523,10 +3523,10 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
-    // The mobile preset (414x896) sizes the E2B desktop — NOT 1280x800 — but its width is FLOORED to
+    // The mobile preset (414x896) sizes the E2B desktop (not 1280x800) but its width is floored to
     // Chrome's ~500px window minimum, so the rendered screen the window fits is 500x896 (no clip).
     expect(created[0]?.resolution).toEqual([500, 896]);
-    // And the model is TOLD it's a 414 mobile device (the device IDENTITY / sim-parity prompt signal is
+    // And the model is told it's a 414 mobile device (the device identity / sim-parity prompt signal is
     // the unfloored preset, even though the screen renders at the 500px floor).
     expect(sessionOptionsSeen[0]?.instructions).toContain("mobile user");
     expect(sessionOptionsSeen[0]?.instructions).toContain("414x896");
@@ -3587,7 +3587,7 @@ describe("runCuaActorLab", () => {
     );
     if (r2.route !== "computer-use") throw new Error("expected cua");
     expect(ovMod.created[0]?.resolution).toEqual([1024, 768]);
-    // Consistency: a raw resolution override must NOT inherit a named preset's mobile/DSF — the
+    // Consistency: a raw resolution override must not inherit a named preset's mobile/DSF; the
     // prompt + requested-screen metadata reflect the custom non-mobile geometry, not "mobile".
     expect(ovSeen[0]?.instructions).not.toContain("mobile user");
     const ovBundle = JSON.parse(
@@ -3894,7 +3894,7 @@ describe("runCuaActorLab", () => {
     await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
   });
 
-  it("redacts harness-level session errors before they reach ANY persisted artifact", async () => {
+  it("redacts harness-level session errors before they reach any persisted artifact", async () => {
     // Built dynamically so no secret-shaped literal ever appears in this source file.
     const secretToken = "Bearer " + "a1b2c3d4e5".repeat(4);
     const hostPath = "/home/" + "someuser/private-checkout/app";
@@ -3918,7 +3918,7 @@ describe("runCuaActorLab", () => {
 
     expect(result.ok).toBe(false);
     expect(killed).toEqual(["fake-sandbox-001"]);
-    // The error is reported — but scrubbed — and the bundle still VERIFIES (the gate must not
+    // The error is reported (but scrubbed) and the bundle still verifies (the gate must not
     // trip on the lab's own error report).
     expect(result.error?.message).toContain("[REDACTED_SECRET]");
     expect(result.error?.message).not.toContain(secretToken);
@@ -4005,7 +4005,7 @@ describe("runCuaActorLab", () => {
       origin: "committed",
     });
 
-    // And the index/liveness record, finalized from that same bundle — never claiming more.
+    // And the index/liveness record, finalized from that same bundle, never claiming more.
     const status = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", runId, "status.json"), "utf8"),
     ) as {
@@ -4213,7 +4213,7 @@ describe("runCuaActorLab", () => {
     expect(outcome.result.warnings.some((warning) => warning.includes("Sandbox.kill"))).toBe(true);
   });
 
-  it("clone route: clones, installs, builds, serves, probes, and drives the subject — with provenance and zero value leaks", async () => {
+  it("clone route: clones, installs, builds, serves, probes, and drives the subject, with provenance and zero value leaks", async () => {
     const config = cloneCuaConfig({ env: ["DATABASE_URL"] });
     const cloneHead = "8758a953415e1f60091d";
     const servedHead = "859043fc8dec448d2ac3";
@@ -4254,7 +4254,7 @@ describe("runCuaActorLab", () => {
     expect(result.session?.status).toBe("passed");
     expect(result.appUrl).toBe("http://127.0.0.1:3000/");
 
-    // Env placement: EXACTLY the declared subject names — never the actor keys.
+    // Env placement: exactly the declared subject names, never the actor keys.
     expect(created[0]?.envs).toEqual({ DATABASE_URL: "postgres-secret-value" });
     // The operator's E2B request timeout reaches the desktop create.
     expect(created[0]?.requestTimeoutMs).toBe(45_000);
@@ -4288,7 +4288,7 @@ describe("runCuaActorLab", () => {
     expect(sandbox.calls).toContainEqual(["leftClick", 11, 22]);
     expect(killed).toEqual(["fake-sandbox-001"]);
 
-    // Provenance (invariant 5): repo + commit + env NAMES — on the result and in evidence.
+    // Provenance: repo + commit + env names, on the result and in evidence.
     // No subject.state declared → the state story is explicitly "undeclared", never silent.
     expect(result.subject).toEqual({
       source: "clone",
@@ -4356,7 +4356,7 @@ describe("runCuaActorLab", () => {
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
-    // One event PER BOUNDARY, never per poll tick: exactly clone/install/build (started+completed),
+    // One event per boundary, never per poll tick: exactly clone/install/build (started+completed),
     // the lone fire-and-forget serve.started, then ready (started+completed). No subject.state
     // events: cloneCuaConfig() declares no seed steps.
     expect(phaseEvents.map((event) => event.type)).toEqual([
@@ -4438,7 +4438,7 @@ describe("runCuaActorLab", () => {
     ).filter(
       (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed"),
     );
-    // Only COMPLETED phases persist (started events carry no durationMs, so nothing to fold);
+    // Only completed phases persist (started events carry no durationMs, so nothing to fold);
     // subject.serve.started never persists here either (no completed pair, no durationMs).
     expect(phaseRunEvents.map((event) => event.type)).toEqual([
       "cua-lab.subject.clone.completed",
@@ -4456,7 +4456,7 @@ describe("runCuaActorLab", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("clone route with GITHUB_TOKEN: the clone authenticates via in-sandbox env — the token value never appears in any script or artifact", async () => {
+  it("clone route with GITHUB_TOKEN: the clone authenticates via in-sandbox env; the token value never appears in any script or artifact", async () => {
     const config = cloneCuaConfig({ env: ["GITHUB_TOKEN"] });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created } = makeFakeModule(sandbox);
@@ -4481,7 +4481,7 @@ describe("runCuaActorLab", () => {
 
     // The token is provisioned as sandbox env…
     expect(created[0]?.envs).toEqual({ GITHUB_TOKEN: "ghp-token-value" });
-    // …and the clone script references the VARIABLE, never the value, never a token-in-URL.
+    // …and the clone script references the variable, never the value, never a token-in-URL.
     const cloneScript = sandbox.calls.find(
       (call): call is [string, string, string] =>
         call[0] === "files.write" && String(call[1]).endsWith("subject-clone/run.sh"),
@@ -4498,7 +4498,7 @@ describe("runCuaActorLab", () => {
     }
   });
 
-  it("fails closed BEFORE any sandbox exists when a declared subject env name is missing", async () => {
+  it("fails closed before any sandbox exists when a declared subject env name is missing", async () => {
     const config = cloneCuaConfig({ env: ["DATABASE_URL"] });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created } = makeFakeModule(sandbox);
@@ -4620,14 +4620,14 @@ describe("runCuaActorLab", () => {
     );
   });
 
-  it("scrubs PROVISIONED VALUES (no secret shape) from every artifact and the result when a serve step echoes them", async () => {
-    // The P0 class: an app dumps its config on boot failure. The value is arbitrary — no
+  it("scrubs provisioned values (no secret shape) from every artifact and the result when a serve step echoes them", async () => {
+    // The P0 class: an app dumps its config on boot failure. The value is arbitrary; no
     // pattern can catch it; only literal scrubbing of known provisioned values can.
     const plainValue = "plain-text-pw-" + "12345678";
     const config = cloneCuaConfig({ env: ["DATABASE_PASSWORD"] });
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        // Both attempts fail (#602 retries an exit-code failure once under `subject-install-retry`).
+        // Both attempts fail (an exit-code failure is retried once under `subject-install-retry`).
         if (command.includes("subject-install") && command.includes("/status"))
           return { stdout: "1" };
         if (command.includes("subject-install") && command.includes("tail -c")) {
@@ -4652,8 +4652,8 @@ describe("runCuaActorLab", () => {
 
     expect(result.ok).toBe(false);
     expect(killed).toEqual(["fake-sandbox-001"]);
-    // The error is still diagnosable — the log tail rides along — but the VALUE is gone,
-    // replaced by the scrub marker, on the result AND in every persisted artifact.
+    // The error is still diagnosable (the log tail rides along) but the value is gone,
+    // replaced by the scrub marker, on the result and in every persisted artifact.
     expect(result.error?.message).toContain("subject install failed");
     expect(result.error?.message).toContain("[REDACTED_SECRET]");
     expect(result.error?.message).not.toContain(plainValue);
@@ -4662,17 +4662,17 @@ describe("runCuaActorLab", () => {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain(plainValue);
     }
-    // And the bundle still VERIFIES: the gate must not trip on the scrubbed error report.
+    // And the bundle still verifies: the gate must not trip on the scrubbed error report.
     expect(result.observer?.ok).toBe(true);
   });
 
-  it("pattern-redacts a secret-shaped token in a log tail BEFORE truncation can slice through it", async () => {
-    // A distinct, properly-bounded token (NOT a known provisioned value — only pattern
-    // redaction can catch it). It sits at the FRONT of the log with ~2000 chars after it, so
-    // the last-2000 truncation cuts THROUGH the token. Truncate-then-redact would leave a
+  it("pattern-redacts a secret-shaped token in a log tail before truncation can slice through it", async () => {
+    // A distinct, properly-bounded token (not a known provisioned value: only pattern
+    // redaction can catch it). It sits at the front of the log with ~2000 chars after it, so
+    // the last-2000 truncation cuts through the token. Truncate-then-redact would leave a
     // prefix-less fragment that no longer matches `\bghp_…`; redact-then-truncate erases it.
     const token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0"; // 44 chars, matches whole
-    const midChunk = token.slice(26, 44); // 18 distinct chars, all AFTER the cut at 22 — truncate-first would expose this
+    const midChunk = token.slice(26, 44); // 18 distinct chars, all after the cut at 22: truncate-first would expose this
     const log = token + " " + "z".repeat(1977); // total 2022; cut lands inside the token
     let t = 0;
     const sandbox = makeFakeSandbox({
@@ -4714,7 +4714,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("provenance wording is honest per phase: dry-run declares, failed provisioning never claims 'served'", async () => {
-    // Dry-run: nothing cloned — the event must say so.
+    // Dry-run: nothing cloned; the event must say so.
     const dry = await runLab(cloneCuaConfig(), { cwd, dryRun: true });
     if (dry.route !== "computer-use") throw new Error("expected cua backend");
     const dryBundle = JSON.parse(
@@ -4726,7 +4726,7 @@ describe("runCuaActorLab", () => {
     expect(dryProvenance?.message).toContain("dry-run contract; nothing cloned");
     expect(dryProvenance?.message).not.toContain("Subject cloned from");
 
-    // Probe failure: cloned at a real commit, but serving never completed — say exactly that.
+    // Probe failure: cloned at a real commit, but serving never completed; say exactly that.
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) =>
         command.includes("curl") ? { stdout: "WAIT" } : undefined,
@@ -4915,14 +4915,14 @@ describe("execution.desktop.template (custom E2B desktop image, single-lane cua 
     expect(created).toHaveLength(1);
     // The desktop create received the configured template as its first (template) argument.
     expect(templates).toEqual(["acme-desktop-with-runtimes"]);
-    // The options object is otherwise unchanged — the template is an ADDED selector, not a rewrite.
+    // The options object is otherwise unchanged: the template is an added selector, not a rewrite.
     expect(created[0]?.resolution).toEqual([1280, 800]);
     expect(created[0]?.lifecycle).toEqual({ onTimeout: "kill" });
-    // Evidence shows WHICH image ran (public-safe: a template name is not a secret).
+    // Evidence shows which image ran (public-safe: a template name is not a secret).
     expect(bundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
   });
 
-  it("byte-stable default: NO template → Sandbox.create called with NO template arg, bundle omits desktopTemplate", async () => {
+  it("byte-stable default: no template → Sandbox.create called with no template arg, bundle omits desktopTemplate", async () => {
     const { created, templates, bundle } = await runWith(templatedConfig());
     expect(created).toHaveLength(1);
     // undefined == create(opts): the historical single-argument call shape, unchanged.
@@ -5124,7 +5124,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     // Each step runs through the detached primitive under the reserved prefix, with the
-    // EXACT declared command and cwd inside the subject checkout.
+    // exact declared command and cwd inside the subject checkout.
     const writeIndexFor = (name: string): number =>
       sandbox.calls.findIndex(
         (call) => call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`),
@@ -5165,8 +5165,8 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
         10 * 60_000, // SANDBOX_TIMEOUT_BUFFER_MS
     );
 
-    // Provenance: marker seeded, per-step records with sha256-16 digests of the EXACT
-    // commands — and never the command text itself.
+    // Provenance: marker seeded, per-step records with sha256-16 digests of the exact
+    // commands, and never the command text itself.
     const expectedSeed = [
       {
         name: "prebuild",
@@ -5212,7 +5212,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(reviewMd).toContain("state: seeded");
     for (const file of ["run.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
-      expect(text, file).not.toContain("pg_isready"); // digests only — never command text
+      expect(text, file).not.toContain("pg_isready"); // digests only, never command text
       expect(text, file).not.toContain("prebuild-fixtures.js");
     }
 
@@ -5222,7 +5222,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
       true,
     );
-    // No undeclared-state nudge: the state story IS declared.
+    // No undeclared-state nudge: the state story is declared.
     expect(verified.warnings.some((w) => w.includes("no state story"))).toBe(false);
   });
 
@@ -5275,7 +5275,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(result.error?.message).not.toContain(plainValue);
 
     // Partial state provenance: the succeeded step ok:true, the failing step ok:false with
-    // its exit code, the unreached step ABSENT — and the marker stays honest.
+    // its exit code, the unreached step absent, and the marker stays honest.
     expect(result.subject?.state.provenance).toBe("declared-not-run");
     expect(result.subject?.state.seed).toEqual([
       {
@@ -5309,7 +5309,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       expect(text, file).not.toContain(plainValue);
     }
 
-    // A FAILED bundle with honest partial provenance still verifies its state claim
+    // A failed bundle with honest partial provenance still verifies its state claim
     // (verdict is fail, so the passed-live-with-failed-step rule does not trip).
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
@@ -5362,7 +5362,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
   });
 
-  it("dry-run records the DECLARED recipe as declared-not-run: digests and phases only, no execution fields, honest event wording", async () => {
+  it("dry-run records the declared recipe as declared-not-run: digests and phases only, no execution fields, honest event wording", async () => {
     const outcome = await runLab(cloneCuaConfig({ state: THREE_PHASE_STATE }), {
       cwd,
       dryRun: true,
@@ -5404,7 +5404,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     );
     expect(provenance?.message).toContain("state: declared, not run (dry-run contract)");
 
-    // The contract bundle verifies — declared-not-run is the honest dry-run marker.
+    // The contract bundle verifies: declared-not-run is the honest dry-run marker.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
     expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
@@ -5412,7 +5412,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     );
   });
 
-  it("declared external state records UNPINNED provenance (seed digests still attached when both are declared)", async () => {
+  it("declared external state records unpinned provenance (seed digests still attached when both are declared)", async () => {
     const config = cloneCuaConfig({
       env: ["DATABASE_URL"],
       state: {
@@ -5479,7 +5479,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const tamper = (state: unknown): LabConfig =>
       ({ ...base, subject: { ...base.subject, state } }) as LabConfig;
 
-    // Bad step name (interpolates into in-sandbox paths — must fail closed).
+    // Bad step name (interpolates into in-sandbox paths: must fail closed).
     const badName = await runCuaActorLab({
       cwd,
       config: tamper({ seed: [{ name: "Bad Name!", command: "true" }] }),
@@ -5510,7 +5510,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     });
     expect(unbacked.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
 
-    // state on an app-url subject is rejected, never silently inert (invariant 6).
+    // state on an app-url subject is rejected, never silently inert.
     const appUrlBase = cuaConfig();
     const appUrlTampered = {
       ...appUrlBase,
@@ -5585,7 +5585,7 @@ describe("buildSingleParticipantBundle", () => {
     };
     const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
 
-    it("dry-run yields the contract bundle with subject.source local-tree and NO archiveSha256", async () => {
+    it("dry-run yields the contract bundle with subject.source local-tree and no archiveSha256", async () => {
       const config = localTreeCuaConfig();
       const outcome = await runLab(config, { cwd, dryRun: true });
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
@@ -5663,7 +5663,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(types.some((type) => type.includes(".clone."))).toBe(false);
     });
 
-    it("live fan-out (2 lanes): packs the working tree ONCE, uploads it per lane, extracts via tar, and carries archive provenance on every lane + the aggregate", async () => {
+    it("live fan-out (2 lanes): packs the working tree once, uploads it per lane, extracts via tar, and carries archive provenance on every lane + the aggregate", async () => {
       const config = localTreeCuaConfig({ count: 2 });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, created, killed } = makeFakeModule(sandbox);
@@ -5694,11 +5694,11 @@ describe("buildSingleParticipantBundle", () => {
       expect(result.ok).toBe(true);
       expect(created.length).toBe(2);
 
-      // Packed exactly ONCE for the whole 2-lane fan-out, rooted at the lab resolution cwd.
+      // Packed exactly once for the whole 2-lane fan-out, rooted at the study's resolution cwd.
       expect(packCalls).toHaveLength(1);
       expect(packCalls[0]?.root).toBe(await realpath(cwd));
 
-      // Every lane uploaded the SAME archive bytes to the SAME remote path, octet-stream.
+      // Every lane uploaded the same archive bytes to the same remote path, octet-stream.
       const uploads = sandbox.calls.filter(
         (call): call is [string, string, ArrayBuffer, { useOctetStream?: boolean } | undefined] =>
           call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz",
@@ -5745,7 +5745,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(killed.length).toBeGreaterThan(0);
     });
 
-    it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a PER-PARTICIPANT cap and cites the ~N × cap ceiling", async () => {
+    it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a per-participant cap and cites the ~N × cap ceiling", async () => {
       const config = localTreeCuaConfig({ count: 2, caps: { maxUsd: 3 } });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
@@ -5771,8 +5771,8 @@ describe("buildSingleParticipantBundle", () => {
 
       const capWarning = result.warnings.find((w) => w.includes("PER-PARTICIPANT cap"));
       expect(capWarning).toBeDefined();
-      // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3 — and the warning
-      // points at the shared study budget (#299) as the fix, since it exists now.
+      // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3, and the warning
+      // points at the shared study budget as the fix, since it exists now.
       expect(capWarning).toContain("2 × $3");
       expect(capWarning).toContain("~$6");
       expect(capWarning).toContain("maxTotalUsd");
@@ -5816,7 +5816,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(phaseCalls.length).toBeGreaterThan(0);
       expect(phaseCalls.every(({ ctx }) => ctx.count === 2)).toBe(true);
 
-      // (a) BOTH lanes reported phase events under their OWN distinct lane id, and each lane's own
+      // (a) both lanes reported phase events under their own distinct lane id, and each lane's own
       // boundary sequence is the full upload/extract/install/build/ready chain (no lane silently
       // skipped, no cross-lane mixing within a single lane's sequence).
       const participantIds = [...new Set(phaseCalls.map(({ ctx }) => ctx.id))].sort();
@@ -5843,8 +5843,8 @@ describe("buildSingleParticipantBundle", () => {
         expect(types).toEqual(expectedTypes);
       }
 
-      // (b) the persisted fan-out bundle attributes each lane's COMPLETED phase events to that
-      // lane's OWN simId/streamId (lane-01 -> sim-001/stream-001, lane-02 -> sim-002/stream-002):
+      // (b) the persisted fan-out bundle attributes each lane's completed phase events to that
+      // lane's own simId/streamId (lane-01 -> sim-001/stream-001, lane-02 -> sim-002/stream-002):
       // no cross-lane leakage into the wrong lane's stream.
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
@@ -5901,7 +5901,7 @@ describe("buildSingleParticipantBundle", () => {
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
 
       expect(outcome.result.ok).toBe(false);
-      // The sandbox WAS created (provisioning is in-sandbox); only packing skips sandbox creation.
+      // The sandbox was created (provisioning is in-sandbox); only packing skips sandbox creation.
       expect(created.length).toBe(1);
       const message =
         outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
@@ -5978,7 +5978,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(outcome.result.ok).toBe(false);
 
       // Upload succeeded (started+completed ok:true); the failing extract still gets its
-      // completed event, with ok false and a real durationMs, BEFORE the thrown error unwinds.
+      // completed event, with ok false and a real durationMs, before the thrown error unwinds.
       // install/build/ready never ran.
       expect(phaseEvents.map((event) => event.type)).toEqual([
         "cua-lab.subject.upload.started",
@@ -5992,7 +5992,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(extractCompleted?.durationMs).toBeGreaterThanOrEqual(0);
     });
 
-    it("packing failure (hook throws) fails the run closed BEFORE any sandbox is created", async () => {
+    it("packing failure (hook throws) fails the run closed before any sandbox is created", async () => {
       const config = localTreeCuaConfig();
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, created } = makeFakeModule(sandbox);
@@ -6056,7 +6056,7 @@ describe("buildSingleParticipantBundle", () => {
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
 
       expect(outcome.result.ok).toBe(false);
-      // Failure + keep -> NOT killed, with a debug warning naming the flag that caused it.
+      // Failure + keep -> not killed, with a debug warning naming the flag that caused it.
       expect(killed).toEqual([]);
       expect(outcome.result.sandbox?.killed).toBe(false);
       expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
@@ -6096,7 +6096,7 @@ describe("buildSingleParticipantBundle", () => {
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simCount).toBe(1);
     expect(bundle.simulations[0]?.progress).toBe(100);
-    // Honest no-session notes: zero frames exist, so no redaction (blur OR raw) is claimed.
+    // Honest no-session notes: zero frames exist, so no redaction (blur or raw) is claimed.
     expect(bundle.redaction.notes).toContain("No screenshots captured");
     expect(bundle.redaction.notes).not.toContain("blurred fail-closed");
     // Stream artifact references are unique and relative (verifyRun's evidence rules).
@@ -6204,7 +6204,7 @@ describe("buildSingleParticipantBundle", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Issue #148: the in-process (state-driven, no-E2B) lab route. RUNG 4 (load-bearing) and RUNG 5.
+// The in-process (state-driven, no-E2B) route: a live run with no sandbox, then the boot guards.
 // ---------------------------------------------------------------------------
 
 const STATE_CAPS: ActorCapabilities = {
@@ -6218,8 +6218,8 @@ const STATE_CAPS: ActorCapabilities = {
   license: "open",
 };
 
-// A fake state executor: drives an in-memory app (route advances each action), returns NO
-// screenshot and a distinct appState per turn so the REAL loop's friction keys off app state.
+// A fake state executor: drives an in-memory app (route advances each action), returns no
+// screenshot and a distinct appState per turn so the real loop's friction keys off app state.
 function makeStateExecutor(): CuaExecutor & { actuated: CuaAction[] } {
   const actuated: CuaAction[] = [];
   let turn = 0;
@@ -6236,7 +6236,7 @@ function makeStateExecutor(): CuaExecutor & { actuated: CuaAction[] } {
 }
 
 // A fake state "brain": reasons over appState, takes one real action, then stops (so the run
-// bumps counts.actions and passes the noEngagement honesty guard), with NO requiresFrame.
+// bumps counts.actions and passes the noEngagement honesty guard), with no requiresFrame.
 function makeStateProvider(): CuaProvider {
   let i = 0;
   return {
@@ -6291,10 +6291,10 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  // RUNG 4 (load-bearing): live mode, custom executor + provider drive the REAL loop, a
+  // Live mode: a custom executor + provider drive the real loop, a
   // loadDesktopModule whose Sandbox.create pushes to created[]. Assert created.length === 0,
-  // result.sandbox === undefined, AND the produced bundle PASSES verifyRun (the hollow-pass net).
-  it("drives the REAL loop with NO E2B sandbox created, omits result.sandbox, and the bundle passes verifyRun", async () => {
+  // result.sandbox === undefined, and the produced bundle passes verifyRun (the hollow-pass net).
+  it("drives the real loop with no E2B sandbox created, omits result.sandbox, and the bundle passes verifyRun", async () => {
     const sandbox = makeFakeSandbox();
     const { module, created, killed } = makeFakeModule(sandbox);
     const stateExecutor = makeStateExecutor();
@@ -6307,7 +6307,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
         createProvider: async () => makeStateProvider(),
       },
       {
-        // If anything on this route touched E2B, created[] would grow — this is the proof probe.
+        // If anything on this route touched E2B, created[] would grow: this is the proof probe.
         desktopModule: async () => module,
       },
     );
@@ -6322,7 +6322,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(result.sandbox).toBeUndefined();
     expect("streamUrl" in result).toBe(false);
 
-    // The REAL loop ran: the state executor was actuated by the brain's action.
+    // The real loop ran: the state executor was actuated by the brain's action.
     expect(stateExecutor.actuated).toContainEqual({ kind: "type", text: "hello" });
 
     // The lab reached a terminal verdict and the bundle verified.
@@ -6331,7 +6331,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(result.ok).toBe(true);
     expect(result.observer?.ok).toBe(true);
 
-    // The trace's provider id is the INJECTED brain's id (no new lane needed); zero screenshots.
+    // The trace's provider id is the injected brain's id (no new lane needed); zero screenshots.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.provider).toBe("fake-state-brain");
@@ -6343,7 +6343,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     const shotFiles = await readdir(path.join(runDir, "screenshots")).catch(() => [] as string[]);
     expect(shotFiles).toHaveLength(0);
 
-    // Honest UNPINNED provenance (invariant 5): the bundle DECLARES the un-pinnable local app.
+    // Unpinned provenance: the bundle declares the un-pinnable local app.
     const subjectEvent = bundle.events.find(
       (e: { type: string }) => e.type === "cua-lab.subject.declared",
     );
@@ -6356,7 +6356,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(bundleText).not.toContain("/step-1");
     expect(bundleText).not.toContain('"appState"');
 
-    // The hollow-pass net: the independent verifier passes the REAL (action-bearing) bundle.
+    // The hollow-pass net: the independent verifier passes the real (action-bearing) bundle.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
     expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
@@ -6504,7 +6504,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(blocker).not.toContain(canary);
   });
 
-  it("a hollow in-process run (zero actions/messages) still FAILS the honesty guard + verifyRun", async () => {
+  it("a hollow in-process run (zero actions/messages) still fails the honesty guard + verifyRun", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runLab(
       localAppConfig(),
@@ -6534,7 +6534,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(verified.ok).toBe(false);
   });
 
-  it("a gave_up in-process run is an ABANDONED lane — a participant outcome, still not an engaged pass", async () => {
+  it("a gave_up in-process run is an abandoned lane: a participant outcome, still not an engaged pass", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runLab(
       localAppConfig(),
@@ -6562,7 +6562,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
     // The participant stopped trying. That is a finding about the product, not the harness
-    // malfunctioning — but it is still not a pass, and the lane must not be counted as one.
+    // malfunctioning, but it is still not a pass, and the lane must not be counted as one.
     expect(result.session?.status).toBe("abandoned");
     expect(result.session?.completionReason).toBe("gave_up");
     expect(result.ok).toBe(false);
@@ -6582,8 +6582,8 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(bundle.review.summary).toContain("gave up");
   });
 
-  // RUNG 5: the two boot-time fail-closed guards, both BEFORE any key check / any E2B touch.
-  it("inProcess WITHOUT createProvider → EXECUTOR_NO_PROVIDER (before any key check)", async () => {
+  // The two boot-time fail-closed guards, both before any key check / any E2B touch.
+  it("inProcess without createProvider → EXECUTOR_NO_PROVIDER (before any key check)", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runCuaActorLab({
       cwd,
@@ -6591,7 +6591,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
       dryRun: false,
       env: {},
       deps: {
-        // NO keys — proves the guard precedes key-gating
+        // No keys: proves the guard precedes key-gating
         desktopModule: async () => module,
       },
       // createProvider deliberately omitted
@@ -6603,7 +6603,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(outcome.sandbox).toBeUndefined();
   });
 
-  it("local-app subject with NO hooks → LOCAL_APP_NO_EXECUTOR (a structured error, never a desktop attempt, before key-gating)", async () => {
+  it("local-app subject with no hooks → LOCAL_APP_NO_EXECUTOR (a structured error, never a desktop attempt, before key-gating)", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runCuaActorLab({
       cwd,
@@ -6611,7 +6611,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
       dryRun: false,
       env: {},
       deps: {
-        // NO keys — the local-app guard must win over KEYS_MISSING
+        // No keys: the local-app guard must win over KEYS_MISSING
         desktopModule: async () => module,
       },
     });
@@ -6623,9 +6623,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(outcome.sandbox).toBeUndefined();
   });
 
-  it("createProvider ALONE (a model swap) does NOT take the in-process route — it still provisions E2B", async () => {
+  it("createProvider alone (a model swap) does not take the in-process route: it still provisions E2B", async () => {
     // createProvider without inProcess is allowed and stays on the normal E2B route; with no
-    // keys/dry-run we just confirm it does NOT trip EXECUTOR_NO_PROVIDER and is NOT treated as
+    // keys/dry-run we just confirm it does not trip EXECUTOR_NO_PROVIDER and is not treated as
     // in-process (a dry-run produces a contract bundle with no sandbox, the normal route).
     const outcome = await runLab(cuaConfig(), {
       cwd,
@@ -6665,7 +6665,7 @@ describe("chromium browser-state observer command (observe-time CDP port re-reso
 });
 
 // Budget vs. timed_out semantics through the lab, and live-serve-during-run wiring. Every session
-// is driven by the REAL loop against an injected clock + state executor/provider (no vision, no
+// is driven by the real loop against an injected clock + state executor/provider (no vision, no
 // screenshots, $0). The fake sandbox provisions a stream URL before the session runs, so the live
 // Observer picks it up even when the session ends timed_out/failed.
 describe("runCuaActorLab budget/timeout semantics + live serve", () => {
@@ -6692,7 +6692,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     };
   }
 
-  // Reaches budget: takes one MATERIAL action, then the clock jumps past the deadline.
+  // Reaches budget: takes one material action, then the clock jumps past the deadline.
   function budgetProvider(clock: { t: number }): CuaProvider {
     return {
       id: "budget-brain",
@@ -6720,7 +6720,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     };
   }
 
-  it("classifies a productive budget stop as INCOMPLETE — no pass claimed, and the evidence still verifies", async () => {
+  it("classifies a productive budget stop as incomplete: no pass claimed, and the evidence still verifies", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(
@@ -6747,8 +6747,8 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(outcome.route).toBe("computer-use");
     if (outcome.route !== "computer-use") return;
     const result = outcome.result;
-    // The session ran out before reaching its goal. It did real work on the way — that is what
-    // separates it from a zero-progress timeout — but "productive" is not "finished", and calling it
+    // The session ran out before reaching its goal. It did real work on the way: that is what
+    // separates it from a zero-progress timeout, but "productive" is not "finished", and calling it
     // a pass is how a truncated study came to be reported green.
     expect(result.session?.completionReason).toBe("budget_reached");
     expect(result.session?.status).toBe("incomplete");
@@ -6760,7 +6760,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(bundle.review.verdict).not.toBe("pass");
     expect(bundle.streams[0].actor.completionReason).toBe("budget_reached");
     // The verdict collapses the run to one word; the participant tally does not. A reader can see
-    // that nobody reached the goal AND that the denominator was one (three-roles.md).
+    // that nobody reached the goal and that the denominator was one (three-roles.md).
     expect(bundle.review.participants).toMatchObject({
       total: 1,
       reachedGoal: 0,
@@ -6768,14 +6768,14 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       harnessFailed: 0,
     });
 
-    // The distinction that matters: the STUDY is incomplete, but the EVIDENCE is sound. The harness
-    // did exactly what it said it did, so verify still passes — an unfinished study is a finding
+    // The distinction that matters: the study is incomplete, but the evidence is sound. The harness
+    // did exactly what it said it did, so verify still passes: an unfinished study is a finding
     // about the session, not a reason to distrust the bundle.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
   });
 
-  it("keeps a zero-progress timeout an honest FAILURE (timed_out → result.ok false)", async () => {
+  it("keeps a zero-progress timeout an honest failure (timed_out → result.ok false)", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(
@@ -6830,7 +6830,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     let midRunBundle: MidRunBundle | undefined;
 
     // Two material turns then done. Turn 2's nextTurn polls the persisted run.json for the
-    // flush of turn 1's items — the flush is fire-and-forget, so a bounded poll (real fs,
+    // flush of turn 1's items: the flush is fire-and-forget, so a bounded poll (real fs,
     // fake substrate, $0) is the honest way to observe it without a test-only seam.
     const runJsonPath = (): string => path.join(cwd, ".humanish", "runs", "run-flush", "run.json");
     function flushProvider(clock: { t: number }): CuaProvider {
@@ -6910,7 +6910,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(outcome.route).toBe("computer-use");
     if (outcome.route !== "computer-use") return;
 
-    // Mid-run: the persisted in-progress bundle carried the partial — schema'd, stamped items,
+    // Mid-run: the persisted in-progress bundle carried the partial; schema'd, stamped items,
     // on a stream still honestly marked running (no completion claims anywhere).
     expect(midRunBundle).toBeTruthy();
     expect(JSON.stringify(midRunBundle)).not.toContain(secret);
@@ -7017,7 +7017,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(status).not.toHaveProperty("outcome");
   });
 
-  it("fires onObserverReady for a single lane and serves the LIVE in-progress bundle (incl. the stream URL) even after a timed_out run", async () => {
+  it("fires onObserverReady for a single lane and serves the live in-progress bundle (incl. the stream URL) even after a timed_out run", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     let readyObserver: (ObserverResult & { ok: true }) | undefined;
@@ -7028,7 +7028,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       {
         cwd,
         onObserverReady: async (observer) => {
-          // Invoked BEFORE the actor loop, for laneCount === 1, with an ok in-progress bundle.
+          // Invoked before the actor loop, for laneCount === 1, with an ok in-progress bundle.
           readyObserver = observer;
           expect(observer.ok).toBe(true);
           server = await serveObserver(observer, { port: 0 });
@@ -7065,14 +7065,14 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const observerData = (await served.json()) as {
       streams: Array<{ transport?: string; url?: string; embed?: { kind: string } }>;
     };
-    // #357: the run is OVER (the lane tore down and reported its stream ended), so the server no
-    // longer injects the now-dead stream URL — the tile falls back to recorded evidence and the
+    // The run is over (the participant tore down and reported its stream ended), so the server no
+    // longer injects the now-dead stream URL: the tile falls back to recorded evidence and the
     // stream says why (liveEnded). Serving the URL here was exactly the "board full of 'sandbox
     // not found'" failure the field run hit.
     expect(observerData.streams[0]?.transport).not.toBe("sse");
     expect(observerData.streams[0]?.url).toBeUndefined();
     expect((observerData.streams[0] as { liveEnded?: boolean } | undefined)?.liveEnded).toBe(true);
-    // The runtime URL is NEVER persisted to disk in any state.
+    // The runtime URL is never persisted to disk in any state.
     const persisted = await readFile(
       path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"),
       "utf8",
@@ -7091,8 +7091,8 @@ describe("runCuaActorLab cost estimates", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  // A stepped clock: runCuaParticipant reads it exactly twice — right after create() and right after
-  // teardown — so delta == one step == the deterministic billed span.
+  // A stepped clock: runCuaParticipant reads it exactly twice (right after create() and right after
+  // teardown), so delta == one step == the deterministic billed span.
   function steppedClock(stepMs: number): () => number {
     let t = 0;
     return () => (t += stepMs);
@@ -7144,7 +7144,7 @@ describe("runCuaActorLab cost estimates", () => {
     const { module, killed } = makeFakeModule(makeFakeSandbox());
     const result = await runCuaActorLab({
       cwd,
-      config: configWithModel(), // default resolves to gpt-5.6-sol (#334: the 5.6-generation flagship)
+      config: configWithModel(), // default resolves to gpt-5.6-sol, the 5.6-generation flagship
       dryRun: false,
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
       deps: {
@@ -7168,8 +7168,8 @@ describe("runCuaActorLab cost estimates", () => {
     const bundle = await readBundle(result.runId);
     // Per-actor estimate on the persisted trace: labeled with provenance; gpt-5.6-sol is a
     // confirmed (non-placeholder) rate. The single 2M-input request crosses the 272K
-    // long-context threshold, so the WHOLE request re-tiers (2x input-side, 1.5x output) —
-    // exact because the trace now records per-request turns (#334).
+    // long-context threshold, so the whole request re-tiers (2x input-side, 1.5x output):
+    // exact because the trace now records per-request turns.
     const est = bundle.streams[0].actor.estimatedCost;
     expect(est.schema).toBe("humanish.actor-estimated-cost.v1");
     // gpt-5.6-sol long tier (promo sheet 2026-09-03): 2_000_000*4e-6*2 + 4_000*20e-6*1.5
@@ -7243,7 +7243,7 @@ describe("runCuaActorLab cost estimates", () => {
     },
   );
 
-  it("aggregate ratesAsOf is the OLDEST contributing asOf, never the newest — an aggregate is only as fresh as its stalest input", () => {
+  it("aggregate ratesAsOf is the oldest contributing asOf, never the newest: an aggregate is only as fresh as its stalest input", () => {
     const costTrace = (
       estimatedCostUsd: number,
       ratesAsOf: string,
@@ -7276,7 +7276,7 @@ describe("runCuaActorLab cost estimates", () => {
       capabilities: STATE_CAPS,
     });
 
-    // Two priced model-token lines with DIVERGENT asOf dates (an operator edited one rate later).
+    // Two priced model-token lines with divergent asOf dates (an operator edited one rate later).
     const cost = buildRunCostSummary({
       participants: [
         { participantId: "lane-01", trace: costTrace(1, "2026-08-01", 1000, 100) },
@@ -7286,18 +7286,18 @@ describe("runCuaActorLab cost estimates", () => {
     });
 
     expect(cost).toBeDefined();
-    // The aggregate reports the OLDER date (MIN), never the newer one (MAX would overclaim freshness).
+    // The aggregate reports the older date (min), never the newer one (max would overclaim freshness).
     expect(cost!.ratesAsOf).toBe("2026-01-15");
     expect(cost!.note).toContain("2026-01-15");
     expect(cost!.note).toContain("OLDEST");
-    // Per-line breakdown keeps each line's OWN true asOf — only the aggregate is conservative.
+    // Per-line breakdown keeps each line's own true asOf: only the aggregate is conservative.
     const asOfById = new Map(cost!.breakdown.map((l) => [l.laneId, l.ratesAsOf]));
     expect(asOfById.get("lane-01")).toBe("2026-08-01");
     expect(asOfById.get("lane-02")).toBe("2026-01-15");
     expect(cost!.estimatedTotalUsd).toBeCloseTo(3, 6);
   });
 
-  it("DECLARES ABSENT (null + reason) for an unpriced model and sums ONLY the known lines into the total", async () => {
+  it("declares absent (null + reason) for an unpriced model and sums only the known lines into the total", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     const result = await runCuaActorLab({
       cwd,
@@ -7326,7 +7326,7 @@ describe("runCuaActorLab cost estimates", () => {
     const desktopLine = cost.breakdown.find((l: any) => l.kind === "desktop-minutes");
     expect(modelLine.estimatedCostUsd).toBeNull();
     expect(modelLine.reason).toBe("no_rate_for_model");
-    // The total is the desktop line ALONE — the null model line is never coerced to 0.
+    // The total is the desktop line alone: the null model line is never coerced to 0.
     expect(cost.estimatedTotalUsd).toBeCloseTo(desktopLine.estimatedCostUsd, 6);
     expect(cost.fullyEstimated).toBe(false);
     // token usage is still summed even though the model could not be priced.
@@ -7336,7 +7336,7 @@ describe("runCuaActorLab cost estimates", () => {
     expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
   });
 
-  it("DRY-RUN invents no spend: the bundle carries no cost block", async () => {
+  it("dry-run invents no spend: the bundle carries no cost block", async () => {
     const result = await runCuaActorLab({
       cwd,
       config: configWithModel(),
@@ -7348,7 +7348,7 @@ describe("runCuaActorLab cost estimates", () => {
     expect(bundle.cost).toBeUndefined();
   });
 
-  it("refuses a maxUsd cap on a model src/run/pricing.ts cannot price, BEFORE creating any sandbox", async () => {
+  it("refuses a maxUsd cap on a model src/run/pricing.ts cannot price, before creating any sandbox", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const result = await runCuaActorLab({
       cwd,
@@ -7367,7 +7367,7 @@ describe("runCuaActorLab cost estimates", () => {
     expect(created).toHaveLength(0);
   });
 
-  it("accepts a maxUsd cap on a PRICED model and runs — a priced cap is wired, never a refusal", async () => {
+  it("accepts a maxUsd cap on a priced model and runs: a priced cap is wired, never a refusal", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     const result = await runCuaActorLab({
       cwd,
@@ -7387,7 +7387,7 @@ describe("runCuaActorLab cost estimates", () => {
     expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
     expect(result.ok).toBe(true);
     const bundle = await readBundle(result.runId);
-    // computer-use-preview is a CONFIRMED (non-placeholder) MODEL rate — the per-actor estimate
+    // computer-use-preview is a confirmed (non-placeholder) model rate: the per-actor estimate
     // and its model-tokens line carry no placeholder flag.
     expect(bundle.streams[0].actor.estimatedCost.placeholder).toBeUndefined();
     const modelLine = bundle.cost.breakdown.find((l: any) => l.kind === "model-tokens");
@@ -7454,8 +7454,8 @@ describe("adopter-hosted comms on the app-url route", () => {
   });
 
   it("tells each persona its inbox, drains the adopter catch once, and writes digest-only evidence", async () => {
-    // The REAL python catch as a subprocess — the same bytes an adopter runs via `humanish comms
-    // catch` — so the health probe, the token guard, and the drain contract are proven against the
+    // The real python catch as a subprocess: the same bytes an adopter runs via `humanish comms
+    // catch`, so the health probe, the token guard, and the drain contract are proven against the
     // actual implementation.
     const TOKEN = "test-token-not-a-secret";
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-"));
@@ -7478,8 +7478,8 @@ describe("adopter-hosted comms on the app-url route", () => {
       }
       expect(healthy).toBe(true);
 
-      // The app's send, captured by the adopter's catch, addressed to lane-01's FILLED
-      // deterministic address (recipients omitted in the lab on purpose — the parser fills one
+      // The app's send, captured by the adopter's catch, addressed to lane-01's filled
+      // deterministic address (recipients omitted in the study on purpose: the parser fills one
       // per lane, and this proves the filled address is what the funnel matches).
       const posted = await fetch(`${baseUrl}/emails`, {
         method: "POST",
@@ -7534,7 +7534,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       const result = outcome.result;
 
-      // Every persona was told ITS OWN filled address and the adopter's inbox URL (#380: this
+      // Every persona was told its own filled address and the adopter's inbox URL (this
       // route previously ignored the whole block).
       expect(seenInstructions).toHaveLength(2);
       for (const address of ["lane-01@example.test", "lane-02@example.test"]) {
@@ -7545,7 +7545,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       }
 
       // The drain ran once at run level, matched the captured send, and wrote the digest-only
-      // artifact — no raw address, subject, or link may appear in it.
+      // artifact: no raw address, subject, or link may appear in it.
       const threadPath = path.join(cwd, ".humanish", "runs", result.runId, "comms", "thread.json");
       const thread = await readFile(threadPath, "utf8");
       expect(thread).toContain("humanish.comms-thread.v1");

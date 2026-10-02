@@ -3,7 +3,7 @@ import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 
-// #512: with a `lanes` roster present, lane persona resolution read ONLY `lane.persona`. Every
+// With a `lanes` roster present, participant persona resolution once read only `lane.persona`. Every
 // fan-out lane of every lab that declared `actors[0].persona` therefore ran with no persona:
 // no personaLine in the prompt, traitsApplied empty, and nothing warned. The field's own doc
 // comment in src/lab/types.ts says "Default: actors[0].persona", and its sibling fields
@@ -56,7 +56,7 @@ describe("participant persona resolution", () => {
   });
 
   it("uses the documented default when neither the lane nor the actor names one", () => {
-    // src/routes/computer-use/participant-prompt.ts falls back to `cua-operator`. Asserted so the fallback CHAIN is
+    // src/routes/computer-use/participant-prompt.ts falls back to `cua-operator`. Asserted so the fallback chain is
     // pinned end to end: lane, then actor, then the built-in default.
     const plan = planFor({
       type: "openai-computer-use",

@@ -27,6 +27,10 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
 - `content/docs/`: the focused user guides in MDX. `cli.mdx` is generated from Commander
   metadata. `content/docs/meta.json` sets the sidebar order; a page missing from its `pages`
   list does not appear in the sidebar.
+  A page links a repository file as `repo:<path>` (a folder ends in `/`), which
+  `components/docs/mdx.tsx` opens at the release tag of the root `package.json` version.
+  docs:check fails on a GitHub link to main, except for `docs/evidence/` records and
+  `SECURITY.md`, and on a `repo:` path missing here or at that tag.
 - `app/`: root layout (fonts via next/font, theme-init inline script, JSON-LD), `page.tsx` (the
   fallback homepage when the proxy does not run), `failure-modes/page.tsx`, `docs/`,
   `api/search/`, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `icon.svg`.

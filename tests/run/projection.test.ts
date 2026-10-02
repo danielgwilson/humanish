@@ -47,7 +47,7 @@ describe("grouping runs by lab", () => {
 });
 
 describe("what a lab may claim about itself", () => {
-  it("reports median and range WITH the denominator, from finished runs only", () => {
+  it("reports median and range with the denominator, from finished runs only", () => {
     const expectation = expectationFor([
       run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1 }),
       run({ runId: "2", durationMs: 120_000, estimatedCostUsd: 2 }),
@@ -63,7 +63,7 @@ describe("what a lab may claim about itself", () => {
     expect(expectationLine(expectation)).toBe("1m–4m · ~$2.00 median · 3 runs");
   });
 
-  it("a declared-absent cost is excluded from the median AND counted, so the sample stays honest", () => {
+  it("a declared-absent cost is excluded from the median and counted, so the sample stays honest", () => {
     const expectation = expectationFor([
       run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1 }),
       run({ runId: "2", durationMs: 60_000, estimatedCostUsd: null }),
@@ -73,7 +73,7 @@ describe("what a lab may claim about itself", () => {
     expect(expectationLine(expectation)).toContain("2 runs, 1 unpriced");
   });
 
-  it("no history says so — it never borrows numbers or invents a range", () => {
+  it("no history says so: it never borrows numbers or invents a range", () => {
     const expectation = expectationFor([run({ runId: "1", liveness: "running" })]);
     expect(expectation.sample).toBe(0);
     expect(expectation.medianDurationMs).toBeUndefined();
@@ -94,7 +94,7 @@ describe("what a lab may claim about itself", () => {
     expect(line).toBe("2 runs, nothing recorded");
   });
 
-  it("distinguishes SOME runs unpriced from NONE priced", () => {
+  it("distinguishes some runs unpriced from none priced", () => {
     const some = expectationLine(
       expectationFor([
         run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1 }),
@@ -124,7 +124,7 @@ describe("normalizing a participant's recorded thinking", () => {
     expect(lines[0]).toContain("Figuring out table creation");
     expect(lines.join(" ")).not.toContain("**");
     expect(lines.join(" ")).not.toContain("\n");
-    // This thought happens to fit the budget exactly, so nothing was cut — and the flag says so
+    // This thought happens to fit the budget exactly, so nothing was cut, and the flag says so
     // rather than defaulting to "probably truncated".
     expect(truncated).toBe(false);
     // Every word survives: wrapping is the only transformation, never summarizing.
@@ -146,7 +146,7 @@ describe("normalizing a participant's recorded thinking", () => {
     expect(truncated).toBe(false);
   });
 
-  it("has a defined empty case — no thought is no lines, never a placeholder", () => {
+  it("has a defined empty case: no thought is no lines, never a placeholder", () => {
     expect(normalizeThought("", { width: 40, maxLines: 2 })).toEqual({
       lines: [],
       truncated: false,

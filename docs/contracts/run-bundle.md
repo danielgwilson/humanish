@@ -197,10 +197,10 @@ different facts separate:
 
 - `screen.requested`: the E2B/X screen size requested by config;
 - `screen.verified`: the screen size measured in-sandbox with `xdpyinfo`;
-- `screen.declared`: the device preset the lab ASKED for, present only when it differs from
+- `screen.declared`: the device preset the lab asked for, present only when it differs from
   `screen.requested` because the rendered width was floored to Chrome's ~500px window minimum.
   `verified` compares the floored number with itself and reports a match, so a matching
-  `verified` block is NOT evidence that the preset width rendered. When `declared` is present,
+  `verified` block is not evidence that the preset width rendered. When `declared` is present,
   it did not: a `mobile` (414) and a `small-mobile` (360) participant both render at 500 and are
   indistinguishable by rendered width;
 - `browserWindow`: measured browser bounds after the window-fill attempt; physical X client
@@ -244,7 +244,7 @@ enters this field; identity is digests, a sha, a boolean, and counts.
 ## Cost Estimate (advisory)
 
 `cost` is optional and additive (`humanish.run-cost-summary.v1`): the
-computer-use, shared-world, scripted-browser or terminal-product run's cost ESTIMATE: the sum of each participant's
+computer-use, shared-world, scripted-browser or terminal-product run's cost estimate: the sum of each participant's
 token-derived model cost plus E2B desktop compute lines. New independent CUA runs
 emit one line per owned desktop, keyed by public participant ID and carrying observed CPU/memory,
 resource source, host-measured minutes, and the derived per-second rate. Concurrent
@@ -252,7 +252,7 @@ shared-world runs carry the same lines for each participant, plus a desktop line
 `laneId: subject` for a provisioned plane; an external-public plane is not a humanish
 desktop and has no line. Older single aggregate desktop lines remain valid. Missing resource metadata stays
 unpriced; unconfirmed cleanup adds an unknown remaining-lifetime line. It is an
-ESTIMATE, never authoritative: every dollar is a rate-table multiply from the
+estimate, never authoritative: every dollar is a rate-table multiply from the
 operator-editable `src/run/pricing.ts`, carries the pricing `ratesAsOf` date and
 `source`, and is surfaced with the "estimated (rates as of `<date>`)" label. It is
 never shown as a bare charge. It follows the same **declared-absent** discipline as the
@@ -281,7 +281,7 @@ This bundle subtotal excludes separate study-analysis requests. Use
 `humanish stats` for the complete retained estimate and explicit accounting
 gaps across run costs and analysis attempts. See [study cost statistics](study-costs.md).
 
-`humanish verify` treats cost as ADVISORY on magnitude and FAIL-CLOSED on
+`humanish verify` treats cost as advisory on magnitude and fail-closed on
 labeling: absence passes, but a claimed dollar figure without its `ratesAsOf`
 date + `source`, or a total that does not match its known lines, fails. Verify
 never inspects the magnitude, so a correctly-labeled large estimate still passes.
