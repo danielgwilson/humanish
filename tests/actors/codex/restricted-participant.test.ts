@@ -21,6 +21,9 @@ const { run, sessionClose, metadata } = vi.hoisted(() => ({
     authentication: undefined as "chatgpt-account" | "api-key" | undefined,
     pendingUsage: undefined as { input: number; output: number } | undefined,
     pendingInferenceUsage: undefined as { input: number; output: number }[] | undefined,
+    cliVersion: undefined as string | undefined,
+    unknownNotifications: {} as Record<string, number>,
+    refusedBetweenRequests: undefined as string | undefined,
   },
   run: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),
@@ -40,6 +43,15 @@ vi.mock("../../../src/actors/codex/restricted-session.js", () => ({
     },
     get pendingInferenceUsage() {
       return metadata.pendingInferenceUsage;
+    },
+    get cliVersion() {
+      return metadata.cliVersion;
+    },
+    get unknownNotifications() {
+      return metadata.unknownNotifications;
+    },
+    get refusedBetweenRequests() {
+      return metadata.refusedBetweenRequests;
     },
   })),
 }));
@@ -96,6 +108,9 @@ beforeEach(() => {
   metadata.authentication = undefined;
   metadata.pendingUsage = undefined;
   metadata.pendingInferenceUsage = undefined;
+  metadata.cliVersion = undefined;
+  metadata.unknownNotifications = {};
+  metadata.refusedBetweenRequests = undefined;
   sessionClose.mockReset().mockResolvedValue(true);
   createSession.mockClear();
 });
@@ -779,6 +794,20 @@ describe("restricted participant guards and receipts", () => {
       .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(true), 50)));
     const h = createRestrictedCodexParticipant();
     await expect(h.close()).resolves.toEqual({ status: "confirmed" });
+  });
+
+  it("reports unknown notification methods and a refusal after the last request on close", async () => {
+    metadata.cliVersion = "0.160.0";
+    metadata.unknownNotifications = { "thread/futureProgress/updated": 3 };
+    metadata.refusedBetweenRequests = "codex_tool_call";
+    const h = createRestrictedCodexParticipant();
+    await expect(h.close()).resolves.toEqual({
+      status: "confirmed",
+      warnings: [
+        "Codex CLI 0.160.0 sent notification methods humanish does not know: thread/futureProgress/updated ×3. They carried no item and were ignored.",
+        "Codex refused the participant session after its last request (codex_tool_call): the app-server reported a disallowed item outside a turn.",
+      ],
+    });
   });
 
   it("refuses an already-aborted request as cancelled and closes the conversation", async () => {

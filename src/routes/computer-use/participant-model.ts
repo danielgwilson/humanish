@@ -209,6 +209,7 @@ export async function closeParticipantModel(
   }
   try {
     const cleanup = await model.codexParticipant?.close();
+    warnings.push(...(cleanup?.warnings ?? []));
     if (cleanup?.status === "unconfirmed") {
       warnings.push("Model provider cleanup is unconfirmed.");
       unconfirmed = true;

@@ -32,8 +32,13 @@ import {
   parseParticipantTool,
   parseParticipantFinal,
 } from "./restricted-participant-policy.js";
+import { unknownNotificationsWarning } from "./restricted-notifications.js";
 
-export type ParticipantProviderCloseResult = { status: "confirmed" | "unconfirmed" };
+export type ParticipantProviderCloseResult = {
+  status: "confirmed" | "unconfirmed";
+  /** Run warnings from the native session, such as notification methods humanish does not know. */
+  warnings?: string[];
+};
 export interface RestrictedParticipantOptions {
   session?: RestrictedCodexSessionOptions;
   requestTimeoutMs?: number;
@@ -385,6 +390,18 @@ function closeParticipantSession(state: ParticipantState): Promise<boolean> {
     }));
 }
 
+/** The native session's run warnings, read after it closed. */
+function sessionWarnings(session: RestrictedCodexSession): { warnings?: string[] } {
+  const refusal = session.refusedBetweenRequests;
+  const warnings = [
+    unknownNotificationsWarning(session.unknownNotifications, session.cliVersion),
+    refusal === undefined
+      ? undefined
+      : `Codex refused the participant session after its last request (${refusal}): the app-server reported a disallowed item outside a turn.`,
+  ].filter((warning) => warning !== undefined);
+  return warnings.length === 0 ? {} : { warnings };
+}
+
 /** Stops the conversation: abort the native run, reject a waiting tool call, close the session. */
 function revokeParticipant(state: ParticipantState): void {
   state.closed = true;
@@ -586,7 +603,10 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
           ([, ok]) => ok,
         );
         if (!(await withinCleanupBudget(work, state.abortAt!))) state.failedCleanup = true;
-        return { status: state.failedCleanup ? "unconfirmed" : "confirmed" };
+        return {
+          status: state.failedCleanup ? "unconfirmed" : "confirmed",
+          ...sessionWarnings(state.session),
+        };
       })();
       return closing;
     },

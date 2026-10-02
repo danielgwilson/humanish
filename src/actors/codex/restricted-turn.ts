@@ -15,16 +15,18 @@ import {
   type RestrictedCodexDeadline,
   type RestrictedCodexTransport,
 } from "./restricted-transport.js";
+import {
+  ANALYST_ITEM_TYPES,
+  ANALYST_RAW_ITEM_TYPES,
+  KNOWN_CODEX_NOTIFICATIONS,
+  PARTICIPANT_ITEM_TYPES,
+  PARTICIPANT_RAW_ITEM_TYPES,
+  itemPolicyViolation,
+  notificationItem,
+  type NotificationPolicy,
+} from "./restricted-notifications.js";
 
 const rawCompactionTypes = ["compaction", "compaction_summary", "context_compaction"];
-const analystRawItemTypes = ["message", "reasoning", ...rawCompactionTypes];
-const participantRawItemTypes = [
-  ...analystRawItemTypes,
-  "custom_tool_call",
-  "custom_tool_call_output",
-  "function_call",
-  "function_call_output",
-];
 
 type Event = { method: string; params: Record<string, unknown> };
 
@@ -100,12 +102,19 @@ export interface RestrictedCodexTurnContext {
   ): void;
   /** The turn the session interrupts if it closes now. */
   turnStarted(turnId: string): void;
+  /** The item policy every notification's item passes, whatever its method. */
+  readonly policy: NotificationPolicy;
+  /** The session's handler for notifications that arrive before this turn is dispatched. */
+  idle(method: string, params: Record<string, unknown>): void;
+  /** Counts a notification method this humanish does not know that carried no item. */
+  recordUnknown(method: string): void;
 }
 
 /**
- * Drain: every notification and tool request of one turn. Nothing is handled before `dispatched`;
- * events that arrive before turn/start's reply wait until acknowledge() and are then checked in
- * order. `finished` resolves only with a completed, validated final answer.
+ * Drain: every notification and tool request of one turn. Before `dispatched`, notifications go
+ * to the session's idle handler; events that arrive after dispatch but before turn/start's reply
+ * pass the item policy at once, then wait until acknowledge() and are checked in order.
+ * `finished` resolves only with a completed, validated final answer.
  */
 export class RestrictedCodexTurn {
   dispatched = false;
@@ -128,7 +137,9 @@ export class RestrictedCodexTurn {
 
   constructor(private readonly context: RestrictedCodexTurnContext) {
     this.inferenceUsage = context.participant ? [] : null;
-    this.allowedRawItemTypes = context.participant ? participantRawItemTypes : analystRawItemTypes;
+    this.allowedRawItemTypes = context.participant
+      ? PARTICIPANT_RAW_ITEM_TYPES
+      : ANALYST_RAW_ITEM_TYPES;
     this.finished = new Promise((resolve) => {
       this.resolveFinished = resolve;
     });
@@ -155,7 +166,10 @@ export class RestrictedCodexTurn {
 
   readonly onNotification: RestrictedCodexTransport["onNotification"] = (method, params) => {
     const { deadline } = this.context;
-    if (!this.dispatched) return;
+    if (!this.dispatched) {
+      this.context.idle(method, params);
+      return;
+    }
     if (
       !hasScopedIdentity(method, params, this.context.threadId(), this.turnId ?? this.earlyTurnId)
     ) {
@@ -175,11 +189,18 @@ export class RestrictedCodexTurn {
     }
     // The single tool-policy check. Tool requests must fail even if the turn-start
     // acknowledgment is lost, and every event reaches handleTurnEvent only from here, directly
-    // or through the early buffer, so no event skips it.
-    if (toolPolicyViolation(method, codexRecord(params.item), this.allowedRawItemTypes)) {
+    // or through the early buffer, so no event skips it. An item is checked whatever the method
+    // that carries it.
+    const item = notificationItem(params);
+    if (
+      toolPolicyViolation(method, codexRecord(params.item), this.allowedRawItemTypes) ||
+      (item !== undefined && itemPolicyViolation(method, item, this.context.policy))
+    ) {
       deadline.stop("codex_tool_call");
       return;
     }
+    if (item === undefined && !KNOWN_CODEX_NOTIFICATIONS.has(method))
+      this.context.recordUnknown(method);
     if (method === "turn/started") {
       const value = codexRecord(params.turn).id;
       if (
@@ -297,9 +318,7 @@ export class RestrictedCodexTurn {
   /** The item allowlist, the participant's one dynamic tool and the final answer's shape. */
   private admitsItem(method: string, item: Record<string, unknown>): boolean {
     const { deadline, participant } = this.context;
-    const allowedItems = participant
-      ? ["userMessage", "agentMessage", "reasoning", "contextCompaction", "dynamicToolCall"]
-      : ["userMessage", "agentMessage", "reasoning", "contextCompaction"];
+    const allowedItems = participant ? PARTICIPANT_ITEM_TYPES : ANALYST_ITEM_TYPES;
     if (!allowedItems.includes(String(item.type))) {
       deadline.stop("codex_tool_call");
       return false;

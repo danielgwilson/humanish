@@ -244,6 +244,13 @@ export class RestrictedCodexTransport {
     this.stderrBytes = 0;
     this.eventCount = 0;
   }
+  /**
+   * Refuses the session with `code`: stops the current deadline and rejects pending requests.
+   * Between requests the stopped deadline makes the next beginRequest throw the code.
+   */
+  refuse(code: RestrictedCodexAnalysisErrorCode): void {
+    this.fail(code);
+  }
   private fail(code: RestrictedCodexAnalysisErrorCode): void {
     if (!this.closing) this.deadline.stop(code);
     for (const pending of this.pending.values()) pending.reject(new RestrictedCodexStop(code));

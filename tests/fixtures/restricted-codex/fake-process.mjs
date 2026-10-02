@@ -84,6 +84,11 @@ if (operation === "--version") {
     init.userAgent = init.userAgent.replace("/0.157.1 ", `/${consistentVersion} `);
     thread.thread.cliVersion = consistentVersion;
   }
+  // A native command reported as a thread item: the policy refuses it under any method, at any time.
+  // Before turn/start's reply, an unscoped method that names a turn fails the scope check, so the
+  // unknown-method envelopes carry only the thread.
+  const commandItem = turnId => ({ threadId: thread.thread.id, turnId,
+    item: { type: "commandExecution", id: "cmd-synthetic", command: "synthetic-command", status: "completed" } });
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", line => {
     const message = JSON.parse(line);
@@ -108,14 +113,19 @@ if (operation === "--version") {
     if (scenario === "malformed" && message.method === "initialize") { process.stdout.write("{not-json}\n"); return; }
     if (scenario === "server-request" && message.method === "initialize") { write({ id: 999, method: "item/commandExecution/requestApproval", params: {} }); return; }
     if (scenario === "provider-error" && message.method === "initialize") { write({ id: message.id, error: { code: -32000, message: "SYNTHETIC_PRIVATE_ERROR_PAYLOAD" } }); return; }
-    if (message.method === "initialize") reply(message.id, init);
-    else if (message.method === "config/read") reply(message.id, config);
+    if (message.method === "initialize") {
+      reply(message.id, init);
+      if (scenario === "unknown-progress") emit({ method: "thread/futureProgress/updated", params: { progress: 1 } });
+    } else if (message.method === "config/read") reply(message.id, config);
     else if (message.method === "account/read") {
       const account = capture("account-read-projection.json");
       if (scenario === "api-key-auth" || scenario === "participant-api-key-auth") account.account.type = "apiKey";
       if (scenario === "signed-out") account.account = null;
       reply(message.id, account);
-    } else if (message.method === "thread/start") reply(message.id, thread);
+    } else if (message.method === "thread/start") {
+      reply(message.id, thread);
+      if (scenario === "handshake-item") emit({ method: "item/completed", params: commandItem("turn-handshake") });
+    }
     else if (message.method === "mcpServerStatus/list") reply(message.id,
       scenario === "active-mcp" ? { data: [{ name: "synthetic" }], nextCursor: null }
         : participantTool ? { data: Object.keys(config.config.mcp_servers).map(name => ({ name, runtimeStatus: null,
@@ -167,6 +177,10 @@ if (operation === "--version") {
         raw.params.item.content.find(item => item.type === "input_image").image_url = `data:image/png;base64,${fs.readFileSync(image.path).toString("base64")}`;
         emit(raw);
       }
+      if (scenario === "unknown-item-notification")
+        emit({ method: "thread/sideEffect/completed", params: commandItem(undefined) });
+      if (scenario === "unknown-progress")
+        emit({ method: "thread/futureProgress/updated", params: { threadId: thread.thread.id, progress: 2 } });
       if (scenario === "exit-after-dispatch") { process.exit(7); return; }
       if (["hang-turn", "ignore-term"].includes(scenario)) return;
       if (scenario === "stdout-large") { process.stdout.write("x".repeat(2 * 1024 * 1024 + 1)); return; }
@@ -212,6 +226,8 @@ if (operation === "--version") {
       if (scenario !== "missing-usage") emit(usage);
       if (scenario === "partial-usage") { process.exit(7); return; }
       emit(completion);
+      if (scenario === "continuing-idle-item" && turnNumber === 1)
+        afterGate("idle-item", () => emit({ method: "item/started", params: commandItem("turn-idle") }));
       if (scenario === "early-events") reply(message.id, turn);
     }
   });

@@ -336,6 +336,27 @@ describe("explicit Codex account analysis", () => {
     expect(run).toHaveBeenCalledOnce();
   });
 
+  it("warns about unknown Codex notification methods without saving them in the report", async () => {
+    const f = await study(),
+      completed = provider(f.input),
+      run = vi.fn<AnalysisProvider>(async (request) => ({
+        ...(await completed(request)),
+        unknownNotifications: { "thread/futureProgress/updated": 2 },
+      }));
+    const result = await analyzeRun(
+      f.cwd,
+      "codex-analysis",
+      { config: config() },
+      { apiKey: "", codexProvider: run },
+    );
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toContain(
+      `Codex CLI ${defaultCodexCliVersion()} sent notification methods humanish does not know: thread/futureProgress/updated ×2. They carried no item and were ignored.`,
+    );
+    const saved = (await showAnalysis(f.cwd, "codex-analysis", result.analysisId!)).analysis;
+    expect(JSON.stringify(saved)).not.toContain("futureProgress");
+  });
+
   it("does not reuse API reports, reuses an exact account report, and accounts unpriced work once", async () => {
     const f = await study(),
       run = provider(f.input),

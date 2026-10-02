@@ -54,8 +54,11 @@ This profile is **not advertised as tool-free**. The CLI retains code-mode
 descriptions, but the qualified `features.code_mode_host=false` setting rejects
 their actual dispatch. `agents.enabled=false` removes delegation; the older
 feature toggle alone did not. humanish also refuses raw tool calls, unexpected
-host RPCs and asynchronous question messages before accepting any report. The
-actual notification/denial captures and provenance are in
+host RPCs and asynchronous question messages before accepting any report. Every
+app-server notification that carries a thread item passes the item allowlist
+whatever its method, from the launch handshake on and between requests. A method
+humanish does not know that carries no item is counted in the run's warnings and
+does not refuse. The actual notification/denial captures and provenance are in
 [`tests/fixtures/restricted-codex`](https://github.com/danielgwilson/humanish/blob/46330116726f74080fa18947c36da4fb4b333805/tests/fixtures/restricted-codex/README.md).
 
 Each analyst or readiness request owns a separate child process, temporary home

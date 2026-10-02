@@ -59,6 +59,8 @@ export interface RestrictedCodexResult {
   usageComplete: boolean;
   dispatched: boolean;
   errorCode: RestrictedCodexAnalysisErrorCode | null;
+  /** Notification methods this humanish does not know that carried no item, by count. */
+  unknownNotifications?: Readonly<Record<string, number>>;
 }
 
 export const CODEX_MAX_REQUEST_BYTES = 32 * 1024 * 1024;

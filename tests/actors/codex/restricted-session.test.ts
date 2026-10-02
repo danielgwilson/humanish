@@ -404,6 +404,8 @@ describe("restricted Codex analyst session", () => {
     ["wrong-thread", "codex_protocol_error"],
     ["wrong-turn", "codex_protocol_error"],
     ["raw-tool", "codex_tool_call"],
+    // A native command item under a method humanish does not know, before an ordinary answer.
+    ["unknown-item-notification", "codex_tool_call"],
     ["async-question", "codex_tool_call"],
     ["invalid-json", "invalid_response"],
     ["multiple-answers", "invalid_response"],
@@ -427,6 +429,28 @@ describe("restricted Codex analyst session", () => {
     expect(JSON.stringify(result)).not.toContain("SYNTHETIC_PRIVATE_ERROR_PAYLOAD");
     expect(JSON.stringify(result)).not.toContain(f.directory);
     expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("refuses a disallowed item that arrives during the handshake, before any dispatch", async () => {
+    const f = await fixture("handshake-item");
+    expect(await f.run(request)).toMatchObject({
+      status: "failed",
+      errorCode: "codex_tool_call",
+      dispatched: false,
+      output: null,
+    });
+    expect((await f.entries()).some((entry) => entry.method === "turn/start")).toBe(false);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("records an unknown progress notification without an item and completes", async () => {
+    const f = await fixture("unknown-progress");
+    expect(await f.run(request)).toMatchObject({
+      status: "completed",
+      errorCode: null,
+      output: { observedCode: "BLUE-4821" },
+      unknownNotifications: { "thread/futureProgress/updated": 2 },
+    });
   });
 
   it("handles notifications before the turn acknowledgment, without losing the answer", async () => {
@@ -1592,5 +1616,27 @@ describe("restricted Codex session host reads", () => {
     });
     expect(await nested).toMatchObject({ status: "completed", errorCode: null });
     await session.close();
+  });
+});
+
+describe("restricted Codex notifications between requests", () => {
+  it("refuses the next request after a disallowed item arrives between requests", async () => {
+    const f = await fixture("continuing-idle-item"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    expect(session.refusedBetweenRequests).toBeUndefined();
+    await writeFile(`${f.trace}.idle-item`, "");
+    await vi.waitFor(
+      () => expect(session.refusedBetweenRequests).toBe("codex_tool_call"),
+      AFTER_SPAWN,
+    );
+    expect(await session.run(request)).toMatchObject({
+      errorCode: "codex_tool_call",
+      dispatched: false,
+    });
+    expect(session.refusedBetweenRequests).toBeUndefined();
+    expect((await f.entries()).filter((entry) => entry.method === "turn/start")).toHaveLength(1);
+    expect(await session.close()).toBe(true);
+    expect(await readdir(f.tempRoot)).toEqual([]);
   });
 });

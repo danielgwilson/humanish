@@ -354,6 +354,32 @@ describe("ready desktop lane contract", () => {
     expect(f.order.slice(-2)).toEqual(["model-close-unconfirmed", "release"]);
   });
 
+  it("records the shared Codex close's warnings on the participant run", async () => {
+    const f = await fixture();
+    const provider: CuaProvider = {
+      id: "restricted-codex-participant",
+      capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({
+        actions: [],
+        message: "I can read the note form.",
+        outcome: "reached",
+        pendingSafetyChecks: [],
+        done: true,
+      }),
+    };
+    const warning = "Codex CLI 0.160.0 sent notification methods humanish does not know: a/b ×1.";
+    const close = vi.fn(async () => ({ status: "confirmed" as const, warnings: [warning] }));
+    restrictedParticipantFactory.mockReturnValue({ provider, close });
+    f.deps.brain = { kind: "local-agent", agent: "codex" };
+    f.deps.runSession = runCuaActorSession;
+
+    const result = await runCuaParticipant(f.spec, f.deps);
+
+    expect(result.warnings).toContain(warning);
+    expect(result.harnessError).toBe(false);
+    expect(result.providerCleanupError).toBeUndefined();
+  });
+
   it("uses the custom model on a desktop lane and closes it before the desktop", async () => {
     const f = await fixture();
     const provider: CuaProvider = {

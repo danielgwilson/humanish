@@ -58,6 +58,8 @@ export interface AnalysisProviderResult {
     | "timeout"
     | null;
   httpStatus?: number;
+  /** Codex only: notification methods humanish does not know that carried no item, by count. */
+  unknownNotifications?: Readonly<Record<string, number>>;
 }
 
 export type AnalysisProvider = (

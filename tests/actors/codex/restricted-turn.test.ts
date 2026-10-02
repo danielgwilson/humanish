@@ -5,6 +5,7 @@ import {
 } from "../../../src/actors/codex/restricted-policy.js";
 import { RestrictedCodexDeadline } from "../../../src/actors/codex/restricted-transport.js";
 import { RestrictedCodexTurn } from "../../../src/actors/codex/restricted-turn.js";
+import { notificationPolicyOf } from "../../../src/actors/codex/restricted-notifications.js";
 
 const THREAD = "thread-1",
   TURN = "turn-1",
@@ -32,6 +33,8 @@ function setup(
     },
   };
   const reported: unknown[] = [];
+  const idle: string[] = [];
+  const unknown: string[] = [];
   const turn = new RestrictedCodexTurn({
     deadline,
     threadId: () => THREAD,
@@ -41,9 +44,12 @@ function setup(
     toolCallIds: new Set(),
     reportUsage: (usage, inference) => reported.push({ usage, inference }),
     turnStarted: () => undefined,
+    policy: notificationPolicyOf(options.analyst ? undefined : holder),
+    idle: (method) => idle.push(method),
+    recordUnknown: (method) => unknown.push(method),
   });
   turn.dispatched = options.dispatched ?? true;
-  return { turn, deadline, holder, reported };
+  return { turn, deadline, holder, reported, idle, unknown };
 }
 const event = (item: Record<string, unknown>, turnId = TURN) => ({
   threadId: THREAD,

@@ -27,6 +27,11 @@ import {
   ownCodexProcess,
   type RestrictedCodexSpawn,
 } from "./restricted-transport.js";
+import {
+  countUnknownNotification,
+  idleNotificationHandler,
+  notificationPolicyOf,
+} from "./restricted-notifications.js";
 
 /** The host options a launch reads; RestrictedCodexSessionOptions carries them. */
 interface LaunchOptions {
@@ -68,6 +73,8 @@ export interface LaunchState {
   resolvedModel: string | undefined;
   authentication: "chatgpt-account" | "api-key" | undefined;
   cliVersion: string | undefined;
+  /** Notification methods this humanish does not know that carried no item, by count. */
+  unknownNotifications: Map<string, number>;
 }
 
 /** An admitted value, or the refusal a launch stops with. */
@@ -312,6 +319,12 @@ export async function launchAdmittedAppServer(
     }),
   );
   const launched = new RestrictedCodexTransport(owned, deadline, frameLimit);
+  // Notifications are checked from the first byte, before initialize returns.
+  launched.onNotification = idleNotificationHandler(
+    notificationPolicyOf(participant),
+    (method) => countUnknownNotification(state.unknownNotifications, method),
+    (code) => launched.refuse(code),
+  );
   state.transport = launched;
   enter("initialize");
   const initialize = await launched.rpc("initialize", {
