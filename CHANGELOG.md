@@ -70,6 +70,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Saved bundles and Codex-account analyses may name any stable Codex CLI release from 0.154.0 on.
+  `humanish verify`, analysis reads and the Observer accept a participant execution profile or an
+  analyst identity whose release no launch list names, such as 0.158.0 or 0.161.0. Before, they
+  accepted only 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0, and rejected a bundle from any
+  other release. Launch admission is unchanged. A participant now records the release that
+  launched; before, one outside that list was recorded as the host default, which only a
+  `codex:qualify` candidate could reach. Published humanish and Observer builds keep their closed
+  list, so they still reject a bundle that names a release they never listed.
 - An analysis response that fails validation is kept locally for diagnosis (#1403) at
   `.humanish/analysis-diagnostics/<run>/<analysis>.json`. Known secret values are removed from every
   string, key and scalar, including their percent-encoded, escaped and base64 forms, then shape

@@ -1,5 +1,4 @@
 import {
-  isRecordedCodexCliVersion,
   type ActorCapabilities,
   type ActorExecutionProfile,
   type ActorTokenUsage,
@@ -365,8 +364,7 @@ function participantExecutionProfile(
   operator: boolean,
   effort: ReasoningEffort,
 ): ActorExecutionProfile | undefined {
-  const detected = session.cliVersion;
-  const cliVersion = isRecordedCodexCliVersion(detected) ? detected : defaultCodexCliVersion();
+  const cliVersion = session.cliVersion ?? defaultCodexCliVersion();
   if (!operator) return { ...PARTICIPANT_PROFILE, cliVersion };
   return session.authentication === "chatgpt-account" && session.resolvedModel
     ? {

@@ -4,8 +4,8 @@ import path from "node:path";
  * Codex CLI releases the restricted launcher admits, per host, oldest first. Each qualified
  * release needs a receipt under docs/goals/computer-use-actor/receipts/ that meets
  * docs/architecture/restricted-codex-analysis.md ("Admitting a Codex CLI release"). Removing a
- * release stops new launches; saved bundles stay readable through the separate reader lists in
- * src/actors/contract.ts.
+ * release stops new launches; saved bundles stay readable, since src/actors/contract.ts reads any
+ * stable release from RECORDED_CODEX_CLI_FLOOR on.
  *
  * A release string is a compatibility check, not binary attestation: the launcher compares what
  * `codex --version`, initialize and thread start report, and a modified binary can report any

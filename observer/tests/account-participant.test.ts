@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import live from "../../tests/golden/observer-data/live.json";
 import {
-  RECORDED_CODEX_CLI_VERSIONS as SERVER_RECORDED_CODEX_CLI_VERSIONS,
+  isRecordedCodexCliVersion as serverRecorded,
   validActorExecutionProfile as serverProfile,
   validActorProviderRequests as serverRequests,
 } from "../../src/actors/contract";
 import {
-  RECORDED_CODEX_CLI_VERSIONS,
+  isRecordedCodexCliVersion,
   validActorExecutionProfile,
   validActorProviderRequests,
 } from "../lib/actor-execution-profile";
@@ -64,6 +64,34 @@ const account = (profile: Record<string, unknown> = legacyContinuingProfile) => 
   }
   return data;
 };
+// Releases at or above the 0.154.0 floor, whether or not any launch list ever named them.
+const recordable = [
+  "0.154.0",
+  "0.154.1",
+  "0.155.0",
+  "0.160.0",
+  "0.161.0",
+  "0.200.3",
+  "1.0.0",
+  "0.154.1000000000",
+  "1000000000.0.0",
+  "0.1540.0",
+  "99999999999999999999.0.0",
+];
+const unrecordable = [
+  "0.153.9",
+  "0.15.400",
+  "0.9.999",
+  "0.162.0-alpha.4",
+  "0.160.0-linux-x64",
+  "0.154",
+  "00.154.0",
+  "0.154.00",
+  "v0.160.0",
+  " 0.160.0",
+  "",
+];
+
 describe("account participant durable reader", () => {
   it("opens recordings with finite failure phases and keeps older recordings readable", () => {
     for (const phase of [
@@ -105,12 +133,12 @@ describe("account participant durable reader", () => {
       expect(data).toEqual(before);
     }
   });
-  it("reads every recorded CLI release, and only 0.154.0 for the legacy action schema", () => {
-    expect([...RECORDED_CODEX_CLI_VERSIONS]).toEqual([...SERVER_RECORDED_CODEX_CLI_VERSIONS]);
-    const recorded = RECORDED_CODEX_CLI_VERSIONS.map((cliVersion) => ({
-      ...uiToolsProfile,
-      cliVersion,
-    }));
+  it("reads every stable CLI release from the floor, and only 0.154.0 for the legacy action schema", () => {
+    for (const cliVersion of [...recordable, ...unrecordable, 154, null])
+      expect(isRecordedCodexCliVersion(cliVersion), String(cliVersion)).toBe(
+        serverRecorded(cliVersion),
+      );
+    const recorded = recordable.map((cliVersion) => ({ ...uiToolsProfile, cliVersion }));
     for (const profile of [legacyRollingProfile, legacyContinuingProfile, ...recorded]) {
       expect(validActorExecutionProfile(profile)).toBe(true);
       expect(serverProfile(profile)).toBe(true);
@@ -118,7 +146,7 @@ describe("account participant durable reader", () => {
     }
     for (const profile of [
       { ...legacyContinuingProfile, cliVersion: "0.157.1" },
-      { ...uiToolsProfile, cliVersion: "0.155.0" },
+      ...unrecordable.map((cliVersion) => ({ ...uiToolsProfile, cliVersion })),
     ]) {
       expect(validActorExecutionProfile(profile)).toBe(false);
       expect(serverProfile(profile)).toBe(false);

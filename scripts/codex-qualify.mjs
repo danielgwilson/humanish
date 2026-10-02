@@ -345,7 +345,7 @@ const failed = report(checks);
 say();
 say(
   failed === 0
-    ? `All ${checks.length} checks passed. ${values.live ? "Run" : "Run again with --live, then run"} a hosted study (see the doc section), add ${candidateVersion} to QUALIFIED_CODEX_CLI_VERSIONS and RECORDED_CODEX_CLI_VERSIONS, and write a dated receipt.`
+    ? `All ${checks.length} checks passed. ${values.live ? "Run" : "Run again with --live, then run"} a hosted study (see the doc section), add ${candidateVersion} to QUALIFIED_CODEX_CLI_VERSIONS, and write a dated receipt.`
     : `${failed} check(s) failed. Do not add ${candidateVersion}; report what differs.`,
 );
 process.exitCode = failed === 0 ? 0 : 1;

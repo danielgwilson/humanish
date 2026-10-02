@@ -9,7 +9,7 @@ import { participantLabels } from "./participant-label";
 import { type StudyReport } from "./study-report";
 import { parseAutomaticAnalysis } from "./automatic-analysis";
 import { buildPlayerModel } from "./player-model";
-import { RECORDED_CODEX_CLI_VERSIONS } from "./actor-execution-profile";
+import { isRecordedCodexCliVersion } from "./actor-execution-profile";
 
 export type { LoadedAnalysis } from "../../src/analysis/types";
 export const ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
@@ -38,14 +38,8 @@ const ids = (v: unknown) => list(v, id) && new Set(v as string[]).size === (v as
 const nullableText = (v: unknown) => v === null || text(v);
 const number = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
 const nullableNumber = (v: unknown) => v === null || number(v);
-// Durable reader profiles, independent of the producer's current launch policy.
-// Append newly qualified profiles; retain historical entries so saved reports stay readable.
-const accountProfiles = RECORDED_CODEX_CLI_VERSIONS.map((cliVersion) => ({
-  cliVersion,
-  toolPolicy: "restricted-codex-v1",
-  model: "gpt-6-astra",
-  effort: "low",
-}));
+// The durable analyst profile, independent of the producer's current launch policy: the one
+// restricted model, tool policy and effort, from any recordable release.
 function accountConfig(config: Record<string, unknown>): boolean {
   if (
     config.provider !== "codex" ||
@@ -84,12 +78,11 @@ function accountConfig(config: Record<string, unknown>): boolean {
     profile.resolvedModel !== config.model
   )
     return false;
-  return accountProfiles.some(
-    (known) =>
-      known.model === config.model &&
-      known.cliVersion === profile.cliVersion &&
-      known.toolPolicy === profile.toolPolicy &&
-      known.effort === profile.reasoningEffort,
+  return (
+    config.model === "gpt-6-astra" &&
+    isRecordedCodexCliVersion(profile.cliVersion) &&
+    profile.toolPolicy === "restricted-codex-v1" &&
+    profile.reasoningEffort === "low"
   );
 }
 const hash = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);

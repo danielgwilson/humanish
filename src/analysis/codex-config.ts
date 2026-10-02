@@ -1,4 +1,4 @@
-import { RECORDED_CODEX_CLI_VERSIONS } from "../actors/contract.js";
+import { isRecordedCodexCliVersion } from "../actors/contract.js";
 import {
   defaultCodexCliVersion,
   qualifiedCodexCliVersions,
@@ -45,19 +45,6 @@ export function codexAnalysisIdentity(
   });
 }
 
-/** Reader profiles are append-only. A new launch qualification must not invalidate a saved report. */
-const storedProfiles = RECORDED_CODEX_CLI_VERSIONS.map((cliVersion) => ({
-  cliVersion,
-  toolPolicy: "restricted-codex-v1",
-  model: "gpt-6-astra",
-  reasoningEffort: "low",
-})) as readonly {
-  cliVersion: string;
-  toolPolicy: "restricted-codex-v1";
-  model: "gpt-6-astra";
-  reasoningEffort: "low";
-}[];
-
 function matchesProfile(config: AnalysisConfig, expected: CodexAnalysisIdentity): boolean {
   if (config.provider !== "codex") return false;
   return (
@@ -100,7 +87,24 @@ export function validCodexAnalysisConfig(
   );
 }
 
-/** Reading historical artifacts never inserts defaults or selects a launch policy. */
+/**
+ * Reading historical artifacts never inserts defaults or selects a launch policy: the restricted
+ * analyst's fixed identity, from any recordable release, so a change to launch admission never
+ * invalidates a saved report.
+ */
 export function validStoredCodexAnalysisConfig(config: AnalysisConfig): boolean {
-  return storedProfiles.some((profile) => matchesProfile(config, identityFor(profile)));
+  if (config.provider !== "codex") return false;
+  const cliVersion = config.identity?.cliVersion;
+  return (
+    isRecordedCodexCliVersion(cliVersion) &&
+    matchesProfile(
+      config,
+      identityFor({
+        cliVersion,
+        toolPolicy: "restricted-codex-v1",
+        model: "gpt-6-astra",
+        reasoningEffort: "low",
+      }),
+    )
+  );
 }
