@@ -109,6 +109,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   stage. CI's `observer:reliability:proof` failed on that frame twice. Every settled stage and frame
   box matches the previous release on desktop and phone, in both orientations and at every zoom
   level. The live view still measures its stage.
+- The TUI key legend fits on one line at 45 columns. Its separators are two spaces, and the
+  lab and all-runs screens say "⏎ open" for "⏎ open run". Before, the lab and run legends wrapped
+  and left "quit" alone on the last line. The start rows keep two columns between the label and
+  its price, and put the price under the label when the two do not fit. At 45 columns, run rows
+  keep their two-column gutter and the labs list keeps the ▸ before the selected description.
+  "Start a LIVE run" reads "Start a live run", empty states are sentences, and on-screen em
+  dashes became colons or semicolons.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

@@ -11,4 +11,4 @@ humanish lab run
 
 ❯ Back to Connections
 
-↑↓ move   ⏎ select   esc back   q quit
+↑↓ move  ⏎ select  esc back  q quit

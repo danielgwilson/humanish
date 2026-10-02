@@ -10,4 +10,4 @@ separate.
 study-20260920-a
 Connection: agentmail
 
-↑↓ move   ⏎ select   esc back   q quit
+↑↓ move  ⏎ select  esc back  q quit
