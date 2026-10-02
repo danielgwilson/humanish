@@ -97,10 +97,10 @@ export interface ScriptedBrowserSessionOptions {
   urlPolicy?: ScriptedBrowserEvidenceUrlPolicy;
   /** Parsed + validated by the backend (scenario.ref is consumed there, fail-closed). */
   journey: BrowserPersonaJourney;
-  /** ONE session per surface lane. */
+  /** ONE session per surface. */
   surface: BrowserSurface;
   /** id = actors[0].persona ?? "scripted-journey"; promptDigest = journey.sourceDigest prefix
-   *  (the step manifest IS the "prompt" — no model prompt exists on this lane). */
+   *  (the step manifest IS the "prompt" — no model prompt exists on this route). */
   persona: ActorPersonaRef;
   /** Journey wall-clock budget in ms; the lab route passes execution.timeoutMs or 300_000. */
   timeoutMs: number;

@@ -31,7 +31,7 @@ export function buildRuntimeAuth(args: {
   // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key SOURCE
   // name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
   // (developers.openai.com/codex/noninteractive) document it as the channel for a SINGLE codex exec
-  // invocation, which is exactly this lane's shape (no persisted auth.json/CODEX_HOME, per-command
+  // invocation, which is exactly this route's shape (no persisted auth.json/CODEX_HOME, per-command
   // envs only). A dated in-repo receipt
   // (docs/goals/humanish-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
   // job-wide OPENAI_API_KEY alone failing bearer auth for this same pinned-exec pattern. When the
@@ -43,7 +43,7 @@ export function buildRuntimeAuth(args: {
   // added a clearly-non-runtime credential (a GitHub/payment/deploy/db secret), fail closed. The
   // generic `*_KEY` shape is deliberately NOT a tripwire here, since a runtime key legitimately
   // ends in _KEY (CODEX_API_KEY/OPENAI_API_KEY), so testing it against the generic shape would
-  // false-positive on the very key this lane exists to inject. The positive allowlist itself is
+  // false-positive on the very key this route exists to inject. The positive allowlist itself is
   // the real boundary: the command env is built from exactly these names and nothing else (so
   // GITHUB_TOKEN/payment/db keys present in the operator env are never forwarded, proven by the
   // deterministic test).
@@ -90,7 +90,7 @@ export function buildRuntimeAuth(args: {
 
 // Clearly-non-runtime credential NAME shapes. Used as the runtime-key allowlist tripwire (a
 // runtime key must never be one of these). Deliberately EXCLUDES the generic `*_KEY` shape: the
-// runtime key this lane injects (CODEX_API_KEY/OPENAI_API_KEY) legitimately ends in _KEY, so the
+// runtime key this route injects (CODEX_API_KEY/OPENAI_API_KEY) legitimately ends in _KEY, so the
 // generic shape would false-positive on it. The positive allowlist, not a denylist, is what
 // keeps every OTHER operator-env credential (GitHub/payment/deploy/db/media keys) out of the
 // sandbox: the command env is built from exactly the allowlisted runtime key and nothing else.
@@ -113,7 +113,7 @@ function isNonRuntimeCredentialName(name: string): boolean {
 
 /**
  * Build the sandbox metadata from a POSITIVE ALLOWLIST (safety contract item 6). This is the ONLY
- * way metadata is set on the terminal lane — it carries solely non-secret labels and rejects any
+ * way metadata is set on the terminal route — it carries solely non-secret labels and rejects any
  * value that is not a plain short label. A verifier check asserts the persisted metadata has no
  * prompt/token/secret shapes; this builder makes that true by construction.
  */

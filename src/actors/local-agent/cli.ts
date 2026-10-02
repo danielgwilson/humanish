@@ -18,7 +18,7 @@
 //
 // WHERE IT IS SAFE, and this inverts the intuitive reading: the local agent only DECIDES. humanish
 // executes the action inside the desktop sandbox, so nothing the persona chooses ever runs on the
-// operator's machine. The same trick on the TERMINAL lane would be the opposite — it would move
+// operator's machine. The same trick on the TERMINAL route would be the opposite — it would move
 // code execution out of the sandbox and onto a real disk — which is why this is a computer-use
 // provider and nothing else. Even so, these are coding agents with their own shell and file tools,
 // so each one is spawned tool-restricted, in a scratch directory, with a per-turn timeout.

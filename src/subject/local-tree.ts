@@ -18,7 +18,7 @@ const LOCAL_TREE_REMOTE_ARCHIVE_PATH = "/home/user/.humanish-source.tar.gz";
 
 /**
  * Provision a local-tree subject inside the sandbox: upload the once-per-run packed archive
- * (identical bytes across every fan-out lane) → extract it into SUBJECT_DIR → the
+ * (identical bytes across every fan-out participant) → extract it into SUBJECT_DIR → the
  * same shared serve pipeline provisionCloneSubject uses. Unlike the clone route there is no
  * in-sandbox git refresh: the archive excludes .git entirely (see local-tree-archive.ts), so
  * subject identity is the host-side LocalTreeArchive captured at pack time, never anything
@@ -27,7 +27,7 @@ const LOCAL_TREE_REMOTE_ARCHIVE_PATH = "/home/user/.humanish-source.tar.gz";
 export async function provisionLocalTreeSubject(
   shell: Shell,
   args: {
-    /** The once-per-run packed archive bytes (shared byte-identically across every lane). */
+    /** The once-per-run packed archive bytes (shared byte-identically across every participant). */
     archiveBuffer: ArrayBuffer;
     serve: LabSubjectServe;
     /** Declared subject state (seed steps; external declaration is provenance-only). */

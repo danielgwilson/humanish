@@ -107,7 +107,7 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
     runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
   });
-  // Codex tokens stay unpriced: the lane records its model as `codex`, which has no rate.
+  // Codex tokens stay unpriced: the route records its model as `codex`, which has no rate.
   trace.estimatedCost = estimateActorCost(trace.tokenUsage, trace.provider);
   return { normalizedTranscript, trace };
 }

@@ -42,7 +42,7 @@ export interface CommsCatchHostOptions {
   /** Bearer token required on GET /deliveries. Strongly recommended when the host is reachable. */
   token?: string;
   /** SECOND port for the READ-ONLY inbox listener bound to 0.0.0.0, so a persona on another machine
-   *  (or in a per-lane desktop) can reach the inbox. Omit to stay loopback-only. */
+   *  (or on a participant's desktop) can reach the inbox. Omit to stay loopback-only. */
   inboxPort?: number;
   /** Optional loopback SMTP listener sharing the HTTP capture and inbox pipeline. */
   smtpPort?: number;

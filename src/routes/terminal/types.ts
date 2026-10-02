@@ -22,7 +22,7 @@ import {
   type RunScorerProvenance,
 } from "../../run/bundle.js";
 
-/** Provider-neutral metadata constant: the lane's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
+/** Provider-neutral metadata constant: the route's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
 export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
   mode: "terminal-product-lab",
   tool: "humanish",
@@ -63,7 +63,7 @@ export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
  * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
  * interventions/cleanup/cost/no-spend). Every member is an EXPORTED public type, so a thin adapter
  * types against `import("humanish")` alone — never a deep `src/` import. The adapter reads this
- * to score the product attempt and derive feedback; it cannot mutate core's evidence (the lane
+ * to score the product attempt and derive feedback; it cannot mutate core's evidence (the route
  * attaches only the namespaced `RunAdapterScore` it returns + the feedback candidates it derives).
  */
 export interface TerminalProductScoringContext {
@@ -102,7 +102,7 @@ export type TerminalCostProbe = (context: {
 export interface TerminalScorer {
   /**
    * THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8: "product-adapter hooks WITHOUT forking
-   * core"). A thin in-repo/out-of-tree adapter registers a product scorer here. The lane calls it
+   * core"). A thin in-repo/out-of-tree adapter registers a product scorer here. The route calls it
    * (when provided) over the fully-assembled evidence and attaches the returned, ADAPTER-NAMESPACED
    * `RunAdapterScore` to `bundle.adapterScore` WITHOUT core knowing any product noun (the score is
    * namespaced + its component breakdown rides in `data`). When NO scorer is given, the default
@@ -111,7 +111,7 @@ export interface TerminalScorer {
    */
   score?: (ctx: TerminalProductScoringContext) => RunAdapterScore | Promise<RunAdapterScore>;
   /**
-   * Companion seam: derive product-feedback candidates from the same assembled evidence. The lane
+   * Companion seam: derive product-feedback candidates from the same assembled evidence. The route
    * appends the returned candidates to `bundle.feedbackCandidates`. The adapter records its
    * product-specific concepts (public CLI command observed, hosted success-or-blocker, feedback id,
    * media/job ids, no-spend proof, defection/friction risk) under each candidate's ADAPTER-NAMESPACED
@@ -133,7 +133,7 @@ export interface RunTerminalProductLabOptions {
   open?: boolean;
   runId?: string;
   /**
-   * The operator environment the lane reads the runtime key from (and from which it asserts no
+   * The operator environment the route reads the runtime key from (and from which it asserts no
    * banned credential is requested). Defaults to process.env. The runtime key is injected ONLY
    * into command-scoped `codex` env or an external header transform — NEVER Sandbox.create envs (the credential
    * boundary); tests plant a fake key here and assert it never reaches metadata/global env/artifacts.
@@ -280,9 +280,9 @@ export interface InterventionRecord {
  *   - `usd: null`  => NOT MEASURED. This run carries no spend signal for the category. `null` is
  *                     written explicitly (never undefined-omitted, never guessed to 0). The no-spend
  *                     proof must list this line as UNMEASURED and must NOT claim it is zero.
- *   - line ABSENT  => NOT APPLICABLE to this lane/run (n/a). The line simply does not appear in
+ *   - line ABSENT  => NOT APPLICABLE to this route/run (n/a). The line simply does not appear in
  *                     `lines`. (The current route emits all four lines, so absence is reserved for
- *                     future lanes that genuinely have no such category.)
+ *                     future routes that genuinely have no such category.)
  * `null` vs missing-key is the load-bearing distinction: a missing key means "this category does not
  * exist for this run"; a present key with `null` means "this category exists but we did not measure
  * it". A no-spend proof that claimed zero on a `null` line would claim more than it measured.
@@ -312,7 +312,7 @@ export interface CostLine {
  */
 export interface TerminalCostLedger {
   schema: "humanish.terminal-cost-ledger.v1";
-  /** USD currency unit (recorded explicitly so a future multi-currency lane is unambiguous). */
+  /** USD currency unit (recorded explicitly so a future multi-currency route is unambiguous). */
   currency: "usd";
   lines: Record<CostCategory, CostLine>;
   /** Sum of the KNOWN (non-null) lines. null lines contribute NOTHING and are NOT guessed as 0. */

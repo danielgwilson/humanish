@@ -123,7 +123,7 @@ export function planTerminalLab(
   if (input.dryRun)
     return { ok: true, plan: { ...shared, dryRun: true, ...(caps ? { caps } : {}) } };
 
-  // The live lane injects the runtime key into one command only, and only a registered actor
+  // The live route injects the runtime key into one command only, and only a registered actor
   // that declares that placement may run live.
   const keyPlacement = descriptor.capabilities.keyPlacement;
   if (keyPlacement !== "in-sandbox-command-scoped")

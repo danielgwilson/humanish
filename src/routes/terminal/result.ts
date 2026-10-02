@@ -126,7 +126,7 @@ export function terminalLabResult(args: {
   // remaining===-1 (kill(id) itself failed) are both unproven by design.
   const cleanupProven = cleanup.killed && cleanup.remaining === 0;
   // A CONFIG-DECLARED scorer that failed to render a pass (status:"fail" / malformed / throw) fails the
-  // run RESULT too, not just the persisted verdict — the keystone lane's declared rubric is a gate, so
+  // run RESULT too, not just the persisted verdict — the keystone route's declared rubric is a gate, so
   // its fail must drive exit code. Library callers never set this (additive, back-compat).
   const ok = resultOk({
     judgment,
