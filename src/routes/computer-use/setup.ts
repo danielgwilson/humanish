@@ -48,7 +48,6 @@ import {
   participantSubjectEnv,
 } from "./types.js";
 import { labPersonaIds } from "../../lab/persona-resolve.js";
-import { participantDesktopOf } from "./participant-desktop.js";
 
 /** The physical project, bound before any caller hook runs. */
 async function bindProject(cwd: string) {
@@ -186,8 +185,27 @@ export async function admitCuaRun(
     result: fail(...args),
   });
 
+  // runLab's local VM study supplies a local-target app-url lab's desktop; a direct route call or
+  // an in-process executor on the same lab has none. It reads the declared source, as the planner
+  // did: a library config the parser never saw can plan to an app-url subject from another source.
+  if (
+    config.subject.source === "app-url" &&
+    config.execution?.target === "local" &&
+    input.localVm === undefined
+  )
+    return refuse(
+      "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
+      "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not.",
+    );
+
   const descriptor = cuaDescriptorOf(plan.actor);
-  const runSession = hooks.runSession ?? descriptor.runSession;
+  const baseRunSession = hooks.runSession ?? descriptor.runSession;
+  // A local VM study's sessions abort on its signal.
+  const localVmSignal = input.localVm?.signal;
+  const runSession: typeof baseRunSession =
+    localVmSignal === undefined
+      ? baseRunSession
+      : (options) => baseRunSession({ ...options, signal: localVmSignal });
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
   // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
@@ -430,7 +448,7 @@ function cuaParticipantDeps(
   const { externalCommsConfig, externalCommsEmail } = admitted;
   const { appUrl } = admitted;
   const { runPaths, redactScreenshots, liveTrace } = run;
-  const createDesktop = participantDesktopOf(hooks);
+  const createDesktop = input.localVm?.desktop;
   const timeoutMs = plan.sessionBudgetMs;
   const requestTimeoutMs = e2bRequestTimeoutMs(env);
   return {

@@ -13,10 +13,7 @@ import type { Requirement } from "../../src/lab/plan-types.js";
 import type { LabDeps } from "../../src/lab/lab-deps.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
-import {
-  PARTICIPANT_DESKTOP,
-  type HooksWithParticipantDesktop,
-} from "../../src/routes/computer-use/participant-desktop.js";
+import type { CuaActorLabHooks } from "../../src/routes/computer-use/types.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 
@@ -319,29 +316,38 @@ describe("route obligations, independent of plan.requirements", () => {
   );
 });
 
-describe("requirements with a caller's desktop and provider", () => {
-  // A study's own desktop factory (PARTICIPANT_DESKTOP) stands in for the hosted desktop, and a
-  // caller's buildProvider for the openai model, so a live app-url run needs neither key.
-  it("lists neither key, and preflight refuses neither, for a desktop factory and buildProvider", async () => {
-    const parsed = parseLabConfig(lab("cuAppUrl", live));
+describe("requirements with a local study's desktop and a caller's provider", () => {
+  // A local browser lab runs on the local VM study's desktop, so it needs no E2B_API_KEY, and a
+  // caller's buildProvider drives it, so it needs no OPENAI_API_KEY.
+  it("lists neither key, and preflight refuses neither", async () => {
+    const parsed = parseLabConfig(lab("cuAppUrl", { ...live, execution: { target: "local" } }));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const cwd = await projectDir();
     let desktopReached = false;
-    const hooks: HooksWithParticipantDesktop = {
+    const hooks: CuaActorLabHooks = {
       env: {},
       buildProvider: async () => {
         throw new Error("the provider is not reached in this test");
       },
-      [PARTICIPANT_DESKTOP]: () => {
+    };
+    const localVm = {
+      desktop: () => {
         desktopReached = true;
-        throw new Error("the caller's desktop factory was reached");
+        throw new Error("the local study's desktop was reached");
       },
+      analysisGate: () => undefined,
     };
     const planned = planComputerUseLab(parsed.config, { dryRun: false, hooks });
     if (!planned.ok) throw new Error(planned.refusal.message);
     expect(planned.plan.requirements.flatMap(keyNames)).toEqual([]);
-    // Past preflight, the run asks the factory for a desktop, and its throw ends the run.
-    const code = await runCuaActorLab({ cwd, config: parsed.config, dryRun: false, hooks }).then(
+    // Past preflight, the run asks the study for a desktop, and its throw ends the run.
+    const code = await runCuaActorLab({
+      cwd,
+      config: parsed.config,
+      dryRun: false,
+      hooks,
+      localVm,
+    }).then(
       (result) => result.error?.code ?? "",
       (error: unknown) => (error instanceof Error ? error.message : String(error)),
     );

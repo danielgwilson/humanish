@@ -5,6 +5,7 @@
 // returns the route's run. prepareLab is the same path in two steps, so the CLI can present either
 // refusal before it loads a declared review scorer.
 
+import type { LocalVmInput } from "./routes/computer-use/types.js";
 import type { AutomaticAnalysisHooks } from "./analysis/automatic-completion.js";
 import {
   computerUseInput,
@@ -26,7 +27,6 @@ import {
 import { type LabConfig } from "./lab/types.js";
 import type { ObserverResult } from "./observer/render.js";
 import { admitComputerUsePlan, computerUseLabRefusal } from "./routes/computer-use/route.js";
-import { participantDesktopOf } from "./routes/computer-use/participant-desktop.js";
 import { type CuaActorLabHooks, type CuaActorLabResult } from "./routes/computer-use/types.js";
 import { admitPreviewPlan, previewLabRefusal } from "./routes/preview.js";
 import { admitScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
@@ -83,9 +83,9 @@ export type PreparedLab =
 
 /**
  * Normalizes the options and plans the lab once, so a caller can present a refusal before it loads
- * anything the run needs. A local browser study's desktop lane and provider are bound first, so the
- * plan is made with them; with createDesktopLane the caller provides the desktop, and with
- * buildExecutor it drives the app in process and needs none.
+ * anything the run needs. A local browser study's provider is bound first, so the plan is made with
+ * it, and its desktop goes to the computer-use run as `localVm`; with buildExecutor the caller
+ * drives the app in process and needs no desktop.
  */
 export async function prepareLab(
   config: LabConfig,
@@ -98,24 +98,25 @@ export async function prepareLab(
   if (!normalized.ok)
     return { ok: false, outcome: optionRefusalOutcome(lab, route, options, normalized) };
   const hooks = normalized.options.cuaHooks;
-  const localVm =
-    isLocalBrowserLab(lab) &&
-    (hooks === undefined || participantDesktopOf(hooks) === undefined) &&
-    hooks?.buildExecutor === undefined
+  // An in-process executor needs no desktop, and a caller that already prepared the study passes
+  // its localVm, which a second study would replace.
+  const prepareLocalVm =
+    isLocalBrowserLab(lab) && hooks?.buildExecutor === undefined && options.localVm === undefined
       ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmStudy
       : undefined;
-  const study = localVm?.({ ...normalized.options, config: lab });
-  const planning = study?.options ?? normalized.options;
+  const vm = prepareLocalVm?.({ ...normalized.options, config: lab });
+  const planning: InternalRunLabOptions =
+    vm === undefined ? normalized.options : { ...vm.options, localVm: vm.localVm };
   const planned = planLab(lab, planning, deps);
   if (!planned.ok) {
-    await study?.close();
+    await vm?.close();
     const outcome = await refusalOutcome(lab, planning, planned.refusal, deps);
     outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome };
   }
   const admitted = await admitPlan(lab, planning, planned.planned.plan, deps);
   if (!admitted.ok) {
-    await study?.close();
+    await vm?.close();
     admitted.outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome: admitted.outcome };
   }
@@ -142,7 +143,7 @@ export async function prepareLab(
         outcome.result.warnings.push(...normalized.warnings);
         return outcome;
       } finally {
-        await study?.close();
+        await vm?.close();
       }
     },
   };
@@ -263,6 +264,8 @@ interface RunLabInternals {
    * (path + digest), never adopter-supplied; absent for library callers.
    */
   scorerProvenance?: RunScorerProvenance;
+  /** The local VM study's desktop, analysis gate and signal, for a local browser lab. */
+  localVm?: LocalVmInput;
   // The route hook bags: test seams, and the bags each route still reads its typed homes from.
   automaticAnalysis?: AutomaticAnalysisHooks;
   /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */

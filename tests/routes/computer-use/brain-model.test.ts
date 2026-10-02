@@ -108,7 +108,7 @@ function fakeExecutor(): CuaExecutor {
   };
 }
 
-/** A caller desktop, so no E2B key or SDK is needed. */
+/** A local study desktop, so no E2B key or SDK is needed. */
 function fakeDesktop(): ParticipantDesktop {
   const allocation = ownDesktopAllocation({
     resourceId: "synthetic-desktop",
@@ -162,16 +162,23 @@ const OPENAI_ACTOR = { type: "openai-computer-use" };
 const CODEX_ACTOR = { type: "local-agent", localAgent: "codex" };
 const CLAUDE_ACTOR = { type: "local-agent", localAgent: "claude" };
 
+/** The lab on the local target, whose desktop the test supplies as the local study's. */
+function onLocalDesktop(config: LabConfig): LabConfig {
+  return { ...config, execution: { ...config.execution, target: "local" } };
+}
+
+const fakeLocalVm = () => ({ desktop: () => fakeDesktop(), analysisGate: () => undefined });
+
 /** Runs one live participant and returns what its session and the live flush received. */
-async function run(config: LabConfig, hooks: CuaActorLabHooks = {}, { callerDesktop = true } = {}) {
+async function run(config: LabConfig, hooks: CuaActorLabHooks = {}, { localDesktop = true } = {}) {
   const sessions: CuaActorSessionOptions[] = [];
   const result = await runCuaActorLab({
     cwd,
-    config,
+    config: localDesktop ? onLocalDesktop(config) : config,
     dryRun: false,
+    ...(localDesktop ? { localVm: fakeLocalVm() } : {}),
     hooks: {
       env: { OPENAI_API_KEY: "synthetic-openai-key" },
-      ...(callerDesktop ? { createDesktopLane: () => fakeDesktop() } : {}),
       runSession: async (options) => {
         sessions.push(options);
         return runCuaActorSession({
@@ -242,7 +249,7 @@ describe("computer-use participant model, openai brain", () => {
 
 describe("computer-use participant model, caller brain", () => {
   it.each([undefined, NON_DEFAULT_MODEL].map((model) => ({ model, name: label(model) })))(
-    "keeps the caller's provider and prices at the declared model, else the default, on a hosted desktop: $name",
+    "keeps the caller's provider and prices at the declared model, else the default, on a local study desktop: $name",
     async ({ model }) => {
       const provider = doneProvider("caller-provider");
       const { result, sessions, flushModels } = await run(
@@ -268,7 +275,7 @@ describe("computer-use participant model, caller brain", () => {
           buildProvider: async () => provider,
           buildExecutor: async () => fakeExecutor(),
         },
-        { callerDesktop: false },
+        { localDesktop: false },
       );
       expect(result.ok).toBe(true);
       expect(sessions[0]!.provider).toBe(provider);
@@ -329,14 +336,15 @@ describe("computer-use participant model, local-agent brain", () => {
 
 describe("computer-use participant model, the plan's brain, over the config", () => {
   /** Plans `config`, swaps in `brain`, and runs that plan with the same config and hooks. */
-  async function runWithBrain(config: LabConfig, brain: Brain, hooks: CuaActorLabHooks) {
+  async function runWithBrain(declared: LabConfig, brain: Brain, hooks: CuaActorLabHooks) {
+    const config = onLocalDesktop(declared);
     const planned = planComputerUseLab(config, { dryRun: false, hooks });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const plan: ComputerUsePlan = {
       ...planned.plan,
       runner: { ...planned.plan.runner, brain } as ComputerUsePlan["runner"],
     };
-    return runComputerUsePlan(plan, { cwd, hooks }, config);
+    return runComputerUsePlan(plan, { cwd, hooks, localVm: fakeLocalVm() }, config);
   }
 
   it("gives the session, the cap estimator and the flush label the plan's declared model", async () => {
@@ -346,7 +354,6 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       { kind: "openai", model: NON_DEFAULT_MODEL, declaredModel: NON_DEFAULT_MODEL },
       {
         env: { OPENAI_API_KEY: "synthetic-openai-key" },
-        createDesktopLane: () => fakeDesktop(),
         runSession: async (options) => {
           sessions.push(options);
           return runCuaActorSession({ ...options, provider: doneProvider("synthetic-openai") });
@@ -371,7 +378,6 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       { kind: "local-agent", agent: "claude", declaredModel: "synthetic-claude-model" },
       {
         env: {},
-        createDesktopLane: () => fakeDesktop(),
         runSession: async (options) => runCuaActorSession(options),
       },
     );
@@ -390,7 +396,6 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       { kind: "local-agent", agent: "codex", declaredModel: "synthetic-codex-model" },
       {
         env: {},
-        createDesktopLane: () => fakeDesktop(),
         runSession: async (options) => runCuaActorSession(options),
       },
     );
@@ -407,7 +412,6 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       { kind: "local-agent", agent: "claude", declaredModel: "synthetic-claude-model" },
       {
         env: { HUMANISH_LOCAL_AGENT_ONE_SHOT: "1" },
-        createDesktopLane: () => fakeDesktop(),
         runSession: async (options) => runCuaActorSession(options),
       },
     );

@@ -68,11 +68,10 @@ runtime.
 The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop
 shell commands or manufacture E2B objects for an alternate executor. A local
-Firecracker study supplies its desktops through the `PARTICIPANT_DESKTOP` symbol on
-the internal hook bag (`src/routes/computer-use/participant-desktop.ts`), which no
-package caller can set. Contract tests inject a desktop through the bag's
-`createDesktopLane`, which left the public options with the rest of `cuaHooks`.
-Neither bypasses CLI admission checks.
+Firecracker study supplies its desktops through the computer-use run's `localVm`
+input (`LocalVmInput` in `src/routes/computer-use/types.ts`), which runLab sets
+from the study and no package caller can. Contract tests pass a `localVm` desktop
+on a lab with `execution.target: local`. Neither bypasses CLI admission checks.
 
 Final evidence errors cannot skip desktop release. Existing bundle fields and
 desktop lifetime accounting retain their meanings; unconfirmed or retained

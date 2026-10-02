@@ -173,7 +173,12 @@ describe("computer-use run reads the plan's residual fields", () => {
   });
 
   it("caps each participant's spend at the plan's maxUsd", async () => {
-    const config = appUrlLab();
+    // The test supplies the desktop as a local study's, on the local target.
+    const declared = appUrlLab();
+    const config: LabConfig = {
+      ...declared,
+      execution: { ...declared.execution, target: "local" },
+    };
     const sessions: CuaActorSessionOptions[] = [];
     const provider: CuaProvider = {
       id: "synthetic-provider",
@@ -188,14 +193,14 @@ describe("computer-use run reads the plan's residual fields", () => {
     };
     const hooks: CuaActorLabHooks = {
       env: KEYS,
-      createDesktopLane: () => fakeDesktop(),
       runSession: async (options) => {
         sessions.push(options);
         return runCuaActorSession({ ...options, provider });
       },
     };
     const plan = { ...planOf(config, hooks), caps: { maxUsd: 3 } };
-    const result = await runComputerUsePlan(plan, { cwd, hooks }, config);
+    const localVm = { desktop: () => fakeDesktop(), analysisGate: () => undefined };
+    const result = await runComputerUsePlan(plan, { cwd, hooks, localVm }, config);
     expect(result.ok).toBe(true);
     expect(sessions[0]?.maxUsd).toBe(3);
   });

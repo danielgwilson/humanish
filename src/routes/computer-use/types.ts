@@ -7,7 +7,7 @@ import type {
   CuaProvider,
 } from "../../actors/computer-use/loop.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import { type ParticipantDesktop } from "./participant-desktop.js";
+import { type ParticipantDesktop, type ParticipantDesktopFactory } from "./participant-desktop.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
 import {
@@ -170,16 +170,6 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
     laneCount: number;
     executor: CuaExecutor;
   }) => Promise<CuaProvider>;
-  /**
-   * Substitute desktop ownership while retaining the shared participant and evidence loop.
-   * @deprecated No replacement: a run's desktop is E2B, the local VM or in process. This goes in
-   * the next minor.
-   */
-  createDesktopLane?: (
-    spec: CuaLaneSpec,
-    warnings: string[],
-    artifactRoot: PreparedOutputRoot,
-  ) => ParticipantDesktop;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
   /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
@@ -208,6 +198,18 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
  */
 export type ComputerUseRunInput = Omit<RunCuaActorLabOptions, "config" | "dryRun" | "lab">;
 
+/**
+ * What runLab's local VM study gives a computer-use run: the desktop each participant runs on, the
+ * check that stops automatic analysis when the study's cleanup is unconfirmed, and the signal its
+ * sessions abort on.
+ */
+export interface LocalVmInput {
+  readonly desktop: ParticipantDesktopFactory;
+  /** Throws when the study's cleanup is unconfirmed; called before automatic analysis starts. */
+  readonly analysisGate: () => void;
+  readonly signal?: AbortSignal;
+}
+
 export interface RunCuaActorLabOptions {
   automaticAnalysis?: AutomaticAnalysisHooks;
   cwd: string;
@@ -227,6 +229,8 @@ export interface RunCuaActorLabOptions {
     laneIds?: string[];
   };
   hooks?: CuaActorLabHooks;
+  /** runLab's local VM study, for an app-url lab on the local target. */
+  localVm?: LocalVmInput;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Present only when the browser-route scorer hooks were CONFIG-DECLARED and loaded by the CLI
    *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */

@@ -7,11 +7,6 @@ import type { LabConfig } from "../../../src/lab/types.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import type { CuaActorSessionOptions } from "../../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult, CuaProvider } from "../../../src/actors/computer-use/loop.js";
-import {
-  participantDesktopOf,
-  PARTICIPANT_DESKTOP,
-  type HooksWithParticipantDesktop,
-} from "../../../src/routes/computer-use/participant-desktop.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
@@ -48,10 +43,18 @@ function localLab(type: "openai-computer-use" | "local-agent"): LabConfig {
 }
 
 function studyHooks(study: ReturnType<typeof prepareLocalVmStudy>) {
-  const hooks = study.options.cuaHooks as HooksWithParticipantDesktop | undefined;
-  expect(hooks?.[PARTICIPANT_DESKTOP]).toBeTypeOf("function");
-  return hooks!;
+  expect(study.localVm.desktop).toBeTypeOf("function");
+  return study.options.cuaHooks!;
 }
+
+const laneRun = () =>
+  participantRun({
+    id: "lane-1",
+    index: 0,
+    persona: { id: "synthetic-persona", traitsApplied: [], promptDigest: "synthetic" },
+    instructions: "Save a synthetic note.",
+    targetUrl: appUrl,
+  });
 
 describe("local study bindings", () => {
   let cwd: string;
@@ -67,7 +70,6 @@ describe("local study bindings", () => {
     const score = vi.fn();
     const onPhase = vi.fn();
     const deriveArtifacts = vi.fn();
-    const createDesktopLane = vi.fn();
     const scorerProvenance: RunScorerProvenance = {
       schema: "humanish.scorer-provenance.v1",
       ref: "scorers/example.mjs",
@@ -80,7 +82,7 @@ describe("local study bindings", () => {
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: true,
-      cuaHooks: { score, onPhase, deriveArtifacts, createDesktopLane },
+      cuaHooks: { score, onPhase, deriveArtifacts },
       scorerProvenance,
     });
 
@@ -97,13 +99,14 @@ describe("local study bindings", () => {
     expect(score).toHaveBeenCalledOnce();
     expect(onPhase).toHaveBeenCalledOnce();
     expect(deriveArtifacts).toHaveBeenCalledOnce();
-    // The study's own desktop wins over a caller's createDesktopLane.
-    expect(participantDesktopOf(hooks)).toBe(hooks[PARTICIPANT_DESKTOP]);
+    // The desktop goes to the run as localVm, not through the hooks.
     expect(hooks.buildProvider).toBeUndefined();
     expect(hooks.runSession).toBeUndefined();
+    expect(study.localVm.signal).toBeUndefined();
+    expect(() => study.localVm.analysisGate()).not.toThrow();
   });
 
-  it("uses a caller's provider in place of the Codex account and threads the abort signal", async () => {
+  it("uses a caller's provider in place of the Codex account and hands the run the abort signal", async () => {
     const provider = { id: "synthetic-provider" } as CuaProvider;
     const buildProvider = vi.fn(async () => provider);
     const sessionResult = { status: "done" } as unknown as CuaLoopResult;
@@ -123,14 +126,7 @@ describe("local study bindings", () => {
       cuaHooks: { buildProvider, runSession },
     });
     const hooks = studyHooks(study);
-    const run = participantRun({
-      id: "lane-1",
-      index: 0,
-      persona: { id: "synthetic-persona", traitsApplied: [], promptDigest: "synthetic" },
-      instructions: "Save a synthetic note.",
-      targetUrl: appUrl,
-    });
-    await participantDesktopOf(hooks)!(run, [], {} as PreparedOutputRoot).prepare();
+    await study.localVm.desktop(laneRun(), [], {} as PreparedOutputRoot).prepare();
     await study.close();
 
     await hooks.buildProvider!({} as never);
@@ -140,9 +136,28 @@ describe("local study bindings", () => {
       expect.objectContaining({ assets, appUrl, signal }),
     );
     expect(close).toHaveBeenCalled();
-    const input = { laneId: "lane-1" } as unknown as CuaActorSessionOptions;
-    await expect(hooks.runSession!(input)).resolves.toBe(sessionResult);
-    expect(runSession).toHaveBeenCalledWith({ ...input, signal });
+    // The caller's runSession stays as given; the computer-use run adds the study's signal.
+    expect(hooks.runSession).toBe(runSession);
+    expect(study.localVm.signal).toBe(signal);
+    expect(sessionResult).toBeDefined();
+  });
+
+  it("stops automatic analysis once a desktop's cleanup is unconfirmed", async () => {
+    const close = vi.fn(async () => ({ status: "failed" as const }));
+    seams.createDesktop.mockResolvedValue({ executor: {}, close } as unknown as Awaited<
+      ReturnType<typeof createLocalFirecrackerDesktop>
+    >);
+    const study = prepareLocalVmStudy({
+      cwd,
+      config: localLab("openai-computer-use"),
+      dryRun: false,
+      assets,
+    });
+    const desktop = study.localVm.desktop(laneRun(), [], {} as PreparedOutputRoot);
+    await desktop.prepare();
+    await desktop.finalize({ failed: false });
+    expect(() => study.localVm.analysisGate()).toThrow("Local study cleanup is unconfirmed.");
+    await study.close();
   });
 
   it("refuses E2B desktop hooks before preparing anything", async () => {

@@ -52,7 +52,6 @@ import {
   type CuaActorLabHooks,
   type RunCuaActorLabOptions,
 } from "./types.js";
-import { participantDesktopOf } from "./participant-desktop.js";
 
 /** The error a computer-use lab returns before a run starts. */
 export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorLabErrorCode> {
@@ -162,7 +161,7 @@ function cuaLabRejection(
     unsupportedDeclarationReason(config, hooks, subjectRoute) ??
     subjectStructureReason(config, subjectRoute) ??
     entryTargetReason(config, subjectRoute) ??
-    driverReason(config, hooks, subjectRoute) ??
+    driverReason(hooks, subjectRoute) ??
     rosterShapeReason(config)
   );
 }
@@ -256,9 +255,8 @@ function entryTargetReason(config: LabConfig, subjectRoute: DeclaredSubjectRoute
   };
 }
 
-/** Something to drive the subject: the caller's executor with its provider, or a local desktop. */
+/** Something to drive the subject: the caller's executor with its provider. */
 function driverReason(
-  config: LabConfig,
   hooks: CuaActorLabHooks,
   { localAppSubject, inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
@@ -276,18 +274,6 @@ function driverReason(
       code: "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
       message:
         "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider.",
-    };
-  // runLab gives a local browser study its desktop lane; a direct route call or an in-process
-  // executor on the same lab has none.
-  if (
-    config.subject.source === "app-url" &&
-    config.execution?.target === "local" &&
-    participantDesktopOf(hooks) === undefined
-  )
-    return {
-      code: "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
-      message:
-        "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not.",
     };
   return undefined;
 }
@@ -464,8 +450,7 @@ export function planComputerUseLab(
         base.dryRun || runner.desktop === "in-process"
           ? []
           : desktopRequirements(config, {
-              // A caller's or study's desktop factory stands in for the hosted desktop.
-              e2b: runner.desktop === "e2b-desktop" && participantDesktopOf(hooks) === undefined,
+              e2b: runner.desktop === "e2b-desktop",
               brain,
               localVm: runner.desktop === "local-vm",
               externalCatch: !provisioned,

@@ -22,7 +22,7 @@ import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js
 import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2b-desktop/desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
@@ -31,12 +31,6 @@ import {
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import { legacyHookSpecOf } from "../../../src/routes/computer-use/legacy-lane-spec.js";
-import {
-  participantDesktopOf,
-  PARTICIPANT_DESKTOP,
-  type HooksWithParticipantDesktop,
-} from "../../../src/routes/computer-use/participant-desktop.js";
-import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 
 const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
@@ -242,19 +236,17 @@ describe("ready desktop lane contract", () => {
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const createDesktopLane = vi.fn(() => f.port);
-
     const result = await runCuaActorLab({
       cwd: f.cwd,
       config: parsed.config,
       dryRun: false,
-      hooks: { ...f.deps.hooks, env: { PATH: f.cwd }, createDesktopLane },
+      hooks: { ...f.deps.hooks, env: { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" } },
     });
 
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain(describeQualifiedCodexCliVersions());
     expect(result.error?.message).toContain("no desktop was launched");
-    expect(createDesktopLane).not.toHaveBeenCalled();
+    expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(restrictedParticipantFactory).not.toHaveBeenCalled();
   });
 
@@ -281,19 +273,17 @@ describe("ready desktop lane contract", () => {
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const createDesktopLane = vi.fn(() => f.port);
-
     const result = await runCuaActorLab({
       cwd: f.cwd,
       config: parsed.config,
       dryRun: false,
-      hooks: { ...f.deps.hooks, env: { PATH: f.cwd }, createDesktopLane },
+      hooks: { ...f.deps.hooks, env: { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" } },
     });
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
     expect(result.error?.message).toContain("ChatGPT-account");
-    expect(createDesktopLane).not.toHaveBeenCalled();
+    expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(restrictedParticipantFactory).not.toHaveBeenCalled();
   });
 
@@ -461,34 +451,46 @@ describe("ready desktop lane contract", () => {
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
   });
 
-  it("records local desktop feedback without hosted credentials or resource claims", async () => {
+  it("asks for a local desktop only when the lab declares an app-url source", async () => {
+    // A library config the parser never saw can declare another source with an appUrl, and the
+    // planner then plans an app-url subject. The declared source decides, as it did in the planner.
     const f = await fixture();
     const config = {
       ...f.deps.config,
+      subject: { ...f.deps.config.subject, source: "this-repo" },
       execution: { ...f.deps.config.execution, target: "local" as const },
-      review: { analysis: false as const },
-    };
+    } as unknown as LabConfig;
+    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: true, hooks: f.deps.hooks });
+    expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
+    expect(result.ok, JSON.stringify(result.error)).toBe(true);
+  });
+
+  const reachedProvider = async (): Promise<CuaProvider> => ({
+    id: "synthetic-provider",
+    capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+    nextTurn: async () => ({
+      actions: [],
+      message: "REACHED THE GOAL. The save confirmation was confusing.",
+      outcome: "reached",
+      pendingSafetyChecks: [],
+      done: true,
+    }),
+  });
+  const localFeedbackLab = (f: Awaited<ReturnType<typeof fixture>>) => ({
+    ...f.deps.config,
+    execution: { ...f.deps.config.execution, target: "local" as const },
+    review: { analysis: false as const },
+  });
+
+  it("records local desktop feedback without hosted credentials or resource claims", async () => {
+    const f = await fixture();
     const result = await runCuaActorLab({
       cwd: f.cwd,
-      config,
+      config: localFeedbackLab(f),
       runId: "local-feedback",
       dryRun: false,
-      hooks: {
-        ...f.deps.hooks,
-        env: {},
-        createDesktopLane: () => f.port,
-        buildProvider: async () => ({
-          id: "synthetic-provider",
-          capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
-          nextTurn: async () => ({
-            actions: [],
-            message: "REACHED THE GOAL. The save confirmation was confusing.",
-            outcome: "reached",
-            pendingSafetyChecks: [],
-            done: true,
-          }),
-        }),
-      },
+      localVm: { desktop: () => f.port, analysisGate: () => undefined },
+      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider },
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
     const bundle = JSON.parse(
@@ -498,6 +500,24 @@ describe("ready desktop lane contract", () => {
     expect(bundle.providerResources).toBeUndefined();
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(f.release).toHaveBeenCalledOnce();
+  });
+
+  it("runs a local VM's sessions on its abort signal", async () => {
+    const f = await fixture();
+    const signal = new AbortController().signal;
+    const runSession = vi.fn((options: Parameters<typeof runCuaActorSession>[0]) =>
+      runCuaActorSession(options),
+    );
+    const result = await runCuaActorLab({
+      cwd: f.cwd,
+      config: localFeedbackLab(f),
+      dryRun: false,
+      localVm: { desktop: () => f.port, analysisGate: () => undefined, signal },
+      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider, runSession },
+    });
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    expect(runSession).toHaveBeenCalledOnce();
+    expect(runSession.mock.calls[0]![0].signal).toBe(signal);
   });
 
   it("runs the real participant loop and persists screenshots/trace through a non-E2B port", async () => {
@@ -643,32 +663,5 @@ describe("ready desktop lane contract", () => {
     await expect(adapter.prepare()).rejects.toThrow("only start once");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(adapter.snapshot().released).toBe(false);
-  });
-});
-
-describe("participantDesktopOf", () => {
-  const run = participantRun({
-    id: "participant-a",
-    index: 0,
-    persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "synthetic-prompt" },
-    instructions: "Save a note.",
-  });
-  const root = {} as PreparedOutputRoot;
-  const port = {} as ParticipantDesktop;
-
-  it("gives a caller's deprecated createDesktopLane the flat lane", () => {
-    const createDesktopLane = vi.fn(() => port);
-    expect(participantDesktopOf({ createDesktopLane })!(run, [], root)).toBe(port);
-    expect(createDesktopLane).toHaveBeenCalledWith(legacyHookSpecOf(run), [], root);
-  });
-
-  it("prefers a study's own factory, which receives the run itself", () => {
-    const createDesktopLane = vi.fn(() => port);
-    const own = vi.fn(() => port);
-    const hooks: HooksWithParticipantDesktop = { createDesktopLane, [PARTICIPANT_DESKTOP]: own };
-    participantDesktopOf(hooks)!(run, [], root);
-    expect(own).toHaveBeenCalledWith(run, [], root);
-    expect(createDesktopLane).not.toHaveBeenCalled();
-    expect(participantDesktopOf({})).toBeUndefined();
   });
 });
