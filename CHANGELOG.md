@@ -72,6 +72,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- `humanish serve --safe` says which runs it left out and why (#1373). After `runs:` it prints a
+  `hidden:` count and one line per grade and reasons, such as `3 runs local_only (RAW_SCREENSHOTS)`.
+  When a run is held back only for raw screenshots, it names the redacted-copy step:
+  `humanish export --run <id> --format bundle --redact-screenshots --out <dir>`, then
+  `humanish serve --safe --cwd <dir>`. The JSON result carries `hiddenRuns`. Before, a project
+  whose live runs were all `local_only` printed `runs: 0` and nothing else.
 - `humanish doctor --lab` and the TUI's lab screen give each Codex failure its own recovery
   (#1371). A Codex that is installed but signed out says to run `codex login`; signed in with an
   API key, to run `codex logout` and `codex login` with a ChatGPT account. A `codex` humanish cannot
