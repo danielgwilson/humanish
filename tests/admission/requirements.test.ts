@@ -72,7 +72,6 @@ function options(cwd: string, env: Record<string, string>, loads: { count: numbe
     cwd,
     env,
     cuaHooks: { loadDesktopModule: load },
-    sharedWorldHooks: { loadDesktopModule: load },
   } satisfies InternalRunLabOptions;
 }
 

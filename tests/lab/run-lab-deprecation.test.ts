@@ -59,11 +59,6 @@ describe("rerun.laneIds", () => {
       cwd: "/tmp/x",
       cuaHooks: { loadDesktopModule: async () => ({}) as never, env: {} },
     });
-    normalizeRunLabOptions(labConfig, routeOf(labConfig), {
-      cwd: "/tmp/x",
-      env: {},
-      sharedWorldHooks: { env: {} },
-    });
     expect(deprecations(emitWarning)).toEqual([]);
   });
 });

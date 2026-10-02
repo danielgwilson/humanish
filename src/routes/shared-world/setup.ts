@@ -32,9 +32,9 @@ import type {
   PlaneContext,
   PlaneResults,
   PlaneSelection,
-  SharedWorldLabHooks,
   SharedWorldRunInput,
 } from "./types.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
 import { planeStateOf } from "./plan.js";
 import path from "node:path";
@@ -52,11 +52,11 @@ function makeRunId(): string {
 interface AdmittedLab {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Read by the computer-use lane runner, whose hooks and desktop setup take the whole config.
-   *  Seats, their count and their host and entry come from the plan's participants. */
+  /** Read for the subject's serve URL, which each seat's subject names. Seats, their count and
+   *  their host and entry come from the plan's participants. */
   config: LabConfig;
   requestedCwd: string;
-  hooks: SharedWorldLabHooks;
+  deps: LabDeps;
   env: Record<string, string | undefined>;
   descriptor: CuaActorDescriptor;
   planeClass: ConcurrentSharedWorldPlaneClass;
@@ -126,7 +126,7 @@ function startConcurrentRun(
   cwd: string,
   scope: RunScope,
 ): ReturnType<RunScope["startRun"]> {
-  const { plan, input, hooks } = lab;
+  const { plan, input, deps } = lab;
   return scope.startRun({
     cwd,
     runId: input.runId,
@@ -134,7 +134,7 @@ function startConcurrentRun(
     mode: plan.dryRun ? "dry-run" : "live",
     lab: plan.lab,
     renderReview: renderConcurrentReviewMarkdown,
-    observer: { open: input.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: deps.renderObserver },
   });
 }
 
@@ -156,7 +156,7 @@ export async function prepareConcurrentRun(
       finish: FinishFacts;
     }
 > {
-  const { plan, input, config, requestedCwd, hooks, env, descriptor, planeClass, fail } = lab;
+  const { plan, input, config, requestedCwd, deps, env, descriptor, planeClass, fail } = lab;
   const { runBudget, runSession, localTreeRoute, subjectEnvNames, publicRepo } = lab;
   const { openaiApiKey, e2bApiKey, knownSecretValues, scrubKnownValues } = lab;
   const { dryRun, concurrency } = plan;
@@ -178,7 +178,7 @@ export async function prepareConcurrentRun(
   // failure fails the run closed without sandbox cost. Dry-run packs nothing.
   const packed =
     localTreeRoute && !dryRun
-      ? await packSubjectTree(cwd, plan.residual, hooks, scrubKnownValues)
+      ? await packSubjectTree(cwd, plan.residual, deps, scrubKnownValues)
       : { ok: true as const, archive: undefined, buffer: undefined };
   if (!packed.ok) {
     return {
@@ -197,9 +197,9 @@ export async function prepareConcurrentRun(
   const timeoutMs = plan.sessionTimeoutMs ?? defaultSessionTimeoutMs(plan);
   const requestTimeoutMs = e2bRequestTimeoutMs(env);
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
-  const timers: DetachedTimers = hooks.detachedTimers ?? {};
-  const now = hooks.now ?? Date.now;
-  const proberCadenceMs = hooks.proberCadenceMs ?? DEFAULT_PROBER_CADENCE_MS;
+  const timers: DetachedTimers = deps.detachedTimers ?? {};
+  const now = deps.now ?? Date.now;
+  const proberCadenceMs = deps.proberCadenceMs ?? DEFAULT_PROBER_CADENCE_MS;
   const seedDigest = seedRecipeDigest(planeStateOf(plan));
 
   const source = await buildRunSource({
@@ -247,7 +247,7 @@ export async function prepareConcurrentRun(
     input,
     config,
     descriptor,
-    hooks,
+    deps,
     env,
     concurrency,
     runBudget,

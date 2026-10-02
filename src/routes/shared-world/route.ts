@@ -86,7 +86,7 @@ export async function runConcurrentSharedWorld(
   // planSharedWorldLab makes every configuration refusal, in the order this route always has.
   const planned = planSharedWorldLab(config, {
     dryRun,
-    hooks: input.hooks ?? {},
+    hasRunSession: input.deps?.runSession !== undefined,
   });
   if (planned.ok) return runSharedWorldPlan(planned.plan, input, config);
   return sharedWorldLabRefusal(options, planned.refusal);
@@ -170,7 +170,7 @@ async function admitSharedWorldRun(
   input: SharedWorldRunInput,
 ): Promise<ConcurrentSharedWorldLabResult | undefined> {
   if (plan.dryRun) return undefined;
-  const env = input.hooks?.env ?? process.env;
+  const env = input.env ?? process.env;
   const fail = (code: ConcurrentSharedWorldLabErrorCode, message: string) =>
     completeSharedWorldAnalysis(
       plan,
@@ -260,8 +260,8 @@ async function runPlanInScope(
 ): Promise<ConcurrentSharedWorldLabResult> {
   const { dryRun } = plan;
   const requestedCwd = path.resolve(input.cwd);
-  const hooks = input.hooks ?? {};
-  const env = hooks.env ?? process.env;
+  const deps = input.deps ?? {};
+  const env: Record<string, string | undefined> = input.env ?? process.env;
   const fail = sharedWorldFailure(plan, input);
   const descriptor = sharedWorldDescriptorOf(plan.actor);
   const planeClass: ConcurrentSharedWorldPlaneClass =
@@ -277,7 +277,7 @@ async function runPlanInScope(
   const subjectRepo = plan.residual.subject.repos?.[0] ?? "";
   const subjectEnvNames = [...(subject?.env ?? [])];
   const checkpoints = [...(subject?.state.checkpoint ?? [])];
-  const runSession = hooks.runSession ?? descriptor.runSession;
+  const runSession = deps.runSession ?? descriptor.runSession;
 
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
@@ -300,7 +300,7 @@ async function runPlanInScope(
       input,
       config,
       requestedCwd,
-      hooks,
+      deps,
       env,
       descriptor,
       planeClass,

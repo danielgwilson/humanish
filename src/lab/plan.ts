@@ -183,7 +183,7 @@ function planRoute(
     case "shared-world":
       return planSharedWorldLab(lab, {
         ...input,
-        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+        hasRunSession: deps.runSession !== undefined,
       });
     case "terminal":
       return planTerminalLab(lab, { ...input, hasCostProbe: deps.costProbe !== undefined });

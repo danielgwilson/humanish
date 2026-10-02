@@ -62,13 +62,7 @@ export function knownSecretValues(
   options: InternalRunLabOptions,
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
 ): string[] {
-  const sources = [
-    forwardedEnv,
-    options.env,
-    options.cuaHooks?.env,
-    options.sharedWorldHooks?.env,
-    process.env,
-  ];
+  const sources = [forwardedEnv, options.env, options.cuaHooks?.env, process.env];
   const names = ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY", ...(config.subject.env ?? [])];
   const values = new Set<string>();
   const add = (value: string | undefined): void => {

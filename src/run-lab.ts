@@ -33,10 +33,7 @@ import { admitPreviewPlan, previewLabRefusal } from "./routes/preview.js";
 import { admitScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
 import { type ScriptedBrowserLabResult } from "./routes/scripted/types.js";
 import { admitSharedWorldPlan, sharedWorldLabRefusal } from "./routes/shared-world/route.js";
-import {
-  type ConcurrentSharedWorldLabResult,
-  type SharedWorldLabHooks,
-} from "./routes/shared-world/types.js";
+import { type ConcurrentSharedWorldLabResult } from "./routes/shared-world/types.js";
 import { admitTerminalPlan, terminalLabRefusal } from "./routes/terminal/route.js";
 import { type TerminalProductLabResult } from "./routes/terminal/types.js";
 import { type RunScorerProvenance } from "./run/bundle.js";
@@ -273,8 +270,6 @@ interface RunLabInternals {
   automaticAnalysis?: AutomaticAnalysisHooks;
   /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
   cuaHooks?: CuaActorLabHooks;
-  /** Shared-world route hooks: sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
-  sharedWorldHooks?: SharedWorldLabHooks;
 }
 
 /** A run's result and the route it ran on. */

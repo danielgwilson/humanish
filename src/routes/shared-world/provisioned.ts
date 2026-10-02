@@ -48,7 +48,8 @@ import { runCuaParticipant } from "../computer-use/lanes.js";
 import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
-import type { ConcurrentBundleArgs, SharedWorldLabHooks } from "./types.js";
+import type { ConcurrentBundleArgs } from "./types.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 import {
   buildSubjectProvenance,
   hostOriginDigest,
@@ -181,9 +182,9 @@ class SubjectPlane {
   }
 
   async acquire(): Promise<void> {
-    const { plan, hooks, env, requestTimeoutMs, timeoutMs } = this.ctx;
+    const { plan, deps, env, requestTimeoutMs, timeoutMs } = this.ctx;
     const { subjectEnvNames, commsEnv } = this.setup;
-    const subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+    const subjectModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
     // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
     // HERE; the actor sandboxes get NONE of it (FIX-10). A custom desktop template (image) is
     // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaParticipant, which
@@ -231,9 +232,7 @@ class SubjectPlane {
     this.subjectCreatedAtMs = this.ctx.now();
     this.subjectResources = await observeDesktopResources(this.subjectDesktop);
 
-    if (hooks.prepareDesktop) {
-      await hooks.prepareDesktop(this.subjectDesktop);
-    }
+    await this.ctx.input.prepareDesktop?.(this.subjectDesktop, { kind: "subject" });
   }
 
   // Start the in-sandbox email catch BEFORE the subject serve, so the app's send-API base URL
@@ -609,12 +608,12 @@ export async function runProvisionedPlane(
 export async function packSubjectTree(
   cwd: string,
   config: { readonly subject: Pick<LabConfig["subject"], "localTree"> },
-  hooks: SharedWorldLabHooks,
+  deps: LabDeps,
   scrubKnownValues: (text: string) => string,
 ): Promise<
   { ok: true; archive: LocalTreeArchive; buffer: ArrayBuffer } | { ok: false; message: string }
 > {
-  const packLocalTree = hooks.packLocalTree ?? defaultPackLocalTree;
+  const packLocalTree = deps.packLocalTree ?? defaultPackLocalTree;
   try {
     const packed = await packLocalTree({
       root: cwd,

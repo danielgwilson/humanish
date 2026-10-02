@@ -151,7 +151,13 @@ describe("declared camera capabilities must reach an implemented route", () => {
             },
           },
         }),
-        runConcurrentSharedWorld({ cwd, config: shared, dryRun: false, hooks }),
+        runConcurrentSharedWorld({
+          cwd,
+          config: shared,
+          dryRun: false,
+          env: {},
+          deps: { desktopModule: loadDesktopModule, runSession },
+        }),
         runScriptedBrowserLab({
           cwd,
           config: scripted,
@@ -210,7 +216,8 @@ describe("declared camera capabilities must reach an implemented route", () => {
         cwd,
         config,
         dryRun: false,
-        hooks: { env: {}, loadDesktopModule, runSession },
+        env: {},
+        deps: { desktopModule: loadDesktopModule, runSession },
       });
       expect(result.ok).toBe(false);
       expect(result.runId).toBe("not-created");

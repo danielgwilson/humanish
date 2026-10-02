@@ -102,13 +102,11 @@ describe("a live route records its status before acquiring a sandbox", () => {
       await readFile(path.join(ROOT, "humanish/labs/shared-world-concurrent-live.yaml"), "utf8"),
     ) as Record<string, unknown>;
     const seen: boolean[] = [];
-    await runLab(parsed({ ...lab, scenario: { mode: "live" } }), {
-      cwd,
-      dryRun: false,
-      runId: RUN_ID,
-      env,
-      sharedWorldHooks: { loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
-    });
+    await runLab(
+      parsed({ ...lab, scenario: { mode: "live" } }),
+      { cwd, dryRun: false, runId: RUN_ID, env },
+      { desktopModule: async () => statusCheckingModule(runDir, seen) },
+    );
     expect(seen[0]).toBe(true);
   });
 

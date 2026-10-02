@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
-import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import { lab } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];
@@ -124,7 +124,8 @@ const pairs: [string, string][] = [
 
 function caseOf(names: readonly string[]): {
   config: LabConfig;
-  hooks: SharedWorldLabHooks;
+  env: Record<string, string>;
+  deps: LabDeps;
 } {
   const config = lab("sharedProvisioned");
   // The later rule first, so the earlier rule's change is the one that stands where they overlap.
@@ -133,14 +134,14 @@ function caseOf(names: readonly string[]): {
   const never = async (): Promise<never> => {
     throw new Error("admission cases must not reach a caller hook");
   };
-  const hooks: SharedWorldLabHooks = {
-    env: selected.some((rule) => rule.keys)
-      ? { OPENAI_API_KEY: "sk-test-openai", E2B_API_KEY: "e2b-test-key" }
-      : {},
-    loadDesktopModule: never,
+  const env = selected.some((rule) => rule.keys)
+    ? { OPENAI_API_KEY: "sk-test-openai", E2B_API_KEY: "e2b-test-key" }
+    : {};
+  const deps: LabDeps = {
+    desktopModule: never,
     ...(selected.some((rule) => rule.runSession) ? { runSession: never } : {}),
   };
-  return { config: config as unknown as LabConfig, hooks };
+  return { config: config as unknown as LabConfig, env, deps };
 }
 
 const cases: [string, readonly string[]][] = [
@@ -156,9 +157,9 @@ describe("shared-world admission order", () => {
     for (const [name, names] of cases) {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-admission-"));
       dirs.push(cwd);
-      const { config, hooks } = caseOf(names);
+      const { config, env, deps } = caseOf(names);
       const dryRun = config.scenario?.mode !== "live";
-      const result = await runConcurrentSharedWorld({ cwd, config, dryRun, hooks });
+      const result = await runConcurrentSharedWorld({ cwd, config, dryRun, env, deps });
       expect(await readdir(cwd), name).toEqual([]);
       let text = JSON.stringify(result);
       for (const dir of [await realpath(cwd), cwd]) text = text.split(dir).join("[cwd]");

@@ -1,5 +1,6 @@
-// What each route's run takes from runLab's options: the shared run settings, the route's own
-// hook bag, the automatic-analysis hooks and the declared scorer's provenance.
+// What each route's run takes from runLab's options: the shared run settings, the typed options
+// the route reads, the computer-use hook bag, the automatic-analysis hooks and the declared
+// scorer's provenance.
 
 import type { InternalRunLabOptions } from "../run-lab.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
@@ -74,7 +75,8 @@ export function sharedWorldInput(
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
-    ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+    ...(options.env === undefined ? {} : { env: options.env }),
+    ...(options.prepareDesktop === undefined ? {} : { prepareDesktop: options.prepareDesktop }),
     ...observersOf(options, emit),
     deps,
     ...scorerOf(options, browserRouteScorer),
