@@ -38,6 +38,8 @@ import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
+import { DECLARED_SCORER_MALFORMED } from "../../../src/lab/adapter-extension.js";
+import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 
 // =============================================================================================
 // THE THIN EXAMPLE ADAPTER — this is the ~40-line extension an adopter would write in ITS repo.
@@ -443,6 +445,42 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true); // the bundle still verifies — the seam stayed fail-closed
   });
+
+  it.each([
+    ["a library scorer", false],
+    ["a declared scorer", true],
+  ])(
+    "drops a score whose data is an array from %s, and fails the run when it is declared",
+    async (_name, declared) => {
+      const provenance: RunScorerProvenance = {
+        schema: "humanish.scorer-provenance.v1",
+        ref: "scorers/terminal.mjs",
+        digest: "0123456789ab",
+        source: "cli-flag",
+        exports: ["score"],
+      };
+      const inputs = passingRun({
+        score: (ctx) => ({ ...exampleAdapterScore(ctx), data: [] }) as unknown as RunAdapterScore,
+      });
+      const result = await runTerminalProductLab({
+        cwd,
+        config: liveConfig(),
+        dryRun: false,
+        open: false,
+        ...inputs,
+        ...(declared ? { scorerProvenance: provenance } : {}),
+      });
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+      ) as RunBundle;
+
+      expect(bundle.adapterScore).toBeUndefined();
+      expect(result.warnings.some((warning) => warning.includes("adapter-score.v1"))).toBe(true);
+      expect(bundle.review.gaps.includes(DECLARED_SCORER_MALFORMED)).toBe(declared);
+      expect(bundle.review.verdict).toBe(declared ? "fail" : "pass");
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    },
+  );
 
   it("drops an adapter candidate whose idempotency_key is blank", async () => {
     const inputs = passingRun({
