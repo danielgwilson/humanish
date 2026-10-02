@@ -28,6 +28,7 @@ import {
   validateAnalysisInputMetadata,
 } from "./validation.js";
 import { EVIDENCE_LIMITS } from "./evidence.js";
+import type { RejectedAnalysisOutput } from "./diagnostics.js";
 import {
   truncatedFrameWarning,
   unknownNotificationsWarning,
@@ -376,32 +377,40 @@ const VALIDATION_FAILURES: Readonly<Record<string, string>> = Object.freeze({
   ANALYSIS_CONCERN_FINDING_INVALID: "analysis_validation_failed_concern_finding_invalid",
 });
 
-type CheckedProviderAnalysis = { ok: true; result: AnalysisResult } | { ok: false; error: string };
+type CheckedProviderAnalysis =
+  | { ok: true; result: AnalysisResult }
+  | { ok: false; error: string; rejected?: RejectedAnalysisOutput };
 
 function checkProviderAnalysis(input: AnalysisInput, value: unknown): CheckedProviderAnalysis {
   try {
     const parsed = analysisResponseSchema.safeParse(value);
-    if (!parsed.success)
-      return { ok: false, error: VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID! };
+    if (!parsed.success) {
+      const error = VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID!;
+      return { ok: false, error, rejected: { error, errors: [], output: value } };
+    }
     let scrubbed: AnalysisResult;
     try {
       scrubbed = scrubGeneratedNarrative(parsed.data);
     } catch (error) {
+      if (!(error instanceof Error && error.message === "ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE"))
+        return { ok: false, error: "analysis_validation_failed_unexpected" };
+      const rejected = "analysis_validation_failed_scrub_rejected";
       return {
         ok: false,
-        error:
-          error instanceof Error && error.message === "ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE"
-            ? "analysis_validation_failed_scrub_rejected"
-            : "analysis_validation_failed_unexpected",
+        error: rejected,
+        rejected: { error: rejected, errors: [], output: value },
       };
     }
     const checked = checkAnalysisResult(input, scrubbed);
-    if (!checked.ok)
+    if (!checked.ok) {
+      const error =
+        VALIDATION_FAILURES[checked.errors[0] ?? ""] ?? "analysis_validation_failed_unexpected";
       return {
         ok: false,
-        error:
-          VALIDATION_FAILURES[checked.errors[0] ?? ""] ?? "analysis_validation_failed_unexpected",
+        error,
+        rejected: { error, errors: [...checked.errors], output: scrubbed },
       };
+    }
     return checked;
   } catch {
     return { ok: false, error: "analysis_validation_failed_unexpected" };
@@ -420,6 +429,9 @@ interface RunAnalysisOptions {
   beforeDispatch?: (context: AnalysisDispatchContext) => Promise<void>;
   /** Receives the provider's run warnings, such as Codex notification methods humanish does not know. */
   warnings?: string[];
+  /** Receives a completed response that failed validation, for local diagnosis only. The
+   *  artifact still records only the allowlisted code. */
+  onRejectedOutput?: (rejected: RejectedAnalysisOutput) => void;
 }
 
 /** Check the caller's id, input metadata and admission; throw the stable code a direct caller receives. */
@@ -525,8 +537,8 @@ function recordProviderUsage(
 /**
  * Settle a completed response. Parse the bounded shape first, then scrub and validate again.
  * Changed exact quotes or expanded field lengths fail closed under the original validator; source
- * bytes stay intact. Only an allowlisted stage or first rule code survives; rejected output and
- * exceptions do not.
+ * bytes stay intact. Only an allowlisted stage or first rule code reaches the artifact; rejected
+ * output goes to the caller's diagnostic callback and exceptions go nowhere.
  */
 function settleCompletedOutput(
   artifact: AnalysisArtifact,
@@ -534,11 +546,18 @@ function settleCompletedOutput(
   config: AnalysisConfig,
   admission: AnalysisAdmission,
   response: AnalysisProviderResult,
+  onRejectedOutput: RunAnalysisOptions["onRejectedOutput"],
 ): void {
   const checked = checkProviderAnalysis(input, response.output);
   if (!checked.ok) {
     artifact.result = null;
     artifact.error = checked.error;
+    if (checked.rejected)
+      try {
+        onRejectedOutput?.(checked.rejected);
+      } catch {
+        /* Diagnosis does not own the attempt's outcome. */
+      }
     return;
   }
   artifact.result = checked.result;
@@ -642,6 +661,6 @@ export async function runAnalysis(
     return finish();
   }
   progress("validating");
-  settleCompletedOutput(artifact, input, config, admission, response);
+  settleCompletedOutput(artifact, input, config, admission, response, options.onRejectedOutput);
   return finish();
 }

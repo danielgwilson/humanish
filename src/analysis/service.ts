@@ -34,6 +34,7 @@ import {
   writeAnalysis,
 } from "./store.js";
 import { beginAnalysisExecution, writeAnalysisExecutionReceipt } from "./store-executions.js";
+import { keepRejectedAnalysisOutput, type RejectedAnalysisOutput } from "./diagnostics.js";
 import { loadAnalysis } from "./load.js";
 import { hashAnalysisValue } from "./validation.js";
 import {
@@ -65,6 +66,8 @@ export interface AnalyzeResult {
   analysisId?: string;
   artifactPath?: string;
   executionReceiptPath?: string;
+  /** A rejected response kept for local diagnosis, outside the run directory. */
+  rejectedOutputPath?: string;
   status?: AnalysisArtifact["status"];
   usage?: AnalysisArtifact["usage"];
   admission?: AnalysisAdmission;
@@ -461,6 +464,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   if (config.provider !== "codex" && !apiKey.trim())
     return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
   let finalizeExecution: ((value: AnalysisArtifact) => Promise<void>) | undefined;
+  const rejection: { output?: RejectedAnalysisOutput } = {};
   const analysis = await runAnalysis(input, config, {
     apiKey,
     ...(deps.codexProvider === undefined ? {} : { codexProvider: deps.codexProvider }),
@@ -473,8 +477,28 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
     ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),
     ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
     warnings: base.warnings,
+    onRejectedOutput: (output) => {
+      rejection.output = output;
+    },
   });
   const result = attemptResult(base, analysis);
+  if (rejection.output)
+    try {
+      result.rejectedOutputPath = await keepRejectedAnalysisOutput(
+        cwd,
+        {
+          runId: analysis.runId,
+          analysisId: analysis.id,
+          model: config.model,
+          promptVersion: analysis.promptVersion,
+        },
+        rejection.output,
+      );
+    } catch {
+      result.warnings.push(
+        "The rejected analyst output could not be kept under .humanish/analysis-diagnostics.",
+      );
+    }
   if (!(await publishAttempt(prepared, analysis, result, finalizeExecution)))
     return {
       ...result,

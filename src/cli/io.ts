@@ -211,6 +211,11 @@ export function writeResult<T>(
         io.writeOut(
           `analysis: ${analysis.state}${analysis.reason ? ` (${analysis.reason})` : ""}\n`,
         );
+      const rejected = analysis?.result?.rejectedOutputPath;
+      if (rejected)
+        io.writeOut(
+          `analysis: ${analysis.result?.error?.code ?? "rejected"}; the rejected output is kept locally at ${rejected}\n`,
+        );
       if (defaultAnalysisOverBudget(output as AutomaticAnalysisResult))
         io.writeOut(overBudgetAnalysisHint(output as AutomaticAnalysisResult & { runId?: string }));
     }

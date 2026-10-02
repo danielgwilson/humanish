@@ -929,6 +929,7 @@
         "code": "analysis_validation_failed_schema_invalid",
         "message": "The attempt retained its status and any known usage. Inspect it with humanish analyze show."
       },
+      "rejectedOutputPath": ".humanish/analysis-diagnostics/analysis-golden/analysis-golden-1.json",
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
     },
