@@ -10,6 +10,7 @@ import { link, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { measuredChromeDesktop } from "../../helpers/measured-chrome-desktop.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
@@ -171,7 +172,8 @@ function makeFakeSandbox(
         const handled = options.commandHandler?.(command);
         if (handled !== undefined) return handled;
         // E2B creates the desktop at the requested resolution, and xdpyinfo reports it. The
-        // fake has no Chromium, so window, containment and viewport stay unmeasured.
+        // fake has no Chromium, so window, containment and viewport stay unmeasured unless a
+        // test passes measuredChromeDesktop as its commandHandler.
         if (command.includes("xdpyinfo") && screen !== undefined)
           return { exitCode: 0, stdout: `  dimensions:    ${screen[0]}x${screen[1]} pixels\n` };
         return { exitCode: 0, stdout: "" };
@@ -3796,7 +3798,9 @@ describe("runCuaActorLab", () => {
   });
 
   it("kills the sandbox and still persists a failed-evidence bundle when the session throws", async () => {
-    const sandbox = makeFakeSandbox();
+    const sandbox: FakeSandbox = makeFakeSandbox({
+      commandHandler: measuredChromeDesktop(() => sandbox.screen),
+    });
     const { module, killed } = makeFakeModule(sandbox);
     // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
     let clock = 0;
@@ -4109,7 +4113,10 @@ describe("runCuaActorLab", () => {
   });
 
   it("keeps malformed cleanup responses unconfirmed in the run and its cost evidence", async () => {
-    const { module } = makeFakeModule(makeFakeSandbox());
+    const sandbox: FakeSandbox = makeFakeSandbox({
+      commandHandler: measuredChromeDesktop(() => sandbox.screen),
+    });
+    const { module } = makeFakeModule(sandbox);
     module.Sandbox.kill = async () => undefined as unknown as boolean;
     // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
     let clock = 0;
@@ -7619,7 +7626,10 @@ describe("computer-use run directory goldens", () => {
     ["dry run", true, "computer-use-dry-run.json"],
     ["live run", false, "computer-use-live.json"],
   ] as const)("%s with one lane", async (_label, dryRun, golden) => {
-    const { module } = makeFakeModule(makeFakeSandbox());
+    const sandbox: FakeSandbox = makeFakeSandbox({
+      commandHandler: measuredChromeDesktop(() => sandbox.screen),
+    });
+    const { module } = makeFakeModule(sandbox);
     let clock = 0;
     const stderr = captureStderr();
     const outcome = await runLab(
@@ -7653,6 +7663,54 @@ describe("computer-use run directory goldens", () => {
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       `../../golden/routes/${golden}`,
+    );
+  });
+
+  // The goldens above use a desktop whose Chrome reports its geometry. This one answers no
+  // geometry command, so every unmeasured-geometry warning is pinned here, in each place a run
+  // records it: the result, the stream's desktopGeometry and the events.
+  it("live run whose desktop measures no browser geometry", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    let clock = 0;
+    const stderr = captureStderr();
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd: goldenCwd,
+        dryRun: false,
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+      },
+      {
+        analysis: { run: automaticAnalysisBoundary() },
+        desktopModule: async () => module,
+        now: () => (clock += 30_000),
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    ).finally(stderr.stop);
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const bundle = JSON.parse(
+      await readFile(path.join(goldenCwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    const stream = bundle.streams[0];
+    const geometryWarnings = stream?.desktopGeometry?.warnings ?? [];
+    const geometry = {
+      resultWarnings: outcome.result.warnings.filter((warning) =>
+        geometryWarnings.includes(warning),
+      ),
+      streamViewport: stream?.viewport ?? null,
+      desktopGeometry: stream?.desktopGeometry ?? null,
+      // Event times come from the wall clock; the other run-directory goldens mask them too.
+      events: bundle.events
+        .filter((event) => event.type === "cua-lab.geometry.warning")
+        .map((event) => ({ ...event, at: "[ts]" })),
+    };
+    await expect(`${JSON.stringify(geometry, null, 2)}\n`).toMatchFileSnapshot(
+      "../../golden/routes/computer-use-unmeasured-geometry.json",
     );
   });
 
