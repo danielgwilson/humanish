@@ -10,12 +10,12 @@ import { actorRegistry, isTerminalActorDescriptor } from "../../../src/actors/re
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import {
-  routesToComputerUse,
-  routesToScriptedBrowser,
-  routesToTerminalProduct,
+  isComputerUseComposition,
+  isScriptedBrowserComposition,
+  isTerminalProductComposition,
 } from "../../../src/lab/routing.js";
 import { runLab } from "../../../src/run-lab.js";
-import { selectLabBackend } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/lab/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { runTerminalPlan, runTerminalProductLab } from "../../../src/routes/terminal/route.js";
@@ -159,14 +159,14 @@ describe("terminal-product parse matrix", () => {
       stdin: "disabled",
     });
     expect(parsed.config.scenario?.caps).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
-    expect(routesToTerminalProduct(parsed.config)).toBe(true);
-    expect(selectLabBackend(parsed.config)).toBe("terminal");
+    expect(isTerminalProductComposition(parsed.config)).toBe(true);
+    expect(routeOf(parsed.config)).toBe("terminal");
   });
 
   it("target absent defaults to terminal (e2b-terminal is implied)", () => {
     const config = parsedTerminalConfig({ target: undefined });
     expect(config.execution?.target).toBeUndefined();
-    expect(selectLabBackend(config)).toBe("terminal");
+    expect(routeOf(config)).toBe("terminal");
   });
 
   it("rejects terminal-product + a NON-terminal actor", () => {
@@ -330,15 +330,15 @@ describe("REGRESSION: cua/scripted/local-app/synthetic/meta routing + warnings u
       actors: [{ type: "synthetic-persona" }],
     });
     if (!cua.ok || !scripted.ok || !synthetic.ok) throw new Error("fixture configs must parse");
-    expect(selectLabBackend(cua.config)).toBe("cua");
-    expect(selectLabBackend(scripted.config)).toBe("scripted");
-    expect(selectLabBackend(synthetic.config)).toBe("synthetic");
+    expect(routeOf(cua.config)).toBe("computer-use");
+    expect(routeOf(scripted.config)).toBe("scripted");
+    expect(routeOf(synthetic.config)).toBe("preview");
     // Terminal predicate is false for every non-terminal config; cua/scripted predicates false for terminal.
-    expect(routesToTerminalProduct(cua.config)).toBe(false);
-    expect(routesToTerminalProduct(scripted.config)).toBe(false);
+    expect(isTerminalProductComposition(cua.config)).toBe(false);
+    expect(isTerminalProductComposition(scripted.config)).toBe(false);
     const terminal = parsedTerminalConfig();
-    expect(routesToComputerUse(terminal)).toBe(false);
-    expect(routesToScriptedBrowser(terminal)).toBe(false);
+    expect(isComputerUseComposition(terminal)).toBe(false);
+    expect(isScriptedBrowserComposition(terminal)).toBe(false);
   });
 
   it("scripted-browser mission inert warning still fires (regression on the warning branch)", () => {

@@ -54,6 +54,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   carried a deprecation. Read `route`, which the same result has carried beside it since 0.106.0,
   with the mapping above. The check named `backend` is now named `route`, and the human output
   prints `route:` where it printed `backend:`.
+- The `routesTo*` predicates and `selectLabBackend` (#1399). Use `routeOf(config)`, which
+  returns the one route a lab runs on: `routesToComputerUse`, `routesToScriptedBrowser` and
+  `routesToTerminalProduct` become a check for `"computer-use"`, `"scripted"` and `"terminal"`.
+  `routesToSharedWorld` and `routesToConcurrentSharedWorld` become a check for `"shared-world"`.
+  `routesToProvisionedSharedWorld` adds `subject.source` `clone` or `local-tree`, and
+  `routesToExternalPublicSharedWorld` adds `subject.source` `app-url`. `selectLabBackend`
+  returned the old names, which map to routes as above.
 
 ### Changed
 
@@ -110,6 +117,8 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `humanish lab run --help` says what `--participants`, formerly `--lanes`, takes: a
   participant's declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the
   lab declares none (#1336).
+- The parse warning for `actors[0].lanes[].entry` on a lab that is not shared-world says "the
+  per-participant loopback entry" in place of "the per-role loopback entry" (#1397).
 
 ### Fixes
 

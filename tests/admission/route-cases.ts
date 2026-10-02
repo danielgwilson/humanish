@@ -153,14 +153,14 @@ export const routeCases: readonly AdmissionCase[] = [
     name: "shared-world config to the cu runner",
     raw: lab("sharedProvisioned"),
     parser: "accepts",
-    options: { runner: "cua" },
+    options: { runner: "computer-use" },
     entries: ["runner"],
   },
   {
     name: "cu config to the shared-world runner",
     raw: lab("cuAppUrl"),
     parser: "accepts",
-    options: { runner: "concurrent-shared-world" },
+    options: { runner: "shared-world" },
     entries: ["runner"],
   },
   {

@@ -1,7 +1,6 @@
 // The route decision. A lab's route follows from its composition (subject.source,
 // execution.target, the first actor's registered lane, subject.topology), never from a declared
-// kind. This is the only function that decides it; backendOf maps its answer to the older
-// backend names.
+// kind. This is the only function that decides it.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import { callerDrivingOf, planComputerUseLab } from "../routes/computer-use/plan.js";
@@ -25,30 +24,6 @@ import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./va
 
 /** The five execution paths a lab can take. */
 export type LabRoute = "preview" | "computer-use" | "shared-world" | "terminal" | "scripted";
-
-/** A route's older name, which the deprecated selectLabBackend still returns. */
-export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
-
-const BACKENDS: Record<LabRoute, LabBackend> = {
-  preview: "synthetic",
-  "computer-use": "cua",
-  "shared-world": "concurrent-shared-world",
-  terminal: "terminal",
-  scripted: "scripted",
-};
-
-/** The backend name older callers and wire fields use for a route. */
-export function backendOf(route: LabRoute): LabBackend {
-  return BACKENDS[route];
-}
-
-/**
- * The backend a config runs on: `routeOf`, under its older name.
- * @deprecated Use `routeOf`, and `backendOf` for the older backend name. This goes in the next minor.
- */
-export function selectLabBackend(config: LabConfig): LabBackend {
-  return backendOf(routeOf(config));
-}
 
 /**
  * The route a config takes. It never refuses: a config no route can run still gets the route
