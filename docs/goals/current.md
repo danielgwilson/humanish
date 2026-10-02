@@ -91,7 +91,7 @@ substitute for it.
 | Surface               | Available in source                                                                                                                                                                                                                                                                                                                  | Remaining boundary                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Study authoring       | YAML labs, `lanes[]`/roster composition, model settings and study/per-participant caps                                                                                                                                                                                                                                               | Route support varies; declarations are not promises of engine parity                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Actors                | Seven first-party descriptors; computer-use, scripted-browser and terminal-product dispatch                                                                                                                                                                                                                                          | No supported public out-of-tree actor-registration API                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Actors                | The first-party descriptors in [`src/actors/registry.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/registry.ts); computer-use, scripted-browser and terminal-product dispatch                                                                                                                                  | No supported public out-of-tree actor-registration API                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Subjects              | `this-repo`, `clone`, `app-url`, `local-app`, `terminal-product`, `desktop-cli`, `local-tree`                                                                                                                                                                                                                                        | `this-repo` is dry-run-only; `local-app` needs a caller-supplied executor/provider                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Task protocol         | Hidden criteria and per-task outcomes on supported separate-world CUA paths, including local-agent and desktop-cli                                                                                                                                                                                                                   | Shared-world, terminal-product, scripted and synthetic routes reject `tasks` before execution                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Shared state          | Concurrent single-origin shared-world studies with retained evidence (the sequential route was removed in 0.106.0)                                                                                                                                                                                                                   | Multi-origin implementation remains gated; concurrent state change does not establish per-action causation                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -140,68 +140,7 @@ retain their behavior.
   expansion are follow-ups, not substitutes for a useful maintainer workflow.
   A concrete use case and current issue readiness determine when to take them up.
 
-## Safety And Autonomous Work
+## Safety and proof
 
-Follow [AGENTS.md](../../AGENTS.md), the [invariants](../principles/invariants-and-defaults.md)
-and the [public-readiness standard](../release/public-readiness-standard.md).
-
-- Keep `main` clean and work on scoped branches/worktrees. Keep the task's scope,
-  authority, relevant checks and material failure boundaries in its issue, PR or
-  current handoff; do not create a separate packet for routine work.
-- Existing explicit shipping authority governs implementation and merge;
-  otherwise issue readiness does not create authority by itself. Machine-readiness
-  fields gate automated queue pickup, not directly assigned interactive work.
-- Never commit secrets, private transcripts/screenshots, customer data or
-  private project context. Keep generated proof in ignored `.humanish/` and
-  retain needed evidence before removing a worktree.
-- Managed paths bind to validated filesystem identities. Stored provider IDs
-  are evidence, not cleanup authority; reclaim only resources the operation is
-  authorized to own, and keep unknown cleanup explicitly unresolved.
-- Verification distinguishes `share_ready`, `local_only` and `blocked`.
-  Feedback drafts do not mutate GitHub by default. Live spend, publishing,
-  external mutation and broader credential access are explicit choices.
-- Provider credential placement is route-specific. The computer-use model key stays
-  on the host; the default terminal runtime uses command-scoped credentials. Do not infer safety from an unqualified “keys stay outside” claim.
-
-## Proof Before Shipping
-
-Use the [verification guidance](../principles/engineering.md#verification): check the changed
-behavior and material risks, then stop unless new evidence warrants more work.
-Required CI remains the merge gate. For a release, run the full release gates
-from a clean contributor worktree:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm release:check
-pnpm docs:check
-git diff --check
-```
-
-For Observer changes, build before its tests and inspect real bundle data at
-390px and desktop width. Run `pnpm --filter humanish-observer test` and
-`pnpm observer:browser:proof`; preserve the source and limits of each receipt.
-For website changes, run site typecheck, build and `registry:check`.
-Required CI remains the merge gate.
-
-Before a release, follow the [release procedure](../release/open-source-readiness.md),
-including the candidate-package `pnpm release:dogfood` study with authorized
-credentials and bounded paid spend. A successful build alone is not participant
-proof. Verify the published package and any changed publishing surface.
-
-A disposable, keyless consumer check is:
-
-```bash
-npm i -D humanish
-npx humanish init --yes
-npx humanish run first-run --json
-npx humanish verify --run latest --json
-npx humanish feedback issue --run latest --repo owner/repo --format markdown
-```
-
-This checks installation, preview evidence and feedback generation. A live
-claim needs actual participant execution, retained evidence and verified
-cleanup. Use N > 1 where the claim needs replication; report cost estimates,
-unknowns and failures without turning them into zeros or successes.
-
-Start from the [ramp](../ramp/README.md), choose one changed user outcome, and
-close work with what changed, what was checked and what remains uncertain.
+[AGENTS.md](../../AGENTS.md) holds the rules for autonomous work: the public boundary, run
+safety, verification and shipping.

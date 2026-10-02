@@ -124,3 +124,20 @@ export function findRetiredWords(path: string, source: string): RetiredWordHit[]
     .sort((left, right) => left.start - right.start)
     .map(({ start, ...hit }) => ({ line: source.slice(0, start).split("\n").length, ...hit }));
 }
+
+// Removed API names that checked docs keep only in migration notes: `backend`, the old name for a
+// route (`LabOutcome.backend`, `LabBackend`, `selectLabBackend` and the scoring context's
+// deprecated field), and the `routesTo*` predicates. vocabulary:check holds their count in
+// isCheckedDoc pages to --max-doc-backend.
+const DOC_BACKEND_WORD = /\b\w*backends?\b|\broutesTo\w*/gi;
+
+/** Every `backend` or `routesTo` word in a doc's text, with its 1-based line. */
+export function findDocBackendWords(text: string): { line: number; word: string }[] {
+  const hits: { line: number; word: string }[] = [];
+  text.split("\n").forEach((line, index) => {
+    for (const match of line.matchAll(DOC_BACKEND_WORD)) {
+      hits.push({ line: index + 1, word: match[0] });
+    }
+  });
+  return hits;
+}
