@@ -33,6 +33,10 @@ import {
   truncatedFrameWarning,
   unknownNotificationsWarning,
 } from "../actors/codex/restricted-notifications.js";
+import {
+  protocolAdditionsWarning,
+  protocolIncompatibilityMessage,
+} from "../actors/codex/protocol-compat.js";
 
 export const ANALYSIS_PROMPT_VERSION = "study-evidence-6";
 const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
@@ -651,6 +655,13 @@ export async function runAnalysis(
   recordProviderUsage(artifact, config, response);
   if (config.provider === "codex")
     for (const warning of [
+      response.protocolIncompatibilities === undefined
+        ? undefined
+        : protocolIncompatibilityMessage(
+            config.identity.cliVersion,
+            response.protocolIncompatibilities,
+          ),
+      protocolAdditionsWarning(config.identity.cliVersion, response.protocolAdditions),
       unknownNotificationsWarning(response.unknownNotifications, config.identity.cliVersion),
       truncatedFrameWarning(response.truncatedFrameBytes),
     ])

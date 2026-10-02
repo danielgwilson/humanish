@@ -182,7 +182,7 @@ async function prepareLivePrompt(args: {
 }) {
   const { plan, cwd, runtimeEnv, env, warnings } = args;
   const { product } = plan;
-  // Compose the prompt from PUBLIC surfaces + the author mission ONLY (safety contract item 3).
+  // Compose the prompt from public surfaces and the author mission alone (safety contract item 3).
   // Inject a per-run verdict nonce: the agent echoes HUMANISH_ACTOR_VERDICT=<status>
   // HUMANISH_ACTOR_NONCE=<nonce>; the scorer verifies the nonce so replayed text cannot forge it.
   const mission = plan.mission ?? defaultMission(product.name);
@@ -197,8 +197,8 @@ async function prepareLivePrompt(args: {
   });
   const promptDigest = digestText(composedPrompt);
 
-  // --- Safety contract item 5: literal-scrub EVERY known value, then pattern-redact, at the source. ---
-  // The runtime key value (+ any other provisioned value) is scrubbed by LITERAL match before
+  // --- Safety contract item 5: literal-scrub every known value, then pattern-redact, at the source. ---
+  // The runtime key value (+ any other provisioned value) is scrubbed by literal match before
   // anything persists (a key has no detectable "shape" if it is an arbitrary token); redactText is
   // the second pass for secret-SHAPED content. Applied PRE-truncation so a cut can never split a
   // value past the scrubber.
@@ -219,7 +219,7 @@ async function prepareLivePrompt(args: {
   };
 }
 
-/** Compose the live prompt: PUBLIC surfaces + author mission + the verdict-nonce marker contract. */
+/** Compose the live prompt: public surfaces + author mission + the verdict-nonce marker contract. */
 function composeLivePrompt(args: {
   mission: string;
   personaLine: string;

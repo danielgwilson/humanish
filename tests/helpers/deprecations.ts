@@ -5,12 +5,8 @@
 // The state lives on globalThis, so a test file that imports this module sees the same state as
 // the setup file even if the two imports evaluate it separately.
 
-/**
- * The deprecation codes humanish emits: src/lab/run-lab-options.ts, src/deprecated.ts and
- * src/lab/adapter-extension.ts.
- */
+/** The deprecation codes humanish emits: src/deprecated.ts and src/lab/adapter-extension.ts. */
 export const HUMANISH_DEPRECATION_CODES = [
-  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
   "HUMANISH_DEPRECATED_EXPORT",
   "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED",
 ] as const;

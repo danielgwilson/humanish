@@ -9,13 +9,13 @@ import { releaseUnavailableDetail } from "../../substrates/e2b/sandbox.js";
 import type { TerminalLedgers } from "./types.js";
 
 /**
- * Tear the sandbox down and PROVE it BY EXACT ID -- NEVER Sandbox.list (humanish must never
+ * Tear the sandbox down and prove it by exact id, never by Sandbox.list (humanish must never
  * enumerate the operator's E2B account; see docs/principles/invariants-and-defaults.md). The
  * allocation's release (src/substrates/e2b/sandbox.ts) kills the exact id and reads the answer the
  * same way every route does: true is terminated, false or a not-found error is already gone. That
- * is the PRIMARY proof. Where the SDK exposes Sandbox.getInfo(id), a thrown SandboxNotFoundError is
+ * is the primary proof. Where the SDK exposes Sandbox.getInfo(id), a thrown SandboxNotFoundError is
  * a second by-id confirmation that the exact sandbox is gone; a returned SandboxInfo with a live
- * state means teardown is NOT confirmed. Never throws -- teardown failure is recorded, the caller
+ * state means teardown is unconfirmed. Never throws: teardown failure is recorded, and the caller
  * fails closed on an unproven teardown.
  */
 export async function teardownSandbox(args: {
@@ -42,7 +42,7 @@ export async function teardownSandbox(args: {
     warnings,
   } = args;
   if (allocation === undefined || !sandboxModule) {
-    // create() can reject AFTER its constructor acquired a handle. The default loader retains
+    // create() can reject after its constructor acquired a handle. The default loader retains
     // that authority and reclaims it before rejecting; the route itself never receives its ID.
     if (startupCleanup === "killed" || startupCleanup === "already_gone") {
       const reason = `desktop startup guard confirmed its acquired sandbox ${startupCleanup === "killed" ? "was killed" : "was already gone"}`;
@@ -85,12 +85,12 @@ export async function teardownSandbox(args: {
     return { killed: false, remaining: -1, reason };
   }
 
-  // BY-ID verification only, from here down: NEVER Sandbox.list. A released result is itself proof
+  // By-id verification only, from here down: never Sandbox.list. A released result is itself proof
   // the exact sandbox is gone: terminated when kill(id) found and killed it, already gone when
   // kill(id) answered false or threw not-found (a 404, e.g. the server-side kill-on-timeout raced
   // ahead). Both mean "this id is no longer running." Sandbox.getInfo(id), when the SDK exposes
   // it, adds a second by-id confirmation; the only thing that overturns the release proof is
-  // getInfo returning a LIVE sandbox for this exact id.
+  // getInfo returning a live sandbox for this exact id.
   const killNote =
     released.reason === "terminated"
       ? "kill(id) returned true (found and killed)"
@@ -132,8 +132,8 @@ export async function teardownSandbox(args: {
         reason: `reclaimed by id; getInfo(id) confirms the exact sandbox no longer exists (SandboxNotFoundError)`,
       };
     }
-    // getInfo(id) failed for a reason OTHER than "not found" (e.g. a transient network error):
-    // no second by-id confirmation is available, so the RESOLVED kill(id) call stands as the proof
+    // getInfo(id) failed for a reason other than "not found" (e.g. a transient network error):
+    // no second by-id confirmation is available, so the resolved kill(id) call stands as the proof
     // of absence. Never fall back to Sandbox.list.
     const sanitizedError = sanitize(toErrorMessage(error));
     recordLifecycle(

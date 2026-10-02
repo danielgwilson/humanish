@@ -138,7 +138,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.subject.declared",
-      // Invariant 5: provenance recorded or its absence DECLARED. The lab did not provision
+      // Invariant 5: provenance recorded or its absence declared. The lab did not provision
       // this subject on app-url routes; clone routes carry structured subject provenance below.
       message: args.subject
         ? `Provisioned synthetic subject: clone of ${args.subject.repo}${args.subject.commit ? `@${args.subject.commit}` : ""}, served + getHost-exposed in-sandbox; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted); state provenance: ${args.subject.state.provenance}; evidence host digest: ${args.hostDigest ?? "dry-run"}.`
