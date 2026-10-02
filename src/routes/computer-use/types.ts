@@ -28,7 +28,12 @@ import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js"
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/detached.js";
-import type { Brain, ComputerUsePlan, ComputerUseRunner } from "../../lab/plan-types.js";
+import type {
+  Brain,
+  ComputerUsePlan,
+  ComputerUseRunner,
+  ResidualConfig,
+} from "../../lab/plan-types.js";
 import { type LabCommsEmail, type LabConfig } from "../../lab/types.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import { type RunLabProvenance } from "../../run/status.js";
@@ -354,6 +359,10 @@ export type CuaActorLabErrorCode =
   // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
   // nothing while every lane still spends (#380).
   | "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE"
+  // comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
+  // well-formed Unicode (src/comms/external-evidence.ts). Refused at preflight, before the catch is
+  // probed.
+  | "HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID"
   // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by runCuaBackend
   // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
   // render through the same formatter as any other CUA lab failure.
@@ -501,11 +510,23 @@ export interface CuaRunBudget {
  * shared-world seat gets `shared-app`: it opens the one app the plane serves, with no subject env
  * names forwarded, no GitHub token and no provisioning in its sandbox.
  */
-export type ParticipantSubject = ComputerUseRunner["subject"] | { readonly kind: "shared-app" };
+export type ParticipantSubject =
+  | ComputerUseRunner["subject"]
+  | {
+      readonly kind: "shared-app";
+      /** The shared app's in-sandbox serve URL, which the receiving inbox maps links back to. */
+      readonly serveUrl?: string;
+    };
 
 /** The subject env names forwarded into a participant's sandbox: a provisioned subject's only. */
 export function participantSubjectEnv(subject: ParticipantSubject): readonly string[] {
   return subject.kind === "clone" || subject.kind === "local-tree" ? subject.env : [];
+}
+
+/** The serve URL a participant's inbox maps links back to: the served app's, when there is one. */
+export function participantServeUrl(subject: ParticipantSubject): string | undefined {
+  if (subject.kind === "clone" || subject.kind === "local-tree") return subject.serve.url;
+  return "serveUrl" in subject ? subject.serveUrl : undefined;
 }
 
 /** Shared deps every lane runner needs (resolved once in the engine). */
@@ -516,7 +537,17 @@ export interface CuaParticipantDeps {
     warnings: string[],
     artifactRoot: PreparedOutputRoot,
   ) => ParticipantDesktop;
+  /**
+   * Read only by the deprecated buildProvider and buildExecutor hooks, whose public signatures take
+   * the whole config. Everything else reads the plan's fields below. It goes with those hooks in
+   * 0.107.0.
+   */
   config: LabConfig;
+  /** The plan's residual config: comms, policies, the desktop and target, and subject leftovers. */
+  residual: Readonly<ResidualConfig>;
+  labId: string;
+  /** The plan's spend caps; maxUsd is each participant's own. */
+  caps: ComputerUsePlan["caps"];
   descriptor: CuaActorDescriptor;
   appUrl: string;
   /** The plan's brain: the model and, for a local agent, which signed-in CLI drives the participant. */

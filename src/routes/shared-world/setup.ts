@@ -164,15 +164,15 @@ export async function prepareConcurrentRun(
   const warnings: string[] = [];
   // The comms catch and the packed tree are checked before the run starts, so a refusal leaves
   // no run directory. Neither spends: the probe is one request and packing runs on the host.
-  const externalComms = await prepareExternalComms(plan.residual, planeClass, dryRun, warnings);
+  const externalComms = await prepareExternalComms(
+    plan.residual,
+    planeClass,
+    dryRun,
+    warnings,
+    env,
+  );
   if (!externalComms.ok) {
-    return {
-      ok: false,
-      result: fail(
-        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
-        externalComms.message,
-      ),
-    };
+    return { ok: false, result: fail(externalComms.code, externalComms.message) };
   }
   // Pack the working tree once per run, on the host, before any sandbox exists: a packing
   // failure fails the run closed without sandbox cost. Dry-run packs nothing.
@@ -255,6 +255,7 @@ export async function prepareConcurrentRun(
     openaiApiKey,
     e2bApiKey,
     scrubKnownValues,
+    knownSecretValues,
     cwd,
     run,
     runId,

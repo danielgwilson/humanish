@@ -1579,3 +1579,96 @@ describe("external-public seat wiring", () => {
     }
   });
 });
+
+// The adopter-hosted catch token: refused when short, and scrubbed from a failed drain's warning.
+describe("external-public comms catch token", () => {
+  it("refuses a catch token shorter than 16 characters before the catch is probed", async () => {
+    const catchBase = "https://catch.example.test";
+    const probes: string[] = [];
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.startsWith(catchBase)) return realFetch(input, init);
+      probes.push(url);
+      return new Response("", { status: 503 });
+    });
+    try {
+      const input = externalPublicConfig() as Record<string, unknown>;
+      const parsed = parseLabConfig({
+        ...input,
+        comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const { hooks } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config: parsed.config,
+        dryRun: false,
+        hooks: { ...hooks, env: { ...hooks.env, CATCH_TOKEN: "abc" } },
+      });
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID");
+      expect(probes).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("scrubs the run's secrets and the catch token from a failed catch drain", async () => {
+    // The catch passes its health check, then its drain fails with an error that quotes the
+    // run's OpenAI key (a known secret value) and the catch's bearer token. Neither matches a
+    // secret pattern, so only a literal scrub keeps them out of the warning and the run files.
+    const catchBase = "https://catch.example.test";
+    const token = ["tango", "lima", "catch", "credential"].join("-");
+    const openaiKey = "test-openai-key";
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.startsWith(catchBase)) return realFetch(input, init);
+      if (url.endsWith("/health")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            service: "humanish-comms-catch",
+            capabilities: ["recipient-inbox-v1"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      throw new Error(`catch proxy refused ${openaiKey} with bearer ${token}`);
+    });
+    try {
+      const input = externalPublicConfig() as Record<string, unknown>;
+      const parsed = parseLabConfig({
+        ...input,
+        comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const { hooks } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config: parsed.config,
+        dryRun: false,
+        hooks: { ...hooks, env: { ...hooks.env, CATCH_TOKEN: token } },
+      });
+
+      const warning = result.warnings.find((line) =>
+        line.includes("Comms evidence collection failed against the adopter-hosted catch"),
+      );
+      expect(warning).toBeDefined();
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      const files = (await readdir(runDir, { recursive: true, withFileTypes: true }))
+        .filter((entry) => entry.isFile())
+        .map((entry) => path.join(entry.parentPath, entry.name));
+      const texts = [warning!, ...(await Promise.all(files.map((file) => readFile(file, "utf8"))))];
+      for (const secret of [openaiKey, token])
+        expect(
+          texts
+            .map((text, i) => (text.includes(secret) ? (i === 0 ? "warning" : files[i - 1]) : ""))
+            .filter(Boolean),
+        ).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

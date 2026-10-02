@@ -2,6 +2,11 @@
 // subject sandbox, or adopter-hosted), and the drains that match captured mail to the seats'
 // declared inboxes and write the digest-only thread.
 
+import {
+  catchTokenOf,
+  catchTokenRefusal,
+  collectExternalCommsEvidence,
+} from "../../comms/external-evidence.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { prepareReceivingRun, type ReceivingSource } from "../../comms/receiving-runtime.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
@@ -9,7 +14,6 @@ import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
-  collectExternalCommsThread,
   externalCatchHealthy,
   externalInboxUrl,
   type DeployedCommsCatch,
@@ -71,7 +75,17 @@ export async function prepareExternalComms(
   planeClass: ConcurrentSharedWorldPlaneClass,
   dryRun: boolean,
   warnings: string[],
-): Promise<{ ok: true; wiring: ExternalCommsWiring | undefined } | { ok: false; message: string }> {
+  env: Record<string, string | undefined>,
+): Promise<
+  | { ok: true; wiring: ExternalCommsWiring | undefined }
+  | {
+      ok: false;
+      code:
+        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID"
+        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE";
+      message: string;
+    }
+> {
   const externalComms =
     planeClass === "external-public" ? config.comms?.email?.external : undefined;
   const externalCommsEmail = externalComms ? config.comms?.email : undefined;
@@ -86,12 +100,20 @@ export async function prepareExternalComms(
   }
   if (!externalComms || !externalCommsEmail) return { ok: true, wiring: undefined };
   const inboxUrl = externalInboxUrl(externalComms);
+  const tokenRefusal = catchTokenRefusal(catchTokenOf(externalComms, env));
+  if (tokenRefusal !== undefined)
+    return {
+      ok: false,
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID",
+      message: tokenRefusal,
+    };
   // Fail closed BEFORE any actor sandbox is created: a comms lab whose catch is unreachable
   // collects nothing while every lane still spends. The probe asserts OUR service marker in
   // /health, so an adopter's proxy answering 200 for everything cannot pass for a catch.
   if (!dryRun && !(await externalCatchHealthy(externalComms))) {
     return {
       ok: false,
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
       message: `The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`,
     };
   }
@@ -163,48 +185,15 @@ export async function drainExternalComms(
   ctx: PlaneContext,
   comms: ExternalCommsWiring,
 ): Promise<string | undefined> {
-  const { env, runPaths, warnings } = ctx;
-  const externalComms = comms.external;
-  const externalCommsEmail = comms.email;
-  try {
-    const commsChannel = new FakeInbox();
-    const commsInboxes: CommsAddress[] = [];
-    for (const recipient of addressedRecipients(externalCommsEmail)) {
-      commsInboxes.push(
-        await commsChannel.provisionAddress(recipient.participantId, recipient.address),
-      );
-    }
-    const authToken =
-      externalComms.authTokenEnv === undefined ? undefined : env[externalComms.authTokenEnv];
-    const collected = await collectExternalCommsThread({
-      external: { ...externalComms, ...(authToken === undefined ? {} : { authToken }) },
-      channel: commsChannel,
-      inboxes: commsInboxes,
-    });
-    if (collected.artifact) {
-      const path = "comms/thread.json";
-      await writeContainedOutputFile(
-        runPaths,
-        path,
-        `${JSON.stringify(collected.artifact, null, 2)}\n`,
-        "utf8",
-      );
-      return path;
-    } else if (collected.captured > 0) {
-      warnings.push(
-        `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
-      );
-    } else {
-      warnings.push(
-        `Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalComms.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`,
-      );
-    }
-  } catch (error) {
-    warnings.push(
-      `Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(toErrorMessage(error))}`,
-    );
-  }
-  return undefined;
+  const { path, warnings } = await collectExternalCommsEvidence({
+    external: comms.external,
+    email: comms.email,
+    env: ctx.env,
+    runPaths: ctx.runPaths,
+    knownSecretValues: ctx.knownSecretValues,
+  });
+  ctx.warnings.push(...warnings);
+  return path;
 }
 
 /** What receiving guards: the lab's email declaration and the subject env names and values. */
