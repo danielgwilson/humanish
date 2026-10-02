@@ -62,7 +62,7 @@
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_FAILED",
+      "code": "HUMANISH_TERMINAL_FAILED",
       "message": "exit status 1"
     },
     "automaticAnalysisTrigger": "default",

@@ -214,7 +214,7 @@ describe("starting a run", () => {
     });
     const { surface } = await openLab(options);
     try {
-      await surface.press(KEY.down, (frame) => frame.includes("❯ Start a LIVE run"));
+      await surface.press(KEY.down, (frame) => frame.includes("❯ Start a live run"));
       const deadline = Date.now() + 3000;
       while (reads < 2 && Date.now() < deadline)
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -244,7 +244,7 @@ describe("starting a run", () => {
   it("a live run is armed first and commits on the second press, restating the cost", async () => {
     const { started, options } = harness();
     const { surface } = await openLab(options);
-    await surface.press(KEY.down, (frame) => frame.includes("❯ Start a LIVE run"));
+    await surface.press(KEY.down, (frame) => frame.includes("❯ Start a live run"));
 
     const armed = await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
     // A person reads the prompt before pressing again. Confirming faster than a human can read is
@@ -267,7 +267,7 @@ describe("starting a run", () => {
     // navigating away, which would leave the operator unsure whether they had just spent money.
     const { started, options } = harness();
     const { surface } = await openLab(options);
-    await surface.press(KEY.down, (frame) => frame.includes("❯ Start a LIVE run"));
+    await surface.press(KEY.down, (frame) => frame.includes("❯ Start a live run"));
     await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
 
     // Asserts what the frame CONTAINS, not only what it lacks: Ink writes blank control frames, and
@@ -529,7 +529,7 @@ describe("what the surface says about the run it just started", () => {
     // keys are missing rather than asserting on the one rendered before it landed.
     const frame = await surface.press(KEY.down, (candidate) => candidate.includes("needs keys"));
     surface.unmount();
-    expect(frame).toContain("Start a LIVE run");
+    expect(frame).toContain("Start a live run");
     expect(frame).toContain("~$1.20 median");
   });
 });
@@ -579,8 +579,8 @@ describe("a lab whose live plan is refused", () => {
           expect(text).toContain("scenario.caps");
           expect(frame).not.toContain("keys ✓");
           expect(frame).not.toContain("not found");
-          // At 45 columns the live row wraps, so its "refused" lands on the next line.
-          expect(text).toMatch(/Start a LIVE .*~\$1\.20 median · 1 run · (run )?refused/);
+          // At 45 columns the price, with its "refused", sits on the line under the label.
+          expect(text).toMatch(/Start a live run .*~\$1\.20 median · 1 run · (run )?refused/);
           expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
         } finally {
           surface.unmount();

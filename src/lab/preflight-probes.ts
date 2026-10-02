@@ -34,7 +34,7 @@ export async function runPublicPreviewPreflight(
 ): Promise<LabPreflightResult> {
   const routeError = publicPreviewRouteError(ctx.config, ctx.route);
   if (routeError) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
+    return fail(ctx, "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
       { name: "route", ok: false, message: routeError },
     ]);
   }
@@ -47,7 +47,7 @@ export async function runPublicPreviewPreflight(
   if (publicTargets.length === 0) {
     return fail(
       ctx,
-      "HUMANISH_LAB_PREFLIGHT_TARGET_POLICY",
+      "HUMANISH_STUDY_PREFLIGHT_TARGET_POLICY",
       "public-preview preflight needs at least one declared app-url target.",
       [{ name: "targets", ok: false, message: "no app-url targets were declared" }],
     );
@@ -61,7 +61,7 @@ export async function runPublicPreviewPreflight(
     );
     return fail(
       ctx,
-      "HUMANISH_LAB_PREFLIGHT_TARGET_POLICY",
+      "HUMANISH_STUDY_PREFLIGHT_TARGET_POLICY",
       "public-preview reachability cannot prove loopback targets from a hosted desktop; use sandbox-loopback or a prepared public target.",
       [
         {
@@ -77,7 +77,7 @@ export async function runPublicPreviewPreflight(
   if (!e2bApiKey) {
     return fail(
       ctx,
-      "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED",
+      "HUMANISH_STUDY_PREFLIGHT_E2B_REQUIRED",
       "public-preview preflight creates one E2B desktop to probe target reachability; E2B_API_KEY is required.",
       [{ name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }],
     );
@@ -105,7 +105,7 @@ export async function runPublicPreviewPreflight(
   if (failed) {
     return fail(
       ctx,
-      "HUMANISH_LAB_PREFLIGHT_TARGET_UNREACHABLE",
+      "HUMANISH_STUDY_PREFLIGHT_TARGET_UNREACHABLE",
       "one or more declared public-preview targets were not reachable from the hosted desktop.",
       [
         {
@@ -131,7 +131,7 @@ export async function runSandboxLoopbackPreflight(
 ): Promise<LabPreflightResult> {
   const routeError = sandboxLoopbackRouteError(ctx.config, ctx.route);
   if (routeError) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
+    return fail(ctx, "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
       { name: "route", ok: false, message: routeError },
     ]);
   }
@@ -140,7 +140,7 @@ export async function runSandboxLoopbackPreflight(
   if (missingEnv.length > 0) {
     return fail(
       ctx,
-      "HUMANISH_LAB_PREFLIGHT_ENV_MISSING",
+      "HUMANISH_STUDY_PREFLIGHT_ENV_MISSING",
       `sandbox-loopback preflight needs declared env values: ${missingEnv.join(", ")}`,
       [
         {
@@ -156,7 +156,7 @@ export async function runSandboxLoopbackPreflight(
   if (!e2bApiKey) {
     return fail(
       ctx,
-      "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED",
+      "HUMANISH_STUDY_PREFLIGHT_E2B_REQUIRED",
       "sandbox-loopback preflight creates one E2B desktop to clone, serve, and probe the subject; E2B_API_KEY is required.",
       [{ name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }],
     );
@@ -167,7 +167,7 @@ export async function runSandboxLoopbackPreflight(
   if (!repo || !serve) {
     return fail(
       ctx,
-      "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE",
+      "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE",
       "sandbox-loopback preflight requires one clone repo and subject.serve.",
       [{ name: "clone subject", ok: false, message: "missing repo or serve block" }],
     );
@@ -297,7 +297,7 @@ async function withPreflightSandbox(
   if (failureMessage) {
     return {
       ok: false,
-      result: fail(ctx, "HUMANISH_LAB_PREFLIGHT_PROVISION_FAILED", failureMessage, [
+      result: fail(ctx, "HUMANISH_STUDY_PREFLIGHT_PROVISION_FAILED", failureMessage, [
         { name: "sandbox preflight", ok: false, message: failureMessage },
       ]),
     };
@@ -308,7 +308,7 @@ async function withPreflightSandbox(
       ok: false,
       result: fail(
         ctx,
-        "HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED",
+        "HUMANISH_STUDY_PREFLIGHT_TEARDOWN_FAILED",
         "preflight sandbox was created but teardown could not be proven.",
         [{ name: "sandbox teardown", ok: false, message: "sandbox kill was not proven" }],
       ),

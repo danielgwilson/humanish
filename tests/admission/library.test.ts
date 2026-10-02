@@ -252,7 +252,7 @@ describe("library admission today", () => {
         ).toMatchObject({
           runs: false,
           calls: { desktop: 0, executor: 0, provider: 0 },
-          result: { error: { code: "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING" } },
+          result: { error: { code: "HUMANISH_SCRIPTED_BROWSER_MISSING" } },
         });
       }
     },

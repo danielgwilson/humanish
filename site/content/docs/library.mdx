@@ -31,7 +31,7 @@ if (outcome.route === "computer-use") {
 `parseLabConfig` takes a decoded object, not YAML text. `runLab`'s options are `RunLabOptions`:
 `env`, `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `onEvent`, `onStream`,
 `analysisSignal` and `onObserverReady`, beside `dryRun`, `runId`, `count` and `rerun`. The
-[library options contract](https://github.com/danielgwilson/humanish/blob/main/docs/contracts/schemas.md#library-options-runlaboptions)
+[library options contract](repo:docs/contracts/schemas.md#library-options-runlaboptions)
 lists which routes accept each one and the refusals for the rest. `routeOf(config)` returns the
 route a config takes, and `LabResult<route>` is that route's result type.
 
@@ -70,7 +70,7 @@ A participant is a `CuaProvider` (the brain) driving a `CuaExecutor` (the deskto
 in-process run uses the same participant runner as hosted participants, so a declared
 `execution.caps.maxUsd` or `maxTotalUsd` applies: report usage from your provider, or the
 run stops at its first request with `stopCause: "usage_unreported"`. The
-[participant example](https://github.com/danielgwilson/humanish/tree/main/examples/participant)
+[participant example](repo:examples/participant/)
 runs one end to end:
 
 ```bash
@@ -87,7 +87,7 @@ default brain, and `CuaAdmissionLimitError` is how a provider refuses a request 
 An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser routes,
 `deriveArtifacts`. Pass it as `runLab`'s `scorer`, or load the same file with
 `humanish lab run <lab> --scorer <file>`. The
-[scorer example](https://github.com/danielgwilson/humanish/tree/main/examples/scorer) does both.
+[scorer example](repo:examples/scorer/) does both.
 Every scoring context carries `ctx.bundle` and `ctx.runId`.
 
 A scorer written for one context passes through a helper that names it:
@@ -112,5 +112,5 @@ Use `runLab` with the options above. A JavaScript caller that still passes a bag
 `LabBackend`, `selectLabBackend`, the `routesTo*` predicates and the lab helpers that
 `parseLabConfig` and `routeOf` cover. Use `runLab` and its `LabResult<route>`,
 `runComputerUseLoop`, `outcome.route` and `routeOf(config)`.
-[Library options](https://github.com/danielgwilson/humanish/blob/main/docs/contracts/schemas.md#library-options-runlaboptions)
+[Library options](repo:docs/contracts/schemas.md#library-options-runlaboptions)
 names the replacement for each.

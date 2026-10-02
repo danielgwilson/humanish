@@ -13,4 +13,4 @@ untouched.
 ❯ Release study inboxes
   Back to cleanup
 
-↑↓ move   ⏎ select   esc back   q quit
+↑↓ move  ⏎ select  esc back  q quit

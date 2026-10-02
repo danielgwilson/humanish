@@ -68,10 +68,10 @@ import { rosterOf } from "../../lab/parse/actors.js";
 
 /** The shared-world code for each local-agent refusal, kind for kind with computer-use. */
 const LOCAL_AGENT_REFUSAL_CODES = {
-  "agent-missing": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING",
-  "signin-required": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED",
-  unsupported: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
-  "unpriced-cap": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
+  "agent-missing": "HUMANISH_SHARED_WORLD_AGENT_MISSING",
+  "signin-required": "HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED",
+  unsupported: "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
+  "unpriced-cap": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
 } as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldLabErrorCode>;
 
 /**
@@ -183,7 +183,7 @@ async function admitSharedWorldRun(
   const missing = missingKeys(plan.requirements, env);
   if (missing.length > 0) {
     return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
+      "HUMANISH_SHARED_WORLD_KEYS_MISSING",
       `Live concurrent shared-world labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}`,
     );
   }
@@ -196,7 +196,7 @@ async function admitSharedWorldRun(
   const unsetSubjectEnv = missingSubjectEnv(plan.requirements, env);
   if (unsetSubjectEnv.length > 0) {
     return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
+      "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING",
       `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
     );
   }
@@ -320,7 +320,7 @@ async function runPlanInScope(
   const planeRan = await runPlane(ctx, live, results, prepared.plane);
   if (!planeRan) {
     return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "HUMANISH_SHARED_WORLD_INVALID",
       "the provisioned-getHost concurrent shared-world route requires `subject.serve`.",
       descriptor.id,
     );

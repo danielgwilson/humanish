@@ -145,10 +145,10 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         <Box flexDirection="column" width={columns}>
           <Text {...color(PALETTE.warn)}>{summary.missingKeys?.join(", ")} not found</Text>
           <Text dimColor>
-            {"  "}humanish keys set openai{"   "}— stores them for every project
+            {"  "}humanish keys set openai{"   "}· stores them for every project
           </Text>
           <Text dimColor>
-            {"  "}humanish tui --env-file .env{"   "}— or just this session
+            {"  "}humanish tui --env-file .env{"   "}· or just this session
           </Text>
         </Box>
       ) : null}
@@ -166,8 +166,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
 
       {canStart ? (
         <Box marginTop={1} flexDirection="column">
-          <StartRow {...props} mode="dry-run" active={activeStart(items, selected) === "dry-run"} />
-          <StartRow {...props} mode="live" active={activeStart(items, selected) === "live"} />
+          <StartRows {...props} active={activeStart(items, selected)} />
           {/* The armed prompt RESTATES the spend rather than assuming the row above was read. That
               was the safety argument for the old hidden toggle, and it survives the split. */}
           {props.confirming === "live" ? (
@@ -188,13 +187,13 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       {row.declared ? null : (
         <Box marginTop={1}>
           <Text color={PALETTE.warn}>
-            no manifest here — renamed, deleted, or run from elsewhere
+            no manifest here: renamed, deleted, or run from elsewhere
           </Text>
         </Box>
       )}
       {row.sharesIdWith > 0 ? (
         <Text color={PALETTE.warn}>
-          {row.sharesIdWith + 1} manifests declare &quot;{row.labId}&quot; — these runs are shared
+          {row.sharesIdWith + 1} manifests declare &quot;{row.labId}&quot;: these runs are shared
           between them
         </Text>
       ) : null}
@@ -233,6 +232,16 @@ function activeStart(items: readonly LabItem[], selected: number): LabRunMode | 
   return item?.kind === "start" ? item.mode : undefined;
 }
 
+function StartRows(props: LabScreenProps & { active: LabRunMode | undefined }): React.ReactElement {
+  const stacked = startRowsStack(props.columns, props.row, props.summary);
+  return (
+    <>
+      <StartRow {...props} mode="dry-run" active={props.active === "dry-run"} stacked={stacked} />
+      <StartRow {...props} mode="live" active={props.active === "live"} stacked={stacked} />
+    </>
+  );
+}
+
 /**
  * One start row. The two of them are the whole lifecycle entry point, and they say what they cost
  * before you press anything: a dry run is free and a live one spends, so the row itself carries
@@ -244,38 +253,80 @@ function activeStart(items: readonly LabItem[], selected: number): LabRunMode | 
 function StartRow({
   mode,
   active,
+  stacked,
   columns,
   row,
   summary,
-}: LabScreenProps & { active: boolean; mode: LabRunMode }): React.ReactElement {
-  const live = mode === "live";
-  const blocked =
-    live &&
-    (summary?.planRefusal !== undefined ||
-      summary?.keysReady === false ||
-      summary?.runtime?.ok === false ||
-      summary?.participantReadiness?.ok === false);
-  const accent = live ? PALETTE.warn : PALETTE.accent;
+}: LabScreenProps & { active: boolean; mode: LabRunMode; stacked: boolean }): React.ReactElement {
+  const { label, value, blocked } = startRowText(mode, row, summary);
+  const accent = mode === "live" ? PALETTE.warn : PALETTE.accent;
+  const labelText = (
+    <Text {...color(active ? accent : undefined)} bold={active} dimColor={blocked && !active}>
+      {gutter(active)} {label}
+    </Text>
+  );
+  // The price stays even when the keys are missing. Rev 9 replaced it with the gate, and a
+  // participant studying this screen reported exactly the consequence: "switching the TUI to live
+  // mode displayed no estimate or budget — only missing-key warnings". Whether a run is worth
+  // setting keys up FOR is the decision being made at that moment, so the number has to survive
+  // the blocker (labs/tui-self-study.yaml).
+  const valueText = (
+    <Text dimColor={!blocked} {...color(blocked ? PALETTE.warn : undefined)}>
+      {value}
+    </Text>
+  );
+  if (stacked)
+    return (
+      <Box flexDirection="column" width={columns}>
+        {labelText}
+        <Box marginLeft={4}>{valueText}</Box>
+      </Box>
+    );
   return (
     <Box width={columns}>
-      <Text {...color(active ? accent : undefined)} bold={active} dimColor={blocked && !active}>
-        {gutter(active)} {live ? "Start a LIVE run" : "Start a dry run"}
-      </Text>
-      <Box flexGrow={1} />
-      {/* The price stays even when the keys are missing. Rev 9 replaced it with the gate, and a
-          participant studying this screen reported exactly the consequence: "switching the TUI to
-          live mode displayed no estimate or budget — only missing-key warnings". Whether a run is
-          worth setting keys up FOR is the decision being made at that moment, so the number has to
-          survive the blocker (labs/tui-self-study.yaml). */}
-      <Text dimColor={!blocked} {...color(blocked ? PALETTE.warn : undefined)}>
-        {live
-          ? blocked
-            ? `${expectationLine(row.liveExpectation)} · ${blocker(summary)}`
-            : expectationLine(row.liveExpectation)
-          : "free · no keys, no spend"}
-      </Text>
+      <Box flexShrink={0}>{labelText}</Box>
+      <Box flexGrow={1} minWidth={START_GAP} />
+      {valueText}
     </Box>
   );
+}
+
+const START_GAP = 2;
+
+function startRowText(
+  mode: LabRunMode,
+  row: LabRow,
+  summary: LabSummary | null | undefined,
+): { label: string; value: string; blocked: boolean } {
+  if (mode === "dry-run")
+    return { label: "Start a dry run", value: "free · no keys, no spend", blocked: false };
+  const blocked =
+    summary?.planRefusal !== undefined ||
+    summary?.keysReady === false ||
+    summary?.runtime?.ok === false ||
+    summary?.participantReadiness?.ok === false;
+  const expectation = expectationLine(row.liveExpectation);
+  return {
+    label: "Start a live run",
+    value: blocked ? `${expectation} · ${blocker(summary)}` : expectation,
+    blocked,
+  };
+}
+
+/**
+ * Both start rows put the label and its price on one line while they fit with a two-column gap,
+ * and both move the price under the label when either does not, so the prices stay in one column.
+ */
+function startRowsStack(
+  columns: number,
+  row: LabRow,
+  summary: LabSummary | null | undefined,
+): boolean {
+  return (["dry-run", "live"] as const).some((mode) => {
+    const { label, value } = startRowText(mode, row, summary);
+    // The gutter glyph and its space come first.
+    return 2 + [...label].length + START_GAP + [...value].length > columns;
+  });
 }
 
 /** Why the live row is blocked, the most basic reason first. */
@@ -376,10 +427,14 @@ function LiveRun({
   return (
     <Box flexDirection="column">
       <Box width={columns}>
-        <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
-          {gutter(active)}{" "}
-        </Text>
-        <Text color={PALETTE.ok}>{verdictGlyph({ liveness: "running", tick })} </Text>
+        <Box flexShrink={0}>
+          <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
+            {gutter(active)}{" "}
+          </Text>
+        </Box>
+        <Box flexShrink={0}>
+          <Text color={PALETTE.ok}>{verdictGlyph({ liveness: "running", tick })} </Text>
+        </Box>
         <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
           {participant?.personaId ?? participant?.label ?? "starting…"}
         </Text>
@@ -439,10 +494,14 @@ function PastRun({
   const summary = [when, outcome].filter(Boolean).join(" · ") + cost;
   return (
     <Box width={columns}>
-      <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
-        {gutter(active)}{" "}
-      </Text>
-      <Text {...glyphColor(run)}>{verdictGlyph(run)} </Text>
+      <Box flexShrink={0}>
+        <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
+          {gutter(active)}{" "}
+        </Text>
+      </Box>
+      <Box flexShrink={0}>
+        <Text {...glyphColor(run)}>{verdictGlyph(run)} </Text>
+      </Box>
       <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
         {summary}
       </Text>

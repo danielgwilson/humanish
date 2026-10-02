@@ -382,7 +382,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     try {
       const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
+      expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -908,7 +908,7 @@ describe("runScriptedBrowserLab", () => {
       const result = outcome.result;
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_FAILED");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_FAILED");
       expect(result.sessions[0]?.completionReason).toBe("harness_error");
       const bundle = JSON.parse(
         await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -1135,7 +1135,7 @@ describe("runScriptedBrowserLab", () => {
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_FAILED");
     expect(result.error?.message).not.toContain(secretToken);
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -1277,7 +1277,7 @@ describe("runScriptedBrowserLab", () => {
         ].join("\n"),
       ],
     ])(
-      "returns HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID with no artifacts: %s",
+      "returns HUMANISH_SCRIPTED_SCENARIO_INVALID with no artifacts: %s",
       async (_label, ref, text) => {
         if (text !== undefined) {
           await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
@@ -1289,7 +1289,7 @@ describe("runScriptedBrowserLab", () => {
           dryRun: true,
         });
         expect(result.ok).toBe(false);
-        expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+        expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
         expect(result.runId).toBe("not-created");
         await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
       },
@@ -1302,7 +1302,7 @@ describe("runScriptedBrowserLab", () => {
         dryRun: true,
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
       expect(result.error?.message).toContain("inside the target cwd");
       await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
     });
@@ -1351,7 +1351,7 @@ describe("runScriptedBrowserLab", () => {
       });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
       expect(result.error?.message).not.toContain(secretMarker);
       expect(hookCalled).toBe(false);
       await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
@@ -1363,7 +1363,7 @@ describe("runScriptedBrowserLab", () => {
     const tampered = { ...scriptedConfig(), actors: [{ type: "codex-app-server" }] } as LabConfig;
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED");
   });
 
   it("re-enforces the loopback boundary at the engine even if a config bypasses the parser", async () => {
@@ -1375,7 +1375,7 @@ describe("runScriptedBrowserLab", () => {
     };
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SUBJECT_UNSAFE");
     expect(result.runId).toBe("not-created");
     await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
   });

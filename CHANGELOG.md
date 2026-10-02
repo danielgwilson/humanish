@@ -8,6 +8,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Study files can use the format `schema: humanish.study.v3`.
+  - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
+    `scripted`) and `mode:` (`dry-run` or `live`).
+  - It has one `actor:` object and one top-level `caps:` block.
+  - `participants:` is a count, `{ count, instruction }`, or a list of participants. A list entry
+    with `count: n` and an `id` stands for n participants `<id>-01` to `<id>-NN`.
+  - The scripted route takes `surfaces: [desktop]` or `surfaces: [desktop, mobile]`.
+  - A field the declared route does not read is an error that names the route. So is a route the
+    subject and actor do not take.
+  - A v3 file goes where a lab file goes today, under `humanish/labs/`. `humanish.lab.v2` files
+    parse as before, with the same warnings.
+  - `LabConfig.schema` holds the file's schema, so its type is now
+    `"humanish.lab.v2" | "humanish.study.v3"`.
+
 ### Removed
 
 - `docs/assets/humanish-drawdb-hero.png` and `docs/assets/humanish-observer-hero.png` from the
@@ -24,6 +40,18 @@ The Unreleased section holds the full notes for the next version until it is tag
   `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
+
+- Error codes name the study or the route where they said lab. Only the prefix changes.
+  - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
+  - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
+  - `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is `HUMANISH_SHARED_WORLD_*`.
+  - `HUMANISH_TERMINAL_LAB_*` is `HUMANISH_TERMINAL_*`, and `HUMANISH_SCRIPTED_LAB_*` is
+    `HUMANISH_SCRIPTED_*`.
+  - `HUMANISH_LAUNCH_INVALID_LAB` is `HUMANISH_LAUNCH_INVALID_STUDY`.
+
+  A script or library caller that matches a code by its old name needs the new one. Runs saved
+  before the change keep the codes they were written with, and nothing reads a code back from a
+  saved run.
 
 - The first commands a newcomer runs say the right thing.
   - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
@@ -112,6 +140,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   stage. CI's `observer:reliability:proof` failed on that frame twice. Every settled stage and frame
   box matches the previous release on desktop and phone, in both orientations and at every zoom
   level. The live view still measures its stage.
+- The TUI key legend fits on one line at 45 columns. Its separators are two spaces, and the
+  lab and all-runs screens say "⏎ open" for "⏎ open run". Before, the lab and run legends wrapped
+  and left "quit" alone on the last line. The start rows keep two columns between the label and
+  its price, and put the price under the label when the two do not fit. At 45 columns, run rows
+  keep their two-column gutter and the labs list keeps the ▸ before the selected description.
+  "Start a LIVE run" reads "Start a live run", empty states are sentences, and on-screen em
+  dashes became colons or semicolons.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

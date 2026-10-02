@@ -34,7 +34,7 @@ describe("the terminal sandbox's lifetime", () => {
     expect(planWith(largest).ok).toBe(true);
     const refused = planWith(largest + 1);
     if (refused.ok) throw new Error("expected a refusal");
-    expect(refused.refusal.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_INVALID");
+    expect(refused.refusal.code).toBe("HUMANISH_TERMINAL_CAPS_INVALID");
     expect(refused.refusal.message).toContain(
       `scenario.caps.maxMinutes ${largest + 1} derives a 61m sandbox deadline`,
     );

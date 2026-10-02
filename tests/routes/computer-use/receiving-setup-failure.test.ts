@@ -87,7 +87,7 @@ describe("computer-use email receiving setup failure", () => {
 
     expect(result).toMatchObject({
       ok: false,
-      error: { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID" },
+      error: { code: "HUMANISH_COMPUTER_USE_SUBJECT_INVALID" },
     });
     expect(result.error?.message).toContain("Real email setup failed");
     expect(created).toHaveLength(0);

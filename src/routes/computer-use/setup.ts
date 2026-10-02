@@ -194,7 +194,7 @@ export async function admitCuaRun(
     input.localVm === undefined
   )
     return refuse(
-      "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
+      "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING",
       "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not.",
     );
 
@@ -279,7 +279,7 @@ export async function admitCuaRun(
       localTreeArchiveBuffer = packed.buffer;
     } catch (error) {
       return refuse(
-        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+        "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
         `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
         descriptor.id,
       );

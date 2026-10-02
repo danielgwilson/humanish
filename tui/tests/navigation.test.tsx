@@ -223,7 +223,7 @@ describe("moving through the surface", () => {
 
     // The interrupted card sits at the same level as a finished one: what it managed, what it
     // spent, and whether anything is still running — which is the part that keeps costing money.
-    expect(run).toContain("interrupted — no outcome recorded");
+    expect(run).toContain("interrupted: no outcome recorded");
     expect(run).toContain("sandboxes");
     expect(run).toContain("Reclaim");
   });

@@ -29,7 +29,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
       expect(result.ok).toBe(false);
       if (result.ok) continue;
-      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(result.error.message).toContain(`Got "${type}"`);
     }
     // A terminal actor keeps its own, earlier refusal.
@@ -90,7 +90,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(result.error.message).toContain(`"${type}"`);
       expect(result.error.message).toContain("local-agent");
       // codex-app-server is registered, but no lab route dispatches its "code" lane.
@@ -448,7 +448,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     const result = parseLabConfig(input);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   describe("app-url (computer-use route)", () => {
@@ -772,7 +772,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
     });
 
     describe("multi-participant fan-out", () => {
@@ -787,7 +787,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
           });
           expect(result.ok).toBe(false);
           if (result.ok) return;
-          expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+          expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
           expect(result.error.message).toContain(
             "Unknown lab field(s) in `actors[0].lanes[0]`: " + key,
           );
@@ -809,7 +809,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         });
         expect(result.ok).toBe(false);
         if (result.ok) return;
-        expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(result.error.message).toContain(
           "Unknown lab field(s) in `actors[0].roster[1]`: misson, runtme",
         );
@@ -1210,7 +1210,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         const result = parseLabConfig(input);
         expect(result.ok, _label).toBe(false);
         if (result.ok) return;
-        expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
       });
 
       it("warns actors[0].lanes as inert on a non-cua route, and the other routes' rules still fire", () => {
@@ -1505,7 +1505,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
     });
 
     it("rejects subject.state on the scripted route (a clone-only field on an app-url subject)", () => {
@@ -1759,7 +1759,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
       expect(rejected.ok).toBe(false);
       if (rejected.ok) return;
-      expect(rejected.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(rejected.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(rejected.error.message).toContain("subject.clone.fanout");
 
       // clone.keep + depth alone parse clean (keep is honored on failure; depth is consumed).
@@ -1860,7 +1860,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
     });
   });
 
@@ -2005,7 +2005,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
     });
 
     it("names the provisioned-channel rule when external is not backed by subject.env", () => {
@@ -2131,7 +2131,7 @@ describe("parseLabConfig (local-app subject)", () => {
     const result = parseLabConfig(input);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("the e2b-desktop rejection names the right remedy (app-url for the hosted desktop route)", () => {
@@ -2494,7 +2494,7 @@ describe("shared-world topology routing + cross-validation", () => {
     const result = parseLabConfig(input as Record<string, unknown>);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("each fail-closed reason names its requirement precisely", () => {
@@ -2730,7 +2730,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
     const result = parseLabConfig(input as Record<string, unknown>);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("each concurrent fail-closed reason names its requirement precisely", () => {
@@ -2928,7 +2928,7 @@ describe("parseLabConfig (local-tree subject)", () => {
     const result = parseLabConfig(input);
     expect(result.ok, _label).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("each local-tree fail-closed reason names its requirement precisely", () => {
