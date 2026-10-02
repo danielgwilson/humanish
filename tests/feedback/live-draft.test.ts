@@ -72,7 +72,7 @@ const PARTICIPANT_BASE = {
   commsArtifactPath: "comms/power-user-thread.json",
 };
 
-describe("participantFeedbackCandidates (#392)", () => {
+describe("participantFeedbackCandidates", () => {
   it("turns a self-reported blocker into a target-app candidate quoting the participant", () => {
     const session = fakeSession(
       "passed",
@@ -122,7 +122,7 @@ describe("participantFeedbackCandidates (#392)", () => {
     expect(candidates[0]!.summary).toContain("stopped before completing");
   });
 
-  it("a negated report word is not friction: 'nothing confusing' files nothing, 'confusing' still does (#614)", () => {
+  it("a negated report word is not friction: 'nothing confusing' files nothing, 'confusing' still does", () => {
     const run = (reason: string) =>
       participantFeedbackCandidates({
         runId: "run-4",
@@ -175,7 +175,7 @@ describe("participantFeedbackCandidates (#392)", () => {
   });
 });
 
-describe("the live fallback draft describes the run that happened (#392)", () => {
+describe("the live fallback draft describes the run that happened", () => {
   it.each([undefined, null, {}, { items: null }, { items: [null] }])(
     "keeps old counts and missing-detail fallback for optional actor %j",
     async (actor) => {
@@ -253,7 +253,7 @@ describe("the live fallback draft describes the run that happened (#392)", () =>
   });
 });
 
-describe("a multi-lane study's second finding is one flag away (#609)", () => {
+describe("a multi-participant study's second finding is one flag away", () => {
   it("lists every candidate, drafts the first by default, drafts a chosen one, and names the ids on a miss", async () => {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-candidate-draft-"));
     const cwd = path.join(tempRoot, "minimal-app");

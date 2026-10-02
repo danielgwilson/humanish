@@ -56,7 +56,7 @@ function lightUiFrame(rows: number, options: { panel?: boolean } = {}): Buffer {
   return PNG.sync.write(png);
 }
 
-describe("perceptualSignature on a light-themed UI (#383)", () => {
+describe("perceptualSignature on a light-themed UI", () => {
   it("sees a sidebar gaining a row — the change the old hash was blind to", () => {
     const oneRow = perceptualSignature(lightUiFrame(1));
     const twoRows = perceptualSignature(lightUiFrame(2));
@@ -99,7 +99,7 @@ describe("perceptualSignature on a light-themed UI (#383)", () => {
   });
 });
 
-describe("actionFingerprint (the corroboration input, #383)", () => {
+describe("actionFingerprint (the corroboration input)", () => {
   const click = (x: number, y: number): CuaAction => ({ kind: "click", x, y, button: "left" });
 
   it("treats re-clicking the same control as a repeat and a different control as new", () => {

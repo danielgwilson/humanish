@@ -26,7 +26,7 @@ function planFor(actor: Record<string, unknown>) {
   return resolveCuaParticipantPlan(parsed.config, { dryRun: true });
 }
 
-describe("lane persona resolution (#512)", () => {
+describe("participant persona resolution", () => {
   it("falls back to actors[0].persona when a lane does not name one", () => {
     const plan = planFor({
       type: "openai-computer-use",

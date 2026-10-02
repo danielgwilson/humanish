@@ -21,7 +21,8 @@
 // - `authority`: `load-bearing`, `doctrine`, `canonical`. Say what the code depends on.
 // - `seat-comments`, `cua-route`, `honest`, `history`: words held at today's count while comments move to
 //   participant, the computer-use route, a plain claim and the current behavior.
-// - `series-codes`: a test name that opens with a code such as `L14:` or `W5:`. Test names only.
+// - `series-codes`, `name-refs`: a test name that opens with a code such as `L14:` or `W5:`, or
+//   that cites an issue (`#123`). Test names only; the name says the behavior.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -99,6 +100,7 @@ const KINDS = [
   "em-dashes",
   ...Object.keys(WORD_KINDS),
   "series-codes",
+  "name-refs",
 ];
 
 const { values } = parseArgs({
@@ -122,7 +124,10 @@ function scan(text, suffix, at, { testName }) {
   const add = (kind, match) => hits[`${kind}${suffix}`].push(at(match));
   // Code spans hold names and examples, so no kind counts inside them.
   const prose = text.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
-  for (const match of prose.matchAll(/(?<!TODO\()#\d{1,5}\b/g)) add("issue-refs", match);
+  // A test name keeps its own issue-ref count, held at 0, so a ref removed from a comment cannot
+  // make room for one in a name.
+  const refKind = testName ? "name-refs" : "issue-refs";
+  for (const match of prose.matchAll(/(?<!TODO\()#\d{1,5}\b/g)) add(refKind, match);
   for (const match of prose.matchAll(/\bFIX-\d+\b/g)) add("fix-tags", match);
   for (const match of prose.matchAll(CAPS_RUN)) {
     const parts = match[0].split("-").filter((part) => /^[A-Z]{2,}$/.test(part));

@@ -581,7 +581,7 @@ describe("external-public config validation + routing", () => {
 // ---------------------------------------------------------------------------
 // 7. GATE-INTACT regression: the provisioned-getHost path is unchanged.
 // ---------------------------------------------------------------------------
-describe("getHost synthetic gate stays intact (regression)", () => {
+describe("getHost synthetic gate stays intact", () => {
   function provisionedConfig(): LabConfig {
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -973,7 +973,7 @@ describe("review.summary is external-public plane-aware", () => {
     expect(summary).toContain("participants converged on one lobby");
   });
 
-  it("separates lobby convergence from unfinished participant sessions (#364)", async () => {
+  it("separates lobby convergence from unfinished participant sessions", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({
@@ -1375,7 +1375,7 @@ describe("external-public run directory goldens", () => {
 });
 
 describe("the live Observer gate on the external-public plane", () => {
-  it("W3: awaits onObserverReady before any participant desktop is created", async () => {
+  it("awaits onObserverReady before any participant desktop is created", async () => {
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     let enter!: () => void;
     const entered = new Promise<void>((resolve) => {
@@ -1404,7 +1404,7 @@ describe("the live Observer gate on the external-public plane", () => {
     expect(created.length).toBeGreaterThan(0);
   });
 
-  it("W3: a throwing onObserverReady creates no desktop and runs no analysis", async () => {
+  it("a throwing onObserverReady creates no desktop and runs no analysis", async () => {
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     const analysis = automaticAnalysisBoundary();
     const failure = new Error("synthetic observer failure");

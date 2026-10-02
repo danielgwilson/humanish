@@ -33,7 +33,7 @@ function walk(command: Command, trail: string[] = []): string[] {
   return names;
 }
 
-describe("llms.txt documents the CLI that actually ships (#513)", () => {
+describe("llms.txt documents the CLI that actually ships", () => {
   it("mentions every command and subcommand", async () => {
     const text = await readFile(
       path.resolve(import.meta.dirname, "..", "..", "site", "public", "llms.txt"),
