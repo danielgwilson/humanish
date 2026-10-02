@@ -56,7 +56,7 @@ export interface LabCommandOptions {
   port?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
-  /** #316: repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
+  /** Repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
   scorer?: string | undefined;
   // watch --expose surface (tunnel-edge auth). Only the CUA backend live-serves a run; other
   // backends refuse exposure. See runCuaBackend + validateExposure.
@@ -71,7 +71,7 @@ export interface LabCommandOptions {
 }
 
 // Transcode only for a terminal. A pipe carries bytes to another program, and mangling those would
-// corrupt a JSON payload for a reader that handles UTF-8 perfectly well — while a TTY carries them
+// corrupt a JSON payload for a reader that handles UTF-8 perfectly well, while a TTY carries them
 // to a font, through a locale that may not decode them. See src/routes/terminal/encoding.ts for what a
 // participant actually read back off the screen.
 const forStream = (stream: NodeJS.WriteStream, text: string): string =>
@@ -90,7 +90,7 @@ export const defaultIo: CliIo = {
 // of the invocation (a fresh object every createProgram() call) rather than a
 // module-level boolean, so tests that construct multiple `createProgram()`
 // instances in the same process never see one instance's writes bleed into
-// another's, and nothing needs explicit cleanup -- the entry is released once
+// another's, and nothing needs explicit cleanup: the entry is released once
 // that Command tree is garbage collected.
 const invocationEnvelopeWritten = new WeakSet<Command>();
 
@@ -144,7 +144,7 @@ export async function applyEnvFileOption(args: {
 }
 
 /**
- * Provider-key discovery (#436): fill still-missing keys from the documented project overlay, the
+ * Provider-key discovery: fill still-missing keys from the documented project overlay, the
  * owning vendors' native stores, and the humanish user store. It is fill-only (an explicit
  * --env-file or process env always wins), and each fill is announced by name and source on
  * stderr, never by value. HUMANISH_STRICT_KEYS=1 restores env-only behavior.
@@ -222,7 +222,7 @@ export function writeResult<T>(
   }
   markInvocationEnvelopeWritten(command);
   // Every backend's result passes through here, so this is where a study's facts get read for
-  // telemetry — not in each backend, which is how they went unreported for two releases.
+  // telemetry. Reading them in each route instead is how they went unreported for two releases.
   noteRunFacts(command, deriveRunFacts(result));
 }
 

@@ -404,7 +404,7 @@ async function reportServe(
   ];
 
   // Auto-open is suppressed under --expose so the public URL is not shoved into a local opener's
-  // argv unasked — the exposure target is a remote device anyway. Explicit --open still honors
+  // argv unasked; the exposure target is a remote device anyway. Explicit --open still honors
   // intent and opens the loopback library.
   const shouldOpen =
     options.open === false

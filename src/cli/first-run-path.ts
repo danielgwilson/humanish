@@ -3,10 +3,10 @@
 // Why: `humanish init` wrote twenty files and stopped. The only lab that could actually run was a
 // $0 dry run; the two live ones were templates with `your-org/your-app` in them, so the first live
 // run a newcomer tried could not succeed no matter what credentials they had. Three independent
-// sources reached the same place — a participant in our own TUI study walked to the Start row and
+// sources reached the same place: a participant in our own TUI study walked to the Start row and
 // found a placeholder URL, an adoption review concluded "the funnel is broken at the first live
 // run", and the release-gate participant said, unprompted, "validate one paid live study before
-// committing" (#505).
+// committing".
 //
 // The fix is not more surface. Increasingly the thing running `init` is a coding agent acting for
 // someone, and an agent reads stdout and does what it says. So init ends by naming the next
@@ -26,7 +26,7 @@ export interface FirstRunEnvironment {
   hasE2bKey: boolean;
   /**
    * Whether `@e2b/desktop` resolves from this project. It is an optional peer: the no-keys path
-   * does not need it — so a fresh `npx humanish` install does not have it, and a live run stops
+   * does not need it, so a fresh `npx humanish` install does not have it, and a live run stops
    * with "install this other package first". Found by running the published artifact cold, after
    * two local runs passed because they resolved the peer from the repo's own node_modules.
    */
@@ -34,7 +34,7 @@ export interface FirstRunEnvironment {
   /**
    * Whether humanish itself is installed in this project rather than running from an npx cache.
    * It changes what advice is true: a one-shot `npx humanish` resolves its optional peer relative
-   * to itself, so "install the peer here" cannot work — humanish has to be installed alongside it.
+   * to itself, so "install the peer here" cannot work; humanish has to be installed alongside it.
    */
   installedInProject: boolean;
   /** A provider API key for the model. */

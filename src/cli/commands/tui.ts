@@ -94,8 +94,8 @@ function refuseTui(command: Command, io: CliIo, refusal: TuiRefusal): void {
 }
 
 /**
- * The stakeholder surface (#455). Every other command is written so an agent can drive it; this one
- * is the opposite — it takes the screen and waits for a person.
+ * The stakeholder surface. Every other command is written so an agent can drive it; this one
+ * is the opposite: it takes the screen and waits for a person.
  *
  * That inversion is why it refuses rather than degrades. An agent that runs `humanish tui` with a
  * piped stdout has asked for something that cannot exist, and the useful answer is a structured
@@ -175,7 +175,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
   // it runs, so the TTY check below passes and the surface used to open: a study watched an
   // agent navigate the labs list and start a run it did not mean to start
   // (humanish/labs/handed-a-human-surface.yaml). A TTY says a terminal exists, not that anyone is
-  // reading it. `--force` is the escape for the person who really is at this keyboard —
+  // reading it. `--force` is the escape for the person who really is at this keyboard, and
   // capturing frames from inside an agent session is exactly that case.
   const agent = force ? undefined : detectAgentSession(runtime.env);
   if (agent !== undefined) {

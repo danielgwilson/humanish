@@ -1,10 +1,10 @@
-// Digest-only evidence for a captured comms thread (#297). Proves "the verification mail arrived and
+// Digest-only evidence for a captured comms thread. Proves "the verification mail arrived and
 // the persona could act on it" without persisting raw PHI. Written as an adapter-artifact
 // (humanish.comms-thread.v1), so it inherits the bundle's existence-verify + public-safety scan.
 //
 // Digest discipline (deliberate, see below): addresses + links are digested (high entropy → the digest
 // is not reversible). The subject is digested too instead of stored as text, because redactText only scrubs
-// secret-SHAPED tokens/paths, not free-form PII (the #108 gap), so a subject like "results for <name>"
+// secret-SHAPED tokens/paths, not free-form PII, so a subject like "results for <name>"
 // would pass through verbatim; a sha256-16 keeps a PII subject non-reversible while still letting you
 // correlate identical subjects. OTP codes are a count only, never digested: a sha256 of a 6-digit code
 // has ~10^6 preimages and is trivially brute-forced back to the code, so a "code digest" would leak it.

@@ -43,7 +43,7 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
   }
 
   // `run` renders the Observer too, so `run` and `watch` write the same bundle and the first
-  // `export` of a run bundle finds observer/index.html (#597). A render failure is a warning on the
+  // `export` of a run bundle finds observer/index.html. A render failure is a warning on the
   // result, never a failed run. The preview renders through its finished run, so the page shown is
   // the run just written, never a directory swapped in under its id.
   const openOverride = args.options.open ?? args.config.defaults?.open;

@@ -103,7 +103,7 @@ export interface BrowserPersonaStepCapture {
   /**
    * Path to the step screenshot the producer actually wrote. Omitted for blocked
    * steps where the failure itself is the recorded evidence and no screenshot was
-   * written — the bundle must not reference an artifact that does not exist. A step that
+   * written: the bundle must not reference an artifact that does not exist. A step that
    * ran and attempted a screenshot keeps this even when its assertions failed, so a broken
    * producer still fails verify.
    */

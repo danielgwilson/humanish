@@ -53,8 +53,8 @@ export async function runLabCommand(args: {
   }
 
   const config = resolved.config;
-  // The run's identity (#455): which manifest, where it lives, and whether it is committed, a
-  // local overlay, or an explicit path. Resolved once here — the only place that knows all three —
+  // The run's identity: which manifest, where it lives, and whether it is committed, a
+  // local overlay, or an explicit path. Resolved once here (the only place that knows all three)
   // and carried into the run's status record and bundle so the filesystem can answer "which lab
   // produced this run" without the old `persona.source = "lab:<id>"` string convention.
   const lab: RunLabProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
@@ -126,7 +126,7 @@ export async function runLabCommand(args: {
   // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
   const signals = beginRunSignalPhase(args.io);
   try {
-    // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any
+    // Resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any
     // spend, and only for a plan that will run. A declared gate that cannot load (bad ref, not
     // found, load failure, no hooks, unsupported route) aborts with exit 2 rather than green-passing.
     await runRoute(

@@ -50,7 +50,7 @@ export interface DoctorResult {
  * Version 2.3.1 stopped holding a launched background command's event stream open. Version 2.3.2
  * also requires an e2b release whose background command handle supports sendStdin and closeStdin,
  * which the optional speech transport needs. On older releases the CLI could stay alive minutes
- * past a written result (#581, measured 2026-09-04 on 2.2.3: twelve minutes).
+ * past a written result (measured 2026-09-04 on 2.2.3: twelve minutes).
  */
 export const DESKTOP_SDK_FLOOR = "2.3.2";
 
@@ -230,7 +230,7 @@ async function projectChecks(projectRoot: PreparedSelectedOutputDirectory): Prom
 }
 
 /**
- * The optional peer dep every live browser and terminal route needs (#346). `npx -y humanish` does
+ * The optional peer dep every live browser and terminal route needs. `npx -y humanish` does
  * not pull optional peers, so an adopter's first live run used to fail on it, safely and at $0,
  * but as a burned first impression on the flagship path. Answering it here means the readiness
  * command actually answers readiness.
@@ -258,7 +258,7 @@ async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck
 }
 
 /**
- * The stakeholder surface (#455). Reported as capability, never as a gate: the TUI is optional,
+ * The stakeholder surface. Reported as capability, never as a gate: the TUI is optional,
  * and `doctor` is itself mostly run by agents through a pipe, where a TTY requirement says
  * nothing about whether the project is ready. So this row is always ok.
  *
@@ -312,7 +312,7 @@ async function probeDoctorKeys(
 }
 
 /**
- * Provider-key discovery (#436): which source supplies each live-run key, through the same
+ * Provider-key discovery: which source supplies each live-run key, through the same
  * chain a live command resolves (env/--env-file, project overlay, vendor stores, the
  * humanish user store). Values never appear; sources and fill commands do.
  */

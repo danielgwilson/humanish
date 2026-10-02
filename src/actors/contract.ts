@@ -23,14 +23,14 @@ export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
  *
  * The distinction matters because two of these are participant outcomes and the rest are not. A
  * participant who abandons a task is the single most valuable thing a usability study produces, and
- * recording that as `failed` — as this type used to force — reads as the instrument breaking. See
+ * recording that as `failed` (as this type used to force) reads as the instrument breaking. See
  * docs/principles/three-roles.md.
  *
  * - `passed`      the participant reached the goal
  * - `abandoned`   the participant stopped trying. A finding, not a malfunction
  * - `incomplete`  the session ended (time or budget) before the goal was reached
  * - `blocked`     the participant could not proceed: an approval the run could not give, or a
- *                 blocker they described in their own final words (#476)
+ *                 blocker they described in their own final words
  * - `timed_out`   the session hit its deadline with no productive activity at all
  * - `failed`      the harness failed: a dead sandbox, a provider error, a broken artifact
  */
@@ -45,7 +45,7 @@ export const ACTOR_STATUSES = [
 export type ActorStatus = (typeof ACTOR_STATUSES)[number];
 
 /**
- * What the participant said happened, in a field rather than a paragraph (#570). Providers whose
+ * What the participant said happened, in a field rather than a paragraph. Providers whose
  * reply is schema-constrained (the local-agent routes) fill it on their final turn; a free-text
  * provider leaves it absent and the route falls back to reading the closing message. `reached`:
  * the task is finished. `blocked`: something in the app stopped the participant. `not_reached`:
@@ -89,20 +89,20 @@ export type ActorCompletionReason =
   | "budget_reached"
   | "actor_error"
   // A deterministic scripted step or expectation evaluated false: the scenario predicate
-  // failed. Distinct from actor_error/harness_error — the harness executed faithfully; the
+  // failed. Distinct from actor_error/harness_error: the harness executed faithfully; the
   // subject did not satisfy the script.
   | "step_failed"
   | "harness_error";
 
-// "scripted-browser" is the deterministic, model-free browser-actuation lane — distinct from
+// "scripted-browser" is the deterministic, model-free browser-actuation lane, distinct from
 // "computer-use" (raw pixels + a model). "terminal" is the autonomous-agent lane: a
-// real coding agent (Codex) driving a CLI/product from inside an E2B shell — distinct from
+// real coding agent (Codex) driving a CLI/product from inside an E2B shell, distinct from
 // "code" (the local/app-server Codex lanes that run on the operator's machine).
 type ActorRunKind = "code" | "computer-use" | "scripted-browser" | "terminal";
 
 // "terminal-exec" is the captured non-interactive exec stream of an in-sandbox agent (stdin
 // disabled): `codex exec --json` launched via `commands.run`, output captured. It is not an
-// interactive duplex PTY — labeling captured exec output as an interactive transport would be a
+// interactive duplex PTY; labeling captured exec output as an interactive transport would be a
 // claim/mechanism mismatch (invariant 6 + the goal packet's PTY ruling), so it gets its own
 // honest protocol label distinct from "cua-loop"/"scripted-steps".
 type ActorProtocol = "json-rpc" | "json-stream" | "cua-loop" | "scripted-steps" | "terminal-exec";
@@ -129,11 +129,11 @@ export interface ActorTraceItem {
   command?: { text?: string; cwd?: string; exitCode?: number; outputTail?: string };
   screenshotRef?: { path: string; redaction: "blurred" | "ocr_scrubbed" | "none" };
   text?: string;
-  /** When the item was recorded (ISO-8601), from the loop's injected clock. Additive
-   *  (#441): items from older bundles and non-stamping producers lack it, so every
+  /** When the item was recorded (ISO-8601), from the loop's injected clock. Additive:
+   *  items from older bundles and non-stamping producers lack it, so every
    *  consumer must treat absence as "timing unknown", never as t=0. */
   at?: string;
-  /** Structured pointer coordinates for click-like `ui_action` items (#441) — the
+  /** Structured pointer coordinates for click-like `ui_action` items: the
    *  recorded fact the Observer's pins previously re-parsed out of the title text. */
   coord?: { x: number; y: number };
 }
@@ -149,7 +149,7 @@ export interface ActorCapabilities {
   license: "open" | "source-available" | "proprietary";
   /**
    * Where this actor's runtime key lives, per the placement rule (invariants-and-defaults.md):
-   * "keys live where the keyed process runs — and nowhere else." Registry metadata the engine
+   * "keys live where the keyed process runs, and nowhere else." Registry metadata the engine
    * enforces, not a code convention.
    *   - "external" (the implicit default for every existing actor): the keyed process (e.g. a
    *     computer-use provider loop) runs outside any sandbox, so its key never enters one.
@@ -184,16 +184,16 @@ export interface ActorTokenUsage {
   output?: number;
   /** Of `input`, how many tokens were served from the provider's prompt cache. Optional and
    *  honestly absent: a provider that does not report it leaves this undefined rather than
-   *  reporting 0, because 0 and "unknown" price very differently (#391). */
+   *  reporting 0, because 0 and "unknown" price very differently. */
   cachedInput?: number;
   /** Of `input`, how many tokens were newly written to the provider's prompt cache
    *  (OpenAI 5.6+ bills these at a surcharge and reports `cache_write_tokens`). Same
-   *  honestly-absent discipline as `cachedInput` (#334). */
+   *  honestly-absent discipline as `cachedInput`. */
   cacheWriteInput?: number;
   /** Per model-inference request usage, in request order. One provider interaction can contain
    *  several inferences around native tool calls. A provider that re-prices whole requests past
    *  an input-size threshold can only be priced exactly from these sizes; totals cannot say which
-   *  requests crossed. Additive and honestly absent on producers that do not record it (#334). */
+   *  requests crossed. Additive and honestly absent on producers that do not record it. */
   turns?: Array<{
     input?: number;
     cachedInput?: number;
@@ -419,22 +419,22 @@ export interface ActorTrace {
   reason: string;
   ids: { sessionId?: string; threadId?: string; turnId?: string; model?: string };
   /**
-   * Additive + optional record of how the model was asked to run (humanish.model-settings.v1,
-   * #497). `ids.model` says which model; this says the reasoning effort the request actually
+   * Additive + optional record of how the model was asked to run (humanish.model-settings.v1).
+   * `ids.model` says which model; this says the reasoning effort the request actually
    * carried. Present on traces whose provider declares settings; absent everywhere else and on
    * every pre-existing bundle, and its absence is tolerated by verify.
    *
    * It exists because effort was a silent constant: unreachable from a lab, so every run took the
    * provider default. Effort is part of who the participant was, not of how the instrument was
    * tuned (docs/principles/actor-fidelity.md), so a trace that does not carry it is a result with
-   * half its sample description missing — and two such traces cannot honestly be compared.
+   * half its sample description missing, and two such traces cannot honestly be compared.
    */
   modelSettings?: { reasoningEffort: string; maxOutputTokens?: number };
   counts: Record<string, number>;
   /**
-   * Additive + optional affordance record (humanish.affordance-use.v1, #369): which kind of route
-   * this actor took — pointer, keyboard, url-navigation, script-execution, devtools,
-   * browser-internal, observation — as per-class counts over the run's dispatched actions.
+   * Additive + optional affordance record (humanish.affordance-use.v1): which kind of route
+   * this actor took (pointer, keyboard, url-navigation, script-execution, devtools,
+   * browser-internal, observation), as per-class counts over the run's dispatched actions.
    * Present on computer-use traces that dispatched at least one action; absent elsewhere and on
    * every pre-existing bundle (its absence is tolerated by verify). The harness records the class
    * and states no verdict: whether a class is faithful depends on the population the study
@@ -443,18 +443,18 @@ export interface ActorTrace {
    */
   affordanceUse?: AffordanceUse;
   /**
-   * Additive + optional task funnel (humanish.task-funnel.v1, #414): how far this participant got
+   * Additive + optional task funnel (humanish.task-funnel.v1): how far this participant got
    * through the lab's declared protocol, corroborated per task by observations rather than by the
    * actor's own narration. Present only when the lab declared `tasks` and the session ran; absent
-   * on every pre-existing bundle and on dry-run contract bundles (honest absence — a funnel that
+   * on every pre-existing bundle and on dry-run contract bundles (honest absence: a funnel that
    * was never measured is not an empty funnel). Its absence is tolerated by verify.
    */
   taskFunnel?: TaskFunnel;
   /**
-   * Additive + optional (#570): the outcome the participant declared on its final turn, when its
+   * Additive + optional: the outcome the participant declared on its final turn, when its
    * provider's reply carries the field. Absent on free-text providers and on every older bundle.
    * The route reads this before it reads the closing paragraph; three regex patches in one month
-   * (#453, #549, #565) each fixed a false refusal and each left the next shape unhandled.
+   * each fixed a false refusal and each left the next shape unhandled.
    */
   declaredOutcome?: ParticipantDeclaredOutcome;
   /** Closing report after a harness-owned stop. Does not change task outcomes or permit actions. */
@@ -528,7 +528,7 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
 // a redacted event stream + normalized transcript. The "terminal" lane is the autonomous-agent
 // study lane (distinct from "code", the operator-machine Codex lanes). byoModel is false: the
 // agent runs its own model via the command-scoped runtime auth, not a humanish-supplied provider.
-// keyPlacement is "in-sandbox-command-scoped" — the load-bearing inversion of every existing
+// keyPlacement is "in-sandbox-command-scoped": the load-bearing inversion of every existing
 // E2B route's external-key default (the agent is the keyed process and it runs inside the sandbox). The
 // terminal-product live route enforces the boundary before sandbox creation.
 export const TERMINAL_AGENT_CAPABILITIES: ActorCapabilities = {

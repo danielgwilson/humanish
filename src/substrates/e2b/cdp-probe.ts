@@ -1,6 +1,6 @@
 // The in-sandbox Chrome DevTools probe behind every URL / page-text / viewport observation.
 //
-// It runs on python3, stdlib only. It used to run on node, and that was the #514 root cause: the
+// It runs on python3, stdlib only. It used to run on node, and that blinded it: the
 // stock E2B desktop template ships python3 and curl but no Node, and Node only arrives when a
 // subject's serve pipeline needs it (src/subject/runtime.ts). So on the app-url route, and on any
 // subject served by something other than Node (the taskly benchmark is `python3 -m http.server`),
@@ -45,11 +45,11 @@ export interface ChromeCdpProbeArgs {
   prefer?: ChromeCdpPagePreference;
   /**
    * "state": url/title/text/scrollY. "geometry": outer window + CSS viewport. "port": resolution
-   * only. "emulate": apply mobile emulation (#221) to the selected page and exit (the overrides that
+   * only. "emulate": apply mobile emulation to the selected page and exit (the overrides that
    * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": the same over a browser-level
    * socket, then stay attached until killed (how a participant keeps them for its whole life) and attach
    * to every page target Chrome opens later, sending it the same overrides and a reload the moment
-   * it exists, never pausing it (#623). "fidelity": read
+   * it exists, never pausing it. "fidelity": read
    * back what the page reports about itself (UA, DPR, viewport, touch), the proof for the bundle.
    */
   mode: "state" | "geometry" | "port" | "emulate" | "hold" | "fidelity";
@@ -57,7 +57,7 @@ export interface ChromeCdpProbeArgs {
   emulation?: ChromeMobileEmulationRequest;
 }
 
-/** Mobile emulation request (#221): the CDP Emulation domain applied to one page target. */
+/** Mobile emulation request: the CDP Emulation domain applied to one page target. */
 export interface ChromeMobileEmulationRequest {
   width: number;
   height: number;
@@ -538,7 +538,7 @@ export function chromeCdpProbeCommand(args: ChromeCdpProbeArgs): string {
 /**
  * Narrow one probe's stdout. A parse failure is reported as unavailable with the reason, never as
  * an empty success: the difference between "nothing to observe" and "could not observe" is the
- * whole point of #514.
+ * whole point.
  */
 export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdpProbeResult {
   const trimmed = (stdout ?? "").trim();

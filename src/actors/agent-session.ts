@@ -4,7 +4,7 @@
 // interactive surface has asked for something that cannot exist. A study of that refusal
 // (labs/handed-a-human-surface.yaml) found it never fires: `codex exec` allocates a PTY for the
 // commands it runs, so both streams are terminals. The TUI launched, the agent navigated the labs
-// list, opened one, and — its own words — "accidentally triggered a zero-cost dry run while
+// list, opened one, and (in its own words) "accidentally triggered a zero-cost dry run while
 // navigating". A stray Enter on a live row is the same two keystrokes as a deliberate one.
 //
 // So a TTY is a real answer to the wrong question. It says a terminal exists; it does not say
@@ -13,14 +13,14 @@
 //
 // Every marker below was observed, not guessed. Two runtimes are covered because two are what we
 // could verify: Claude Code (read off a live session) and Codex (read off the study sandbox, by a
-// names-only `env | cut -d= -f1` probe that never touched a value). Others certainly exist — add
+// names-only `env | cut -d= -f1` probe that never touched a value). Others certainly exist; add
 // them the same way, from a real session, rather than from a plausible-looking guess. A marker
 // that is wrong refuses a person for no reason.
 
 export interface AgentSession {
   /** Human-readable runner name, for the refusal message. */
   runner: string;
-  /** The environment variable that identified it — named so the reader can check us. */
+  /** The environment variable that identified it, named so the reader can check us. */
   marker: string;
 }
 

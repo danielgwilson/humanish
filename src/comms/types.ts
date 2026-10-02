@@ -1,4 +1,4 @@
-// The addressed message bus for captured mail (#297): the email or SMS a persona receives off the
+// The addressed message bus for captured mail: the email or SMS a persona receives off the
 // app, as a testable surface. One port, addressed by participant, so the inbox surface and the evidence
 // writer read messages without knowing how they were captured.
 //
@@ -18,7 +18,7 @@ export interface CommsAddress {
   participantId: string;
   /** Runtime-only raw address, e.g. user-07@example.test | +15550137. */
   value: string;
-  /** sha256-short(value) — the only form persisted (redaction.digestText). */
+  /** sha256-short(value): the only form persisted (redaction.digestText). */
   digest: string;
 }
 
@@ -33,12 +33,12 @@ export interface CommsInlineImage {
 export interface CommsMessage {
   id: string;
   channel: CommsChannelKind;
-  /** Raw sender — an app-under-test address, or another actor's address. Runtime-only. */
+  /** Raw sender: an app-under-test address, or another actor's address. Runtime-only. */
   from: string;
   /** Resolved recipient inboxes this message was delivered to. */
   to: CommsAddress[];
   subject?: string;
-  /** Runtime-only for real; local-only for fake (never a share path without redaction — #108). */
+  /** Runtime-only for real; local-only for fake (never a share path without redaction). */
   body: string;
   inlineImages?: CommsInlineImage[];
   /** Actionable links extracted from the body (magic-link / invite / reset). Runtime-only. */
@@ -81,7 +81,7 @@ export interface CommsChannel {
   /** Route a composed message from one actor to addressed inboxes. Returns the delivered record. */
   send(message: OutboundMessage): Promise<CommsMessage>;
   /** Route a raw ingress delivery (app-under-test → recipient strings). Returns the messages that
-   *  matched a provisioned inbox (unmatched recipients are dropped — no inbox to deliver to). */
+   *  matched a provisioned inbox (unmatched recipients are dropped; no inbox to deliver to). */
   deliverRaw(inbound: InboundRaw): Promise<CommsMessage[]>;
   /** New messages delivered to `address` since `since` (exclusive), oldest-first. Drives the surface. */
   poll(address: CommsAddress, since?: number): Promise<CommsMessage[]>;

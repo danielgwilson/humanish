@@ -132,7 +132,7 @@ export function parseChromeDevToolsReadiness(stdout: string): ChromeDevToolsRead
 export interface DesktopBrowserEvidence {
   requested: LabDesktopBrowser;
   resolved?: string;
-  /** Synthetic media devices the browser was launched with (#509), and how permission is answered. */
+  /** Synthetic media devices the browser was launched with, and how permission is answered. */
   media?: DesktopMediaEvidence;
 }
 
@@ -271,7 +271,7 @@ export async function openDesktopBrowserTarget(
   targetUrl: string,
   requestTimeoutMs: number,
   browserPreference: LabDesktopBrowser | undefined,
-  /** Launch-time flags that make mobile fidelity (#221) hold across every tab: the user agent and
+  /** Launch-time flags that make mobile fidelity hold across every tab: the user agent and
    *  touch events are browser-wide here, where the CDP holder covers only the launch page. */
   extraChromiumFlags: readonly string[] = [],
   environment?: Readonly<Record<string, string>>,
@@ -321,7 +321,7 @@ export async function openDesktopBrowserTarget(
       // Fixed CDP port (not :0/random): each seat has its own desktop sandbox, so a known port
       // cannot conflict, and it makes the observer's port resolution deterministic. With :0 the
       // real port lives only in DevToolsActivePort; when the launch-time capture misses on a cold
-      // start the observer falls back to 9222 and — being wrong — every CDP read fails for the
+      // start the observer falls back to 9222 and, being wrong, every CDP read fails for the
       // whole run (the lobby-code handoff then never sees the host's /lobby URL). 9222 is already
       // the fallback, so making it the actual port aligns launch, capture, and fallback.
       `chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=${CHROME_DEVTOOLS_PORT} ${chromiumFlags})`,

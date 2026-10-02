@@ -1,9 +1,9 @@
-// What `humanish` says when you run it with no arguments (#367).
+// What `humanish` says when you run it with no arguments.
 //
 // It used to print commander's help: sixteen subcommands before any value, identical whether you
 // had never run the tool or had a finished study sitting on disk. That is a poor first contact for
 // a human, and it is worse for a coding agent, which needs to know where it is before it can choose
-// a command — help is a menu, not an orientation.
+// a command; help is a menu, not an orientation.
 //
 // So bare invocation answers three questions instead: what is this, what state is this project in,
 // and what should I run next. The answer is derived from the project rather than fixed, so it is
@@ -40,7 +40,7 @@ interface OrientationCommand {
 
 /**
  * Read the project's state. Pure-ish: it only reads, never writes, and never touches the network or
- * a provider — bare invocation must not be able to spend money or mutate a repo.
+ * a provider: bare invocation must not be able to spend money or mutate a repo.
  */
 export async function readOrientation(cwd: string): Promise<OrientationState> {
   const [labs, runs] = await Promise.all([

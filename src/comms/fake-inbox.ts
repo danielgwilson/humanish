@@ -1,4 +1,4 @@
-// The in-process email/SMS bus (#297): a working, in-memory implementation of the CommsChannel
+// The in-process email/SMS bus: a working, in-memory implementation of the CommsChannel
 // port. Deterministic, offline and free: a message the app under test sends (through an ingress
 // such as the email catch) is routed to the addressed inbox and read back through the same port.
 // Nothing leaves the process. See types.ts for the port and its public-safety notes.
@@ -32,7 +32,7 @@ function smsAddressFor(participantId: string): string {
 }
 
 export interface FakeInboxOptions {
-  /** "email" (default) or "sms" — the address shape + surface differ; machinery is identical. */
+  /** "email" (default) or "sms": the address shape + surface differ; machinery is identical. */
   channel?: CommsChannelKind;
   /** Email domain for minted addresses. Default example.test, an RFC 6761 reserved, unroutable
    *  test domain. */
