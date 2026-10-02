@@ -12,7 +12,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import type { RunCuaActorLabOptions } from "../../src/routes/computer-use/types.js";
-import { resolveLabDryRun, selectLabBackend, type LabBackend } from "../../src/lab/plan.js";
+import { resolveLabDryRun, routeOf, type LabRoute } from "../../src/lab/plan.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
@@ -107,8 +107,8 @@ async function runEntry(
   }
   const calls: Calls = { desktop: 0, executor: 0, provider: 0, subprocess: 0 };
   const { typed, driving } = hooksFor(options, calls);
-  const backend: LabBackend | "none" =
-    options.runner ?? (entry === "runner" ? selectLabBackend(config) : "none");
+  const route: LabRoute | "none" =
+    options.runner ?? (entry === "runner" ? routeOf(config) : "none");
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
   const rerun = options.rerun === undefined ? {} : { rerun: options.rerun };
   subprocess.calls = 0;
@@ -128,7 +128,7 @@ async function runEntry(
         typed.deps,
       );
       result = { route: outcome.route, ...outcome.result };
-    } else if (backend === "cua") {
+    } else if (route === "computer-use") {
       result = await runCuaActorLab({
         cwd,
         config,
@@ -138,15 +138,15 @@ async function runEntry(
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...rerun,
       });
-    } else if (backend === "scripted") {
+    } else if (route === "scripted") {
       result = await runScriptedBrowserLab({ cwd, config, dryRun, ...typed });
-    } else if (backend === "terminal") {
+    } else if (route === "terminal") {
       result = await runTerminalProductLab({ cwd, config, dryRun, ...typed });
-    } else if (backend === "concurrent-shared-world") {
+    } else if (route === "shared-world") {
       result = await runConcurrentSharedWorld({ cwd, config, dryRun, ...typed });
     } else {
       // The preview runner (runDryRun) takes no config, so there is nothing to pin.
-      return { runner: backend };
+      return { runner: route };
     }
   } catch (error) {
     result = { threw: error instanceof Error ? error.message : String(error) };
@@ -155,7 +155,7 @@ async function runEntry(
   const runs = (await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).length > 0;
   const physical = await realpath(cwd);
   return {
-    ...(entry === "runner" ? { runner: backend } : {}),
+    ...(entry === "runner" ? { runner: route } : {}),
     runs,
     ...(runs ? { result: summary(result) } : { calls, result: normalize(result, [physical, cwd]) }),
   };

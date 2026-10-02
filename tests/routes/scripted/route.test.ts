@@ -17,7 +17,7 @@ import type {
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
-import { selectLabBackend } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/lab/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { digestText } from "../../../src/evidence/redaction.js";
 import { verifyRun } from "../../../src/verify/verify.js";
@@ -336,9 +336,9 @@ function provisionedScriptedConfig(): LabConfig {
 }
 
 describe("lab routing (app-url × scripted-browser → scripted)", () => {
-  it("selectLabBackend routes app-url × local × scripted-browser to the scripted backend (target absent too)", () => {
-    expect(selectLabBackend(scriptedConfig())).toBe("scripted");
-    expect(selectLabBackend(scriptedConfig({ target: undefined }))).toBe("scripted");
+  it("routeOf sends app-url × local × scripted-browser to the scripted route (target absent too)", () => {
+    expect(routeOf(scriptedConfig())).toBe("scripted");
+    expect(routeOf(scriptedConfig({ target: undefined }))).toBe("scripted");
   });
 
   it("REGRESSION: app-url × e2b-desktop × openai-computer-use still routes to cua, and the other routes are untouched", () => {
@@ -366,9 +366,9 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     } as const;
     if (!cua.ok || !synthetic.ok) throw new Error("fixture configs must parse");
     expect(parseLabConfig(cloneWithCodeActor).ok).toBe(false);
-    expect(selectLabBackend(cua.config)).toBe("cua");
-    expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    expect(selectLabBackend(cloneWithCodeActor as unknown as LabConfig)).toBe("cua");
+    expect(routeOf(cua.config)).toBe("computer-use");
+    expect(routeOf(synthetic.config)).toBe("preview");
+    expect(routeOf(cloneWithCodeActor as unknown as LabConfig)).toBe("computer-use");
   });
 
   it("library-API fallback: app-url with an UNREGISTERED actor type still routes to cua's fail-closed gate", async () => {
@@ -377,7 +377,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       ...scriptedConfig(),
       actors: [{ type: "not-a-registered-actor" }],
     } as LabConfig;
-    expect(selectLabBackend(tampered)).toBe("cua");
+    expect(routeOf(tampered)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-fallback-"));
     try {
       const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });

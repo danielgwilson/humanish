@@ -8,7 +8,7 @@ import { parse as parseYaml } from "yaml";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { runLab } from "../../src/run-lab.js";
-import { selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
 import { digestText } from "../../src/evidence/redaction.js";
@@ -95,7 +95,7 @@ describe("lab config expressiveness (rung 3)", () => {
     expect(resolved.config.actors[0]?.type).toBe("scripted-browser");
     expect(resolved.config.actors[0]?.count).toBe(2);
     expect(resolved.config.scenario?.ref).toBe("scripted-first-run");
-    expect(selectLabBackend(resolved.config)).toBe("scripted");
+    expect(routeOf(resolved.config)).toBe("scripted");
 
     // The referenced committed scenario is genuinely executable (4 browser steps).
     const scenarioText = read("humanish/scenarios/scripted-first-run.yaml");
