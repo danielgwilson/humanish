@@ -350,14 +350,14 @@ describe("telling the operator what they already have", () => {
     ).resolves.toBe("supported");
     expect(calls).toEqual([["--version"]]);
     const version = (stdout: string) => async () => ({ code: 0, stdout, stderr: "" });
-    // Qualification is per host: 0.157.1 ran on Linux x64 only, and 0.154.0 stays admitted.
+    // Every host with a native build runs any stable release from 0.154.0 on.
     for (const [platform, arch, stdout, expected] of [
       ["linux", "x64", "codex-cli 0.154.0\n", "supported"],
-      ["linux", "arm64", "codex-cli 0.154.0\n", "supported"],
-      ["linux", "arm64", "codex-cli 0.157.1\n", "unsupported_version"],
-      ["darwin", "arm64", "codex-cli 0.154.0\n", "supported"],
-      ["darwin", "arm64", "codex-cli 0.157.1\n", "unsupported_version"],
-      ["linux", "x64", "codex-cli 0.158.0\n", "unsupported_version"],
+      ["linux", "arm64", "codex-cli 0.157.1\n", "supported"],
+      ["darwin", "arm64", "codex-cli 0.158.0\n", "supported"],
+      ["darwin", "x64", "codex-cli 0.161.0\n", "supported"],
+      ["linux", "x64", "codex-cli 0.150.0\n", "unsupported_version"],
+      ["linux", "x64", "codex-cli 0.162.0-alpha.4\n", "unsupported_version"],
       ["linux", "x64", "codex-cli 0.157.1 extra\n", "unsupported_version"],
     ] as const)
       await expect(

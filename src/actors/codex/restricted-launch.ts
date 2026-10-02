@@ -54,7 +54,8 @@ export interface LaunchSettings {
   readonly operatorAuth: boolean;
   readonly reasoningEffort: ReasoningEffort;
   readonly spawnFn: RestrictedCodexSpawn;
-  readonly admittedVersions: readonly string[];
+  /** Launch admission: codex-admission.ts, or the qualifier's exact list (restricted-session.ts). */
+  readonly admits: (version: string) => boolean;
 }
 
 /** What a launch records on the session, each piece as soon as it exists. */
@@ -341,7 +342,7 @@ export async function launchAdmittedAppServer(
     state.cwd,
     spawnFn,
     deadline,
-    settings.admittedVersions,
+    settings.admits,
     options.cliVersion,
   );
   await admitProtocol(file, env, state, spawnFn, deadline, {

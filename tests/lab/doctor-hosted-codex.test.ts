@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
-import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import { labSetupChecks, type LabSetupCheckArgs } from "../../src/lab/doctor.js";
 
 const directories: string[] = [];

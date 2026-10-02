@@ -1,6 +1,6 @@
 // A local-agent participant's CLI is checked before any sandbox exists. A missing CLI is refused as
 // AGENT_MISSING; one that is signed out or cannot report its sign-in status as AGENT_SIGNIN_REQUIRED;
-// an unqualified release as ACTOR_UNSUPPORTED; and a dollar cap on a ChatGPT-account Codex as
+// a release below the floor as ACTOR_UNSUPPORTED; and a dollar cap on a ChatGPT-account Codex as
 // UNPRICED_CAP. Each message names the fix. A fake `codex` on a temporary PATH stands in for each.
 
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -10,7 +10,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { liveCuaRejection } from "../../../src/routes/computer-use/preflight.js";
-import { admittedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../../src/actors/codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-executable.js";
 
 const dirs: string[] = [];
@@ -72,12 +72,12 @@ describe("a local-agent participant's CLI at preflight", () => {
     expect(refusal?.message).toContain(message);
   });
 
-  it("is refused as ACTOR_UNSUPPORTED when the CLI is an unqualified release", async () => {
+  it("is refused as ACTOR_UNSUPPORTED when the CLI is a release below the floor", async () => {
     const refusal = await rejection(await pathWithCodex(signedIn("0.0.1")));
     expect(refusal?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
   });
 
-  const qualified = admittedCodexCliVersions(process.platform, process.arch)[0];
+  const qualified = defaultCodexCliVersion();
   it.skipIf(restrictedCodexNpmTarget(process.platform, process.arch) === undefined || !qualified)(
     "is refused as UNPRICED_CAP when a ChatGPT-account Codex has a dollar cap",
     async () => {

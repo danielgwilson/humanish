@@ -3,7 +3,7 @@
 // a ChatGPT-account Codex is not asked to enforce a dollar cap it has no price for. Each route maps
 // the refusal's kind to its own error code.
 
-import { describeQualifiedCodexCliVersions } from "../codex/qualified-versions.js";
+import { describeCodexCliAdmission } from "../codex/codex-admission.js";
 import { checkHostedCodexCompatibility, detectLocalAgents, type LocalAgentId } from "./cli.js";
 
 /** Why a local-agent participant cannot run here. */
@@ -12,7 +12,7 @@ export type LocalAgentRefusal =
   | { kind: "agent-missing"; message: string }
   /** The CLI is signed out, or could not report its sign-in status. */
   | { kind: "signin-required"; message: string }
-  /** Hosted Codex on an unsupported platform or an unqualified CLI release. */
+  /** Hosted Codex on an unsupported platform or a CLI release the launcher refuses. */
   | { kind: "unsupported"; message: string }
   /** A ChatGPT-account Codex with execution.caps, which it cannot price. */
   | { kind: "unpriced-cap"; message: string };
@@ -50,7 +50,7 @@ export async function localAgentRefusal(args: {
       message:
         compatibility === "unsupported_platform"
           ? `Hosted Codex participants require Linux or macOS on x64 or arm64. This host is ${process.platform}/${process.arch}; no desktop was launched.`
-          : `Hosted Codex participants require a qualified Codex CLI (${describeQualifiedCodexCliVersions()}). Run \`codex --version\` and install a qualified version before retrying; no desktop was launched.`,
+          : `Hosted Codex participants need a Codex CLI release humanish runs: ${describeCodexCliAdmission()}. Run \`humanish doctor\` for the release it found and the command that replaces it; no desktop was launched.`,
     };
   }
   if (

@@ -1,5 +1,5 @@
 // Qualify a Codex CLI release for the restricted launcher against an already-qualified baseline.
-// Procedure: docs/architecture/restricted-codex-analysis.md, "Admitting a Codex CLI release".
+// Procedure: docs/architecture/restricted-codex-analysis.md, "Testing a Codex CLI release".
 // Usage: pnpm codex:qualify <version> [--baseline <version>] [--live] [--out <dir>]
 // Offline checks install both releases from npm and use a loopback provider: no model, no account.
 // --live adds readiness, one analyst turn and two cancellations with the existing ChatGPT login.
@@ -34,10 +34,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import {
-  codexHost,
+  TESTED_CODEX_CLI_VERSIONS,
   parseCodexCliVersion,
-  qualifiedCodexCliVersions,
-} from "../src/actors/codex/qualified-versions.ts";
+} from "../src/actors/codex/codex-admission.ts";
 import { restrictedCodexConfig } from "../src/actors/codex/restricted-policy.ts";
 import { restrictedCodexNpmTarget } from "../src/actors/codex/restricted-executable.ts";
 import { runLoopbackProbe, summarizeProbe } from "./lib/codex-loopback-probe.mjs";
@@ -62,10 +61,14 @@ if (!candidateVersion || !/^[0-9]+\.[0-9]+\.[0-9]+$/.test(candidateVersion)) {
   say("Usage: pnpm codex:qualify <version> [--baseline <version>] [--live] [--out <dir>]");
   process.exit(2);
 }
-const host = codexHost(process.platform, process.arch);
+const host = `${process.platform}-${process.arch}`;
 const target = restrictedCodexNpmTarget(process.platform, process.arch);
-if (!host || !target) {
-  say(`No qualification route for ${process.platform}/${process.arch}.`);
+// TESTED_CODEX_CLI_VERSIONS is a Linux x64 list, and the live phases run isolated mode, which
+// only Linux x64 and Apple Silicon support; refuse before installing anything.
+if (!target || host !== "linux-x64") {
+  say(
+    `codex:qualify tests Linux x64 only (TESTED_CODEX_CLI_VERSIONS is its list); this host is ${process.platform}/${process.arch}.`,
+  );
   process.exit(2);
 }
 // Both refusals come before anything is installed.
@@ -74,12 +77,12 @@ if (process.platform !== "linux" || !strace) {
   say(
     `codex:qualify qualifies Linux hosts only: its process checks trace every exec with strace -f, ` +
       `and ${process.platform === "linux" ? "strace is not on PATH" : `${process.platform} has no strace`}. ` +
-      `Qualification fails closed here; this host's list stays as it is.`,
+      `Qualification fails closed here, and TESTED_CODEX_CLI_VERSIONS stays as it is.`,
   );
   process.exit(1);
 }
-const qualified = qualifiedCodexCliVersions(process.platform, process.arch);
-const selected = selectBaseline(candidateVersion, qualified, values.baseline);
+const tested = TESTED_CODEX_CLI_VERSIONS;
+const selected = selectBaseline(candidateVersion, tested, values.baseline);
 if ("error" in selected) {
   say(selected.error);
   process.exit(2);
@@ -298,7 +301,7 @@ const evidence = {
   host,
   baseline: base,
   candidate: cand,
-  alreadyQualified: qualified.some((version) => version === candidateVersion),
+  alreadyTested: tested.some((version) => version === candidateVersion),
 };
 evidence.protocol = { baseline: protocol(base), candidate: protocol(cand) };
 evidence.features = {
@@ -345,7 +348,7 @@ const failed = report(checks);
 say();
 say(
   failed === 0
-    ? `All ${checks.length} checks passed. ${values.live ? "Run" : "Run again with --live, then run"} a hosted study (see the doc section), add ${candidateVersion} to QUALIFIED_CODEX_CLI_VERSIONS, and write a dated receipt.`
-    : `${failed} check(s) failed. Do not add ${candidateVersion}; report what differs.`,
+    ? `All ${checks.length} checks passed. ${values.live ? "Run" : "Run again with --live, then run"} a hosted study (see the doc section), add ${candidateVersion} to TESTED_CODEX_CLI_VERSIONS, and write a dated receipt. Launch admission does not change.`
+    : `${failed} check(s) failed. Do not add ${candidateVersion} to TESTED_CODEX_CLI_VERSIONS; report what differs, and if it breaks humanish, add it to REFUSED_CODEX_CLI_VERSIONS with the issue.`,
 );
 process.exitCode = failed === 0 ? 0 : 1;

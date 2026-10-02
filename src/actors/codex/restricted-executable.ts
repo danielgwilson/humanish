@@ -5,7 +5,7 @@ import { constants } from "node:fs";
 import { access, open, realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { parseCodexCliVersion } from "./qualified-versions.js";
+import { parseCodexCliVersion } from "./codex-admission.js";
 import {
   RestrictedCodexStop,
   closeOwnedCodexProcess,
@@ -226,14 +226,14 @@ export async function generateProtocolSchema(
   }
 }
 
-/** Returns the detected release after checking it against the admitted list. */
+/** Returns the detected release after checking it against launch admission (`admits`). */
 export async function checkVersion(
   file: string,
   env: NodeJS.ProcessEnv,
   cwd: string,
   spawnFn: RestrictedCodexSpawn,
   deadline: RestrictedCodexDeadline,
-  admitted: readonly string[],
+  admits: (version: string) => boolean,
   expected: string | undefined,
 ): Promise<string> {
   deadline.check();
@@ -264,7 +264,7 @@ export async function checkVersion(
     const version = parseCodexCliVersion(text);
     if (
       version === undefined ||
-      !admitted.includes(version) ||
+      !admits(version) ||
       (expected !== undefined && version !== expected)
     )
       throw new RestrictedCodexStop("codex_unsupported_version", version);

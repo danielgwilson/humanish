@@ -10,7 +10,7 @@ import {
   parseParticipantTool,
 } from "../../../src/actors/codex/restricted-participant-policy.js";
 import { createRestrictedCodexSession } from "../../../src/actors/codex/restricted-session.js";
-import { defaultCodexCliVersion } from "../../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../../src/actors/codex/codex-admission.js";
 import { validActorExecutionProfile } from "../../../src/actors/contract.js";
 import type {
   RestrictedCodexRequest,
@@ -840,6 +840,30 @@ describe("restricted participant guards and receipts", () => {
       ],
       refusal: "codex_tool_call",
     });
+  });
+
+  it("warns on close when a hosted participant ran an untested release", async () => {
+    // Detected but refused before thread/start (no resolved model): it never ran, so no warning.
+    metadata.cliVersion = "0.161.0";
+    await expect(
+      createRestrictedCodexParticipant({ authMode: "operator" }).close(),
+    ).resolves.toEqual({ status: "confirmed" });
+    metadata.resolvedModel = "operator-model";
+    const hosted = createRestrictedCodexParticipant({ authMode: "operator" });
+    await expect(hosted.close()).resolves.toEqual({
+      status: "confirmed",
+      warnings: [
+        "Codex CLI 0.161.0 has not been tested with humanish; this hosted participant's evidence rests on the checks each launch makes.",
+      ],
+    });
+    // An isolated participant on the same release, and a hosted one on a tested release, do not.
+    await expect(createRestrictedCodexParticipant().close()).resolves.toEqual({
+      status: "confirmed",
+    });
+    metadata.cliVersion = defaultCodexCliVersion();
+    await expect(
+      createRestrictedCodexParticipant({ authMode: "operator" }).close(),
+    ).resolves.toEqual({ status: "confirmed" });
   });
 
   it("reports the protocol check's refusal detail and recorded additions on close", async () => {

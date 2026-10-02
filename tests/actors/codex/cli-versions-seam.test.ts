@@ -122,7 +122,7 @@ describe("the cliVersions qualification bypass", () => {
           names.push(((specifier.exported as Node).name as string) ?? "");
       },
     );
-    expect(sources.filter((source) => /restricted|qualified-versions/.test(source))).toEqual([]);
+    expect(sources.filter((source) => /restricted|codex-admission/.test(source))).toEqual([]);
     expect(names.filter((name) => /RestrictedCodex|cliVersion/i.test(name))).toEqual([]);
   });
 

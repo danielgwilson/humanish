@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("durable analyst profile reading", () => {
-  it("reads a profile from any stable release from the floor and admits execution only for the host's qualified releases", async () => {
+  it("reads a profile from any stable release from the floor and admits execution on isolated hosts for releases the launcher starts", async () => {
     vi.resetModules();
     const config = await import("../../src/analysis/codex-config.js");
     const withVersion = (cliVersion: string) => {
@@ -48,12 +48,17 @@ describe("durable analyst profile reading", () => {
       expect(config.validStoredCodexAnalysisConfig(withVersion(cliVersion)), cliVersion).toBe(
         false,
       );
-    expect(config.validCodexAnalysisConfig(withVersion("0.154.0"), "linux", "x64")).toBe(true);
-    expect(config.validCodexAnalysisConfig(withVersion("0.157.1"), "linux", "x64")).toBe(true);
-    expect(config.validCodexAnalysisConfig(withVersion("0.154.0"), "darwin", "arm64")).toBe(true);
-    // 0.157.1 was not qualified on a Mac.
-    expect(config.validCodexAnalysisConfig(withVersion("0.157.1"), "darwin", "arm64")).toBe(false);
-    expect(config.validCodexAnalysisConfig(withVersion("0.158.0"), "linux", "x64")).toBe(false);
+    for (const [platform, arch] of [
+      ["linux", "x64"],
+      ["darwin", "arm64"],
+    ] as const)
+      for (const cliVersion of ["0.154.0", "0.157.1", "0.158.0", "0.161.0"])
+        expect(config.validCodexAnalysisConfig(withVersion(cliVersion), platform, arch)).toBe(true);
+    // Isolated launches run on Linux x64 and Apple Silicon only.
+    expect(config.validCodexAnalysisConfig(withVersion("0.160.0"), "linux", "arm64")).toBe(false);
+    expect(config.validCodexAnalysisConfig(withVersion("0.160.0"), "darwin", "x64")).toBe(false);
+    for (const cliVersion of ["0.150.0", "0.162.0-alpha.4"])
+      expect(config.validCodexAnalysisConfig(withVersion(cliVersion), "linux", "x64")).toBe(false);
   });
   it("retains the literal historical profile after the current launcher qualification changes", async () => {
     vi.resetModules();

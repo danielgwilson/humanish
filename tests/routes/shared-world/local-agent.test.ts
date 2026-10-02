@@ -13,7 +13,7 @@ import { runLab } from "../../../src/run-lab.js";
 import { participantRunDeps } from "../../../src/routes/shared-world/participant-specs.js";
 import type { PlaneContext } from "../../../src/routes/shared-world/types.js";
 import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
-import { admittedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../../src/actors/codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-executable.js";
 
 const live = { scenario: { mode: "live" } };
@@ -160,13 +160,13 @@ describe("shared world with a local-agent brain", () => {
     expect(error?.message).toContain("reports not signed in");
   });
 
-  it("refuses an unqualified Codex release as ACTOR_UNSUPPORTED", async () => {
+  it("refuses a Codex release below the floor as ACTOR_UNSUPPORTED", async () => {
     expect((await refusedWith(await signedInCodex("0.0.1")))?.code).toBe(
       "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
     );
   });
 
-  const qualified = admittedCodexCliVersions(process.platform, process.arch)[0];
+  const qualified = defaultCodexCliVersion();
   it.skipIf(restrictedCodexNpmTarget(process.platform, process.arch) === undefined || !qualified)(
     "refuses a dollar cap on a ChatGPT-account Codex as UNPRICED_CAP",
     async () => {

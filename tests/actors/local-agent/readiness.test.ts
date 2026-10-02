@@ -8,7 +8,7 @@ import path from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { admittedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../../src/actors/codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-executable.js";
 import { localAgentRefusal } from "../../../src/actors/local-agent/readiness.js";
 
@@ -38,7 +38,7 @@ const signedIn = (version: string) =>
   ].join("\n");
 
 const supportedHost = restrictedCodexNpmTarget(process.platform, process.arch) !== undefined;
-const qualified = admittedCodexCliVersions(process.platform, process.arch)[0];
+const qualified = defaultCodexCliVersion();
 
 async function refusal(script: string | undefined, caps: { maxUsd?: number } = {}) {
   const dir = await pathWithCodex(script);

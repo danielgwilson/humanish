@@ -1,15 +1,16 @@
 import { isRecordedCodexCliVersion } from "../actors/contract.js";
 import {
+  admitsCodexCliVersion,
   defaultCodexCliVersion,
-  qualifiedCodexCliVersions,
-} from "../actors/codex/qualified-versions.js";
+  supportsIsolatedCodex,
+} from "../actors/codex/codex-admission.js";
 import {
   RESTRICTED_CODEX_ANALYSIS_IDENTITY,
   RESTRICTED_CODEX_ANALYSIS_MODELS,
 } from "../actors/codex/restricted-policy.js";
 import type { CodexAnalysisIdentity, AnalysisConfig } from "./types.js";
 
-/** This account route is qualified against per-host CLI releases, one model and one tool policy. */
+/** This account route runs the releases codex-admission.ts admits, one model and one tool policy. */
 const CODEX_ANALYSIS_TOOL_POLICY = RESTRICTED_CODEX_ANALYSIS_IDENTITY.toolPolicy;
 export const CODEX_ANALYSIS_MODEL = RESTRICTED_CODEX_ANALYSIS_MODELS[0];
 const CODEX_ANALYSIS_EFFORT = RESTRICTED_CODEX_ANALYSIS_IDENTITY.reasoningEffort;
@@ -72,7 +73,7 @@ function matchesProfile(config: AnalysisConfig, expected: CodexAnalysisIdentity)
   );
 }
 
-/** Execution admission: the identity must name a release qualified on this host. */
+/** Execution admission: an isolated-mode host, and an identity naming a release the launcher starts. */
 export function validCodexAnalysisConfig(
   config: AnalysisConfig,
   platform: NodeJS.Platform = process.platform,
@@ -82,7 +83,9 @@ export function validCodexAnalysisConfig(
   const cliVersion = config.identity?.cliVersion;
   return (
     config.model === CODEX_ANALYSIS_MODEL &&
-    qualifiedCodexCliVersions(platform, arch).some((version) => version === cliVersion) &&
+    supportsIsolatedCodex(platform, arch) &&
+    typeof cliVersion === "string" &&
+    admitsCodexCliVersion(cliVersion) &&
     matchesProfile(config, codexAnalysisIdentity(config.model, cliVersion))
   );
 }
