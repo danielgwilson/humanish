@@ -67,7 +67,7 @@ import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
-// external-public route creates NO subject sandbox — only actor sandboxes via
+// external-public route creates no subject sandbox: only actor sandboxes via
 // runCuaParticipant. The fake runSession simulates the CUA loop's onObservedUrl calls
 // (which resolve the host-first handoff latch) and returns an engaged trace.
 // ---------------------------------------------------------------------------
@@ -146,7 +146,7 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
         n += 1;
         const [width, height] = createOptions.resolution ?? [1440, 950];
         // Each seat's physical desktop follows its device; the former fixed desktop-size fake
-        // accidentally put the browser outside every phone screen (#702).
+        // accidentally put the browser outside every phone screen.
         const sandbox = makeFakeSandbox(`fake-sandbox-${String(n).padStart(3, "0")}`, (command) => {
           if (command.includes("xdpyinfo"))
             return { stdout: `dimensions: ${width}x${height} pixels\n` };
@@ -238,9 +238,9 @@ const homeUrlFor = (origin: string): string => `${origin}/`; // a seat stuck her
 /** A runSession fake for the external-public route. It detects the host by its unique mission text,
  *  fires the loop's onObservedUrl to drive the handoff latch + convergence, and returns an engaged
  *  trace. `stuckPersonaId` steers one follower (by persona id) onto the home page (no lobby code) and
- *  makes it fail — a deterministic non-converging seat. `observedOrigin` steers ALL seats onto a
- *  DIFFERENT observed origin than the declared appUrl (simulates a cross-origin redirect, e.g.
- *  apex->www); `divergentPersonaId`+`divergentOrigin` steer ONE follower onto a different observed
+ *  makes it fail: a deterministic non-converging seat. `observedOrigin` steers all seats onto a
+ *  different observed origin than the declared appUrl (simulates a cross-origin redirect, e.g.
+ *  apex->www); `divergentPersonaId`+`divergentOrigin` steer one follower onto a different observed
  *  origin than the others (a genuine non-convergence on observed origins). */
 function makeExternalRunSession(args: {
   seen: CuaActorSessionOptions[];
@@ -299,7 +299,7 @@ function externalPublicConfig(overrides?: {
 }): unknown {
   const lanes: Array<Record<string, unknown>> = overrides?.hostLast
     ? [
-        // Host is the LAST roster lane (blockers 1 & 4): with concurrency < laneCount it must still be
+        // Host is the last roster lane (blockers 1 & 4): with concurrency < laneCount it must still be
         // schedulable on its dedicated slot rather than starved behind the follower pool.
         {
           id: "player-2",
@@ -448,7 +448,7 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
     expect(extractLobbyCode(homeState.url)).toBeUndefined();
   });
 
-  it("onObservedUrl fires on the initial AND loop observe, and the url is NEVER written to the trace", async () => {
+  it("onObservedUrl fires on the initial and loop observe, and the url is never written to the trace", async () => {
     const observedUrls: (string | undefined)[] = [];
     let observeCount = 0;
     const executor: CuaExecutor = {
@@ -488,7 +488,7 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
       now: () => (now += 1),
       onObservedUrl: (url) => observedUrls.push(url),
     });
-    // Fired on the initial observe AND at least one post-action observe.
+    // Fired on the initial observe and at least one post-action observe.
     expect(observedUrls.length).toBeGreaterThanOrEqual(2);
     expect(observedUrls[0]).toBe(`${LOBBY_URL}?turn=1`);
     // Hygiene: the raw url never lands in the persisted trace.
@@ -499,7 +499,7 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. CODE extraction regex table.
+// 3. Code extraction regex table.
 // ---------------------------------------------------------------------------
 describe("extractLobbyCode regex", () => {
   const cases: Array<[string, string | undefined]> = [
@@ -522,7 +522,7 @@ describe("extractLobbyCode regex", () => {
 // 6. Public-app-plane config validation.
 // ---------------------------------------------------------------------------
 describe("external-public config validation + routing", () => {
-  it("app-url + topology shared-world + concurrency 3 + allowPublicTargets + publicTarget.authorized ROUTES to concurrent-shared-world", () => {
+  it("app-url + topology shared-world + concurrency 3 + allowPublicTargets + publicTarget.authorized routes to concurrent-shared-world", () => {
     const config = parseExternal();
     expect(isSharedWorldComposition(config)).toBe(true);
     expect(routeOf(config)).toBe("shared-world");
@@ -569,7 +569,7 @@ describe("external-public config validation + routing", () => {
   });
 
   it("rejects N=1 (a single-seat shared world proves nothing)", () => {
-    // One host lane, concurrency 1 -> a shared world needs >=2 seats AND concurrency > 1.
+    // One host lane, concurrency 1 -> a shared world needs >=2 seats and concurrency > 1.
     const base = externalPublicConfig({ concurrency: 1 }) as Record<string, unknown>;
     const actor = (base.actors as Array<Record<string, unknown>>)[0]!;
     actor.lanes = [(actor.lanes as unknown[])[0]];
@@ -579,7 +579,7 @@ describe("external-public config validation + routing", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. GATE-INTACT regression: the provisioned-getHost path is unchanged.
+// 7. Gate-intact regression: the provisioned-getHost path is unchanged.
 // ---------------------------------------------------------------------------
 describe("getHost synthetic gate stays intact", () => {
   function provisionedConfig(): LabConfig {
@@ -619,7 +619,7 @@ describe("getHost synthetic gate stays intact", () => {
     return parsed.config;
   }
 
-  it("a valid provisioned-getHost config still validates and still REQUIRES exposure:synthetic + seeded", () => {
+  it("a valid provisioned-getHost config still validates and still requires exposure:synthetic + seeded", () => {
     const config = provisionedConfig();
     expect(concurrentSharedWorldValidationReason(config)).toBeNull();
     // Drop exposure:synthetic -> the getHost gate still fails closed.
@@ -633,7 +633,7 @@ describe("getHost synthetic gate stays intact", () => {
 // 4 + 9. Handoff barrier + lobby convergence (deterministic, $0).
 // ---------------------------------------------------------------------------
 describe("host-first handoff barrier + convergence", () => {
-  it("host resolves the latch; followers open only AFTER, receive the CODE, and windows overlap", async () => {
+  it("host resolves the latch; followers open only after, receive the code, and windows overlap", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen }));
     const result = await runConcurrentSharedWorld({
@@ -645,12 +645,12 @@ describe("host-first handoff barrier + convergence", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.host).toBeUndefined(); // NO harness-minted host on the external-public plane
-    expect(result.subjectSandbox).toBeUndefined(); // NO subject sandbox
-    expect(created).toHaveLength(3); // exactly 3 ACTOR sandboxes (no subject sandbox)
+    expect(result.host).toBeUndefined(); // no harness-minted host on the external-public plane
+    expect(result.subjectSandbox).toBeUndefined(); // no subject sandbox
+    expect(created).toHaveLength(3); // exactly 3 actor sandboxes (no subject sandbox)
     expect(result.overlapProven).toBe(true);
 
-    // Followers received the CODE threaded into their mission (runtime-only prompt, not persisted).
+    // Followers received the code threaded into their mission (runtime-only prompt, not persisted).
     const followerInstructions = seen
       .filter((o) => !o.instructions.toLowerCase().includes("create a"))
       .map((o) => o.instructions);
@@ -678,10 +678,10 @@ describe("host-first handoff barrier + convergence", () => {
     );
     expect(overlapping).toBe(true);
 
-    // lobbyConvergenceDigest: all 3 seats converged on the SAME /lobby/CODE.
+    // lobbyConvergenceDigest: all 3 seats converged on the same /lobby/CODE.
     expect(bundle.sharedWorld?.lobbyConvergenceDigest).toMatch(/^[0-9a-f]{16}$/);
 
-    // HYGIENE: the raw code + the raw origin never land in the bundle.
+    // Hygiene: the raw code + the raw origin never land in the bundle.
     const runText = await readFile(
       path.join(cwd, ".humanish", "runs", result.runId, "run.json"),
       "utf8",
@@ -726,18 +726,18 @@ describe("host-first handoff barrier + convergence", () => {
     expect(stuck?.ok).toBe(false);
   });
 
-  it("proves convergence from the VISION read when CDP never surfaces a /lobby/CODE (the real E2B case)", async () => {
-    // The unreliable-E2B reality: the CDP url-read yields only the ORIGIN (home), never a /lobby/CODE. The
-    // lobby code reaches the harness ONLY through the vision-off-frame read — the host latches the handoff
-    // with it, and every follower INDEPENDENTLY observes its own code with it. Convergence must still be
-    // PROVEN (previously it read "not observed" because followers' codes came solely from the flaky CDP).
+  it("proves convergence from the vision read when CDP never surfaces a /lobby/CODE (the real E2B case)", async () => {
+    // The unreliable-E2B reality: the CDP url-read yields only the origin (home), never a /lobby/CODE. The
+    // lobby code reaches the harness only through the vision-off-frame read: the host latches the handoff
+    // with it, and every follower independently observes its own code with it. Convergence must still be
+    // proven (previously it read "not observed" because followers' codes came solely from the flaky CDP).
     const seen: CuaActorSessionOptions[] = [];
     const frame = Buffer.from("waiting-room-frame-bytes");
     let visionReads = 0;
     const runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
       seen.push(options);
       const isHost = options.instructions.toLowerCase().includes("create a");
-      options.onObservedUrl?.(homeUrlFor(DEFAULT_OBSERVED_ORIGIN)); // origin only — CDP never sees the code
+      options.onObservedUrl?.(homeUrlFor(DEFAULT_OBSERVED_ORIGIN)); // origin only: CDP never sees the code
       options.onScreenshot?.(frame); // this seat's waiting-room frame -> the vision reader extracts the code
       await new Promise<void>((resolve) => {
         setTimeout(resolve, isHost ? HOST_HOLD_MS : FOLLOWER_HOLD_MS);
@@ -768,7 +768,7 @@ describe("host-first handoff barrier + convergence", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
-    // Convergence PROVEN purely from the vision reads (CDP surfaced no /lobby/CODE for any seat).
+    // Convergence proven purely from the vision reads (CDP surfaced no /lobby/CODE for any seat).
     expect(bundle.sharedWorld?.lobbyConvergenceDigest).toMatch(/^[0-9a-f]{16}$/);
     expect(visionReads).toBeGreaterThanOrEqual(3); // host latch + each follower observing its own code
     // Hygiene preserved: the raw code never lands in the bundle.
@@ -781,11 +781,11 @@ describe("host-first handoff barrier + convergence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4b. Host-first scheduling: the host lane is NEVER starved (blockers 1 & 4).
+// 4b. Host-first scheduling: the host lane is never starved (blockers 1 & 4).
 // ---------------------------------------------------------------------------
 describe("host-first scheduling: host runs on a dedicated slot, never starved", () => {
-  it("lanes [follower, follower, host] with concurrency 2 does NOT deadlock; followers receive the code", async () => {
-    // The host is the LAST roster lane and concurrency (2) < laneCount (3): if the host were scheduled
+  it("lanes [follower, follower, host] with concurrency 2 does not deadlock; followers receive the code", async () => {
+    // The host is the last roster lane and concurrency (2) < laneCount (3): if the host were scheduled
     // inside the same bounded pool as the followers, the two follower workers would block on the latch
     // holding both slots and the host would never be scheduled -> a spurious HANDOFF_TIMEOUT. On its
     // dedicated slot the host runs immediately, resolves the latch, and the followers proceed.
@@ -806,7 +806,7 @@ describe("host-first scheduling: host runs on a dedicated slot, never starved", 
     expect(result.error).toBeUndefined();
     expect(created).toHaveLength(3); // all three seats opened (host + 2 followers)
 
-    // Both followers received the host's CODE threaded into their mission.
+    // Both followers received the host's code threaded into their mission.
     const followerInstructions = seen
       .filter((o) => !o.instructions.toLowerCase().includes("create a"))
       .map((o) => o.instructions);
@@ -823,13 +823,13 @@ describe("host-first scheduling: host runs on a dedicated slot, never starved", 
 });
 
 // ---------------------------------------------------------------------------
-// 4c. Observed-origin convergence: redirect tolerated, divergence fails closed (blocker 2).
+// 4c. Observed-origin convergence: redirect tolerated, divergence fails closed.
 // ---------------------------------------------------------------------------
 describe("observed-origin convergence (redirect tolerated)", () => {
-  it("seats observed on www while declared apex PASSES; publicOriginDigest = the OBSERVED origin", async () => {
+  it("seats observed on www while declared apex passes; publicOriginDigest = the observed origin", async () => {
     // Declared appUrl is the apex https://lobby-trivia.example.test/, but every seat's CDP-observed final URL is
-    // on https://www.lobby-trivia.example.test (a normal apex->www 307 redirect). This must PASS: the convergence
-    // proof is about the OBSERVED origin, and publicOriginDigest is derived from it (not the declared).
+    // on https://www.lobby-trivia.example.test (a normal apex->www 307 redirect). This must pass: the convergence
+    // proof is about the observed origin, and publicOriginDigest is derived from it (not the declared).
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({ seen, observedOrigin: "https://www.lobby-trivia.example.test" }),
@@ -852,8 +852,8 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     };
     expect(plane.publicOriginDigest).toMatch(/^[0-9a-f]{16}$/);
     expect(plane.declaredOriginDigest).toMatch(/^[0-9a-f]{16}$/);
-    // publicOriginDigest is the OBSERVED (www) origin; declaredOriginDigest is the DECLARED (apex) origin.
-    // A redirect makes them DIFFER — and that difference must not fail verify.
+    // publicOriginDigest is the observed (www) origin; declaredOriginDigest is the declared (apex) origin.
+    // A redirect makes them differ, and that difference must not fail verify.
     expect(plane.publicOriginDigest).not.toBe(plane.declaredOriginDigest);
     // Every seat's observed routeHostDigest equals the observed publicOriginDigest (they converged).
     for (const w of bundle.sharedWorld?.laneWindows ?? [])
@@ -864,9 +864,9 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
   });
 
-  it("seats on TWO different observed origins FAIL closed (did not converge on ONE observed origin)", async () => {
+  it("seats on two different observed origins fail closed (did not converge on one observed origin)", async () => {
     // The host + player-2 observe www; player-3 observes the apex origin. The seats genuinely diverge
-    // on their OBSERVED origins, so publicOriginDigest cannot be set and verify fails closed.
+    // on their observed origins, so publicOriginDigest cannot be set and verify fails closed.
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({
@@ -936,7 +936,7 @@ describe("runSharedWorldPlan", () => {
     const config: LabConfig = { ...parsed, subject: { ...parsed.subject, env: ["SUBJECT_KEY"] } };
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.runId).toBe("not-created");
   });
 });
@@ -978,7 +978,7 @@ describe("review.summary is external-public plane-aware", () => {
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({
         seen,
-        // Exact captured live shape from #364 (humanish 0.36.0): all three traces were `passed`
+        // Exact captured live shape (humanish 0.36.0): all three traces were `passed`
         // even though every completionReason was `budget_reached`. Current actors normalize that
         // pairing to `incomplete`, but the durable summary must remain honest for either producer.
         sessionOutcome: { status: "passed", completionReason: "budget_reached" },
@@ -1051,7 +1051,7 @@ describe("handoff timeout fail-closed", () => {
       deps,
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_FAILED");
     expect(result.error?.message).toContain("physical browser containment failed");
     expect(result.error?.message).not.toContain("deadline");
     expect(created).toHaveLength(1);
@@ -1063,7 +1063,7 @@ describe("handoff timeout fail-closed", () => {
     ).toBe(true);
   });
 
-  it("host never yields a /lobby/CODE -> followers do NOT open, run returns HANDOFF_TIMEOUT, host window recorded", async () => {
+  it("host never yields a /lobby/CODE -> followers do not open, run returns HANDOFF_TIMEOUT, host window recorded", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps, created } = makeExternalSeams(
       makeExternalRunSession({ seen, hostFiresLobby: false }),
@@ -1078,8 +1078,8 @@ describe("handoff timeout fail-closed", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT");
-    // Only the host opened a browser (one actor sandbox); the followers failed closed WITHOUT opening.
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT");
+    // Only the host opened a browser (one actor sandbox); the followers failed closed without opening.
     expect(created).toHaveLength(1);
     expect(seen).toHaveLength(1); // only the host session ran
 
@@ -1186,7 +1186,7 @@ describe("verify evidence class: external-public fail-closed inversions", () => 
     expect(message).toContain(fragment);
   });
 
-  it("does NOT require a stateSeries and does NOT apply the getHost hostDigest assertion", async () => {
+  it("does not require a stateSeries and does not apply the getHost hostDigest assertion", async () => {
     const runId = await goodRun();
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
@@ -1635,7 +1635,7 @@ describe("external-public comms catch token", () => {
         deps,
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID");
       expect(probes).toEqual([]);
     } finally {
       vi.unstubAllGlobals();

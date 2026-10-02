@@ -219,8 +219,42 @@ function packageFiles() {
   }
 }
 
+// Dated history is kept in the repo and never shipped: a packed page under docs/history/, or one
+// still marked `Status: HISTORICAL`, would give npm users an unmaintained page as reference.
+function checkPackedHistory(packed) {
+  for (const file of packed) {
+    if (file.startsWith("docs/history/")) {
+      findings.push({
+        file,
+        line: 0,
+        name: "packed_history_doc",
+        value: "docs/history/ is not shipped",
+      });
+      continue;
+    }
+    if (!/\.(md|mdx)$/.test(file)) continue;
+    let text;
+    try {
+      text = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    const banner = /^Status: HISTORICAL/m.exec(text);
+    if (banner) {
+      findings.push({
+        file,
+        line: lineNumberFor(text, banner.index),
+        name: "packed_historical_banner",
+        value: banner[0],
+      });
+    }
+  }
+}
+
 function publicSurfaceFiles() {
-  return [...new Set([...trackedFiles(), ...packageFiles()])].sort();
+  const packed = packageFiles();
+  checkPackedHistory(packed);
+  return [...new Set([...trackedFiles(), ...packed])].sort();
 }
 
 function gitRefExists(ref) {

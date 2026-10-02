@@ -90,7 +90,7 @@ describe("shared world with a local-agent brain", () => {
       config("sharedProvisioned", localAgent),
       {
         cwd,
-        // No PATH: the codex CLI cannot be found.
+        // No `PATH`: the codex CLI cannot be found.
         env: { E2B_API_KEY: "synthetic-e2b", DATABASE_URL: "postgres://synthetic" },
       },
       {
@@ -101,13 +101,13 @@ describe("shared world with a local-agent brain", () => {
       },
     );
     expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING");
+    expect(outcome.result.error?.code).toBe("HUMANISH_SHARED_WORLD_AGENT_MISSING");
     expect(outcome.result.error?.message).toContain("needs the codex CLI on PATH and signed in");
     expect(loads).toBe(0);
     expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
   });
 
-  /** A PATH holding a signed-in ChatGPT-account `codex` that reports `version`. */
+  /** A `PATH` holding a signed-in ChatGPT-account `codex` that reports `version`. */
   async function signedInCodex(version: string): Promise<string> {
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-sw-codex-"));
     cleanup.push(dir);
@@ -156,13 +156,13 @@ describe("shared world with a local-agent brain", () => {
     await writeFile(path.join(dir, "codex"), '#!/bin/sh\necho "Not logged in"\nexit 1\n');
     await chmod(path.join(dir, "codex"), 0o755);
     const error = await refusedWith(dir);
-    expect(error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED");
+    expect(error?.code).toBe("HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED");
     expect(error?.message).toContain("reports not signed in");
   });
 
   it("refuses a Codex release below the floor as ACTOR_UNSUPPORTED", async () => {
     expect((await refusedWith(await signedInCodex("0.0.1")))?.code).toBe(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
     );
   });
 
@@ -171,7 +171,7 @@ describe("shared world with a local-agent brain", () => {
     "refuses a dollar cap on a ChatGPT-account Codex as UNPRICED_CAP",
     async () => {
       const error = await refusedWith(await signedInCodex(qualified!), { maxUsd: 1 });
-      expect(error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP");
+      expect(error?.code).toBe("HUMANISH_SHARED_WORLD_UNPRICED_CAP");
       expect(error?.message).toContain("no API-dollar price");
     },
   );

@@ -1,3 +1,5 @@
+import { NODE_FLOOR } from "@/lib/site-data";
+
 export default function Commands() {
   return (
     <section id="commands" className="band">
@@ -7,10 +9,10 @@ export default function Commands() {
       <p className="sec-sub rev" style={{ "--d": ".06s" } as React.CSSProperties}>
         <code>humanish init</code> writes a lab file: who the participant is, what they are trying
         to do, and where your app is, a repo to clone or a URL you own. <code>humanish run</code>{" "}
-        does the rest. The other three commands are what you do with what comes back. They need Node
-        20 or newer (the optional interactive <code>tui</code> needs 22); a live run reads{" "}
-        <code>OPENAI_API_KEY</code> and <code>E2B_API_KEY</code> from your environment, or drives
-        your signed-in Codex or Claude Code instead.
+        does the rest. The other three commands are what you do with what comes back. They need Node{" "}
+        {NODE_FLOOR} or newer; a live run reads <code>OPENAI_API_KEY</code> and{" "}
+        <code>E2B_API_KEY</code> from your environment, or drives your signed-in Codex or Claude
+        Code instead.
       </p>
 
       <div className="cmd-ledger rev" style={{ "--d": ".12s" } as React.CSSProperties}>

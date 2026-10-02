@@ -68,9 +68,9 @@ graphically dense (pixel-art) UI. `stableProgressKey(appState)`:
 - sorts object keys, so key order never counts as progress;
 - caps depth, key count, array length, string length, and total output;
 - never throws on a cyclic or huge `appState`; it degrades to a bounded value
-  (cycles become `"[Circular]"`, over-cap nodes become markers). This is
-  correctness-load-bearing: a hostile or merely large state blob cannot crash the
-  loop.
+  (cycles become `"[Circular]"`, over-cap nodes become markers). The loop's
+  correctness depends on this: a hostile or merely large state blob cannot crash
+  it.
 
 ## A single desktop command failure is a recoverable skipped action
 
@@ -99,7 +99,7 @@ skipped: desktop command failed`, text = the public-safe action label + exit cod
   and any genuine non-`CommandExitError` adapter fault as `actor_error`.
 - **No infinite loop.** A skipped action changes nothing on screen, so it is not
   progress. A run that keeps failing every action makes no progress and still
-  terminates honestly through the existing idle / no-progress backstop
+  terminates through the existing idle / no-progress backstop
   (`gave_up`). The resilience only converts a _single flaky command_ from fatal
   to survivable; it never masks a genuinely stuck run.
 
@@ -109,7 +109,7 @@ whitespace-collapsed) and a numeric exit code, and is still run through the loop
 values, and machine paths never appear. The action label comes from
 `describeCuaAction`, which never includes typed text.
 
-## You need a NON-vision provider too
+## You need a non-vision provider too
 
 Swapping the executor is not enough. The default OpenAI computer-use provider is
 **vision-based**: it sends the screenshot as the `computer_call_output`, so a
@@ -119,7 +119,7 @@ reasons over app state).
 
 **Provider-authoring contract:**
 
-- A **vision** provider MUST set `requiresFrame: true` (the OpenAI provider does). When a
+- A **vision** provider must set `requiresFrame: true` (the OpenAI provider does). When a
   `requiresFrame: true` provider is handed a screenshot-less observation, the loop ends the
   session with a structured `harness_error` (`missingFrame` in
   `src/actors/computer-use/loop/ending.ts`). It neither crashes silently nor passes falsely.
@@ -128,7 +128,7 @@ reasons over app state).
 
 `requiresFrame` defaulting to falsey is a known third-party-author footgun (a vision
 provider that forgets to set it would get a blank-frame crash instead of a clean verdict).
-This slice accepts it because every in-tree vision provider sets it: OpenAI computer use,
+The loop accepts it because every in-tree vision provider sets it: OpenAI computer use,
 the local-agent Codex and Claude sessions, and the restricted Codex participant.
 
 ## `appState` is runtime-only
@@ -141,24 +141,24 @@ trace. Only the derived progress key is computed in-memory and discarded.
 Why: the published-evidence scan catches only secret-_shaped_ patterns. A
 structured app blob (ids, free-form state, possibly user chat or shapeless
 tokens) is exactly the "value has no shape" gap that pattern redaction cannot
-close. So this slice does not treat `appState` as an evidence surface at all.
+close. So `appState` is not an evidence surface at all.
 
-The bundle is self-describing about it (invariant 6): when a state executor
+The bundle says so: when a state executor
 surfaces `appState`, the trace's `redaction.notes` declares that app state was
-observed each turn to drive progress detection and was NOT written to the trace.
+observed each turn to drive progress detection and was not written to the trace.
 
-A future "appState in evidence" slice MUST route a stringified projection through
-`redaction.redactText` (and the lab's `scrubText`) AND cap / whitelist fields
+A future change that puts `appState` in evidence must route a stringified projection through
+`redaction.redactText` (and the lab's `scrubText`) and cap / whitelist fields
 before persisting. Pattern + literal redaction alone cannot sanitize an
 arbitrary blob.
 
-## Provenance is honestly UNPINNED (invariant 5)
+## Provenance is declared unpinned
 
 An already-running local dev server cannot be commit-pinned. The bundle does not
 silently omit a subject block. It declares the absence: `subject.source:
 app-url` with `state.provenance: "undeclared"` (the app-url "absence declared"
 marker), and a `cua-lab.subject.declared` event that states the entry is a local
-dev server driven in-process, caller-provisioned and UNPINNED, with no E2B
+dev server driven in-process, caller-provisioned and unpinned, with no E2B
 desktop created.
 
 ## Two entry points
@@ -187,18 +187,18 @@ object (`schema: LAB_CONFIG_SCHEMA`), deterministic non-vision provider,
 cleanup. It makes no model calls and does not demonstrate persona efficacy.
 `parseLabConfig` accepts a decoded object, not a YAML string; narrow its result
 on `.ok`, then narrow `runLab`'s result on `route === "computer-use"` before
-reading the computer-use result. The example defines all helpers rather than requiring a consumer
-to reconstruct them.
+reading the computer-use result. The example defines all helpers, so a consumer does not
+reconstruct them.
 
 Pass `inProcess: { executor }` and `createProvider` in `RunLabOptions`. The type requires
 `createProvider` beside `inProcess`: a state executor returns no frame, so it needs a non-vision
-provider. With `inProcess` set, the computer-use route takes a branch that NEVER
+provider. With `inProcess` set, the computer-use route takes a branch that never
 loads the E2B module, creates a sandbox, runs `prepareDesktop`, provisions a
 clone, opens a browser, or starts a stream. `sandboxId`/`streamUrl` stay
 undefined, so `result.sandbox` is omitted. That omission is the verifiable
 "no E2B SDK call" proof.
 
-Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a misleading
+Fail-closed guards, all before any key check, so a CLI invocation never sees a misleading
 `HUMANISH_CUA_LAB_KEYS_MISSING` first:
 
 - `HUMANISH_LAB_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
@@ -215,14 +215,14 @@ Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a m
 - `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the route's internal executor hook without its
   provider hook. A package caller gets `HUMANISH_LAB_OPTION_UNSUPPORTED` above instead.
 
-Key gating is route-aware: the in-process route uses the caller's OWN model and
+Key gating is route-aware: the in-process route uses the caller's own model and
 executor, so no `OPENAI_API_KEY`/`E2B_API_KEY` is required.
 
 ## A note on `appState` typing
 
 `CuaObservation.appState` is `Record<string, unknown> | undefined` under the
 repo's strict flags (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`).
-A value typed as an `interface` does NOT satisfy `Record<string, unknown>`
+A value typed as an `interface` does not satisfy `Record<string, unknown>`
 (interfaces have no implicit index signature), and a direct `as Record<...>` cast
 on an interface-typed value is rejected. Use one of:
 
@@ -238,10 +238,10 @@ Read every optional field defensively, and spread-omit optional fields
 - **A config-only deterministic `state-contract` route.** A registered,
   model-free route driving a built-in `window.app.*` bridge over the existing
   `ScriptedPageLike.evaluate` primitive + a YAML step program, `scenario.mode:
-live` gating actuation. It would be deterministic step replay, NOT
+live` gating actuation. It would be deterministic step replay, not
   `runComputerUseLoop`, and must not overclaim friction-loop reuse.
 - **A `subject.contract.ref` JS-module loader.** A config-referenced module
-  loaded and run in-process with full harness privileges is a genuinely NEW trust
+  loaded and run in-process with full harness privileges is a genuinely new trust
   surface with no precedent in this repo (the scripted route loads only declarative
   YAML; serve commands run isolated inside the disposable E2B sandbox). It earns
   its place only behind its own clamping / trust / digest-pinning design.

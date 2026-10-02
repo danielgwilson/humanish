@@ -64,11 +64,11 @@ import type { ProviderContext } from "../../../src/lab/run-lab-homes.js";
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 
 // ---------------------------------------------------------------------------
-// Fan-out fakes: a desktop module that mints a DISTINCT sandbox per create()
+// Fan-out fakes: a desktop module that mints a distinct sandbox per create()
 // (unique sandboxId), records create options (per-lane metadata) and kill calls
 // (by id), tracks peak concurrent live sandboxes, and answers xdpyinfo with the
-// requested geometry (so the per-lane geometry assertion passes). It has NO
-// `list` method — enumerate-and-kill is physically impossible.
+// requested geometry (so the per-lane geometry assertion passes). It has no
+// `list` method: enumerate-and-kill is physically impossible.
 // ---------------------------------------------------------------------------
 
 function makePng(seed: number): Buffer {
@@ -243,7 +243,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
 
   const module: E2BDesktopModule = {
     Sandbox: {
-      // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
+      // Mirror the real @e2b/desktop overload: create(opts) or create(template, opts).
       create: async (
         templateOrOptions: string | E2BDesktopCreateOptions,
         maybeOptions?: E2BDesktopCreateOptions,
@@ -266,7 +266,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
         live -= 1;
         return true;
       },
-      // NO `list` — the lab can only kill the exact ids it created, never enumerate.
+      // No `list`: the run can only kill the exact ids it created, never enumerate.
     },
   };
 
@@ -386,7 +386,7 @@ describe("computer-use participants come from the plan", () => {
   });
 });
 
-describe("cua fan-out — dry-run ($0 contract bundle)", () => {
+describe("cua fan-out: dry-run ($0 contract bundle)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-dry-"));
@@ -413,7 +413,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     );
   });
 
-  it("a 4-lane roster yields ONE bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
+  it("a 4-lane roster yields one bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
     const planEvents: LabEvent[] = [];
     const outcome = await runLab(fanoutConfig(), {
       cwd,
@@ -433,7 +433,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(result.lanes).toHaveLength(4);
     expect(result.laneSummary?.total).toBe(4);
 
-    // The pre-flight plan is observable BEFORE any provider call and marked $0 in dry-run.
+    // The pre-flight plan is observable before any provider call and marked $0 in dry-run.
     expect(planEvents).toHaveLength(1);
     expect(result.plan?.dryRun).toBe(true);
     expect(result.plan?.laneCount).toBe(4);
@@ -486,12 +486,12 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("resolveCuaParticipantPlan is pure: concurrency defaults to ALL lanes, env override only LOWERS (and is recorded)", () => {
+  it("resolveCuaParticipantPlan is pure: concurrency defaults to all lanes, env override only lowers (and is recorded)", () => {
     const config = fanoutConfig({
       concurrency: undefined as unknown as number,
       lanes: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }],
     });
-    // No declared concurrency on a 5-lane roster → every seat runs at once (#350): 5 lanes, 1 wave.
+    // No declared concurrency on a 5-lane roster → every seat runs at once: 5 lanes, 1 wave.
     const planDefault = resolveCuaParticipantPlan({
       ...config,
       execution: { target: "e2b-desktop" },
@@ -499,14 +499,14 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(planDefault.concurrency).toBe(5);
     expect(planDefault.waves).toBe(1);
     expect(planDefault.envLoweredConcurrencyFrom).toBeUndefined();
-    // Env override LOWERS to 2 — and the lowering is recorded, never silent.
+    // Env override lowers to 2, and the lowering is recorded, never silent.
     const planLowered = resolveCuaParticipantPlan(
       { ...config, execution: { target: "e2b-desktop" } },
       { env: { HUMANISH_CUA_MAX_CONCURRENCY: "2" } },
     );
     expect(planLowered.concurrency).toBe(2);
     expect(planLowered.envLoweredConcurrencyFrom).toBe(5);
-    // Env override may NOT raise above the declared cap (clamped to laneCount + the base).
+    // Env override may not raise above the declared cap (clamped to laneCount + the base).
     const planRaiseAttempt = resolveCuaParticipantPlan(
       { ...config, execution: { target: "e2b-desktop", concurrency: 2 } },
       { env: { HUMANISH_CUA_MAX_CONCURRENCY: "9" } },
@@ -693,7 +693,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
   });
 });
 
-describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", () => {
+describe("cua fan-out: live with fake substrate ($0, real orchestration)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-live-"));
@@ -714,7 +714,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         active.max = Math.max(active.max, active.count);
         try {
           await delay(20); // hold so concurrent lanes genuinely overlap
-          // FRESH fetch per lane (each lane its own session transport).
+          // Fresh fetch per lane (each lane its own session transport).
           return await runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
@@ -984,7 +984,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     }
   });
 
-  it("execution.desktop.template: EVERY fan-out lane's Sandbox.create gets the template; bundle records it", async () => {
+  it("execution.desktop.template: every fan-out lane's Sandbox.create gets the template; bundle records it", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2, template: "acme-desktop-with-runtimes" }),
@@ -1008,7 +1008,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(bundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
   });
 
-  it("byte-stable default: NO template → every fan-out lane's create gets NO template arg, bundle omits desktopTemplate", async () => {
+  it("byte-stable default: no template → every fan-out lane's create gets no template arg, bundle omits desktopTemplate", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2 }),
@@ -1061,7 +1061,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(reclaimed.sort()).toEqual([...handle.createdIds].sort());
   });
 
-  it("runs the REAL orchestration at N=4, concurrency 2: 4 per-lane sandboxes, bounded concurrency, teardown kills ONLY each lane's own id, verifyRun ok", async () => {
+  it("runs the real orchestration at N=4, concurrency 2: 4 per-lane sandboxes, bounded concurrency, teardown kills only each lane's own id, verifyRun ok", async () => {
     const handle = makeFanoutModule();
     const active = { count: 0, max: 0 };
     const outcome = await runLab(
@@ -1098,21 +1098,21 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(handle.created.map((c) => c.metadata?.participantIndex)).toEqual(["0", "1", "2", "3"]);
     expect(handle.created.every((c) => c.metadata?.participantCount === "4")).toBe(true);
     // Per-lane device geometry drove each sandbox's resolution (sub-500 mobile widths floored to the
-    // 500px Chrome window minimum so the window fits its X screen — no clip).
+    // 500px Chrome window minimum so the window fits its X screen: no clip).
     expect(handle.created.map((c) => c.resolution)).toEqual([
       [500, 896],
       [500, 740],
       [1440, 950],
       [1920, 1080],
     ]);
-    // The model's key NEVER enters any sandbox.
+    // The model's key never enters any sandbox.
     expect(handle.created.every((c) => c.envs === undefined)).toBe(true);
 
     // Bounded concurrency: never more than 2 lanes in flight at once (and genuinely parallel).
     expect(active.max).toBe(2);
     expect(handle.maxLive()).toBeLessThanOrEqual(2);
 
-    // Teardown kills EXACTLY the four created ids, BY id — never an enumerate-and-kill (the fake
+    // Teardown kills exactly the four created ids, by id, never an enumerate-and-kill (the fake
     // module exposes no `list`, and the killed set equals the created set).
     expect([...handle.killed].sort()).toEqual([...handle.createdIds].sort());
     expect(handle.createdIds).toEqual([
@@ -1122,7 +1122,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       "fake-sandbox-04",
     ]);
 
-    // The bundle PASSES verifyRun (not merely written).
+    // The bundle passes verifyRun; being written is not enough.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
@@ -1377,7 +1377,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(ghost.route).toBe("computer-use");
     if (ghost.route !== "computer-use") return;
     expect(ghost.result.ok).toBe(false);
-    expect(ghost.result.error?.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
+    expect(ghost.result.error?.code).toBe("HUMANISH_COMPUTER_USE_RERUN_INVALID");
     expect(ghost.result.error?.message).toContain("ghost-lane");
   });
 
@@ -1903,7 +1903,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         runSession: async (options) => {
           const interruption =
             sessions++ === 0 ? ("output_limit" as const) : ("token_limit" as const);
-          // A provider CONTRACT fixture, not an invented HTTP wire response.
+          // A provider contract fixture, not an invented HTTP wire response.
           return runCuaActorSession({
             ...options,
             provider: {
@@ -2094,7 +2094,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     );
   });
 
-  it("fail-fast on a HARNESS error: in-flight lanes finish, queued lanes are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
+  it("fail-fast on a harness error: in-flight lanes finish, queued lanes are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2 }),
@@ -2105,7 +2105,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
-          // Lane "small-skimmer" (index 1) hits a HARNESS error; lane 0 finishes in flight.
+          // Lane "small-skimmer" (index 1) hits a harness error; lane 0 finishes in flight.
           if (options.persona.id === "impatient-skimmer") {
             await delay(5);
             throw new Error("provider exploded mid-session");
@@ -2138,12 +2138,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     // Completed evidence intact: lane 0 reached a terminal session with an actor trace.
     const laneZero = bundle.streams.find((s: { id: string }) => s.id === "stream-001");
     expect(laneZero?.actor?.lane).toBe("computer-use");
-    // The bundle is still a verifiable record (the failure IS the evidence).
+    // The bundle is still a verifiable record (the failure is the evidence).
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
   });
 
-  it("a hollow lane (zero actions/messages) ⇒ run ok=false AND verifyRun fails the engagement check", async () => {
+  it("a hollow lane (zero actions/messages) ⇒ run ok=false and verifyRun fails the engagement check", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2 }),
@@ -2167,7 +2167,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
     expect(result.ok).toBe(false);
     expect(result.laneSummary?.hollow).toBe(1);
-    // No fail-fast: a mission/hollow verdict never trips it — all lanes still ran.
+    // No fail-fast: a mission/hollow verdict never trips it; all lanes still ran.
     expect(handle.created).toHaveLength(4);
 
     const verified = await verifyRun(cwd, result.runId);
@@ -2176,7 +2176,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   });
 
   it("geometry mismatch ⇒ DEVICE_GEOMETRY (the per-lane device claim is verified in-sandbox)", async () => {
-    // Single lane whose desktop reports the WRONG dimensions.
+    // Single lane whose desktop reports the wrong dimensions.
     const handle = makeFanoutModule({ geometryOverride: () => [800, 600] });
     const config = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -2192,7 +2192,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY");
     // The sandbox was still torn down by id (fail-closed never leaks).
     expect(handle.killed).toEqual(handle.createdIds);
   });
@@ -2209,7 +2209,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
-          // One lane's harness error echoes the actor key value — it must be scrubbed everywhere.
+          // One lane's harness error echoes the actor key value: it must be scrubbed everywhere.
           if (options.persona.id === "comparison-shopper") {
             throw new Error(`request failed using ${secret} while connecting`);
           }
@@ -2240,7 +2240,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   });
 });
 
-describe("cua fan-out — engine fail-closed guards", () => {
+describe("cua fan-out: engine fail-closed guards", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-guard-"));
@@ -2249,7 +2249,7 @@ describe("cua fan-out — engine fail-closed guards", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("rejects multi-lane fan-out on the in-process route (inProcess) — single lane only", async () => {
+  it("rejects multi-lane fan-out on the in-process route (inProcess): single lane only", async () => {
     const handle = makeFanoutModule();
     const result = await runCuaActorLab({
       cwd,
@@ -2282,7 +2282,7 @@ describe("cua fan-out — engine fail-closed guards", () => {
       }),
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
     // Nothing was provisioned.
     expect(handle.created).toHaveLength(0);
   });
@@ -2292,11 +2292,11 @@ describe("cua fan-out — engine fail-closed guards", () => {
     const tampered = { ...base, subject: { ...base.subject, clone: { fanout: 2 } } } as LabConfig;
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
   });
 });
 
-describe("cua fan-out — cost estimate (sum lane token lines + one aggregate desktop line)", () => {
+describe("cua fan-out: cost estimate (sum lane token lines + one aggregate desktop line)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-cost-"));
@@ -2373,10 +2373,10 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
       new Set(["role-a", "role-b"]),
     );
 
-    // Token usage summed across BOTH lanes (2 * {input:1000, output:200}).
+    // Token usage summed across both lanes (2 * {input:1000, output:200}).
     expect(cost.tokenUsage).toEqual({ input: 2000, output: 400, total: 2400 });
 
-    // The total is exactly the sum of the KNOWN lines — the invariant verify also asserts.
+    // The total is exactly the sum of the known lines: the invariant verify also asserts.
     const knownSum = cost.breakdown
       .filter((l: { estimatedCostUsd: number | null }) => l.estimatedCostUsd !== null)
       .reduce((s: number, l: { estimatedCostUsd: number }) => s + l.estimatedCostUsd, 0);
@@ -2430,7 +2430,7 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
     expect(d.preset.isMobile).toBe(true);
   });
 
-  it("records the DECLARED preset when the width was floored, so the bundle is not self-confirming", () => {
+  it("records the declared preset when the width was floored, so the bundle is not self-confirming", () => {
     // A floored run must not look like a faithful one. `verified` compares the floored number with
     // itself, so without `declared` a reader sees requested 500 / verified 500 and concludes a
     // 500-wide screen was asked for. Both mobile presets render at 500 and are otherwise identical.
@@ -2474,11 +2474,11 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
   });
 });
 
-// #342: the lane runner is TOTAL — every exit path records an outcome. Before the guard, one
+// The participant runner is total: every exit path records an outcome. Before the guard, one
 // lane's late throw (e.g. its post-teardown trace write hitting ENOSPC) rejected the whole
 // mapWithConcurrency while sibling workers kept launching sandboxes nobody would record: spent
 // money, vanished evidence. These drive runCuaParticipants directly with an injected lane runner so the
-// THROW path (not the already-guarded in-session error path) is what is under test.
+// throw path (not the already-guarded in-session error path) is what is under test.
 describe("runCuaParticipants total-runner guard", () => {
   const spec = (id: string, index: number): DesktopParticipantRun =>
     participantRun({
@@ -2505,7 +2505,7 @@ describe("runCuaParticipants total-runner guard", () => {
   });
   const deps = {} as unknown as Parameters<typeof runCuaParticipants>[1];
 
-  it("a THROWING lane records a harness_error outcome; siblings and the aggregate stay intact", async () => {
+  it("a throwing lane records a harness_error outcome; siblings and the aggregate stay intact", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
     const { outcomes, failFastReason } = await runCuaParticipants(
       specs,
@@ -2522,7 +2522,7 @@ describe("runCuaParticipants total-runner guard", () => {
       },
     );
 
-    // Every lane appears exactly once with a terminal status — nothing vanished.
+    // Every lane appears exactly once with a terminal status: nothing vanished.
     expect(outcomes.map((o) => o.spec.planned.id)).toEqual(["lane-01", "lane-02", "lane-03"]);
     expect(outcomes[0]!.harnessError).toBe(false);
     expect(outcomes[1]!.harnessError).toBe(true);
@@ -2536,7 +2536,7 @@ describe("runCuaParticipants total-runner guard", () => {
     expect(failFastReason).toContain("lane-02");
   });
 
-  it("lane 0 throwing BEFORE it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
+  it("lane 0 throwing before it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
     const { outcomes } = await runCuaParticipants(specs, deps, 3, async (s) => {
       if (s.planned.index === 0) throw new Error("world provisioning exploded before signal");
@@ -2545,7 +2545,7 @@ describe("runCuaParticipants total-runner guard", () => {
     expect(outcomes).toHaveLength(3);
     expect(outcomes[0]!.harnessError).toBe(true);
     // Followers were awaiting the gate; the guard rejects it on lane-0 throw so they resolve as
-    // blocked (pipeline gate) — the run ends instead of hanging on a promise nobody will settle.
+    // blocked (pipeline gate): the run ends instead of hanging on a promise nobody will settle.
     expect(outcomes[1]!.skippedReason ?? "").toContain("pipeline gate");
     expect(outcomes[2]!.skippedReason ?? "").toContain("pipeline gate");
   });

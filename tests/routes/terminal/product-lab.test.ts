@@ -103,7 +103,7 @@ describe("terminal actor registration + keyPlacement metadata", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Parse matrix (fail-closed cross-validation, invariant 6)
+// Parse matrix (fail-closed cross-validation)
 // ---------------------------------------------------------------------------
 
 describe("terminal-product parse matrix", () => {
@@ -144,7 +144,7 @@ describe("terminal-product parse matrix", () => {
     const parsed = parseLabConfig(terminalConfig());
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    // The terminal route CONSUMES product/caps/mission/persona/runtimeAuth — none flagged inert.
+    // The terminal route consumes product/caps/mission/persona/runtimeAuth: none flagged inert.
     expect(parsed.warnings).toEqual([]);
     expect(parsed.config.subject.product).toEqual({
       name: "widgetsmith-cli",
@@ -169,7 +169,7 @@ describe("terminal-product parse matrix", () => {
     expect(routeOf(config)).toBe("terminal");
   });
 
-  it("rejects terminal-product + a NON-terminal actor", () => {
+  it("rejects terminal-product + a non-terminal actor", () => {
     // A computer-use actor on a terminal-product subject hits the terminal-product block's guard.
     const cua = parseLabConfig(terminalConfig({ actorType: "openai-computer-use" }));
     expect(cua.ok).toBe(false);
@@ -194,7 +194,7 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("rejects e2b-terminal target with a non-terminal-product subject (the substrate is terminal-only)", () => {
-    // app-url block rejects it first (e2b-terminal != e2b-desktop) — still fail-closed.
+    // app-url block rejects it first (e2b-terminal != e2b-desktop): still fail-closed.
     const viaAppUrl = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "wrong-substrate-appurl",
@@ -271,9 +271,9 @@ describe("terminal-product parse matrix", () => {
     expect(parseLabConfig(stdinRaw).ok).toBe(false);
   });
 
-  it("FORWARD-DECLARED: caps/product/runtimeAuth set on a NON-terminal route fire inert warnings", () => {
-    // A this-repo subject that (illegally for that route) carries caps/runtimeAuth — these cannot
-    // act there, so they must warn (invariant 6). product cannot be set on this-repo at all (it is
+  it("forward-declared: caps/product/runtimeAuth set on a non-terminal route fire inert warnings", () => {
+    // A this-repo subject that (illegally for that route) carries caps/runtimeAuth: these cannot
+    // act there, so they must warn. product cannot be set on this-repo at all (it is
     // a parse error), so we exercise caps + runtimeAuth here; product is covered by the
     // never-falsely-flagged assertion below.
     const parsed = parseLabConfig({
@@ -291,7 +291,7 @@ describe("terminal-product parse matrix", () => {
     expect(warned).toContain("execution.runtimeAuth");
   });
 
-  it("FORWARD-DECLARED: on the terminal route, product/caps/runtimeAuth/mission are NOT falsely flagged inert", () => {
+  it("forward-declared: on the terminal route, product/caps/runtimeAuth/mission are not falsely flagged inert", () => {
     const parsed = parseLabConfig(terminalConfig());
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -304,7 +304,7 @@ describe("terminal-product parse matrix", () => {
 });
 
 // ---------------------------------------------------------------------------
-// REGRESSION: the other routes' warnings + routing still work
+// The other routes' warnings and routing still work
 // ---------------------------------------------------------------------------
 
 describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", () => {
@@ -358,7 +358,7 @@ describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", (
 });
 
 // ---------------------------------------------------------------------------
-// Dry-run contract bundle (verified, honest, UNPINNED)
+// Dry-run contract bundle (verified, honest, unpinned)
 // ---------------------------------------------------------------------------
 
 describe("runTerminalProductLab (dry-run)", () => {
@@ -429,7 +429,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     },
   );
 
-  it("dry-run produces a VERIFIED contract bundle: terminal stream, UNPINNED subject, caps/policies/auth declared", async () => {
+  it("dry-run produces a verified contract bundle: terminal stream, unpinned subject, caps/policies/auth declared", async () => {
     const outcome = await runLab(parsedTerminalConfig(), { cwd, dryRun: true });
     expect(outcome.route).toBe("terminal");
     if (outcome.route !== "terminal") return;
@@ -448,7 +448,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.simulations[0].streamKind).toBe("terminal");
-    // The terminal stream is an honest CONTRACT placeholder: stdin disabled, empty tail, NOT pty.
+    // The terminal stream is an honest contract placeholder: stdin disabled, empty tail, not pty.
     const stream = bundle.streams[0];
     expect(stream.assignment).toEqual({
       mission: "Discover widgetsmith-cli from public surfaces and stay within no-spend caps.",
@@ -473,7 +473,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(publicTruth).not.toContain("receipt");
     expect(publicTruth).not.toContain("SLICE 2");
 
-    // Invariant 5: UNPINNED subject provenance, declared explicitly; public surfaces recorded.
+    // Unpinned subject provenance, declared explicitly; public surfaces recorded.
     const subjectEvent = bundle.events.find(
       (e: { type: string }) => e.type === "terminal-lab.subject.declared",
     );
@@ -497,7 +497,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
-    // latest.json points at THIS run so `verify --run latest` stays honest.
+    // latest.json points at this run so `verify --run latest` stays honest.
     const pointer = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"),
     );
@@ -511,9 +511,9 @@ describe("runTerminalProductLab (dry-run)", () => {
     }
   });
 
-  it("a LIVE (non-dry-run) call with no runtime key fails closed BEFORE any sandbox", async () => {
+  it("a live (non-dry-run) call with no runtime key fails closed before any sandbox", async () => {
     // Without a runtime key in the (empty) env, the shipped live backend fails closed at the
-    // credential-resolution step — no sandbox, no spend, no artifacts. (The full
+    // credential-resolution step: no sandbox, no spend, no artifacts. (The full
     // live path + credential boundary is covered deterministically in e2b-terminal-lab.test.ts.)
     const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), {
       cwd,
@@ -524,9 +524,9 @@ describe("runTerminalProductLab (dry-run)", () => {
     const result = outcome.result;
     expect(result.ok).toBe(false);
     expect(result.dryRun).toBe(false);
-    // It is NO LONGER the not-implemented stub — the live path is wired and fails closed on the
+    // It is no longer the not-implemented stub: the live path is wired and fails closed on the
     // missing runtime key (never reaching sandbox creation).
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING");
     expect(result.runId).toBe("not-created");
     // No sandbox, no spend, no artifacts.
     await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
@@ -539,7 +539,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     } as LabConfig;
     const result = await runTerminalProductLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_ACTOR_UNSUPPORTED");
     expect(result.runId).toBe("not-created");
   });
 });
@@ -602,9 +602,11 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       "utf8",
     );
     expect(lab).toMatch(
-      /shipped live terminal-product route and command-scoped credential boundary are\s+not exercised by this fixture/,
+      /does not exercise the live terminal-product route or its\s+command-scoped\s+credential\s+boundary/,
     );
-    expect(lab).toMatch(/this FICTIONAL mock CLI does not claim live or\s+adopter proof/);
+    expect(lab).toMatch(
+      /fictional\s+mock\s+CLI\s+is\s+not\s+evidence\s+of\s+a\s+live\s+or\s+adopter\s+run/,
+    );
     expect(lab).not.toMatch(/SLICE\s+[12]/);
   });
 

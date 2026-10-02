@@ -60,7 +60,7 @@ describe("doctor's Codex recovery for a project-local Codex", () => {
         `run \`npm install -D @openai/codex@${version}\` in \`${project}\``,
       );
       expect(check.message).toContain("`npm uninstall @openai/codex`");
-      // A global install leaves this binary first on PATH, so it is not the advice.
+      // A global install leaves this binary first on `PATH`, so it is not the advice.
       expect(check.message).not.toContain("npm install -g");
     },
   );

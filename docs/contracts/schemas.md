@@ -52,7 +52,7 @@ workflow without leaking private upstream truth into core.
 | Adapter score                     | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics)                                                                        | see Product-Adapter Extension Seam below                                            |
 | Adapter artifact                  | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references)                                                                   | see Product-Adapter Extension Seam below                                            |
 | Shared-world evidence             | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`)                                         | see Shared-World Evidence below                                                     |
-| Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of DIGESTS only — from/to/subject/link digests + an OTP count, never raw) | see `comms` under Lab Manifest                                                      |
+| Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of digests only — from/to/subject/link digests + an OTP count, never raw) | see `comms` under Lab Manifest                                                      |
 | Serve result                      | `humanish.serve-result.v1` (`src/observer/serve.ts` is authoritative)                                                                                                          | none (command result envelope; see Serve Result below)                              |
 | Serve control plane               | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1)                                                                                      | none                                                                                |
 
@@ -69,10 +69,10 @@ A lab is a composition over code primitives, not a hardcoded kind:
   operator's own working tree, packed on the host and provisioned in-sandbox
   in place of a clone; see below), `app-url`
   (loopback unless `policies.allowPublicTargets` declares an owned deployment),
-  `local-app` (an already-running LOCAL dev server driven IN-PROCESS via a
-  custom `CuaExecutor`, NO clone and NO E2B desktop, always loopback),
+  `local-app` (an already-running local dev server driven in-process via a
+  custom `CuaExecutor`, no clone and no E2B desktop, always loopback),
   `terminal-product` (a CLI/product a real autonomous terminal agent studies
-  from PUBLIC surfaces only; see below), or `desktop-cli` (a computer-use
+  from public surfaces only; see below), or `desktop-cli` (a computer-use
   participant using a CLI in a terminal on a hosted desktop). A
   `local-app` subject pairs a computer-use actor with `execution.target: local`
   (or absent) and is library-assisted: the caller supplies
@@ -102,15 +102,15 @@ A lab is a composition over code primitives, not a hardcoded kind:
   applies in both modes and is not overridable. The denylist matches names,
   not contents; a secret in a file it does not name packs like any other
   file, so review the pack summary line and use `localTree.exclude`. The lab packs
-  ONCE per run and uploads the identical archive to every fan-out participant. The
+  once per run and uploads the identical archive to every fan-out participant. The
   in-sandbox commit refresh clone subjects use is skipped: `.git` is never
   uploaded, so identity comes from the host-side archive digest instead. See
   [`docs/history/goals/local-tree-subject/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/local-tree-subject/goal.md);
 - `subject.product` (terminal-product subjects): the product the agent studies.
-  `product.name` is a public-safe token (committed fixtures use a NEUTRAL mock
+  `product.name` is a public-safe token (committed fixtures use a neutral mock
   name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
-  skill manifest) that are the ONLY world the agent sees. The lab does not
-  clone/provision the product, so its provenance is recorded UNPINNED
+  skill manifest) that are the only world the agent sees. The lab does not
+  clone/provision the product, so its provenance is recorded unpinned
   (invariant 5). `serve`/`clone`/`state`/`repos`/`appUrl` are rejected on a
   terminal-product subject (a field that cannot act on the route is a parse
   error, not silently dropped). See
@@ -119,9 +119,9 @@ A lab is a composition over code primitives, not a hardcoded kind:
   subject's state story. `state.seed[]` declares ordered, bounded
   seed/migration/fixture steps (`{ name, command, when: before-build |
 before-start | after-ready, timeoutMs }`) executed in-sandbox around the
-  serve sequence; `state.external[]` declares env var NAMES (each must also
+  serve sequence; `state.external[]` declares env var names (each must also
   appear in `subject.env`) pointing at state the lab does not control,
-  recorded as UNPINNED in provenance. Commands persist in evidence as
+  recorded as unpinned in provenance. Commands persist in evidence as
   sha256-16 digests only, never as text;
 - `actors`: who drives it. On computer-use (including shared-world),
   scripted-browser, and terminal-product routes, `actors[0].type` is a real
@@ -132,23 +132,23 @@ before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   owns the live sandbox, auth, cap, evidence, and cleanup lifecycle.
   `actors[0].count` carries route-specific meanings: synthetic route participant
   count (simCount); scripted-browser route surface roster (1 = desktop,
-  2 = desktop + mobile, default 1); computer-use **E2B** route the HOMOGENEOUS
+  2 = desktop + mobile, default 1); computer-use **E2B** route the homogeneous
   fan-out participant count (N identical participants, each its own E2B desktop: separate
   worlds, cap 16). The in-process/local-app computer-use route stays single
   participant (no E2B to fan out);
-- `actors[0].lanes[]` (computer-use E2B route): a DIFFERENTIATED fan-out roster,
+- `actors[0].lanes[]` (computer-use E2B route): a differentiated fan-out roster,
   each `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
 instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` becoming one independent E2B desktop (or, on the
   shared-world routes, one participant against the shared plane). `actorType`,
   `surface`, and `caseGroup` are adapter-owned public-safe labels for grouping
   simulated users; they are not core enums, and `actorType` is deliberately
   separate from the execution dispatch key `actors[0].type`. `lanes` is XOR with
-  `count` (declare a roster OR a homogeneous count) and XOR with
+  `count` (declare a roster or a homogeneous count) and XOR with
   `actors[0].laneFocus` (a roster's per-participant `instruction` is the steer);
   `lanes[].device` is XOR with a raw `execution.desktop.resolution`. Participant ids
   default `lane-01`..`lane-NN` (`role-01`..`role-NN` for shared-world participants), must be unique, and name per-participant evidence paths
   (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 participants. On other
-  routes `lanes` is inert (warned), except the scripted-browser route, which rejects it. `subject.clone.fanout` is REJECTED on
+  routes `lanes` is inert (warned), except the scripted-browser route, which rejects it. `subject.clone.fanout` is rejected on
   the cua, shared-world and scripted-browser routes (declare fan-out via
   `count`/`lanes`). No current route reads `clone.fanout`;
 - `actors[0].lanes[].target` (app-url × computer-use E2B route only): an
@@ -167,7 +167,7 @@ dwell? }`. The parser expands it into
   ...), so the runtime and run bundle keep one normalized participant shape. `roster`
   is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
-  CAP on participants in flight at once. When omitted, every participant runs
+  cap on participants in flight at once. When omitted, every participant runs
   simultaneously: independent participants resolve it from the final participant count,
   after any `--count` override, and the parser fills `concurrency = participantCount`
   for multi-participant shared-world labs. Total sessions and spend are identical either way; only wall-clock
@@ -177,25 +177,25 @@ dwell? }`. The parser expands it into
   need at least 2 (the host and a follower are live together); `concurrency: 1`
   there is refused at parse, since the sequential turn-taking route was removed
   in 0.106.0. The env override
-  `HUMANISH_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never
+  `HUMANISH_CUA_MAX_CONCURRENCY` may only lower the effective bound, never
   raise concurrent paid desktops (invariant 3), and a lowering is recorded on
   the plan (`envLoweredConcurrencyFrom`). Inert (warned) on other routes.
-  `execution.timeoutMs` is the PER-PARTICIPANT session budget on this route (semantics
+  `execution.timeoutMs` is the per-participant session budget on this route (semantics
   change: it was the single-session budget pre-fan-out); there is no run-level
   wall clock. `policies.allowPublicTargets` cannot combine with N>1 against one
   implicit public `subject.appUrl` (ambiguous shared-world-ish topology); it may
   combine with N>1 only when the roster declares explicit `lanes[].target` for
-  every participant, OR when `subject.topology: shared-world` is ALSO declared. That
-  routes N>1 against one public target to the EXTERNAL-PUBLIC shared-world plane
+  every participant, or when `subject.topology: shared-world` is also declared. That
+  routes N>1 against one public target to the external-public shared-world plane
   (see Shared-World Evidence below), not separate worlds;
 - `subject.publicTarget: { owner, authorized: true }` (external-public shared-world
-  route ONLY): the operator's REQUIRED ownership attestation when a real PUBLIC
+  route only): the operator's required ownership attestation when a real public
   deployment (`source: app-url` + `topology: shared-world` + `allowPublicTargets` +
   `concurrency > 1`) is used directly as the shared plane. The harness neither
   provisions nor exposes the target, so it cannot attest synthetic data; the operator
-  MUST attest they own/operate it. Author-trust (unverifiable); rejected on non-app-url
+  must attest they own/operate it. Author-trust (unverifiable); rejected on non-app-url
   subjects and inert (warned) on other app-url routes. `actors[0].lanes[].host: true` marks the single designated host participant there;
-- `subject.appUrl`: a loopback http(s) URL a computer-use actor drives, OR (on the
+- `subject.appUrl`: a loopback http(s) URL a computer-use actor drives, or (on the
   external-public shared-world route) the non-loopback public deployment used as the
   shared plane (with `publicTarget` + `allowPublicTargets`);
 - `execution`: where it runs (`local`, `e2b-desktop`, or `e2b-terminal`), plus
@@ -207,12 +207,12 @@ dwell? }`. The parser expands it into
   computer-use and scripted-browser routes refuse it when a library caller skips
   the parser;
 - `execution.desktop.template` (e2b-desktop computer-use and clone scripted-browser routes): a custom E2B
-  desktop TEMPLATE (image) NAME or ID the run launches on, for a subject that
+  desktop template (image) name or ID the run launches on, for a subject that
   needs runtimes the stock `desktop` image lacks (e.g. node/bun/a local Postgres
   baked into an adopter-maintained image). Any non-empty string is a valid
   name/id (no allowlist); a blank/whitespace value is rejected. Threaded to the
-  SDK's `Sandbox.create(template, opts)` on EVERY desktop-creating route (the
-  single-participant and fan-out cua participants, and the shared-world subject AND every actor
+  SDK's `Sandbox.create(template, opts)` on every desktop-creating route (the
+  single-participant and fan-out cua participants, and the shared-world subject and every actor
   sandbox); when absent the call
   stays the byte-stable `Sandbox.create(opts)` default (the stock template). The
   template actually used is recorded in the run bundle as `desktopTemplate`
@@ -235,13 +235,13 @@ dwell? }`. The parser expands it into
   when known. Inert (warned) where this route-specific browser launcher is not
   used;
 - `execution.terminal` + `execution.runtimeAuth` (terminal-product route):
-  `terminal.transport` is `exec-stream`: captured NON-interactive exec output
+  `terminal.transport` is `exec-stream`: captured non-interactive exec output
   (stdin disabled); `pty` is rejected because labeling captured exec output as
   an interactive PTY would overstate the mechanism (invariant 6; a true duplex
   PTY transport does not ship). `terminal.stdin` defaults to `disabled`
   (`sent`/assisted input is rejected until the interventions ledger + a
   non-comparable marker exist). `runtimeAuth` (`openai-env`, the default, or `openai-egress`)
-  declares the agent's runtime-auth channel, recorded as NAMES ONLY. On a live run, the engine
+  declares the agent's runtime-auth channel, recorded as names only. On a live run, the engine
   resolves the registered terminal descriptor and requires
   `keyPlacement: in-sandbox-command-scoped` before creating a sandbox. With `openai-env`
   the key is passed only to the agent command, never to `Sandbox.create` or
@@ -249,18 +249,18 @@ dwell? }`. The parser expands it into
   set at sandbox creation, and the agent gets a placeholder. A dry-run neither
   reads nor injects it;
 - `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`.
-  `scenario.ref` is CONSUMED (and REQUIRED) on the scripted-browser route: it
+  `scenario.ref` is consumed (and required) on the scripted-browser route: it
   resolves a committed scenario (`humanish/scenarios/<ref>.yaml` or a repo
-  path) whose `browser.steps` ARE what the actor executes, digest-pinned into
+  path) whose `browser.steps` are what the actor executes, digest-pinned into
   bundle provenance; on other routes `ref`/`inline` stay forward-declared
-  warnings. On the scripted route `live` gates real browser ACTUATION against
+  warnings. On the scripted route `live` gates real browser actuation against
   the declared app. Provider spend stays $0 by mechanism (no model runs);
 - `scenario.caps` (terminal-product route): `{ maxUsd, maxJobs, maxMinutes }`,
   all non-negative numbers (0 = no-spend, the default). This budget bounds the
   in-sandbox live key by mechanism: the live key is never exercised without a
   fail-closed cap in force. `maxMinutes` is the
   wall-clock kill; `maxUsd`/`maxJobs` are enforced fail-closed against the cost
-  ledger after the session (a run whose KNOWN spend exceeds the cap fails closed,
+  ledger after the session (a run whose known spend exceeds the cap fails closed,
   `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`). Core records Codex provider spend as
   unpriced tokens, so without a cost probe no line can trip a positive `maxUsd`:
   a live run refuses `maxUsd > 0` before creating a sandbox
@@ -279,7 +279,7 @@ dwell? }`. The parser expands it into
   `mediaPermission` (`prompt` | `granted`), and the
   terminal-product credential-boundary booleans `allowPrivateRepoAccess`,
   `allowProviderCredentials`, `allowPaymentCredentials`, `allowGitHubMutation`
-  (all DEFAULT FALSE, deny-by-default; only the runtime LLM key enters, and
+  (all default false, deny-by-default; only the runtime LLM key enters, and
   only command-scoped). The scripted-browser route is loopback-only and rejects
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
@@ -291,14 +291,14 @@ dwell? }`. The parser expands it into
   types do not imply a supported SMS execution route. SMTP capture is supported
   on provisioned routes with separate worlds and rejected for shared-world studies.
   `comms.email` = `{ kind: fake, injectEnv?, port?, smtp?, recipients?, linkOrigin?, external? }`.
-  `injectEnv` is the ADOPTER-NAMED env var the app reads for its email-API base
+  `injectEnv` is the adopter-named env var the app reads for its email-API base
   URL (e.g. `RESEND_API_URL`); the harness sets it to an in-sandbox catch (so it
-  is NOT declared in `subject.env`) that captures the app's sends without touching
+  is not declared in `subject.env`) that captures the app's sends without touching
   the internet. Verify the app actually reads that variable, because a run whose
   catch captured zero sends warns at teardown for exactly that. `kind` must be
   `fake`; a real inbox names a saved `comms.email.connection` instead; `port` ≤ 65534
   (the catch reserves `port+1` for the read-only inbox listener the shared-world
-  route getHost-exposes). `recipients[]` = `{ lane, address? }`: OMIT the list
+  route getHost-exposes). `recipients[]` = `{ lane, address? }`: omit the list
   and the parser fills one deterministic address per participant
   (`<laneId>@example.test`) so every participant can do email (#351). When declared, a
   `lane` must be one of the lab's real participant ids (roster ids, or the generated
@@ -307,7 +307,7 @@ dwell? }`. The parser expands it into
   with the uncovered participants. Each addressed participant's actor prompt is extended with
   the full handoff: its address ("enter exactly that"), the inbox URL, and the
   wait steering ("waiting for an email is normal, not a blocker").
-  `external` (#328) switches the funnel to an ADOPTER-HOSTED catch, which is what
+  `external` (#328) switches the funnel to an adopter-hosted catch, which is what
   makes comms work on planes humanish does not provision (app-url /
   operator-provisioned): `{ catchBaseUrl, inboxBaseUrl?, authTokenEnv? }`. The
   operator runs the catch and points their own app's email-API base URL at it.
@@ -320,7 +320,7 @@ dwell? }`. The parser expands it into
   `humanish-comms-catch` marker, so a proxy answering 200 for everything cannot
   pass for a catch), the teardown drain over `GET /deliveries`, and the same
   digest-only evidence. `authTokenEnv` names an env var holding a bearer token
-  for the drain read. The NAME is recorded as evidence; the value never
+  for the drain read. The name is recorded as evidence; the value never
   persists. A live run refuses a token shorter than 16 characters, or not
   well-formed Unicode, before it probes the catch
   (`HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID`,
@@ -331,8 +331,8 @@ dwell? }`. The parser expands it into
   is an optional operator-declared origin the app bakes into links when it
   differs from the serve origin; the harness rewrites captured links through it
   so a clicked link resolves to a reachable host. Captured mail is drained into a
-  digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link DIGESTS +
-  an OTP COUNT; no raw address/link/code persists). The READABLE proof a
+  digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link digests +
+  an OTP count; no raw address/link/code persists). The readable proof a
   persona saw the email is its screenshots of the inbox page. Requires `python3`
   in the subject sandbox (the stock E2B desktop template has it).
 
@@ -384,7 +384,7 @@ Lab routes report results in their own schemas (`humanish.run-result.v1`,
 `humanish.concurrent-shared-world-lab-result.v1`); the evidence record stays
 `humanish.run-bundle.v1` in every case. The computer-use result bumped to v2 for
 fan-out: it carries `plan` (the pre-flight participant table: concurrency, waves,
-per-participant session budget, worst-case sandbox-minutes), `lanes[]` (ALWAYS present,
+per-participant session budget, worst-case sandbox-minutes), `lanes[]` (always present,
 length 1 at N=1; per-participant status/session/sandbox/subject), and `laneSummary`
 (passed/skipped/harnessErrors/hollow counts). The top-level `session`/`sandbox`
 mirror the first participant and `subject.commit` is unanimity-gated across participants
@@ -400,7 +400,7 @@ error, engaged, and no self-reported blocker.
 Explicit failed-participant reruns are supported on the CUA fan-out route via
 `humanish lab run <lab> --rerun-failed-from <run-id> [--participants <ids>]`, where a
 participant id is a declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position.
-The source run must be a live CUA fan-out bundle. humanish creates a NEW run for
+The source run must be a live CUA fan-out bundle. humanish creates a new run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
 the source verdict unchanged, and records lineage as `run.rerun` plus a
 `cua-lab.fanout.rerun` event: source run id, selected participant ids, and previous participant
@@ -423,7 +423,9 @@ Committed fixture (`humanish/labs/first-run.yaml`):
 schema: humanish.lab.v2
 id: first-run
 title: First-run synthetic Observer
-description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
+description: >-
+  Writes a preview run: a synthetic run bundle and Observer for four participants. Needs no browser,
+  model or keys, and costs nothing. Run it with humanish run first-run.
 subject:
   source: this-repo
 actors:
@@ -479,12 +481,12 @@ commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
   `humanish.run-bundle.v1`: a dirty working tree cannot be commit-pinned, so
   the archive content digest stands in for it. `commandDigest` is the
   sha256-16 of the exact seed command; command text and env values never
-  appear. `humanish verify` fails closed when a LIVE `local-tree` bundle carries
+  appear. `humanish verify` fails closed when a live `local-tree` bundle carries
   no well-formed `archiveSha256`, in addition to the existing `subject state
 provenance` check.
-- `desktopTemplate` (optional, additive): the custom E2B desktop TEMPLATE (image)
+- `desktopTemplate` (optional, additive): the custom E2B desktop template (image)
   the run's sandbox(es) launched on, from `execution.desktop.template`, so the
-  evidence shows WHICH image ran. Present only when a template was configured;
+  evidence shows which image ran. Present only when a template was configured;
   absent == the stock `desktop` template, so every pre-existing bundle is
   byte-stable. Public-safe (a template name is not a secret).
 - `attributionClass` (optional, additive): `isolated | shared-world`. Absent ==
@@ -564,43 +566,43 @@ feedbackCandidates: []
 
 ## Shared-World Evidence
 
-The shared-world topology (#164) is the DECLARED override of the `per-lane-worlds`
-default: N distinct participants drive ONE provisioned, mutable service plane (one
-app + one seeded DB) so their actions interact through shared state. The ONE
+The shared-world topology (#164) is the declared override of the `per-lane-worlds`
+default: N distinct participants drive one provisioned, mutable service plane (one
+app + one seeded DB) so their actions interact through shared state. The one
 subject plane is provisioned via `subject.source: clone` (a fresh `git clone`) or
 `subject.source: local-tree` (the operator's own working tree, packed on the host
 and provisioned in-sandbox in place of a clone - see `subject.localTree` above);
 both sources are accepted on the shared-world route.
 
-Current runs write only the CONCURRENT shape below. The SEQUENTIAL shape came from the
+Current runs write only the concurrent shape below. The sequential shape came from the
 sequential shared-world route, which 0.106.0 removed. Only bundles written before
 0.106.0 carry it, and `humanish verify` still checks them
-(`tests/run/legacy-sequential-shared-world.test.ts`). The SEQUENTIAL rules below apply
+(`tests/run/legacy-sequential-shared-world.test.ts`). The sequential rules below apply
 to those bundles.
 
-A shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v1`
+A shared-world bundle adds two additive, optional fields to `humanish.run-bundle.v1`
 (absent on every other bundle, so they stay byte-stable):
 
 - `attributionClass: isolated | shared-world`: a separate attribution axis
-  ("how well did the run attribute INTERACTION?"), distinct from the persona-sampling
+  ("how well did the run attribute interaction?"), distinct from the persona-sampling
   evidence classes ("how representative is the actor?"). Absent == `isolated`.
-- `sharedWorld` (`humanish.shared-world.v1`): TWO variants discriminated by
+- `sharedWorld` (`humanish.shared-world.v1`): two variants discriminated by
   `topologyMode: "sequential" | "concurrent"` (`sharedWorldEvidenceFindings` in `src/verify/shared-world.ts` branches on
-  it FIRST; unknown/missing or a mismatched shape fails closed). Common fields:
+  it first; unknown/missing or a mismatched shape fails closed). Common fields:
   - `topology: shared-world`
   - `topologyMode: sequential | concurrent`
-  - `roleCount`: the DECLARED number of participants.
-  - `plane: { commit?, seedDigest, envNames, hostDigest?, exposure?, publicOriginDigest?, declaredOriginDigest? }`: the ONE
+  - `roleCount`: the declared number of participants.
+  - `plane: { commit?, seedDigest, envNames, hostDigest?, exposure?, publicOriginDigest?, declaredOriginDigest? }`: the one
     shared-plane provenance. `seedDigest` is the sha256-16 of the ordered seed-step
-    command digests (the seed RECIPE identity, not the runtime state); `envNames` are
-    NAMES only. `hostDigest`/`exposure` are CONCURRENT provisioned-getHost-only, and
-    `publicOriginDigest` is CONCURRENT external-public-only (below).
+    command digests (the seed recipe identity, not the runtime state); `envNames` are
+    names only. `hostDigest`/`exposure` are concurrent provisioned-getHost-only, and
+    `publicOriginDigest` is concurrent external-public-only (below).
   - `planeClass?: provisioned-getHost | external-public` and `lobbyConvergenceDigest?` are
-    CONCURRENT-only (below); both absent on the sequential shape.
+    concurrent-only (below); both absent on the sequential shape.
   - `attributionLimits: [...]`: the verify-enforced attribution ceiling (the set
     differs per `topologyMode`, below).
 
-  SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1; only in bundles written before
+  Sequential shape (`topologyMode: sequential`, #164 PR1; only in bundles written before
   0.106.0):
   - `sequence: [roleId, …]`: the role ids that actually took a turn, in declared order.
   - `skippedTail` (optional, live sequential only): `{ afterRoleId, roles,
@@ -617,121 +619,121 @@ cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
     timeline that starts `cp-baseline`, alternates checkpoint → turn → checkpoint,
     and ends on a checkpoint:
     - checkpoint = `{ kind: checkpoint, name, digest, deltaFromPrev }`; `digest` is
-      sha256-16(scrub+redact(probe stdout)); the record is DIGEST-ONLY (no
+      sha256-16(scrub+redact(probe stdout)); the record is digest-only (no
       value-shaped field). `deltaFromPrev` is true when the observed state changed
       across the intervening turn.
     - turn = `{ kind: turn, roleId, simId, streamId, commit?, seedDigest }` references
       a real `RunBundle["simulations"][number]` and `RunBundle["streams"][number]`; carries the
       plane provenance it observed
       (identical across turns by construction; this is the single-plane proof).
-  - Sequential `attributionLimits` MUST contain `sequential-only`, `no-concurrent-races`,
+  - Sequential `attributionLimits` must contain `sequential-only`, `no-concurrent-races`,
     and `delta-attributed-to-turn-not-action`.
 
-  CONCURRENT shape (`topologyMode: concurrent`, #164 phase 2: N personas drive ONE
-  getHost-exposed plane AT ONCE; NO `timeline`/`sequence`):
-  - `plane.hostDigest`: sha256-16 of the harness-minted `getHost` ORIGIN every actor
-    drove (a first-class provisioned-subject target; invariant 2). A DIGEST, not the raw
+  Concurrent shape (`topologyMode: concurrent`, #164 phase 2: N personas drive one
+  getHost-exposed plane at once; no `timeline`/`sequence`):
+  - `plane.hostDigest`: sha256-16 of the harness-minted `getHost` origin every actor
+    drove (a first-class provisioned-subject target; invariant 2). A digest, not the raw
     URL: a getHost URL embeds the live sandbox id and matches the publish-safety e2b-URL
     redaction, so it never lands raw in a published bundle (the raw tokenless URL is
     surfaced only on the ephemeral lab result). The orchestrator confirms the URL is
-    TOKENLESS (no authKey; invariant 1) before digesting.
-  - `plane.exposure: synthetic`: the REQUIRED author attestation that the subject behind
+    tokenless (no authKey; invariant 1) before digesting.
+  - `plane.exposure: synthetic`: the required author attestation that the subject behind
     the internet-reachable getHost URL is synthetic seeded data (author-trust + a
-    provenance gate, NOT a no-real-data guarantee).
+    provenance gate, not a no-real-data guarantee).
   - `laneWindows: [{ roleId, simId, streamId, startedAt, endedAt, verdict, routeHostDigest,
-commit?, seedDigest }]`: one harness-clocked window per actor; OVERLAPPING windows
+commit?, seedDigest }]`: one harness-clocked window per actor; overlapping windows
     prove ≥2 personas were active simultaneously. `routeHostDigest` == `plane.hostDigest`
     (every actor drove exactly the harness-minted host).
   - `stateSeries: [{ timestamp, digest }]`: cadence digests of the shared world under
-    load (baseline + periodic + final). DIGEST-ONLY: the allowed-keys tripwire permits
-    ONLY `timestamp` + `digest` (no per-delta→actor field, because causation under concurrency
+    load (baseline + periodic + final). Digest-only: the allowed-keys tripwire permits
+    only `timestamp` + `digest` (no per-delta→actor field, because causation under concurrency
     is structurally inexpressible).
   - `outcomes: [{ roleId, simId, streamId, status, completionReason?, ok }]`: per-persona
-    OUTCOME (the "M of N succeeded" headline).
-  - Concurrent `attributionLimits` MUST contain `concurrent`,
+    outcome (the "M of N succeeded" headline).
+  - Concurrent `attributionLimits` must contain `concurrent`,
     `best-effort-causal-attribution`, `non-deterministic-shared-state`,
     `window-and-snapshot-granularity`, `contention-observed-not-proven-safe`,
-    `state-change-not-isolated-to-actors`, and MUST NOT contain `sequential-only` or
+    `state-change-not-isolated-to-actors`, and must not contain `sequential-only` or
     `no-concurrent-races` (a sequential guarantee on a concurrent run is an overclaim).
 
 The `shared-world evidence` check in `humanish verify` is fail-closed (live runs only;
-dry-run contract bundles are skipped). It dispatches on `topologyMode` FIRST.
-SEQUENTIAL: the timeline must be well-formed (start `cp-baseline`, strictly alternate,
+dry-run contract bundles are skipped). It dispatches on `topologyMode` first.
+Sequential: the timeline must be well-formed (start `cp-baseline`, strictly alternate,
 end on a checkpoint, turn order == sequence, sequence length == roleCount == turn
 count, no `laneWindows`); every turn's simId/streamId resolves; every checkpoint digest
-is sha256-16 with NO value-shaped field; all turns share ONE plane provenance; the
-mandatory limits are present; and a PASSED run shows ≥1 checkpoint `deltaFromPrev` (the
-delta-on-pass gate). CONCURRENT: no `timeline`; laneWindows and outcomes each
-cover exactly roleCount and stateSeries is present; the required limits are present AND the forbidden ones absent;
+is sha256-16 with no value-shaped field; all turns share one plane provenance; the
+mandatory limits are present; and a passed run shows ≥1 checkpoint `deltaFromPrev` (the
+delta-on-pass gate). Concurrent: no `timeline`; laneWindows and outcomes each
+cover exactly roleCount and stateSeries is present; the required limits are present and the forbidden ones absent;
 `plane.hostDigest` present and every `routeHostDigest` equals it (invariant 2);
-`plane.exposure == synthetic` AND `subject.state.provenance == seeded` (the
+`plane.exposure == synthetic` and `subject.state.provenance == seeded` (the
 synthetic-subject gate); stateSeries snapshots are digest-only (allowed-keys tripwire);
-all laneWindows share ONE plane provenance; and the CONCURRENCY-ON-PASS gate: a PASSED
-run MUST show ≥2 overlapping laneWindows AND a stateSeries delta whose timestamp is
+all laneWindows share one plane provenance; and the concurrency-on-pass gate: a passed
+run must show ≥2 overlapping laneWindows and a stateSeries delta whose timestamp is
 AT/AFTER an overlap interval start (otherwise it was not actually concurrent, or the
 world never changed under load). The per-participant no-engagement guard applies to both.
-Checkpoints / stateSeries persist digest-only by DEFAULT until the #108 PII/PHI
+Checkpoints / stateSeries persist digest-only by default until the #108 PII/PHI
 detector lands.
 
-WHAT THE BUNDLE CAN / CANNOT CLAIM. SEQUENTIAL: each role's own behavior at full
-fidelity; the OBSERVED system outcome as an ordered DIGEST sequence; and the
-SEQUENCED-INTERACTION proof (role B entered a world already containing role A's mutation;
-the checkpoint after A strictly precedes B's turn). It CANNOT claim action-granular
-causation, concurrency/races (sequential-only), or exact-state determinism. CONCURRENT:
-each persona's own behavior at full fidelity; per-persona OUTCOME against the contended
-world ("M of N"); PROVEN CONCURRENCY (overlapping windows); and system-state evolution
-under load (the stateSeries) with best-effort temporal correlation. It CANNOT claim
+What the bundle can / cannot claim. Sequential: each role's own behavior at full
+fidelity; the observed system outcome as an ordered digest sequence; and the
+sequenced-interaction proof (role B entered a world already containing role A's mutation;
+the checkpoint after A strictly precedes B's turn). It cannot claim action-granular
+causation, concurrency/races (sequential-only), or exact-state determinism. Concurrent:
+each persona's own behavior at full fidelity; per-persona outcome against the contended
+world ("M of N"); proven concurrency (overlapping windows); and system-state evolution
+under load (the stateSeries) with best-effort temporal correlation. It cannot claim
 strict causal attribution of a delta to an actor (concurrent ⇒ ambiguous), determinism
-of exact state, per-action granularity, or concurrency-SAFETY (races are OBSERVED, never
-PROVEN absent). HONESTY: the deterministic $0 gate proves the plumbing + the
+of exact state, per-action granularity, or concurrency-safety (races are observed, never
+proven absent). Honesty: the deterministic $0 gate proves the plumbing + the
 attribution contract. A kept 2026-06-17 live receipt separately proves one
 bounded three-persona trial against a synthetic plane. Neither the deterministic
 gate nor that receipt proves scale, repeatability, or adopter-harness replacement.
 
 ### Concurrent plane classes: provisioned and external-public
 
-The CONCURRENT shape carries a PLANE-class discriminator, `sharedWorld.planeClass:
+The concurrent shape carries a plane-class discriminator, `sharedWorld.planeClass:
 "provisioned-getHost" | "external-public"`. Absent == `provisioned-getHost` (every existing
-concurrent bundle byte-stable). It gates EVERY getHost-specific verify assertion, so a getHost
+concurrent bundle byte-stable). It gates every getHost-specific verify assertion, so a getHost
 claim can never leak onto the external-public class (or vice versa).
 
 - `provisioned-getHost`: the historical plane described above: a `clone`/`local-tree` subject the
-  harness serves + getHost-exposes in-sandbox. The harness MINTED the host, so it asserts the
+  harness serves + getHost-exposes in-sandbox. The harness minted the host, so it asserts the
   synthetic-seeded attestation (`plane.exposure: synthetic` + `subject.state.provenance == seeded`),
   the harness-minted host identity (`plane.hostDigest`, every `routeHostDigest == it`), and an
   authoritative in-sandbox checkpoint `stateSeries` with a delta-on-pass.
 
-- `external-public`: a real, operator-OWNED public deployment used DIRECTLY as the shared plane
+- `external-public`: a real, operator-owned public deployment used directly as the shared plane
   (`subject.source: app-url` + `topology: shared-world` + `policies.allowPublicTargets: true` +
-  `execution.concurrency > 1`). NO getHost, NO clone, NO subject sandbox, NO seed. The subject
+  `execution.concurrency > 1`). No getHost, no clone, no subject sandbox, no seed. The subject
   carries the ownership attestation `subject.publicTarget: { owner, authorized: true }` (the
-  analog of `exposure: synthetic`: you cannot attest synthetic on a real site, but you MUST attest
+  analog of `exposure: synthetic`: you cannot attest synthetic on a real site, but you must attest
   you own/operate it; author-trust, unverifiable by the harness). Evidence deltas, all
   asserted-absent (never silently dropped):
-  - `plane.publicOriginDigest`: sha256-16 of the one OBSERVED origin the participants converged on. Every
-    `laneWindow.routeHostDigest` (computed from that participant's CDP-OBSERVED final-URL origin) equals it.
+  - `plane.publicOriginDigest`: sha256-16 of the one observed origin the participants converged on. Every
+    `laneWindow.routeHostDigest` (computed from that participant's CDP-observed final-URL origin) equals it.
     `plane.declaredOriginDigest` records the operator-declared origin as evidence only; a redirect
-    can make the two differ. This proves inter-participant CONVERGENCE on one origin, NOT harness control of the plane
-    (WEAKER than getHost's `hostDigest`, and disclosed).
-  - `plane.exposure` is ABSENT (verify fails closed if `synthetic` appears, since that
+    can make the two differ. This proves inter-participant convergence on one origin, not harness control of the plane
+    (weaker than getHost's `hostDigest`, and disclosed).
+  - `plane.exposure` is absent (verify fails closed if `synthetic` appears, since that
     attestation would be false on a real site);
-    `plane.hostDigest` is ABSENT (the harness minted no host).
+    `plane.hostDigest` is absent (the harness minted no host).
   - `subject.state.provenance == "external-public"` (never `seeded`, `unpinned` or `undeclared`).
-  - `stateSeries` is OMITTED (Option A): no in-sandbox filesystem to authoritatively digest, so there
-    is NO authoritative shared-state proof. Concurrency-on-pass is RELAXED to temporal co-occupancy
-    ONLY (≥2 overlapping `laneWindows`); there is no state-delta requirement.
-  - `lobbyConvergenceDigest` (optional, strong, cheap): sha256-16 of the shared `/lobby/CODE` PATH
-    all participants' CDP URLs converged on; present only when every participant converged on ONE code. Digest-only
+  - `stateSeries` is omitted (Option A): no in-sandbox filesystem to authoritatively digest, so there
+    is no authoritative shared-state proof. Concurrency-on-pass is relaxed to temporal co-occupancy
+    only (≥2 overlapping `laneWindows`); there is no state-delta requirement.
+  - `lobbyConvergenceDigest` (optional, strong, cheap): sha256-16 of the shared `/lobby/CODE` path
+    all participants' CDP URLs converged on; present only when every participant converged on one code. Digest-only
     (the raw 6-char code and full URLs are runtime-only and never land).
-  - `attributionLimits` MUST contain the concurrent family PLUS `external-public-plane`,
+  - `attributionLimits` must contain the concurrent family plus `external-public-plane`,
     `operator-attested-target-not-harness-controlled`, `no-synthetic-attestation`,
-    `no-authoritative-shared-state-proof`, `concurrency-by-temporal-co-occupancy-only`; and MUST NOT
+    `no-authoritative-shared-state-proof`, `concurrency-by-temporal-co-occupancy-only`; and must not
     contain `sequential-only`, `no-concurrent-races`, or any `seeded`/`synthetic` limit.
 
-The getHost synthetic gate is deliberately NOT reachable from the app-url branch, and why: that gate
-exists because getHost is internet-reachable AND harness-owned (real data behind a harness-exposed
+The getHost synthetic gate is deliberately not reachable from the app-url branch, and why: that gate
+exists because getHost is internet-reachable and harness-owned (real data behind a harness-exposed
 URL is the hazard). A public site the harness neither provisioned nor exposed has neither property,
-so the gate's hazard does not exist there. Attribution stays `shared-world` (N participants, ONE plane); the
+so the gate's hazard does not exist there. Attribution stays `shared-world` (N participants, one plane); the
 plane-control claim degrades from "harness-controlled" to "operator-attested, observed-only".
 
 ## Adapter
@@ -867,7 +869,7 @@ Core-owned fields:
   `terminal-exec`)
 - `lane` (`code` | `computer-use` | `scripted-browser` | `terminal`)
 - `persona` (`id`, `traitsApplied`, `promptDigest`)
-- `capabilities.keyPlacement` (`external` | `in-sandbox-command-scoped`): WHERE
+- `capabilities.keyPlacement` (`external` | `in-sandbox-command-scoped`): where
   the actor's runtime key lives. It is registry metadata the engine enforces. The
   terminal agent declares `in-sandbox-command-scoped` (the agent-under-test runs
   inside the sandbox); every other actor is `external` (absent === external).
@@ -895,15 +897,15 @@ Core-owned fields:
   click-like `ui_action` items, structured `coord` (`x`/`y`). Both are additive
   (#441): absent on older bundles and non-stamping producers, and absence means
   "timing/position unrecorded", never zero
-- optional `modelSettings` (`humanish.model-settings.v1`, #497): HOW the model was
+- optional `modelSettings` (`humanish.model-settings.v1`, #497): how the model was
   asked to run, alongside `ids.model` which says which model it was.
-  `reasoningEffort` records the value the request ACTUALLY carried,
+  `reasoningEffort` records the value the request actually carried,
   including the provider default when a lab declared nothing. The resolved
   value is what produced the trace, and recording "unset" would misdescribe
   the run. Absent when a provider declares no settings and on every
   pre-existing bundle; tolerated by verify. It exists because effort was
   unreachable from a lab, which made every run take the default silently. Effort
-  is part of WHO the participant was rather than of how the instrument was tuned
+  is part of who the participant was rather than of how the instrument was tuned
   (docs/principles/actor-fidelity.md), so a trace without it is a result missing
   half its sample description
 - optional `modelSettings.maxOutputTokens`: the declared positive integer
@@ -920,17 +922,17 @@ Core-owned fields:
   “provider reply cut off by the output limit; asking again” notice. A second
   cut-off reply to the same request ends the session with
   `stopCause: provider_output_limit`.
-- optional `affordanceUse` (`humanish.affordance-use.v1`): which KIND of route this
+- optional `affordanceUse` (`humanish.affordance-use.v1`): which kind of route this
   actor took (see Affordance Use below)
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived
-  cost ESTIMATE for this participant (see Run Cost Summary And Estimated Actor Cost).
-  It is deliberately a DIFFERENT field from `tokenUsage.costUsd`: a bare
-  `costUsd` is RESERVED for a real provider-returned charge, while
+  cost estimate for this participant (see Run Cost Summary And Estimated Actor Cost).
+  It is deliberately a different field from `tokenUsage.costUsd`: a bare
+  `costUsd` is reserved for a real provider-returned charge, while
   `estimatedCost.estimatedCostUsd` is a rate-table multiply, named honestly as
   an estimate so a reader can never confuse the two (invariant 6). Absent on
   the Codex app-server and scripted routes and on every pre-existing bundle; the
   terminal route records a `null` estimate. A `null`
-  `estimatedCostUsd` is DECLARED ABSENT (unknown rate / no usage), never 0.
+  `estimatedCostUsd` is declared absent (unknown rate / no usage), never 0.
 
 Unexpected actor-loop diagnostics live inside `items[]` as
 `kind: notice`, `status: error` rows. They are public-safe evidence, not crash
@@ -1019,10 +1021,10 @@ discipline** that distinguishes three states and never conflates them:
 - `usd: null` is **not measured**: no spend signal exists for the category on
   this run. `null` is written explicitly (never `undefined`-omitted, never guessed
   to `0`). A line with `null` says "this category exists but we did not measure
-  it"; the no-spend proof reports it as unmeasured and does NOT claim it is zero.
+  it"; the no-spend proof reports it as unmeasured and does not claim it is zero.
 - an **absent** line is **not applicable** (n/a) to the participant or run.
 
-`knownTotalUsd` sums ONLY the non-null lines (a `null` line contributes nothing
+`knownTotalUsd` sums only the non-null lines (a `null` line contributes nothing
 and is never coerced to `0`); `fullyMeasured` is true only when no line is null.
 Core meters only the `provider` line, populated from the actor trace's
 `tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment`
@@ -1046,10 +1048,10 @@ knownTotalUsd: 0
 fullyMeasured: false
 ```
 
-The no-spend proof (`humanish.terminal-no-spend-proof.v1`) is DERIVED from the
+The no-spend proof (`humanish.terminal-no-spend-proof.v1`) is derived from the
 ledger. It vouches only for what it measured: `knownZeroLines` (proven zero),
 `knownNonZeroLines` (break `satisfied`), and `unmeasuredLines` (the `null` lines
-it explicitly CANNOT vouch for). `satisfied` is true only when every KNOWN line
+it explicitly cannot vouch for). `satisfied` is true only when every known line
 is within `maxUsd` (for a no-spend run, `maxUsd: 0` ⇒ every known line is `0`).
 Unmeasured lines never break it, so a ledger whose lines are all `null` is
 `satisfied` with nothing proven. The `statement` says which case applies: it
@@ -1070,7 +1072,7 @@ statement: "No-spend proof not established for maxUsd=0: no spend line was measu
 ```
 
 **Full caps enforcement (fail-closed, not advisory).** `scenario.caps.maxUsd`
-is enforced against the ledger: if the observed KNOWN spend exceeds `maxUsd`, the
+is enforced against the ledger: if the observed known spend exceeds `maxUsd`, the
 run fails closed (`HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`); `maxJobs` likewise when
 a known job count is present; `maxMinutes` is the wall-clock kill (unchanged).
 Unknowns (`null`) never trip a cap (we cannot claim a violation we did not
@@ -1122,11 +1124,11 @@ a run belongs to, and **whether it is still alive**, including for runs an
 agent launched (`lab run --json`) or that were detached, which previously wrote
 nothing at all until they completed.
 
-It is a DERIVED INDEX, not evidence. `run.json` remains the evidence-of-record;
+It is a derived index, not evidence. `run.json` remains the evidence-of-record;
 `verify` never gates on `status.json`, nothing in it is a claim about what a
 participant did, and when the two disagree the bundle wins and the record is
 rebuildable from it. A `running` record whose `updatedAt` is older than three
-touch intervals is INTERRUPTED, not alive. A dropped connection or a killed
+touch intervals is interrupted, not alive. A dropped connection or a killed
 terminal leaves exactly that shape, so the record reads as interrupted
 (`classifyRunStatus` is the one shared definition). Fields are
 public-safe by construction: no hostname and no user paths, because a run
@@ -1149,10 +1151,10 @@ against 16ms cold and 2.8ms warm here, which is what makes a surface that
 refreshes on a cadence affordable. `derivedFrom` is reported so a surprising row
 can be traced to the file it came from. A run with receipts and no outcome is
 `interrupted` (the shape a dropped connection leaves), and so is an
-IN-PROGRESS bundle reached without a status record: there is no freshness to
+in-progress bundle reached without a status record: there is no freshness to
 judge, and nothing in it says the run finished.
 
-`humanish.run-detail.v1` is the watching projection, for ONE run. Who is in it
+`humanish.run-detail.v1` is the watching projection, for one run. Who is in it
 and what they are thinking: `{ runId, participants: [{ id, label, personaId?,
 traits, status?, completionReason?, thought?, turns?, actions?, thoughts?,
 estimatedCostUsd? }], observerPath?, automaticAnalysis? }`. It reads the actor trace from
@@ -1160,7 +1162,7 @@ estimatedCostUsd? }], observerPath?, automaticAnalysis? }`. It reads the actor t
 finished, preferring the live one, so a single screen renders a run the whole
 way through. A reasoning item still being written is skipped rather than quoted
 half-finished, and the text is carried verbatim: a surface may wrap it, and
-nothing paraphrases it. Unlike the index this DOES open the bundle, which is affordable
+nothing paraphrases it. Unlike the index this does open the bundle, which is affordable
 only because it is asked for the one run being watched.
 
 `humanish.tui-result.v1` is what `humanish tui` emits when it refuses:
@@ -1175,17 +1177,17 @@ that identified the runner, so the reader can check the claim, and `--force` is
 the escape for a person who really is at that keyboard. Every other
 command is built for an agent to drive; this one takes the screen and waits for
 a person, so a non-interactive stdin or stdout fails closed naming the commands
-that DO answer the question rather than rendering escape codes into a pipe.
+that do answer the question rather than rendering escape codes into a pipe.
 
 ## Run Cost Summary And Estimated Actor Cost
 
-The computer-use (CUA) route surfaces an ADVISORY, additive cost ESTIMATE. It is
+The computer-use (CUA) route surfaces an advisory, additive cost estimate. It is
 never authoritative: every dollar figure is a rate-table multiply, labeled
-"estimated (rates as of `<date>`)", and is NEVER presented as a provider charge
+"estimated (rates as of `<date>`)", and is never presented as a provider charge
 (invariant 6). Three new `.v1` schema tags ship, all additive and optional so
 `humanish.run-bundle.v1` stays v1 and every pre-existing bundle is byte-stable:
 
-- `humanish.pricing.v1`: the OPERATOR-EDITABLE rate table in `src/run/pricing.ts`:
+- `humanish.pricing.v1`: the operator-editable rate table in `src/run/pricing.ts`:
   dated per-model input/output USD-per-token rates and E2B CPU/GiB-second
   rates, each with a public pricing-page `source` and an `asOf`
   date. A prominent banner says these are estimates to update when providers
@@ -1195,9 +1197,9 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   request; priced exactly only from the trace's per-request `turns` ledger;
   totals alone never re-tier, which errs toward under-estimating). Some
   entries are `placeholder: true` stand-ins (the legacy desktop helper's
-  8-vCPU/8-GiB planning assumption); an operator MUST confirm them before trusting
+  8-vCPU/8-GiB planning assumption); an operator must confirm them before trusting
   the magnitude; the flag propagates into every estimate so a stand-in is never
-  mistaken for a live rate. An UNKNOWN model/desktop rate is DECLARED ABSENT
+  mistaken for a live rate. An unknown model/desktop rate is declared absent
   (`estimatedCostUsd: null` + a `reason`), never guessed.
 - `humanish.actor-estimated-cost.v1` (`ActorTrace.estimatedCost`): one participant's
   token-derived model cost, with `estimatedCostUsd` (or `null` + `reason`
@@ -1206,7 +1208,7 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   arrived as turn totals, such as Codex `turn.completed`, priced at the base tier because no single
   request's size is known; the run summary's `model-tokens` line carries the same `basis`.
 - `humanish.run-cost-summary.v1` (`RunBundle.cost`): the sum of every participant's
-  `model-tokens` lines PLUS `desktop-minutes` lines. New independent CUA runs
+  `model-tokens` lines plus `desktop-minutes` lines. New independent CUA runs
   price each owned desktop separately; concurrent shared-world runs add one line per participant
   and a `laneId: subject` desktop line for a provisioned plane; older single aggregate
   lines remain readable.
@@ -1224,18 +1226,18 @@ aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bun
   `no_rate_for_model` (model `codex`). The terminal trace records the same `estimatedCost`. The sandbox line is not part of the
   terminal cost ledger, whose lines are checked against `scenario.caps.maxUsd`.
 
-The summary follows the SAME null discipline as the terminal cost ledger above.
-`estimatedTotalUsd` sums ONLY the non-null `breakdown` lines and is `null` iff
-EVERY line is null (never coerced to `0`); a present-but-unpriceable line stays
+The summary follows the same null discipline as the terminal cost ledger above.
+`estimatedTotalUsd` sums only the non-null `breakdown` lines and is `null` iff
+every line is null (never coerced to `0`); a present-but-unpriceable line stays
 in `breakdown` with `estimatedCostUsd: null` + a `reason` (it records that we
 tried and could not price it) and contributes nothing. `fullyEstimated` is
 `false` when any applicable line is null (the total is then a lower bound). A spend-free
 live run has no lines and records `estimatedTotalUsd: 0` with `ratesAsOf: null`; verify
 asks for a rates date only when a line is priced.
 `placeholder` is true when any contributing rate is a stand-in; `ratesAsOf` is
-the MIN (oldest) `asOf` across contributing rates. An aggregate is only as fresh
-as its stalest input, so MAX would overclaim freshness (each `breakdown` line
-keeps its own true `asOf`). `desktopMinutes` is a HOST-SIDE
+the min (oldest) `asOf` across contributing rates. An aggregate is only as fresh
+as its stalest input, so max would overclaim freshness (each `breakdown` line
+keeps its own true `asOf`). `desktopMinutes` is a host-side
 acquired-handle→cleanup span, excluding allocation/startup before handle acquisition.
 It approximates E2B's server-side billed lifetime. Plan fees, credits, and negotiated
 prices are excluded; unknown remaining lifetime makes `fullyEstimated` false.
@@ -1269,9 +1271,9 @@ desktopMinutes: 1
 note: "Estimated 11.60167 USD total…"
 ```
 
-`verifyRun` asserts LABELING/provenance, never MAGNITUDE. Absence PASSES
+`verifyRun` asserts labeling and provenance, never magnitude. Absence passes
 (fail-open on display): a bundle with no cost, a null estimate that carries a
-`reason` and a null `ratesAsOf`, or a participant without `estimatedCost` verifies fine. A CLAIMED number FAILS closed when it lacks its
+`reason` and a null `ratesAsOf`, or a participant without `estimatedCost` verifies fine. A claimed number fails closed when it lacks its
 `ratesAsOf` date or `source`, or when `estimatedTotalUsd` does not equal the
 rounded sum of its non-null lines (a null line coerced to 0 is a mechanism
 mismatch). A correctly-labeled huge estimate still passes. Cost is neither a
@@ -1371,15 +1373,15 @@ These computer-use rules do not replace the terminal route's separate
 
 ## Affordance Use
 
-`humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`) records WHICH
-KIND of route an actor took, per dispatched action, as counts by class:
+`humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`) records which
+kind of route an actor took, per dispatched action, as counts by class:
 
 | Class              | What it covers                                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `pointer`          | click, double-click, drag, scroll: interaction with what is rendered                                          |
 | `keyboard`         | typed text and key presses into the page                                                                      |
 | `speech`           | spoken input from a `speak` action                                                                            |
-| `url-navigation`   | typing a URL (the `nav` subset); a HUMAN affordance, see below                                                |
+| `url-navigation`   | typing a URL (the `nav` subset); a human affordance, see below                                                |
 | `script-execution` | a `javascript:` or `data:` URL; not a human affordance                                                        |
 | `devtools`         | developer tooling opened by keyboard chord                                                                    |
 | `browser-internal` | `chrome://`, `about:`, `view-source:`, `devtools:`, `file:`, `edge:`, `brave:` (the browser, not the product) |
@@ -1390,20 +1392,20 @@ rate; `shortcutTotal` rolls up `script-execution` + `devtools` +
 `browser-internal`, and a value of `0` is a meaningful result rather than an
 absence.
 
-Direct URL navigation is deliberately its OWN class and is grouped with the
+Direct URL navigation is deliberately its own class and is grouped with the
 naturalistic classes, not with script execution: `load(url)` appears in 99.4% of
 2,337 real human web demonstrations, so address-bar use is ordinary human
 behavior and classifying it as a shortcut would make an ordinary human participant look
 unfaithful. See [`docs/principles/actor-fidelity.md`](../principles/actor-fidelity.md)
 for the evidence and the scoping of what a fidelity claim can mean.
 
-The record carries a CLASS and at most a scheme-shaped signal (`javascript:`,
+The record carries a class and at most a scheme-shaped signal (`javascript:`,
 `https:`, a devtools chord), never the typed text, which can be a password, a
 session token, or an identifying URL path. Classification runs at dispatch
 because the text exists only there: the trace's own action label deliberately
 renders `type [N chars]`.
 
-The harness states NO verdict about a class. Whether an affordance invalidates a
+The harness states no verdict about a class. Whether an affordance invalidates a
 study depends on the population that study declares, which is product semantics
 and belongs to the adopter's scorer. That scorer already receives the full trace,
 so `affordanceUse` needs no extra wiring to reach it. Present on computer-use participants
@@ -1495,7 +1497,7 @@ of it fails.
 ## Product-Adapter Extension Seam
 
 The terminal-product and browser/computer-use routes let an adopter attach
-product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
+product-specific scoring + feedback as a thin in-repo extension without forking
 core. The seam is `RunLabOptions.scorer`, an `AdapterScorerModule`, for terminal-product,
 computer-use and shared-world runs; the CLI loads the same module with `--scorer`. This is never a built-in product scorer (the adopter's scorecard
 lives in the adopter's repo).
@@ -1513,8 +1515,8 @@ status, score, summary, data? }`. Core never reads `data`, where the adopter's
   feedback-candidate shape; product-specific concepts (public CLI/product command
   observed, hosted product success-or-blocker, feedback id/draft, media/job/asset
   ids, explicit no-media/no-provider-spend proof, defection/friction risk) are
-  recorded ONLY under `adapter: { namespace, data }`, never as core enums. Core
-  validates the SHAPE (a non-empty `namespace` + a `data` record); the keys inside
+  recorded only under `adapter: { namespace, data }`, never as core enums. Core
+  validates the shape (a non-empty `namespace` + a `data` record); the keys inside
   `data` are the adapter's.
 - **Adapter artifacts** (`humanish.adapter-artifact.v1`,
   `RunBundle.adapterArtifacts[]`). A namespaced list of local relative artifact
@@ -1572,13 +1574,13 @@ Acceptance semantics are route-specific:
 
 The `e2b-terminal` substrate is added to `RunFeedbackCandidate.substrate` so a
 terminal-agent candidate names its substrate honestly; browser candidates use
-the existing `e2b-desktop` substrate. The routes invoke hooks over FULLY-ASSEMBLED,
+the existing `e2b-desktop` substrate. The routes invoke hooks over fully-assembled,
 redacted evidence (`TerminalProductScoringContext` or
 `BrowserLabScoringContext`: `bundle`, runtime-only `runDir`, run identifiers,
 actor and route metadata; all exported public types), scrub+redact returned
-payloads, and DROP any malformed score, candidate, or artifact reference with a
+payloads, and drop any malformed score, candidate, or artifact reference with a
 warning so a bad extension never poisons a verifiable bundle. On the terminal
-route the context also carries `transcript`: the FULL normalized session
+route the context also carries `transcript`: the full normalized session
 transcript, source-scrubbed then shape-redacted and byte-identical to the
 persisted `terminal-transcript.txt` (the trace's `transcriptTail` is a ~2KB
 projection of it), so an adopter rubric can find command-tier evidence anywhere
@@ -1668,10 +1670,10 @@ bundlePath: .humanish/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/r
 checks:
   - name: run.json exists
     ok: true
-    message: run.json present
+    message: run.json is present
   - name: redaction passed
     ok: true
-    message: redaction status must be passed
+    message: redaction passed
 shareSafety:
   status: share_ready
   reasons: []

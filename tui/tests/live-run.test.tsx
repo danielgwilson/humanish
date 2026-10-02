@@ -296,7 +296,7 @@ describe("the interrupted card", () => {
     }
     const card = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
 
-    expect(card).toContain("interrupted — no outcome recorded");
+    expect(card).toContain("interrupted: no outcome recorded");
     // It spent real money before dying, and says so rather than reporting nothing.
     expect(card).toContain("~$0.62");
     expect(card).toContain("sandboxes");

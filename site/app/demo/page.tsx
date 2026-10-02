@@ -125,7 +125,7 @@ export default function Demo() {
           <ol className="finding-list">
             {FINDINGS.map((f) => (
               <li key={f.id}>
-                <span className={`chip ${f.impact === "Blocked" ? "chip-pass" : "chip-mute"}`}>
+                <span className={`chip ${f.impact === "Blocked" ? "chip-dot" : "chip-mute"}`}>
                   {f.impact}
                 </span>
                 <span className="finding-id">{f.id}</span>

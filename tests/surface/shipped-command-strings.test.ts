@@ -5,7 +5,7 @@ import type { Command } from "commander";
 
 import { createProgram } from "../../src/cli/program.js";
 
-// #516: the first Observer a new user ever saw advertised `humanish run --scenario
+// The first Observer a new user ever saw advertised `humanish run --scenario
 // first-run-smoke`. The flag has never existed. It shipped for months because nothing checked
 // that the commands in our own sample text are commands the CLI accepts, and a computer-use
 // participant found it before we did.
@@ -71,7 +71,7 @@ interface FoundCommand {
 // Only counts a real invocation site: start of a line/string, after a shell prompt, after a
 // backtick or quote, or after an `npx` runner. Without this, `skills add danielgwilson/humanish
 // --skill humanish --list` reads as our CLI taking a `--list` flag, when every one of those flags
-// belongs to a DIFFERENT cli.
+// belongs to a different cli.
 const INVOCATION =
   /(?:^|[`'"(]|\$ |&& |\| |npx (?:-y |--no-install )?)humanish ((?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\])(?:[ \t]+(?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\]))*)/gm;
 
@@ -136,7 +136,7 @@ describe("shipped command strings are commands the CLI accepts", () => {
   });
 
   it("`run` has no --scenario option and takes a lab as a positional", async () => {
-    // The exact string that shipped, proving this test is load-bearing rather than decorative.
+    // The exact string that shipped, so the test checks a real failure.
     const program = createProgram({});
     const rootSpec = specOf(program);
     const runSpec = rootSpec.children.get("run");

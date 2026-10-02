@@ -13,7 +13,7 @@ import {
 } from "../../src/comms/capture-surface.js";
 import type { CommsMessage } from "../../src/comms/types.js";
 
-// A realistic captured verification email: an app-LOOPBACK verify link (must be origin-rewritten to be
+// A realistic captured verification email: an app-loopback verify link (must be origin-rewritten to be
 // reachable), an OTP, HTML-unsafe header content is exercised separately, plus an active <script> to strip.
 const VERIFICATION_HTML =
   '<p>Hi user.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify your email</a></p><p>Or use code <b>481920</b>.</p><script>alert(1)</script>';
@@ -43,7 +43,7 @@ describe("comms-inbox: rewriteOrigin + pickVerifyUrl", () => {
     expect(rewriteOrigin("http://127.0.0.1:3000", [])).toBe("http://127.0.0.1:3000"); // no map → unchanged
   });
 
-  it("only rewrites on an ORIGIN BOUNDARY — a sibling origin sharing a prefix/suffix is never mangled", () => {
+  it("only rewrites on an origin boundary: a sibling origin sharing a prefix/suffix is never mangled", () => {
     expect(rewriteOrigin("http://127.0.0.1:30000/admin", MAP)).toBe("http://127.0.0.1:30000/admin"); // :30000 != :3000
     expect(rewriteOrigin("http://127.0.0.1:3000.evil.test/x", MAP)).toBe(
       "http://127.0.0.1:3000.evil.test/x",
@@ -105,14 +105,14 @@ describe("comms-inbox: buildOriginMap", () => {
 });
 
 describe("comms-inbox: real-email message view (the default)", () => {
-  it("renders the app's real email in minimal chrome — origin-rewritten link, active content stripped", async () => {
+  it("renders the app's real email in minimal chrome: origin-rewritten link, active content stripped", async () => {
     const [message] = await captured();
     const html = renderInboxMessage(message!, { originMap: MAP });
     expect(html).toContain("<!doctype html>");
     // header fields
     expect(html).toContain("Confirm your email");
     expect(html).toContain("user-07@example.test");
-    // the REAL email body is shown, with its verify link origin rewritten to the reachable host
+    // the real email body is shown, with its verify link origin rewritten to the reachable host
     expect(html).toContain("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
     expect(html).not.toContain("http://127.0.0.1:3000/verify");
     // active content neutralized (no script execution in the surface page)
@@ -144,7 +144,7 @@ describe("comms-inbox: real-email message view (the default)", () => {
     });
     const [message] = await bus.poll(user);
     const html = renderInboxMessage(message!, { originMap: MAP });
-    // The load-bearing, browser-enforced protection: a script-forbidding CSP is on the page.
+    // The main, browser-enforced protection: a script-forbidding CSP is on the page.
     expect(html).toContain("Content-Security-Policy");
     expect(html).toContain("script-src 'none'");
     // Defense-in-depth strip removed the active/redirect vectors (incl. the "/"-separated handler + the
@@ -325,7 +325,7 @@ describe("captured email images", () => {
     expect(html).not.toContain("Image unavailable:");
   });
 
-  it("labels missing CID, unresolved relative and malicious/invalid images without an unsafe fallback", async () => {
+  it("labels missing cid, unresolved relative and malicious/invalid images without an unsafe fallback", async () => {
     const [message] = await captured();
     const svg = Buffer.from('<svg onload="alert(1)"></svg>').toString("base64");
     const html = renderInboxMessage({

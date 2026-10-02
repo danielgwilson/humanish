@@ -11,6 +11,6 @@ human(ish)   acme-app · 1 participant working
 
 1 run with no lab
 
- Can a first-time visitor finish signing up …
+▸ Can a first-time visitor finish signing up…
 
-↑↓ move   ⏎ open   ? keys   q quit
+↑↓ move  ⏎ open  ? keys  q quit

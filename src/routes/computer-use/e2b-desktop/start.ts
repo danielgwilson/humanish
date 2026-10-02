@@ -250,7 +250,7 @@ export async function startParticipantStream(
   // never a participant finding about missing controls. Both computer-use and shared-world participants
   // use this route.
   if (state.initialBrowserGeometry?.unusable !== undefined) {
-    state.failureCode = "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";
+    state.failureCode = "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY";
     throw new Error(
       `${state.failureCode}: ${state.initialBrowserGeometry.unusable} Participant actions were not started.`,
     );

@@ -165,12 +165,12 @@ function cuaLabResult(args: {
   const errorResult = ((): CuaActorLabResult["error"] | undefined => {
     if (ok) return undefined;
     if (adapterFailure !== undefined) {
-      return { code: "HUMANISH_CUA_LAB_FAILED", message: adapterFailure };
+      return { code: "HUMANISH_COMPUTER_USE_FAILED", message: adapterFailure };
     }
     if (participantCount === 1) {
       const outcome = firstOutcome;
       return {
-        code: outcome?.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
+        code: outcome?.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED",
         message:
           outcome?.sessionError ??
           outcome?.providerCleanupError ??
@@ -192,9 +192,10 @@ function cuaLabResult(args: {
     }
     const failing = (outcomes ?? []).find((outcome) => !participantOk(outcome));
     const geometryFailure = (outcomes ?? []).find(
-      (outcome) => outcome.failureCode === "HUMANISH_CUA_LAB_DEVICE_GEOMETRY",
+      (outcome) => outcome.failureCode === "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY",
     );
-    const code: CuaActorLabErrorCode = geometryFailure?.failureCode ?? "HUMANISH_CUA_LAB_FAILED";
+    const code: CuaActorLabErrorCode =
+      geometryFailure?.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED";
     return {
       code,
       message: observer.ok

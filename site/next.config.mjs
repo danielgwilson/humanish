@@ -3,7 +3,10 @@ import { createMDX } from "fumadocs-mdx/next";
 
 const require = createRequire(import.meta.url);
 /** The CLI's version, shown in the nav; the site builds from the monorepo so the root package.json is present. */
-const { version: HUMANISH_VERSION } = require("../package.json");
+const { version: HUMANISH_VERSION, engines } = require("../package.json");
+/** The CLI's minimum Node version, "22.19" from engines.node ">=22.19.0". */
+const nodeFloor = /^>=(\d+)\.(\d+)\.\d+$/.exec(engines.node);
+if (!nodeFloor) throw new Error(`Unexpected engines.node ${engines.node}; update next.config.mjs`);
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -35,6 +38,7 @@ const SECURITY_HEADERS = [
 const nextConfig = {
   env: {
     NEXT_PUBLIC_HUMANISH_VERSION: HUMANISH_VERSION,
+    NEXT_PUBLIC_HUMANISH_NODE: `${nodeFloor[1]}.${nodeFloor[2]}`,
     NEXT_PUBLIC_OBSERVER_ARTIFACT_V: OBSERVER_ARTIFACT_V,
   },
   images: { formats: ["image/avif", "image/webp"], qualities: [60, 70, 75] },

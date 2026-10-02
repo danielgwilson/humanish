@@ -101,7 +101,7 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   (`humanish.scorer-provenance.v1`); a config-declared scorer that fails to render
   a pass fails the run on the scorer-capable routes, while library callers keep
   the additive behavior (`costProbe` stays library-only); on the terminal route
-  the scoring context carries the FULL normalized transcript (byte-identical to
+  the scoring context carries the full normalized transcript (byte-identical to
   the persisted `terminal-transcript.txt`) instead of the ~2KB tail projection. The
   [scorer example](../../examples/scorer/README.md) attaches one from the CLI and from a
   library caller;
@@ -283,7 +283,7 @@ It prints the participant's report and fails the gate if they could not get ther
 sets; the paragraph underneath it is the finding, and it has twice repeated an
 adoption problem we already knew about in words no test could produce.
 
-This spends money and needs keys, so it is deliberately NOT part of `release:check`
+This spends money and needs keys, so it is deliberately not part of `release:check`
 and never runs in CI. The lab's caps hold product spend to `$0`; what it costs is
 the agent's own tokens (on `gpt-5.6-sol` unless the lab names a model, estimated in `run.json`'s
 `cost`) and a few sandbox-minutes. The agent's model key stays outside

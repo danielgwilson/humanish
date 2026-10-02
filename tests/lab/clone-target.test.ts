@@ -58,7 +58,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
     const result = parseLabConfig(cloneLab("openai-computer-use", target));
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
     expect(result.error.message).toContain("execution.target: e2b-desktop");
     expect(result.error.message).toContain(got);
   });
@@ -93,7 +93,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
         );
         expect(outcome.route).toBe("computer-use");
         expect(outcome.result.ok).toBe(false);
-        expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+        expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
         expect(outcome.result.error?.message).toContain("execution.target: e2b-desktop");
         expect(desktop.loads()).toBe(0);
         expect(await readdir(cwd)).toEqual([]);
@@ -115,7 +115,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
         deps: { desktopModule: desktop.load },
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SUBJECT_UNSAFE");
       expect(result.error?.message).toContain("execution.target: e2b-desktop");
       expect(desktop.loads()).toBe(0);
     } finally {

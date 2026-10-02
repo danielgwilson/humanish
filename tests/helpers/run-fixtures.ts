@@ -1,4 +1,4 @@
-// Synthetic `.humanish/runs` trees for tests (#455 PR 2).
+// Synthetic `.humanish/runs` trees for tests.
 //
 // Why synthetic rather than copied from a real project: real run directories carry lab ids naming
 // the operator's own work, real costs, and real participant text. Every committed expectation about
@@ -21,7 +21,7 @@ export interface FixtureRunSpec {
    * `running` writes a fresh record; `stale` writes a `running` record whose updatedAt is old
    * (an interrupted run: the process died without finalizing); `finished` writes a final record.
    * `legacy-bundle` writes only a run.json with the old `lab:<id>` convention and no record;
-   * `orphan` writes neither — receipts on disk and nothing else.
+   * `orphan` writes neither: receipts on disk and nothing else.
    */
   state: "running" | "stale" | "finished" | "legacy-bundle" | "orphan";
   startedAt?: string;

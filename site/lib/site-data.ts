@@ -8,3 +8,5 @@ export const RECEIPTS = `${GITHUB}/blob/main/docs/evidence/computer-use`;
 export const BENCH = `${GITHUB}/blob/main/bench`;
 /** The root package.json version, read at build time by next.config.mjs. */
 export const VERSION = process.env.NEXT_PUBLIC_HUMANISH_VERSION ?? "0.0.0";
+/** The CLI's minimum Node version from the root package.json engines, read by next.config.mjs. */
+export const NODE_FLOOR = process.env.NEXT_PUBLIC_HUMANISH_NODE ?? "22.19";

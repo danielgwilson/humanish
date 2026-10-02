@@ -8,7 +8,7 @@ import { withSiblingFlagHint } from "../../src/cli/program.js";
 import { doctor } from "../../src/cli/doctor.js";
 import { terminalSurfaceMessage } from "../../src/tui/contract.js";
 
-// Both of these were found by a participant, not by us — labs/first-contact.yaml, a real
+// Both of these were found by a participant, not by us: labs/first-contact.yaml, a real
 // autonomous agent meeting humanish for the first time in an E2B shell.
 
 describe("a rejected flag names the command that has it", () => {
@@ -30,7 +30,7 @@ describe("a rejected flag names the command that has it", () => {
     expect(enriched).not.toContain("humanish humanish");
   });
 
-  it("stays quiet when no command has the flag — an invented suggestion is worse than none", () => {
+  it("stays quiet when no command has the flag: an invented suggestion is worse than none", () => {
     const text = "error: unknown option '--frobnicate'\n";
     expect(withSiblingFlagHint(text, root())).toBe(text);
   });
@@ -59,7 +59,7 @@ describe("doctor's terminal-surface row is written for whoever is reading it", (
     );
   });
 
-  it("tells a reader who CANNOT use it to hand it on", () => {
+  it("tells a reader who cannot use it to hand it on", () => {
     // The finding: an agent read "available in an interactive terminal", correctly concluded it
     // was not in one, and never mentioned the surface in the report it wrote for a human.
     const message = terminalSurfaceMessage({ ...base, interactive: false });

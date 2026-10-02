@@ -41,7 +41,7 @@ describe("browser control client and dispatcher", () => {
     expect(sent[2].action).toEqual(speak);
     f.close();
   });
-  it("rejects concurrent operations including during HELLO rather than queuing", async () => {
+  it("rejects concurrent operations including during `HELLO` rather than queuing", async () => {
     const f = setup();
     const first = f.client.ready();
     await expect(f.client.executor.execute(click)).rejects.toMatchObject({

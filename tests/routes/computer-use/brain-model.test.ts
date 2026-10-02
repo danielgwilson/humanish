@@ -208,7 +208,7 @@ async function run(
   return { result, sessions, flushModels };
 }
 
-/** The price the cap estimator puts on USAGE, against the price under `model`. */
+/** The price the cap estimator puts on usage, against the price under `model`. */
 function expectPricedAt(session: CuaActorSessionOptions, model: string) {
   expect(session.estimateTurnCostUsd).toBeDefined();
   expect(session.estimateTurnCostUsd!(USAGE)).toBe(
@@ -256,7 +256,7 @@ describe("computer-use participant model, openai brain", () => {
       labConfig({ actor: OPENAI_ACTOR, model: "", maxUsd: 5 }),
     );
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_UNPRICED_CAP");
     expect(result.error?.message).toContain('no rate for model ""');
     expect(sessions).toHaveLength(0);
   });

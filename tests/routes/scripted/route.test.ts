@@ -55,7 +55,7 @@ const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();
 
 // ---------------------------------------------------------------------------
-// Fakes + fixtures. The fake browser drives the REAL step executor and writes
+// Fakes + fixtures. The fake browser drives the real step executor and writes
 // real screenshot bytes, so evidence-presence checks see what a live run would.
 // ---------------------------------------------------------------------------
 
@@ -257,7 +257,7 @@ async function withHttpServer<T>(callback: (appUrl: string) => Promise<T>): Prom
   }
 }
 
-/** Copy the COMMITTED demo scenario into the temp cwd so the test binds to the real file. */
+/** Copy the committed demo scenario into the temp cwd so the test binds to the real file. */
 async function writeCommittedScenario(cwd: string): Promise<string> {
   const text = await readFile(
     path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"),
@@ -371,7 +371,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     expect(routeOf(cloneWithCodeActor as unknown as LabConfig)).toBe("computer-use");
   });
 
-  it("library-API fallback: app-url with an UNREGISTERED actor type still routes to cua's fail-closed gate", async () => {
+  it("library-API fallback: app-url with an unregistered actor type still routes to cua's fail-closed gate", async () => {
     // Such a config cannot parse; build it by hand (the library-API path).
     const tampered = {
       ...scriptedConfig(),
@@ -382,7 +382,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     try {
       const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
+      expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -538,7 +538,7 @@ describe("runScriptedBrowserLab", () => {
     expect(result.actor).toBe("scripted-browser");
     expect(result.sessions).toEqual([]);
     expect(result.observer?.ok).toBe(true);
-    // scenario.ref CONSUMED: digest-pinned provenance.
+    // scenario.ref consumed: digest-pinned provenance.
     expect(result.scenario).toEqual({
       id: "scripted-first-run",
       source: "humanish/scenarios/scripted-first-run.yaml",
@@ -582,14 +582,14 @@ describe("runScriptedBrowserLab", () => {
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
-    // latest.json points at THIS run so `verify --run latest` stays honest.
+    // latest.json points at this run so `verify --run latest` stays honest.
     const pointer = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"),
     );
     expect(pointer.runId).toBe(result.runId);
   });
 
-  it("default surface roster is 1 (desktop only) — the single-lane default governs; count: 2 is the override", async () => {
+  it("default surface roster is 1 (desktop only): the single-lane default governs; count: 2 is the override", async () => {
     await writeCommittedScenario(cwd);
     const outcome = await runLab(scriptedConfig(), { cwd, dryRun: true });
     if (outcome.route !== "scripted") throw new Error("expected scripted backend");
@@ -680,7 +680,7 @@ describe("runScriptedBrowserLab", () => {
           expect(stream.actor.provider).toBe("browser-persona");
           expect(stream.actor.protocol).toBe("scripted-steps");
           expect(stream.actor.tokenUsage).toEqual({ input: 0, output: 0, total: 0, costUsd: 0 });
-          // REAL emulated viewport metadata (isMobile/DSF genuinely render on this route).
+          // Real emulated viewport metadata (isMobile/DSF genuinely render on this route).
           expect(stream.viewport.isMobile).toBe(surface === "mobile");
 
           // Native + projected traces persist on disk; the projection matches the seam.
@@ -698,7 +698,7 @@ describe("runScriptedBrowserLab", () => {
         const screenshotFiles = await readdir(path.join(runDir, "screenshots"));
         expect(screenshotFiles).toHaveLength(8);
 
-        // verifyRun passes INCLUDING the hollow-run engagement check, and surfaces the
+        // verifyRun passes including the hollow-run engagement check, and surfaces the
         // raw-screenshot posture as a warning (never flips ok).
         const verified = await verifyRun(cwd, result.runId);
         expect(verified.ok).toBe(true);
@@ -847,7 +847,7 @@ describe("runScriptedBrowserLab", () => {
     ]);
   });
 
-  it("the subject failing the script is successful EVIDENCE: lab ok stays true, review verdict is fail", async () => {
+  it("the subject failing the script is successful evidence: run ok stays true, review verdict is fail", async () => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
       // Click never produces the Welcome state -> stateChanged + waitForText fail honestly.
@@ -908,7 +908,7 @@ describe("runScriptedBrowserLab", () => {
       const result = outcome.result;
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_FAILED");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_FAILED");
       expect(result.sessions[0]?.completionReason).toBe("harness_error");
       const bundle = JSON.parse(
         await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -1135,7 +1135,7 @@ describe("runScriptedBrowserLab", () => {
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_FAILED");
     expect(result.error?.message).not.toContain(secretToken);
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -1277,7 +1277,7 @@ describe("runScriptedBrowserLab", () => {
         ].join("\n"),
       ],
     ])(
-      "returns HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID with no artifacts: %s",
+      "returns HUMANISH_SCRIPTED_SCENARIO_INVALID with no artifacts: %s",
       async (_label, ref, text) => {
         if (text !== undefined) {
           await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
@@ -1289,7 +1289,7 @@ describe("runScriptedBrowserLab", () => {
           dryRun: true,
         });
         expect(result.ok).toBe(false);
-        expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+        expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
         expect(result.runId).toBe("not-created");
         await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
       },
@@ -1302,7 +1302,7 @@ describe("runScriptedBrowserLab", () => {
         dryRun: true,
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
       expect(result.error?.message).toContain("inside the target cwd");
       await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
     });
@@ -1351,7 +1351,7 @@ describe("runScriptedBrowserLab", () => {
       });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
       expect(result.error?.message).not.toContain(secretMarker);
       expect(hookCalled).toBe(false);
       await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
@@ -1363,7 +1363,7 @@ describe("runScriptedBrowserLab", () => {
     const tampered = { ...scriptedConfig(), actors: [{ type: "codex-app-server" }] } as LabConfig;
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED");
   });
 
   it("re-enforces the loopback boundary at the engine even if a config bypasses the parser", async () => {
@@ -1375,7 +1375,7 @@ describe("runScriptedBrowserLab", () => {
     };
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SUBJECT_UNSAFE");
     expect(result.runId).toBe("not-created");
     await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
   });

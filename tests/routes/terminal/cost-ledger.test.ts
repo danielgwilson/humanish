@@ -13,10 +13,10 @@ import { verifyRun } from "../../../src/verify/verify.js";
 import { estimateAllocatedDesktopCost } from "../../../src/run/pricing.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../../src/actors/computer-use/openai-provider.js";
 
-// SLICE 3 deterministic proof ($0, NO live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
-// discipline + the no-spend proof DERIVED from the ledger + FULL caps enforcement (fail-closed).
-// Reuses the SLICE-2 fake-E2B-module + mock-CLI pattern; the SLICE-3 cost signal is injected via the
-// costProbe DI seam (the lane has no real product-spend signal yet — that is SLICE 4).
+// Slice 3 deterministic proof ($0, no live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
+// discipline + the no-spend proof derived from the ledger + full caps enforcement (fail-closed).
+// Reuses the slice-2 fake-E2B-module + mock-CLI pattern; the slice-3 cost signal is injected via the
+// costProbe DI seam (the lane has no real product-spend signal yet: that is slice 4).
 
 const FAKE_RUNTIME_KEY = "FAKEKEY-terminal-slice3-do-not-leak-1234567890";
 
@@ -80,7 +80,7 @@ function makeFakeModule(opts: {
       },
       // No Sandbox.getInfo/list on this fake: exercises the noGetInfo fallback in
       // teardownSandbox, where kill(id)'s own boolean is the by-id proof. This lane's cleanup
-      // proof is not what these SLICE 3 cost-ledger tests are about; see
+      // proof is not what these slice 3 cost-ledger tests are about; see
       // tests/routes/terminal/lab.test.ts for the by-id cleanup coverage.
     },
   } as unknown as E2BDesktopModule;
@@ -146,7 +146,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("(a) a no-spend run produces a VERIFIED no-spend proof derived from the ledger", async () => {
+  it("(a) a no-spend run produces a verified no-spend proof derived from the ledger", async () => {
     const killed: string[] = [];
     const inputs: TerminalTestInputs = {
       env: baseEnv(),
@@ -168,7 +168,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     // The no-spend proof is surfaced on the result.
     expect(result.noSpend?.satisfied).toBe(true);
     expect(result.noSpend?.maxUsd).toBe(0);
-    // Provider unmeasured this run (no tokenUsage), product/media/payment unmeasured this slice.
+    // Provider unmeasured this run (no tokenUsage); product/media/payment are not measured yet.
     expect(result.noSpend?.unmeasuredLines.sort()).toEqual([
       "media",
       "payment",
@@ -221,7 +221,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
 
-    // usd stays null: tokens are the measured fact, the RATE is the unknown, and a guessed
+    // usd stays null: tokens are the measured fact, the rate is the unknown, and a guessed
     // dollar figure would be worse than none.
     expect(ledgers.cost.lines.provider.usd).toBeNull();
     expect(ledgers.cost.lines.provider.source).toBe("unpriced-token-usage");
@@ -230,7 +230,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.cost.lines.provider.note).toContain("3,692 output");
     expect(ledgers.cost.lines.provider.note).not.toContain("NOT MEASURED");
 
-    // `satisfied` keeps its contract meaning (no KNOWN line over the cap). The statement and the
+    // `satisfied` keeps its contract meaning (no known line over the cap). The statement and the
     // lifecycle line must not read as a proven $0: nothing was measured, and the provider tokens
     // were consumed but unpriced, with their counts.
     expect(ledgers.noSpendProof.satisfied).toBe(true);
@@ -289,9 +289,9 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
 
-    // KNOWN ZERO: the injected product line is a literal 0 (not null).
+    // Known zero: the injected product line is a literal 0 (not null).
     expect(ledgers.cost.lines.product.usd).toBe(0);
-    // NOT MEASURED: media/payment/provider are literal null (not 0, not omitted).
+    // Not measured: media/payment/provider are literal null (not 0, not omitted).
     expect(ledgers.cost.lines.media.usd).toBeNull();
     expect(ledgers.cost.lines.payment.usd).toBeNull();
     expect(ledgers.cost.lines.provider.usd).toBeNull();
@@ -302,7 +302,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(raw).toContain('"usd": 0');
 
     // The no-spend proof reflects the distinction: product is a known-zero line it vouches for, the
-    // other three are unmeasured and explicitly NOT claimed zero.
+    // other three are unmeasured and explicitly not claimed zero.
     expect(ledgers.noSpendProof.statement).toMatch(/SATISFIED for maxUsd=0 on the measured lines/);
     expect(ledgers.noSpendProof.statement).toMatch(/Measured: product 0 USD\./);
     expect(ledgers.noSpendProof.statement).toMatch(/Not measured[^:]*: media, payment, provider\./);
@@ -325,7 +325,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(verified.ok).toBe(true);
   });
 
-  it("(c) a ledger showing KNOWN spend > maxUsd fails the run closed and keeps the agent's verdict", async () => {
+  it("(c) a ledger showing known spend > maxUsd fails the run closed and keeps the agent's verdict", async () => {
     const killed: string[] = [];
     const inputs: TerminalTestInputs = {
       env: baseEnv(),
@@ -350,7 +350,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CAPS_EXCEEDED");
     // The sandbox was still torn down (cleanup runs in finally before the cap evaluation).
     expect(killed.length).toBe(1);
     // A blown cap is an execution failure: the agent's own status stays the verdict, the result
@@ -370,13 +370,13 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
       status.outcome.execution.failures.map((failure: { kind: string }) => failure.kind),
     ).toEqual(["cap", "evidence"]);
 
-    // The bundle records the breach, and verify ALSO fails closed (known spend > declared cap).
+    // The bundle records the breach, and verify also fails closed (known spend > declared cap).
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(false);
     expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(false);
   });
 
-  it("(d) a no-spend proof that claims zero on a null (unmeasured) line FAILS verify", async () => {
+  it("(d) a no-spend proof that claims zero on a null (unmeasured) line fails verify", async () => {
     const killed: string[] = [];
     const inputs: TerminalTestInputs = {
       env: baseEnv(),
@@ -394,12 +394,12 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     });
     expect(result.ok).toBe(true);
 
-    // Tamper the persisted proof to claim zero on a line the ledger marks null — the proof now claims
-    // MORE than the ledger measured. verify must fail closed.
+    // Tamper the persisted proof to claim zero on a line the ledger marks null: the proof now claims
+    // more than the ledger measured. verify must fail closed.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const ledgersPath = path.join(runDir, "terminal-ledgers.json");
     const ledgers = JSON.parse(await readFile(ledgersPath, "utf8"));
-    expect(ledgers.cost.lines.provider.usd).toBeNull(); // provider IS null (unmeasured)
+    expect(ledgers.cost.lines.provider.usd).toBeNull(); // provider is null (unmeasured)
     ledgers.noSpendProof.knownZeroLines = ["provider"]; // lie: claim it is a proven zero
     ledgers.noSpendProof.unmeasuredLines = ["product", "media", "payment"];
     await (
@@ -432,7 +432,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_UNPRICED_CAP");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_UNPRICED_CAP");
     expect(result.error?.message).toMatch(/scenario\.caps\.maxMinutes/);
     expect(result.error?.message).not.toContain(FAKE_RUNTIME_KEY);
     expect(result.runId).toBe("not-created");
@@ -559,7 +559,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
 
   it("adds an unpriced remainder line when the sandbox's teardown is not proven", async () => {
     const { result, cost } = await run({ cpuCount: 2, memoryMB: 2048 }, true);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
     // The span up to the failed cleanup is priced; what ran after it is unknown.
     expect(cost.breakdown).toContainEqual({
       kind: "desktop-minutes",

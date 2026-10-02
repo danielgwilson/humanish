@@ -179,7 +179,7 @@ describe("Connections", () => {
             .every((line) => line.length <= columns),
         ).toBe(true);
         expect(frame).toMatch(/not available\s+yet/);
-        await surface.press(KEY.escape, (frame) => frame.includes("no labs here yet"));
+        await surface.press(KEY.escape, (frame) => frame.includes("No studies here yet."));
         expect(keyEntry).not.toHaveBeenCalled();
       } finally {
         surface.unmount();

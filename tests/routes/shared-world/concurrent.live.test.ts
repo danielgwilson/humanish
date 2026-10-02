@@ -11,20 +11,20 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
-// The LIVE rung for the CONCURRENT shared-world topology (#164 phase 2). WRITTEN + gated, NOT run
+// The live rung for the concurrent shared-world topology. Written + gated, not run
 // in the autonomous proof: it needs (1) HUMANISH_LIVE_SHARED_WORLD=1 (the spend opt-in), (2)
 // OPENAI_API_KEY + E2B_API_KEY.
 //
-// It drives the REAL committed synthetic fixture (no placeholders): the lab
-// `humanish/labs/shared-world-concurrent-live.yaml` clones THIS public repo, serves the synthetic
+// It drives the real committed synthetic fixture (no placeholders): the study
+// `humanish/labs/shared-world-concurrent-live.yaml` clones this public repo, serves the synthetic
 // shared task board `humanish/fixtures/shared-world-app` on 0.0.0.0, seeds it, and probes it (a
 // read-only aggregate). 3 concurrent personas each add a task to the shared board; the prober
-// observes the task count GROW under load. The fixture must be on the cloned commit's default
-// branch — so this rung is a separately-authorized receipt RUN AFTER this PR merges to main.
+// observes the task count grow under load. The fixture must be on the cloned commit's default
+// branch, so this rung is a separately-authorized receipt run after this PR merges to main.
 //
 // The deterministic fake-substrate proof (the rendezvous latch) in
-// concurrent-shared-world-lab.test.ts is the merge gate at $0; it proves the PLUMBING + the honesty
-// contract — NOT "we ran many concurrent users at scale", which only this live receipt backs.
+// concurrent-shared-world-lab.test.ts is the merge gate at $0; it proves the plumbing + the honesty
+// contract, not "we ran many concurrent users at scale", which only this live receipt backs.
 const LIVE =
   process.env.HUMANISH_LIVE_SHARED_WORLD === "1" &&
   Boolean(process.env.OPENAI_API_KEY) &&
@@ -33,7 +33,7 @@ const LIVE =
 const REPO_ROOT = process.cwd();
 
 describe.skipIf(!LIVE)(
-  "concurrent shared-world topology (LIVE, spend-gated — deferred to an authorized receipt)",
+  "concurrent shared-world topology (live, spend-gated: deferred to an authorized receipt)",
   () => {
     let cwd: string;
 
@@ -49,7 +49,7 @@ describe.skipIf(!LIVE)(
       "provisions one getHost-exposed plane, runs 3 personas at once, proves overlap + state evolution",
       { timeout: 1_200_000 },
       async () => {
-        // The REAL committed fixture lab — single source of truth (no inline placeholder). Flip the
+        // The real committed fixture study: single source of truth (no inline placeholder). Flip the
         // (dry-run default) committed lab to a live run via the explicit dryRun override.
         const raw = parse(
           readFileSync(
@@ -65,10 +65,10 @@ describe.skipIf(!LIVE)(
         if (outcome.route !== "shared-world") return;
         const result = outcome.result;
 
-        // ONE getHost-exposed subject plane; 3 personas.
+        // One getHost-exposed subject plane; 3 personas.
         expect(result.roleCount).toBe(3);
         expect(result.host).toBeTruthy(); // the tokenless getHost URL (ephemeral, raw on the result only)
-        // N+1 all reclaimed BY id: the subject sandbox + every actor sandbox killed.
+        // N+1 all reclaimed by id: the subject sandbox + every actor sandbox killed.
         expect(result.subjectSandbox?.killed).toBe(true);
         const actorSandboxIds = result.roles.map((role) => role.sandbox?.sandboxId).filter(Boolean);
         expect(new Set(actorSandboxIds).size).toBe(3); // 3 distinct actor sandboxes

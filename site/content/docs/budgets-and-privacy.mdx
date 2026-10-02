@@ -66,7 +66,7 @@ dated rate table. On the independent computer-use route, each desktop records it
 observed CPU and memory and a host-measured span from acquired handle to cleanup.
 Different template sizes are priced separately. Every amount is advisory, not an invoice.
 
-The [rate table](https://github.com/danielgwilson/humanish/blob/main/src/run/pricing.ts)
+The [rate table](repo:src/run/pricing.ts)
 records its date, source, and whether a rate is a placeholder. Runtime desktop
 estimates use the allocation's resource readback; missing metadata stays unpriced.
 The legacy desktop helper uses a labeled 8-vCPU/8-GiB planning assumption, which
@@ -161,7 +161,7 @@ Keep env files and credentials out of version control. Run bundles record provis
 
 Terminal-product studies run Codex inside the sandbox. Their default `execution.runtimeAuth: openai-env` supplies the runtime key to that command, where the participant and its child processes can read and use it. Any credentials you declare for the subject app also enter its sandbox.
 
-For terminal studies, `execution.runtimeAuth: openai-egress` keeps the raw OpenAI runtime key outside the sandbox and authenticates requests through E2B's proxy. Sandbox processes can still make paid requests through that proxy; this option does not impose a provider spending limit. Read the [terminal authentication setup and limits](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/terminal-product-route.md#runtime-auth-raw-key-placement-and-remaining-provider-access) before choosing it.
+For terminal studies, `execution.runtimeAuth: openai-egress` keeps the raw OpenAI runtime key outside the sandbox and authenticates requests through E2B's proxy. Sandbox processes can still make paid requests through that proxy; this option does not impose a provider spending limit. Read the [terminal authentication setup and limits](repo:docs/architecture/terminal-product-route.md#runtime-auth-raw-key-placement-and-remaining-provider-access) before choosing it.
 
 ## Use a signed-in coding agent
 
@@ -177,4 +177,4 @@ After a crash, run `npx humanish runs`, then `npx humanish cleanup --run YOUR_RU
 
 ## Choose telemetry
 
-Telemetry is on by default and never sends labs, subjects, personas, paths or evidence. `npx humanish telemetry disable` or `DO_NOT_TRACK=1` turns it off; [TELEMETRY.md](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) lists every field.
+Telemetry is on by default and never sends labs, subjects, personas, paths or evidence. `npx humanish telemetry disable` or `DO_NOT_TRACK=1` turns it off; [TELEMETRY.md](repo:TELEMETRY.md) lists every field.

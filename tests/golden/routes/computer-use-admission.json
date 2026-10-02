@@ -11,7 +11,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
       "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
@@ -27,7 +27,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
       "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol."
     }
   },
@@ -43,7 +43,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+      "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
       "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -64,7 +64,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
     },
     "automaticAnalysisTrigger": "default",
@@ -85,7 +85,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "actors[0].maxOutputTokens must be a positive safe integer."
     },
     "automaticAnalysisTrigger": "default",
@@ -106,7 +106,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
     },
     "automaticAnalysisTrigger": "default",
@@ -127,7 +127,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route."
     },
     "automaticAnalysisTrigger": "default",
@@ -148,7 +148,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -169,7 +169,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "Real email receiving requires hosted participant desktops."
     },
     "automaticAnalysisTrigger": "default",
@@ -190,7 +190,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser participant."
     },
     "automaticAnalysisTrigger": "default",
@@ -211,7 +211,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.desktop.recording is not provisioned by a caller-supplied executor."
     },
     "automaticAnalysisTrigger": "default",
@@ -232,7 +232,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "automaticAnalysisTrigger": "default",
@@ -253,7 +253,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
     },
     "automaticAnalysisTrigger": "default",
@@ -274,7 +274,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
     },
     "automaticAnalysisTrigger": "default",
@@ -295,7 +295,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
     },
     "automaticAnalysisTrigger": "default",
@@ -316,7 +316,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
       "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
     },
     "automaticAnalysisTrigger": "default",
@@ -337,7 +337,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
       "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
     },
     "automaticAnalysisTrigger": "default",
@@ -358,7 +358,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
       "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
     },
     "automaticAnalysisTrigger": "default",
@@ -379,7 +379,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
+      "code": "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING",
       "message": "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not."
     },
     "automaticAnalysisTrigger": "default",
@@ -400,7 +400,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
     },
     "automaticAnalysisTrigger": "default",
@@ -421,7 +421,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
     },
     "automaticAnalysisTrigger": "default",
@@ -442,7 +442,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
@@ -463,7 +463,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "RunLabOptions.inProcess drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop."
     },
     "automaticAnalysisTrigger": "default",
@@ -484,7 +484,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "RunLabOptions.inProcess drives subject.appUrl in this process, and a desktop-cli subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop."
     },
     "automaticAnalysisTrigger": "default",
@@ -505,7 +505,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
     },
     "automaticAnalysisTrigger": "default",
@@ -526,7 +526,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
     },
     "automaticAnalysisTrigger": "default",
@@ -547,7 +547,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
     },
     "automaticAnalysisTrigger": "default",
@@ -568,7 +568,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_KEYS_MISSING",
+      "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
       "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     },
     "automaticAnalysisTrigger": "default",
@@ -589,7 +589,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
       "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
@@ -605,7 +605,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
       "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol."
     }
   },
@@ -621,7 +621,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+      "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
       "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -642,7 +642,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
     },
     "automaticAnalysisTrigger": "default",
@@ -663,7 +663,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "actors[0].maxOutputTokens must be a positive safe integer."
     },
     "automaticAnalysisTrigger": "default",
@@ -684,7 +684,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
     },
     "automaticAnalysisTrigger": "default",
@@ -705,7 +705,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route."
     },
     "automaticAnalysisTrigger": "default",
@@ -726,7 +726,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -747,7 +747,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "Real email receiving requires hosted participant desktops."
     },
     "automaticAnalysisTrigger": "default",
@@ -768,7 +768,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser participant."
     },
     "automaticAnalysisTrigger": "default",
@@ -789,7 +789,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     },
     "automaticAnalysisTrigger": "default",
@@ -810,7 +810,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "automaticAnalysisTrigger": "default",
@@ -831,7 +831,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
     },
     "automaticAnalysisTrigger": "default",
@@ -852,7 +852,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
     },
     "automaticAnalysisTrigger": "default",
@@ -873,7 +873,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
     },
     "automaticAnalysisTrigger": "default",
@@ -894,7 +894,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
       "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
     },
     "automaticAnalysisTrigger": "default",
@@ -915,7 +915,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
       "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
     },
     "automaticAnalysisTrigger": "default",
@@ -936,7 +936,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
       "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
     },
     "automaticAnalysisTrigger": "default",
@@ -957,7 +957,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
     },
     "automaticAnalysisTrigger": "default",
@@ -978,7 +978,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
@@ -999,7 +999,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
     },
     "automaticAnalysisTrigger": "default",
@@ -1020,7 +1020,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
     },
     "automaticAnalysisTrigger": "default",
@@ -1041,7 +1041,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
+      "code": "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING",
       "message": "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not."
     },
     "automaticAnalysisTrigger": "default",
@@ -1062,7 +1062,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
     },
     "automaticAnalysisTrigger": "default",
@@ -1083,7 +1083,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
     },
     "automaticAnalysisTrigger": "default",
@@ -1104,7 +1104,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
     },
     "automaticAnalysisTrigger": "default",
@@ -1125,7 +1125,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
@@ -1146,7 +1146,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
@@ -1167,7 +1167,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "RunLabOptions.inProcess drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop."
     },
     "automaticAnalysisTrigger": "default",
@@ -1188,7 +1188,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
     },
     "automaticAnalysisTrigger": "default",
@@ -1209,7 +1209,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
     },
     "automaticAnalysisTrigger": "default",
@@ -1230,7 +1230,7 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
     },
     "automaticAnalysisTrigger": "default",

@@ -45,7 +45,7 @@ function actionLabel(action: RunAction): string {
     case "cancel-analysis":
       return "Cancel analysis";
     default:
-      return "Reclaim — stop sandboxes, keep evidence";
+      return "Reclaim: stop sandboxes, keep evidence";
   }
 }
 
@@ -142,7 +142,7 @@ export function RunScreen({
  * the count is the finding, not the label.
  */
 function headline(run: RunIndexEntry, participant: RunParticipant | undefined): string {
-  if (run.liveness === "interrupted") return "interrupted — no outcome recorded";
+  if (run.liveness === "interrupted") return "interrupted: no outcome recorded";
   if (run.liveness === "running") {
     // Until the run has written a participant record there is nobody to name, and "starting…" is
     // the true thing to say rather than a sentence with a hole where the person goes.
@@ -239,7 +239,7 @@ function InterruptedFacts({
             so beats inventing a figure. The captured counts above are the honest proxy. */}
         <Text dimColor>
           {run.estimatedCostUsd === undefined && participant?.estimatedCostUsd === undefined
-            ? "cost unknown — it ended before pricing itself"
+            ? "cost unknown: it ended before pricing itself"
             : costLine(run, participant)}
         </Text>
         <Text color={PALETTE.warn}>{"  sandboxes may still be running"}</Text>

@@ -3,8 +3,8 @@
 The live terminal-product route has shipped since `0.8.0`, with the in-sandbox runtime,
 command-scoped credential placement, exact-id cleanup proof, an interventions ledger, a cost and
 no-spend ledger, caps, and product scoring and feedback hooks. The
-[goal packet](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/terminal-product-lane/goal.md)
-holds the slice plan and the safety contract.
+[original plan](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/terminal-product-lane/goal.md)
+holds the build order and the safety contract.
 
 ## What this is
 
@@ -34,7 +34,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                                                   |
 | `actors[0].model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                        |
 | `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                                   |
-| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE                              |
+| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all default false                              |
 | `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                     |
 | route                                 | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
 
@@ -206,12 +206,10 @@ blast radius is bounded by key scoping and budgets, not by hoping._
 
 The inversion is declared as registry metadata, not a code convention: the
 terminal actor's capabilities carry `keyPlacement: "in-sandbox-command-scoped"`.
-SLICE 1 shipped the DECLARED field + value (the contract was honest about where
-the key would go); SLICE 2's engine added command-scoped injection (only into the
-per-command `envs` of the `codex` invocation, never `Sandbox.create({envs})`)
-keyed off that capability, plus the deny-by-default credential allowlist, the
-positive-allowlist sandbox metadata, the cleanup proof, the interventions ledger,
-and a minimal fail-closed cap.
+The route keys off that capability and injects the key only into the per-command
+`envs` of the `codex` invocation, never `Sandbox.create({envs})`. The route also
+has a deny-by-default credential allowlist, positive-allowlist sandbox metadata,
+the cleanup proof, the interventions ledger and a minimal fail-closed cap.
 
 ## Test seams
 
@@ -230,47 +228,43 @@ the adopter's repo:
   `RunFeedbackCandidate`, `RunAdapterScore`, `RunAdapterArtifact`, `ActorTrace`,
   `AdapterScorerModule` and `TerminalProductScoringContext`. The ledger, cost and
   no-spend shapes are reached through that context's fields, as
-  `TerminalProductScoringContext["ledgers"]`. Before this slice these were not
-  exported, which forced a fork (a thin adapter could not type against the bundle),
-  the gap issue #154 acceptance #8 names.
+  `TerminalProductScoringContext["ledgers"]`.
 - **A registrable scorer / feedback module**, `RunLabOptions.scorer` (an
   `AdapterScorerModule`): `score?(ctx) => RunAdapterScore | Promise<…>` and
   `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`, where this route's
   `ctx` is a `TerminalProductScoringContext`. The older `terminalHooks.score` and
   `terminalHooks.deriveFeedback` were removed with the bag. The route calls the
-  hooks over the FULLY-ASSEMBLED, redacted evidence and attaches the results
-  (`bundle.adapterScore`, appended `bundle.feedbackCandidates`) WITHOUT core knowing
+  hooks over the fully-assembled, redacted evidence and attaches the results
+  (`bundle.adapterScore`, appended `bundle.feedbackCandidates`) without core knowing
   any product noun. Default (no hook) behavior is unchanged: the mission-based verdict
   stands alone.
 - **Adapter-namespaced product nouns.** Product-specific concepts (public
   CLI/product command observed, hosted product success-or-blocker, feedback
   id/draft, media/job/asset ids, no-media/no-provider-spend proof,
-  defection/friction risk) ride ONLY under a single namespaced field
+  defection/friction risk) ride only under a single namespaced field
   (`RunFeedbackCandidate.adapter: { namespace, data }` and
   `RunAdapterScore.{namespace, data}`) so core's enums stay product-agnostic and
   a future inert-field audit never misfires. No adopter noun is hardcoded into a
   core enum (avoiding closed-taxonomy rot); `e2b-terminal` is added to the
-  substrate enum so a terminal-agent candidate names its substrate honestly.
+  substrate enum so a terminal-agent candidate names the substrate it ran on.
 
-The seam is fail-closed: the route scrubs+redacts the returned payloads and DROPS
+The seam is fail-closed: the route scrubs+redacts the returned payloads and drops
 any malformed score/candidate with a warning, and `verifyRun` re-checks the
 surviving shapes, so a bad extension never poisons a verifiable bundle. Proven by
 `tests/routes/terminal/product-adapter-seam.test.ts` (a thin in-repo example adapter
 typing against the barrel only, registering a scorer, attaching namespaced nouns,
-emitting a candidate; the bundle verifies). At SLICE 4 this was contract proof,
-not a live rung; the later end-to-end route receipt is linked from the status
-note.
+emitting a candidate; the bundle verifies). That test is a contract proof; the
+live end-to-end route receipt is linked from the status note.
 
-The adopter's real scorecard is its OWN thin extension. The end-to-end route's
-live receipt is kept under the terminal-product goal, and true duplex PTY replay
-is deferred to SLICE 5.
+The adopter's real scorecard is its own thin extension. The end-to-end route's
+live receipt is kept under the terminal-product goal. Duplex PTY replay is not
+built.
 
 ## The reference adopter (codename-neutral)
 
-The requesting adopter is a public creative-CLI product (see issue #154 for its
-concrete public surfaces). Committed source and docs here stay codename-neutral
-per the public-surface scan; the committed CI fixture
+The requesting adopter is a public creative-CLI product. Committed source and docs here
+stay codename-neutral per the public-surface scan; the committed CI fixture
 ([`humanish/labs/terminal-product-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/labs/terminal-product-demo.yaml))
-uses a FICTIONAL mock CLI (`widgetsmith-cli`) with `example.com` surfaces. The
-adopter's real public surfaces appear only in operator-run docs and the GitHub
-issue, never in scanned committed text.
+uses a fictional mock CLI (`widgetsmith-cli`) with `example.com` surfaces. The adopter's
+real public surfaces appear only in operator-run docs and a GitHub issue, never in
+scanned committed text.

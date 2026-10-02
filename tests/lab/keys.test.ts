@@ -17,7 +17,7 @@ const base = {
 function message(config: Record<string, unknown>): string {
   const result = parseLabConfig(config);
   if (result.ok) throw new Error("expected the lab to be rejected");
-  expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+  expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   return result.error.message;
 }
 

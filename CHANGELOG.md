@@ -8,12 +8,32 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Study files can use the format `schema: humanish.study.v3`.
+  - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
+    `scripted`) and `mode:` (`dry-run` or `live`).
+  - It has one `actor:` object and one top-level `caps:` block.
+  - `participants:` is a count, `{ count, instruction }`, or a list of participants. A list entry
+    with `count: n` and an `id` stands for n participants `<id>-01` to `<id>-NN`.
+  - The scripted route takes `surfaces: [desktop]` or `surfaces: [desktop, mobile]`.
+  - A field the declared route does not read is an error that names the route. So is a route the
+    subject and actor do not take.
+  - A v3 file goes where a lab file goes today, under `humanish/labs/`. `humanish.lab.v2` files
+    parse as before, with the same warnings.
+  - `LabConfig.schema` holds the file's schema, so its type is now
+    `"humanish.lab.v2" | "humanish.study.v3"`.
+
 ### Removed
 
 - `docs/assets/humanish-drawdb-hero.png` and `docs/assets/humanish-observer-hero.png` from the
   npm package. The README no longer shows either: it opens with the tagline, the demo poster and
   the keyless quick start. An earlier version's README loads its image from that version on
   unpkg, which keeps it.
+- `AGENTS.md`, `CONTRIBUTING.md`, `docs/status.md`, `docs/ramp/`, `docs/release/` and
+  `docs/history/roadmap/` from the npm package. These are contributor and maintainer pages; read
+  them on GitHub. The package now ships `docs/README.md`, the index of the docs it ships, and a
+  shipped doc that linked one of the removed pages links it on GitHub.
 
 ### Deprecated
 
@@ -24,6 +44,26 @@ The Unreleased section holds the full notes for the next version until it is tag
   `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
+
+- Error codes name the study or the route where they said lab. Only the prefix changes.
+  - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
+  - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
+  - `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is `HUMANISH_SHARED_WORLD_*`.
+  - `HUMANISH_TERMINAL_LAB_*` is `HUMANISH_TERMINAL_*`, and `HUMANISH_SCRIPTED_LAB_*` is
+    `HUMANISH_SCRIPTED_*`.
+  - `HUMANISH_LAUNCH_INVALID_LAB` is `HUMANISH_LAUNCH_INVALID_STUDY`.
+
+  A script or library caller that matches a code by its old name needs the new one. Runs saved
+  before the change keep the codes they were written with, and nothing reads a code back from a
+  saved run.
+
+- Computer-use streams in `run.json` are labelled `<participant id> · browser`, such as
+  `lane-01 · browser`, in place of `CUA browser — <study>` and `CUA participant <id>: <study>`, and
+  their screenshot embed title is `Desktop (raw)` or `Desktop (blurred)` in place of
+  `CUA desktop …`. Bundles written earlier keep their labels. The Observer says participant where it
+  said lane (`Participant`, `Est. participant cost`, `Assigned focus`, `Declared UI route`), calls
+  its library the study library, and uses `·` in labels and a colon in sentences where it showed an
+  em dash.
 
 - The first commands a newcomer runs say the right thing.
   - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
@@ -47,6 +87,25 @@ The Unreleased section holds the full notes for the next version until it is tag
   longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
   em dash and its all-caps word. A test now runs init and holds these files to zero of each
   (#1440).
+- `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
+  passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
+  as what verify found, such as "redaction did not pass (status: pending)" or "review.md is
+  missing", then names `verify --verbose`, which prints every check as before. A missing run prints
+  only that. `--json` keeps its fields.
+  - A check that reads bundle content says "not checked, because run.json failed the shape check"
+    when run.json fails its shape check. Before, it printed its pass sentence.
+  - Each check has a pass message and a different fail message, in JSON and human output. Before,
+    `run schema`, `run bundle shape`, `redaction passed` and `review artifacts exist` printed the
+    rule they enforce on both sides, such as "redaction status must be passed".
+- `humanish stats` on a project with only previews prints one line, "2 previews ($0); no live
+  runs yet". Otherwise previews get their own `previews:` line, followed by spend, outcomes and the
+  per-lab and per-day lines. Counts read "3 runs" and "1 preview" in place of "run(s)", zero counts
+  are left out, and the closing note is one sentence. docs/contracts/study-costs.md holds the
+  accounting rules.
+  - A dry run that records no cost counts as $0 in `stats --json`. It no longer adds to
+    `unpricedRuns` or `incompleteRunEstimates`, and its `runEstimatedUsd` is 0. Before, each
+    preview counted as unpriced, with incomplete accounting. A dry run that records an unknown
+    (null) figure stays unpriced.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
@@ -93,6 +152,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   stage. CI's `observer:reliability:proof` failed on that frame twice. Every settled stage and frame
   box matches the previous release on desktop and phone, in both orientations and at every zoom
   level. The live view still measures its stage.
+- The TUI key legend fits on one line at 45 columns. Its separators are two spaces, and the
+  lab and all-runs screens say "⏎ open" for "⏎ open run". Before, the lab and run legends wrapped
+  and left "quit" alone on the last line. The start rows keep two columns between the label and
+  its price, and put the price under the label when the two do not fit. At 45 columns, run rows
+  keep their two-column gutter and the labs list keeps the ▸ before the selected description.
+  "Start a LIVE run" reads "Start a live run", empty states are sentences, and on-screen em
+  dashes became colons or semicolons.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

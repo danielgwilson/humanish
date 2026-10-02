@@ -68,7 +68,7 @@ export function ParticipantAssignment({ stream }: { stream: ObserverStream }) {
           {source === "scripted_goal" ? <h3>Recorded scripted goal</h3> : null}
           {assignment.focus ? (
             <div>
-              <h3>Lane focus</h3>
+              <h3>Assigned focus</h3>
               <p>{assignment.focus}</p>
             </div>
           ) : null}
