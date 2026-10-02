@@ -27,11 +27,11 @@ import type {
   RoutePlanResult,
   RouteRefusal,
 } from "../../lab/plan-types.js";
-import { MAX_CUA_LANES } from "../../lab/routing.js";
+import { MAX_COMPUTER_USE_PARTICIPANTS } from "../../lab/routing.js";
 import type { LabConfig, LabSubjectServe, LabSubjectState } from "../../lab/types.js";
 import {
   cloneTargetValidationReason,
-  cuaLaneValidationReason,
+  computerUseValidationReason,
   desktopMediaValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
@@ -296,7 +296,7 @@ function driverReason(
 function rosterShapeReason(config: LabConfig): Rejection {
   // `lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap, unique ids,
   // allowPublicTargets with more than one participant, clone.fanout.
-  const fanoutReason = cuaLaneValidationReason(config);
+  const fanoutReason = computerUseValidationReason(config);
   if (fanoutReason) return { code: "HUMANISH_CUA_LAB_FANOUT_INVALID", message: fanoutReason };
   // The sandbox deadline is derived from the session budget, so a lab can ask for a session that
   // cannot legally be provisioned. Show the arithmetic: the provider's own error names a limit
@@ -409,11 +409,11 @@ export function planComputerUseLab(
     return refuse("in-scope", "HUMANISH_CUA_LAB_SUBJECT_INVALID", productReason, actor);
 
   const participants = computerUseParticipants(config, input.countOverride);
-  if (participants.length > MAX_CUA_LANES)
+  if (participants.length > MAX_COMPUTER_USE_PARTICIPANTS)
     return refuse(
       "after-personas",
       "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      `Computer-use fan-out is capped at ${MAX_CUA_LANES} participants (resolved ${participants.length}); N concurrent paid desktops is real spend.`,
+      `Computer-use fan-out is capped at ${MAX_COMPUTER_USE_PARTICIPANTS} participants (resolved ${participants.length}); N concurrent paid desktops is real spend.`,
       actor,
     );
   const [first, ...rest] = participants;

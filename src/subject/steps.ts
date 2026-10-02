@@ -59,17 +59,17 @@ export function emitPhaseCompleted(
 }
 
 /** Default phase-boundary sink (stderr): one line per event, prefixed with the participant id
- *  only when laneCount > 1. Single-participant emission is unconditional: total single-participant silence for the
- *  whole clone/install/build/ready boot is the bug this event stream exists to close.
+ *  only when the run has more than one participant. A single participant still gets every line:
+ *  a silent clone, install, build and ready boot is the bug this event stream exists to close.
  *  Overridable via LabDeps.subjectPhaseSink so deterministic tests capture instead of writing to
  *  the real stderr. */
 export function defaultSubjectPhaseSink(
   event: SubjectPhaseEvent,
-  ctx: { laneId: string; laneCount: number },
+  participant: { readonly id: string; readonly count: number },
 ): void {
   const durationSuffix = event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`;
   const prefix =
-    ctx.laneCount > 1 ? `humanish computer-use [${ctx.laneId}]` : "humanish computer-use";
+    participant.count > 1 ? `humanish computer-use [${participant.id}]` : "humanish computer-use";
   process.stderr.write(`${prefix}: ${event.message}${durationSuffix}\n`);
 }
 

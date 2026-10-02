@@ -46,7 +46,7 @@ function inboxPath(options: InboxRenderOptions): string {
 
 const VERIFY_HINT = /verify|confirm|activate|validate|magic|token|account|sign[\s-]?up/i;
 
-/** Replace `from` with `to` everywhere it ends on an ORIGIN BOUNDARY — end-of-string or one of the URL
+/** Replace `from` with `to` everywhere it ends on an origin boundary: end-of-string or one of the URL
  *  delimiters `/ ? # " ' <space> > \`. A bare prefix replace would mangle a sibling origin that shares
  *  `from` as a numeric prefix (`:30000` vs `:3000`) or a suffix-domain (`:3000.evil`); the boundary
  *  check prevents that. Works both for a single URL and inside a blob of email HTML. */
@@ -91,13 +91,13 @@ function safePort(url: string | undefined): string | undefined {
 }
 
 /**
- * Build the [internalOrigin → reachableOrigin] rewrite rows for a run. The app-under-test bakes ITS OWN
+ * Build the [internalOrigin → reachableOrigin] rewrite rows for a run. The app-under-test bakes its own
  * origin into the verify links it emails (usually its loopback serve origin); the persona reaches the
  * app at a possibly-different origin — the same loopback on the CUA route (identity, a no-op), the
- * harness-minted getHost URL on the shared-world route (where the rewrite is REQUIRED). Emits the serve
+ * harness-minted getHost URL on the shared-world route (where the rewrite is required). Emits the serve
  * origin plus its loopback aliases at the serve port (127.0.0.1 / localhost / 0.0.0.0) so an app that
- * stamps `localhost` still rewrites, and — because the harness cannot infer an absolute PUBLIC base URL
- * an app was configured with — an operator-declared `linkOrigin` escape hatch, matched first. Origins
+ * stamps `localhost` still rewrites, and (because the harness cannot infer an absolute public base URL
+ * an app was configured with) an operator-declared `linkOrigin` escape hatch, matched first. Origins
  * only (no trailing slash, no path), so replaceOriginBoundary matches on a URL boundary.
  */
 export function buildOriginMap(args: {
@@ -154,9 +154,9 @@ function neutralizeEmailHtml(html: string, originMap: OriginMap): string {
     .replace(/<(script|style|iframe|object|embed|svg|math|template)\b[\s\S]*?<\/\1\s*>/gi, "")
     // stray or void dangerous tags, incl. unclosed openers and redirect/reroot tags
     .replace(/<\/?(script|style|iframe|object|embed|svg|math|base|meta|link|form)\b[^>]*>/gi, "")
-    // inline event handlers, whether preceded by whitespace OR a "/" attribute separator
+    // inline event handlers, whether preceded by whitespace or a "/" attribute separator
     .replace(/[\s/]on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, " ")
-    // javascript:/vbscript: in nav/resource attrs — quoted OR unquoted (data: is left for inline images)
+    // javascript:/vbscript: in nav/resource attrs, quoted or unquoted (data: is left for inline images)
     .replace(
       /(href|src|xlink:href|formaction|action)\s*=\s*(?:"(?:javascript|vbscript):[^"]*"|'(?:javascript|vbscript):[^']*'|(?:javascript|vbscript):[^\s>]*)/gi,
       '$1="#"',
@@ -276,7 +276,7 @@ const PAGE_CSS =
  *  script or hijacking navigation on the surface page. `script-src 'none'` blocks inline handlers,
  *  `javascript:` URLs, and any injected <script>; `object-src`/`frame-src 'none'` block plugins/frames;
  *  `base-uri 'none'` blocks <base> reroot. Images/styles stay permissive so the real email still renders.
- *  Set BOTH as a page() meta (covers direct render use) and as a catch response header (covers serving). */
+ *  Set both as a page() meta (covers direct render use) and as a catch response header (covers serving). */
 const INBOX_SURFACE_CSP =
   "default-src 'self'; script-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; img-src * data:; style-src 'unsafe-inline'; font-src * data:";
 
@@ -310,7 +310,7 @@ function toValues(message: CommsMessage): string[] {
   return message.to.map((address) => address.value);
 }
 
-/** The inbox LIST page (semantic table; each row links to its message). */
+/** The inbox list page (semantic table; each row links to its message). */
 export function renderInboxList(
   messages: CommsMessage[],
   options: InboxRenderOptions = {},
@@ -352,7 +352,7 @@ export function renderInboxList(
   return page("Inbox", body);
 }
 
-/** One message, DEFAULT view: the app's real captured email in a minimal high-contrast shell. */
+/** One message, default view: the app's real captured email in a minimal high-contrast shell. */
 export function renderInboxMessage(
   message: CommsMessage,
   options: InboxRenderOptions = {},
@@ -387,7 +387,7 @@ export function renderInboxMessage(
   return page(message.subject ?? "Message", body);
 }
 
-/** One message, SYNTHESIZED view: a guaranteed-legible reading pane (big verify button + big OTP). The
+/** One message, synthesized view: a guaranteed-legible reading pane (big verify button + big OTP). The
  *  reliability fallback when the app's real email is a vision minefield; opt-in, never the default. */
 export function renderInboxMessageSynth(
   message: CommsMessage,

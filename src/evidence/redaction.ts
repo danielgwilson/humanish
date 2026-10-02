@@ -133,9 +133,9 @@ export function publicPathForTrace(value: string, rootCwd: string): string {
 // or a logged-in third-party UI. A raw frame must never reach a public artifact.
 // redactScreenshot is the fail-closed primitive that gates that surface. It
 // always returns a freshly re-encoded, downscaled, box-blurred thumbnail (or a
-// neutral placeholder), and NEVER the source pixels. The "too coarse to read"
+// neutral placeholder), and never the source pixels. The "too coarse to read"
 // invariant is enforced in code, not by defaults: the emitted width is hard-
-// capped (a caller may request a SMALLER thumbnail but never a larger one), and
+// capped (a caller may request a smaller thumbnail but never a larger one), and
 // the blur radius is computed internally with a floor, so neither a caller
 // option nor a natively small frame can widen the output back into legibility.
 // On any uncertainty (non-PNG input, an oversized or unreadable PNG, or any
@@ -174,7 +174,7 @@ export interface RedactedScreenshot {
 export interface RedactScreenshotOptions {
   /**
    * Longest emitted edge in pixels. Clamped to [1, 128]: a caller may request a
-   * SMALLER (safer) thumbnail but never a larger one, so no call site can widen
+   * smaller (safer) thumbnail but never a larger one, so no call site can widen
    * the frame back into legibility. Default 96. Blur is not a caller knob: it is
    * an internal safety floor computed from the output size.
    */
@@ -321,7 +321,7 @@ export function tailText(value: string, maxChars: number): string {
 
 /**
  * A redacted, ellipsis-prefixed tail of captured output for a (public-bound)
- * message field. Pattern-redacts the FULL text BEFORE truncating: slicing a tail
+ * message field. Pattern-redacts the full text before truncating: slicing a tail
  * first could cut through a secret's prefix (e.g. drop "sk-proj-") and defeat the
  * pattern matcher on the remainder. Callers should literal-scrub known
  * provisioned values first; this is the pattern pass. Empty output -> "(no output)".
@@ -445,7 +445,7 @@ export function scrubLiterals(values: readonly string[]): (text: string) => stri
 /**
  * Coerce an unknown thrown value to its message string. Prefer this over the
  * inline `error instanceof Error ? error.message : String(error)` so error
- * stringification stays uniform. Note: this does NOT redact -- sites that emit
+ * stringification stays uniform. Note: this does not redact; sites that emit
  * to public-bound artifacts must run the result through `redactText` first.
  */
 export function toErrorMessage(error: unknown): string {

@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// Counts four kinds of prose in src/ comments. Three belong in issues and commit messages: issue
+// Counts five kinds of prose in src/ comments. Three belong in issues and commit messages: issue
 // references (#123, except in TODO(#123)), red-team tags (FIX-5) and all-caps emphasis (NOT, ONLY,
 // NEVER). The fourth is the retired word "lane" or "lanes", which CONTEXT.md replaces with
 // participant; the contract spellings it lists (`lanes[]`, `laneId`, `per-lane-worlds`, `lane-NN`,
-// `--lanes`, and any code span) are not counted. Each count is held to a flag in package.json's
+// `--lanes`, and any code span) are not counted. The fifth is the em dash, written as `—` or as
+// ` -- ` between words; a colon, a comma or two sentences says the same. Code spans are not counted
+// for caps, lane or em dashes. Each count is held to a flag in package.json's
 // prose:check script: a count above its cap fails, and so does one below it, so the PR that removes
-// the prose lowers the cap.
+// the prose lowers the cap. A count with no flag fails too, so a merge that drops a flag cannot
+// leave that count unchecked.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -17,6 +20,7 @@ const { values } = parseArgs({
     "max-fix-tags": { type: "string" },
     "max-caps": { type: "string" },
     "max-lane-comments": { type: "string" },
+    "max-em-dashes": { type: "string" },
     list: { type: "boolean", default: false },
   },
 });
@@ -29,7 +33,9 @@ const ACRONYMS = new Set(
     "TTY TUI UI URL USD UTC UTF UUID VM VNC XDG XOR YAML ZDR E2B AX UX GET POST PUT HEAD RFC " +
     "OS PDF JPEG JS TS ASCII EOF IP IO MCP OAUTH OK EXIF DOCTYPE RGB RGBA WSL PCM WAV PII IHDR " +
     "ENOENT EEXIST ENOTEMPTY ENOTDIR EISDIR EACCES EPERM EPIPE EBUSY ELOOP EXDEV SIGTERM SIGKILL SIGINT " +
-    "CA GNU GUI LTS OCR SSG ABA CIDR SNI TOCTOU DSF ENOSPC OSS SQL"
+    "CA GNU GUI LTS OCR SSG ABA CIDR SNI TOCTOU DSF ENOSPC OSS SQL " +
+    "CRC CSD EAGAIN EMFILE ENOMEM FIFO HAR ICC IDAT IEND IME NUL OOM PEM PHI RPC SIGHUP SMS SVG TOML UA " +
+    "VFR XFCE XML"
   ).split(" "),
 );
 
@@ -42,7 +48,12 @@ const files = readdirSync("src", { recursive: true, encoding: "utf8" })
 // (`lanes[]`), a flag (`--lanes`), an id (`lane-01`, `lane-NN`) or the `per-lane-worlds` topology.
 const LANE_WORD = /(?<![\w.]|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
 
-const hits = { "issue-refs": [], "fix-tags": [], caps: [], "lane-comments": [] };
+// An em dash, or two hyphens standing alone between spaces. A flag (`--count`) and a rule (`---`)
+// are not dashes, and neither is the ` -- ` that separates a lint directive from its reason.
+const EM_DASH = /—|(?<=\s)--(?=\s)/g;
+const LINT_DIRECTIVE = /^(\s*(?:oxlint|eslint)-(?:disable|enable)\S*[^\n]*?\s)--(?=\s)/;
+
+const hits = { "issue-refs": [], "fix-tags": [], caps: [], "lane-comments": [], "em-dashes": [] };
 for (const file of files) {
   const text = readFileSync(file, "utf8");
   for (const comment of parseSync(file, text).comments) {
@@ -61,6 +72,8 @@ for (const file of files) {
       if (!ACRONYMS.has(match[0])) hits.caps.push(at(match));
     }
     for (const match of prose.matchAll(LANE_WORD)) hits["lane-comments"].push(at(match));
+    const dashProse = prose.replace(LINT_DIRECTIVE, "$1  ");
+    for (const match of dashProse.matchAll(EM_DASH)) hits["em-dashes"].push(at(match));
   }
 }
 
@@ -74,10 +87,12 @@ for (const kind of Object.keys(hits)) {
 
 const rose = [];
 const fell = [];
+const uncapped = [];
 for (const [kind, list] of Object.entries(hits)) {
   const max = values[`max-${kind}`];
   const cap = max === undefined ? undefined : Number(max);
   const count = list.length;
+  if (cap === undefined) uncapped.push(`--max-${kind}=${count}`);
   if (cap !== undefined && count > cap) rose.push(kind);
   if (cap !== undefined && count < cap) fell.push(`--max-${kind}=${count}`);
   const status =
@@ -102,4 +117,9 @@ if (fell.length > 0) {
     `A count fell. Lower the cap in package.json's prose:check script in this PR: ${fell.join(" ")}.\n`,
   );
 }
-if (rose.length > 0 || fell.length > 0) process.exitCode = 1;
+if (uncapped.length > 0) {
+  process.stdout.write(
+    `A count has no cap. Add it to package.json's prose:check script: ${uncapped.join(" ")}.\n`,
+  );
+}
+if (rose.length > 0 || fell.length > 0 || uncapped.length > 0) process.exitCode = 1;

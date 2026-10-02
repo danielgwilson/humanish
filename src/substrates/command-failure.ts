@@ -14,14 +14,14 @@ import { tailOf } from "./shell.js";
 
 /**
  * True when `error` is (structurally) the @e2b/desktop CommandExitError: a
- * non-zero substrate command exit that the real Sandbox surfaces as a THROW.
+ * non-zero substrate command exit that the real Sandbox surfaces as a throw.
  * Matches either the SDK class name (`name === "CommandExitError"`) or any object
  * carrying a numeric `exitCode` (the same field `commandFailureInfo` reads, so a
  * structural fake is covered without importing the SDK class).
  *
- * Deliberately conservative — it is the RECOVERABILITY predicate the CUA loop uses
+ * Deliberately conservative: it is the recoverability predicate the CUA loop uses
  * to skip a single failed desktop action instead of ending the whole run: it must
- * NOT match a deadline/abort control-flow signal (those subclass Error without a
+ * not match a deadline/abort control-flow signal (those subclass Error without a
  * name override or an exitCode) or a generic Error with no exit signal, so only a
  * genuine substrate-command failure is treated as recoverable.
  */

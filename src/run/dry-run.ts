@@ -60,7 +60,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
 
   if (cwdError) return refused(requestedCwd, warnings, cwdError);
 
-  const participants = normalizeParticipantCount(options.simCount);
+  const participants = normalizeParticipantCount(options.participantCount);
   if (participants === null) {
     return refused(requestedCwd, warnings, {
       code: "HUMANISH_INVALID_SIM_COUNT",

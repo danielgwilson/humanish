@@ -1,5 +1,5 @@
 // Whether a local-agent participant can run on this machine before anything is acquired: its CLI
-// is on PATH and signed in, a hosted Codex CLI is a qualified release on a supported platform, and
+// is on `PATH` and signed in, a hosted Codex CLI is a qualified release on a supported platform, and
 // a ChatGPT-account Codex is not asked to enforce a dollar cap it has no price for. Each route maps
 // the refusal's kind to its own error code.
 
@@ -8,7 +8,7 @@ import { checkHostedCodexCompatibility, detectLocalAgents, type LocalAgentId } f
 
 /** Why a local-agent participant cannot run here. */
 export type LocalAgentRefusal =
-  /** The CLI is not on PATH. */
+  /** The CLI is not on `PATH`. */
   | { kind: "agent-missing"; message: string }
   /** The CLI is signed out, or could not report its sign-in status. */
   | { kind: "signin-required"; message: string }

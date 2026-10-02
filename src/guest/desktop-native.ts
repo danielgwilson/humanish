@@ -23,7 +23,7 @@ export function createGuestDesktopNativeTools(options: {
   display: string;
   /** An owner-created private directory inside the disposable guest. */
   temporaryDirectory: string;
-  /** Owner-created cookie file; never inherit an operator's XAUTHORITY. */
+  /** Owner-created cookie file; never inherit an operator's `XAUTHORITY`. */
   xauthority: string;
 }): GuestDesktopNativeTools {
   if (

@@ -1,4 +1,4 @@
-// Finding and admitting the Codex CLI a restricted launch runs: the native executable behind PATH
+// Finding and admitting the Codex CLI a restricted launch runs: the native executable behind `PATH`
 // or the npm launcher, the environment its children get, and the `--version` check against the
 // host's admitted releases.
 import { constants } from "node:fs";
@@ -15,7 +15,7 @@ import {
   type RestrictedCodexSpawn,
 } from "./restricted-transport.js";
 
-/** The environment of every Codex child: a private home and scratch, and PATH and locale. */
+/** The environment of every Codex child: a private home and scratch, and `PATH` and locale. */
 export function childEnvironment(
   source: NodeJS.ProcessEnv,
   home: string,
@@ -77,7 +77,7 @@ export interface RefusedCodexExecutable {
   readonly reason: string;
 }
 
-/** Resolve PATH without running a shell. The npm launcher is resolved to its
+/** Resolve `PATH` without running a shell. The npm launcher is resolved to its
  * native optional package so cleanup owns the real app-server child. */
 export async function resolveExecutable(
   options: { executable?: string; platform?: NodeJS.Platform; arch?: string },
@@ -108,7 +108,7 @@ async function firstCodexOnPath(env: NodeJS.ProcessEnv): Promise<string | undefi
       await access(candidate, constants.X_OK);
       return candidate;
     } catch {
-      /* Continue PATH. */
+      /* Try the next `PATH` entry. */
     }
   }
   return undefined;

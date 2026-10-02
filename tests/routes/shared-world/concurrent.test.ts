@@ -781,7 +781,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // ONE subject sandbox + 3 actor sandboxes = 4 created; ALL torn down BY exact id (no list).
     expect(created).toHaveLength(4);
     expect(sandboxes).toHaveLength(4);
-    expect(created[0]?.metadata?.role).toBe("subject");
+    expect(created[0]?.metadata?.kind).toBe("subject");
     expect(created[0]?.metadata?.topologyMode).toBe("concurrent");
     const createdIds = sandboxes.map((s) => s.sandboxId).sort();
     expect([...killed].sort()).toEqual(createdIds); // killed-set == created-set (N+1)

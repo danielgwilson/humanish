@@ -14,7 +14,7 @@ import { e2bShell } from "./shell.js";
 
 /**
  * Runtime-only CDP endpoint attribution for the exact chromium this participant launched. Port
- * resolution at OBSERVE time: the cached launch-time `cdpPort` wins; absent that, the observer
+ * resolution at observe time: the cached launch-time `cdpPort` wins; absent that, the observer
  * probe re-reads `profileDir`'s DevToolsActivePort marker (a slow cold start can publish it
  * after the launch-time poll gave up); absent both it uses 9222, the port every participant launches
  * Chrome with, where a dead endpoint degrades into a warning that names the cause.
@@ -52,10 +52,10 @@ export interface ChromeEmulationDrift {
  * node: #514).
  *
  * "active": follow the participant to whatever tab they are driving now — never pin the state
- * observer to the launch tab (a verification link that opened in a NEW tab left a pinned observer
+ * observer to the launch tab (a verification link that opened in a new tab left a pinned observer
  * reading the old tab forever).
  *
- * `onUnavailable` fires ONCE, on the first probe that could not read the page, with the reason.
+ * `onUnavailable` fires once, on the first probe that could not read the page, with the reason.
  * The observer still degrades to `{}` for the loop; the callback is how a participant says out loud that
  * url/text criteria are not being measured, instead of letting the funnel report 0/N (#514).
  */
@@ -165,7 +165,7 @@ export const DEFAULT_MOBILE_USER_AGENT =
 
 /**
  * Apply mobile emulation (#221) to the participant's launch page and read back what the page reports.
- * Fails CLOSED: a request that cannot be applied throws, because a desktop run labelled mobile is
+ * Fails closed: a request that cannot be applied throws, because a desktop run labelled mobile is
  * the over-trust this feature exists to prevent. A read-back that cannot be taken is a warning
  * (the emulation was applied; only the proof is missing).
  */

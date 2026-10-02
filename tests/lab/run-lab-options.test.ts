@@ -9,12 +9,7 @@ import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { routeOf } from "../../src/lab/plan.js";
-import {
-  participantOf,
-  phaseEvent,
-  planEvent,
-  type LabEvent,
-} from "../../src/lab/run-lab-events.js";
+import { phaseEvent, planEvent, type LabEvent } from "../../src/lab/run-lab-events.js";
 import type { StreamEvent } from "../../src/lab/run-lab-homes.js";
 import { normalizeRunLabOptions } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
@@ -356,7 +351,7 @@ describe("onEvent is passive", () => {
     result.emit!(
       phaseEvent(phase, {
         kind: "participant",
-        participant: participantOf({ laneId: "lane-01", laneIndex: 0, laneCount: 1 }),
+        participant: { id: "lane-01", index: 0, count: 1 },
       }),
     );
     result.emit!({ type: "analysis-started" });

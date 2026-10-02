@@ -35,11 +35,11 @@ export interface DoctorResult {
     ok: boolean;
     message: string;
     /**
-     * ADDITIVE + OPTIONAL. `false` means the check never ran — the directory could not be read, so
+     * Additive + optional. `false` means the check never ran: the directory could not be read, so
      * there is nothing to report about it either way. Absent means it ran and `ok` is its verdict.
      *
      * It exists because a failed check and an unrun one used to render identically, and the unrun
-     * rows carried the SUCCESS text: a participant read `missing package.json: package.json is
+     * rows carried the success text: a participant read `missing package.json: package.json is
      * present and safe to read` off a real screen (labs/tui-self-study.yaml).
      */
     checked?: boolean;
@@ -143,7 +143,7 @@ export async function doctor(
     ...(await projectChecks(projectRoot)),
     await desktopSdkCheck(setup),
     terminalSurfaceCheck(),
-    // The operator's own signed-in coding agent, reported as a CAPABILITY and never a gate: a
+    // The operator's own signed-in coding agent, reported as a capability and never a gate: a
     // machine with none is not broken, it just needs a provider key. This row exists because
     // "go make an API key" is where most people trying humanish stop, and a developer very often
     // already has one of these signed in.
@@ -231,7 +231,7 @@ async function projectChecks(projectRoot: PreparedSelectedOutputDirectory): Prom
 
 /**
  * The optional peer dep every live browser and terminal route needs (#346). `npx -y humanish` does
- * not pull optional peers, so an adopter's FIRST live run used to fail on it — safely and at $0,
+ * not pull optional peers, so an adopter's first live run used to fail on it, safely and at $0,
  * but as a burned first impression on the flagship path. Answering it here means the readiness
  * command actually answers readiness.
  */
@@ -260,14 +260,14 @@ async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck
 /**
  * The stakeholder surface (#455). Reported as capability, never as a gate: the TUI is optional,
  * and `doctor` is itself mostly run by agents through a pipe, where a TTY requirement says
- * nothing about whether the PROJECT is ready. So this row is always ok.
+ * nothing about whether the project is ready. So this row is always ok.
  *
- * WHO IS READING decides the wording, and a real first-contact study
+ * Who is reading decides the wording, and a real first-contact study
  * (labs/first-contact.yaml) is why. An agent evaluating humanish read
  * "`humanish tui` is available in an interactive terminal", correctly concluded it was not in
- * one, and dropped it — then wrote a report FOR A HUMAN that never mentioned the human
+ * one, and dropped it, then wrote a report for a human that never mentioned the human
  * surface at all. Discovery worked; handoff did not. A capability described to a reader who
- * cannot use it has to be phrased as something to PASS ON, or it reads as "not for you" and
+ * cannot use it has to be phrased as something to pass on, or it reads as "not for you" and
  * dies there.
  */
 function terminalSurfaceCheck(): DoctorCheck {
