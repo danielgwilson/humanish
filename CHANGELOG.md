@@ -122,6 +122,22 @@ The Unreleased section holds the full notes for the next version until it is tag
   - A missing run reads "No runs in <dir> yet; start one with humanish run first-run" in a project
     with no runs, and "No run <id>; humanish runs lists them" otherwise, in `verify`, `cleanup`,
     `feedback`, `observe`, `export` and `serve`. Before, each said "Run not found: <id>".
+
+- `humanish doctor` without `--lab` passes on a project with no keys. Its key rows report presence
+  and name the project's labs that need each key, for example "missing; used by try-live; run
+  `e2b auth login`, or `humanish keys set e2b`". Before, bare doctor after `init --yes` failed on a
+  missing `E2B_API_KEY`, and on `OPENAI_API_KEY` when no local agent was signed in, although
+  init's next step, `run first-run`, needs neither. `doctor --lab <lab>` still fails on a key the
+  selected lab requires, so a script that gates a live run on doctor's exit code should pass
+  `--lab`.
+  - Each row in `doctor --json` has a `status`: `ok`, `missing`, `not_checked` or `note`. A note is
+    advisory and keeps `ok: true`. Notes are: a missing key a project lab needs (without `--lab`),
+    `humanish tui` unbuilt or unsupported on this Node, a post-run analysis that will be skipped,
+    an installed agent that is not signed in, and an absent `@e2b/desktop` without `--lab`. Human
+    output prints the status where it printed "ok" or "missing".
+  - Each installed local agent has its own row, `local agent codex` and `local agent claude`.
+    Before, one `local agents` row joined both into one line. With no agent installed, the
+    `local agents` row stays.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;

@@ -1,0 +1,17 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "cwd": "string",
+    "latest": "string",
+    "ok": "boolean",
+    "runs": [
+      {
+        "createdAt": "string",
+        "mode": "string",
+        "path": "string",
+        "runId": "string"
+      }
+    ],
+    "schema": "string"
+  }
+}

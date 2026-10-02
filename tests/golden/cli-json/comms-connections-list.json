@@ -1,0 +1,30 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "configPath": "string",
+    "connections": [],
+    "credential": {
+      "explicitlyEmpty": "boolean",
+      "present": "boolean",
+      "source": "null",
+      "stored": "boolean",
+      "strict": "boolean"
+    },
+    "message": "string",
+    "ok": "boolean",
+    "providers": [
+      {
+        "channel": "string",
+        "description": "string",
+        "id": "string",
+        "keyEnv": "string",
+        "label": "string",
+        "limitation": "string",
+        "receivingAvailable": "boolean",
+        "setupAvailable": "boolean",
+        "setupUrl": "string"
+      }
+    ],
+    "schema": "string"
+  }
+}
