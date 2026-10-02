@@ -234,8 +234,6 @@ interface RunLabBase {
   rerun?: {
     sourceRunId: string;
     participantIds?: string[];
-    /** @deprecated The older name of `participantIds`. */
-    laneIds?: string[];
   };
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
 }

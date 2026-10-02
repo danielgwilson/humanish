@@ -120,7 +120,7 @@ export interface RunCuaActorLabOptions {
   /** Explicitly create a new run containing failed or selected lanes from a prior fan-out run. */
   rerun?: {
     sourceRunId: string;
-    laneIds?: string[];
+    participantIds?: string[];
   };
   /** Keys and subject env for the run. Defaults to process.env. */
   env?: Readonly<Record<string, string | undefined>>;
@@ -244,7 +244,6 @@ export interface CuaParticipantSummary {
 export type CuaActorLabErrorCode =
   | "HUMANISH_LAB_ANALYSIS_INVALID"
   | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-  | "HUMANISH_LAB_OPTION_CONFLICT"
   | "HUMANISH_LAB_OPTION_UNSUPPORTED"
   | "HUMANISH_CUA_LAB_FAILED"
   | "HUMANISH_CUA_LAB_KEYS_MISSING"

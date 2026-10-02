@@ -7,9 +7,10 @@ import { afterAll, expect, it } from "vitest";
 import { stringify } from "yaml";
 import { lab } from "../admission/fixtures.js";
 
-// `lab run --rerun-failed-from <run> --participants <ids>` is the example in `lab run --help`. The CLI
-// must pass the selection under its current name, so Node prints no DeprecationWarning. A child
-// process gives the real stderr, where Node prints warnings.
+// `lab run --rerun-failed-from <run> --participants <ids>` is the example in `lab run --help`.
+// The CLI must pass the selection as rerun.participantIds: runLab refuses the removed
+// rerun.laneIds with HUMANISH_LAB_OPTION_UNSUPPORTED. A child process gives the real stderr, where
+// Node prints warnings.
 
 const execFileAsync = promisify(execFile);
 const cleanup: string[] = [];
@@ -17,10 +18,10 @@ afterAll(async () => {
   await Promise.all(cleanup.map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-it("reruns selected participants without a DeprecationWarning on stderr", async () => {
-  const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-rerun-lanes-"));
+it("passes the selected participants to the rerun check without a warning", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-rerun-participants-"));
   cleanup.push(cwd);
-  await writeFile(path.join(cwd, "package.json"), '{ "name": "rerun-lanes-fixture" }\n');
+  await writeFile(path.join(cwd, "package.json"), '{ "name": "rerun-participants-fixture" }\n');
   await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
   const raw = lab("cuAppUrl", {}, { lanes: [{ id: "lane-01" }, { id: "lane-02" }] });
   await writeFile(
