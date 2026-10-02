@@ -15,14 +15,15 @@
       "history": 16,
       "series-codes": 0,
       "name-refs": 0,
-      "string-em-dashes": 65,
-      "string-issue-refs": 6,
+      "string-em-dashes": 37,
+      "string-issue-refs": 3,
       "string-slice": 1,
-      "string-rationale": 16,
+      "string-rationale": 15,
       "string-plural-s": 54,
-      "string-caps": 215,
-      "string-cua": 5,
-      "prompt-markers": 0
+      "string-caps": 109,
+      "string-cua": 4,
+      "prompt-markers": 0,
+      "script-markers": 2
     },
     "tests": {
       "issue-refs": 0,

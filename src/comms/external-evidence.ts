@@ -95,13 +95,13 @@ export async function collectExternalCommsEvidence(args: {
     if (collected.captured > 0) {
       return {
         warnings: scrubbed([
-          `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
+          `The email catch captured ${collected.captured} email send(s), but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
         ]),
       };
     }
     return {
       warnings: scrubbed([
-        `Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${external.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`,
+        `The email catch captured no email sends: the app never delivered mail through the catch at ${external.catchBaseUrl}. Verify the app's email API base URL points at it and that the flow reached an email step.`,
       ]),
     };
   } catch (error) {

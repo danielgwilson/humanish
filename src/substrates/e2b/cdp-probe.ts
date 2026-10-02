@@ -353,7 +353,7 @@ def browser_ws_url(port):
 
 def hold(port, page, request):
     """Emulate the launch page and then every page target Chrome opens later, for as long as this
-    process lives (#221, #623). One browser-level socket with flattened sessions: the launch page is
+    process lives. One browser-level socket with flattened sessions: the launch page is
     attached by id and reloaded so scripts that read the UA at load see it; a target that appears
     later is attached the moment it exists, sent the same overrides, and reloaded once after its
     first real navigation commits (touch emulation reaches a document only when it loads under it).
@@ -463,7 +463,7 @@ def main():
     page = select_page(pages, args)
     # A listing with targets but no http page is usually an instant: a reload in flight, a tab
     # between about:blank and its navigation. Ask again for up to a second before calling it
-    # unavailable (#653): the lane's observer would otherwise lose one turn of url/text evidence,
+    # unavailable: the lane's observer would otherwise lose one turn of url/text evidence,
     # and a test on a loaded runner saw exactly this twice in one evening.
     for _ in range(4):
         if page is not None or not pages:

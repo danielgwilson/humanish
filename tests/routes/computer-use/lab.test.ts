@@ -830,7 +830,7 @@ describe("runCuaActorLab", () => {
       catchBaseUrl: `https://catch.example.test/${token}`,
       deliveries: async () => new Response("", { status: 200 }),
     });
-    expect(warnings).toContain("Comms catch captured ZERO email sends");
+    expect(warnings).toContain("The email catch captured no email sends");
     expect(warnings).not.toContain(token);
   });
 
@@ -7552,7 +7552,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       expect(thread).not.toContain("lane-01@example.test");
       expect(thread).not.toContain("Confirm your email");
       expect(thread).not.toContain("xyz789");
-      expect(result.warnings.some((w) => w.includes("captured ZERO email sends"))).toBe(false);
+      expect(result.warnings.some((w) => w.includes("captured no email sends"))).toBe(false);
     } finally {
       child.kill();
       await rm(dir, { recursive: true, force: true });
