@@ -72,15 +72,9 @@ describe("declared task protocol admission", () => {
       const generic = [vi.spyOn(synthetic, "runDryRun")];
       for (const spy of generic) spy.mockImplementation(forbidden);
       const output = path.join(cwd, "must-not-exist");
-      const hooks = {
-        env: {},
-        loadDesktopModule: forbidden,
-        runSession: forbidden,
-        renderObserverFn: forbidden,
-      };
       const outcome = await runLab(
         parsed,
-        { cwd: output, dryRun: false, env: {}, cuaHooks: hooks },
+        { cwd: output, dryRun: false, env: {} },
         {
           desktopModule: forbidden,
           runSession: forbidden,

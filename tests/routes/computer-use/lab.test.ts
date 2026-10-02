@@ -1,5 +1,5 @@
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
-import { phaseEvent, type LabEvent } from "../../../src/lab/run-lab-events.js";
+import { phaseEvent, type LabEvent, type SetupTarget } from "../../../src/lab/run-lab-events.js";
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
 import { spawn } from "node:child_process";
@@ -42,7 +42,7 @@ import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
 } from "../../../src/routes/computer-use/self-report.js";
-import { type CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import {
   judgeOneParticipant,
   participantStatus as participantStatusForCredibility,
@@ -566,9 +566,9 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
         cwd,
         config,
         dryRun: false,
-        hooks: {
-          env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
-          loadDesktopModule: async () => module,
+        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+        deps: {
+          desktopModule: async () => module,
           runSession: async (options) => {
             sessionCallIndex = sandbox.calls.length;
             return runCuaActorSession({
@@ -620,9 +620,9 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
       cwd,
       config: configFor(),
       dryRun: false,
-      hooks: {
-        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
-        loadDesktopModule: async () => module,
+      env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+      deps: {
+        desktopModule: async () => module,
         runSession: async (options) => {
           sessions += 1;
           return runCuaActorSession({
@@ -681,13 +681,13 @@ describe("runCuaActorLab", () => {
         cwd,
         config: parsed.config,
         dryRun: false,
-        hooks: {
-          env: {
-            OPENAI_API_KEY: "test-openai-key",
-            E2B_API_KEY: "test-e2b-key",
-            CATCH_TOKEN: token,
-          },
-          loadDesktopModule: async () => module,
+        env: {
+          OPENAI_API_KEY: "test-openai-key",
+          E2B_API_KEY: "test-e2b-key",
+          CATCH_TOKEN: token,
+        },
+        deps: {
+          desktopModule: async () => module,
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
@@ -747,13 +747,13 @@ describe("runCuaActorLab", () => {
         cwd,
         config: parsed.config,
         dryRun: false,
-        hooks: {
-          env: {
-            OPENAI_API_KEY: options.openaiKey ?? "test-openai-key",
-            E2B_API_KEY: "test-e2b-key",
-            CATCH_TOKEN: options.token,
-          },
-          loadDesktopModule: async () => module,
+        env: {
+          OPENAI_API_KEY: options.openaiKey ?? "test-openai-key",
+          E2B_API_KEY: "test-e2b-key",
+          CATCH_TOKEN: options.token,
+        },
+        deps: {
+          desktopModule: async () => module,
           runSession: async (sessionOptions) =>
             runCuaActorSession({
               ...sessionOptions,
@@ -890,13 +890,13 @@ describe("runCuaActorLab", () => {
         cwd,
         config: parsed.config,
         dryRun: false,
-        hooks: {
-          env: {
-            OPENAI_API_KEY: "test-openai-key",
-            E2B_API_KEY: "test-e2b-key",
-            [tokenEnv]: token,
-          },
-          loadDesktopModule: async () => module,
+        env: {
+          OPENAI_API_KEY: "test-openai-key",
+          E2B_API_KEY: "test-e2b-key",
+          [tokenEnv]: token,
+        },
+        deps: {
+          desktopModule: async () => module,
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
@@ -934,8 +934,8 @@ describe("runCuaActorLab", () => {
         cwd,
         config: cuaConfig(),
         dryRun: true,
-        hooks: {
-          renderObserverFn: async (project, runId, options) => {
+        deps: {
+          renderObserver: async (project, runId, options) => {
             const runDir = path.join(project, ".humanish", "runs", runId);
             if (kind === "missing-artifact") await rm(path.join(runDir, "review.json"));
             else await rm(runDir, { recursive: true });
@@ -989,9 +989,9 @@ describe("runCuaActorLab", () => {
       config,
       dryRun: false,
       automaticAnalysis: { run: analyze },
-      hooks: {
-        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
-        loadDesktopModule: async () => module,
+      env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+      deps: {
+        desktopModule: async () => module,
       },
     }).finally(() => vi.unstubAllGlobals());
     expect(analyze).toHaveBeenCalledOnce();
@@ -1026,8 +1026,8 @@ describe("runCuaActorLab", () => {
       cwd,
       config,
       dryRun: false,
-      hooks: {
-        loadDesktopModule: async () => {
+      deps: {
+        desktopModule: async () => {
           allocations += 1;
           throw new Error("must not allocate");
         },
@@ -1046,12 +1046,12 @@ describe("runCuaActorLab", () => {
       cwd,
       config,
       dryRun: false,
-      hooks: {
+      deps: {
         runSession: async () => {
           called += 1;
           throw new Error("must not dispatch");
         },
-        loadDesktopModule: async () => {
+        desktopModule: async () => {
           called += 1;
           throw new Error("must not allocate");
         },
@@ -1218,13 +1218,10 @@ describe("runCuaActorLab", () => {
     const { module, created, killed } = makeFakeModule(sandbox);
     const sessionOptionsSeen: CuaActorSessionOptions[] = [];
     const prepared: string[] = [];
+    const targets: SetupTarget[] = [];
 
-    const hooks: CuaActorLabHooks = {
-      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-      loadDesktopModule: async () => module,
-      prepareDesktop: async (desktop) => {
-        prepared.push(desktop.sandboxId);
-      },
+    const deps: LabDeps = {
+      desktopModule: async () => module,
       // Wrap the REAL session: real provider (scripted transport), real executor, the lab's
       // desktop and writeScreenshot — only the network is faked.
       runSession: async (options) => {
@@ -1236,7 +1233,18 @@ describe("runCuaActorLab", () => {
       },
     };
 
-    const outcome = await runLab(config, { cwd, cuaHooks: hooks });
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        prepareDesktop: async (desktop, target) => {
+          prepared.push(desktop.sandboxId);
+          targets.push(target);
+        },
+      },
+      deps,
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
@@ -1256,8 +1264,12 @@ describe("runCuaActorLab", () => {
     expect(created[0]?.envs).toBeUndefined();
     expect(created[0]?.lifecycle).toEqual({ onTimeout: "kill" });
 
-    // prepareDesktop ran before the browser opened, against the created sandbox.
+    // prepareDesktop ran before the browser opened, against the created sandbox, with the
+    // participant as its target.
     expect(prepared).toEqual(["fake-sandbox-001"]);
+    expect(targets).toEqual([
+      { kind: "participant", participant: { id: "lane-01", index: 0, count: 1 } },
+    ]);
     const openIndex = expectSafeBrowserOpen(sandbox.calls, "http://127.0.0.1:3000/");
 
     // The model's click actuated the desktop through the real executor.
@@ -1345,18 +1357,21 @@ describe("runCuaActorLab", () => {
     if (!parsed.ok) throw new Error(parsed.error.message);
     const sandbox = makeFakeSandbox(); // Deliberately lacks files.read, like an older optional peer.
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     expect(outcome.result.warnings).toContainEqual(
@@ -1472,18 +1487,21 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     expect(outcome.result.ok).toBe(true);
@@ -1648,18 +1666,21 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     const bundle = JSON.parse(
@@ -1727,11 +1748,14 @@ describe("runCuaActorLab", () => {
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const seen: unknown[] = [];
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           seen.push(options.dwell);
           return runCuaActorSession({
@@ -1740,7 +1764,7 @@ describe("runCuaActorLab", () => {
           });
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const verified = await verifyRun(cwd, outcome.result.runId);
     expect(outcome.result.ok, JSON.stringify(verified.checks.filter((check) => !check.ok))).toBe(
@@ -1810,18 +1834,21 @@ describe("runCuaActorLab", () => {
       policies,
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     return outcome;
   }
@@ -1867,9 +1894,9 @@ describe("runCuaActorLab", () => {
       cwd,
       config,
       dryRun: false,
-      hooks: {
-        env: {},
-        loadDesktopModule: async () => {
+      env: {},
+      deps: {
+        desktopModule: async () => {
           desktopLoads++;
           throw new Error("must not load desktop");
         },
@@ -1956,17 +1983,17 @@ describe("runCuaActorLab", () => {
       parsed.config,
       {
         cwd,
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-          loadDesktopModule: async () => module,
-          runSession: async (options) =>
-            runCuaActorSession({
-              ...options,
-              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-            }),
-        },
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
       },
-      { subjectPhaseSink: (event) => phases.push(event.type) },
+      {
+        desktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+        subjectPhaseSink: (event) => phases.push(event.type),
+      },
     );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2007,18 +2034,21 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
     expect(attempts).toBe(1);
@@ -2060,18 +2090,21 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     const launch = commands.find((command) => command.includes("browser_preference='chrome'"))!;
@@ -2124,13 +2157,16 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
       },
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     expect(outcome.result.ok).toBe(false);
@@ -2159,17 +2195,20 @@ describe("runCuaActorLab", () => {
     });
     const { module, killed } = makeFakeModule(sandbox);
     let participantSessions = 0;
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async () => {
           participantSessions++;
           throw new Error("participant must not start");
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("wrong route");
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
@@ -2219,18 +2258,21 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
 
@@ -2282,11 +2324,14 @@ describe("runCuaActorLab", () => {
   it("does not treat a negated blocker phrase in a success message as a self-reported blocker", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
@@ -2296,7 +2341,7 @@ describe("runCuaActorLab", () => {
             },
           }),
       },
-    });
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -2566,49 +2611,52 @@ describe("runCuaActorLab", () => {
   it("adapter fail score turns an otherwise goal_satisfied browser run red while keeping the bundle verifiable", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+        scorer: browserScorer({
+          score: failingBrowserScore,
+          deriveFeedback: browserFeedback,
+          deriveArtifacts: async (ctx) => {
+            await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
+            await writeFile(
+              path.join(ctx.runDir, "adapter", "browser-state-proof.json"),
+              `${JSON.stringify(
+                {
+                  schema: "example.adapter-state-proof.v1",
+                  runId: ctx.runId,
+                  status: "failed-product-acceptance",
+                  backend: ctx.backend,
+                },
+                null,
+                2,
+              )}\n`,
+              "utf8",
+            );
+            return [
+              {
+                schema: "humanish.adapter-artifact.v1",
+                namespace: BROWSER_ADAPTER_NAMESPACE,
+                label: "Browser adapter state proof",
+                path: "adapter/browser-state-proof.json",
+                kind: "state",
+                note: "Adapter-owned product/state readback proof.",
+              },
+            ];
+          },
+        }),
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-      scorer: browserScorer({
-        score: failingBrowserScore,
-        deriveFeedback: browserFeedback,
-        deriveArtifacts: async (ctx) => {
-          await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
-          await writeFile(
-            path.join(ctx.runDir, "adapter", "browser-state-proof.json"),
-            `${JSON.stringify(
-              {
-                schema: "example.adapter-state-proof.v1",
-                runId: ctx.runId,
-                status: "failed-product-acceptance",
-                backend: ctx.backend,
-              },
-              null,
-              2,
-            )}\n`,
-            "utf8",
-          );
-          return [
-            {
-              schema: "humanish.adapter-artifact.v1",
-              namespace: BROWSER_ADAPTER_NAMESPACE,
-              label: "Browser adapter state proof",
-              path: "adapter/browser-state-proof.json",
-              kind: "state",
-              note: "Adapter-owned product/state readback proof.",
-            },
-          ];
-        },
-      }),
-    });
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -2663,48 +2711,51 @@ describe("runCuaActorLab", () => {
   it("malformed browser adapter outputs are dropped, preserving default green behavior", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+        scorer: {
+          score: () =>
+            ({
+              schema: "humanish.adapter-score.v1",
+              namespace: "",
+              status: "fail",
+              score: 0,
+              summary: "bad",
+            }) as RunAdapterScore,
+          deriveArtifacts: () => [
+            {
+              schema: "humanish.adapter-artifact.v1",
+              namespace: BROWSER_ADAPTER_NAMESPACE,
+              label: "Bad artifact",
+              path: "../secret.json",
+              kind: "state",
+              note: "bad path",
+            },
+          ],
+          deriveFeedback: () =>
+            [
+              {
+                schema: "humanish.feedback-candidate.v1",
+                id: "bad",
+                summary: "Malformed candidate missing required run fields.",
+                evidence: [],
+                redaction: { status: "passed", notes: "shape test" },
+              },
+            ] as unknown as RunFeedbackCandidate[],
+        },
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-      scorer: {
-        score: () =>
-          ({
-            schema: "humanish.adapter-score.v1",
-            namespace: "",
-            status: "fail",
-            score: 0,
-            summary: "bad",
-          }) as RunAdapterScore,
-        deriveArtifacts: () => [
-          {
-            schema: "humanish.adapter-artifact.v1",
-            namespace: BROWSER_ADAPTER_NAMESPACE,
-            label: "Bad artifact",
-            path: "../secret.json",
-            kind: "state",
-            note: "bad path",
-          },
-        ],
-        deriveFeedback: () =>
-          [
-            {
-              schema: "humanish.feedback-candidate.v1",
-              id: "bad",
-              summary: "Malformed candidate missing required run fields.",
-              evidence: [],
-              redaction: { status: "passed", notes: "shape test" },
-            },
-          ] as unknown as RunFeedbackCandidate[],
-      },
-    });
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -2732,18 +2783,21 @@ describe("runCuaActorLab", () => {
   it("DEFAULT persists RAW screenshots (full fidelity, local) and warns the bundle is not publish-safe as-is", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
@@ -2792,18 +2846,21 @@ describe("runCuaActorLab", () => {
     };
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(redactedConfig, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      redactedConfig,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
@@ -2834,18 +2891,21 @@ describe("runCuaActorLab", () => {
     };
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(publicConfig, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      publicConfig,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     expect(outcome.result.error).toBeUndefined();
@@ -2858,10 +2918,10 @@ describe("runCuaActorLab", () => {
       { ...publicConfig, policies: {} },
       {
         cwd,
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module2,
-        },
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+      },
+      {
+        desktopModule: async () => module2,
       },
     );
     if (blocked.backend !== "cua") throw new Error("expected cua backend");
@@ -2911,11 +2971,14 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, created } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
@@ -2928,7 +2991,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // The adopter-named base-URL env was injected into the subject sandbox at create (the app boots reading it).
@@ -2993,11 +3056,14 @@ describe("runCuaActorLab", () => {
     const { module } = makeFakeModule(sandbox);
     let t = 0;
     const seenInstructions: string[] = [];
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions.push(options.instructions);
           return runCuaActorSession({
@@ -3012,7 +3078,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
@@ -3060,11 +3126,14 @@ describe("runCuaActorLab", () => {
     const { module } = makeFakeModule(sandbox);
     let t = 0;
     const seenInstructions: string[] = [];
-    await runLab(config, {
-      cwd,
-      cuaHooks: {
+    await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions.push(options.instructions);
           return runCuaActorSession({
@@ -3079,7 +3148,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     expect(seenInstructions[0] ?? "").not.toContain("Email inbox:");
   });
 
@@ -3113,11 +3182,14 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
@@ -3130,7 +3202,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // Captured-but-unevidenced mail surfaces as a warning (not lost silently); no artifact registered.
@@ -3187,16 +3259,19 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      // #357 lifecycle: ready fires while the sandbox lives and ended after its teardown.
-      // The pair lets the watch overlay stop serving a dead stream URL.
-      onStream: (event) => {
-        streamLifecycle.push(`${event.type}:${event.streamId}`);
-      },
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        // #357 lifecycle: ready fires while the sandbox lives and ended after its teardown.
+        // The pair lets the watch overlay stop serving a dead stream URL.
+        onStream: (event) => {
+          streamLifecycle.push(`${event.type}:${event.streamId}`);
+        },
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions = options.instructions;
           return runCuaActorSession({
@@ -3211,7 +3286,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // The persona actually received the inbox URL in its prompt (loopback, same sandbox as its browser).
@@ -3258,11 +3333,14 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
@@ -3275,7 +3353,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // The empty inbox list was written up front, so a persona opening /inbox gets "No messages yet.", not a 404.
@@ -3295,16 +3373,19 @@ describe("runCuaActorLab", () => {
     };
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(keepConfig, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      keepConfig,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async () => {
           throw new Error("boom during session");
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
     // Failure + keep → NOT killed, with a debug warning naming the sandbox.
@@ -3321,18 +3402,21 @@ describe("runCuaActorLab", () => {
     ];
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(noEngagementSession) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     // The session itself is goal_satisfied, but the LAB refuses to call zero-engagement a pass.
@@ -3354,18 +3438,21 @@ describe("runCuaActorLab", () => {
     // bundle — Observer tally, `humanish runs`, the status index, a share — repeated the pass.
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(BLOCKED_AFTER_PARTIAL_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     // The lane's judgment, unchanged: the actor claimed goal_satisfied, the harness refused it.
@@ -3414,11 +3501,14 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox();
     const { module, created } = makeFakeModule(sandbox);
     const sessionOptionsSeen: CuaActorSessionOptions[] = [];
-    const outcome = await runLab(mobileConfig, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      mobileConfig,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           sessionOptionsSeen.push(options);
           return runCuaActorSession({
@@ -3427,7 +3517,7 @@ describe("runCuaActorLab", () => {
           });
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // The mobile preset (414x896) sizes the E2B desktop — NOT 1280x800 — but its width is FLOORED to
@@ -3450,18 +3540,21 @@ describe("runCuaActorLab", () => {
     const def = makeFakeSandbox();
     const defMod = makeFakeModule(def);
     const defConfig: LabConfig = { ...cuaConfig(), execution: { target: "e2b-desktop" } };
-    const r1 = await runLab(defConfig, {
-      cwd,
-      cuaHooks: {
+    const r1 = await runLab(
+      defConfig,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => defMod.module,
+      },
+      {
+        desktopModule: async () => defMod.module,
         runSession: async (o) =>
           runCuaActorSession({
             ...o,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (r1.backend !== "cua") throw new Error("expected cua");
     expect(defMod.created[0]?.resolution).toEqual([1440, 950]);
 
@@ -3472,11 +3565,14 @@ describe("runCuaActorLab", () => {
       execution: { target: "e2b-desktop", desktop: { device: "mobile", resolution: [1024, 768] } },
     };
     const ovSeen: CuaActorSessionOptions[] = [];
-    const r2 = await runLab(ovConfig, {
-      cwd,
-      cuaHooks: {
+    const r2 = await runLab(
+      ovConfig,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => ovMod.module,
+      },
+      {
+        desktopModule: async () => ovMod.module,
         runSession: async (o) => {
           ovSeen.push(o);
           return runCuaActorSession({
@@ -3485,7 +3581,7 @@ describe("runCuaActorLab", () => {
           });
         },
       },
-    });
+    );
     if (r2.backend !== "cua") throw new Error("expected cua");
     expect(ovMod.created[0]?.resolution).toEqual([1024, 768]);
     // Consistency: a raw resolution override must NOT inherit a named preset's mobile/DSF — the
@@ -3506,18 +3602,21 @@ describe("runCuaActorLab", () => {
       "http://127.0.0.1:3000/api/bootstrap?origin=http%3A%2F%2F127.0.0.1%3A3000&scenario=alpha&redirect=%2Fdashboard";
     const sandbox = makeFakeSandbox({ withOpen: false });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(targetUrl), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(targetUrl),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     const openIndex = expectSafeBrowserOpen(sandbox.calls, targetUrl);
@@ -3551,18 +3650,21 @@ describe("runCuaActorLab", () => {
           : undefined,
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     const openIndex = expectSafeBrowserOpen(sandbox.calls, targetUrl);
@@ -3622,18 +3724,21 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
@@ -3668,10 +3773,16 @@ describe("runCuaActorLab", () => {
   it("live with missing keys fails closed, names the variables, and never creates a sandbox", async () => {
     const sandbox = makeFakeSandbox();
     const { module, created } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: { env: { OPENAI_API_KEY: "present-key" }, loadDesktopModule: async () => module },
-    });
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
+        env: { OPENAI_API_KEY: "present-key" },
+      },
+      {
+        desktopModule: async () => module,
+      },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
@@ -3689,17 +3800,20 @@ describe("runCuaActorLab", () => {
     // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+      },
+      {
         now: () => (clock += 30_000),
-        loadDesktopModule: async () => module,
+        desktopModule: async () => module,
         runSession: async () => {
           throw new Error("provider exploded mid-session");
         },
       },
-    }).finally(stderr.stop);
+    ).finally(stderr.stop);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -3748,8 +3862,8 @@ describe("runCuaActorLab", () => {
       cwd,
       config: tampered,
       dryRun: false,
-      hooks: {
-        loadDesktopModule: async () => {
+      deps: {
+        desktopModule: async () => {
           desktopLoads += 1;
           throw new Error("must not load");
         },
@@ -3781,16 +3895,19 @@ describe("runCuaActorLab", () => {
     const hostPath = "/home/" + "someuser/private-checkout/app";
     const sandbox = makeFakeSandbox();
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async () => {
           throw new Error(`request failed with ${secretToken} while reading ${hostPath}`);
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -3812,17 +3929,20 @@ describe("runCuaActorLab", () => {
 
   it("turns a missing @e2b/desktop peer into a structured failure with a complete failed bundle (no raw throw, no orphan dir)", async () => {
     const stderr = captureStderr();
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => {
+      },
+      {
+        desktopModule: async () => {
           throw new Error(
             "Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
           );
         },
       },
-    }).finally(stderr.stop);
+    ).finally(stderr.stop);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -3848,19 +3968,22 @@ describe("runCuaActorLab", () => {
   it("writes lab identity into the bundle AND a finalized status record on disk (#455)", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      lab: { id: "cua-demo", path: "humanish/labs/cua-demo.yaml", origin: "committed" },
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
+        lab: { id: "cua-demo", path: "humanish/labs/cua-demo.yaml", origin: "committed" },
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const runId = outcome.result.runId;
 
@@ -3915,17 +4038,20 @@ describe("runCuaActorLab", () => {
   it("releases the acquired identity when a preparation hook mutates the handle and fails", async () => {
     const sandbox = makeFakeSandbox();
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
         prepareDesktop: async (desktop) => {
           desktop.sandboxId = "unrelated-sandbox";
           throw new Error("synthetic provisioning failure");
         },
       },
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(killed).toEqual(["fake-sandbox-001"]);
     expect(outcome.result.sandbox).toMatchObject({ sandboxId: "fake-sandbox-001", killed: true });
@@ -3934,11 +4060,14 @@ describe("runCuaActorLab", () => {
   it("passes a managed executor to the participant and closes it after the run", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     let executor: CuaExecutor | undefined;
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           executor = options.executor;
           expect(options.desktop).toBeUndefined();
@@ -3948,7 +4077,7 @@ describe("runCuaActorLab", () => {
           });
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(true);
     expect(executor).toBeDefined();
@@ -3958,16 +4087,19 @@ describe("runCuaActorLab", () => {
   it("records prior sandbox absence without claiming its exact termination time", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     module.Sandbox.kill = async () => false;
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
         prepareDesktop: async () => {
           throw new Error("synthetic startup failure");
         },
       },
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(true);
     expect(outcome.result.warnings).toContainEqual(
@@ -3981,19 +4113,22 @@ describe("runCuaActorLab", () => {
     // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+      },
+      {
         now: () => (clock += 30_000),
-        loadDesktopModule: async () => module,
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    }).finally(stderr.stop);
+    ).finally(stderr.stop);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(false);
     expect(outcome.result.warnings).toContainEqual(
@@ -4050,18 +4185,21 @@ describe("runCuaActorLab", () => {
     const module: E2BDesktopModule = {
       Sandbox: { create: async () => sandbox },
     };
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(false);
     expect(outcome.result.warnings.some((warning) => warning.includes("Sandbox.kill"))).toBe(true);
@@ -4081,23 +4219,26 @@ describe("runCuaActorLab", () => {
     });
     const { module, created, killed } = makeFakeModule(sandbox);
 
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: {
           OPENAI_API_KEY: "test-openai-key",
           E2B_API_KEY: "test-e2b-key",
           DATABASE_URL: "postgres-secret-value",
           HUMANISH_E2B_REQUEST_TIMEOUT_MS: "45000",
         },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -4185,20 +4326,19 @@ describe("runCuaActorLab", () => {
         onEvent: (event) => {
           if (event.type === "subject-phase") emitted.push(event);
         },
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
-          runSession: async (options) =>
-            runCuaActorSession({
-              ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-            }),
-        },
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
       },
       // The default sink is process.stderr.write. The subjectPhaseSink seam replaces it so the
       // ordering below is captured deterministically instead of scraping stderr. onEvent observes
       // the same phases beside the sink, so they stay on stderr when a caller sets it.
       {
+        desktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+
         subjectPhaseSink: (event, ctx) => {
           phaseEvents.push(event);
           phaseCtxs.push(ctx!);
@@ -4265,18 +4405,21 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
 
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
@@ -4310,18 +4453,21 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created } = makeFakeModule(sandbox);
 
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
@@ -4348,13 +4494,16 @@ describe("runCuaActorLab", () => {
     const config = cloneCuaConfig({ env: ["DATABASE_URL"] });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
       },
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING");
@@ -4386,17 +4535,16 @@ describe("runCuaActorLab", () => {
       config,
       {
         cwd,
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
-          runSession: async (options) =>
-            runCuaActorSession({
-              ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-            }),
-        },
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
       },
       {
+        desktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+
         subjectPhaseSink: (event) => {
           phaseEvents.push(event);
         },
@@ -4439,13 +4587,16 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
       },
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
     expect(attempts).toBe(2);
@@ -4478,13 +4629,16 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", DATABASE_PASSWORD: plainValue },
-        loadDesktopModule: async () => module,
       },
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -4522,11 +4676,14 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cloneCuaConfig({ readyTimeoutMs: 5000 }), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cloneCuaConfig({ readyTimeoutMs: 5000 }),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         detachedTimers: {
           now: () => t,
           sleep: async (ms: number) => {
@@ -4534,7 +4691,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
@@ -4569,11 +4726,14 @@ describe("runCuaActorLab", () => {
     });
     const { module } = makeFakeModule(sandbox);
     let t = 0;
-    const failed = await runLab(cloneCuaConfig({ readyTimeoutMs: 5000 }), {
-      cwd,
-      cuaHooks: {
+    const failed = await runLab(
+      cloneCuaConfig({ readyTimeoutMs: 5000 }),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         detachedTimers: {
           now: () => t,
           sleep: async (ms: number) => {
@@ -4581,7 +4741,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (failed.backend !== "cua") throw new Error("expected cua backend");
     const failedBundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", failed.result.runId, "run.json"), "utf8"),
@@ -4597,19 +4757,20 @@ describe("runCuaActorLab", () => {
     // Token present, no explicit policy → redacted by default.
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
-    const tokenHooks = {
-      env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" },
-      loadDesktopModule: async () => module,
-      runSession: async (options: Parameters<NonNullable<CuaActorLabHooks["runSession"]>>[0]) =>
+    const tokenEnv = { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" };
+    const tokenDeps: LabDeps = {
+      desktopModule: async () => module,
+      runSession: async (options) =>
         runCuaActorSession({
           ...options,
           openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
         }),
     };
-    const redacted = await runLab(cloneCuaConfig({ env: ["GITHUB_TOKEN"] }), {
-      cwd,
-      cuaHooks: tokenHooks,
-    });
+    const redacted = await runLab(
+      cloneCuaConfig({ env: ["GITHUB_TOKEN"] }),
+      { cwd, env: tokenEnv },
+      tokenDeps,
+    );
     if (redacted.backend !== "cua") throw new Error("expected cua backend");
     expect(redacted.result.subject?.repo).toBe("repo-01");
     const runDir = path.join(cwd, ".humanish", "runs", redacted.result.runId);
@@ -4623,10 +4784,11 @@ describe("runCuaActorLab", () => {
     const explicitConfig: LabConfig = { ...explicit, policies: { redactRepos: false } };
     const sandbox2 = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module: module2 } = makeFakeModule(sandbox2);
-    const unredacted = await runLab(explicitConfig, {
-      cwd,
-      cuaHooks: { ...tokenHooks, loadDesktopModule: async () => module2 },
-    });
+    const unredacted = await runLab(
+      explicitConfig,
+      { cwd, env: tokenEnv },
+      { ...tokenDeps, desktopModule: async () => module2 },
+    );
     if (unredacted.backend !== "cua") throw new Error("expected cua backend");
     expect(unredacted.result.subject?.repo).toBe("example-org/example-app");
   });
@@ -4651,11 +4813,14 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         detachedTimers: {
           now: () => t,
           sleep: async (ms: number) => {
@@ -4663,7 +4828,7 @@ describe("runCuaActorLab", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
@@ -4715,16 +4880,19 @@ describe("execution.desktop.template (custom E2B desktop image, single-lane cua 
   async function runWith(config: LabConfig) {
     const sandbox = makeFakeSandbox();
     const { module, created, templates } = makeFakeModule(sandbox);
-    const hooks: CuaActorLabHooks = {
-      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-      loadDesktopModule: async () => module,
+    const deps: LabDeps = {
+      desktopModule: async () => module,
       runSession: async (options) =>
         runCuaActorSession({
           ...options,
           openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
         }),
     };
-    const outcome = await runLab(config, { cwd, cuaHooks: hooks });
+    const outcome = await runLab(
+      config,
+      { cwd, env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" } },
+      deps,
+    );
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
@@ -4809,17 +4977,17 @@ describe("Chrome DevTools readiness after launch", () => {
       config,
       {
         cwd,
-        cuaHooks: {
-          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-          loadDesktopModule: async () => module,
-          runSession: async (options) =>
-            runCuaActorSession({
-              ...options,
-              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-            }),
-        },
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
       },
-      { subjectPhaseSink: () => undefined },
+      {
+        desktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+        subjectPhaseSink: () => undefined,
+      },
     );
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     const bundle = JSON.parse(
@@ -4925,11 +5093,14 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const config = cloneCuaConfig({ state: THREE_PHASE_STATE });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         // Fixed clock so per-step durationMs is deterministic (0) in the record assertions.
         detachedTimers: { now: () => 0, sleep: async () => {} },
         runSession: async (options) =>
@@ -4938,7 +5109,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(true);
@@ -5070,18 +5241,21 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", DATABASE_PASSWORD: plainValue },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         detachedTimers: { now: () => 0, sleep: async () => {} },
         runSession: async () => {
           sessionStarted = true;
           throw new Error("session must never start after a failed state step");
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -5150,11 +5324,14 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         detachedTimers: {
           now: () => t,
           sleep: async (ms: number) => {
@@ -5162,7 +5339,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
           },
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
@@ -5237,18 +5414,21 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", DATABASE_URL: "postgres-external-value" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(true);
@@ -5436,18 +5616,17 @@ describe("buildSingleParticipantBundle", () => {
         config,
         {
           cwd,
-          cuaHooks: {
-            env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-            loadDesktopModule: async () => module,
-            packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-            runSession: async (options) =>
-              runCuaActorSession({
-                ...options,
-                openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-              }),
-          },
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         },
         {
+          desktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+
           subjectPhaseSink: (event) => {
             phaseEvents.push(event);
           },
@@ -5483,11 +5662,14 @@ describe("buildSingleParticipantBundle", () => {
       const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> =
         [];
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
+        },
+        {
+          desktopModule: async () => module,
           packLocalTree: async (args) => {
             packCalls.push(args);
             return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
@@ -5498,7 +5680,7 @@ describe("buildSingleParticipantBundle", () => {
               openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
             }),
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       const result = outcome.result;
       expect(result.ok).toBe(true);
@@ -5560,11 +5742,14 @@ describe("buildSingleParticipantBundle", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
+        },
+        {
+          desktopModule: async () => module,
           packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
           runSession: async (options) =>
             runCuaActorSession({
@@ -5572,7 +5757,7 @@ describe("buildSingleParticipantBundle", () => {
               openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
             }),
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       const result = outcome.result;
 
@@ -5598,18 +5783,17 @@ describe("buildSingleParticipantBundle", () => {
         config,
         {
           cwd,
-          cuaHooks: {
-            env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-            loadDesktopModule: async () => module,
-            packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-            runSession: async (options) =>
-              runCuaActorSession({
-                ...options,
-                openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-              }),
-          },
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         },
         {
+          desktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+
           subjectPhaseSink: (event, ctx) => {
             phaseCalls.push({ event, ctx: ctx! });
           },
@@ -5692,17 +5876,20 @@ describe("buildSingleParticipantBundle", () => {
       });
       const { module, created } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
+        },
+        {
+          desktopModule: async () => module,
           packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
           runSession: async () => {
             throw new Error("runSession must not be reached: extract should fail first");
           },
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
       expect(outcome.result.ok).toBe(false);
@@ -5725,17 +5912,20 @@ describe("buildSingleParticipantBundle", () => {
       });
       const { module } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
+        },
+        {
+          desktopModule: async () => module,
           packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
           runSession: async () => {
             throw new Error("runSession must not be reached: extract should fail first");
           },
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
       expect(outcome.result.ok).toBe(false);
@@ -5762,16 +5952,15 @@ describe("buildSingleParticipantBundle", () => {
         config,
         {
           cwd,
-          cuaHooks: {
-            env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-            loadDesktopModule: async () => module,
-            packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-            runSession: async () => {
-              throw new Error("runSession must not be reached: extract should fail first");
-            },
-          },
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         },
         {
+          desktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async () => {
+            throw new Error("runSession must not be reached: extract should fail first");
+          },
+
           subjectPhaseSink: (event) => {
             phaseEvents.push(event);
           },
@@ -5801,12 +5990,15 @@ describe("buildSingleParticipantBundle", () => {
       const { module, created } = makeFakeModule(sandbox);
 
       const analysis = automaticAnalysisBoundary();
-      const outcome = await runLab(config, {
-        cwd,
-        automaticAnalysis: { run: analysis },
-        cuaHooks: {
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          automaticAnalysis: { run: analysis },
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
+        },
+        {
+          desktopModule: async () => module,
           packLocalTree: async () => {
             // A realistic createLocalTreeArchive-shaped failure: names counts, includes an
             // absolute path the redaction pipeline must scrub before it reaches the result.
@@ -5818,7 +6010,7 @@ describe("buildSingleParticipantBundle", () => {
             );
           },
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
       expect(outcome.result.ok).toBe(false);
@@ -5838,17 +6030,20 @@ describe("buildSingleParticipantBundle", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, killed } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
+        },
+        {
+          desktopModule: async () => module,
           packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
           runSession: async () => {
             throw new Error("boom during session");
           },
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
       expect(outcome.result.ok).toBe(false);
@@ -6098,15 +6293,18 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     const { module, created, killed } = makeFakeModule(sandbox);
     const stateExecutor = makeStateExecutor();
 
-    const outcome = await runLab(localAppConfig(), {
-      cwd,
-      cuaHooks: {
-        // If anything on this route touched E2B, created[] would grow — this is the proof probe.
-        loadDesktopModule: async () => module,
+    const outcome = await runLab(
+      localAppConfig(),
+      {
+        cwd,
+        inProcess: { executor: async () => stateExecutor },
+        createProvider: async () => makeStateProvider(),
       },
-      inProcess: { executor: async () => stateExecutor },
-      createProvider: async () => makeStateProvider(),
-    });
+      {
+        // If anything on this route touched E2B, created[] would grow — this is the proof probe.
+        desktopModule: async () => module,
+      },
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -6166,13 +6364,18 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     const createProvider = vi.fn(async (_context: { executor: CuaExecutor }) => provider);
     const onStream = vi.fn();
 
-    const outcome = await runLab(localAppConfig(), {
-      cwd,
-      onStream,
-      cuaHooks: { loadDesktopModule: async () => module },
-      inProcess: { executor },
-      createProvider,
-    });
+    const outcome = await runLab(
+      localAppConfig(),
+      {
+        cwd,
+        onStream,
+        inProcess: { executor },
+        createProvider,
+      },
+      {
+        desktopModule: async () => module,
+      },
+    );
 
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -6198,14 +6401,17 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       const config = localAppConfig();
       config.execution = { caps };
 
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
-          loadDesktopModule: async () => module,
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          inProcess: { executor: async () => makeStateExecutor() },
+          createProvider: async () => makeStateProvider(),
         },
-        inProcess: { executor: async () => makeStateExecutor() },
-        createProvider: async () => makeStateProvider(),
-      });
+        {
+          desktopModule: async () => module,
+        },
+      );
 
       if (outcome.backend !== "cua") throw new Error("expected the cua backend");
       expect(outcome.result.session?.stopCause).toBe("usage_unreported");
@@ -6224,14 +6430,17 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       },
     };
 
-    const outcome = await runLab(localAppConfig(), {
-      cwd,
-      cuaHooks: {
-        loadDesktopModule: async () => module,
+    const outcome = await runLab(
+      localAppConfig(),
+      {
+        cwd,
+        inProcess: { executor: async () => makeStateExecutor() },
+        createProvider: async () => provider,
       },
-      inProcess: { executor: async () => makeStateExecutor() },
-      createProvider: async () => provider,
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
 
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     expect(outcome.result.ok).toBe(false);
@@ -6268,15 +6477,18 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       }),
     };
 
-    const outcome = await runLab(localAppConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      localAppConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: canary },
-        loadDesktopModule: async () => module,
+        inProcess: { executor: async () => makeStateExecutor() },
+        createProvider: async () => provider,
       },
-      inProcess: { executor: async () => makeStateExecutor() },
-      createProvider: async () => provider,
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
 
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     const blocker = outcome.result.warnings.find((warning) =>
@@ -6288,21 +6500,24 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
 
   it("a hollow in-process run (zero actions/messages) still FAILS the honesty guard + verifyRun", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
-    const outcome = await runLab(localAppConfig(), {
-      cwd,
-      cuaHooks: {
-        loadDesktopModule: async () => module,
+    const outcome = await runLab(
+      localAppConfig(),
+      {
+        cwd,
+        inProcess: { executor: async () => makeStateExecutor() },
+        // A brain that immediately reports done with no action and no message → hollow.
+        createProvider: async (): Promise<CuaProvider> => ({
+          id: "hollow-brain",
+          capabilities: STATE_CAPS,
+          async nextTurn(): Promise<CuaTurn> {
+            return { actions: [], pendingSafetyChecks: [], done: true };
+          },
+        }),
       },
-      inProcess: { executor: async () => makeStateExecutor() },
-      // A brain that immediately reports done with no action and no message → hollow.
-      createProvider: async (): Promise<CuaProvider> => ({
-        id: "hollow-brain",
-        capabilities: STATE_CAPS,
-        async nextTurn(): Promise<CuaTurn> {
-          return { actions: [], pendingSafetyChecks: [], done: true };
-        },
-      }),
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     expect(created).toHaveLength(0);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -6315,25 +6530,28 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
 
   it("a gave_up in-process run is an ABANDONED lane — a participant outcome, still not an engaged pass", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
-    const outcome = await runLab(localAppConfig(), {
-      cwd,
-      cuaHooks: {
-        loadDesktopModule: async () => module,
+    const outcome = await runLab(
+      localAppConfig(),
+      {
+        cwd,
+        inProcess: { executor: async () => makeStateExecutor() },
+        createProvider: async (): Promise<CuaProvider> => ({
+          id: "idle-brain",
+          capabilities: STATE_CAPS,
+          async nextTurn(): Promise<CuaTurn> {
+            return {
+              actions: [{ kind: "wait", ms: 1 }],
+              pendingSafetyChecks: [],
+              done: false,
+              message: "Still waiting.",
+            };
+          },
+        }),
       },
-      inProcess: { executor: async () => makeStateExecutor() },
-      createProvider: async (): Promise<CuaProvider> => ({
-        id: "idle-brain",
-        capabilities: STATE_CAPS,
-        async nextTurn(): Promise<CuaTurn> {
-          return {
-            actions: [{ kind: "wait", ms: 1 }],
-            pendingSafetyChecks: [],
-            done: false,
-            message: "Still waiting.",
-          };
-        },
-      }),
-    });
+      {
+        desktopModule: async () => module,
+      },
+    );
     expect(created).toHaveLength(0);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -6365,9 +6583,10 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       cwd,
       config: localAppConfig(),
       dryRun: false,
-      hooks: {
-        env: {}, // NO keys — proves the guard precedes key-gating
-        loadDesktopModule: async () => module,
+      env: {},
+      deps: {
+        // NO keys — proves the guard precedes key-gating
+        desktopModule: async () => module,
       },
       // createProvider deliberately omitted
       inProcess: { executor: async () => makeStateExecutor() },
@@ -6384,10 +6603,10 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       cwd,
       config: localAppConfig(),
       dryRun: false,
-      hooks: {
-        env: {}, // NO keys — the local-app guard must win over KEYS_MISSING
-        loadDesktopModule: async () => module,
-        // no inProcess or createProvider
+      env: {},
+      deps: {
+        // NO keys — the local-app guard must win over KEYS_MISSING
+        desktopModule: async () => module,
       },
     });
     expect(created).toHaveLength(0);
@@ -6498,11 +6717,14 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   it("classifies a productive budget stop as INCOMPLETE — no pass claimed, and the evidence still verifies", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           const clock = { t: 0 };
           return runCuaActorSession({
@@ -6514,7 +6736,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
           });
         },
       },
-    });
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -6550,11 +6772,14 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   it("keeps a zero-progress timeout an honest FAILURE (timed_out → result.ok false)", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           const clock = { t: 0 };
           return runCuaActorSession({
@@ -6566,7 +6791,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
           });
         },
       },
-    });
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -6644,19 +6869,22 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       };
     }
 
-    const outcome = await runLab(config, {
-      cwd,
-      runId: "run-flush",
-      onObserverReady: async () => {
-        const initial = await readFile(runJsonPath(), "utf8");
-        expect(initial).not.toContain(secret);
-        expect(JSON.parse(initial).streams[0].assignment.mission).toBe(
-          "Explore with [REDACTED_SECRET].",
-        );
-      },
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        runId: "run-flush",
+        onObserverReady: async () => {
+          const initial = await readFile(runJsonPath(), "utf8");
+          expect(initial).not.toContain(secret);
+          expect(JSON.parse(initial).streams[0].assignment.mission).toBe(
+            "Explore with [REDACTED_SECRET].",
+          );
+        },
         env: { OPENAI_API_KEY: secret, E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           expect(options.instructions).toContain(secret);
           expect(options.instructions).toContain(`Save with ${secret}.`);
@@ -6671,7 +6899,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
           });
         },
       },
-    });
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -6727,20 +6955,23 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const running = runLab(cuaConfig(), {
-      cwd,
-      onObserverReady: async () => {
-        enter();
-        await gate;
-      },
-      cuaHooks: {
+    const running = runLab(
+      cuaConfig(),
+      {
+        cwd,
+        onObserverReady: async () => {
+          enter();
+          await gate;
+        },
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async () => {
           throw new Error("synthetic session end");
         },
       },
-    });
+    );
     await entered;
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(created).toHaveLength(0);
@@ -6755,17 +6986,20 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const analysis = automaticAnalysisBoundary();
     const tunnelFailure = new Error("synthetic tunnel failure");
     await expect(
-      runLab(cuaConfig(), {
-        cwd,
-        automaticAnalysis: { run: analysis },
-        onObserverReady: async () => {
-          throw tunnelFailure;
-        },
-        cuaHooks: {
+      runLab(
+        cuaConfig(),
+        {
+          cwd,
+          automaticAnalysis: { run: analysis },
+          onObserverReady: async () => {
+            throw tunnelFailure;
+          },
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-          loadDesktopModule: async () => module,
         },
-      }),
+        {
+          desktopModule: async () => module,
+        },
+      ),
     ).rejects.toBe(tunnelFailure);
     expect(created).toHaveLength(0);
     expect(analysis).not.toHaveBeenCalled();
@@ -6782,18 +7016,21 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     let readyObserver: (ObserverResult & { ok: true }) | undefined;
     let server: ObserverServer | undefined;
 
-    const outcome = await runLab(cuaConfig(), {
-      cwd,
-      onObserverReady: async (observer) => {
-        // Invoked BEFORE the actor loop, for laneCount === 1, with an ok in-progress bundle.
-        readyObserver = observer;
-        expect(observer.ok).toBe(true);
-        server = await serveObserver(observer, { port: 0 });
-        openServers.push(server);
-      },
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd,
+        onObserverReady: async (observer) => {
+          // Invoked BEFORE the actor loop, for laneCount === 1, with an ok in-progress bundle.
+          readyObserver = observer;
+          expect(observer.ok).toBe(true);
+          server = await serveObserver(observer, { port: 0 });
+          openServers.push(server);
+        },
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         runSession: async (options) => {
           const clock = { t: 0 };
           return runCuaActorSession({
@@ -6805,7 +7042,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
           });
         },
       },
-    });
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -6902,10 +7139,11 @@ describe("runCuaActorLab cost estimates", () => {
       cwd,
       config: configWithModel(), // default resolves to gpt-5.6-sol (#334: the 5.6-generation flagship)
       dryRun: false,
-      hooks: {
-        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
-        loadDesktopModule: async () => module,
-        now: steppedClock(60_000), // create → 60000ms, teardown → 120000ms → 1 billed minute
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+      deps: {
+        desktopModule: async () => module,
+        now: steppedClock(60_000),
+        // create → 60000ms, teardown → 120000ms → 1 billed minute
         runSession: async (o) =>
           runCuaActorSession({
             ...o,
@@ -6977,9 +7215,9 @@ describe("runCuaActorLab cost estimates", () => {
         cwd,
         config: configWithModel(),
         dryRun: false,
-        hooks: {
-          env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
-          loadDesktopModule: async () => module,
+        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+        deps: {
+          desktopModule: async () => module,
           now: steppedClock(60_000),
           runSession: async (o) =>
             runCuaActorSession({
@@ -7058,9 +7296,9 @@ describe("runCuaActorLab cost estimates", () => {
       cwd,
       config: configWithModel("gpt-4o-unpriced-xyz"),
       dryRun: false,
-      hooks: {
-        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
-        loadDesktopModule: async () => module,
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+      deps: {
+        desktopModule: async () => module,
         now: steppedClock(60_000),
         runSession: async (o) =>
           runCuaActorSession({
@@ -7109,9 +7347,9 @@ describe("runCuaActorLab cost estimates", () => {
       cwd,
       config: configWithModel("gpt-4o-unpriced-xyz", { maxUsd: 5 }),
       dryRun: false,
-      hooks: {
-        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
-        loadDesktopModule: async () => module,
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+      deps: {
+        desktopModule: async () => module,
         runSession: async () => {
           throw new Error("a session must never run under an unenforceable cap");
         },
@@ -7128,9 +7366,9 @@ describe("runCuaActorLab cost estimates", () => {
       cwd,
       config: configWithModel("computer-use-preview", { maxUsd: 50 }),
       dryRun: false,
-      hooks: {
-        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
-        loadDesktopModule: async () => module,
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+      deps: {
+        desktopModule: async () => module,
         now: steppedClock(60_000),
         runSession: async (o) =>
           runCuaActorSession({
@@ -7185,14 +7423,17 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
       const runSession = vi.fn(async () => {
         throw new Error("Participant must not start");
       });
-      const outcome = await runLab(parsed.config, {
-        cwd,
-        cuaHooks: {
+      const outcome = await runLab(
+        parsed.config,
+        {
+          cwd,
           env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
-          loadDesktopModule,
-          runSession,
         },
-      });
+        {
+          desktopModule: loadDesktopModule,
+          runSession: runSession,
+        },
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       expect(outcome.result.ok).toBe(false);
       expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE");
@@ -7266,11 +7507,14 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
       const seenInstructions: string[] = [];
-      const outcome = await runLab(parsed.config, {
-        cwd,
-        cuaHooks: {
+      const outcome = await runLab(
+        parsed.config,
+        {
+          cwd,
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", CATCH_TOKEN: TOKEN },
-          loadDesktopModule: async () => module,
+        },
+        {
+          desktopModule: async () => module,
           runSession: async (options) => {
             seenInstructions.push(options.instructions);
             return runCuaActorSession({
@@ -7279,7 +7523,7 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
             });
           },
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       const result = outcome.result;
 
@@ -7328,16 +7572,19 @@ describe("computer-use run id reuse", () => {
       });
       const analysis = automaticAnalysisBoundary();
 
-      const outcome = await runLab(cuaConfig(), {
-        cwd,
-        dryRun: false,
-        runId: "older-run",
-        automaticAnalysis: { run: analysis },
-        cuaHooks: {
+      const outcome = await runLab(
+        cuaConfig(),
+        {
+          cwd,
+          dryRun: false,
+          runId: "older-run",
+          automaticAnalysis: { run: analysis },
           env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-          loadDesktopModule,
         },
-      });
+        {
+          desktopModule: loadDesktopModule,
+        },
+      );
 
       expect(outcome.result).toMatchObject({
         ok: false,
@@ -7374,13 +7621,16 @@ describe("computer-use run directory goldens", () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(cuaConfig(), {
-      cwd: goldenCwd,
-      dryRun,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
-      cuaHooks: {
+    const outcome = await runLab(
+      cuaConfig(),
+      {
+        cwd: goldenCwd,
+        dryRun,
+        automaticAnalysis: { run: automaticAnalysisBoundary() },
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => module,
+      },
+      {
+        desktopModule: async () => module,
         now: () => (clock += 30_000),
         runSession: async (options) =>
           runCuaActorSession({
@@ -7388,7 +7638,7 @@ describe("computer-use run directory goldens", () => {
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    }).finally(stderr.stop);
+    ).finally(stderr.stop);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", runId), {
@@ -7408,18 +7658,21 @@ describe("computer-use run directory goldens", () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(localAppConfig(), {
-      cwd: goldenCwd,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
-      cuaHooks: {
+    const outcome = await runLab(
+      localAppConfig(),
+      {
+        cwd: goldenCwd,
+        automaticAnalysis: { run: automaticAnalysisBoundary() },
         // The in-process route needs no keys; an empty env keeps the operator's env out of the result.
         env: {},
-        loadDesktopModule: async () => module,
+        inProcess: { executor: async () => makeStateExecutor() },
+        createProvider: async () => makeStateProvider(),
+      },
+      {
+        desktopModule: async () => module,
         now: () => (clock += 30_000),
       },
-      inProcess: { executor: async () => makeStateExecutor() },
-      createProvider: async () => makeStateProvider(),
-    }).finally(stderr.stop);
+    ).finally(stderr.stop);
     expect(created).toHaveLength(0);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");

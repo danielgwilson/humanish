@@ -33,7 +33,7 @@ interface StartRunOptions {
   lab?: RunLabProvenance | undefined;
   /** review.md for the published bundle. */
   renderReview: (bundle: RunBundle) => string;
-  /** Used by `FinishedRun.renderObserver`; `render` is the routes' `renderObserverFn` seam. */
+  /** Used by `FinishedRun.renderObserver`; `render` is the `LabDeps.renderObserver` seam. */
   observer?: { open: boolean; render?: typeof renderObserver | undefined };
   /** Clock for `createdAt` and the latest pointer. */
   now?: (() => number) | undefined;

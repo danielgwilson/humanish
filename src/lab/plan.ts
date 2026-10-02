@@ -175,7 +175,7 @@ function planRoute(
     case "computer-use":
       return planComputerUseLab(lab, {
         ...input,
-        ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+        hasRunSession: deps.runSession !== undefined,
         driving: callerDrivingOf(options),
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),

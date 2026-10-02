@@ -34,7 +34,7 @@ export async function acquireParticipantDesktop(
   // Off-app comms (#297): the base-URL env is injected at sandbox create, so the app reads it at
   // boot; the catch starts right after create.
   const commsEnv = participantCommsEnv(ctx.comms);
-  const desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+  const desktopModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
   // An explicit template wins. Speech gets the versioned media image; ordinary
   // browser studies retain the SDK default desktop.
   const acquired = await acquireE2BDesktopSandbox({
@@ -106,13 +106,10 @@ export async function acquireParticipantDesktop(
     );
   }
 
-  if (deps.hooks.prepareDesktop) {
-    await deps.hooks.prepareDesktop(desktop, {
-      laneId: spec.planned.id,
-      laneIndex: spec.planned.index,
-      laneCount: deps.participantCount,
-    });
-  }
+  await deps.prepareDesktop?.(desktop, {
+    kind: "participant",
+    participant: { id: spec.planned.id, index: spec.planned.index, count: deps.participantCount },
+  });
 
   if (deps.receiving) {
     state.receivingInboxUrl = await attachReceivingInbox(
@@ -207,7 +204,7 @@ export async function provisionParticipantSubject(
         state.stateStepRecords.push(record);
       },
       onPhase: ctx.onSubjectPhase,
-      ...deps.hooks.detachedTimers,
+      ...deps.detachedTimers,
     });
   } else if (subject.kind === "local-tree" && deps.localTreeArchiveBuffer) {
     await provisionLocalTreeSubject(shell, {
@@ -220,7 +217,7 @@ export async function provisionParticipantSubject(
         state.stateStepRecords.push(record);
       },
       onPhase: ctx.onSubjectPhase,
-      ...deps.hooks.detachedTimers,
+      ...deps.detachedTimers,
     });
   }
 }

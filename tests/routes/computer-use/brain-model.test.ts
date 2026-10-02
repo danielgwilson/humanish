@@ -27,12 +27,13 @@ import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type {
-  CuaActorLabHooks,
-  RunCuaActorLabOptions,
-} from "../../../src/routes/computer-use/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { RunCuaActorLabOptions } from "../../../src/routes/computer-use/types.js";
+
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
+
+type SessionRunner = NonNullable<LabDeps["runSession"]>;
 
 vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/actors/codex/restricted-participant.js")>()),
@@ -175,7 +176,11 @@ const fakeLocalVm = () => ({ desktop: () => fakeDesktop(), analysisRefusal: () =
 /** Runs one live participant and returns what its session and the live flush received. */
 async function run(
   config: LabConfig,
-  hooks: CuaActorLabHooks = {},
+  {
+    env = { OPENAI_API_KEY: "synthetic-openai-key" },
+  }: {
+    env?: Record<string, string | undefined>;
+  } = {},
   {
     localDesktop = true,
     ...driving
@@ -188,8 +193,8 @@ async function run(
     dryRun: false,
     ...driving,
     ...(localDesktop ? { localVm: fakeLocalVm() } : {}),
-    hooks: {
-      env: { OPENAI_API_KEY: "synthetic-openai-key" },
+    env,
+    deps: {
       runSession: async (options) => {
         sessions.push(options);
         return runCuaActorSession({
@@ -197,7 +202,6 @@ async function run(
           provider: options.provider ?? doneProvider("synthetic-openai"),
         });
       },
-      ...hooks,
     },
   });
   const flushModels = vi.mocked(startLiveTraceFlush).mock.calls.map(([args]) => args.model);
@@ -348,16 +352,24 @@ describe("computer-use participant model, local-agent brain", () => {
 });
 
 describe("computer-use participant model, the plan's brain, over the config", () => {
-  /** Plans `config`, swaps in `brain`, and runs that plan with the same config and hooks. */
-  async function runWithBrain(declared: LabConfig, brain: Brain, hooks: CuaActorLabHooks) {
+  /** Plans `config`, swaps in `brain`, and runs that plan with the same config, env and runner. */
+  async function runWithBrain(
+    declared: LabConfig,
+    brain: Brain,
+    { env, runSession }: { env: Record<string, string | undefined>; runSession: SessionRunner },
+  ) {
     const config = onLocalDesktop(declared);
-    const planned = planComputerUseLab(config, { dryRun: false, hooks });
+    const planned = planComputerUseLab(config, { dryRun: false, hasRunSession: true });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const plan: ComputerUsePlan = {
       ...planned.plan,
       runner: { ...planned.plan.runner, brain } as ComputerUsePlan["runner"],
     };
-    return runComputerUsePlan(plan, { cwd, hooks, localVm: fakeLocalVm() }, config);
+    return runComputerUsePlan(
+      plan,
+      { cwd, env, deps: { runSession }, localVm: fakeLocalVm() },
+      config,
+    );
   }
 
   it("gives the session, the cap estimator and the flush label the plan's declared model", async () => {

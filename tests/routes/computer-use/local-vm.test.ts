@@ -5,8 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
-import type { CuaActorSessionOptions } from "../../../src/actors/computer-use/actor.js";
-import type { CuaLoopResult, CuaProvider } from "../../../src/actors/computer-use/loop.js";
+import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
@@ -87,7 +86,6 @@ describe("local study bindings", () => {
     expect(study.options.scorer?.deriveArtifacts).toBe(deriveArtifacts);
     // The desktop goes to the run as localVm, and an openai participant gets no account provider.
     expect(study.options.createProvider).toBeUndefined();
-    expect(study.options.cuaHooks).toBeUndefined();
     expect(study.localVm.signal).toBeUndefined();
     expect(study.localVm.analysisRefusal()).toBeUndefined();
   });
@@ -95,8 +93,6 @@ describe("local study bindings", () => {
   it("uses a caller's provider in place of the Codex account and hands the run the abort signal", async () => {
     const provider = { id: "synthetic-provider" } as CuaProvider;
     const createProvider = vi.fn(async () => provider);
-    const sessionResult = { status: "done" } as unknown as CuaLoopResult;
-    const runSession = vi.fn(async (_options: CuaActorSessionOptions) => sessionResult);
     const close = vi.fn(async () => ({ status: "released" as const }));
     seams.createDesktop.mockResolvedValue({ executor: {}, close } as unknown as Awaited<
       ReturnType<typeof createLocalFirecrackerDesktop>
@@ -109,7 +105,6 @@ describe("local study bindings", () => {
       dryRun: false,
       assets,
       signal,
-      cuaHooks: { runSession },
       createProvider,
     });
     expect(study.localVm.desktop).toBeTypeOf("function");
@@ -123,10 +118,8 @@ describe("local study bindings", () => {
       expect.objectContaining({ assets, appUrl, signal }),
     );
     expect(close).toHaveBeenCalled();
-    // The caller's runSession stays as given; the computer-use run adds the study's signal.
-    expect(study.options.cuaHooks?.runSession).toBe(runSession);
+    // The computer-use run adds the study's signal to each session.
     expect(study.localVm.signal).toBe(signal);
-    expect(sessionResult).toBeDefined();
   });
 
   it("stops automatic analysis once a desktop's cleanup is unconfirmed", async () => {
@@ -154,24 +147,5 @@ describe("local study bindings", () => {
       recovery: expect.stringContaining(`docker rm --force --volumes ${container}`),
     });
     await study.close();
-  });
-
-  it("refuses E2B desktop hooks before preparing anything", async () => {
-    const prepareDesktop = vi.fn(async () => {});
-    const packLocalTree = vi.fn();
-
-    expect(() =>
-      prepareLocalVmStudy({
-        cwd,
-        config: localLab("local-agent"),
-        dryRun: false,
-        assets,
-        cuaHooks: { prepareDesktop, packLocalTree },
-      }),
-    ).toThrow(/does not call cuaHooks\.prepareDesktop, cuaHooks\.packLocalTree\./);
-
-    expect(seams.account).not.toHaveBeenCalled();
-    expect(seams.createDesktop).not.toHaveBeenCalled();
-    expect(prepareDesktop).not.toHaveBeenCalled();
   });
 });

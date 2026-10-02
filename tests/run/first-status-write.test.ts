@@ -91,7 +91,9 @@ describe("a live route records its status before acquiring a sandbox", () => {
         dryRun: false,
         runId: RUN_ID,
         env,
-        cuaHooks: { loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
+      },
+      {
+        desktopModule: async () => statusCheckingModule(runDir, seen),
       },
     );
     expect(seen).toEqual([true]);

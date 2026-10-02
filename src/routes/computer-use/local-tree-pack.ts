@@ -4,18 +4,18 @@ import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import type { LabConfig } from "../../lab/types.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "../../subject/local-tree-archive.js";
-import { type CuaActorLabHooks } from "./types.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 
 /**
  * Pack the working tree for a local-tree run and report what left the host on stderr, by counts
  * and digest only, never paths or file names.
  */
 export async function packRunLocalTree(
-  hooks: CuaActorLabHooks,
+  deps: LabDeps,
   config: { readonly subject: Pick<LabConfig["subject"], "localTree"> },
   cwd: string,
 ): Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }> {
-  const packLocalTree = hooks.packLocalTree ?? defaultPackLocalTree;
+  const packLocalTree = deps.packLocalTree ?? defaultPackLocalTree;
   const packed = await packLocalTree({
     root: cwd,
     ...(config.subject.localTree?.exclude === undefined
@@ -35,7 +35,7 @@ export async function packRunLocalTree(
 /**
  * Default local-tree packing implementation: createLocalTreeArchive(root, opts) on the host,
  * then a single read of the produced archive file into an ArrayBuffer for upload. The DI seam
- * (CuaActorLabHooks.packLocalTree) overrides this in deterministic tests so they never require
+ * (LabDeps.packLocalTree) overrides this in deterministic tests so they never require
  * tar/git.
  */
 export async function defaultPackLocalTree(args: {

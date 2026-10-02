@@ -57,17 +57,20 @@ const CHILD = `
     review: { analysis: false },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  await runLab(parsed.config, {
-    cwd: process.env.PROBE_CWD,
-    env: { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" },
-    cuaHooks: {
-      loadDesktopModule: async () => module,
+  await runLab(
+    parsed.config,
+    {
+      cwd: process.env.PROBE_CWD,
+      env: { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" },
+    },
+    {
+      desktopModule: async () => module,
       runSession: () => {
         process.stdout.write("session\\n");
         return new Promise(() => setInterval(() => {}, 60000));
       },
     },
-  });
+  );
 `;
 
 describe("a live run signalled mid-session", () => {
