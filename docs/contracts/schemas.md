@@ -1093,15 +1093,18 @@ when the run finishes, then the result's `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` once the Observer has rendered. The
 verdict is what the participants experienced; `execution` is whether the run
 worked as an execution (`kind` is `harness`, `provider-cleanup`,
-`sandbox-cleanup`, `evidence`, `cap` or `run`), and `ok` reads both under the
-route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`). `warnings`, in the
-same shape, holds the failures the policy lets warn and is omitted when empty:
-on computer-use, shared-world and scripted runs, a `sandbox-cleanup` entry for
-each sandbox whose release was not confirmed, with the participant (or
-`subject`), the release warning and the `humanish reclaim --run <id>` command.
-A local VM writes no receipt, so its entry names the container and the
-`docker rm --force --volumes <container>` command that removes it (through
-`limactl shell` on a Mac).
+`provider-policy`, `sandbox-cleanup`, `evidence`, `cap` or `run`), and `ok`
+reads both under the route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`).
+`provider-policy` names a computer-use or shared-world participant whose Codex
+app-server reported a disallowed item after the participant's last request; the
+session's evidence does not show it, so it fails the run on every route.
+`warnings`, in the same shape, holds the failures the policy lets warn and is
+omitted when empty: on computer-use, shared-world and scripted runs, a
+`sandbox-cleanup` entry for each sandbox whose release was not confirmed, with
+the participant (or `subject`), the release warning and the
+`humanish reclaim --run <id>` command. A local VM writes no receipt, so its
+entry names the container and the `docker rm --force --volumes <container>`
+command that removes it (through `limactl shell` on a Mac).
 
 `interrupted` with `signal` (`SIGINT`, `SIGTERM` or `SIGHUP`) is written by
 the CLI's run command when that signal stops a live run outside post-run

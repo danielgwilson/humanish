@@ -380,6 +380,39 @@ describe("ready desktop lane contract", () => {
     expect(result.providerCleanupError).toBeUndefined();
   });
 
+  it("fails the participant run when the shared Codex close reports a late refusal", async () => {
+    const f = await fixture();
+    const provider: CuaProvider = {
+      id: "restricted-codex-participant",
+      capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({
+        actions: [],
+        message: "I can read the note form.",
+        outcome: "reached",
+        pendingSafetyChecks: [],
+        done: true,
+      }),
+    };
+    const close = vi.fn(async () => {
+      f.order.push("model-close-refused");
+      return { status: "confirmed" as const, refusal: "codex_tool_call" as const };
+    });
+    restrictedParticipantFactory.mockReturnValue({ provider, close });
+    f.deps.brain = { kind: "local-agent", agent: "codex" };
+    f.deps.runSession = runCuaActorSession;
+
+    const result = await runCuaParticipant(f.spec, f.deps);
+
+    // Like an unconfirmed cleanup: an execution failure that leaves the session's ending alone.
+    expect(result.harnessError).toBe(true);
+    expect(result.providerPolicyError).toBe(
+      "Codex reported a disallowed item after the participant's last request (codex_tool_call).",
+    );
+    expect(result.providerCleanupError).toBeUndefined();
+    expect(result.sessionError).toBeUndefined();
+    expect(f.order.slice(-2)).toEqual(["model-close-refused", "release"]);
+  });
+
   it("uses the custom model on a desktop lane and closes it before the desktop", async () => {
     const f = await fixture();
     const provider: CuaProvider = {

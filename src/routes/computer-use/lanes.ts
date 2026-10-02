@@ -87,6 +87,7 @@ export async function runCuaParticipant(
   let session: CuaLoopResult | undefined;
   let sessionError: string | undefined;
   let providerCleanupError: string | undefined;
+  let providerPolicyError: string | undefined;
   let provisioned = false;
   let signaled = false;
   const signal = (ok: boolean): void => {
@@ -115,15 +116,24 @@ export async function runCuaParticipant(
   } finally {
     // A provider whose cleanup is unconfirmed fails the run as an execution, apart from how the
     // session ended: a session that passed stays a passed participant.
-    if (await closeParticipantModel(model, warnings)) {
-      providerCleanupError = "Model provider cleanup is unconfirmed.";
-    }
+    const closed = await closeParticipantModel(model, warnings);
+    if (closed.unconfirmed) providerCleanupError = "Model provider cleanup is unconfirmed.";
+    // The session's evidence would read clean, so a late refusal fails the run as an execution.
+    if (closed.refusal !== undefined)
+      providerPolicyError = redactText(
+        deps.scrubKnownValues(
+          `Codex reported a disallowed item after the participant's last request (${closed.refusal}).`,
+        ),
+      );
     try {
       if (!provisioned) signal(false);
     } finally {
       await desktop.finalize({
         failed:
-          sessionError !== undefined || providerCleanupError !== undefined || session === undefined,
+          sessionError !== undefined ||
+          providerCleanupError !== undefined ||
+          providerPolicyError !== undefined ||
+          session === undefined,
       });
     }
   }
@@ -134,10 +144,12 @@ export async function runCuaParticipant(
     warnings,
   );
 
-  // A provider-cleanup failure still trips fail-fast and counts in the lane summary's harness errors.
+  // A provider-cleanup or provider-policy failure still trips fail-fast and counts in the lane
+  // summary's harness errors.
   const harnessError =
     sessionError !== undefined ||
     providerCleanupError !== undefined ||
+    providerPolicyError !== undefined ||
     session?.completionReason === "harness_error";
 
   const { released, ...desktopEvidence } = desktop.snapshot();
@@ -146,6 +158,7 @@ export async function runCuaParticipant(
     ...(session ? { session } : {}),
     ...(sessionError === undefined ? {} : { sessionError }),
     ...(providerCleanupError === undefined ? {} : { providerCleanupError }),
+    ...(providerPolicyError === undefined ? {} : { providerPolicyError }),
     ...desktopEvidence,
     killed: released,
     screenshots,

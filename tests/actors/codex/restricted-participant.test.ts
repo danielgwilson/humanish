@@ -805,8 +805,8 @@ describe("restricted participant guards and receipts", () => {
       status: "confirmed",
       warnings: [
         "Codex CLI 0.160.0 sent notification methods humanish does not know: thread/futureProgress/updated ×3. They carried no item and were ignored.",
-        "Codex refused the participant session after its last request (codex_tool_call): the app-server reported a disallowed item outside a turn.",
       ],
+      refusal: "codex_tool_call",
     });
   });
 

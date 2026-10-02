@@ -124,10 +124,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   before the turn was dispatched, passed unchecked, so a native command reported that way did not
   stop the run. Now a notification that carries a thread item goes through the item allowlist and
   the participant's tool check whatever its method, from the start of the launch. A disallowed
-  item fails the launch or the request with `codex_tool_call`; one that arrives between requests
-  fails the next request, and one after a participant's last request is a run warning. A method
-  humanish does not know that carries no item does not stop the run: participant runs and
-  `humanish analyze` list such methods with counts in their warnings.
+  item fails the launch or the request with `codex_tool_call`, and one that arrives between
+  requests fails the next request. One that arrives after a participant's last request fails the
+  run: `status.json` `outcome.execution.failures` gets a `provider-policy` entry naming the
+  participant, and the result's `ok` is false. A method humanish does not know that carries no
+  item does not stop the run: participant runs and `humanish analyze` list such methods with
+  counts in their warnings.
 
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 

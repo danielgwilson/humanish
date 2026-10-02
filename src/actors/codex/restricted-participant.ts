@@ -38,6 +38,8 @@ export type ParticipantProviderCloseResult = {
   status: "confirmed" | "unconfirmed";
   /** Run warnings from the native session, such as notification methods humanish does not know. */
   warnings?: string[];
+  /** A refusal after the last request, such as a disallowed item outside a turn. It fails the run. */
+  refusal?: RestrictedCodexAnalysisErrorCode;
 };
 export interface RestrictedParticipantOptions {
   session?: RestrictedCodexSessionOptions;
@@ -390,16 +392,16 @@ function closeParticipantSession(state: ParticipantState): Promise<boolean> {
     }));
 }
 
-/** The native session's run warnings, read after it closed. */
-function sessionWarnings(session: RestrictedCodexSession): { warnings?: string[] } {
+/** What the closed native session reports beside cleanup: its run warnings and a late refusal. */
+function sessionReport(
+  session: RestrictedCodexSession,
+): Pick<ParticipantProviderCloseResult, "warnings" | "refusal"> {
+  const warning = unknownNotificationsWarning(session.unknownNotifications, session.cliVersion);
   const refusal = session.refusedBetweenRequests;
-  const warnings = [
-    unknownNotificationsWarning(session.unknownNotifications, session.cliVersion),
-    refusal === undefined
-      ? undefined
-      : `Codex refused the participant session after its last request (${refusal}): the app-server reported a disallowed item outside a turn.`,
-  ].filter((warning) => warning !== undefined);
-  return warnings.length === 0 ? {} : { warnings };
+  return {
+    ...(warning === undefined ? {} : { warnings: [warning] }),
+    ...(refusal === undefined ? {} : { refusal }),
+  };
 }
 
 /** Stops the conversation: abort the native run, reject a waiting tool call, close the session. */
@@ -605,7 +607,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
         if (!(await withinCleanupBudget(work, state.abortAt!))) state.failedCleanup = true;
         return {
           status: state.failedCleanup ? "unconfirmed" : "confirmed",
-          ...sessionWarnings(state.session),
+          ...sessionReport(state.session),
         };
       })();
       return closing;

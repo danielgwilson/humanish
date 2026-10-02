@@ -199,8 +199,9 @@ export function participantSessionOptions(
 export async function closeParticipantModel(
   model: ParticipantModel,
   warnings: string[],
-): Promise<boolean> {
+): Promise<{ unconfirmed: boolean; refusal: string | undefined }> {
   let unconfirmed = false;
+  let refusal: string | undefined;
   try {
     if (model.codexParticipant === undefined) await model.provider?.close?.();
   } catch {
@@ -210,6 +211,7 @@ export async function closeParticipantModel(
   try {
     const cleanup = await model.codexParticipant?.close();
     warnings.push(...(cleanup?.warnings ?? []));
+    refusal = cleanup?.refusal;
     if (cleanup?.status === "unconfirmed") {
       warnings.push("Model provider cleanup is unconfirmed.");
       unconfirmed = true;
@@ -223,7 +225,7 @@ export async function closeParticipantModel(
   } catch {
     warnings.push("Claude session cleanup failed; desktop cleanup will still run.");
   }
-  return unconfirmed;
+  return { unconfirmed, refusal };
 }
 
 /** Prices the finished session's tokens onto its trace, writes the trace, and warns on raw screenshots. */
