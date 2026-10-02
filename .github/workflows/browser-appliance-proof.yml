@@ -7,6 +7,8 @@ on:
       - runtime/browser-guest/**
       - runtime/browser-kernel/**
       - runtime/runtime-assets/**
+      - runtime/local-firecracker/build-disk.py
+      - runtime/local-firecracker/tests/**
       - src/guest-*.ts
       - src/guest/**
       - src/browser-control/**
@@ -31,6 +33,8 @@ on:
       - runtime/browser-guest/**
       - runtime/browser-kernel/**
       - runtime/runtime-assets/**
+      - runtime/local-firecracker/build-disk.py
+      - runtime/local-firecracker/tests/**
       - src/guest-*.ts
       - src/guest/**
       - src/browser-control/**
@@ -90,6 +94,7 @@ jobs:
           python3 -B -m unittest discover -s runtime/browser-kernel/tests -v
           python3 -B -m unittest discover -s runtime/browser-media/tests -v
           python3 -B -m unittest discover -s runtime/browser-guest/control/tests -v
+          python3 -B -m unittest discover -s runtime/local-firecracker/tests -v
       - name: Compile the fixed runtime payload
         run: |
           pnpm install --frozen-lockfile
