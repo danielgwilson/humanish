@@ -43,17 +43,43 @@ export type AdapterScoringContext = TerminalProductScoringContext | BrowserLabSc
  * `.js`/`.cjs` whose package.json type matches) — named exports OR a single default object. The
  * loader wires ONLY these three; an exported `executor`/`env`/`provisionSubject`/`costProbe` is never
  * picked up (the whitelist is the scope guard). A module exporting NONE of them is a hard load error.
+ *
+ * `C` is the context `score` and `deriveFeedback` read: `BrowserLabScoringContext` for a scorer
+ * written for computer use and shared world, `TerminalProductScoringContext` for one written for
+ * terminal runs, or the default union for one that narrows at runtime.
  */
-export interface AdapterScorerModule {
-  score?: (ctx: AdapterScoringContext) => RunAdapterScore | Promise<RunAdapterScore>;
-  deriveFeedback?: (
-    ctx: AdapterScoringContext,
-  ) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
+export interface AdapterScorerModule<C extends AdapterScoringContext = AdapterScoringContext> {
+  score?: (ctx: C) => RunAdapterScore | Promise<RunAdapterScore>;
+  deriveFeedback?: (ctx: C) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
   /** Browser-route only; inert on the terminal route, whose TerminalScorer has no artifacts seam. */
   deriveArtifacts?: (
     ctx: BrowserLabScoringContext,
   ) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
   // NOTE: costProbe is deliberately NOT loadable via config/flag — see the trust model above.
+}
+
+/** A scorer for one route family's context, or for both: what `RunLabOptions.scorer` takes. */
+export type RunLabScorer =
+  | AdapterScorerModule<BrowserLabScoringContext>
+  | AdapterScorerModule<TerminalProductScoringContext>
+  | AdapterScorerModule;
+
+/**
+ * The scorer as a computer-use or shared-world run calls it, with the browser context. The caller
+ * chose the context it wrote the scorer for; only the route knows which context it passes, so the
+ * narrowing is here. A terminal-typed scorer on a browser route reads fields the context lacks.
+ */
+export function browserRouteScorer(
+  scorer: RunLabScorer,
+): AdapterScorerModule<BrowserLabScoringContext> {
+  return scorer as AdapterScorerModule<BrowserLabScoringContext>;
+}
+
+/** The scorer as a terminal run calls it, with the terminal context (see browserRouteScorer). */
+export function terminalRouteScorer(
+  scorer: RunLabScorer,
+): AdapterScorerModule<TerminalProductScoringContext> {
+  return scorer as AdapterScorerModule<TerminalProductScoringContext>;
 }
 
 type AdapterScorerLoadErrorCode =

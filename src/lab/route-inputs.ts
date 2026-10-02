@@ -4,6 +4,7 @@
 import type { InternalRunLabOptions } from "../run-lab.js";
 import type { LabDeps } from "./lab-deps.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
+import { terminalRouteScorer } from "./adapter-scorer-loader.js";
 import { scorerHooks } from "./run-lab-options.js";
 import type { ComputerUseRunInput } from "../routes/computer-use/types.js";
 import type { ScriptedRunInput } from "../routes/scripted/types.js";
@@ -44,7 +45,7 @@ export function terminalInput(options: InternalRunLabOptions, deps: LabDeps): Te
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
     ...(options.env === undefined ? {} : { env: options.env }),
-    ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
+    ...(options.scorer === undefined ? {} : { scorer: terminalRouteScorer(options.scorer) }),
     deps,
     ...scorerOf(options),
   };
@@ -91,7 +92,7 @@ export function terminalInputWithScorer(
   if (late === undefined) return input;
   return {
     ...input,
-    ...(late.scorer === undefined ? {} : { scorer: late.scorer }),
+    ...(late.scorer === undefined ? {} : { scorer: terminalRouteScorer(late.scorer) }),
     ...(late.scorerProvenance === undefined ? {} : { scorerProvenance: late.scorerProvenance }),
   };
 }

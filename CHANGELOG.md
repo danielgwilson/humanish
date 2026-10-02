@@ -30,6 +30,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- `RunLabOptions.scorer` takes a scorer typed for the context it reads,
+  `AdapterScorerModule<BrowserLabScoringContext>` or
+  `AdapterScorerModule<TerminalProductScoringContext>`, without a cast (#1357). Before, a scorer
+  whose functions took the browser or the terminal context did not typecheck as `scorer`.
+  `AdapterScorerModule` takes that context as a type parameter, defaulting to the union of both.
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
   `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
   (#1336).
