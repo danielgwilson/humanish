@@ -68,10 +68,11 @@ runtime.
 The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop
 shell commands or manufacture E2B objects for an alternate executor. A local
-Firecracker study supplies its desktops through the computer-use run's `localVm`
-input (`LocalVmInput` in `src/routes/computer-use/types.ts`), which runLab sets
-from the study and no package caller can. Contract tests pass a `localVm` desktop
-on a lab with `execution.target: local`. Neither bypasses CLI admission checks.
+Firecracker run supplies its desktops through the computer-use run's `localVm`
+input (`LocalVmInput` in `src/routes/computer-use/types.ts`). runLab builds that
+input with `prepareLocalVmRun` (`src/routes/computer-use/local-vm.ts`), and no
+package caller can set it. Contract tests pass a `localVm` desktop on a lab with
+`execution.target: local`. Neither bypasses CLI admission checks.
 
 Final evidence errors cannot skip desktop release. Existing bundle fields and
 desktop lifetime accounting retain their meanings; unconfirmed or retained

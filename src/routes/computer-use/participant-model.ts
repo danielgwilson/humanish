@@ -27,7 +27,7 @@ import {
   sessionEnding,
 } from "./self-report.js";
 import { hollowCompletion } from "../../run/judge.js";
-import type { CuaParticipantDeps, CuaRunBudget, DesktopParticipantRun } from "./types.js";
+import type { ParticipantModelDeps, CuaRunBudget, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
 
 // Caller providers backed by a native Codex session (the local study's), with their close report.
@@ -55,7 +55,7 @@ export interface ParticipantModel {
 /** Starts the lane's model: a caller's provider, the operator's Codex, a Claude session, or none. */
 export async function startParticipantModel(
   spec: DesktopParticipantRun,
-  deps: CuaParticipantDeps,
+  deps: ParticipantModelDeps,
   executor: CuaExecutor,
 ): Promise<ParticipantModel> {
   const { env, brain } = deps;
@@ -119,7 +119,7 @@ export async function startParticipantModel(
 /** The options the lane's session runs with: prompt, model settings, spend caps and callbacks. */
 export function participantSessionOptions(
   spec: DesktopParticipantRun,
-  deps: CuaParticipantDeps,
+  deps: ParticipantModelDeps,
   ready: ReadyParticipantDesktop,
   provider: CuaProvider | undefined,
   writeScreenshot: NonNullable<CuaActorSessionOptions["writeScreenshot"]>,
@@ -263,7 +263,7 @@ export async function closeParticipantModel(
 /** Prices the finished session's tokens onto its trace, writes the trace, and warns on raw screenshots. */
 export async function recordParticipantTrace(
   spec: DesktopParticipantRun,
-  deps: CuaParticipantDeps,
+  deps: ParticipantModelDeps,
   session: CuaLoopResult,
   warnings: string[],
 ): Promise<void> {
@@ -292,7 +292,7 @@ export async function recordParticipantTrace(
 /** The checks that keep a goal_satisfied session from counting as a pass, with their warnings. */
 export function judgeParticipantSession(
   session: CuaLoopResult | undefined,
-  deps: CuaParticipantDeps,
+  deps: ParticipantModelDeps,
   warnings: string[],
 ): { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean } {
   const noEngagement = session !== undefined && hollowCompletion(sessionEnding(session));

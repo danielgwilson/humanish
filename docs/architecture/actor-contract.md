@@ -23,8 +23,8 @@ descriptor `runSession` is a fail-closed compatibility entry. Live execution is
 owned by `runTerminalProductLab`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
-The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and the
-`in-process-sdk` protocol were removed. No lab route dispatched either descriptor, and a
+#955 removed the `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and
+the `in-process-sdk` protocol. No lab route dispatched either descriptor, and a
 lab that names one now fails to parse. A signed-in Claude Code drives computer-use studies
 through `local-agent`, which plugs into the provider-neutral `CuaProvider` port
 (`src/actors/computer-use/loop/types.ts`, re-exported from `loop.ts`).
@@ -64,13 +64,24 @@ API surface.
    Agent SDK, Stagehand). The existing Codex app-server integration is the
    reference adapter. `pi-agent-core` was planned as the first in-process-SDK
    adapter to prove both shapes early; it shipped only as a trace mapper with no
-   route and has been removed.
+   route, and #955 removed it.
 
-2. **One normalized evidence schema: `humanish.actor-trace.v1`.** Codex `item/*`
-   events, Claude `ToolUse`/`ToolResult` blocks, pi `tool_execution_*` events,
-   and computer-use `computer_call` cycles all map onto one `ActorTrace` with a
-   typed `items[]`. `humanish.codex-app-server-trace.v1` remains a back-compat
-   alias during migration.
+2. **One normalized evidence schema: `humanish.actor-trace.v1`.** Four producers map
+   their records onto one `ActorTrace` with a typed `items[]`:
+   - Codex app-server `item/*` events, protocol `json-rpc`: `codexResultToActorTrace`
+     (`src/actors/codex/app-server-actor-trace.ts`).
+   - Computer-use loop turns, protocol `cua-loop`, whether the provider returned an OpenAI
+     `computer_call` or a local agent's JSON actions: `loopResult`
+     (`src/actors/computer-use/loop/trace.ts`).
+   - Scripted-browser steps, protocol `scripted-steps`: `projectScriptedActorTrace`
+     (`src/actors/scripted-browser/actor.ts`).
+   - The terminal route's command log and terminal events, protocol `terminal-exec`:
+     `buildTerminalActorTrace` (`src/routes/terminal/trace.ts`).
+
+   The Codex app-server still writes its own `humanish.codex-app-server-trace.v1` record
+   (`CodexAppServerTrace` in `src/actors/codex/app-server-trace.ts`), which
+   `codexResultToActorTrace` converts. The Claude Agent SDK `ToolUse`/`ToolResult` and pi
+   `tool_execution_*` mappers went with their adapters in #955.
 
 3. **A run is multi-turn within one trace; it stops on goal, abandonment, unrecoverable
    failure, or a wall-clock safety timeout, never on a turn cap.** Turn count is explicitly
@@ -379,7 +390,7 @@ removed from `RunLabOptions`. The adapter records its product nouns ONLY
 under an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
 `RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
 is hardcoded into a core enum. Default (no hook) behavior is unchanged. See
-[`terminal-product-lane.md`](./terminal-product-lane.md#slice-4-the-product-adapter-extension-seam-layer-6)
+[`terminal-product-route.md`](./terminal-product-route.md#slice-4-the-product-adapter-extension-seam-layer-6)
 for the full seam and the thin-adapter conformance proof.
 
 ## Making personas load-bearing
@@ -419,12 +430,33 @@ traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }`
    toward the success predicate) and annotates the abandonment friction as a feedback
    candidate. The harness imposes no turn cap; its hard stops are the wall-clock
    `timeoutMs` and declared spend caps.
-4. **Bind the same directives per harness**: pi (`systemPrompt` +
-   `beforeToolCall` allow rules), Claude (`system_prompt`/`--append-system-prompt`
-   - `allowedTools`), Codex (prepend to `turn/start` input), Stagehand (agent
-     context + action policy). Each binds the friction-tolerance, skill, and
-     accessibility directives identically; none uses a `max_turns`-style cap as the
-     persona stop condition.
+4. **Bind the same directives per harness.** `renderPersonaPromptSection`
+   (`src/lab/persona.ts`) renders the directives as one prompt section, and each harness puts
+   that section where its model reads standing instructions:
+   - Computer use: `composeParticipantInstructions`
+     (`src/routes/computer-use/participant-prompt.ts`) opens the participant instructions
+     with it. `openai-computer-use` sends those instructions as each Responses request's
+     `instructions`. A local-agent Codex runs as a restricted app-server participant and
+     receives them as thread/start `baseInstructions` (`threadStartParams` in
+     `src/actors/codex/restricted-launch.ts`), on an ephemeral read-only thread whose only
+     dynamic tool is `humanish_ui`. A local-agent Claude Code runs one `claude -p`
+     stream-json session with `--allowedTools Read`; the instructions open its first user
+     message (`promptFor` in `src/actors/local-agent/cli.ts`), and later turns rely on the
+     session's memory. `HUMANISH_LOCAL_AGENT_ONE_SHOT` instead spawns one `claude -p` per
+     turn, which resends the instructions every turn.
+   - Terminal: the section opens the `codex exec` prompt (`composeLivePrompt` in
+     `src/routes/terminal/session.ts`).
+   - The scripted-browser route replays declared steps with no model, so it binds no
+     directives and records an empty `traitsApplied`. The Codex app-server session behind
+     `humanish codex app-server` and the `codex-app-server` registry descriptor binds none
+     either: it sends the operator's prompt to turn/start as given.
+   - Stagehand remains roadmap. This rule once planned a pi binding (`systemPrompt` +
+     `beforeToolCall`) and a Claude Agent SDK one (`systemPrompt` + `allowedTools`). pi
+     shipped only as a trace mapper, the Claude Agent SDK descriptor never had a route, and
+     #955 removed both.
+
+   None of these uses a `max_turns`-style cap as the persona stop condition.
+
 5. **Prove it.** `ActorTrace.persona.traitsApplied` lists the injected directives; a
    `persona-fidelity` verify check asserts that the friction and accessibility directives
    reached the actor input and that a `gave_up` run cites a concrete friction reason (not a
@@ -504,10 +536,10 @@ turns as a stop signal.
    is provider-neutral); then a follow-up live SDK shim behind a DI seam, deferred
    until the package identity (`@earendil-works/pi-agent-core` vs
    `@mariozechner/pi-coding-agent`) and the Node `>=22.19` vs engines `>=20` gap
-   are pinned against an installed build. The live shim never landed, and the
-   mapper-only descriptor was removed because no route dispatched it.
+   are pinned against an installed build. The live shim never landed, and #955
+   removed the mapper-only descriptor because no route dispatched it.
 5. `claude-agent-sdk` adapter (the `app` run kind). It shipped as a descriptor with
-   a live session but no route, and was removed along with the `app` run kind.
+   a live session but no route, and #955 removed it along with the `app` run kind.
 6. Computer-use route. (Shipped as `openai-computer-use`: registered 0.3.0,
    lab-dispatched 0.4.0; `stagehand-cua` as a multi-provider front remains
    not-yet-shipped roadmap.)

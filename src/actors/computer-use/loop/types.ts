@@ -364,6 +364,9 @@ export interface CuaLoopOptions {
    *
    * Built-in caller: the external-public shared-world handoff (src/routes/shared-world/handoff.ts)
    * latches the host participant's lobby URL and checks that each follower reached the same lobby.
+   *
+   * @deprecated Wrap the executor's `observe` and read `url` from each observation it returns. The
+   * next minor removes this option.
    */
   onObservedUrl?: (url: string | undefined) => void;
   /**
@@ -374,6 +377,9 @@ export interface CuaLoopOptions {
    *
    * Built-in caller: the external-public handoff scans the host's narration for the lobby code,
    * because the E2B desktop's CDP URL read behind onObservedUrl is unreliable.
+   *
+   * @deprecated Wrap the provider's `nextTurn` and read `reasoning` and `message` from each turn it
+   * returns. The next minor removes this option.
    */
   onMessage?: (text: string) => void;
   /**
@@ -383,6 +389,9 @@ export interface CuaLoopOptions {
    *
    * Built-in caller: the external-public handoff reads the lobby code off each participant's own
    * frame until that participant has one: the host's latch, or a follower's convergence observation.
+   *
+   * @deprecated Wrap the executor's `observe` and read `screenshot` from each observation it
+   * returns. The next minor removes this option.
    */
   onScreenshot?: (frame: Buffer) => void;
   /**
