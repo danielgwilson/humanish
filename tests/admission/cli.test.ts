@@ -49,36 +49,36 @@ export function score() {
 const cases: readonly (readonly string[])[] = [
   // An option conflict wins over a live-only rule the route checks later (F2).
   ["watch", "adm-terminal-live-no-caps", "--expose", "--json"],
-  ["lab", "run", "adm-terminal-live-no-caps", "--json"],
-  ["lab", "run", "adm-scripted", "--rerun-failed-from", "prior-run", "--json"],
+  ["run", "adm-terminal-live-no-caps", "--json"],
+  ["run", "adm-scripted", "--rerun-failed-from", "prior-run", "--json"],
   // These two refuse on stderr with no envelope, even under --json.
-  ["lab", "run", "adm-cu", "--participants", "lane-01", "--json"],
-  ["lab", "run", "adm-cu", "--count", "0", "--json"],
-  ["lab", "run", "adm-cu", "--port", "99999", "--json"],
-  ["lab", "run", "adm-preview", "--count", "0", "--json"],
-  ["lab", "run", "adm-scripted", "--scorer", "./scorer.mjs", "--json"],
+  ["run", "adm-cu", "--participants", "lane-01", "--json"],
+  ["run", "adm-cu", "--count", "0", "--json"],
+  ["run", "adm-cu", "--port", "99999", "--json"],
+  ["run", "adm-preview", "--count", "0", "--json"],
+  ["run", "adm-scripted", "--scorer", "./scorer.mjs", "--json"],
   // The count is checked before the scorer loads, so its host code never runs (F4).
-  ["lab", "run", "adm-cu", "--scorer", "./scorer.mjs", "--count", "0", "--json"],
+  ["run", "adm-cu", "--scorer", "./scorer.mjs", "--count", "0", "--json"],
   // A plan refusal also comes before the scorer loads (F4).
-  ["lab", "run", "adm-terminal-live-no-caps", "--scorer", "./scorer.mjs", "--json"],
+  ["run", "adm-terminal-live-no-caps", "--scorer", "./scorer.mjs", "--json"],
   // A parse-valid local-app lab with no executor: the computer-use planner refuses it.
-  ["lab", "run", "adm-cu-local-app", "--scorer", "./scorer.mjs", "--json"],
+  ["run", "adm-cu-local-app", "--scorer", "./scorer.mjs", "--json"],
   // Missing keys win over an unpriced cap on computer use (F3); shared world checks price first.
-  ["lab", "run", "adm-cu-unpriced", "--json"],
-  ["lab", "run", "adm-shared-unpriced", "--json"],
+  ["run", "adm-cu-unpriced", "--json"],
+  ["run", "adm-shared-unpriced", "--json"],
   // A refusal for this machine (keys, runtime auth) also comes before the scorer loads.
-  ["lab", "run", "adm-terminal-live", "--scorer", "./scorer.mjs", "--json"],
-  ["lab", "run", "adm-cu-unpriced", "--scorer", "./scorer.mjs", "--json"],
-  ["lab", "run", "adm-shared-live", "--scorer", "./scorer.mjs", "--json"],
+  ["run", "adm-terminal-live", "--scorer", "./scorer.mjs", "--json"],
+  ["run", "adm-cu-unpriced", "--scorer", "./scorer.mjs", "--json"],
+  ["run", "adm-shared-live", "--scorer", "./scorer.mjs", "--json"],
   ["watch", "adm-shared-live", "--port", "99999"],
   // A live run is never share_ready, so watch refuses --safe on every path (lab or not).
   ["watch", "adm-cu", "--safe", "--json"],
   ["watch", "adm-scripted", "--safe", "--json"],
   ["watch", "--safe", "--json"],
   // Refused at parse since P0b, before any route runs.
-  ["lab", "run", "adm-clone-codex-app-server", "--json"],
+  ["run", "adm-clone-codex-app-server", "--json"],
   ["lab", "inspect", "adm-clone-codex-app-server", "--json"],
-  ["lab", "run", "adm-clone-no-serve", "--json"],
+  ["run", "adm-clone-no-serve", "--json"],
 ];
 
 const cleanup: string[] = [];
@@ -227,7 +227,7 @@ describe("CLI admission today", () => {
       });
 
       const result = await runCli(
-        ["lab", "run", ...lab, "--scorer", "./scorer.mjs", "--run-id", "taken-run"].concat([
+        ["run", ...lab, "--scorer", "./scorer.mjs", "--run-id", "taken-run"].concat([
           "--json",
           "--cwd",
           cwd,

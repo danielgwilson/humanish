@@ -39,6 +39,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
   minor removes it.
+- `--sims` on `run`, `lab run` and `watch`, and `--lanes` on `lab run`, deprecated in 0.107.0. Use
+  `--count` and `--participants`. Commander now reports an unknown option.
+- `watch --follow`, hidden and deprecated since 2026-06-01. Human output follows without it.
+- The hidden `run --app-url` refusal. 0.106.0 removed the option; it now gets commander's unknown
+  option error.
+
+### Deprecated
+
+- `humanish lab run` is a hidden alias of `humanish run` and is removed in the next minor. It takes
+  the same flags and prints "warning: humanish lab run is deprecated and is removed in the next
+  minor. Use humanish run <lab>." on stderr. `humanish lab --help` no longer lists it.
+
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
   carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
   `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
@@ -82,6 +94,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   flows." Before, they said "Open-source-safe persona simulation CLI and proof harness." and three
   other variants. The package keywords are user-research, usability-testing, synthetic-users,
   computer-use and cli.
+- `humanish run <lab>` takes `--rerun-failed-from`, `--participants` and `--scorer`, which only
+  `lab run` took (and `watch`, for `--scorer`). `run` and `watch` register a run's flags through
+  one helper, so they take the same ones. Without a lab, `run` refuses these three with
+  `HUMANISH_RUN_OPTION_CONFLICT` and `watch` with `HUMANISH_WATCH_OPTION_CONFLICT`. Before,
+  `watch` ignored `--scorer` without a lab.
 - The first commands a newcomer runs say the right thing.
   - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
     init --yes" and ".gitignore does not list .humanish/; run humanish init --yes". Before, these

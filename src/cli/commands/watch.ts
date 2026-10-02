@@ -5,13 +5,13 @@ import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
 import { runLabCommand } from "./lab-run.js";
-import { countOption } from "../renamed-options.js";
+import { addRunOptions, studyOnlyFlags } from "./run-command.js";
 import {
   applyEnvFileOption,
   type CliIo,
   collectRepeated,
   formatRunHuman,
-  JSON_OPTION_DESCRIPTION,
+  type LabCommandOptions,
   parseObserverPort,
   parsePositiveInteger,
   wantsJson,
@@ -20,37 +20,18 @@ import {
 import { followObserver, formatObserverHuman, watchExposeRequested } from "../observer-follow.js";
 
 export function registerWatchCommand(parent: Command, io: CliIo): void {
-  parent
-    .command("watch")
-    .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
-    .description(
-      "Run a study, open its Observer and keep the shell attached. With --run, watch a saved run in place of a new one.",
-    )
-    .summary("Run a study and follow it in the Observer.")
-    .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
-    .option("--run <id>", "Watch an existing run id or latest pointer.")
-    .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
-    .option(
-      "--count <count>",
-      "With a lab, override a preview or computer-use lab's participant count. Without one, start a fresh synthetic run with this many participants; 4 when --run is omitted.",
-    )
-    // The older spelling of --count, hidden and noted on stderr (renamed-options.ts).
-    .addOption(new Option("--sims <count>").hideHelp())
-    .option(
-      "--scorer <path>",
-      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code.",
-    )
-    .option(
-      "--run-id <id>",
-      "Explicit run id for deterministic fixture tests; refused when that run already exists.",
-    )
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--env-file <path>", "Load a local env file for this watch without persisting values.")
-    .option("--open", "Open the observer in the default browser.")
-    .option("--no-open", "Render without opening a browser.")
-    .addOption(new Option("--follow", "Deprecated; human output follows by default.").hideHelp())
-    .option("--detach", "Render/open once and exit without attached watch server.")
-    .option("--port <port>", "Local observer server port when following.", "0")
+  // A run's flags come from addRunOptions, the helper `run` uses, so the two cannot drift.
+  addRunOptions(
+    parent
+      .command("watch")
+      .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
+      .description(
+        "Run a study, open its Observer and keep the shell attached. With --run, watch a saved run in place of a new one.",
+      )
+      .summary("Run a study and follow it in the Observer.")
+      .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
+      .option("--run <id>", "Watch an existing run id or latest pointer."),
+  )
     .option(
       "--expose",
       "CUA lab only: expose the live run through an authenticated edge so you can watch from a phone. Requires edge auth.",
@@ -90,10 +71,11 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
       "--safe",
       "Not applicable to watch: a live run is never share_ready, so --safe (a `serve` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain).",
     )
-    .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
       [
+        "",
+        "Without a lab or --run, watch starts a synthetic run of 4 participants; --count changes it.",
         "",
         "Happy path:",
         "  humanish watch",
@@ -112,22 +94,10 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     .action((labArg, options, command) => handleWatch(io, labArg, options, command));
 }
 
-interface WatchOptions {
-  cwd: string;
-  count?: string | undefined;
-  detach?: boolean;
-  dryRun?: boolean;
-  envFile?: string;
-  follow?: boolean;
-  json?: boolean;
-  lab?: string;
-  open?: boolean;
+interface WatchOptions extends LabCommandOptions {
   port: string;
+  lab?: string;
   run?: string;
-  runId?: string;
-  scorer?: string;
-  /** The older spelling of count; read only through countOption. */
-  sims?: string;
   expose?: boolean;
   tunnel?: "ngrok";
   tunnelDomain?: string;
@@ -146,7 +116,7 @@ async function handleWatch(
   parsed: WatchOptions,
   command: Command,
 ): Promise<void> {
-  const options: WatchOptions = { ...parsed, count: countOption(io, parsed) };
+  const options = parsed;
   const lab = options.lab ?? labArg;
   if (options.lab !== undefined && labArg !== undefined) {
     refuseWatch(command, io, options.cwd, {
@@ -171,6 +141,15 @@ async function handleWatch(
 
   if (lab) {
     await watchLab(io, command, lab, options);
+    return;
+  }
+
+  const studyOnly = studyOnlyFlags(options);
+  if (studyOnly.length > 0) {
+    refuseWatch(command, io, options.cwd, {
+      code: "HUMANISH_WATCH_OPTION_CONFLICT",
+      message: `${studyOnly.join(", ")} ${studyOnly.length === 1 ? "needs" : "need"} a lab: humanish watch <lab>.`,
+    });
     return;
   }
 
@@ -207,7 +186,7 @@ async function handleWatch(
       : options.open === true
         ? true
         : !wantsMachine && process.stdout.isTTY === true;
-  const wantsFollow = !wantsMachine && options.detach !== true && options.follow !== false;
+  const wantsFollow = !wantsMachine && options.detach !== true;
   const staticOpen = wantsFollow ? false : shouldOpen;
 
   const rendered = await renderWatchEvidence(
@@ -252,31 +231,8 @@ async function watchLab(
     return;
   }
 
-  await runLabCommand({
-    command,
-    io,
-    lab,
-    mode: "watch",
-    options: {
-      cwd: options.cwd,
-      ...(options.count === undefined ? {} : { count: options.count }),
-      ...(options.detach === undefined ? {} : { detach: options.detach }),
-      ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-      ...(options.open === undefined ? {} : { open: options.open }),
-      port: options.port,
-      ...(options.runId === undefined ? {} : { runId: options.runId }),
-      ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
-      ...(options.expose === undefined ? {} : { expose: options.expose }),
-      ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
-      ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
-      ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
-      allowEmail: options.allowEmail,
-      allowDomain: options.allowDomain,
-      ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
-      ...(options.safe === undefined ? {} : { safe: options.safe }),
-      ...(options.json === undefined ? {} : { json: options.json }),
-    },
-  });
+  // Forwarded wholesale, as `run` forwards its options, so a run flag reaches the lab either way.
+  await runLabCommand({ command, io, lab, mode: "watch", options });
 }
 
 /** Without a lab, watch shows existing evidence (`--run`) or a fresh synthetic run (`--count`). */
