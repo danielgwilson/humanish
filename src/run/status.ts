@@ -118,7 +118,8 @@ export interface RunStatusHandle {
   settle(result: { ok: boolean; execution: ExecutionOutcome }): Promise<void>;
   /** The process is being stopped by `signal`: state `interrupted`, `completedAt` and the signal.
    *  It stops the cadence and makes a later finish or settle a no-op, so the route cannot write
-   *  `running` or `finished` over it. Resolves false, writing nothing, when the run had finished. */
+   *  `running` or `finished` over it. When the run had finished it writes nothing, waits for the
+   *  writes already queued and resolves false. */
   interrupt(signal: RunInterruptSignal): Promise<boolean>;
 }
 
@@ -217,7 +218,12 @@ export function beginRunStatus(
       await write(finishedRecord);
     },
     async interrupt(signal) {
-      if (finished) return false;
+      // A finish that has not landed yet is in the chain: wait for it so the process does not
+      // exit with `running` on disk.
+      if (finished) {
+        await writing;
+        return false;
+      }
       finished = true;
       clearInterval(timer);
       const completedAt = iso();

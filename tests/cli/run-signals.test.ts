@@ -5,10 +5,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
-import { beginRunSignalPhase } from "../../src/cli/commands/run-signals.js";
+import { beginRunSignalPhase, handOverRunSignals } from "../../src/cli/commands/run-signals.js";
 import { registerActiveRun } from "../../src/run/active-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
+import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../../src/run/reclaim.js";
 import { appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
 import type { RunInterruptSignal } from "../../src/run/status.js";
@@ -36,13 +37,16 @@ describe("the run command's signal handler", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  function setup(options: {
+  async function setup(options: {
+    runId?: string;
     interrupted?: boolean;
     kill?: (sandboxId: string) => Promise<boolean>;
     deadlineMs?: number;
   }) {
+    const runId = options.runId ?? RUN;
     const interrupt = vi.fn(async (_signal: RunInterruptSignal) => options.interrupted ?? true);
-    cleanups.push(registerActiveRun({ cwd, runId: RUN, status: { interrupt } }));
+    const paths = await prepareRunArtifactPaths(cwd, runId);
+    cleanups.push(registerActiveRun({ cwd, runId, paths, status: { interrupt } }));
     const killed: string[] = [];
     const module = {
       Sandbox: {
@@ -71,7 +75,7 @@ describe("the run command's signal handler", () => {
   }
 
   it("marks the run interrupted, reclaims its receipts and exits 128+n", async () => {
-    const run = setup({});
+    const run = await setup({});
     target.emit("SIGTERM");
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
     expect(run.interrupt).toHaveBeenCalledExactlyOnceWith("SIGTERM");
@@ -86,7 +90,10 @@ describe("the run command's signal handler", () => {
   });
 
   it("exits at once on a second signal while reclaim is still waiting", async () => {
-    const run = setup({ kill: () => new Promise<boolean>(() => undefined), deadlineMs: 2_000 });
+    const run = await setup({
+      kill: () => new Promise<boolean>(() => undefined),
+      deadlineMs: 2_000,
+    });
     target.emit("SIGINT");
     await vi.waitFor(() => expect(run.killed).toEqual(["sb-1"]));
     expect(run.exit).not.toHaveBeenCalled();
@@ -95,26 +102,56 @@ describe("the run command's signal handler", () => {
   });
 
   it("exits after the deadline and names the reclaim command", async () => {
-    const run = setup({ kill: () => new Promise<boolean>(() => undefined), deadlineMs: 50 });
+    const run = await setup({ kill: () => new Promise<boolean>(() => undefined), deadlineMs: 50 });
     target.emit("SIGHUP");
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(129));
     expect(run.stderr()).toContain(`run \`humanish reclaim --run ${RUN}\``);
   });
 
   it("leaves a run that had already finished to its route", async () => {
-    const run = setup({ interrupted: false });
+    const run = await setup({ interrupted: false });
     target.emit("SIGTERM");
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
     expect(run.killed).toEqual([]);
     expect(run.stderr()).toBe("");
   });
 
-  it("takes no signal after end", () => {
-    const run = setup({});
+  it("takes no signal after end", async () => {
+    const run = await setup({});
     run.phase.end();
     expect(target.listenerCount("SIGTERM")).toBe(0);
     target.emit("SIGTERM");
     expect(run.exit).not.toHaveBeenCalled();
+  });
+
+  it("reclaims the run it registered even when its id is an alias", async () => {
+    // A run named `latest`, then another run that moves the latest pointer to itself.
+    expect((await runDryRun({ cwd, dryRun: true, runId: "latest" })).ok).toBe(true);
+    const named = await prepareRunArtifactPaths(cwd, "latest");
+    await appendSandboxReceipt(named, { at: "t1", laneId: "lane-01", sandboxId: "sb-named" });
+    const other = "cua-2026-10-01T00-00-01-000Z-0be70a1d";
+    expect((await runDryRun({ cwd, dryRun: true, runId: other })).ok).toBe(true);
+    const otherPaths = await resolveRunPath(cwd, "latest");
+    expect(otherPaths?.absoluteRunRoot.endsWith(other)).toBe(true);
+    await appendSandboxReceipt(otherPaths!, { at: "t2", laneId: "lane-01", sandboxId: "sb-other" });
+
+    const run = await setup({ runId: "latest" });
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    expect(run.killed).toEqual(["sb-named"]);
+  });
+
+  it("keeps second-signal exit when analysis starts after shutdown began", async () => {
+    const run = await setup({
+      kill: () => new Promise<boolean>(() => undefined),
+      deadlineMs: 2_000,
+    });
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.killed).toEqual(["sb-1"]));
+    // The route published its bundle meanwhile and analysis starts.
+    handOverRunSignals();
+    target.emit("SIGTERM");
+    expect(run.exit).toHaveBeenCalledExactlyOnceWith(143);
   });
 
   it("hands the signals to analysis cancellation when analysis starts", () => {

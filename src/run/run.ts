@@ -175,8 +175,10 @@ export async function runScope<T>(
         if (!created.ok) return created;
         // beginRunStatus reads only the mode and the lab provenance from the run's options.
         status = beginRunStatus(created.paths, { ...options, runId });
+        // Registered before the first write lands: a signal while it is still settling reaches
+        // the handle, whose interrupt queues behind that write.
+        unregister = registerActiveRun({ cwd: options.cwd, runId, paths: created.paths, status });
         await status.started;
-        unregister = registerActiveRun({ cwd: options.cwd, runId, status });
         return { ok: true as const, run: openRun(options, runId, created.paths, status) };
       })(),
     );

@@ -4,7 +4,11 @@
 // the bundle is not finished, but the record ends at once and no journaled sandbox waits for its
 // timeout. Analysis has its own cancel handlers (analysis-signals.ts) and takes over when it starts.
 import { activeRuns, type ActiveRun } from "../../run/active-runs.js";
-import { reclaimRunSandboxes, type ReclaimHooks, type ReclaimResult } from "../../run/reclaim.js";
+import {
+  reclaimPinnedRunSandboxes,
+  type ReclaimHooks,
+  type ReclaimResult,
+} from "../../run/reclaim.js";
 import type { RunInterruptSignal } from "../../run/status.js";
 import type { CliIo } from "../io.js";
 import { exitCodeForSignal } from "../observer-follow.js";
@@ -28,7 +32,7 @@ export interface RunSignalOptions {
   deadlineMs?: number;
 }
 
-let endCurrent: (() => void) | undefined;
+let current: { end(): void; stopping(): boolean } | undefined;
 
 /** Install the run's signal handling until `end`. A new phase replaces the previous one. */
 export function beginRunSignalPhase(
@@ -46,7 +50,7 @@ export function beginRunSignalPhase(
   const end = (): void => {
     for (const [signal, handler] of handlers) target.removeListener(signal, handler);
     handlers.clear();
-    if (endCurrent === end) endCurrent = undefined;
+    if (current?.end === end) current = undefined;
   };
   const onSignal = (signal: RunInterruptSignal): void => {
     if (stopping) {
@@ -58,19 +62,22 @@ export function beginRunSignalPhase(
       .catch(() => undefined)
       .finally(() => exit(exitCodeForSignal(signal)));
   };
-  endCurrent?.();
+  current?.end();
   for (const signal of SIGNALS) {
     const handler = (): void => onSignal(signal);
     handlers.set(signal, handler);
     target.on(signal, handler);
   }
-  endCurrent = end;
+  current = { end, stopping: () => stopping };
   return { end };
 }
 
-/** Analysis is starting, and its own cancel handlers take the signals from here. */
+/**
+ * Analysis is starting, and its own cancel handlers take the signals from here. A shutdown that
+ * has already begun keeps its handlers, so a second signal still exits at once.
+ */
 export function handOverRunSignals(): void {
-  endCurrent?.();
+  if (current !== undefined && !current.stopping()) current.end();
 }
 
 async function stopActiveRuns(
@@ -88,7 +95,7 @@ async function stopActiveRuns(
   const lines = await Promise.all(
     interrupted.map(async (run) => {
       const reclaimed = await withDeadline(
-        reclaimRunSandboxes(run.cwd, run.runId, {
+        reclaimPinnedRunSandboxes(run.cwd, run.paths, {
           requestTimeoutMs: KILL_REQUEST_TIMEOUT_MS,
           ...options.reclaim,
         }).catch(() => undefined),

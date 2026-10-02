@@ -1,11 +1,14 @@
 // The runs this process has started and not yet closed, for the CLI's signal handler
 // (src/cli/commands/run-signals.ts). Internal: src/index.ts does not export it, so a library
 // caller never gets process signal handling it did not ask for.
+import type { PreparedRunArtifactPaths } from "./paths.js";
 import type { RunStatusHandle } from "./status.js";
 
 export interface ActiveRun {
   cwd: string;
   runId: string;
+  /** The run's own directory, so reclaim never resolves the id as an alias. */
+  paths: PreparedRunArtifactPaths;
   status: Pick<RunStatusHandle, "interrupt">;
 }
 

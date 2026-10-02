@@ -29,7 +29,7 @@ import {
 
 import { destroyE2BSandbox } from "../substrates/e2b/sandbox.js";
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
-import { runIdOf } from "./paths.js";
+import { runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 
 const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
 export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";
@@ -70,10 +70,31 @@ export interface ReclaimHooks {
   requestTimeoutMs?: number;
 }
 
-export async function reclaimRunSandboxes(
+export function reclaimRunSandboxes(
   cwd: string,
   runInput: string,
   hooks: ReclaimHooks = {},
+): Promise<ReclaimResult> {
+  return reclaimRun(cwd, runInput, () => resolveRunPath(cwd, runInput), hooks);
+}
+
+/**
+ * Reclaim the run whose directory the caller already holds. Nothing is resolved, so an id that is
+ * also an alias (a run named `latest`) cannot reach another run's receipts.
+ */
+export function reclaimPinnedRunSandboxes(
+  cwd: string,
+  runPaths: PreparedRunArtifactPaths,
+  hooks: ReclaimHooks = {},
+): Promise<ReclaimResult> {
+  return reclaimRun(cwd, runIdOf(runPaths), () => Promise.resolve(runPaths), hooks);
+}
+
+async function reclaimRun(
+  cwd: string,
+  runInput: string,
+  locate: () => Promise<PreparedRunArtifactPaths | null>,
+  hooks: ReclaimHooks,
 ): Promise<ReclaimResult> {
   const warnings: string[] = [];
   const base = {
@@ -86,7 +107,7 @@ export async function reclaimRunSandboxes(
   } as const;
   if (e2bDebugMode()) return { ...base, ok: false, error: E2B_DEBUG_REFUSAL };
 
-  const runPaths = await resolveRunPath(cwd, runInput);
+  const runPaths = await locate();
   if (!runPaths) {
     return {
       ...base,

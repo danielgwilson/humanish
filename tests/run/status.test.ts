@@ -7,12 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { activeRuns } from "../../src/run/active-runs.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { createRunArtifactPaths } from "../../src/run/paths.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
 import {
   RUN_STATUS_FILE,
   RUN_STATUS_SCHEMA,
   RUN_STATUS_STALE_MS,
   RUN_STATUS_TOUCH_MS,
+  beginRunStatus,
   classifyRunStatus,
   inferLegacyLabId,
   isRunStatusRecord,
@@ -160,6 +162,17 @@ describe("run status: identity + liveness on disk (#455)", () => {
       expect(await active.status.interrupt("SIGINT")).toBe(false);
     });
     expect(activeRuns().some((entry) => entry.runId === "run-f")).toBe(false);
+  });
+
+  it("an interrupt while finish is still writing waits for that write", async () => {
+    const created = await createRunArtifactPaths(cwd, "run-h");
+    if (!created.ok) throw new Error("run directory not created");
+    const status = beginRunStatus(created.paths, { runId: "run-h", mode: "live" });
+    await status.started;
+    // finish has claimed the record and queued its write; the signal arrives before it lands.
+    void status.finish();
+    expect(await status.interrupt("SIGTERM")).toBe(false);
+    expect((await read("run-h")).state).toBe("finished");
   });
 
   it("an interrupt after finish writes nothing", async () => {

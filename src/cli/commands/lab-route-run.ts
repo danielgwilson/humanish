@@ -15,13 +15,16 @@ export interface RouteRun {
 /**
  * Plans the lab with a route's options, then presents the refusal or the run. `beforeRun` runs
  * only for a plan that will run: it loads the scorer, or writes its own refusal and returns
- * undefined, so a refused lab never imports the scorer's host code.
+ * undefined, so a refused lab never imports the scorer's host code. `afterRun` runs once runLab
+ * has returned or thrown, before presentation, which may hold its own signal handlers (watch's
+ * Observer and tunnel).
  */
 export async function runRoute(
   config: LabConfig,
   run: RouteRun,
   beforeRun: () => Promise<{ scorer?: LoadedAdapterScorer } | undefined> = () =>
     Promise.resolve({}),
+  afterRun: () => void = () => undefined,
 ): Promise<void> {
   let outcome: LabOutcome;
   try {
@@ -37,9 +40,11 @@ export async function runRoute(
       outcome = prepared.outcome;
     }
   } catch (error) {
+    afterRun();
     if (run.onRunError === undefined) throw error;
     await run.onRunError(error);
     return;
   }
+  afterRun();
   await run.present(outcome);
 }
