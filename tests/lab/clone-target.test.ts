@@ -91,7 +91,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
             desktopModule: desktop.load,
           },
         );
-        expect(outcome.backend).toBe("cua");
+        expect(outcome.route).toBe("computer-use");
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
         expect(outcome.result.error?.message).toContain("execution.target: e2b-desktop");

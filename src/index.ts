@@ -78,7 +78,6 @@ export {
 export type {
   ConcurrentSharedWorldLabResult,
   CuaActorLabResult,
-  LabBackend,
   RunOptions,
   RunResult,
   ScriptedBrowserLabResult,

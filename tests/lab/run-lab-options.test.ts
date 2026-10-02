@@ -176,17 +176,17 @@ describe("runLab returns an option refusal in the route's own envelope and write
   });
 
   it.each([
-    ["preview", "synthetic", "humanish.run-result.v1", { scorer }],
-    ["cuClone", "cua", "humanish.cua-lab-result.v2", { inProcess, createProvider }],
+    ["preview", "preview", "humanish.run-result.v1", { scorer }],
+    ["cuClone", "computer-use", "humanish.cua-lab-result.v2", { inProcess, createProvider }],
     ["scriptedAppUrl", "scripted", "humanish.scripted-lab-result.v1", { scorer }],
     ["terminal", "terminal", "humanish.terminal-lab-result.v1", { prepareDesktop }],
     [
       "sharedProvisioned",
-      "concurrent-shared-world",
+      "shared-world",
       "humanish.concurrent-shared-world-lab-result.v1",
       { createProvider },
     ],
-  ] as const)("%s", async (base, backend, schema, options) => {
+  ] as const)("%s", async (base, route, schema, options) => {
     let desktopLoads = 0;
     const outcome = await runLab(
       config(base),
@@ -199,7 +199,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
       },
     );
 
-    expect(outcome.backend).toBe(backend);
+    expect(outcome.route).toBe(route);
     expect(outcome.result).toMatchObject({
       schema,
       ok: false,

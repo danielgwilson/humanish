@@ -73,8 +73,8 @@ describe("local browser dry-run", () => {
       onEvent,
     });
 
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     expect(outcome.result.ok).toBe(true);
     expect(onEvent.mock.calls.filter(([event]) => event.type === "plan")).toHaveLength(1);
     expect(score).toHaveBeenCalledOnce();

@@ -270,7 +270,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): string {
     [
       `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
       `lab: ${result.labId ?? result.lab}`,
-      ...(result.backend ? [`backend: ${result.backend}`] : []),
+      ...(result.route ? [`route: ${result.route}`] : []),
       `reachability: ${result.reachability}`,
       `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
       ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),

@@ -147,7 +147,7 @@ export async function admitSharedWorldPlan(
 }
 
 function sharedWorldOutcome(result: ConcurrentSharedWorldLabResult) {
-  return { route: "shared-world", backend: "concurrent-shared-world", result } as const;
+  return { route: "shared-world", result } as const;
 }
 
 /** Run a shared-world plan: its local checks, then the run. */

@@ -128,9 +128,9 @@ describe("lab config expressiveness (rung 3)", () => {
     onTestFinished(() => rm(cwd, { force: true, recursive: true }));
     const r2 = await runLab(two.config, { cwd, runId: "behavioral-2", dryRun: true });
     const r5 = await runLab(five.config, { cwd, runId: "behavioral-5", dryRun: true });
-    expect(r2.backend).toBe("synthetic");
-    expect(r5.backend).toBe("synthetic");
-    if (r2.backend !== "synthetic" || r5.backend !== "synthetic") return;
+    expect(r2.route).toBe("preview");
+    expect(r5.route).toBe("preview");
+    if (r2.route !== "preview" || r5.route !== "preview") return;
     // Proof the engine consumes the composition, not just routes 1 of 3 fixed backends.
     expect(r2.result.simCount).toBe(2);
     expect(r5.result.simCount).toBe(5);

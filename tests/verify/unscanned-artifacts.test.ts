@@ -56,7 +56,7 @@ async function runWithAdapterFile(cwd: string, file: AdapterFile): Promise<strin
       },
     },
   });
-  if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+  if (outcome.route !== "computer-use") throw new Error(`unexpected backend ${outcome.route}`);
   return outcome.result.runId;
 }
 

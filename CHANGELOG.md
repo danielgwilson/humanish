@@ -35,6 +35,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   options; `AdapterScorerModule` is the scorer's type.
 - `HUMANISH_LAB_OPTION_CONFLICT` now covers only `rerun.laneIds` beside `rerun.participantIds`,
   and only `rerun.laneIds` emits `HUMANISH_RUN_LAB_OPTION_DEPRECATED`.
+- `LabOutcome.backend` and the `LabBackend` type (#1388). Narrow on `outcome.route` instead.
+  The old names map to routes: `cua` is `computer-use`, `concurrent-shared-world` is `shared-world`,
+  `synthetic` is `preview`, and `scripted` and `terminal` keep their names.
+- `humanish lab preflight --json` no longer writes `backend` (#1388). This JSON field never
+  carried a deprecation. Read `route`, which the same result has carried beside it since 0.106.0,
+  with the mapping above. The check named `backend` is now named `route`, and the human output
+  prints `route:` where it printed `backend:`.
 
 ### Changed
 

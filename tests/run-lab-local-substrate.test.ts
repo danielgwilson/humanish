@@ -79,7 +79,7 @@ describe("local browser study selection", () => {
     expect(options.scorerProvenance).toBe(scorerProvenance);
     expect(options.config.execution?.target).toBe("local");
     expect(options.config.subject.appUrl).toBe(config.subject.appUrl);
-    expect(outcome.backend).toBe("cua");
+    expect(outcome.route).toBe("computer-use");
     expect((outcome.result as { ok?: boolean }).ok).toBe(true);
     expect(close).toHaveBeenCalledOnce();
   });
@@ -94,7 +94,7 @@ describe("local browser study selection", () => {
     });
 
     expect(localVm).not.toHaveBeenCalled();
-    expect(outcome.backend).toBe("cua");
+    expect(outcome.route).toBe("computer-use");
     expect((outcome.result as { ok?: boolean }).ok).toBe(true);
   });
 
@@ -114,8 +114,8 @@ describe("local browser study selection", () => {
     );
 
     expect(localVm).not.toHaveBeenCalled();
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     // The local study is not started, so the run has no local desktop and refuses before either
     // caller function runs.
     expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");

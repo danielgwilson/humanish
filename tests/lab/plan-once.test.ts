@@ -60,7 +60,7 @@ vi.mock("../../src/routes/computer-use/plan.js", async (importOriginal) => {
 });
 
 import { runLab } from "../../src/run-lab.js";
-import { backendOf, routeOf } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import { lab, SCENARIO_YAML, type BaseName, type Patch } from "../admission/fixtures.js";
@@ -95,11 +95,9 @@ describe("runLab plans each lab once", () => {
 
   it.each(runs)(
     "%s: one planLab call and one route planner call",
-    async (_name, config, backend, routePlans) => {
+    async (_name, config, _backend, routePlans) => {
       const outcome = await runLab(config(), { cwd, dryRun: true, open: false });
-      expect(outcome.backend).toBe(backend);
       expect(outcome.route).toBe(routeOf(config()));
-      expect(backendOf(outcome.route)).toBe(outcome.backend);
       expect((outcome.result as { ok?: boolean }).ok).toBe(true);
       expect(counts.planLab).toBe(1);
       expect(counts.route).toBe(routePlans);

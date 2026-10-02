@@ -26,7 +26,7 @@ import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./va
 /** The five execution paths a lab can take. */
 export type LabRoute = "preview" | "computer-use" | "shared-world" | "terminal" | "scripted";
 
-/** A route's older name, kept in `LabOutcome.backend` and the preflight result's `backend`. */
+/** A route's older name, which the deprecated selectLabBackend still returns. */
 export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
 
 const BACKENDS: Record<LabRoute, LabBackend> = {

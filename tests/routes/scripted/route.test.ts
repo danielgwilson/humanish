@@ -529,8 +529,8 @@ describe("runScriptedBrowserLab", () => {
   it("dry-run produces a verified contract bundle with pinned scenario provenance and no actor seam", async () => {
     const scenarioText = await writeCommittedScenario(cwd);
     const outcome = await runLab(scriptedConfig({ count: 2 }), { cwd, dryRun: true });
-    expect(outcome.backend).toBe("scripted");
-    if (outcome.backend !== "scripted") return;
+    expect(outcome.route).toBe("scripted");
+    if (outcome.route !== "scripted") return;
     const result = outcome.result;
 
     expect(result.ok).toBe(true);
@@ -592,7 +592,7 @@ describe("runScriptedBrowserLab", () => {
   it("default surface roster is 1 (desktop only) — the single-lane default governs; count: 2 is the override", async () => {
     await writeCommittedScenario(cwd);
     const outcome = await runLab(scriptedConfig(), { cwd, dryRun: true });
-    if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+    if (outcome.route !== "scripted") throw new Error("expected scripted backend");
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
     );
@@ -649,8 +649,8 @@ describe("runScriptedBrowserLab", () => {
             automaticAnalysisTrigger: "default",
             automaticAnalysis: { reason: "synthetic_no_provider" },
           });
-        expect(outcome.backend).toBe("scripted");
-        if (outcome.backend !== "scripted") return;
+        expect(outcome.route).toBe("scripted");
+        if (outcome.route !== "scripted") return;
         const result = outcome.result;
 
         expect(result.ok).toBe(true);
@@ -749,8 +749,8 @@ describe("runScriptedBrowserLab", () => {
       },
       hooks.deps,
     );
-    expect(outcome.backend).toBe("scripted");
-    if (outcome.backend !== "scripted") return;
+    expect(outcome.route).toBe("scripted");
+    if (outcome.route !== "scripted") return;
     const result = outcome.result;
     // prepareDesktop runs once, on the subject sandbox, before provisioning.
     expect(targets).toEqual([{ kind: "subject" }]);
@@ -862,7 +862,7 @@ describe("runScriptedBrowserLab", () => {
         },
         hooks.deps,
       );
-      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      if (outcome.route !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
       // Credible failure evidence is a successful lab run.
@@ -904,7 +904,7 @@ describe("runScriptedBrowserLab", () => {
         },
         hooks.deps,
       ).finally(stderr.stop);
-      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      if (outcome.route !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
       expect(result.ok).toBe(false);
@@ -1017,7 +1017,7 @@ describe("runScriptedBrowserLab", () => {
       config.execution!.timeoutMs = 3_000;
       const stderr = captureStderr();
       const outcome = await runLab(config, { cwd }, deps).finally(stderr.stop);
-      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      if (outcome.route !== "scripted") throw new Error("expected scripted backend");
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
       const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
@@ -1042,7 +1042,7 @@ describe("runScriptedBrowserLab", () => {
         },
         { launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }) },
       );
-      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      if (outcome.route !== "scripted") throw new Error("expected scripted backend");
       const { runId } = outcome.result;
       const runDir = path.join(cwd, ".humanish", "runs", runId);
       const evidenceCheck = async () =>
@@ -1083,7 +1083,7 @@ describe("runScriptedBrowserLab", () => {
         },
         { launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }) },
       );
-      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      if (outcome.route !== "scripted") throw new Error("expected scripted backend");
       expect(outcome.result.ok).toBe(true);
       expect(outcome.result.sessions[0]?.completionReason).toBe("goal_satisfied");
 
@@ -1131,7 +1131,7 @@ describe("runScriptedBrowserLab", () => {
       },
       hooks.deps,
     ).finally(stderr.stop);
-    if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+    if (outcome.route !== "scripted") throw new Error("expected scripted backend");
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
@@ -1171,7 +1171,7 @@ describe("runScriptedBrowserLab", () => {
         launchBrowser: async () => makeFakeBrowser({}),
       },
     ).finally(stderr.stop);
-    if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+    if (outcome.route !== "scripted") throw new Error("expected scripted backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
@@ -1694,7 +1694,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       },
       hooks.deps,
     ).finally(stderr.stop);
-    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    if (outcome.route !== "scripted") throw new Error(`unexpected backend ${outcome.route}`);
     expect(outcome.result.ok).toBe(false);
     expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
     expect(outcome.result.error?.message).toMatch(/^subject install failed/);
@@ -1740,7 +1740,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       { cwd, ...scriptedOptions(hooks) },
       hooks.deps,
     );
-    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    if (outcome.route !== "scripted") throw new Error(`unexpected backend ${outcome.route}`);
     expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed });
     expect(outcome.result.warnings.join("\n")).toContain(warning);
   });
@@ -1760,7 +1760,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       { cwd, ...scriptedOptions(hooks) },
       hooks.deps,
     );
-    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    if (outcome.route !== "scripted") throw new Error(`unexpected backend ${outcome.route}`);
     expect(outcome.result.subjectSandbox?.killed).toBe(false);
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1790,7 +1790,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       { cwd, runId, ...scriptedOptions(hooks) },
       hooks.deps,
     );
-    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    if (outcome.route !== "scripted") throw new Error(`unexpected backend ${outcome.route}`);
     expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: false });
 
     const reclaimed: string[] = [];
