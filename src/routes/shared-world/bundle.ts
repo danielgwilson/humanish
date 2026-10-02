@@ -38,7 +38,7 @@ import {
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { participantEvent, participantIds } from "../../run/participant-records.js";
-import { sharedWorldParticipantRecords } from "./seat-records.js";
+import { sharedWorldParticipantRecords } from "./bundle-records.js";
 import {
   CONCURRENT_ATTRIBUTION_LIMITS,
   EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS,

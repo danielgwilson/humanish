@@ -742,7 +742,7 @@ describe("observer rendering", () => {
         "watch",
         "--run",
         "latest",
-        "--sims",
+        "--count",
         "4",
         "--cwd",
         cwd,

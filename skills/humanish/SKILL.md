@@ -414,7 +414,7 @@ npx humanish verify --run latest --json
 npx humanish watch --run latest --detach --no-open --json
 ```
 
-Do not use `humanish watch --sims ...` as a substitute for a scripted-browser
+Do not use `humanish watch --count ...` as a substitute for a scripted-browser
 lab. `watch` renders or follows Observer evidence; a live scripted-browser lab
 captures desktop and mobile browser evidence against a running app.
 

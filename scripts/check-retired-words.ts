@@ -1,6 +1,6 @@
 /**
- * Counts the retired words (lane, seat, role, sim, study) in src/ identifiers outside the exempt
- * paths (see lib/retired-words.ts) and holds each count to its cap in package.json's
+ * Counts the retired words (lane, seat, role, sim, study) in src/ identifiers and file names
+ * outside the exempt paths (see lib/retired-words.ts) and holds each count to its cap in package.json's
  * vocabulary:check script: a count above its cap fails, and so does one below it, so the PR that
  * removes the words lowers the cap.
  */
@@ -9,7 +9,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { findRetiredWords, isCounted, RETIRED_WORDS } from "./lib/retired-words.js";
+import {
+  findRetiredPathWords,
+  findRetiredWords,
+  isCounted,
+  RETIRED_WORDS,
+} from "./lib/retired-words.js";
 
 const { values } = parseArgs({
   options: {
@@ -32,6 +37,10 @@ const hits = new Map<string, string[]>(RETIRED_WORDS.map((word) => [word, []]));
 for (const file of files) {
   for (const hit of findRetiredWords(file, readFileSync(resolve(root, file), "utf8"))) {
     hits.get(hit.word)!.push(`${file}:${hit.line} ${hit.identifier}`);
+  }
+  // A file's own name counts too, listed at line 0.
+  for (const hit of findRetiredPathWords(file)) {
+    hits.get(hit.word)!.push(`${file}:0 ${hit.identifier}`);
   }
 }
 

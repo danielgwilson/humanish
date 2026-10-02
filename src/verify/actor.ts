@@ -295,15 +295,15 @@ const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set([
 ]);
 
 /**
- * Independent mirror of the producer-side no-engagement guard (routes/computer-use/lanes.ts): a
- * LIVE actor trace claiming goal_satisfied while carrying zero action-bearing items AND zero
- * message items is a hollow run — the actor neither did nor said anything — and must not verify as
- * evidence (invariant 4: evidence verifies fail-closed). Live-vs-dry-run is judged exactly as the
- * producer judges it, from bundle.mode alone; dry-run/contract bundles legitimately carry no
- * actions and stay exempt. Engagement is accepted from EITHER surface — itemized trace items or the
- * producer's counts — because providers differ in what they itemize; a hollow run reports zero on
- * both. The trace is read defensively: isRunStream does not validate the actor seam, and verify
- * must not throw on a malformed one.
+ * Independent mirror of the producer-side no-engagement guard
+ * (routes/computer-use/participant-execution.ts): a LIVE actor trace claiming goal_satisfied while
+ * carrying zero action-bearing items AND zero message items is a hollow run — the actor neither did
+ * nor said anything — and must not verify as evidence (invariant 4: evidence verifies fail-closed).
+ * Live-vs-dry-run is judged exactly as the producer judges it, from bundle.mode alone;
+ * dry-run/contract bundles legitimately carry no actions and stay exempt. Engagement is accepted
+ * from EITHER surface — itemized trace items or the producer's counts — because providers differ in
+ * what they itemize; a hollow run reports zero on both. The trace is read defensively: isRunStream
+ * does not validate the actor seam, and verify must not throw on a malformed one.
  */
 export function noEngagementActorFindings(bundle: RunBundle): string[] {
   if (bundle.mode !== "live") {

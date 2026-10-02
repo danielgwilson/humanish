@@ -54,10 +54,11 @@ not.
    `acquireE2BDesktopSandbox` (`src/substrates/e2b/sandbox.ts`) records the sandbox id before it
    returns. `src/subject/`
    provisions a `clone` or `local-tree` subject over a `Shell` (`src/substrates/shell.ts`).
-5. **Participants.** `runLabParticipants` (`src/routes/computer-use/run-lanes.ts`) publishes an
-   in-progress bundle, then calls `runAllCuaParticipants` (`src/routes/computer-use/lanes.ts`). That
-   runs `runCuaParticipant` for each participant, at most `execution.concurrency` at a time, and
-   each one drives `runComputerUseLoop` (`src/actors/computer-use/loop.ts`).
+5. **Participants.** `runLabParticipants` (`src/routes/computer-use/live-phase.ts`) publishes an
+   in-progress bundle, then calls `runAllCuaParticipants`
+   (`src/routes/computer-use/participant-execution.ts`). That runs `runCuaParticipant` for each
+   participant, at most `execution.concurrency` at a time, and each one drives `runComputerUseLoop`
+   (`src/actors/computer-use/loop.ts`).
 6. **Judge and publish.** `finishCuaRun` (`src/routes/computer-use/result.ts`) judges once with
    `judgeComputerUseRun` (`src/routes/computer-use/bundle.ts`) and builds the bundle with
    `buildCuaRunBundle` (`src/routes/computer-use/bundle.ts`), by the rules in `src/run/judge.ts`. A

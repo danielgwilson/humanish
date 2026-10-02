@@ -30,7 +30,7 @@ import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
-import { runCuaParticipants } from "../../../src/routes/computer-use/lanes.js";
+import { runCuaParticipants } from "../../../src/routes/computer-use/participant-execution.js";
 import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import {
   type DesktopParticipantRun,

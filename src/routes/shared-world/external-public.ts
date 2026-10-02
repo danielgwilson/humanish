@@ -12,7 +12,7 @@ import { drainExternalComms } from "./comms.js";
 import { LobbyHandoff, runFollower, runHost, type HandoffParticipantDeps } from "./handoff.js";
 import { readLobbyCodeFromFrame } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
-import { participantRunDeps, startParticipantFlush } from "./seats.js";
+import { participantRunDeps, startParticipantFlush } from "./participant-specs.js";
 import type {
   ActorRunResult,
   ConcurrentBundleArgs,

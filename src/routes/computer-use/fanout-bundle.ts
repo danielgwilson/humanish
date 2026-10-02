@@ -27,7 +27,7 @@ import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatParticipantPlanEntry } from "./participant-runs.js";
 import type { CuaFanoutBundleArgs, ParticipantRunOutcome } from "./types.js";
-import { fanoutParticipantRecords } from "./fanout-lanes.js";
+import { fanoutParticipantRecords } from "./fanout-records.js";
 
 /** The run's first two events: its creation and the fan-out plan. */
 function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
