@@ -178,6 +178,19 @@ export class RestrictedCodexTurn {
       this.context.idle(method, params);
       return;
     }
+    // The single tool-policy check, first: an event that also fails the identity or delta checks
+    // below still has its items recorded. Tool requests must fail even if the turn-start
+    // acknowledgment is lost, and every event reaches handleTurnEvent only from here, directly or
+    // through the early buffer, so no event skips it. Every item is checked, whatever the method
+    // that carries it and wherever the schema nests it.
+    const items = itemPolicyOf(method, params, this.context.policy);
+    if (
+      toolPolicyViolation(method, codexRecord(params.item), this.allowedRawItemTypes) ||
+      items === "violation"
+    ) {
+      this.context.refuse("codex_tool_call");
+      return;
+    }
     if (
       !hasScopedIdentity(method, params, this.context.threadId(), this.turnId ?? this.earlyTurnId)
     ) {
@@ -194,18 +207,6 @@ export class RestrictedCodexTurn {
         deadline.stop("response_too_large");
         return;
       }
-    }
-    // The single tool-policy check. Tool requests must fail even if the turn-start
-    // acknowledgment is lost, and every event reaches handleTurnEvent only from here, directly
-    // or through the early buffer, so no event skips it. Every item is checked, whatever the
-    // method that carries it and wherever the schema nests it.
-    const items = itemPolicyOf(method, params, this.context.policy);
-    if (
-      toolPolicyViolation(method, codexRecord(params.item), this.allowedRawItemTypes) ||
-      items === "violation"
-    ) {
-      this.context.refuse("codex_tool_call");
-      return;
     }
     if (items === "none" && !KNOWN_CODEX_NOTIFICATIONS.has(method))
       this.context.recordUnknown(method);

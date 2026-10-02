@@ -401,4 +401,14 @@ describe("restricted Codex turn notification policy", () => {
     expect(deadline.code).toBe("codex_tool_call");
     expect(called).toBe(false);
   });
+
+  it("records a disallowed item even when its event names another thread", () => {
+    const { turn, deadline } = setup();
+    turn.acknowledge(TURN);
+    turn.onNotification("item/completed", {
+      ...event({ type: "commandExecution" }),
+      threadId: "other-thread",
+    });
+    expect(deadline.code).toBe("codex_tool_call");
+  });
 });
