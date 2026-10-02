@@ -23,7 +23,7 @@ import type {
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
-// A lane id interpolates into per-lane evidence paths (screenshots/<id>/, actors/<id>.json), so
+// A participant id interpolates into its evidence paths (screenshots/<id>/, actors/<id>.json), so
 // it must be a public-safe path token, same shape as a lab id.
 export const PARTICIPANT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
@@ -170,7 +170,7 @@ function parseFocus(raw: unknown): LabParticipantFocus | undefined {
 }
 
 /**
- * Parse `actors[index].roster` compact groups into concrete lanes. This is authoring sugar for
+ * Parse `actors[index].roster` compact groups into concrete `lanes[]` entries. This is authoring sugar for
  * "N users of M adapter-owned types across S surfaces"; the runtime receives only `lanes[]`.
  */
 function parseRosterGroups(
@@ -233,11 +233,11 @@ function parseRosterGroups(
 
 /**
  * Parse `actors[index].lanes` into a fan-out roster (computer-use E2B route). Structural only:
- * each lane is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?,
+ * each entry is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?,
  * entry?, host?, reasoningEffort?, stopWhen?, dwell? }`.
- * Lane ids (when declared) must be public-safe path tokens and unique; lane grouping metadata
- * must be public-safe tokens; a lane device must be a known preset name. The
- * route-scoped cross-validation (lanes XOR count/laneFocus, device XOR raw resolution, cap 16)
+ * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
+ * must be public-safe tokens; a device must be a known preset name. The
+ * route-scoped cross-validation (`lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap 16)
  * runs in parseLabConfig where the route is known.
  */
 function parseParticipantEntries(

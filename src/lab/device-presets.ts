@@ -8,7 +8,7 @@ import type { LabConfig } from "./types.js";
 // On the computer-use / E2B-desktop route, presets size the physical X screen by default.
 // CSS viewport dimensions are measured independently; browser chrome and the width floor below
 // can make them differ. A mobile preset alone does not apply touch, DPR or a mobile user agent.
-// With execution.desktop.fidelity.mobileEmulation enabled, hosted Chromium mobile lanes apply
+// With execution.desktop.fidelity.mobileEmulation enabled, hosted Chromium mobile participants apply
 // those overrides through a held CDP session, including later tabs, and record page read-back.
 // Neither a preset nor browser emulation establishes physical-device or touch fidelity.
 //
@@ -24,9 +24,9 @@ export interface DevicePreset {
   width: number;
   /** Requested device height, used for the hosted physical screen. */
   height: number;
-  /** Mobile identity; enables emulation only when the hosted lane explicitly opts in. */
+  /** Mobile identity; enables emulation only when the hosted participant explicitly opts in. */
   isMobile: boolean;
-  /** Requested DPR; applied on hosted mobile lanes only with opt-in CDP emulation. */
+  /** Requested DPR; applied on hosted mobile participants only with opt-in CDP emulation. */
   deviceScaleFactor: number;
 }
 
