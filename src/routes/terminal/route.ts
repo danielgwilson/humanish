@@ -105,7 +105,7 @@ export function terminalLabRefusal(
     refused,
     undefined,
     analysis.ok ? analysis.config : undefined,
-    options.automaticAnalysis,
+    options,
     { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
   );
 }
@@ -197,16 +197,10 @@ function completeTerminalAnalysis(
   result: TerminalProductLabResult,
   finished: FinishedRun | undefined,
 ): Promise<TerminalProductLabResult> {
-  return completeAutomaticAnalysis(
-    result,
-    finished,
-    plan.analysis?.config,
-    input.automaticAnalysis,
-    {
-      ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
-      preferLargerOutput: plan.analysis?.preferLargerOutput === true,
-    },
-  );
+  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
+    ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
+    preferLargerOutput: plan.analysis?.preferLargerOutput === true,
+  });
 }
 
 /** The route's envelope for a run that stops before its bundle. */

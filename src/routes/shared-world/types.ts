@@ -3,13 +3,10 @@
 
 import type { LabDeps } from "../../lab/lab-deps.js";
 import type { LabEvent } from "../../lab/run-lab-events.js";
-import type { RunLabHomes } from "../../lab/run-lab-options.js";
+import type { RunLabHomes } from "../../lab/run-lab-homes.js";
 import type { SharedWorldJudgment } from "../../run/judge.js";
 import type { BrowserScorer } from "../../lab/adapter-extension.js";
-import type {
-  AutomaticAnalysisHooks,
-  AutomaticAnalysisResult,
-} from "../../analysis/automatic-completion.js";
+import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
@@ -55,7 +52,8 @@ export const CONCURRENT_ATTRIBUTION_LIMITS = [
 ] as const;
 
 export interface RunConcurrentSharedWorldLabOptions {
-  automaticAnalysis?: AutomaticAnalysisHooks;
+  /** Cancels post-run analysis only. */
+  analysisSignal?: AbortSignal;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */

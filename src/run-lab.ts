@@ -6,7 +6,6 @@
 // refusal before it loads a declared review scorer.
 
 import type { LocalVmInput } from "./routes/computer-use/types.js";
-import type { AutomaticAnalysisHooks } from "./analysis/automatic-completion.js";
 import {
   computerUseInput,
   type LateScorer,
@@ -22,9 +21,8 @@ import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
   removedOptionRefusal,
-  type RunLabDriving,
-  type RunLabHomes,
 } from "./lab/run-lab-options.js";
+import type { RunLabDriving, RunLabHomes } from "./lab/run-lab-homes.js";
 import { type LabConfig } from "./lab/types.js";
 import type { ObserverResult } from "./observer/render.js";
 import { admitComputerUsePlan, computerUseLabRefusal } from "./routes/computer-use/route.js";
@@ -160,9 +158,9 @@ async function admitPlan(
     case "computer-use":
       return admitComputerUsePlan(plan, computerUseInput(options, deps, emit), config);
     case "scripted":
-      return admitScriptedPlan(plan, scriptedInput(options, deps));
+      return admitScriptedPlan(plan, scriptedInput(options, deps, emit));
     case "terminal":
-      return admitTerminalPlan(plan, terminalInput(options, deps));
+      return admitTerminalPlan(plan, terminalInput(options, deps, emit));
     case "shared-world":
       return admitSharedWorldPlan(plan, sharedWorldInput(options, deps, emit), config);
   }
@@ -199,7 +197,7 @@ async function refusalOutcome(
         route: "scripted",
         backend: "scripted",
         result: await scriptedLabRefusal(
-          { ...scriptedInput(options, deps), config, dryRun },
+          { ...scriptedInput(options, deps, emit), config, dryRun },
           refusal,
         ),
       };
@@ -208,7 +206,7 @@ async function refusalOutcome(
         route: "terminal",
         backend: "terminal",
         result: await terminalLabRefusal(
-          { ...terminalInput(options, deps), config, dryRun },
+          { ...terminalInput(options, deps, emit), config, dryRun },
           refusal,
         ),
       };
@@ -266,8 +264,6 @@ interface RunLabInternals {
   scorerProvenance?: RunScorerProvenance;
   /** The local VM study's desktop, analysis gate and signal, for a local browser lab. */
   localVm?: LocalVmInput;
-  /** The automatic-analysis hooks: a test's analysis runner, and where onEvent and analysisSignal go. */
-  automaticAnalysis?: AutomaticAnalysisHooks;
 }
 
 /** A run's result and the route it ran on. */

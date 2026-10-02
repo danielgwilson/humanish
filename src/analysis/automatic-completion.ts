@@ -1,15 +1,18 @@
 import { physicalCwdOf, validatePreparedRunRootIdentity } from "../run/paths.js";
 import { FinishedRun } from "../run/run.js";
 import type { AnalysisConfig } from "./types.js";
+import type { LabDeps } from "../lab/lab-deps.js";
+import type { LabEvent } from "../lab/run-lab-events.js";
 import { runAutomaticAnalysis, type AutomaticAnalysisDeps } from "./automatic.js";
 import type { AutomaticAnalysisOutcome } from "./job.js";
 
-export interface AutomaticAnalysisHooks {
-  /** Provider/test dependencies apply only to analysis, never to the participant. */
-  deps?: AutomaticAnalysisDeps;
-  /** Called after the source is finalized; the returned cleanup always runs. */
-  onStart?: () => void | (() => void);
-  run?: typeof runAutomaticAnalysis;
+/** What a route's input gives its analysis: the test's runner and deps, the signal and onEvent. */
+export interface AnalysisInput {
+  readonly deps?: Pick<LabDeps, "analysis">;
+  /** Cancels the analysis only. */
+  readonly analysisSignal?: AbortSignal;
+  /** Receives analysis-started and analysis-finished. */
+  readonly emit?: (event: LabEvent) => void;
 }
 
 export interface AutomaticAnalysisResult {
@@ -33,15 +36,18 @@ export async function completeAutomaticAnalysis<
   result: T,
   finished: FinishedRun | undefined,
   config: AnalysisConfig | undefined,
-  hooks?: AutomaticAnalysisHooks,
+  input: AnalysisInput | undefined,
   {
     trigger = "explicit",
     preferLargerOutput = false,
+    refusal,
   }: {
     /** "default" when the lab declared no analysis; its missing-key skip is not a failure. */
     trigger?: "default" | "explicit";
     /** The lab omitted an output limit, so a larger one may be used within the admission budget. */
     preferLargerOutput?: boolean;
+    /** The route's reason not to analyze this run; see AutomaticAnalysisDeps.refusal. */
+    refusal?: AutomaticAnalysisDeps["refusal"];
   } = {},
 ): Promise<T & AutomaticAnalysisResult> {
   if (config === undefined) return result;
@@ -62,9 +68,12 @@ export async function completeAutomaticAnalysis<
     };
   }
   const prepared = finished.paths;
-  let cleanup: void | (() => void) = undefined;
+  const seams = input?.deps?.analysis;
+  const signal = input?.analysisSignal;
+  let started = false;
   try {
-    cleanup = hooks?.onStart?.();
+    input?.emit?.({ type: "analysis-started" });
+    started = true;
     try {
       await validatePreparedRunRootIdentity(prepared);
     } catch {
@@ -75,12 +84,14 @@ export async function completeAutomaticAnalysis<
       };
     }
     const sourceCwd = physicalCwdOf(prepared);
-    const automaticAnalysis = await (hooks?.run ?? runAutomaticAnalysis)(
+    const automaticAnalysis = await (seams?.run ?? runAutomaticAnalysis)(
       sourceCwd,
       finished.runId,
       config,
       {
-        ...hooks?.deps,
+        ...seams?.deps,
+        ...(signal === undefined ? {} : { signal }),
+        ...(refusal === undefined ? {} : { refusal }),
         preferLargerOutput,
         ...(trigger === "default" ? { defaultRequest: true } : {}),
         expectedRun: prepared,
@@ -96,9 +107,9 @@ export async function completeAutomaticAnalysis<
     };
   } finally {
     try {
-      cleanup?.();
+      if (started) input?.emit?.({ type: "analysis-finished" });
     } catch {
-      /* Cleanup cannot erase accounting or the completed recording. */
+      /* A report cannot erase accounting or the completed recording. */
     }
   }
 }

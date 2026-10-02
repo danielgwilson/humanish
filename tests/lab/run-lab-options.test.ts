@@ -15,7 +15,8 @@ import {
   planEvent,
   type LabEvent,
 } from "../../src/lab/run-lab-events.js";
-import { normalizeRunLabOptions, type StreamEvent } from "../../src/lab/run-lab-options.js";
+import type { StreamEvent } from "../../src/lab/run-lab-homes.js";
+import { normalizeRunLabOptions } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
@@ -320,22 +321,12 @@ describe("stream, rerun and analysis options land where the route reads them", (
     ).toEqual({ sourceRunId: "r", laneIds: ["lane-02"] });
   });
 
-  it("analysisSignal joins the other analysis deps", async () => {
+  it("analysisSignal stays on the options for the route's analysis", () => {
     const signal = AbortSignal.abort();
-    const run = async () => {
-      throw new Error("unused");
-    };
-    const options = normalized(config("cuAppUrl"), {
-      analysisSignal: signal,
-      automaticAnalysis: { run },
-    });
-    expect(options.automaticAnalysis!.deps).toEqual({ signal });
-    await expect((options.automaticAnalysis!.run as () => Promise<unknown>)()).rejects.toThrow(
-      "unused",
-    );
+    expect(normalized(config("cuAppUrl"), { analysisSignal: signal }).analysisSignal).toBe(signal);
   });
 
-  it("computer use reads its typed options directly; onEvent and analysisSignal go to analysis", () => {
+  it("computer use reads its typed options directly, and onEvent reaches it as emit", () => {
     const onStream = (): void => undefined;
     const env = {};
     const options = normalized(config("cuAppUrl"), {
@@ -352,7 +343,8 @@ describe("stream, rerun and analysis options land where the route reads them", (
     expect(options.createProvider).toBe(createProvider);
     expect(options.prepareDesktop).toBe(prepareDesktop);
     expect(options.env).toEqual(env);
-    for (const key of ["onEvent", "analysisSignal"]) expect(options).not.toHaveProperty(key);
+    expect(options.analysisSignal).toBeDefined();
+    expect(options).not.toHaveProperty("onEvent");
   });
 });
 
@@ -388,8 +380,8 @@ describe("onEvent is passive", () => {
         participant: participantOf({ laneId: "lane-01", laneIndex: 0, laneCount: 1 }),
       }),
     );
-    const finish = result.options.automaticAnalysis!.onStart!();
-    if (typeof finish === "function") finish();
+    result.emit!({ type: "analysis-started" });
+    result.emit!({ type: "analysis-finished" });
     result.emit!(phaseEvent(phase, { kind: "subject" }));
     expect(events).toEqual([
       {
@@ -443,7 +435,7 @@ describe("onEvent is passive", () => {
     });
     if (!result.ok) throw new Error(result.message);
     expect(() => result.emit!(planEvent(plan))).not.toThrow();
-    expect(() => result.options.automaticAnalysis!.onStart!()).not.toThrow();
+    expect(() => result.emit!({ type: "analysis-started" })).not.toThrow();
     await new Promise((resolve) => setImmediate(resolve));
     expect(result.warnings).toHaveLength(2);
     expect(result.warnings[0]).toMatch(
@@ -603,19 +595,6 @@ describe("the scrub covers every env the run could read", () => {
     if (!result.ok) throw new Error(result.message);
     result.emit!(emptyPlan());
     expect(result.warnings[0]).not.toContain(hostPassword);
-  });
-
-  it("scrubs the analysis API key", () => {
-    const analysisKey = "synthetic-analysis-key-2c7b";
-    const result = normalize(config("cuAppUrl"), {
-      automaticAnalysis: { deps: { apiKey: analysisKey } },
-      onEvent: () => {
-        throw new Error(`analysis rejected ${analysisKey}`);
-      },
-    });
-    if (!result.ok) throw new Error(result.message);
-    result.emit!(emptyPlan());
-    expect(result.warnings[0]).not.toContain(analysisKey);
   });
 });
 

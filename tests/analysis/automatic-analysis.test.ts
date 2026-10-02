@@ -108,7 +108,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const original = { cwd, runId: "opted-out", dryRun: false, ok: true };
     const finished = await publishRun(cwd, "opted-out");
     const run = vi.fn();
-    const onStart = vi.fn();
+    const emit = vi.fn();
     const disabled = resolveAutomaticAnalysis(false);
     expect(disabled.ok).toBe(true);
     expect(
@@ -116,11 +116,11 @@ describe("automatic analysis admission and producer boundary", () => {
         original,
         finished,
         disabled.ok ? disabled.config : undefined,
-        { run, onStart },
+        { deps: { analysis: { run } }, emit },
       ),
     ).toBe(original);
     expect(run).not.toHaveBeenCalled();
-    expect(onStart).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
   });
   it.each(
     (["default", "explicit"] as const).flatMap((trigger) =>
@@ -140,7 +140,7 @@ describe("automatic analysis admission and producer boundary", () => {
         { cwd, runId: "keyless", dryRun: false, ok: true },
         finished,
         { ...config, maxCostUsd: 0.000001 },
-        { deps: { apiKey, fetch } },
+        { deps: { analysis: { deps: { apiKey, fetch } } } },
         { trigger },
       );
       expect(result.automaticAnalysis).toMatchObject({
@@ -257,13 +257,16 @@ describe("automatic analysis admission and producer boundary", () => {
       const base = fixtures.find((row) => row.backend === backend)!.config;
       const run = vi.fn();
       const onEvent = vi.fn();
-      const output = await runLab(base, {
-        cwd,
-        dryRun: true,
-        open: false,
-        automaticAnalysis: { run },
-        onEvent,
-      });
+      const output = await runLab(
+        base,
+        {
+          cwd,
+          dryRun: true,
+          open: false,
+          onEvent,
+        },
+        { analysis: { run } },
+      );
       expect(output.backend).toBe(backend);
       expect(output.result).toMatchObject({
         automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" },
@@ -274,19 +277,19 @@ describe("automatic analysis admission and producer boundary", () => {
   );
   it("dry-run never invokes the analysis lifecycle or provider", async () => {
     const run = vi.fn();
-    const onStart = vi.fn();
+    const emit = vi.fn();
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "dry", dryRun: true, ok: true },
       undefined,
       config,
-      { run, onStart },
+      { deps: { analysis: { run } }, emit },
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
       reason: "AUTOMATIC_ANALYSIS_DRY_RUN",
     });
     expect(run).not.toHaveBeenCalled();
-    expect(onStart).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
     expect(automaticAnalysisSucceeded(result)).toBe(true);
   });
   it("keeps a failed participant result while reviewing its finalized recording exactly once", async () => {
@@ -297,8 +300,7 @@ describe("automatic analysis admission and producer boundary", () => {
           reason: "analysis_validation_failed",
         }) as AutomaticAnalysisOutcome,
     );
-    const cleanup = vi.fn();
-    const onStart = vi.fn(() => cleanup);
+    const emit = vi.fn();
     const finished = await publishRun(cwd, "exact-recording");
     const prepared = finished.paths;
     const original = {
@@ -309,8 +311,8 @@ describe("automatic analysis admission and producer boundary", () => {
       session: { status: "incomplete" },
     };
     const result = await completeAutomaticAnalysis(original, finished, config, {
-      run,
-      onStart,
+      deps: { analysis: { run } },
+      emit,
     });
     expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "exact-recording", config, {
       expectedRun: prepared,
@@ -318,9 +320,32 @@ describe("automatic analysis admission and producer boundary", () => {
     });
     expect(result.session).toEqual(original.session);
     expect(result.ok).toBe(false);
-    expect(onStart).toHaveBeenCalledOnce();
-    expect(cleanup).toHaveBeenCalledOnce();
+    expect(emit.mock.calls).toEqual([
+      [{ type: "analysis-started" }],
+      [{ type: "analysis-finished" }],
+    ]);
     expect(original).not.toHaveProperty("automaticAnalysis");
+  });
+  it("hands analysisSignal and the route's refusal to the analysis", async () => {
+    const run = vi.fn(
+      async () => ({ state: "failed", reason: "synthetic" }) as AutomaticAnalysisOutcome,
+    );
+    const finished = await publishRun(cwd, "signalled");
+    const signal = new AbortController().signal;
+    const refusal = () => undefined;
+    await completeAutomaticAnalysis(
+      { cwd, runId: "signalled", dryRun: false },
+      finished,
+      config,
+      { deps: { analysis: { run } }, analysisSignal: signal },
+      { refusal },
+    );
+    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "signalled", config, {
+      signal,
+      refusal,
+      expectedRun: finished.paths,
+      preferLargerOutput: false,
+    });
   });
   it("uses the finalized physical project, not a later-retargeted cwd alias", async () => {
     const run = vi.fn(
@@ -331,8 +356,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const original = { cwd: "/synthetic/retargeted-alias", runId: "recording", dryRun: false };
     const unrelated = await prepareRunArtifactPaths(cwd, "unrelated-recording");
     await completeAutomaticAnalysis(original, finished, config, {
-      run,
-      deps: { expectedRun: unrelated },
+      deps: { analysis: { run, deps: { expectedRun: unrelated } } },
     });
     expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "recording", config, {
       expectedRun: prepared,
@@ -353,11 +377,11 @@ describe("automatic analysis admission and producer boundary", () => {
     });
     const cleanup = vi.fn();
     const output = await completeAutomaticAnalysis(result, finished, config, {
-      deps: { apiKey: "synthetic", fetch },
-      onStart: () => {
+      deps: { analysis: { deps: { apiKey: "synthetic", fetch } } },
+      emit: (event) => {
+        if (event.type === "analysis-finished") return cleanup();
         renameSync(prepared.physicalRunRoot, originalRoot);
         renameSync(staging, prepared.physicalRunRoot);
-        return cleanup;
       },
     });
     expect(output.automaticAnalysis).toEqual({
@@ -390,7 +414,7 @@ describe("automatic analysis admission and producer boundary", () => {
       path.join(cwd, ".humanish", "runs", "prior-recording", "run.json"),
     );
     const run = vi.fn();
-    const onStart = vi.fn();
+    const emit = vi.fn();
     const refused = await runCuaActorLab({
       cwd,
       config: {
@@ -400,12 +424,13 @@ describe("automatic analysis admission and producer boundary", () => {
       },
       dryRun: false,
       runId: "prior-recording",
-      automaticAnalysis: { run, onStart },
+      deps: { analysis: { run } },
+      emit,
     });
     expect(refused.ok).toBe(false);
     expect(refused.automaticAnalysis?.state).toBe("skipped");
     expect(run).not.toHaveBeenCalled();
-    expect(onStart).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
     expect(
       await readFile(path.join(cwd, ".humanish", "runs", "prior-recording", "run.json")),
     ).toEqual(before);
@@ -415,36 +440,36 @@ describe("automatic analysis admission and producer boundary", () => {
   });
   it("never analyzes an older caller-named recording when the producer refused before completion", async () => {
     const run = vi.fn();
-    const onStart = vi.fn();
+    const emit = vi.fn();
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "older-recording", dryRun: false, ok: false },
       undefined,
       config,
-      { run, onStart },
+      { deps: { analysis: { run } }, emit },
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
       reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE",
     });
     expect(run).not.toHaveBeenCalled();
-    expect(onStart).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
   });
   it("never analyzes a run whose publication token names another run than the result", async () => {
     const run = vi.fn();
-    const onStart = vi.fn();
+    const emit = vi.fn();
     const published = await publishRun(cwd, "published");
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "older-recording", dryRun: false, ok: true },
       published,
       config,
-      { run, onStart },
+      { deps: { analysis: { run } }, emit },
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
       reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE",
     });
     expect(run).not.toHaveBeenCalled();
-    expect(onStart).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
   });
   it("accepts only an issued publication token, never an object shaped like one", async () => {
     const run = vi.fn();
@@ -458,7 +483,7 @@ describe("automatic analysis admission and producer boundary", () => {
       { cwd, runId: "forged", dryRun: false, ok: true },
       forged,
       config,
-      { run },
+      { deps: { analysis: { run } } },
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
@@ -473,10 +498,16 @@ describe("automatic analysis admission and producer boundary", () => {
       await publishRun(cwd, "retained"),
       config,
       {
-        run: async () => {
-          throw new Error("private provider response");
+        deps: {
+          analysis: {
+            run: async () => {
+              throw new Error("private provider response");
+            },
+          },
         },
-        onStart: () => cleanup,
+        emit: (event) => {
+          if (event.type === "analysis-finished") cleanup();
+        },
       },
     );
     expect(result.ok).toBe(true);
@@ -733,10 +764,10 @@ describe("automatic analysis admission and producer boundary", () => {
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);
       const analysis = cliAnalysisOptions({ writeErr: text => process.stderr.write(text) });
-      const automaticAnalysis = { run: async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; } };
-      await runLab(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, ...analysis, automaticAnalysis,
+      const analysisSeam = { run: async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; } };
+      await runLab(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, ...analysis,
         env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" } },
-        { desktopModule: async () => { process.stdout.write("ACTOR_READY\\n"); await new Promise(() => {}); } });
+        { analysis: analysisSeam, desktopModule: async () => { process.stdout.write("ACTOR_READY\\n"); await new Promise(() => {}); } });
       clearInterval(timer);
     `;
       const child = spawn(

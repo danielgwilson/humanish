@@ -1,15 +1,13 @@
 // The scripted-browser lab's schema constant, options and result types.
 
 import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
-import type {
-  AutomaticAnalysisHooks,
-  AutomaticAnalysisResult,
-} from "../../analysis/automatic-completion.js";
+import type { LabEvent } from "../../lab/run-lab-events.js";
+import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import type { LabDeps } from "../../lab/lab-deps.js";
-import type { RunLabHomes } from "../../lab/run-lab-options.js";
+import type { RunLabHomes } from "../../lab/run-lab-homes.js";
 
 export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
 
@@ -17,7 +15,10 @@ export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
 export type ScriptedRunInput = Omit<RunScriptedBrowserLabOptions, "config" | "dryRun" | "lab">;
 
 export interface RunScriptedBrowserLabOptions {
-  automaticAnalysis?: AutomaticAnalysisHooks;
+  /** Cancels post-run analysis only. */
+  analysisSignal?: AbortSignal;
+  /** Reports the analysis window to onEvent; built by normalizeRunLabOptions. */
+  emit?: (event: LabEvent) => void;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */

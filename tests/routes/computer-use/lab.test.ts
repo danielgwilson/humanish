@@ -988,9 +988,10 @@ describe("runCuaActorLab", () => {
       cwd,
       config,
       dryRun: false,
-      automaticAnalysis: { run: analyze },
       env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
       deps: {
+        analysis: { run: analyze },
+
         desktopModule: async () => module,
       },
     }).finally(() => vi.unstubAllGlobals());
@@ -5994,10 +5995,11 @@ describe("buildSingleParticipantBundle", () => {
         config,
         {
           cwd,
-          automaticAnalysis: { run: analysis },
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         },
         {
+          analysis: { run: analysis },
+
           desktopModule: async () => module,
           packLocalTree: async () => {
             // A realistic createLocalTreeArchive-shaped failure: names counts, includes an
@@ -6987,13 +6989,14 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
         cuaConfig(),
         {
           cwd,
-          automaticAnalysis: { run: analysis },
           onObserverReady: async () => {
             throw tunnelFailure;
           },
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         },
         {
+          analysis: { run: analysis },
+
           desktopModule: async () => module,
         },
       ),
@@ -7575,10 +7578,11 @@ describe("computer-use run id reuse", () => {
           cwd,
           dryRun: false,
           runId: "older-run",
-          automaticAnalysis: { run: analysis },
           env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         },
         {
+          analysis: { run: analysis },
+
           desktopModule: loadDesktopModule,
         },
       );
@@ -7623,10 +7627,11 @@ describe("computer-use run directory goldens", () => {
       {
         cwd: goldenCwd,
         dryRun,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
       },
       {
+        analysis: { run: automaticAnalysisBoundary() },
+
         desktopModule: async () => module,
         now: () => (clock += 30_000),
         runSession: async (options) =>
@@ -7659,13 +7664,14 @@ describe("computer-use run directory goldens", () => {
       localAppConfig(),
       {
         cwd: goldenCwd,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
         // The in-process route needs no keys; an empty env keeps the operator's env out of the result.
         env: {},
         inProcess: { executor: async () => makeStateExecutor() },
         createProvider: async () => makeStateProvider(),
       },
       {
+        analysis: { run: automaticAnalysisBoundary() },
+
         desktopModule: async () => module,
         now: () => (clock += 30_000),
       },
