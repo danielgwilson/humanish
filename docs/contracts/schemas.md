@@ -1447,11 +1447,9 @@ Refusals:
   a preview or scripted lab, `createProvider` off computer use, or `prepareDesktop` where no E2B
   desktop exists. The message names the option and the route. The same code refuses a field
   `RunLabOptions` no longer has (below); that message names the field and where its job went.
-- `HUMANISH_LAB_OPTION_CONFLICT`: `rerun.laneIds` and `rerun.participantIds` are both set.
 
-`rerun.laneIds` keeps its behavior in this minor and is removed in the next. It emits one
-`DeprecationWarning` (code `HUMANISH_RUN_LAB_OPTION_DEPRECATED`) per process; use
-`rerun.participantIds`.
+`rerun.laneIds`, the older name of `rerun.participantIds`, was removed in 0.107.0. A caller that
+still passes it is refused with `HUMANISH_LAB_OPTION_UNSUPPORTED`; use `rerun.participantIds`.
 
 The route hook bags (`cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks`,
 `automaticAnalysis`) were removed from `RunLabOptions`, with the hook bag types and the four route

@@ -53,7 +53,7 @@ export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActo
   /**
    * Where the route returns it. "before-scope": analysis and tasks, returned before the run scope
    * with no automatic-analysis record. "in-scope": after the cwd checks. "after-personas": after
-   * the route reads committed persona files, so a persona-file error still wins over the lane cap
+   * the route reads committed persona files, so a persona-file error still wins over the participant cap
    * and in-process fan-out.
    */
   readonly stage: "before-scope" | "in-scope" | "after-personas";
@@ -292,10 +292,10 @@ function driverReason(
   return undefined;
 }
 
-/** The lane roster, then the sandbox deadline its session budget derives. */
+/** The participant roster, then the sandbox deadline its session budget derives. */
 function rosterShapeReason(config: LabConfig): Rejection {
-  // Lanes XOR count/laneFocus, device XOR raw resolution, cap, unique ids,
-  // allowPublicTargets with more than one lane, clone.fanout.
+  // `lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap, unique ids,
+  // allowPublicTargets with more than one participant, clone.fanout.
   const fanoutReason = cuaLaneValidationReason(config);
   if (fanoutReason) return { code: "HUMANISH_CUA_LAB_FANOUT_INVALID", message: fanoutReason };
   // The sandbox deadline is derived from the session budget, so a lab can ask for a session that
@@ -310,6 +310,17 @@ function rosterShapeReason(config: LabConfig): Rejection {
   return invalid(
     `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((MAX_SANDBOX_MS - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.`,
   );
+}
+
+/** The plan's rerun: the source run and, when given, the participants to rerun. */
+function rerunPlan({
+  sourceRunId,
+  participantIds,
+}: {
+  sourceRunId: string;
+  participantIds?: string[];
+}) {
+  return { sourceRunId, ...(participantIds === undefined ? {} : { participantIds }) };
 }
 
 /**
@@ -369,7 +380,7 @@ export function planComputerUseLab(
     declaredSubjectRoute(config, driving),
   );
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
-  // A shared world runs every seat against one app; this route would run them as separate lanes.
+  // A shared world runs every seat against one app; this route would run them as separate participants.
   // It comes after the rules above, so a shared-world config that breaks one of them, which runLab
   // sends here, still gets that rule's message.
   if (config.subject.topology === "shared-world")
@@ -458,14 +469,7 @@ export function planComputerUseLab(
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
       sandboxMs: resolveParticipantSandboxMs(config),
       caps: capsOf(config),
-      ...(input.rerun === undefined
-        ? {}
-        : {
-            rerun: {
-              sourceRunId: input.rerun.sourceRunId,
-              ...(input.rerun.laneIds === undefined ? {} : { participantIds: input.rerun.laneIds }),
-            },
-          }),
+      ...(input.rerun === undefined ? {} : { rerun: rerunPlan(input.rerun) }),
       requirements:
         base.dryRun || runner.desktop === "in-process"
           ? []

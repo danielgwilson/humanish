@@ -5,6 +5,7 @@ import { createTerminalParticipantReader } from "../../../src/routes/terminal/pa
 import { createTerminalRecorder } from "../../../src/routes/terminal/recorder.js";
 import {
   MESSAGE_CHARS,
+  PENDING_LINE_CHARS,
   TEXT_ITEMS_BYTES,
   TEXT_ITEMS_MAX,
 } from "../../../src/routes/terminal/types.js";
@@ -174,5 +175,35 @@ describe("terminal participant text items", () => {
     expect(byCount[0]?.id).toBe("message-051");
 
     expect(read(many(3, 10)).items.some((item) => item.kind === "notice")).toBe(false);
+  });
+
+  it("skips a line that runs past the pending limit without a newline, then reads on", () => {
+    const reader = createTerminalParticipantReader((text) => text);
+    const long = "x".repeat(Math.ceil(PENDING_LINE_CHARS / 3) + 1);
+    reader.append(`${said("Before.", "a")}\n{"type":"item.completed","item":{"text":"`);
+    for (let part = 0; part < 4; part += 1) reader.append(long);
+    reader.append(`"}}\n${said("After.", "b")}\n`);
+    const result = reader.finish();
+    expect(result.items.filter((item) => item.kind === "message").map((item) => item.text)).toEqual(
+      ["Before.", "After."],
+    );
+    expect(result.items.at(-1)).toMatchObject({
+      kind: "notice",
+      title: "agent output lines skipped",
+    });
+  });
+
+  it("counts started items against the item limit", () => {
+    const item = (event: string, id: string): string =>
+      line({ type: event, item: { id, type: "agent_message", text: `text ${id}` } });
+    const stdout = [
+      item("item.started", "never-done"),
+      ...Array.from({ length: TEXT_ITEMS_MAX }, (_, index) => item("item.completed", `m${index}`)),
+      item("item.completed", "never-done"),
+    ].join("\n");
+    const messages = read(stdout).items.filter((entry) => entry.kind === "message");
+    expect(messages).toHaveLength(TEXT_ITEMS_MAX);
+    expect(messages.map((entry) => entry.text)).not.toContain("text never-done");
+    expect(messages[0]?.text).toBe("text m0");
   });
 });

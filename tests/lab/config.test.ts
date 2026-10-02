@@ -2411,7 +2411,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     expect(isSharedWorldComposition(result.config)).toBe(false);
     expect(isComputerUseComposition(result.config)).toBe(true);
     expect(routeOf(result.config)).toBe("computer-use");
-    // entry is now inert (per-lane-worlds has no per-role entry) and warns.
+    // entry is now inert (per-lane-worlds has no per-participant entry) and warns.
     expect(result.warnings.join("\n")).toContain("actors[0].lanes[].entry");
     expect(result.warnings.join("\n")).toContain("subject.state.checkpoint");
   });

@@ -58,8 +58,8 @@ export function defaultSessionTimeoutMs(config: LabConfig): number {
   );
 }
 
-/** Per-lane sandbox deadline (each lane owns its own desktop). Mirrors the single-lane formula
- *  verbatim so N=1 stays byte-stable: explicit sandboxTimeoutMs, else session budget + (clone
+/** Per-participant sandbox deadline (each one owns its own desktop). Mirrors the
+ *  single-participant formula verbatim so N=1 stays byte-stable: explicit sandboxTimeoutMs, else session budget + (clone
  *  or local-tree: provision budget + Σ state-step budgets) + the server-side
  *  reclamation buffer. Local-tree shares the clone route's provisioning budget: it swaps a
  *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
@@ -230,8 +230,8 @@ function participantRunsAndPlan(
 }
 
 /**
- * Pure pre-flight plan resolver (runs in dry-run AND live). Returns the lane table, the
- * effective concurrency, the wave count, the per-lane session budget, and the worst-case total
+ * Pure pre-flight plan resolver (runs in dry-run AND live). Returns the participant table, the
+ * effective concurrency, the wave count, the per-participant session budget, and the worst-case total
  * sandbox-minutes — BEFORE any sandbox or provider call. The same plan appears in dry-run,
  * marked $0 (dryRun: true).
  */
@@ -248,7 +248,7 @@ export function resolveCuaParticipantPlan(
   return participantRunsAndPlan(plannedParticipantsOf(config, countOverride), rest).participantPlan;
 }
 
-/** Print the lane plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
+/** Print the participant plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
  *  digests, and budgets only — no prompt text, no secrets). */
 export function emitPreflightPlan(participantPlan: CuaParticipantPlan, labId: string): void {
   const lines: string[] = [];
@@ -312,7 +312,7 @@ export async function loadCuaParticipants(args: {
 > {
   const { plan } = args;
   const { participants } = plan.runner;
-  // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
+  // Compile any committed personas BEFORE planning, so the plan builder stays pure and each participant's
   // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
   const personas = await compileParticipantPersonas(
     args.projectRoot,
@@ -351,7 +351,7 @@ export async function loadCuaParticipants(args: {
   };
 }
 
-/** Scrub known secret values from each lane's declarative snapshot before any bundle uses it. */
+/** Scrub known secret values from each participant's declarative snapshot before any bundle uses it. */
 export function sanitizeParticipantRuns(
   runs: readonly DesktopParticipantRun[],
   scrub: (text: string) => string,

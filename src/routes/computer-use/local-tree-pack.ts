@@ -1,4 +1,4 @@
-// Packing the project's working tree once per local-tree run, on the host, for every lane to upload.
+// Packing the project's working tree once per local-tree run, on the host, for every participant to upload.
 
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";

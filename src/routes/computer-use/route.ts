@@ -64,7 +64,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
 /**
  * A refused computer-use lab's result, at the refusal's stage: a before-scope refusal has its own
- * envelope and no analysis record; the others come after the cwd checks, and the lane cap after
+ * envelope and no analysis record; the others come after the cwd checks, and the participant cap after
  * the personas are read.
  */
 export async function computerUseLabRefusal(
@@ -86,7 +86,7 @@ export async function computerUseLabRefusal(
       warnings: [],
       error: { code: refusal.code, message: refusal.message },
     };
-  // The other refusals come after the cwd checks, and the lane cap after the personas are read.
+  // The other refusals come after the cwd checks, and the participant cap after the personas are read.
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   return completeAutomaticAnalysis(
     await refuseCuaLab(options, refusal),

@@ -23,7 +23,7 @@ export function isZeroEventTerminalTrace(value: unknown): boolean {
 }
 
 /**
- * Verifier for the terminal-product real-agent lane (the in-sandbox command-scoped key route). A
+ * Verifier for the terminal-product real-agent route (the in-sandbox command-scoped key route). A
  * LIVE terminal stream must carry the durable proof the safety contract requires, and must FAIL
  * CLOSED when any of it is missing — a blocked/failed agent run stays structurally verifiable (the
  * failure is the evidence) ONLY when the substrate/cleanup/interventions ledgers are present; it
@@ -39,9 +39,9 @@ export async function validateTerminalProductEvidence(
     return [];
   }
   const findings: string[] = [];
-  // Detect the terminal-PRODUCT lane by its unique actor-trace protocol ("terminal-exec"), NOT by
-  // the broad stream.kind "terminal" — the existing local codex-exec/TUI lanes also use terminal
-  // streams (with a different protocol) and must not be held to this lane's ledger contract.
+  // Detect the terminal-PRODUCT route by its unique actor-trace protocol ("terminal-exec"), NOT by
+  // the broad stream.kind "terminal" — the existing local codex-exec/TUI routes also use terminal
+  // streams (with a different protocol) and must not be held to this route's ledger contract.
   const terminalStreams = bundle.streams.filter(
     (stream) =>
       stream.actor?.protocol === "terminal-exec" && stream.status !== "contract_proof_only",
@@ -50,7 +50,7 @@ export async function validateTerminalProductEvidence(
     return findings;
   }
 
-  // The lane writes exactly one terminal run's ledgers/evidence at fixed paths in the run root.
+  // The route writes exactly one terminal run's ledgers/evidence at fixed paths in the run root.
   const ledgers = await readSafeRunArtifactJson(runPaths, TERMINAL_LEDGERS_ARTIFACT);
   if (!isRecord(ledgers) || ledgers.schema !== "humanish.terminal-ledgers.v1") {
     findings.push(
@@ -107,7 +107,7 @@ export async function validateTerminalProductEvidence(
     );
   }
 
-  // The provider-neutral actor trace must be on the terminal lane with redaction passed.
+  // The provider-neutral actor trace must have `lane: "terminal"` with redaction passed.
   for (const stream of terminalStreams) {
     const traceArtifact = stream.artifacts.find((artifact) => artifact.kind === "trace");
     const tracePath = traceArtifact?.path ?? "actor.json";

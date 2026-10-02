@@ -29,7 +29,7 @@ function hasBlockerLanguage(text: string): boolean {
 // Report-shaped language: what a participant writes when it finished AND has something to say.
 // Every one of the day's eleven drawDB reports (2026-09-01) opened a section "What confused me"
 // or "Accessibility defects:"; none contained a blocker word, so none became a feedback candidate
-// and a lane that had just replicated a keyboard-accessibility defect three times drafted "Live
+// and a participant that had just replicated a keyboard-accessibility defect three times drafted "Live
 // study completed without a participant-reported finding". Friction is the INCLUSIVE scan; a
 // false positive here adds a candidate a person then reads, which is the cheap direction.
 const REPORTED_DEFECT_LANGUAGE =
@@ -144,7 +144,7 @@ function completionReasonBlocksVerdict(reason: string): boolean {
 // with a parser error. A simpler SQL import succeeded."). The lookahead demands the retry flavor
 // on purpose: unrelated praise ("Separately, the search box worked") must never launder an
 // unresolved failure. "Login failed so I gave up" has no recovery anywhere and stays a blocker.
-// (#453 — the run-1 false negative: a defect report after demonstrated success failed the lane,
+// (#453 — the run-1 false negative: a defect report after demonstrated success failed the participant,
 // an incentive inversion against exactly the participant behavior a study wants most.)
 const RESOLUTION_TERMS =
   /\b(succeed(?:ed|s)?|success(?:ful|fully)?|worked|works around|then worked|now works?|resolved|fixed|recovered|got it working|went through)\b/;
@@ -227,12 +227,12 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
 }
 
 /**
- * A goal_satisfied lane counts as a self-reported blocker ONLY when its final narrative contradicts
+ * A goal_satisfied participant counts as a self-reported blocker ONLY when its final narrative contradicts
  * the goal AND the run's own stop predicate did NOT fire. A matched stopWhen is independent,
  * structured completion evidence, so it overrides a text scan of the free-form narrative — which can
  * otherwise trip on the subject app's OWN quoted copy (e.g. a relayed "cannot be undone" banner).
  * Resolved-arc segments never block the verdict (#453). Returns the offending reason, or undefined
- * when the lane is a clean pass. Exported for testing.
+ * when the participant is a clean pass. Exported for testing.
  */
 export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): string | undefined {
   return session !== undefined && selfReportedBlocker(blockerFacts(session))

@@ -34,7 +34,7 @@ type LocalVmRunOptions = InternalRunLabOptions & {
   signal?: AbortSignal;
 };
 
-/** What one study's lanes and participants share: their cleanup handles and one unconfirmed flag. */
+/** What one study's participants share: their cleanup handles and one unconfirmed flag. */
 interface LocalVmRunState {
   readonly sessions: LocalFirecrackerDesktop[];
   readonly participants: ReturnType<typeof createRestrictedCodexParticipant>[];
@@ -106,7 +106,7 @@ function mediaEvidence(
   };
 }
 
-/** One lane's Firecracker desktop and optional captured inbox, released in finalize. */
+/** One participant's Firecracker desktop and optional captured inbox, released in finalize. */
 function createLocalParticipantDesktop(
   context: LocalParticipantContext,
   run: DesktopParticipantRun,
@@ -210,12 +210,12 @@ function accountProvider(state: LocalVmRunState): ProviderFactory {
         }
       },
     });
-    // The lane reads the session's warnings and late refusal from the same, idempotent close.
+    // The participant runner reads the session's warnings and late refusal from the same, idempotent close.
     return withCloseReport(provider, () => participant.close());
   };
 }
 
-/** A local browser study's bindings, and the cleanup of what its lanes started. */
+/** A local browser study's bindings, and the cleanup of what its participants started. */
 export interface LocalVmRun {
   /** The caller's runLab options, with the account provider when the study runs one. */
   readonly options: InternalRunLabOptions;

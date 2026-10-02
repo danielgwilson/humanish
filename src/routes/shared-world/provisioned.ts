@@ -545,7 +545,7 @@ function runParticipants(
   const baseActorDeps = participantRunDeps(ctx, live, ctx.scrubKnownValues);
   return mapWithConcurrency(ctx.actorSpecs, Math.max(1, ctx.concurrency), async (spec, i) => {
     const route = resolveActorEntryUrl(plane.getHostUrl!, participants[i]?.entry);
-    // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
+    // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this participant
     // has a declared recipient it can actually receive mail into (else it would stall on an empty
     // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
     // external-public plane's (#387).

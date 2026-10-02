@@ -1,4 +1,4 @@
-// Off-app email for one E2B desktop lane (#297): the in-sandbox catch the subject app sends to, the
+// Off-app email for one E2B desktop participant (#297): the in-sandbox catch the subject app sends to, the
 // persona's inbox surface, the real-email receiving surface, and the evidence drained at teardown.
 
 import { setTimeout as delay } from "node:timers/promises";
@@ -28,7 +28,7 @@ import { addressedRecipients } from "../../../lab/parse/comms.js";
  *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
 const INBOX_SURFACE_CADENCE_MS = 2500;
 
-/** A lane's captured-email wiring, decided from config before the sandbox exists. */
+/** A participant's captured-email wiring, decided from config before the sandbox exists. */
 export interface ParticipantComms {
   readonly email: LabCommsEmail;
   readonly port: number;
@@ -42,7 +42,7 @@ export interface ParticipantComms {
 /**
  * On an in-sandbox subject route, redirect the app's email-API sends into an in-sandbox catch
  * (loopback) so its verification mail is CAPTURED, not sent to the internet. Undefined when the
- * lab declares no fake email, which leaves the lane unchanged.
+ * lab declares no fake email, which leaves the participant unchanged.
  */
 export function planParticipantComms(
   comms: LabConfig["comms"],
@@ -166,7 +166,7 @@ export async function startCommsCatch(
   };
 }
 
-/** Stand up the real-email receiving surface and attach it to the lane; returns the inbox URL. */
+/** Stand up the real-email receiving surface and attach it to the participant; returns the inbox URL. */
 export async function attachReceivingInbox(
   shell: Shell,
   spec: DesktopParticipantRun,
@@ -229,7 +229,7 @@ export function participantInbox(args: {
 }
 
 /**
- * Before this lane's sandbox is torn down, drain everything the in-sandbox catch captured, route it
+ * Before this participant's sandbox is torn down, drain everything the in-sandbox catch captured, route it
  * into a host fake inbox addressed to the declared recipients, and write the digest-only thread
  * artifact. Returns the artifact path when one was written. A drain failure is a warning and never
  * breaks teardown: the sandbox must still be killed either way.

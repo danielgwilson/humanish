@@ -12,7 +12,7 @@ export interface ReadyParticipantDesktop {
 
 /** Existing bundle fields. Provider-specific facts remain optional and must be measured. */
 export type ParticipantDesktopEvidence = {
-  /** The substrate confirmed the desktop was released (an E2B kill or a local VM shutdown). The lane
+  /** The substrate confirmed the desktop was released (an E2B kill or a local VM shutdown). The participant
    *  outcome records it as `killed`. */
   released: boolean;
 } & Pick<
@@ -57,8 +57,8 @@ export type ParticipantDesktopFactory = (
   artifactRoot: PreparedOutputRoot,
 ) => ParticipantDesktop;
 
-/** The lane's addressed comms recipient, when one exists — the gate AND the address source for the
- *  inbox instruction (#351). A lane told to check an inbox it can never receive into would stall,
+/** The participant's addressed comms recipient, when one exists — the gate AND the address source for the
+ *  inbox instruction (#351). A participant told to check an inbox it can never receive into would stall,
  *  so no addressed recipient means no instruction. */
 export function inboxRecipientFor(
   commsEmail: LabCommsEmail,
@@ -70,9 +70,9 @@ export function inboxRecipientFor(
   );
 }
 
-/** True when a lane has a declared comms recipient WITH an address, so the drain can actually match the
- *  mail the persona will be told to read. Gates the inbox instruction to lanes that can receive mail —
- *  a lane told to check an inbox it can never receive into would just stall. */
+/** True when a participant has a declared comms recipient WITH an address, so the drain can actually match the
+ *  mail the persona will be told to read. Gates the inbox instruction to participants that can receive
+ *  mail — a participant told to check an inbox it can never receive into would just stall. */
 export function participantHasInboxRecipient(
   commsEmail: LabCommsEmail,
   participantId: string,

@@ -57,6 +57,9 @@ export const MESSAGE_CHARS = 8000;
 export const TEXT_ITEMS_MAX = 200;
 export const TEXT_ITEMS_BYTES = 128 * 1024;
 
+// The longest stdout line the participant reader holds while waiting for its newline.
+export const PENDING_LINE_CHARS = 1024 * 1024;
+
 // Hard cap on the retained event-stream + transcript size, so a runaway agent cannot balloon the
 // bundle. Redaction runs PRE-truncation so a cut can never split a secret past the scrubber.
 export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
@@ -210,7 +213,6 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
     code:
       | "HUMANISH_LAB_ANALYSIS_INVALID"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-      | "HUMANISH_LAB_OPTION_CONFLICT"
       | "HUMANISH_LAB_OPTION_UNSUPPORTED"
       | "HUMANISH_TERMINAL_LAB_FAILED"
       | "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED"
