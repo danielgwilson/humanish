@@ -141,8 +141,9 @@ describe("unknownNotificationsWarning", () => {
     expect(unknownNotificationsWarning({ "a/y": 1 }, undefined)).toMatch(/^Codex CLI sent /);
   });
 
-  it("knows the 0.160.0 schema's 83 methods and rawResponseItem/completed", () => {
-    expect(KNOWN_CODEX_NOTIFICATIONS.size).toBe(84);
+  it("knows the 0.160.0 schema's 83 methods and the two it sends outside them", () => {
+    expect(KNOWN_CODEX_NOTIFICATIONS.size).toBe(85);
     expect(KNOWN_CODEX_NOTIFICATIONS.has("rawResponseItem/completed")).toBe(true);
+    expect(KNOWN_CODEX_NOTIFICATIONS.has("rawResponse/completed")).toBe(true);
   });
 });

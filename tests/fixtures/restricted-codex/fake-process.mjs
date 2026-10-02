@@ -89,9 +89,12 @@ if (operation === "--version") {
     item: { type: "commandExecution", id: "cmd-synthetic", command: "synthetic-command", status: "completed" } });
   // An item written as the process shuts down, after a completed answer. The timer keeps the
   // process alive past stdin's end until SIGTERM, and exit waits for the write.
-  if (scenario === "close-item-after-answer") {
+  if (scenario === "close-item-after-answer" || scenario === "close-partial-after-answer") {
     setInterval(() => undefined, 1000);
-    process.on("SIGTERM", () => process.stdout.write(`${JSON.stringify({ method: "item/completed", params: commandItem("turn-synthetic") })}\n`, () => process.exit(0)));
+    const line = JSON.stringify({ method: "item/completed", params: commandItem("turn-synthetic") });
+    // close-partial-after-answer cuts the frame short and never writes its newline.
+    const output = scenario === "close-partial-after-answer" ? line.slice(0, 40) : `${line}\n`;
+    process.on("SIGTERM", () => process.stdout.write(output, () => process.exit(0)));
   }
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", line => {
@@ -236,10 +239,12 @@ if (operation === "--version") {
       emit(completion);
       if (scenario === "continuing-idle-item" && turnNumber === 1)
         afterGate("idle-item", () => emit({ method: "item/started", params: commandItem("turn-idle") }));
+      if (scenario === "continuing-idle-malformed" && turnNumber === 1)
+        afterGate("idle-malformed", () => process.stdout.write("{not-json}\n"));
       if (scenario === "continuing-idle-request" && turnNumber === 1)
         afterGate("idle-request", () => write({ id: 77, method: "item/commandExecution/requestApproval", params: {} }));
       if (scenario === "early-events") reply(message.id, turn);
     }
   });
-  rl.on("close", () => { if (scenario !== "ignore-term" && scenario !== "close-item-after-answer") process.exit(0); });
+  rl.on("close", () => { if (!["ignore-term", "close-item-after-answer", "close-partial-after-answer"].includes(scenario)) process.exit(0); });
 }

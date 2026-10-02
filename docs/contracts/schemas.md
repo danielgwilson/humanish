@@ -1097,9 +1097,9 @@ worked as an execution (`kind` is `harness`, `provider-cleanup`,
 reads both under the route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`).
 `provider-policy` names a computer-use or shared-world participant whose Codex
 app-server reported a disallowed item after the participant's last request, or
-whose output then could not be checked (a byte, frame or event limit, or a
-malformed line); the session's evidence does not show it, so it fails the run
-on every route.
+whose output outside a turn could not be checked (a byte, frame or event limit,
+a malformed line, or a last frame cut off); the session's evidence does not show
+it, so it fails the run on every route.
 `warnings`, in the same shape, holds the failures the policy lets warn and is
 omitted when empty: on computer-use, shared-world and scripted runs, a
 `sandbox-cleanup` entry for each sandbox whose release was not confirmed, with

@@ -57,4 +57,20 @@ describe("local study Codex participant close", () => {
     expect(warnings).toEqual(["synthetic unknown-method warning"]);
     await study.close();
   });
+
+  it("ignores a closeReport method on a provider it did not register", async () => {
+    const provider = {
+      id: "synthetic-provider",
+      close: async () => undefined,
+      closeReport: () => {
+        throw new Error("not a Codex report");
+      },
+    };
+    const warnings: string[] = [];
+    expect(await closeParticipantModel({ provider } as never, warnings)).toEqual({
+      unconfirmed: false,
+      refusal: undefined,
+    });
+    expect(warnings).toEqual([]);
+  });
 });

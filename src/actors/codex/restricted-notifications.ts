@@ -41,8 +41,9 @@ export const PARTICIPANT_ITEM_TYPES: readonly string[] = [...ANALYST_ITEM_TYPES,
 
 /**
  * Server notification methods in Codex CLI 0.160.0's app-server schema
- * (`codex app-server generate-json-schema --experimental`, ServerNotification), plus
- * rawResponseItem/completed, which the experimental API sends without declaring it.
+ * (`codex app-server generate-json-schema --experimental`, ServerNotification), plus two it sends
+ * outside that union: rawResponseItem/completed, and rawResponse/completed, whose v2 definition
+ * (RawResponseCompletedNotification) carries only a response id and usage.
  */
 export const KNOWN_CODEX_NOTIFICATIONS: ReadonlySet<string> = new Set([
   "account/gatewayOAuth/changed",
@@ -88,6 +89,7 @@ export const KNOWN_CODEX_NOTIFICATIONS: ReadonlySet<string> = new Set([
   "process/exited",
   "process/outputDelta",
   "project/changed",
+  "rawResponse/completed",
   "rawResponseItem/completed",
   "remoteControl/status/changed",
   "serverRequest/resolved",
@@ -267,7 +269,7 @@ export interface NotificationSessionState {
 type Participant = { readonly tool: { readonly name: string } } | undefined;
 
 /** Records a refusal no request will report: none is active, or the active one stopped already. */
-function noteUnreported(
+export function noteUnreported(
   state: NotificationSessionState,
   code: RestrictedCodexAnalysisErrorCode,
 ): void {

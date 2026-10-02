@@ -182,8 +182,8 @@ export class RestrictedCodexTransport {
   /** Notifications that arrive after close() began: no turn handles them, only the policy. */
   onClosingNotification: (method: string, params: Record<string, unknown>) => void = () =>
     undefined;
-  /** A line read after close() began that could not be checked (failUninspected). */
-  onClosingLoss: (code: RestrictedCodexAnalysisErrorCode) => void = () => undefined;
+  /** Output that could not be checked (failUninspected); the session records it if no request will. */
+  onUninspected: (code: RestrictedCodexAnalysisErrorCode) => void = () => undefined;
   onRequest:
     | ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>)
     | undefined;
@@ -198,6 +198,24 @@ export class RestrictedCodexTransport {
     child.on("error", () => this.fail("codex_process_failed"));
     child.stdin.on("error", () => this.fail("codex_process_failed"));
     child.on("close", () => this.fail("codex_process_failed"));
+    // A last frame without its newline: parsed when it is whole JSON, otherwise it went unchecked.
+    child.stdout.on("end", () => {
+      const rest = this.line + this.decoder.end();
+      this.line = "";
+      if (rest.length === 0 || (!this.closing && this.deadline.code !== null)) return;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(rest) as unknown;
+      } catch {
+        this.failUninspected("codex_protocol_error");
+        return;
+      }
+      try {
+        this.message(parsed);
+      } catch {
+        this.fail("codex_protocol_error");
+      }
+    });
     child.stdout.on("data", (chunk: Buffer) => {
       // While closing, lines are still read, so a notification sent during shutdown passes the
       // item policy (onClosingNotification); the byte and event limits still apply.
@@ -254,11 +272,12 @@ export class RestrictedCodexTransport {
     this.eventCount = 0;
   }
   /**
-   * A line that could not be checked: past a byte, frame or event limit, or malformed. While
-   * closing nothing stops, so onClosingLoss records that shutdown output went unchecked.
+   * Output that could not be checked: past a byte, frame or event limit, malformed, or cut off.
+   * onUninspected lets the session record it when no request will report it: between requests,
+   * or while closing, when fail stops nothing.
    */
   private failUninspected(code: RestrictedCodexAnalysisErrorCode): void {
-    if (this.closing) this.onClosingLoss(code);
+    this.onUninspected(code);
     this.fail(code);
   }
   /**

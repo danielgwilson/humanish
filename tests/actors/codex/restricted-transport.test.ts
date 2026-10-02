@@ -83,7 +83,7 @@ describe("native transport while closing", () => {
     const losses = vi.fn();
     transport.onRequest = requests;
     transport.onClosingNotification = notifications;
-    transport.onClosingLoss = losses;
+    transport.onUninspected = losses;
     const written: string[] = [];
     child.stdin.on("data", (chunk: Buffer) => written.push(chunk.toString()));
     const closed = transport.close({ threadId: "thread-1", turnId: "turn-1" });
@@ -111,6 +111,21 @@ describe("native transport while closing", () => {
     await t.finish();
   });
 
+  it("parses a last frame without its newline, and records one cut off", async () => {
+    const whole = closingTransport();
+    whole.child.stdout.end(
+      JSON.stringify({ method: "item/completed", params: { item: { type: "commandExecution" } } }),
+    );
+    await vi.waitFor(() => expect(whole.notifications).toHaveBeenCalledOnce());
+    expect(whole.losses).not.toHaveBeenCalled();
+    await whole.finish();
+    const cut = closingTransport();
+    cut.child.stdout.end('{"method":"item/completed","params":{"item":{"type":"commandExec');
+    await vi.waitFor(() => expect(cut.losses).toHaveBeenCalledWith("codex_protocol_error"));
+    expect(cut.notifications).not.toHaveBeenCalled();
+    await cut.finish();
+  });
+
   it("records a line it could not check", async () => {
     const t = closingTransport();
     t.child.stdout.write("{not-json}\n");
@@ -119,5 +134,31 @@ describe("native transport while closing", () => {
     await vi.waitFor(() => expect(t.losses).toHaveBeenCalledWith("response_too_large"));
     expect(t.notifications).not.toHaveBeenCalled();
     await t.finish();
+  });
+});
+
+describe("native transport between requests", () => {
+  it("reports output it could not check, so the session can record it", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      kill: vi.fn(),
+      pid: 12345,
+    });
+    const deadline = new RestrictedCodexDeadline(5000);
+    const transport = new RestrictedCodexTransport(
+      ownCodexProcess(child as unknown as ChildProcessWithoutNullStreams),
+      deadline,
+    );
+    const losses = vi.fn();
+    transport.onUninspected = losses;
+    child.stdout.write("{not-json}\n");
+    await vi.waitFor(() => expect(losses).toHaveBeenCalledWith("codex_protocol_error"));
+    expect(deadline.code).toBe("codex_protocol_error");
+    deadline.close();
+    child.stdin.destroy();
+    child.stdout.destroy();
+    child.stderr.destroy();
   });
 });

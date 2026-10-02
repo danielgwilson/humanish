@@ -52,6 +52,7 @@ import {
   countUnknownNotification,
   detachTurn,
   idleNotifications,
+  noteUnreported,
   notificationPolicyOf,
   refuseSession,
 } from "./restricted-notifications.js";
@@ -321,9 +322,6 @@ async function disposeSession(settings: SessionSettings, state: SessionState): P
   let cleaned = state.cleanupTrusted;
   if (state.transport) {
     state.transport.onClosingNotification = closingNotifications(settings.participant, state);
-    state.transport.onClosingLoss = (code) => {
-      state.unreportedRefusal ??= code;
-    };
     cleaned = (await state.transport.close(state.interrupt).catch(() => false)) && cleaned;
     if (!cleaned) retainUnclosedChild(state.transport!.owned.closed);
   }
@@ -435,6 +433,7 @@ async function runTurn(
         },
         idleNotifications(participant, state),
       );
+      state.transport.onUninspected = (code) => noteUnreported(state, code);
       selectedModel = state.identity!.model;
     } else state.transport.beginRequest(deadline, frameLimit);
     // Before dispatch the turn passes notifications to the idle handler the launch installed,

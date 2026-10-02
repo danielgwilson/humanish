@@ -1700,3 +1700,28 @@ describe("restricted Codex notifications outside a turn", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 });
+
+describe("restricted Codex output it could not check", () => {
+  it("records a malformed line between requests", async () => {
+    const f = await fixture("continuing-idle-malformed"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    await writeFile(`${f.trace}.idle-malformed`, "");
+    await vi.waitFor(
+      () => expect(session.unreportedRefusal).toBe("codex_protocol_error"),
+      AFTER_SPAWN,
+    );
+    expect(await session.close()).toBe(true);
+    expect(session.unreportedRefusal).toBe("codex_protocol_error");
+  });
+
+  it("fails a completed one-shot request when its last frame is cut off at shutdown", async () => {
+    const f = await fixture("close-partial-after-answer");
+    expect(await f.run(request)).toMatchObject({
+      status: "failed",
+      errorCode: "codex_protocol_error",
+      output: null,
+    });
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+});

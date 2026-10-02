@@ -30,15 +30,20 @@ import { hollowCompletion } from "../../run/judge.js";
 import type { CuaParticipantDeps, CuaRunBudget, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
 
+// Caller providers backed by a native Codex session (the local study's), with their close report.
+const closeReports = new WeakMap<CuaProvider, () => Promise<ParticipantProviderCloseResult>>();
+
 /**
- * A caller's provider backed by a native Codex session (the local study's): besides close, it
- * reports the session's run warnings and a refusal no request reported.
+ * Registers a caller's provider as backed by a native Codex session: the lane reads the session's
+ * run warnings and a refusal no request reported from `report` when it closes the provider.
  */
-export interface CodexReportingProvider extends CuaProvider {
-  closeReport(): Promise<ParticipantProviderCloseResult>;
+export function withCloseReport<T extends CuaProvider>(
+  provider: T,
+  report: () => Promise<ParticipantProviderCloseResult>,
+): T {
+  closeReports.set(provider, report);
+  return provider;
 }
-const reportsClose = (provider: CuaProvider | undefined): provider is CodexReportingProvider =>
-  typeof (provider as Partial<CodexReportingProvider> | undefined)?.closeReport === "function";
 
 /** The model a lane brings besides the default API client, and the handles its cleanup needs. */
 export interface ParticipantModel {
@@ -233,11 +238,19 @@ export async function closeParticipantModel(
     warnings.push("Model provider cleanup is unconfirmed.");
     unconfirmed = true;
   }
-  if (model.codexParticipant === undefined && reportsClose(model.provider)) {
+  const report =
+    model.codexParticipant === undefined && model.provider !== undefined
+      ? closeReports.get(model.provider)
+      : undefined;
+  if (report) {
     // The provider's own close reported cleanup above; this reads what its session found.
-    const report = await model.provider.closeReport().catch(() => undefined);
-    warnings.push(...(report?.warnings ?? []));
-    refusal ??= report?.refusal;
+    try {
+      const found = await report();
+      warnings.push(...(found.warnings ?? []));
+      refusal ??= found.refusal;
+    } catch {
+      /* Cleanup was already reported through the provider's close. */
+    }
   }
   try {
     await model.claudeSession?.close();
