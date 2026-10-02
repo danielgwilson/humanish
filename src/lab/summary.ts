@@ -11,7 +11,8 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 
 import { resolveLabDryRun } from "./plan.js";
 import { routeOf } from "./plan.js";
-import { labKeyRequirements, localCodexParticipantCheck } from "./doctor.js";
+import { localCodexParticipantCheck, planCliRun } from "./doctor.js";
+import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
@@ -68,6 +69,11 @@ export interface LabSummary {
    */
   keysReady?: boolean;
   missingKeys?: string[];
+  /**
+   * The planner's refusal message when a live key check finds the lab will not plan, as
+   * `humanish lab run` would report it. `keysReady` is then unset: a refused plan lists no keys.
+   */
+  planRefusal?: string;
 }
 
 /**
@@ -150,9 +156,15 @@ export async function readLabSummary(
 
   let keysReady: boolean | undefined;
   let missingKeys: string[] | undefined;
-  if (options.checkKeys === true) {
-    const dryRun = resolveLabDryRun(inspected.config, undefined, true) === true;
-    const subjectKeys = dryRun ? [] : (inspected.config.subject.env ?? []);
+  const dryRun = resolveLabDryRun(inspected.config, undefined, true) === true;
+  // A live key check reads the plan's requirements. A lab the planner refuses has none to check,
+  // so the summary reports the refusal in place of its keys.
+  const planned =
+    options.checkKeys === true && !dryRun ? await planCliRun(inspected.config, cwd) : undefined;
+  const planRefusal = planned?.ok === false ? planned.refusal.message : undefined;
+  if (options.checkKeys === true && planned?.ok !== false) {
+    const requirements = planned?.planned.plan.requirements ?? [];
+    const subjectKeys = requiredSubjectEnv(requirements);
     const email = inspected.config.comms?.email;
     const receivingKey =
       !dryRun && email?.kind === "real"
@@ -175,11 +187,9 @@ export async function readLabSummary(
     const present = new Set(
       probes.filter((probe) => probe.source !== null).map((probe) => probe.name),
     );
-    const required = labKeyRequirements(inspected.config, route, dryRun, (name) =>
-      present.has(name),
-    );
+    const required = requiredKeys(requirements, (name) => present.has(name));
     const missing = [
-      ...new Set([...required.keys, ...subjectKeys, ...(receivingKey ? [receivingKey] : [])]),
+      ...new Set([...required, ...subjectKeys, ...(receivingKey ? [receivingKey] : [])]),
     ].filter((name) => !present.has(name));
     if (receivingKey === null) missing.push("email connection");
     keysReady = missing.length === 0;
@@ -235,5 +245,6 @@ export async function readLabSummary(
     caps: capsOf(inspected.config),
     ...(keysReady === undefined ? {} : { keysReady }),
     ...(missingKeys === undefined ? {} : { missingKeys }),
+    ...(planRefusal === undefined ? {} : { planRefusal }),
   };
 }
