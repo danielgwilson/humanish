@@ -7,6 +7,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { measuredChromeDesktop } from "../../helpers/measured-chrome-desktop.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -153,6 +154,8 @@ interface FanoutModuleOptions {
   killFails?: boolean;
   /** Answers a sandbox command for one lane; undefined falls through to the default reply. */
   commandHandler?: (laneIndex: number, command: string) => { stdout: string } | undefined;
+  /** Chrome launches and reports measured geometry (measured-chrome-desktop.ts). */
+  measuredChrome?: boolean;
 }
 
 interface FanoutModuleHandle {
@@ -187,6 +190,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
     const record = (name: string) => async (): Promise<void> => {
       void name;
     };
+    const measured = options.measuredChrome ? measuredChromeDesktop(() => reported) : undefined;
     return {
       sandboxId: id,
       // Captured stock shape; resource-size variation tests live in desktop-resource-pricing.
@@ -205,7 +209,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
           if (targetUrl) {
             opened.push(targetUrl);
           }
-          return { exitCode: 0, stdout: "" };
+          return measured?.(command) ?? { exitCode: 0, stdout: "" };
         },
       },
       files: { write: async () => undefined },
@@ -726,7 +730,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   // Characterization: the complete run directory of a four-lane fan-out, pinned so a refactor of
   // bundle assembly or artifact writing shows up as a diff. Regenerate with -u.
   it("live run directory matches its golden", async () => {
-    const handle = makeFanoutModule();
+    const handle = makeFanoutModule({ measuredChrome: true });
     // One lane at a time. Overlapping lanes reach sandbox creation and append their receipts in
     // whatever order the scheduler gives them, which changed the snapshot once under full-suite
     // load. The concurrency behavior has its own tests in this file.
