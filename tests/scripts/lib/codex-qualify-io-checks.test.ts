@@ -42,7 +42,7 @@ describe("codex:qualify network checks", () => {
     expect(checks[0]!.detail).toEqual({ participant: [daemon] });
   });
 
-  it("fails on any TCP or UDP destination other than the loopback provider, even a brief one", () => {
+  it("fails on any TCP or udp destination other than the loopback provider, even a brief one", () => {
     const external = [event("send", "udp", "10.0.0.2:53")];
     const baseline = probeSet();
     baseline.inventory = summary({ trace: traced([...HELPERS], { net: [...NET, ...external] }) });
@@ -358,7 +358,7 @@ describe("codex:qualify live sampler and io_uring", () => {
     ]);
   });
 
-  it("compares sampled TCP and UDP remotes, which catch traffic the trace missed", () => {
+  it("compares sampled TCP and udp remotes, which catch traffic the trace missed", () => {
     expect(failed(liveChecks([launch()], [launch()], []))).toEqual([]);
     const extra = launch({ tcpRemotes: ["<chatgpt.com>:443", "93.184.216.34:443"] });
     expect(failed(liveChecks([launch()], [extra], []))).toEqual([

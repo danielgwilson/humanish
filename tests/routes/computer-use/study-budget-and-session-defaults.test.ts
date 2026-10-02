@@ -1,8 +1,8 @@
 // The budget sizing pass: a session ends because the participant finished, and the budget a
-// researcher sets is the STUDY's, not a lane's (#299).
+// researcher sets is the study's, not a lane's.
 //
 // Also pins the closing-observation fix the first live funnel run exposed: a done turn takes no
-// actions, so the loop never observed the participant's final state — both participants reached
+// actions, so the loop never observed the participant's final state: both participants reached
 // the dashboard and the funnel said 0/2.
 
 import { describe, expect, it } from "vitest";
@@ -97,7 +97,7 @@ describe("the closing observation feeds the funnel (first live study's miss)", (
     ]);
     const executor = new ObservationSequenceExecutor([
       { screenshot: frame(), stateSignature: "s0", url: "http://127.0.0.1:3000/verify-email/tok" },
-      // Post-action observation: navigation still settling — NOT the dashboard yet.
+      // Post-action observation: navigation still settling, not the dashboard yet.
       { screenshot: frame(), stateSignature: "s1", url: "http://127.0.0.1:3000/verify-email/tok" },
       // The closing observation after the model says done: the participant's real final state.
       {
@@ -131,7 +131,7 @@ describe("the closing observation feeds the funnel (first live study's miss)", (
 });
 
 describe("the study budget stops a participant honestly", () => {
-  it("ends with budget_reached (incomplete), never gave_up, when the RUN budget is exhausted", async () => {
+  it("ends with budget_reached (incomplete), never gave_up, when the run budget is exhausted", async () => {
     const provider = new ScriptedProvider(
       Array.from({ length: 10 }, () => ({
         actions: [{ kind: "click", x: 10, y: 20 }] as CuaAction[],
@@ -173,7 +173,7 @@ describe("the study budget stops a participant honestly", () => {
     const budget = makeCuaRunBudget(10);
     expect(budget.note("lane-a", 2)).toBe(2);
     expect(budget.note("lane-b", 3)).toBe(5);
-    // A lane's estimate REPLACES its previous reading — running totals, not increments.
+    // A lane's estimate replaces its previous reading: running totals, not increments.
     expect(budget.note("lane-a", 4)).toBe(7);
     expect(budget.note("lane-b", null)).toBe(7);
     expect(budget.maxTotalUsd).toBe(10);

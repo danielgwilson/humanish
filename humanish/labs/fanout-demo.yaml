@@ -1,13 +1,12 @@
 schema: humanish.lab.v2
 id: fanout-demo
-title: Multi-participant computer-use fan-out (separate worlds, deterministic dry-run)
-description: >
-  Four differentiated personas against one loopback app, each participant on its own
-  independent E2B desktop (separate worlds, the only fan-out topology this slice).
-  Dry-run (the default) emits ONE run bundle with four contract streams plus the
-  pre-flight spend/participant plan at $0; no desktops launch and no provider tokens are
-  spent. A live run requires OPENAI_API_KEY + E2B_API_KEY and scenario.mode: live,
-  and is bounded by execution.concurrency (max concurrent paid desktops).
+title: "Computer-use fan-out: four participants in separate worlds (dry run)"
+description: >-
+  Four personas use one loopback app, each on its own E2B desktop. A dry run, the default, writes
+  one run bundle with four contract streams and the pre-flight spend and participant plan at no
+  cost; no desktop starts and no provider tokens are spent. A live run needs OPENAI_API_KEY,
+  E2B_API_KEY and scenario.mode: live, and execution.concurrency bounds how many paid desktops run
+  at once.
 subject:
   source: app-url
   appUrl: http://127.0.0.1:3000/ # loopback: each participant drives its own sandbox copy

@@ -33,7 +33,7 @@ describe("website documentation examples", () => {
         .filter((line) => line.startsWith("npx humanish "))
         .map((line) => line.slice("npx ".length));
       examples.push(...[...text.matchAll(/`npx (humanish [^`]+)`/g)].map((match) => match[1]!));
-      // README command-table rows are copyable instructions too. Missing --repo there previously
+      // Readme command-table rows are copyable instructions too. Missing --repo there previously
       // escaped the fenced-example check even though Commander requires it before feedback issue.
       examples.push(...[...text.matchAll(/^\| `(humanish [^`]+)` \|/gm)].map((match) => match[1]!));
       for (const line of examples) {

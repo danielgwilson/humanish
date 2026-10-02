@@ -1,11 +1,11 @@
 // `subject.envValues`: literal, non-secret subject configuration committed with the lab.
 //
-// Every real app needs configuration before it will boot — a public base URL, a transport selector,
+// Every real app needs configuration before it will boot: a public base URL, a transport selector,
 // a feature flag. None of it is secret. Before this, the only channel was `subject.env`, whose
 // values come from the caller's environment, so reproducing a public study meant carrying a private
 // env file full of non-secrets. That is the opposite of a reproducible lab.
 //
-// The tradeoff is that these values ARE recorded in evidence, so the parser refuses anything
+// The tradeoff is that these values are recorded in evidence, so the parser refuses anything
 // secret-shaped rather than letting it be committed to a public repo.
 import { describe, expect, it } from "vitest";
 
@@ -62,7 +62,7 @@ describe("subject.envValues", () => {
     });
   });
 
-  it("coexists with subject.env — names for secrets, values for configuration", () => {
+  it("coexists with subject.env: names for secrets, values for configuration", () => {
     const parsed = cloneLab({
       env: ["NEXT_PRIVATE_DATABASE_URL"],
       envValues: { NEXT_PUBLIC_WEBAPP_URL: "http://localhost:3000" },
@@ -73,9 +73,9 @@ describe("subject.envValues", () => {
     expect(parsed.config.subject.envValues?.NEXT_PUBLIC_WEBAPP_URL).toBe("http://localhost:3000");
   });
 
-  it("REFUSES a secret-shaped value rather than committing it to a public repo", () => {
+  it("refuses a secret-shaped value rather than committing it to a public repo", () => {
     // The whole point of the guard: these values are committed and persisted, unlike subject.env.
-    // Assembled at runtime so the pattern never exists as a literal in this repo — the same
+    // Assembled at runtime so the pattern never exists as a literal in this repo: the same
     // public-surface scanner that guards the repo would (correctly) reject the file otherwise.
     const secretShaped = ["sk", "live", "51H8xQ2eZvKYlo2C0abcdefghijklmnop"].join("_");
     const parsed = cloneLab({ envValues: { STRIPE_KEY: secretShaped } });

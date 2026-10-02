@@ -13,13 +13,13 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
-// The single LIVE rung for the scripted-browser LAB: the committed scenario dispatched through
+// The single live rung for the scripted-browser route: the committed scenario dispatched through
 // runLab to real playwright-core against an in-test loopback http.Server. Provider spend is $0
-// BY MECHANISM (no model exists on this lane); the env gate exists for real-browser ACTUATION
+// by mechanism (no model exists on this lane); the env gate exists for real-browser actuation
 // + environment dependence (a local Chrome/Chromium must be installed), mirroring the
 // HUMANISH_LIVE_CUA convention:
 //   HUMANISH_LIVE_SCRIPTED=1 must be set explicitly (the actuation opt-in); the browser binary
-//   resolves via HUMANISH_BROWSER_COMMAND or the usual chrome/chromium PATH candidates.
+//   resolves via HUMANISH_BROWSER_COMMAND or the usual chrome/chromium `PATH` candidates.
 const LIVE = process.env.HUMANISH_LIVE_SCRIPTED === "1";
 
 // A tiny app that satisfies humanish/scenarios/scripted-first-run.yaml: a <main> landing page
@@ -37,7 +37,7 @@ const PROOF_HTML = [
   "</main></body></html>",
 ].join("");
 
-describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mechanism)", () => {
+describe.skipIf(!LIVE)("scripted-browser-lab (live, actuation-gated; $0 by mechanism)", () => {
   let cwd: string;
   let server: Server;
   let appUrl: string;
@@ -89,7 +89,7 @@ describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mecha
       if (outcome.route !== "scripted") return;
       const result = outcome.result;
 
-      // The subject affords the journey on BOTH surfaces; the bundle verifies independently.
+      // The subject affords the journey on both surfaces; the bundle verifies independently.
       expect(result.ok).toBe(true);
       expect(result.dryRun).toBe(false);
       expect(result.sessions.map((session) => session.completionReason)).toEqual([
@@ -121,7 +121,7 @@ describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mecha
         }
       }
 
-      // Sanitized loopback URLs in ALL text artifacts: origin+path only, never query/hash.
+      // Sanitized loopback URLs in all text artifacts: origin+path only, never query/hash.
       for (const file of [
         "run.json",
         "review.md",

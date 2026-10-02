@@ -1,16 +1,16 @@
 /**
- * Counts the retired words (lane, seat, role, sim, study) in src/ identifiers and file names
+ * Counts the retired words (lane, seat, role, sim, lab) in src/ identifiers and file names
  * outside the exempt paths (see lib/retired-words.ts), and the removed `backend` and `routesTo`
  * API names in the docs docs:check covers (doc-backend). Each count is held to its cap in
- * package.json's vocabulary:check script: a count above its cap fails, and so does one below it,
- * so the PR that removes the words lowers the cap. A count with no flag fails too, so a merge that
- * drops a flag cannot leave that word unchecked.
+ * scripts/caps.json, at `vocabulary.<word>`, by the rules in lib/caps.mjs: a count above or below
+ * its cap fails, and so does a count with no cap.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
 import { isCheckedDoc } from "./lib/doc-paths.js";
 import {
   findDocBackendWords,
@@ -24,8 +24,8 @@ const COUNTS = [...RETIRED_WORDS, "doc-backend"] as const;
 
 const { values } = parseArgs({
   options: {
-    ...Object.fromEntries(COUNTS.map((word) => [`max-${word}`, { type: "string" }])),
     list: { type: "boolean", default: false },
+    caps: { type: "string", default: CAPS_FILE },
   },
 });
 
@@ -57,35 +57,20 @@ for (const doc of tracked.filter(isCheckedDoc)) {
   }
 }
 
-for (const word of COUNTS) {
-  const max = values[`max-${word}`];
-  if (typeof max === "string" && !/^\d+$/.test(max)) {
-    process.stderr.write(`check-retired-words: --max-${word}=${max} is not a whole number.\n`);
-    process.exit(2);
-  }
+const { flat, invalid } = flattenCaps(readCaps(values.caps));
+if (invalid.length > 0) {
+  process.stderr.write(`${values.caps}: not a whole number at ${invalid.join(", ")}.\n`);
+  process.exit(2);
 }
-
-const rose: string[] = [];
-const fell: string[] = [];
-const uncapped: string[] = [];
-for (const [word, list] of hits) {
-  const max = values[`max-${word}`];
-  const cap = typeof max === "string" ? Number(max) : undefined;
-  const count = list.length;
-  if (cap === undefined) uncapped.push(`--max-${word}=${count}`);
-  if (cap !== undefined && count > cap) rose.push(word);
-  if (cap !== undefined && count < cap) fell.push(`--max-${word}=${count}`);
-  const status =
-    cap === undefined
-      ? ""
-      : count > cap
-        ? ` (cap ${cap}, over by ${count - cap})`
-        : count < cap
-          ? ` (cap ${cap}, under by ${cap - count})`
-          : ` (cap ${cap})`;
-  process.stdout.write(`${word}: ${count}${status}\n`);
-  if (values.list) process.stdout.write(list.map((hit) => `  ${hit}\n`).join(""));
-}
+const vocabularyCaps = new Map([...flat].filter(([path]) => path.startsWith("vocabulary.")));
+const counts = new Map([...hits].map(([word, list]) => [`vocabulary.${word}`, list]));
+const { ok, rose } = holdToCaps({
+  caps: vocabularyCaps,
+  counts,
+  list: values.list,
+  file: values.caps,
+  write: (text) => process.stdout.write(text),
+});
 if (rose.length > 0) {
   process.stdout.write(
     "A retired word count rose. `pnpm exec tsx scripts/check-retired-words.ts --list` prints every\n" +
@@ -93,14 +78,4 @@ if (rose.length > 0) {
       "In docs, say route where a page says backend, and routeOf(config) for a routesTo predicate.\n",
   );
 }
-if (fell.length > 0) {
-  process.stdout.write(
-    `A retired word count fell. Lower the cap in package.json's vocabulary:check script in this PR: ${fell.join(" ")}.\n`,
-  );
-}
-if (uncapped.length > 0) {
-  process.stdout.write(
-    `A count has no cap. Add it to package.json's vocabulary:check script: ${uncapped.join(" ")}.\n`,
-  );
-}
-if (rose.length > 0 || fell.length > 0 || uncapped.length > 0) process.exitCode = 1;
+if (!ok) process.exitCode = 1;

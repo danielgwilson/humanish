@@ -140,7 +140,7 @@ describe("real-mail participant projection", () => {
     expect(output.files[0]!.body).not.toContain("position:fixed");
   });
 
-  it("shows bounded validated CID rasters while blocking remote/data-SVG/missing and ambiguous images", () => {
+  it("shows bounded validated cid rasters while blocking remote/data-SVG/missing and ambiguous images", () => {
     const result = render([
       message({
         html: '<img src="cid:logo" alt="Logo"><img src="https://tracker.example.test/pixel" srcset="https://tracker.example.test/large 2x"><img src="cid:missing"><img src="data:image/svg+xml;base64,PHN2Zy8+">',
@@ -191,7 +191,7 @@ describe("real-mail participant projection", () => {
     );
   });
 
-  it("preserves a color-only shorthand CTA background without permitting network CSS", () => {
+  it("preserves a color-only shorthand cta background without permitting network CSS", () => {
     const result = render([
       message({
         html: `<a style="display:inline-block;background:#175942;color:#fff;padding:14px" href="${app}/verify">Confirm email address</a><a style="background:url(https://tracker.example.test/image);display:none" href="${app}/other">Other link</a>`,

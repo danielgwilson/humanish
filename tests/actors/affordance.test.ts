@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-// #369: the harness records WHICH KIND of route an actor took, and states no verdict about it.
+// The harness records which kind of route an actor took, and states no verdict about it.
 // The field defect that motivated this: a computer-use actor in a human-persona study typed a
 // `javascript:` URL into the address bar, routed around the friction the study measured, and the
 // run came back green with nothing in the evidence saying so.
 //
-// The load-bearing distinction these tests pin: direct URL navigation is a HUMAN affordance
-// (`load(url)` appears in 99.4% of 2,337 real human web demonstrations — WebLINX), so it must
+// The distinction these tests pin: direct URL navigation is a human affordance
+// (`load(url)` appears in 99.4% of 2,337 real human web demonstrations, per WebLINX), so it must
 // never be lumped with script execution. Getting that wrong would make a human-declared lane look
 // unfaithful for behaving normally.
 import {
@@ -44,7 +44,7 @@ describe("affordance classification", () => {
     expect(classOf({ kind: "screenshot" })).toBe("observation");
   });
 
-  it("treats direct URL navigation as HUMAN, separate from script execution", () => {
+  it("treats direct URL navigation as human, separate from script execution", () => {
     // The empirical point: people type URLs. Classifying this as a shortcut would make an
     // ordinary human lane look unfaithful.
     expect(classOf({ kind: "type", text: "https://example.test/pricing" })).toBe("url-navigation");
@@ -80,7 +80,7 @@ describe("affordance classification", () => {
     }
   });
 
-  it("never returns the typed text — only a scheme-shaped signal (the class must be public-safe)", () => {
+  it("never returns the typed text: only a scheme-shaped signal (the class must be public-safe)", () => {
     const secretish = "javascript:fetch('/api?token=SUPER-SECRET-VALUE')";
     const observation = classifyCuaAction({ kind: "type", text: secretish });
     expect(observation.affordance).toBe("script-execution");
@@ -117,13 +117,13 @@ describe("affordance classification", () => {
       "url-navigation": 1,
       "script-execution": 1,
     });
-    // Absent classes are omitted rather than written as 0 — the record stays small and says only
+    // Absent classes are omitted rather than written as 0: the record stays small and says only
     // what happened.
     expect(summary.counts).not.toHaveProperty("devtools");
     expect(summary.shortcutTotal).toBe(1);
   });
 
-  it("a clean run reports shortcutTotal 0 — a meaningful value, not an absence", () => {
+  it("a clean run reports shortcutTotal 0: a meaningful value, not an absence", () => {
     const summary = summarizeAffordanceUse([
       { affordance: "pointer" },
       { affordance: "url-navigation" },

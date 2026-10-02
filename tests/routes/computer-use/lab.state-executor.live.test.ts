@@ -21,16 +21,16 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
-// The single LIVE rung for the STATE-DRIVEN (in-process, no-E2B, no-vision) lab route — the
-// downstream local-app consumer shape from issue #148. It is $0 BY MECHANISM (no provider spend, no
-// E2B sandbox), but it is gated EXACTLY like the other live rungs so CI never runs it by
+// The single live rung for the state-driven (in-process, no-E2B, no-vision) route: the
+// downstream local-app consumer shape. It is $0 by mechanism (no provider spend, no
+// E2B sandbox), but it is gated exactly like the other live rungs so CI never runs it by
 // accident and the orchestrator can run it post-merge for a kept receipt:
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the live opt-in convention).
-// Unlike the desktop rungs it needs NO OPENAI_API_KEY / E2B_API_KEY — the caller's own executor
-// and provider drive the loop. The subject is a REAL already-running LOCAL app (a node http
-// server on loopback) exposing a window.app.* style state contract; a REAL CuaExecutor reads
-// getState() (NO screenshot), and a fake-but-real-shaped NON-vision provider (requiresFrame
-// falsey) reasons over appState. Asserts: the run reaches goal_satisfied via getState(), NO E2B
+// Unlike the desktop rungs it needs no OPENAI_API_KEY / E2B_API_KEY: the caller's own executor
+// and provider drive the loop. The subject is a real already-running local app (a node http
+// server on loopback) exposing a window.app.* style state contract; a real CuaExecutor reads
+// getState() (no screenshot), and a fake-but-real-shaped non-vision provider (requiresFrame
+// falsey) reasons over appState. Asserts: the run reaches goal_satisfied via getState(), no E2B
 // sandbox was created (result.sandbox === undefined), and the bundle verifies.
 const LIVE = process.env.HUMANISH_LIVE_CUA === "1";
 
@@ -56,7 +56,7 @@ function makeLocalApp(): LocalApp {
   };
 }
 
-// A REAL state executor over the app's contract. observe() returns NO screenshot and surfaces
+// A real state executor over the app's contract. observe() returns no screenshot and surfaces
 // getState() as appState; execute() maps the model intent onto the contract.
 function createAppContractExecutor(app: LocalApp, appUrl: string): CuaExecutor {
   // appUrl is unused for routing here (the bridge is in-process); kept to mirror the public
@@ -87,7 +87,7 @@ const STATE_CAPS: ActorCapabilities = {
   license: "open",
 };
 
-// A fake-but-real-shaped NON-vision provider: it reasons over req.observation.appState (never a
+// A fake-but-real-shaped non-vision provider: it reasons over req.observation.appState (never a
 // screenshot), greets once, then declares the goal satisfied once the app reports greeted.
 function createStateBrain(): CuaProvider {
   return {
@@ -138,7 +138,7 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (live rung, no E2B, 
   });
 
   it(
-    "drives an already-running local app via getState() to goal_satisfied with NO E2B sandbox",
+    "drives an already-running local app via getState() to goal_satisfied with no E2B sandbox",
     { timeout: 60_000 },
     async () => {
       const app = makeLocalApp();
@@ -168,7 +168,7 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (live rung, no E2B, 
       if (outcome.route !== "computer-use") return;
       const result = outcome.result;
 
-      // The acceptance proof: goal_satisfied via getState(), and NO E2B sandbox created.
+      // The acceptance proof: goal_satisfied via getState(), and no E2B sandbox created.
       expect(result.session?.completionReason).toBe("goal_satisfied");
       expect(result.sandbox).toBeUndefined();
       expect("streamUrl" in result).toBe(false);

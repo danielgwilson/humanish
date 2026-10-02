@@ -44,7 +44,7 @@ const PNG_1X1 = syntheticPng1x1();
 
 // ---------------------------------------------------------------------------
 // Fake browser: a tiny in-memory "app" behind the structural seams, driven by
-// the REAL step executor and expectation evaluator. screenshot() writes real
+// the real step executor and expectation evaluator. screenshot() writes real
 // bytes so evidence-presence checks observe the same truth a live run would.
 // ---------------------------------------------------------------------------
 
@@ -179,7 +179,7 @@ async function withHttpServer<T>(callback: (appUrl: string) => Promise<T>): Prom
   }
 }
 
-describe("runScriptedBrowserSession (completion semantics through the REAL step executor)", () => {
+describe("runScriptedBrowserSession (completion semantics through the real step executor)", () => {
   const surface = browserSurfaces[0]!;
   let artifactRoot: string;
 
@@ -243,7 +243,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       });
       // Affirmative $0 declaration, true by mechanism.
       expect(trace.tokenUsage).toEqual({ input: 0, output: 0, total: 0, costUsd: 0 });
-      // No session/model ids exist — absence declared by omission.
+      // No session/model ids exist: absence declared by omission.
       expect(trace.ids).toEqual({});
       expect(trace.redaction.status).toBe("passed");
       expect(trace.redaction.screenshots).toBe("raw");
@@ -274,7 +274,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
 
       expect(result.status).toBe("failed");
       expect(result.completionReason).toBe("step_failed");
-      // reason names the FIRST failing step id + its captured reason.
+      // reason names the first failing step id + its captured reason.
       expect(result.reason).toContain("step-03-submit");
       expect(result.trace.counts.blocked).toBeGreaterThan(0);
       expect(result.trace.status).toBe("failed");
@@ -330,7 +330,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
   });
 
   it("step_failed: unreachable subject (probe refused, first goto throws)", async () => {
-    // No HTTP server: the probe fails AND goto rejects — the declared subject was not serving.
+    // No HTTP server: the probe fails and goto rejects; the declared subject was not serving.
     const { browser } = makeFakeBrowser({
       gotoError: "net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9/",
     });
@@ -560,7 +560,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
     });
   });
 
-  it("gave_up and blocked_approval are UNREACHABLE from this actor (no persona patience, no approvals)", () => {
+  it("gave_up and blocked_approval are unreachable from this actor (no persona patience, no approvals)", () => {
     const dir = path.resolve("src/actors/scripted-browser");
     const source = readdirSync(dir)
       .filter((file) => file.endsWith(".ts"))
@@ -688,9 +688,9 @@ describe("resolveBrowserCommand", () => {
     await expect(readFile(`${browser}.args`, "utf8")).resolves.toBe("--version");
   });
 
-  it("looks a bare HUMANISH_BROWSER_COMMAND up on PATH", async () => {
+  it("looks a bare HUMANISH_BROWSER_COMMAND up on `PATH`", async () => {
     const browser = await fakeBrowser("humanish-test-chrome");
-    // The lookup runs in a login shell, and some /etc/profile files reset PATH. A login shell
+    // The lookup runs in a login shell, and some /etc/profile files reset `PATH`. A login shell
     // reads $HOME/.profile after /etc/profile, so the fake bin dir is added there.
     const home = path.join(binDir, "home");
     await mkdir(home);
