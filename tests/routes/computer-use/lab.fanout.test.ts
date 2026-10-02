@@ -59,7 +59,7 @@ import { readReview } from "../../../src/run/stored-runs.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { participantRun } from "../../helpers/participant-run.js";
-import type { CuaLaneSpec } from "../../../src/routes/computer-use/legacy-lane-spec.js";
+import type { ProviderContext } from "../../../src/lab/run-lab-options.js";
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 
 // ---------------------------------------------------------------------------
@@ -744,29 +744,16 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     );
   });
 
-  // The deprecated cuaHooks.buildProvider keeps receiving the flat lane record (CuaLaneSpec) until
-  // the compatibility section goes; its identity and device fields match what the golden plans.
-  it("hands the deprecated buildProvider each lane's flat spec with the golden's values", async () => {
+  // createProvider receives each participant's id, 0-based index and the run's participant count,
+  // matching the golden plan.
+  it("hands createProvider each participant's ref with the golden's values", async () => {
     const golden = JSON.parse(
       await readFile(
         path.join(import.meta.dirname, "../../golden/routes/computer-use-fanout-live.json"),
         "utf8",
       ),
-    ) as {
-      "<result>": {
-        plan: {
-          lanes: {
-            id: string;
-            index: number;
-            persona: string;
-            device: string;
-            resolution: [number, number];
-            reasoningEffort?: string;
-          }[];
-        };
-      };
-    };
-    const seen: CuaLaneSpec[] = [];
+    ) as { "<result>": { plan: { lanes: { id: string; index: number }[] } } };
+    const seen: ProviderContext["participant"][] = [];
     const provider: CuaProvider = {
       id: "synthetic-provider",
       capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -781,38 +768,15 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     await runLab(fanoutConfig({ concurrency: 1 }), {
       cwd,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
-      cuaHooks: passingHooks(makeFanoutModule(), {
-        now: () => 1_000_000,
-        buildProvider: async ({ lane }) => {
-          seen.push(lane);
-          return provider;
-        },
-      }),
+      cuaHooks: passingHooks(makeFanoutModule(), { now: () => 1_000_000 }),
+      createProvider: async ({ participant }) => {
+        seen.push(participant);
+        return provider;
+      },
     });
-    const flat = ({
-      laneId,
-      laneIndex,
-      persona,
-      deviceName,
-      resolution,
-      reasoningEffort,
-    }: CuaLaneSpec) => ({
-      laneId,
-      laneIndex,
-      persona: persona.id,
-      deviceName,
-      resolution,
-      reasoningEffort,
-    });
-    expect(seen.map(flat)).toEqual(
-      golden["<result>"].plan.lanes.map((lane) => ({
-        laneId: lane.id,
-        laneIndex: lane.index - 1,
-        persona: lane.persona,
-        deviceName: lane.device,
-        resolution: lane.resolution,
-        reasoningEffort: lane.reasoningEffort,
-      })),
+    const lanes = golden["<result>"].plan.lanes;
+    expect(seen).toEqual(
+      lanes.map((lane) => ({ id: lane.id, index: lane.index - 1, count: lanes.length })),
     );
   });
 
@@ -1752,17 +1716,17 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       cwd,
       cuaHooks: {
         ...passingHooks(handle),
-        buildProvider: async () => {
-          const cleanupFails = built++ === 1;
-          return {
-            ...scriptedEnding("pass"),
-            close: async () => {
-              if (cleanupFails) throw new Error("synthetic provider close failure");
-            },
-          };
-        },
         runSession: async (options) =>
           runCuaActorSession({ ...options, provider: scriptedEnding("pass") }),
+      },
+      createProvider: async () => {
+        const cleanupFails = built++ === 1;
+        return {
+          ...scriptedEnding("pass"),
+          close: async () => {
+            if (cleanupFails) throw new Error("synthetic provider close failure");
+          },
+        };
       },
     });
     if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
@@ -2157,7 +2121,7 @@ describe("cua fan-out — engine fail-closed guards", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("rejects multi-lane fan-out on the in-process route (buildExecutor) — single lane only", async () => {
+  it("rejects multi-lane fan-out on the in-process route (inProcess) — single lane only", async () => {
     const handle = makeFanoutModule();
     const result = await runCuaActorLab({
       cwd,
@@ -2165,27 +2129,29 @@ describe("cua fan-out — engine fail-closed guards", () => {
       dryRun: false,
       hooks: {
         loadDesktopModule: async () => handle.module,
-        buildExecutor: async () => ({
+      },
+      inProcess: {
+        executor: async () => ({
           observe: async () => ({ stateSignature: "x", appState: {} }),
           execute: async () => undefined,
         }),
-        buildProvider: async () => ({
-          id: "p",
-          capabilities: {
-            headless: true,
-            structuredTrace: true,
-            lanes: ["computer-use"],
-            producesScreenshots: false,
-            byoModel: true,
-            preGrantableApprovals: false,
-            inProcessTools: false,
-            license: "open",
-          },
-          async nextTurn() {
-            return { actions: [], pendingSafetyChecks: [], done: true };
-          },
-        }),
       },
+      createProvider: async () => ({
+        id: "p",
+        capabilities: {
+          headless: true,
+          structuredTrace: true,
+          lanes: ["computer-use"],
+          producesScreenshots: false,
+          byoModel: true,
+          preGrantableApprovals: false,
+          inProcessTools: false,
+          license: "open",
+        },
+        async nextTurn() {
+          return { actions: [], pendingSafetyChecks: [], done: true };
+        },
+      }),
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");

@@ -76,8 +76,6 @@ describe("declared task protocol admission", () => {
         env: {},
         loadDesktopModule: forbidden,
         runSession: forbidden,
-        buildExecutor: forbidden,
-        buildProvider: forbidden,
         renderObserverFn: forbidden,
       };
       const outcome = await runLab(

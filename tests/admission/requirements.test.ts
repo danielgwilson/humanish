@@ -318,17 +318,15 @@ describe("route obligations, independent of plan.requirements", () => {
 
 describe("requirements with a local study's desktop and a caller's provider", () => {
   // A local browser lab runs on the local VM study's desktop, so it needs no E2B_API_KEY, and a
-  // caller's buildProvider drives it, so it needs no OPENAI_API_KEY.
+  // caller's createProvider drives it, so it needs no OPENAI_API_KEY.
   it("lists neither key, and preflight refuses neither", async () => {
     const parsed = parseLabConfig(lab("cuAppUrl", { ...live, execution: { target: "local" } }));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const cwd = await projectDir();
     let desktopReached = false;
-    const hooks: CuaActorLabHooks = {
-      env: {},
-      buildProvider: async () => {
-        throw new Error("the provider is not reached in this test");
-      },
+    const hooks: CuaActorLabHooks = { env: {} };
+    const createProvider = async (): Promise<never> => {
+      throw new Error("the provider is not reached in this test");
     };
     const localVm = {
       desktop: () => {
@@ -337,7 +335,11 @@ describe("requirements with a local study's desktop and a caller's provider", ()
       },
       analysisRefusal: () => undefined,
     };
-    const planned = planComputerUseLab(parsed.config, { dryRun: false, hooks });
+    const planned = planComputerUseLab(parsed.config, {
+      dryRun: false,
+      hooks,
+      driving: { inProcess: false, createProvider: true },
+    });
     if (!planned.ok) throw new Error(planned.refusal.message);
     expect(planned.plan.requirements.flatMap(keyNames)).toEqual([]);
     // Past preflight, the run asks the study for a desktop, and its throw ends the run.
@@ -346,6 +348,7 @@ describe("requirements with a local study's desktop and a caller's provider", ()
       config: parsed.config,
       dryRun: false,
       hooks,
+      createProvider,
       localVm,
     }).then(
       (result) => result.error?.code ?? "",

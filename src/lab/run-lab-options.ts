@@ -34,7 +34,12 @@ export interface ProviderContext {
   readonly executor: CuaExecutor;
 }
 
-type ProviderFactory = (ctx: ProviderContext) => Promise<CuaProvider>;
+export type ProviderFactory = (ctx: ProviderContext) => Promise<CuaProvider>;
+
+/** The caller's executor for an in-process run, built once for the run's single participant. */
+export interface InProcessDriver {
+  executor: (ctx: { config: LabConfig; appUrl: string }) => Promise<CuaExecutor>;
+}
 
 export type StreamEvent =
   /** Runtime only: `url` carries an auth key and must never be persisted. */
@@ -75,7 +80,7 @@ export interface RunLabHomes {
 export type RunLabDriving =
   | { inProcess?: undefined; createProvider?: ProviderFactory }
   | {
-      inProcess: { executor: (ctx: { config: LabConfig; appUrl: string }) => Promise<CuaExecutor> };
+      inProcess: InProcessDriver;
       createProvider: ProviderFactory;
     };
 
@@ -175,13 +180,8 @@ function unsupportedOption(
     if (prepareDesktop !== undefined) {
       if (isLocalBrowserLab(config))
         return unsupported("prepareDesktop", route, "a local VM study has no E2B desktop.");
-      // The run is in process when either executor home is set: inProcess or the older
-      // cuaHooks.buildExecutor. Either way no desktop exists to prepare.
-      if (
-        inProcess !== undefined ||
-        options.cuaHooks?.buildExecutor !== undefined ||
-        source === "local-app"
-      )
+      // An in-process run has no desktop to prepare.
+      if (inProcess !== undefined || source === "local-app")
         return unsupported("prepareDesktop", route, "an in-process run has no desktop.");
     }
     return undefined;
@@ -216,17 +216,7 @@ export function normalizeRunLabOptions(
   if (olderRerunIds !== undefined) warnOlderRerunName();
 
   const warnings: string[] = [];
-  const {
-    env,
-    scorer,
-    prepareDesktop,
-    onEvent,
-    onStream,
-    analysisSignal,
-    createProvider,
-    inProcess,
-    ...legacy
-  } = options;
+  const { env, scorer, prepareDesktop, onEvent, onStream, analysisSignal, ...legacy } = options;
   // The route gets this copy, so it is the env a warning is scrubbed against, whatever the caller
   // does to its own object afterwards.
   const forwardedEnv = env === undefined ? undefined : { ...env };
@@ -256,13 +246,14 @@ export function normalizeRunLabOptions(
   if (analysis !== undefined) normalized.automaticAnalysis = analysis;
   const envHome = forwardedEnv === undefined ? {} : { env: forwardedEnv };
   // Every scoring route reads scorer itself, and computer use and shared world read onStream.
+  // createProvider and inProcess stay in `legacy`: only computer use accepts them, and reads them.
   if (scorer !== undefined) normalized.scorer = scorer;
   if (onStream !== undefined) normalized.onStream = onStream;
   switch (route) {
     case "computer-use": {
       const hooks = withMapped(legacy.cuaHooks, {
         ...envHome,
-        ...computerUseHooks({ prepareDesktop, createProvider, inProcess }),
+        ...computerUseHooks(prepareDesktop),
       });
       if (hooks !== undefined) normalized.cuaHooks = hooks;
       break;
@@ -296,37 +287,11 @@ function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T
   return { ...bag, ...mapped } as T;
 }
 
-function computerUseHooks(homes: {
-  prepareDesktop: RunLabHomes["prepareDesktop"];
-  createProvider: ProviderFactory | undefined;
-  inProcess: Extract<RunLabDriving, { inProcess: object }>["inProcess"] | undefined;
-}): CuaActorLabHooks {
-  const { prepareDesktop, createProvider, inProcess } = homes;
+function computerUseHooks(prepareDesktop: RunLabHomes["prepareDesktop"]): CuaActorLabHooks {
+  if (prepareDesktop === undefined) return {};
   return {
-    ...(prepareDesktop === undefined
-      ? {}
-      : {
-          prepareDesktop: (desktop, participant) =>
-            prepareDesktop(desktop, {
-              kind: "participant",
-              participant: participantOf(participant),
-            }),
-        }),
-    ...(createProvider === undefined
-      ? {}
-      : {
-          buildProvider: ({ config: lab, lane: participant, laneCount, executor }) =>
-            createProvider({
-              config: lab,
-              participant: participantOf({ ...participant, laneCount }),
-              executor,
-            }),
-        }),
-    ...(inProcess === undefined
-      ? {}
-      : {
-          buildExecutor: ({ config: lab, appUrl }) => inProcess.executor({ config: lab, appUrl }),
-        }),
+    prepareDesktop: (desktop, participant) =>
+      prepareDesktop(desktop, { kind: "participant", participant: participantOf(participant) }),
   };
 }
 

@@ -258,7 +258,6 @@ export async function admitCuaRun(
     const rejection = await liveCuaRejection({
       caps: plan.caps,
       brain: plan.runner.brain,
-      hooks,
       env,
       requirements: plan.requirements,
       externalCommsConfig,
@@ -455,7 +454,7 @@ function cuaParticipantDeps(
     ...(createDesktop === undefined ? {} : { createDesktop }),
     onTrace: (participantId, items, usage, metadata) =>
       liveTrace.flush?.(participantId, items, usage, metadata),
-    config,
+    ...callerDriving(input, config),
     residual: plan.residual,
     labId: plan.labId,
     caps: plan.caps,
@@ -493,6 +492,25 @@ function cuaParticipantDeps(
     hooks,
     onStream: streams.onStream,
     reportSubjectPhase: subjectPhaseReporter(input),
+  };
+}
+
+/** The caller's createProvider and inProcess executor, with the run's config bound. */
+function callerDriving(
+  input: ComputerUseRunInput,
+  config: LabConfig,
+): Pick<CuaParticipantDeps, "createProvider" | "inProcessExecutor"> {
+  const { createProvider, inProcess } = input;
+  return {
+    ...(createProvider === undefined
+      ? {}
+      : {
+          createProvider: (participant, executor) =>
+            createProvider({ config, participant, executor }),
+        }),
+    ...(inProcess === undefined
+      ? {}
+      : { inProcessExecutor: (appUrl) => inProcess.executor({ config, appUrl }) }),
   };
 }
 

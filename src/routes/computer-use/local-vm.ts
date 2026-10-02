@@ -2,6 +2,7 @@ import { collectDesktopRecording } from "../../evidence/desktop-recording-artifa
 import path from "node:path";
 import type { InternalRunLabOptions } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
+import type { ProviderFactory } from "../../lab/run-lab-options.js";
 import {
   inboxRecipientFor,
   type ParticipantDesktop,
@@ -210,22 +211,20 @@ function createLocalParticipantDesktop(
 }
 
 /** The Codex account participant, whose unconfirmed cleanup blocks the study's analysis. */
-function accountProvider(state: LocalStudyState): Pick<CuaActorLabHooks, "buildProvider"> {
-  return {
-    async buildProvider({ executor }) {
-      const participant = createRestrictedCodexParticipant({
-        speechEnabled: executor?.speechEnabled === true,
-      });
-      state.participants.push(participant);
-      return Object.assign(participant.provider, {
-        async close() {
-          if ((await participant.close()).status !== "confirmed") {
-            state.cleanupUnconfirmed = true;
-            throw new Error("Local participant cleanup is unconfirmed.");
-          }
-        },
-      });
-    },
+function accountProvider(state: LocalStudyState): ProviderFactory {
+  return async ({ executor }) => {
+    const participant = createRestrictedCodexParticipant({
+      speechEnabled: executor.speechEnabled === true,
+    });
+    state.participants.push(participant);
+    return Object.assign(participant.provider, {
+      async close() {
+        if ((await participant.close()).status !== "confirmed") {
+          state.cleanupUnconfirmed = true;
+          throw new Error("Local participant cleanup is unconfirmed.");
+        }
+      },
+    });
   };
 }
 
@@ -249,11 +248,9 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
   refuseE2BDesktopHooks(options.cuaHooks);
   const recording = config.execution?.desktop?.recording;
   const media = studyMedia(config);
-  const callerHooks = options.cuaHooks;
   // A caller-supplied provider replaces the Codex account participant, so the account is
   // neither checked nor used.
-  const account =
-    config.actors[0]?.type === "local-agent" && callerHooks?.buildProvider === undefined;
+  const account = config.actors[0]?.type === "local-agent" && options.createProvider === undefined;
   const state: LocalStudyState = { sessions: [], participants: [], cleanupUnconfirmed: false };
   const context: LocalParticipantContext = {
     config,
@@ -265,13 +262,8 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
     state,
   };
   const { config: _config, assets: _assets, signal: _signal, ...runOptions } = options;
-  // The account provider goes over the caller's hooks until it becomes createProvider.
-  const cuaHooks: CuaActorLabHooks = {
-    ...callerHooks,
-    ...(account ? accountProvider(state) : {}),
-  };
   return {
-    options: { ...runOptions, cuaHooks },
+    options: account ? { ...runOptions, createProvider: accountProvider(state) } : runOptions,
     localVm: {
       desktop: (run, warnings, artifactRoot) =>
         createLocalParticipantDesktop(context, run, warnings, artifactRoot),

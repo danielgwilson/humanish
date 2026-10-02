@@ -338,7 +338,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
-      "message": "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+      "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -464,7 +464,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+      "message": "RunLabOptions.inProcess drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -485,7 +485,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a desktop-cli subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+      "message": "RunLabOptions.inProcess drives subject.appUrl in this process, and a desktop-cli subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -548,7 +548,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
+      "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -916,7 +916,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
-      "message": "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+      "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1021,7 +1021,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
+      "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1168,7 +1168,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+      "message": "RunLabOptions.inProcess drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1231,7 +1231,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
+      "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

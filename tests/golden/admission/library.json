@@ -2971,6 +2971,32 @@
         "cwd": "[cwd]",
         "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
+        "dryRun": true,
+        "runId": "not-created",
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_LAB_OPTION_UNSUPPORTED",
+          "message": "RunLabOptions.inProcess is not supported on the computer-use route: an in-process executor returns no frame, so it needs createProvider."
+        },
+        "appUrl": "http://127.0.0.1:3000/",
+        "lanes": []
+      }
+    },
+    "runner": {
+      "runner": "cua",
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "schema": "humanish.cua-lab-result.v2",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-cuappurl",
+        "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
         "runId": "not-created",
@@ -2978,7 +3004,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
-          "message": "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+          "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2986,10 +3012,6 @@
           "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
         }
       }
-    },
-    "runner": {
-      "runner": "cua",
-      "sameAsRunLab": true
     }
   },
   "local-app without executor": {
@@ -3098,7 +3120,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
-          "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
+          "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

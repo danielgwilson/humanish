@@ -144,9 +144,9 @@ describe("declared camera capabilities must reach an implemented route", () => {
           cwd,
           config: base,
           dryRun: false,
-          hooks: {
-            ...hooks,
-            buildExecutor: async () => {
+          hooks,
+          inProcess: {
+            executor: async () => {
               throw new Error("must not build executor");
             },
           },

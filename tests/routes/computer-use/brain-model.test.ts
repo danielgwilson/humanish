@@ -27,7 +27,10 @@ import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
+import type {
+  CuaActorLabHooks,
+  RunCuaActorLabOptions,
+} from "../../../src/routes/computer-use/types.js";
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 
@@ -170,12 +173,20 @@ function onLocalDesktop(config: LabConfig): LabConfig {
 const fakeLocalVm = () => ({ desktop: () => fakeDesktop(), analysisRefusal: () => undefined });
 
 /** Runs one live participant and returns what its session and the live flush received. */
-async function run(config: LabConfig, hooks: CuaActorLabHooks = {}, { localDesktop = true } = {}) {
+async function run(
+  config: LabConfig,
+  hooks: CuaActorLabHooks = {},
+  {
+    localDesktop = true,
+    ...driving
+  }: { localDesktop?: boolean } & Pick<RunCuaActorLabOptions, "createProvider" | "inProcess"> = {},
+) {
   const sessions: CuaActorSessionOptions[] = [];
   const result = await runCuaActorLab({
     cwd,
     config: localDesktop ? onLocalDesktop(config) : config,
     dryRun: false,
+    ...driving,
     ...(localDesktop ? { localVm: fakeLocalVm() } : {}),
     hooks: {
       env: { OPENAI_API_KEY: "synthetic-openai-key" },
@@ -254,7 +265,8 @@ describe("computer-use participant model, caller brain", () => {
       const provider = doneProvider("caller-provider");
       const { result, sessions, flushModels } = await run(
         labConfig({ actor: OPENAI_ACTOR, model, maxUsd: 5 }),
-        { buildProvider: async () => provider },
+        {},
+        { createProvider: async () => provider },
       );
       expect(result.ok).toBe(true);
       expect(sessions[0]!.provider).toBe(provider);
@@ -271,11 +283,12 @@ describe("computer-use participant model, caller brain", () => {
       const provider = doneProvider("caller-provider");
       const { result, sessions } = await run(
         labConfig({ actor: OPENAI_ACTOR, model, maxUsd: 5 }),
+        {},
         {
-          buildProvider: async () => provider,
-          buildExecutor: async () => fakeExecutor(),
+          localDesktop: false,
+          createProvider: async () => provider,
+          inProcess: { executor: async () => fakeExecutor() },
         },
-        { localDesktop: false },
       );
       expect(result.ok).toBe(true);
       expect(sessions[0]!.provider).toBe(provider);
