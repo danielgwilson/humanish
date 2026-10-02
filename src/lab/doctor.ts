@@ -471,8 +471,10 @@ function checkScope(analysis: ReturnType<typeof automaticAnalysisBudget>): Check
 }
 
 /**
- * The project's labs that need each provider key for a live run, from the same plan `doctor --lab`
- * reads. A lab that runs dry, that the plain CLI cannot run, or that does not plan needs none.
+ * The ids of the project's labs that need each provider key for a live run, from the same plan
+ * `doctor --lab` reads. Each listed manifest resolves by its path, since a file name need not match
+ * the id inside. A lab that runs dry, that the plain CLI cannot run, or that does not plan needs
+ * none.
  */
 export async function labsByRequiredKey(
   cwd: string,
@@ -480,18 +482,17 @@ export async function labsByRequiredKey(
 ): Promise<Map<string, string[]>> {
   const { listLabManifests, resolveLabManifest } = await import("./discover.js");
   const { resolveLabDryRun, routeOf } = await import("./plan.js");
-  const users = new Map<string, string[]>();
-  const ids = new Set((await listLabManifests(cwd)).labs.map((lab) => lab.id));
-  for (const id of ids) {
-    const resolved = await resolveLabManifest(cwd, id);
+  const users = new Map<string, Set<string>>();
+  for (const entry of (await listLabManifests(cwd)).labs) {
+    const resolved = await resolveLabManifest(cwd, entry.path);
     if (!resolved.ok || resolveLabDryRun(resolved.config, undefined, true) === true) continue;
     if (unsupportedCliRoute(resolved.config, routeOf(resolved.config))) continue;
     const planned = await planCliRun(resolved.config, cwd);
     if (!planned.ok) continue;
-    for (const key of new Set(requiredKeys(planned.planned.plan.requirements, keyPresent)))
-      users.set(key, [...(users.get(key) ?? []), id]);
+    for (const key of requiredKeys(planned.planned.plan.requirements, keyPresent))
+      users.set(key, (users.get(key) ?? new Set()).add(entry.id));
   }
-  return users;
+  return new Map([...users].map(([key, ids]) => [key, [...ids]]));
 }
 
 /**

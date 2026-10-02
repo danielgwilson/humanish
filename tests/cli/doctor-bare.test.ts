@@ -1,7 +1,7 @@
 // Bare `doctor` after `init --yes` on a machine with no keys: init's next step (`run first-run`)
 // needs no key, so doctor passes, and each key row names the labs that need it. `--lab` still fails
 // on a key the selected lab requires.
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -40,6 +40,20 @@ describe("doctor without --lab", () => {
     expect(row(result, "key E2B_API_KEY")).toMatchObject({ ok: true, status: "ok" });
     expect(row(result, "key E2B_API_KEY")?.message).toMatch(/; used by try-live$/);
     expect(JSON.stringify(result)).not.toContain("synthetic-desktop-canary");
+  });
+
+  it("finds a lab whose file name differs from its id", async () => {
+    const labs = path.join(cwd, "humanish", "labs");
+    const tryLive = await readFile(path.join(labs, "try-live.yaml"), "utf8");
+    expect(tryLive).toMatch(/^id: try-live$/m);
+    await writeFile(
+      path.join(labs, "checkout.yaml"),
+      tryLive.replace(/^id: try-live$/m, "id: checkout-live"),
+    );
+    const result = await doctor(cwd, { env: keyless, localAgents: noAgents });
+    expect(row(result, "key E2B_API_KEY")?.message).toMatch(
+      /^missing; used by checkout-live and try-live; /,
+    );
   });
 
   it("still fails under --lab when the selected lab needs a missing key", async () => {

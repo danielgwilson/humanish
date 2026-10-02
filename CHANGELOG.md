@@ -111,7 +111,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   `e2b auth login`, or `humanish keys set e2b`". Before, bare doctor after `init --yes` failed on a
   missing `E2B_API_KEY`, and on `OPENAI_API_KEY` when no local agent was signed in, although
   init's next step, `run first-run`, needs neither. `doctor --lab <lab>` still fails on a key the
-  selected lab requires.
+  selected lab requires, so a script that gates a live run on doctor's exit code should pass
+  `--lab`.
   - Each row in `doctor --json` has a `status`: `ok`, `missing`, `not_checked` or `note`. A note is
     advisory and keeps `ok: true`. Notes are: a missing key a project lab needs (without `--lab`),
     `humanish tui` unbuilt or unsupported on this Node, a post-run analysis that will be skipped,
