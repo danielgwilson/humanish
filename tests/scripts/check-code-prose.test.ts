@@ -20,20 +20,42 @@ const KINDS = [
   "honest",
   "history",
   "series-codes",
+  "name-refs",
 ] as const;
+const ROOTS = ["src", "tests", "scripts", "tui"] as const;
 const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui"] as const;
+/** A count named for its kind and root suffix: `caps` for src, `caps-tests` for the tests root. */
 type Count = `${(typeof KINDS)[number]}${(typeof ROOT_SUFFIXES)[number]}`;
 
-/** Runs the checker over one fixture file (src/fixture.ts unless given) and returns its exit status
- *  and stdout. */
+/** A fixture scripts/caps.json: every count capped at 0 except the ones given, minus `omit`. */
+function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = []): string {
+  const prose = Object.fromEntries(
+    ROOTS.map((root, index) => [
+      root,
+      Object.fromEntries(
+        KINDS.flatMap((kind) => {
+          const count = `${kind}${ROOT_SUFFIXES[index]!}` as Count;
+          return omit.includes(count) ? [] : [[kind, caps[count] ?? 0]];
+        }),
+      ),
+    ]),
+  );
+  return `${JSON.stringify({ prose }, null, 2)}\n`;
+}
+
+/** Runs the checker over one fixture file (src/fixture.ts unless given) with a fixture
+ *  scripts/caps.json, and returns its exit status and stdout. */
 async function run(
   args: string[],
   source: string,
   file = "src/fixture.ts",
+  caps = capsFile(),
 ): Promise<{ status: number; stdout: string }> {
   const cwd = await makeTestTempDir("humanish-prose-check-");
   await mkdir(path.dirname(path.join(cwd, file)), { recursive: true });
   await writeFile(path.join(cwd, file), source);
+  await mkdir(path.join(cwd, "scripts"), { recursive: true });
+  await writeFile(path.join(cwd, "scripts", "caps.json"), caps);
   try {
     const stdout = execFileSync(process.execPath, [SCRIPT, ...args], { cwd, encoding: "utf8" });
     return { status: 0, stdout };
@@ -51,13 +73,15 @@ async function hitsOf(
 ): Promise<{ count: number; words: string[] }> {
   const { stdout } = await run(["--list"], source, file);
   const lines = stdout.split("\n");
-  const header = lines.findIndex((line) => line.startsWith(`${kind}: `));
+  const root = ROOTS[ROOT_SUFFIXES.findLastIndex((suffix) => kind.endsWith(suffix))]!;
+  const capPath = `prose.${root}.${kind.slice(0, kind.length - (root === "src" ? 0 : root.length + 1))}`;
+  const header = lines.findIndex((line) => line.startsWith(`${capPath}: `));
   const after = lines.slice(header + 1);
   const listed = after.slice(
     0,
     after.findIndex((line) => !line.startsWith("  ")),
   );
-  const count = Number(lines[header]!.slice(kind.length + 2).split(" ")[0]);
+  const count = Number(lines[header]!.slice(capPath.length + 2).split(" ")[0]);
   const words = listed.map((line) => line.split(" ").at(-1)!);
   return { count, words };
 }
@@ -66,10 +90,7 @@ const laneHits = (source: string) => hitsOf("lane-comments", source);
 
 /** The checker's exit status with every cap at 0 except the ones given. */
 async function exitWith(caps: Partial<Record<Count, number>>, source: string) {
-  const flags = ROOT_SUFFIXES.flatMap((suffix) =>
-    KINDS.map((kind) => `--max-${kind}${suffix}=${caps[`${kind}${suffix}`] ?? 0}`),
-  );
-  return (await run(flags, source)).status;
+  return (await run([], source, undefined, capsFile(caps))).status;
 }
 
 describe("prose:check counts lane in comment prose", () => {
@@ -103,7 +124,7 @@ describe("prose:check counts lane in comment prose", () => {
     expect(hits.count).toBe(0);
   });
 
-  it("fails both above and below --max-lane-comments", async () => {
+  it("fails both above and below its lane-comments cap", async () => {
     const source = "// one lane\n// another lane\n";
     expect(await exitWith({ "lane-comments": 2 }, source)).toBe(0);
     expect(await exitWith({ "lane-comments": 1 }, source)).toBe(1);
@@ -153,7 +174,7 @@ describe("prose:check counts em dashes in comment prose", () => {
     expect(hits.count).toBe(1);
   });
 
-  it("fails both above and below --max-em-dashes", async () => {
+  it("fails both above and below its em-dashes cap", async () => {
     const source = "// one \u2014 two\n// three -- four\n";
     expect(await exitWith({ "em-dashes": 2 }, source)).toBe(0);
     expect(await exitWith({ "em-dashes": 1 }, source)).toBe(1);
@@ -262,20 +283,33 @@ describe("prose:check reads every root and counts test names", () => {
     const file = "tests/fixture.test.ts";
 
     expect((await hitsOf("series-codes-tests", source, file)).words).toEqual(["L14:", "W5."]);
-    expect((await hitsOf("issue-refs-tests", source, file)).words).toEqual(["#123"]);
+    expect((await hitsOf("name-refs-tests", source, file)).words).toEqual(["#123"]);
+    expect((await hitsOf("issue-refs-tests", source, file)).count).toBe(0);
     expect((await hitsOf("caps-tests", source, file)).words).toEqual(["NOT"]);
     expect((await hitsOf("em-dashes-tests", source, file)).count).toBe(1);
   });
 });
 
-describe("prose:check needs a cap for every count", () => {
-  it("fails when a count has no --max flag, naming the flag and today's count", async () => {
-    const flags = ROOT_SUFFIXES.flatMap((suffix) => KINDS.map((kind) => `${kind}${suffix}`))
-      .filter((count) => count !== "em-dashes")
-      .map((count) => `--max-${count}=0`);
-    const result = await run(flags, "// one \u2014 two\n// three -- four\n");
+describe("prose:check reads its caps from scripts/caps.json", () => {
+  it("fails a count with no cap, naming its path and today's count", async () => {
+    const source = "// one \u2014 two\n// three -- four\n";
+    const result = await run([], source, undefined, capsFile({}, ["em-dashes"]));
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("--max-em-dashes=2");
+    expect(result.stdout).toContain("prose.src.em-dashes: 2");
+  });
+
+  it("fails a cap for a count the checker no longer makes", async () => {
+    const caps = JSON.parse(capsFile()) as { prose: Record<string, Record<string, number>> };
+    caps.prose.src!["retired-kind"] = 0;
+    const result = await run([], "// clean\n", undefined, JSON.stringify(caps));
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("Remove: prose.src.retired-kind");
+  });
+
+  it("exits 2 on a cap that is not a whole number", async () => {
+    const caps = capsFile().replace('"caps": 0', '"caps": -1');
+    expect((await run([], "// clean\n", undefined, caps)).status).toBe(2);
   });
 });

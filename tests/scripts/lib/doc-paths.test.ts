@@ -26,17 +26,18 @@ const index = buildRepoIndex([
 const paths = (issues: { path: string }[]) => issues.map(({ path }) => path);
 
 describe("doc path check", () => {
-  it("selects current docs, including docs/goals/current.md, and skips dated history folders", () => {
+  it("selects current docs and evidence, and skips docs/history/", () => {
     expect(
       [
         "README.md",
         "ARCHITECTURE.md",
         "CONTEXT.md",
         "docs/contracts/core.md",
-        "docs/goals/current.md",
-        "docs/goals/computer-use-actor/receipts/run.md",
-        "docs/plans/2026-06-01-plan.md",
-        "docs/roadmap/v0.md",
+        "docs/status.md",
+        "docs/evidence/computer-use/run.md",
+        "docs/history/goals/old/goal.md",
+        "docs/history/plans/2026-06-01-plan.md",
+        "docs/history/roadmap/v0.md",
         "site/content/docs/quickstart.mdx",
         "site/content/docs/notes.md",
         "tui/AGENTS.md",
@@ -47,7 +48,8 @@ describe("doc path check", () => {
       "ARCHITECTURE.md",
       "CONTEXT.md",
       "docs/contracts/core.md",
-      "docs/goals/current.md",
+      "docs/status.md",
+      "docs/evidence/computer-use/run.md",
       "site/content/docs/quickstart.mdx",
     ]);
     expect(

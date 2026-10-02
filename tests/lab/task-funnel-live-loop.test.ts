@@ -108,7 +108,7 @@ const PROTOCOL: LabTask[] = [
   },
 ];
 
-describe("the live loop corroborates the protocol (#414 wiring)", () => {
+describe("the live loop corroborates the protocol", () => {
   it("records completions from observations and lands the funnel on the trace", async () => {
     const provider = new RepeatProvider({
       actions: [{ kind: "click", x: 10, y: 20 }],

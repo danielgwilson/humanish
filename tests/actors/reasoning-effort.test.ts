@@ -34,7 +34,7 @@ function lab(actor: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
-describe("reasoning effort is a declarable study variable (#497)", () => {
+describe("reasoning effort is a declarable study variable", () => {
   it("accepts every documented level on the actor", () => {
     for (const effort of REASONING_EFFORTS) {
       const parsed = parseLabConfig(lab({ reasoningEffort: effort }));

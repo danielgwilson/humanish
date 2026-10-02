@@ -1,19 +1,30 @@
 {
   "title": "humanish docs",
   "pages": [
+    "---Start---",
     "index",
     "your-app",
     "read-results",
+    "---Guides---",
+    "computer-use",
+    "local-agents",
+    "local-browser",
+    "email-receiving",
+    "comms-inbox",
+    "participant-media",
+    "desktop-recording",
+    "review-surfaces",
+    "---Reference---",
+    "cli",
+    "lab-manifests",
+    "library",
+    "project-layout",
+    "---Background---",
     "what-a-study-costs",
     "budgets-and-privacy",
     "trust-boundaries",
-    "lab-manifests",
-    "computer-use",
-    "local-agents",
-    "library",
-    "review-surfaces",
+    "---Studies---",
     "todomvc-edit-study",
-    "save-button-study",
-    "cli"
+    "save-button-study"
   ]
 }

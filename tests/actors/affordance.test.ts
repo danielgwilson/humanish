@@ -20,7 +20,7 @@ import type { CuaAction } from "../../src/actors/computer-use/loop.js";
 
 const classOf = (action: CuaAction) => classifyCuaAction(action).affordance;
 
-describe("affordance classification (#369)", () => {
+describe("affordance classification", () => {
   it("classifies the naturalistic core: pointer, keyboard, speech, observation", () => {
     expect(classOf({ kind: "click", x: 10, y: 20 })).toBe("pointer");
     expect(classOf({ kind: "double_click", x: 1, y: 2 })).toBe("pointer");

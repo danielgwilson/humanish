@@ -109,7 +109,7 @@ function deferred() {
 }
 
 describe("runScope closes a run on every exit", () => {
-  it("L1: a return before finish leaves a finished status with no outcome and no token", async () => {
+  it("a return before finish leaves a finished status with no outcome and no token", async () => {
     const { result, finished } = await runScope(async (scope) => {
       await startOk(scope, "returned");
       return "refused";
@@ -122,7 +122,7 @@ describe("runScope closes a run on every exit", () => {
     await expect(readLatest()).rejects.toMatchObject({ code: "ENOENT" });
   });
 
-  it("L2: a throw after startRun closes the run and rethrows the original error", async () => {
+  it("a throw after startRun closes the run and rethrows the original error", async () => {
     const failure = new Error("route failed");
     await expect(
       runScope(async (scope) => {
@@ -134,7 +134,7 @@ describe("runScope closes a run on every exit", () => {
     expect(await readStatus("thrown")).not.toHaveProperty("outcome");
   });
 
-  it("L10: parallel scopes each close only their own run", async () => {
+  it("parallel scopes each close only their own run", async () => {
     const release = deferred();
     const [abandoned, published] = await Promise.all([
       runScope(async (scope) => {
@@ -153,7 +153,7 @@ describe("runScope closes a run on every exit", () => {
     expect((await readStatus("published")).outcome).toEqual({ verdict: "contract_proof_only" });
   });
 
-  it("L12: a scope or run leaked out of the scope admits nothing after it closes", async () => {
+  it("a scope or run leaked out of the scope admits nothing after it closes", async () => {
     let leakedScope: RunScope | undefined;
     let leakedRun: Awaited<ReturnType<typeof startOk>> | undefined;
     await runScope(async (scope) => {
@@ -169,7 +169,7 @@ describe("runScope closes a run on every exit", () => {
 });
 
 describe("Run.finish publishes once, in order", () => {
-  it("L3: a failure at review.md leaves run.json and the status outcome, and no pointer", async () => {
+  it("a failure at review.md leaves run.json and the status outcome, and no pointer", async () => {
     await expect(
       runScope(async (scope) => {
         const run = await startOk(scope, "review-fault");
@@ -184,7 +184,7 @@ describe("Run.finish publishes once, in order", () => {
     await expect(readLatest()).rejects.toMatchObject({ code: "ENOENT" });
   });
 
-  it("L4: a failure at run.json leaves a status with no outcome", async () => {
+  it("a failure at run.json leaves a status with no outcome", async () => {
     await expect(
       runScope(async (scope) => {
         const run = await startOk(scope, "bundle-fault");
@@ -197,7 +197,7 @@ describe("Run.finish publishes once, in order", () => {
     expect(status).not.toHaveProperty("outcome");
   });
 
-  it("L5: a failed pointer write keeps the previous pointer and issues no token", async () => {
+  it("a failed pointer write keeps the previous pointer and issues no token", async () => {
     await publish("previous");
     vi.mocked(writePreparedRunLatestPointer).mockRejectedValueOnce(new Error("pointer failed"));
     let observerData = "";
@@ -216,7 +216,7 @@ describe("Run.finish publishes once, in order", () => {
     expect((await readLatest()).runId).toBe("previous");
   });
 
-  it("L6: finish admits one call, sequential or concurrent, and keeps the first bytes", async () => {
+  it("finish admits one call, sequential or concurrent, and keeps the first bytes", async () => {
     await runScope(async (scope) => {
       const run = await startOk(scope, "twice");
       await run.finish(bundleFor("twice", "first"));
@@ -240,7 +240,7 @@ describe("Run.finish publishes once, in order", () => {
     });
   });
 
-  it("L7: startRun admits one call, and a bundle for another run or mode writes nothing", async () => {
+  it("startRun admits one call, and a bundle for another run or mode writes nothing", async () => {
     await runScope(async (scope) => {
       const concurrent = await Promise.allSettled([start(scope, "one"), start(scope, "two")]);
       expect(concurrent.map((outcome) => outcome.status)).toEqual(["fulfilled", "rejected"]);
@@ -259,7 +259,7 @@ describe("Run.finish publishes once, in order", () => {
     });
   });
 
-  it("L11: createdAt and the pointer's updatedAt come from the injected clock", async () => {
+  it("createdAt and the pointer's updatedAt come from the injected clock", async () => {
     const at = Date.parse("2026-09-30T12:00:00.000Z");
     await runScope(async (scope) => {
       const run = await startOk(scope, "clocked", () => at);
@@ -274,7 +274,7 @@ describe("Run.finish publishes once, in order", () => {
     });
   });
 
-  it("L14: readers see the status after run.json and the pointer only at the end", async () => {
+  it("readers see the status after run.json and the pointer only at the end", async () => {
     await publish("previous");
     const atReview = deferred();
     const releaseReview = deferred();
@@ -323,7 +323,7 @@ describe("Run.finish publishes once, in order", () => {
 });
 
 describe("the run's start and its token", () => {
-  it("L8: an existing entry under the id is refused, and a symlinked runs root rejects", async () => {
+  it("an existing entry under the id is refused, and a symlinked runs root rejects", async () => {
     const outside = await mkdtemp(path.join(tmpdir(), "humanish-run-outside-"));
     try {
       await mkdir(path.join(cwd, ".humanish", "runs"), { recursive: true });
@@ -342,7 +342,7 @@ describe("the run's start and its token", () => {
     }
   });
 
-  it("L9: a process killed after startRun leaves a status that reads interrupted", async () => {
+  it("a process killed after startRun leaves a status that reads interrupted", async () => {
     const script = `
       import { runScope } from ${JSON.stringify(new URL("../../src/run/run.ts", import.meta.url).href)};
       await runScope(async (scope) => {
@@ -391,7 +391,7 @@ describe("the run's start and its token", () => {
     );
   });
 
-  it("L13: a run directory replaced after finish is neither rendered nor analyzed", async () => {
+  it("a run directory replaced after finish is neither rendered nor analyzed", async () => {
     const finished = await publish("replaced");
     expect(FinishedRun.isIssued(finished)).toBe(true);
     await rename(runDir("replaced"), path.join(cwd, "moved"));
@@ -428,7 +428,7 @@ function failFirstBundleWrite(message: string): void {
 }
 
 describe("Run.writeSnapshot publishes in-progress bundles through the same queue", () => {
-  it("C2: finish waits for a held snapshot write, and the final bundle wins", async () => {
+  it("finish waits for a held snapshot write, and the final bundle wins", async () => {
     const atSnapshot = deferred();
     const releaseSnapshot = deferred();
     let held = false;
@@ -459,7 +459,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     expect(written.review.gaps).toEqual(["final"]);
   });
 
-  it("C4: a snapshot and then an early return leave the in-progress run.json and no outcome", async () => {
+  it("a snapshot and then an early return leave the in-progress run.json and no outcome", async () => {
     const { finished } = await runScope(async (scope) => {
       const run = await startOk(scope, "abandoned-live");
       await run.writeSnapshot(bundleFor("abandoned-live", "in progress"));
@@ -473,7 +473,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     expect(status).not.toHaveProperty("outcome");
   });
 
-  it("C7: only the first successful snapshot writes the pointer, and finish writes it again", async () => {
+  it("only the first successful snapshot writes the pointer, and finish writes it again", async () => {
     vi.mocked(writePreparedRunLatestPointer).mockRejectedValueOnce(new Error("pointer failed"));
     await runScope(async (scope) => {
       const run = await startOk(scope, "pointed");
@@ -494,7 +494,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     expect((await readLatest()).runId).toBe("pointed");
   });
 
-  it("Q1: a rejected snapshot does not block the final publication", async () => {
+  it("a rejected snapshot does not block the final publication", async () => {
     failFirstBundleWrite("snapshot failed");
     const { finished } = await runScope(async (scope) => {
       const run = await startOk(scope, "recovered");
@@ -505,7 +505,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     expect((await readStatus("recovered")).outcome).toEqual({ verdict: "contract_proof_only" });
   });
 
-  it("Q2: a throw while a snapshot rejects surfaces the original error and stops the status cadence", async () => {
+  it("a throw while a snapshot rejects surfaces the original error and stops the status cadence", async () => {
     // Only the interval is faked: the status record's 5 s cadence is the one interval a run owns.
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
     try {
@@ -530,7 +530,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     }
   });
 
-  it("Q3: a snapshot from a timer that fires after the scope closed writes nothing", async () => {
+  it("a snapshot from a timer that fires after the scope closed writes nothing", async () => {
     let late: Promise<unknown> | undefined;
     await runScope(async (scope) => {
       const run = await startOk(scope, "timer");

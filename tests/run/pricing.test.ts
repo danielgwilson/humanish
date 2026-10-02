@@ -118,7 +118,7 @@ describe("estimateActorCost", () => {
   });
 });
 
-describe("estimateActorCost: cached input (#391)", () => {
+describe("estimateActorCost: cached input", () => {
   // The bug this pins: every input token was billed at the full rate, and the provider's
   // cached-token count was not even parsed. The CUA loop threads state through the provider and
   // re-sends a growing warm prefix every turn, so most input on a long session is a cache hit. A
@@ -225,7 +225,7 @@ describe("round6", () => {
   });
 });
 
-describe("estimateActorCost: cache writes + long-context tiering (#334)", () => {
+describe("estimateActorCost: cache writes + long-context tiering", () => {
   // The two billing mechanics gpt-5.6 introduced, pinned with a fake sheet mirroring its shape:
   // writes bill at their own (1.25x) rate as the TOTAL rate for written tokens, and a request
   // whose input crosses the threshold re-tiers the WHOLE request (2x input-side, 1.5x output).
@@ -279,7 +279,7 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
     expect(cost.breakdown?.longContextTurns).toBe(1);
   });
 
-  it("refuses to tier when the ledger omits the cache splits the totals declare (red-team)", () => {
+  it("refuses to tier when the ledger omits the cache splits the totals declare", () => {
     // input/output sums match but the ledger carries no cachedInput — trusting it would price
     // 400k cache hits at the full rate (3.5x overstatement, the #391 false-cap-trip direction).
     const cost = estimateActorCost(
@@ -301,7 +301,7 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
     expect(cost.breakdown?.longContextTurns).toBeUndefined();
   });
 
-  it("refuses to tier when the ledger omits the cache WRITES the totals declare (red-team)", () => {
+  it("refuses to tier when the ledger omits the cache writes the totals declare", () => {
     const cost = estimateActorCost(
       { input: 1500, output: 0, cacheWriteInput: 400, turns: [{ input: 700 }, { input: 800 }] },
       "tiered-model",

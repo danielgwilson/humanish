@@ -167,7 +167,7 @@ Nice-to-have after public launch:
 
 For `humanish`, the honest standard is:
 
-- Keep `docs/ramp/` and `docs/goals/` if they are public-safe. They are essential
+- Keep `docs/ramp/` and `docs/history/goals/` if they are public-safe. They are essential
   project memory for future coding agents and contributors.
 - Keep the package docs and skill docs focused on public install, public-safe
   examples, and synthetic proof.

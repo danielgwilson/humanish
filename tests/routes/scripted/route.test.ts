@@ -341,7 +341,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     expect(routeOf(scriptedConfig({ target: undefined }))).toBe("scripted");
   });
 
-  it("REGRESSION: app-url × e2b-desktop × openai-computer-use still routes to cua, and the other routes are untouched", () => {
+  it("app-url × e2b-desktop × openai-computer-use still routes to cua, and the other routes are untouched", () => {
     const cua = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "cua",
@@ -1632,7 +1632,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     };
   }
 
-  it("S2: an unsafe session result after start kills the subject, closes the run and runs no analysis", async () => {
+  it("an unsafe session result after start kills the subject, closes the run and runs no analysis", async () => {
     const runId = "unsafe-after-start";
     const runDir = path.join(cwd, ".humanish", "runs", runId);
     const fakeE2B = makeFakeE2BModule();
@@ -1773,7 +1773,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     expect(status.outcome?.ok).toBe(outcome.result.ok);
   });
 
-  it("S3: after a failed subject teardown, reclaim kills the receipted subject", async () => {
+  it("after a failed subject teardown, reclaim kills the receipted subject", async () => {
     const runId = "failed-teardown";
     const fakeE2B = makeFakeE2BModule();
     const kill = fakeE2B.module.Sandbox.kill!;

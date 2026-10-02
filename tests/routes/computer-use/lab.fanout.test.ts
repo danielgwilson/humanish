@@ -803,7 +803,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     );
   });
 
-  it("carries each lane's declared reasoning effort into the provider options (#497)", async () => {
+  it("carries each participant's declared reasoning effort into the provider options", async () => {
     // The link a unit test cannot see and a live run costs money to check: lab YAML -> lane spec ->
     // the options the provider is actually built from. A declared effort that stops short of this
     // call is indistinguishable from no effort at all, which is the defect being closed.
@@ -1028,7 +1028,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(bundle.desktopTemplate).toBeUndefined();
   });
 
-  it("C6: after every lane's teardown kill fails, reclaim kills each receipted lane sandbox", async () => {
+  it("after every participant's teardown kill fails, reclaim kills each receipted participant sandbox", async () => {
     const handle = makeFanoutModule();
     const kill = handle.module.Sandbox.kill!;
     handle.module.Sandbox.kill = async (sandboxId, options) => {
@@ -2479,7 +2479,7 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
 // mapWithConcurrency while sibling workers kept launching sandboxes nobody would record: spent
 // money, vanished evidence. These drive runCuaParticipants directly with an injected lane runner so the
 // THROW path (not the already-guarded in-session error path) is what is under test.
-describe("runCuaParticipants total-runner guard (#342)", () => {
+describe("runCuaParticipants total-runner guard", () => {
   const spec = (id: string, index: number): DesktopParticipantRun =>
     participantRun({
       id,

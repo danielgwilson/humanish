@@ -186,7 +186,7 @@ describe("terminal sandbox acquisition boundary", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("B1: a failed receipt write keeps the run going and the in-process teardown kills by id", async () => {
+  it("a failed receipt write keeps the run going and the in-process teardown kills by id", async () => {
     const provider = fakeProvider({
       // The receipt path becomes a directory after the run directory exists, so the append fails.
       afterAllocate: async () => {
@@ -232,7 +232,7 @@ describe("terminal sandbox acquisition boundary", () => {
     expect(provider.killed).toEqual(["sb-boundary-1"]);
   });
 
-  it("B2: after the receipt lands and the process dies, reclaim kills the recorded id", async () => {
+  it("after the receipt lands and the process dies, reclaim kills the recorded id", async () => {
     expect(await killRouteAfterReceipt(cwd, runDir)).toBe("SIGKILL");
 
     const provider = fakeProvider({});
@@ -252,7 +252,7 @@ describe("terminal sandbox acquisition boundary", () => {
     expect(classifyRunStatus(status, Date.now() + RUN_STATUS_STALE_MS + 1)).toBe("interrupted");
   }, 60_000);
 
-  it("B3: an allocation whose id never reaches the run has no receipt and keeps its TTL", async () => {
+  it("an allocation whose id never reaches the run has no receipt and keeps its TTL", async () => {
     const provider = fakeProvider({ rejectAfterAllocate: true });
 
     const result = await runTerminalProductLab({

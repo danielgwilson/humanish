@@ -107,7 +107,7 @@ describe("loadAdapterScorer — resolution", () => {
     expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
   });
 
-  it("rejects a cwd-parent node_modules ref (security regression)", async () => {
+  it("rejects a cwd-parent node_modules ref", async () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "../node_modules/evil.mjs",
@@ -618,7 +618,7 @@ describe("browser routes flip AND stamp provenance", () => {
     expect(bundle.scorerProvenance).toEqual(provenance);
   });
 
-  it("a DECLARED browser scorer that THROWS fails the run (red-team finding #2 — was a silent green)", async () => {
+  it("a declared browser scorer that throws fails the run instead of passing", async () => {
     const bundle = freshBundle();
     const res = await applyBrowserScorer({
       scorer: {
@@ -638,7 +638,7 @@ describe("browser routes flip AND stamp provenance", () => {
     expect(folded.gaps.some((g) => g.includes("threw"))).toBe(true);
   });
 
-  it("a DECLARED browser scorer returning a MALFORMED value fails the run (red-team finding #1)", async () => {
+  it("a declared browser scorer returning a malformed value fails the run", async () => {
     const bundle = freshBundle();
     const res = await applyBrowserScorer({
       scorer: {
@@ -679,7 +679,7 @@ describe("browser routes flip AND stamp provenance", () => {
     expect(bundle.review.verdict).toBe("pass");
   });
 
-  it("a DECLARED scorer cannot mutate the bundle in place — the frozen view protects noSpend/review (finding #3)", async () => {
+  it("a declared scorer cannot mutate the bundle in place: the frozen view protects noSpend/review", async () => {
     const bundle = freshBundle();
     const res = await applyBrowserScorer({
       scorer: {
@@ -719,7 +719,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("a pre-#316 / library-caller bundle (no scorerProvenance) still verifies", async () => {
+  it("a bundle with no scorerProvenance (a library caller or an older run) still verifies", async () => {
     const inputs = passingRun();
     const result = await runTerminalProductLab({
       cwd,

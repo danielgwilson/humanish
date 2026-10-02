@@ -518,7 +518,7 @@ describe("lab routing (app-url → cua)", () => {
   });
 });
 
-describe("desktop-cli runtime prerequisites (#515)", () => {
+describe("desktop-cli runtime prerequisites", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-desktop-cli-"));
@@ -1383,7 +1383,7 @@ describe("runCuaActorLab", () => {
     expect(killed).toEqual(["fake-sandbox-001"]);
   });
 
-  it("mobile emulation (#221): launches Chrome with the mobile UA and touch flags, holds the CDP session, and records what the page reported", async () => {
+  it("mobile emulation: launches Chrome with the mobile UA and touch flags, holds the CDP session, and records what the page reported", async () => {
     const commands: string[] = [];
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
@@ -1692,7 +1692,7 @@ describe("runCuaActorLab", () => {
     return { outcome, bundle };
   }
 
-  it("mobile emulation on a later tab (#623): a tab the page itself reports at the phone width is recorded on the bundle, with no drift warning", async () => {
+  it("mobile emulation on a later tab: a tab the page itself reports at the phone width is recorded on the bundle, with no drift warning", async () => {
     const { outcome, bundle } = await runLaterTabLane(laterTabSandbox(414));
     expect(
       (outcome.result.warnings ?? []).filter((warning: string) =>
@@ -1711,7 +1711,7 @@ describe("runCuaActorLab", () => {
     ]);
   });
 
-  it("mobile emulation drift (#623): a later tab that reports the window width puts one warning on the lane, with the page's number", async () => {
+  it("mobile emulation drift: a later tab that reports the window width puts one warning on the participant, with the page's number", async () => {
     const { outcome, bundle } = await runLaterTabLane(laterTabSandbox(500));
     const driftWarnings = (outcome.result.warnings ?? []).filter((warning: string) =>
       warning.includes("Mobile emulation drift"),
@@ -1722,7 +1722,7 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toBeUndefined();
   });
 
-  it("a lab's dwell window reaches the session the lane runs (#510): actor default, lane override", async () => {
+  it("a lab's dwell window reaches the session the participant runs: actor default, participant override", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const parsed = parseLabConfig({
@@ -1856,7 +1856,7 @@ describe("runCuaActorLab", () => {
     return outcome;
   }
 
-  it("a synthetic camera (#509): the feed is generated before launch, Chrome gets the fake-device flags, the bundle records it, the permission dialog stays real", async () => {
+  it("a synthetic camera: the feed is generated before launch, Chrome gets the fake-device flags, the bundle records it, the permission dialog stays real", async () => {
     const { sandbox, commands } = cameraSandbox(0);
     const outcome = await runCameraLane(sandbox, {});
     expect(outcome.result.ok, JSON.stringify(outcome.result.error)).toBe(true);
@@ -1939,7 +1939,7 @@ describe("runCuaActorLab", () => {
     expect(commands.some((command) => command.includes("browser_preference='chrome'"))).toBe(false);
   });
 
-  it("sandbox create retried once (#630): a first attempt that hit an envd not yet routable is retried, named on the lane and in the phase trail", async () => {
+  it("sandbox create retried once: a first attempt that hit an envd not yet routable is retried, named on the participant and in the phase trail", async () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
         if (command.includes("browser_preference='chrome'")) {
@@ -2425,7 +2425,7 @@ describe("runCuaActorLab", () => {
     }
   });
 
-  it("every computer-use lane is asked for the fixed closing line, after the mission and the lane focus (#570)", () => {
+  it("every computer-use participant is asked for the fixed closing line, after the mission and the participant focus", () => {
     const composed = composeParticipantInstructions({
       mission: "Add two tables.",
       instruction: "keyboard only",
@@ -2439,7 +2439,7 @@ describe("runCuaActorLab", () => {
     expect(CLOSING_LINE_DIRECTIVE).not.toMatch(/never|always|do not (type|click|use)/i);
   });
 
-  it("the participant's declared outcome wins over the paragraph, both ways (#570)", () => {
+  it("the participant's declared outcome wins over the paragraph, both ways", () => {
     const declared = (reason: string, outcome: "reached" | "blocked" | "not_reached") => {
       const session = fakeBlockerSession(reason);
       session.trace.declaredOutcome = outcome;
@@ -2538,7 +2538,7 @@ describe("runCuaActorLab", () => {
     ).toContain("could not complete");
   });
 
-  it("does NOT flag a lane that merely QUOTES the subject app's copy containing a blocker word (#329)", () => {
+  it("does not flag a participant that merely quotes the subject app's copy containing a blocker word", () => {
     // The persona faithfully relays the app's banner text; a quoted span is not the actor's own
     // status and must not trip the blocker scan.
     expect(
@@ -2550,7 +2550,7 @@ describe("runCuaActorLab", () => {
     ).toBeUndefined();
   });
 
-  it("does NOT flag a blocker narrative when the run's own stopWhen predicate matched (#329)", () => {
+  it("does not flag a blocker narrative when the run's own stopWhen predicate matched", () => {
     // A matched stopWhen is independent, structured completion evidence and overrides the text scan.
     expect(
       resolveSelfReportedBlocker(
@@ -2578,7 +2578,7 @@ describe("runCuaActorLab", () => {
     expect(resolveSelfReportedBlocker(undefined)).toBeUndefined();
   });
 
-  it("a defect report after demonstrated success keeps the pass AND counts as friction (#453)", () => {
+  it("a defect report after demonstrated success keeps the pass and counts as friction", () => {
     // The live run-1 report shape, verbatim in structure: mission done, then a defect-notes
     // section whose failure narration reports its OWN recovery in the same segment.
     const report = [
@@ -2593,7 +2593,7 @@ describe("runCuaActorLab", () => {
     expect(resolveSelfReportedFriction(fakeBlockerSession(report))).toContain("parser error");
   });
 
-  it("an UNRESOLVED failure still blocks the verdict — the strip needs the recovery in the segment (#453)", () => {
+  it("an unresolved failure still blocks the verdict: the strip needs the recovery in the segment", () => {
     expect(
       resolveSelfReportedBlocker(
         fakeBlockerSession(
@@ -3435,7 +3435,7 @@ describe("runCuaActorLab", () => {
     expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(false);
   });
 
-  it("a lane the harness refused as 'not a credible pass' is not written up as a pass (#476)", async () => {
+  it("a participant the harness refused as 'not a credible pass' is not written up as a pass", async () => {
     // Found on a real run: the lane said ok:false / HUMANISH_CUA_LAB_FAILED / "not a credible
     // pass", and the BUNDLE said verdict pass, 1/1 reached the goal. Every projection of the
     // bundle — Observer tally, `humanish runs`, the status index, a share — repeated the pass.
@@ -3970,7 +3970,7 @@ describe("runCuaActorLab", () => {
     });
   });
 
-  it("writes lab identity into the bundle AND a finalized status record on disk (#455)", async () => {
+  it("writes lab identity into the bundle and a finalized status record on disk", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(
@@ -4319,7 +4319,7 @@ describe("runCuaActorLab", () => {
     }
   });
 
-  it("clone route: the injected phase sink and onEvent both receive the ordered started/completed sequence for clone/install/build/ready (#263)", async () => {
+  it("clone route: the injected phase sink and onEvent both receive the ordered started/completed sequence for clone/install/build/ready", async () => {
     const config = cloneCuaConfig();
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
@@ -4408,7 +4408,7 @@ describe("runCuaActorLab", () => {
     }
   });
 
-  it("clone route: the completed phase trail persists into bundle.events with durationMs folded into each message (#263)", async () => {
+  it("clone route: the completed phase trail persists into bundle.events with durationMs folded into each message", async () => {
     const config = cloneCuaConfig();
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
@@ -4519,7 +4519,7 @@ describe("runCuaActorLab", () => {
     expect(created).toHaveLength(0);
   });
 
-  it("retries a subject install that exits non-zero exactly once, and the phase stream says so (#602)", async () => {
+  it("retries a subject install that exits non-zero exactly once, and the phase stream says so", async () => {
     // A transient registry/TLS error inside the sandbox's npm install cost a cold adopter their
     // whole first live study; the parallel install twenty seconds later passed. First attempt
     // exits 1, the retry (its own step dir, so both logs survive) exits 0.
@@ -4576,7 +4576,7 @@ describe("runCuaActorLab", () => {
     );
   });
 
-  it("a subject install that fails twice reports one actionable line before npm's own output (#602)", async () => {
+  it("a subject install that fails twice reports one actionable line before npm's own output", async () => {
     const config = cloneCuaConfig();
     let attempts = 0;
     const sandbox = makeFakeSandbox({
@@ -5614,7 +5614,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(verified.ok).toBe(true);
     });
 
-    it("live (single lane): the injected phase sink emits the upload/extract phase boundaries, then install/build/ready (#263)", async () => {
+    it("live (single participant): the injected phase sink emits the upload/extract phase boundaries, then install/build/ready", async () => {
       const config = localTreeCuaConfig();
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
@@ -5778,7 +5778,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(capWarning).toContain("maxTotalUsd");
     });
 
-    it("live fan-out (2 lanes): the injected phase sink captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {
+    it("live fan-out (2 participants): the injected phase sink captures both participants under their own participant id with the total laneCount, and the persisted bundle attributes each participant's phase events to that participant's own simId/streamId", async () => {
       const config = localTreeCuaConfig({ count: 2 });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
@@ -5943,7 +5943,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(message).toContain("tar: unexpected end of archive");
     });
 
-    it("failing extract: the injected phase sink receives a completed event with ok false before the lane fails (#263)", async () => {
+    it("failing extract: the injected phase sink receives a completed event with ok false before the participant fails", async () => {
       const config = localTreeCuaConfig();
       const sandbox = makeFakeSandbox({
         commandHandler: cloneCommandHandler((command) => {
@@ -6282,7 +6282,7 @@ function localAppConfig(appUrl = "http://localhost:5173/"): LabConfig {
   return parsed.config;
 }
 
-describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () => {
+describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-inproc-"));
@@ -6807,7 +6807,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("flushes liveActor items into the in-progress bundle mid-run, and the final write replaces them (#441)", async () => {
+  it("flushes liveActor items into the in-progress bundle mid-run, and the final write replaces them", async () => {
     const secret = "synthetic-live-assignment-secret";
     const config = cuaConfig();
     config.actors[0]!.mission = `Explore with ${secret}.`;
@@ -6950,7 +6950,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(finalBundle.streams.some((stream) => (stream.actor?.items.length ?? 0) > 0)).toBe(true);
   });
 
-  it("C3: awaits onObserverReady before any desktop is created", async () => {
+  it("awaits onObserverReady before any desktop is created", async () => {
     const sandbox = makeFakeSandbox();
     const { module, created } = makeFakeModule(sandbox);
     let enter!: () => void;
@@ -6986,7 +6986,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(created.length).toBeGreaterThan(0);
   });
 
-  it("C3: a throwing onObserverReady creates no desktop, closes the run and runs no analysis", async () => {
+  it("a throwing onObserverReady creates no desktop, closes the run and runs no analysis", async () => {
     const sandbox = makeFakeSandbox();
     const { module, created } = makeFakeModule(sandbox);
     const analysis = automaticAnalysisBoundary();
@@ -7397,7 +7397,7 @@ describe("runCuaActorLab cost estimates", () => {
   });
 });
 
-describe("adopter-hosted comms on the app-url route (#380)", () => {
+describe("adopter-hosted comms on the app-url route", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-cwd-"));

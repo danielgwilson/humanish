@@ -173,8 +173,9 @@ between an active study and its provisional evidence outcome.
 
 ## UI Shape
 
-See [Watching and reviewing evidence](observer-review.md) for current controls,
-entry-point capabilities, timing limits and browser acceptance commands.
+[Watch and review in the Observer](https://humanish.dev/docs/review-surfaces#watch-and-review-in-the-observer)
+describes the current controls, entry points and timing limits for users;
+[Browser checks](#browser-checks) below covers the proofs that pin them.
 
 The Observer shell has:
 
@@ -249,3 +250,20 @@ auto-build every run). The legacy string-concat renderer was deleted at
 cutover; there is no flag and no fallback. Rollback is a version pin. The
 workspace's own tests pin the durability constraints (self-contained single
 file, fonts inlined, no network references).
+
+## Browser checks
+
+`pnpm observer:browser:proof` exercises generated synthetic evidence in the
+production artifact. `pnpm observer:iframe:proof`, after `pnpm build`, checks the
+actual serving boundary against direct, redirected and scripted iframe attacks.
+CI retains their screenshots and JSON receipts. These Chromium checks do not
+claim physical-device or non-Chromium coverage. Actual provider checks and their
+resource-cleanup receipts are separate acceptance evidence.
+
+Interaction references rechecked September 8, 2026:
+[Base UI popover](https://base-ui.com/react/components/popover),
+[React state structure](https://react.dev/learn/choosing-the-state-structure),
+[WAI-ARIA tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/),
+[iframe sandboxing](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe),
+[Playwright Trace Viewer](https://playwright.dev/docs/trace-viewer), and
+[PostHog recording controls](https://posthog.com/docs/session-replay/how-to-watch-recordings).

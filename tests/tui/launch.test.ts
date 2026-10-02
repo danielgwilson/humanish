@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { isSafeLabHandle, launchRun, readLaunchLogTail } from "../../src/tui/launch.js";
 
-describe("starting a run from the terminal surface (#455)", () => {
+describe("starting a run from the terminal surface", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-launch-"));

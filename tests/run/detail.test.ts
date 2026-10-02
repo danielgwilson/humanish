@@ -46,7 +46,7 @@ async function writeBundle(cwd: string, runId: string, bundle: unknown): Promise
   await writeFile(path.join(dir, "run.json"), JSON.stringify(bundle, null, 2), "utf8");
 }
 
-describe("what one run's participants are doing (#455)", () => {
+describe("what one run's participants are doing", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-detail-"));

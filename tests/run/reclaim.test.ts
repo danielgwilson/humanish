@@ -68,7 +68,7 @@ function fakeModule(
   } as unknown as E2BDesktopModule;
 }
 
-describe("sandbox receipts + humanish reclaim (#358 salvage)", () => {
+describe("sandbox receipts + humanish reclaim", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-reclaim-"));
