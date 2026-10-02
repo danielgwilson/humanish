@@ -1,21 +1,18 @@
 schema: humanish.lab.v2
 id: shared-world-concurrent-demo
-title: Concurrent shared-world (N personas vs ONE service at once; deterministic dry-run)
-description: >
-  THREE distinct personas drive ONE provisioned, mutable service plane SIMULTANEOUSLY — the actual
-  leverage of a simulation (#164 phase 2). ONE subject sandbox clones + serves (on 0.0.0.0) + seeds the
-  app ONCE and exposes it via getHost; then N actor desktop sandboxes each open that ONE getHost URL
-  AT THE SAME TIME, bounded by execution.concurrency. A background prober snapshots the subject DB
-  checkpoint digests on a cadence → a stateSeries of the shared world evolving under load.
-  Dry-run (the default) emits ONE run bundle with the CONCURRENT shared-world evidence block
-  (attributionClass: shared-world; topologyMode: concurrent; laneWindows + stateSeries + outcomes;
-  the concurrent attributionLimits) at $0 — no sandboxes, no provider tokens. A live run needs
-  OPENAI_API_KEY + E2B_API_KEY, scenario.mode: live, and a real STATEFUL SEEDED app.
-  HONESTY: the deterministic gate proves the plumbing + the attribution contract. A kept,
-  separately-authorized live receipt proves one observed concurrent run. Neither proves scale,
-  repeatability, or adopter-harness replacement. The repo here is a FICTIONAL neutral collaboration
-  app for CI; real public-application study subjects live in operator docs only and do not imply
-  adoption.
+title: "Concurrent shared world: three participants on one service at once (dry run)"
+description: >-
+  Three personas drive one provisioned, mutable service at the same time. One subject sandbox
+  clones, serves (on 0.0.0.0) and seeds the app once and exposes it through getHost; three
+  participant desktops then open that URL at once, bounded by execution.concurrency. A background
+  prober records the subject's checkpoint digests on a cadence: a stateSeries of the shared app
+  changing under load. A dry run, the default, writes one run bundle with the concurrent
+  shared-world evidence (attributionClass: shared-world; topologyMode: concurrent; laneWindows,
+  stateSeries and outcomes; the concurrent attributionLimits) at no cost. A live run needs
+  OPENAI_API_KEY, E2B_API_KEY, scenario.mode: live and a stateful seeded app. The dry run tests the
+  plumbing and the attribution contract, and a separately authorized live run shows one observed
+  concurrent run; neither proves scale, repeatability or that it can replace an adopter's harness.
+  The repo here is a fictional collaboration app for CI.
 subject:
   source: clone
   topology: shared-world # the declared override of the per-lane-worlds default (#164)

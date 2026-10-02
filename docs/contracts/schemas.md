@@ -423,7 +423,9 @@ Committed fixture (`humanish/labs/first-run.yaml`):
 schema: humanish.lab.v2
 id: first-run
 title: First-run synthetic Observer
-description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
+description: >-
+  Writes a preview run: a synthetic run bundle and Observer for four participants. Needs no browser,
+  model or keys, and costs nothing. Run it with humanish run first-run.
 subject:
   source: this-repo
 actors:
