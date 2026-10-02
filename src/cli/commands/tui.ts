@@ -40,7 +40,7 @@ import {
 
 /**
  * The pieces of the outside world the `tui` command touches. Injectable for the same reason
- * `keyDiscovery` is: the refusals ARE the behavior worth testing, and a test cannot make a real
+ * `keyDiscovery` is: the refusals are the behavior worth testing, and a test cannot make a real
  * TTY, an old Node, or a missing bundle appear.
  */
 export interface TuiRuntime {
@@ -99,7 +99,7 @@ function refuseTui(command: Command, io: CliIo, refusal: TuiRefusal): void {
  *
  * That inversion is why it refuses rather than degrades. An agent that runs `humanish tui` with a
  * piped stdout has asked for something that cannot exist, and the useful answer is a structured
- * error naming the command that WOULD have answered the question. A TUI that quietly rendered
+ * error naming the command that would have answered the question. A TUI that quietly rendered
  * frames into a pipe would poison a transcript with escape codes and look like a hang.
  */
 export function registerTuiCommand(
@@ -135,7 +135,7 @@ async function handleTui(
     return;
   }
 
-  // The Ink app ships as a pre-built bundle beside the compiled CLI and is loaded ONLY here, so
+  // The Ink app ships as a pre-built bundle beside the compiled CLI and is loaded only here, so
   // no agent-facing command pays its parse cost.
   const bundle = TUI_BUNDLE_URL;
   const loaded = await runtime.loadTui(bundle);

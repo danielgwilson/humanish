@@ -67,7 +67,7 @@ function quantizedGrid(data: Buffer, srcW: number, srcH: number): number[] {
   // Stretch this frame's own range across the full scale before quantizing. Without this a light UI
   // occupies a sliver at the top of 0..255 and quantizes to a near-constant (#383).
   //
-  // The endpoints are TRIMMED rather than the raw min/max: a handful of extreme cells must not be
+  // The endpoints are trimmed rather than the raw min/max: a handful of extreme cells must not be
   // able to rescale the whole frame, or a blinking text cursor would rewrite every cell and read as
   // progress forever. Trimming K cells from each end clamps that away while still preserving real
   // structure, which occupies far more cells than K (a row of sidebar text covers dozens).
@@ -84,7 +84,7 @@ function quantizedGrid(data: Buffer, srcW: number, srcH: number): number[] {
 
 /**
  * The frame's overall brightness, coarsely quantized. Normalization deliberately discards absolute
- * level, so this is prefixed back on for the two cases where absolute level IS the change: a uniform
+ * level, so this is prefixed back on for the two cases where absolute level is the change: a uniform
  * frame (an all-white blank vs an all-black screen normalize identically), and a whole-page dim such
  * as a modal overlay, which preserves relative structure while changing the whole frame. Quantized
  * coarsely so ordinary antialiasing noise cannot move it.

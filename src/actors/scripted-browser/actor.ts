@@ -9,12 +9,12 @@
 // The step executor's `page` is typed as the narrow structural ScriptedPageLike instead of
 // playwright's Page (browserPersonaPageState already took { evaluate, url }; E2BDesktopLike is
 // the same seam pattern). playwright's real Page satisfies it; tests inject fakes and run
-// the REAL step executor at $0 with zero browser dependence. playwright-core stays the lazy
+// the real step executor at $0 with zero browser dependence. playwright-core stays the lazy
 // production default behind launchPlaywrightChromium.
 //
 // Spend posture: nothing in this module can spend provider money — no provider client is
 // importable from this code path. tokenUsage on every projected trace records zeros as an
-// affirmative $0 declaration that is TRUE by mechanism.
+// affirmative $0 declaration that is true by mechanism.
 
 import { stat } from "node:fs/promises";
 import path from "node:path";
@@ -65,7 +65,7 @@ import {
 import type { Browser } from "playwright-core";
 
 /** Production default: lazy playwright-core import + chromium.launch, exactly as the driver
- *  always did. Kept in ONE place so the optional peer is touched by exactly one code path. */
+ *  always did. Kept in one place so the optional peer is touched by exactly one code path. */
 async function launchPlaywrightChromium(
   args: ScriptedBrowserLaunchArgs,
 ): Promise<ScriptedBrowserLike> {
@@ -97,10 +97,10 @@ export interface ScriptedBrowserSessionOptions {
   urlPolicy?: ScriptedBrowserEvidenceUrlPolicy;
   /** Parsed + validated by the backend (scenario.ref is consumed there, fail-closed). */
   journey: BrowserPersonaJourney;
-  /** ONE session per surface. */
+  /** One session per surface. */
   surface: BrowserSurface;
   /** id = actors[0].persona ?? "scripted-journey"; promptDigest = journey.sourceDigest prefix
-   *  (the step manifest IS the "prompt" — no model prompt exists on this route). */
+   *  (the step manifest is the "prompt"; no model prompt exists on this route). */
   persona: ActorPersonaRef;
   /** Journey wall-clock budget in ms; the lab route passes execution.timeoutMs or 300_000. */
   timeoutMs: number;
@@ -127,18 +127,18 @@ class ScriptedJourneyTimeoutError extends Error {
 }
 
 /**
- * Run the scripted journey for ONE surface and return native capture + ActorTrace projection.
+ * Run the scripted journey for one surface and return native capture + ActorTrace projection.
  *
  * Completion semantics (the contract the projection tests pin):
  * - every step executed, every assertion passed, HTTP probe ok -> passed / goal_satisfied
- *   (the scenario's expect blocks ARE the success predicate; a pass claims "the app still
+ *   (the scenario's expect blocks are the success predicate; a pass claims "the app still
  *   affords this exact journey", nothing about user behavior);
  * - a step's expectation evaluated false, a step target missing/unactionable, or an
- *   unreachable subject -> failed / step_failed (the harness executed faithfully; the SUBJECT
+ *   unreachable subject -> failed / step_failed (the harness executed faithfully; the subject
  *   did not satisfy the script — distinct from actor_error/harness_error);
  * - journey exceeded timeoutMs -> timed_out / timed_out;
  * - browser launch/import crash -> failed / harness_error;
- * - gave_up / blocked_approval are UNREACHABLE from this actor (no persona patience, no
+ * - gave_up / blocked_approval are unreachable from this actor (no persona patience, no
  *   approvals exist on a deterministic replay) — asserted in tests.
  */
 export async function runScriptedBrowserSession(
@@ -212,7 +212,7 @@ export async function runScriptedBrowserSessionInPreparedRoot(
     };
   };
 
-  // Launch FIRST: a browser that cannot start is a harness failure, never subject evidence.
+  // Launch first: a browser that cannot start is a harness failure, never subject evidence.
   let browser: ScriptedBrowserLike;
   try {
     browser = await launch({ browserCommand, timeoutMs: options.timeoutMs });
@@ -599,7 +599,7 @@ async function projectScriptedActorTrace(args: {
       screenshots: writtenScreenshots.size,
     },
     items,
-    // Affirmative $0 declaration, TRUE by mechanism: no provider client is importable from
+    // Affirmative $0 declaration, true by mechanism: no provider client is importable from
     // this code path, so zeros are a recorded fact, not an estimate.
     tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
     capabilities: SCRIPTED_BROWSER_CAPABILITIES,

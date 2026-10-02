@@ -42,7 +42,7 @@ export interface ObserverData {
     lifecycle: RunBundle["lifecycle"];
     knownGaps: string[];
     /**
-     * What happened to the PARTICIPANTS, with the denominator attached. `status` above collapses the
+     * What happened to the participants, with the denominator attached. `status` above collapses the
      * run to one word for a gate; this is the study result, and it is what the person watching
      * through the glass actually wants to know. Absent on a bundle with no participants.
      *
@@ -67,8 +67,8 @@ export interface ObserverData {
   };
   laneGroups: ObserverLaneGroup[];
   /**
-   * OPTIONAL run-level cost ESTIMATE projected straight through from the bundle
-   * (humanish.run-cost-summary.v1). Absent when the bundle carries none. The Observer LABELS every
+   * Optional run-level cost estimate projected straight through from the bundle
+   * (humanish.run-cost-summary.v1). Absent when the bundle carries none. The Observer labels every
    * figure as estimated (rates as of <asOf>) and never presents it as an authoritative charge.
    */
   cost?: RunCostSummary;
@@ -79,7 +79,7 @@ export interface ObserverData {
     publishable: false;
     note: string;
     /**
-     * ADDITIVE + OPTIONAL (#584): the result of verification at static render or
+     * Additive + optional (#584): the result of verification at static render or
      * export time. Unverified projections omit this field. The timestamp records
      * that check; it is not an assertion about subsequent file changes.
      */

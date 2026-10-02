@@ -154,7 +154,7 @@ type RenderedMessage = {
   json: Record<string, unknown>;
 };
 
-/** Totals describe the whole snapshot (not increments). Register secrets BEFORE publishing files. */
+/** Totals describe the whole snapshot (not increments). Register secrets before publishing files. */
 export function renderReceivingInbox(options: {
   address: string;
   messages: ParticipantEmail[];

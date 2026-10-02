@@ -24,7 +24,7 @@ export interface StartNgrokTunnelOptions {
   port: number;
   domain?: string;
   // Edge OAuth: ngrok authenticates the viewer at its edge before any request reaches the loopback
-  // port. On ngrok 3.39.x these flags are ACCEPTED and functional but reported deprecated (an info
+  // port. On ngrok 3.39.x these flags are accepted and functional but reported deprecated (an info
   // line, not an error) — the JSON stdout parser skips every line except "started tunnel", so the
   // deprecation notice is ignored automatically. A future ngrok major may require a Traffic Policy
   // instead; that is a documented fast-follow, not part of 0.18.0.

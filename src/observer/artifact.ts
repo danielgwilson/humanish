@@ -17,7 +17,7 @@ const OBSERVER_DATA_SLOT = `<script id="observer-data" type="application/json">$
 let cachedObserverArtifact: string | null = null;
 
 /**
- * Resolve — and in a repo checkout, build — the Observer artifact BEFORE any run or
+ * Resolve (and in a repo checkout, build) the Observer artifact before any run or
  * lab work starts. A missing artifact must cost seconds at startup, never a completed
  * session (a live participant spends real money before the render step would have noticed).
  * Unconditional on purpose: the artifact is the only renderer now, so the fail-before-
@@ -50,7 +50,7 @@ function loadObserverArtifact(): string {
       // together) must not race one `vite build` output: a reader can catch the
       // artifact half-written. A mkdir lock serializes builders across processes;
       // whoever loses the race re-checks staleness and usually just reads.
-      // The lock lives OUTSIDE dist/ (vite empties dist mid-build) and inside an
+      // The lock lives outside dist/ (vite empties dist mid-build) and inside an
       // ignored path so a crashed builder cannot dirty the tree.
       const lockDir = path.join(workspaceDir, "node_modules", ".observer-build-lock");
       mkdirSync(path.dirname(lockDir), { recursive: true });

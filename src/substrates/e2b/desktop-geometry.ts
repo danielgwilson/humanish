@@ -20,10 +20,10 @@ import type { ChromeCdpEndpoint } from "./desktop-cdp.js";
 import type { E2BDesktopSandbox } from "./sdk.js";
 
 /**
- * The DECLARED preset to record alongside the rendered screen, or undefined when the preset
+ * The declared preset to record alongside the rendered screen, or undefined when the preset
  * rendered faithfully.
  *
- * `desktopGeometry.screen.verified` compares the FLOORED number with itself, so on its own a
+ * `desktopGeometry.screen.verified` compares the floored number with itself, so on its own a
  * floored run is indistinguishable from a faithful one: a reader sees requested 500 / verified 500
  * and concludes a 500-wide screen was asked for. Recording the declared preset is what makes
  * "the preset width did not render" legible in the bundle.
@@ -442,7 +442,7 @@ export async function captureDesktopBrowserGeometry(args: {
   const browserWindow = physicalWindow ?? chromeGeometry?.browserWindow;
   const viewport = chromeGeometry?.viewport;
   // The fill check reads the X window when it was measured: under mobile emulation (#221) the
-  // page's window.outerWidth reports the EMULATED screen (414), which is not a fill failure.
+  // page's window.outerWidth reports the emulated screen (414), which is not a fill failure.
   const fillBounds = physicalWindow;
   if (!browserWindow) {
     warnings.push(

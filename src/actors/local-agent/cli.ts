@@ -11,14 +11,14 @@
 // The design started from a measurement: with every OPENAI_* variable unset, `codex exec --image`
 // returned a correct click on a real desktop screenshot and `claude -p` agreed within three pixels.
 //
-// WHAT THIS IS NOT: a way to avoid paying. Subscription usage consumes the operator's own plan,
+// What this is not: a way to avoid paying. Subscription usage consumes the operator's own plan,
 // which is why the cost line for these runs says "not priced" rather than $0 — $0 would be a lie.
 // It is also not marketed as free API access, and it fails closed on a rate limit rather than
 // hammering a plan that was sold for interactive coding.
 //
-// WHERE IT IS SAFE, and this inverts the intuitive reading: the local agent only DECIDES. humanish
+// Where it is safe, and this inverts the intuitive reading: the local agent only decides. humanish
 // executes the action inside the desktop sandbox, so nothing the persona chooses ever runs on the
-// operator's machine. The same trick on the TERMINAL route would be the opposite — it would move
+// operator's machine. The same trick on the terminal route would be the opposite: it would move
 // code execution out of the sandbox and onto a real disk — which is why this is a computer-use
 // provider and nothing else. Even so, these are coding agents with their own shell and file tools,
 // so each one is spawned tool-restricted, in a scratch directory, with a per-turn timeout.
@@ -66,7 +66,7 @@ interface RawAction {
 }
 
 /**
- * Map the agent's answer onto the harness action vocabulary. Anything unrecognized is DROPPED
+ * Map the agent's answer onto the harness action vocabulary. Anything unrecognized is dropped
  * rather than guessed at: a coordinate we invented would be recorded as the participant's choice.
  */
 export function toCuaActions(raw: readonly RawAction[]): CuaAction[] {
@@ -121,8 +121,8 @@ export function declaredOutcomeOf(value: unknown): ParticipantDeclaredOutcome | 
  * empty turn — an empty turn would read to the loop as "the participant chose to do nothing".
  */
 export function parseAgentJson(text: string): Record<string, unknown> {
-  // ORDER MATTERS, and a test caught it: Claude Code's envelope is valid JSON whose `result`
-  // STRING contains a ```json fence. Stripping fences first reached inside that string and
+  // Order matters, and a test caught it: Claude Code's envelope is valid JSON whose `result`
+  // string contains a ```json fence. Stripping fences first reached inside that string and
   // mangled the envelope. So: parse what we were given, and only go fence-hunting if it is not
   // already JSON.
   const attempts = [text.trim()];
@@ -342,7 +342,7 @@ export interface DetectedLocalAgent extends LocalAgentDescriptor {
   /** Resolved path to the binary. */
   binPath: string;
   /**
-   * Whether a credential file exists for it. EXISTENCE ONLY — never read, never parsed, never
+   * Whether a credential file exists for it. Existence only: never read, never parsed, never
    * reported beyond this boolean. Keyring storage may have no file at all.
    */
   credentialsPresent: boolean;

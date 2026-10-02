@@ -1,8 +1,8 @@
-// Shared fail-closed exposure validation + tunnel orchestration for BOTH `serve` (a library of
+// Shared fail-closed exposure validation + tunnel orchestration for both `serve` (a library of
 // finished runs) and `watch` (one live run). Exposure auth is TUNNEL-EDGE only: humanish carries no
 // in-process auth. Exposure is admitted only behind edge auth (ngrok --oauth google, or an operator
-// --public-url they secure) OR, for serve, behind --safe (share_ready runs only). A live watch run
-// is never share_ready (raw, unverified screenshots), so watch --expose ALWAYS requires edge auth.
+// --public-url they secure) or, for serve, behind --safe (share_ready runs only). A live watch run
+// is never share_ready (raw, unverified screenshots), so watch --expose always requires edge auth.
 //
 // This module is pure with respect to the fail-closed matrix (validateExposure) and thin over the
 // tunnel launcher (startExposedObserver), so the CLI just maps flags in and results out.
@@ -38,7 +38,7 @@ export interface ExposureRequest {
   safe: boolean;
 }
 
-// watch-only: a live run must actually stream a desktop AND keep an attached follow channel, so
+// watch-only: a live run must actually stream a desktop and keep an attached follow channel, so
 // exposure is refused for dry-run (no desktop), --detach (no attached server), and --json (no follow).
 export interface WatchLiveContext {
   dryRun: boolean;
@@ -49,7 +49,7 @@ export interface WatchLiveContext {
 export interface ExposurePlan {
   // Whether exposure is active. False => plain loopback; the server never learns a public origin.
   exposed: boolean;
-  // Edge auth present: ngrok --oauth OR an operator --public-url. Drives the serve mode label and
+  // Edge auth present: ngrok --oauth or an operator --public-url. Drives the serve mode label and
   // the serveObserver `exposed` hardening.
   edgeAuthed: boolean;
   mode: ServeMode;
@@ -155,7 +155,7 @@ export function validateExposure(
 
   if (surface === "watch") {
     // A live, in-progress run is never share_ready (raw screenshots, unverified), so --safe would
-    // admit nothing and expose nothing: watch --expose ALWAYS requires edge auth, and the live-follow
+    // admit nothing and expose nothing: watch --expose always requires edge auth, and the live-follow
     // preconditions are checked first so `--dry-run`/`--detach`/`--json` fail with the clearer reason.
     if (live && (live.dryRun || live.detach || live.json)) {
       return fail(
@@ -163,7 +163,7 @@ export function validateExposure(
         "watch --expose streams a live desktop over an attached follow channel; it cannot combine with --dry-run, --detach, or --json.",
       );
     }
-    // --safe is a share_ready LIBRARY filter for `serve`; watch streams a single live run that is
+    // --safe is a share_ready library filter for `serve`; watch streams a single live run that is
     // never share_ready, so --safe would silently do nothing here. Reject it rather than ignore it.
     if (request.safe) {
       return fail("SAFE_NOT_APPLICABLE", WATCH_SAFE_NOT_APPLICABLE_MESSAGE);
@@ -175,9 +175,9 @@ export function validateExposure(
       );
     }
   } else {
-    // serve: --expose must ALWAYS resolve to a reachable public origin (a tunnel or a --public-url),
+    // serve: --expose must always resolve to a reachable public origin (a tunnel or a --public-url),
     // even under --safe. Without one the exposed server is an unreachable loopback no-op, so fail
-    // closed before the origin-less bind. When an origin IS present, keep the edge-auth-OR-safe gate.
+    // closed before the origin-less bind. When an origin is present, keep the edge-auth-or-safe gate.
     if (!request.tunnel && !publicOrigin) {
       return fail(
         "EXPOSE_REQUIRES_ORIGIN",

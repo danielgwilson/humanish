@@ -1,9 +1,9 @@
-// Is the terminal on the other end of this process a PERSON's, or an agent's?
+// Is the terminal on the other end of this process a person's, or an agent's?
 //
-// WHY THIS EXISTS: `humanish tui` refused a non-TTY, on the reasoning that an agent driving an
+// Why this exists: `humanish tui` refused a non-TTY, on the reasoning that an agent driving an
 // interactive surface has asked for something that cannot exist. A study of that refusal
 // (labs/handed-a-human-surface.yaml) found it never fires: `codex exec` allocates a PTY for the
-// commands it runs, so both streams ARE terminals. The TUI launched, the agent navigated the labs
+// commands it runs, so both streams are terminals. The TUI launched, the agent navigated the labs
 // list, opened one, and — its own words — "accidentally triggered a zero-cost dry run while
 // navigating". A stray Enter on a live row is the same two keystrokes as a deliberate one.
 //
@@ -11,7 +11,7 @@
 // anyone is reading it. Agent runners announce themselves in the environment, which is the only
 // signal available before the first keystroke, and is what `is-in-ci` has always done for CI.
 //
-// EVERY MARKER BELOW WAS OBSERVED, not guessed. Two runtimes are covered because two are what we
+// Every marker below was observed, not guessed. Two runtimes are covered because two are what we
 // could verify: Claude Code (read off a live session) and Codex (read off the study sandbox, by a
 // names-only `env | cut -d= -f1` probe that never touched a value). Others certainly exist — add
 // them the same way, from a real session, rather than from a plausible-looking guess. A marker
@@ -36,7 +36,7 @@ const MARKERS: ReadonlyArray<{ marker: string; runner: string }> = [
 
 /**
  * The agent runner driving this process, when one identifies itself. `undefined` means nothing
- * claimed to be an agent — which is NOT proof a person is there, only the absence of a claim.
+ * claimed to be an agent, which is not proof a person is there, only the absence of a claim.
  */
 export function detectAgentSession(env: NodeJS.ProcessEnv = process.env): AgentSession | undefined {
   for (const { marker, runner } of MARKERS) {
