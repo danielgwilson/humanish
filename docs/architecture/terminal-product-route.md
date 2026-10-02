@@ -3,7 +3,7 @@
 The live terminal-product route has shipped since `0.8.0`, with the in-sandbox runtime,
 command-scoped credential placement, exact-id cleanup proof, an interventions ledger, a cost and
 no-spend ledger, caps, and product scoring and feedback hooks. The
-[goal packet](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/goal.md)
+[goal packet](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/terminal-product-lane/goal.md)
 holds the slice plan and the safety contract.
 
 ## What this is
@@ -149,7 +149,7 @@ and [E2B's CA installer](https://github.com/e2b-dev/infra/blob/main/packages/env
 E2B's installed
 SDK documents that transformed headers override request headers. Deterministic
 request/redaction tests do not establish live wire behavior. The [2026-09-05
-transport receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md)
+transport receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/terminal-product/2026-09-05-runtime-egress-auth.md)
 records the controlled live header/auth checks and their scope.
 
 ## Runtime prerequisite
@@ -174,7 +174,7 @@ checks Node/npm in both ordinary and sudo shells after installation. The existin
 runtime fast path preserves user-specific installations; a later sudo product
 install can still fail if that installation is absent from sudo's PATH.
 
-The [global executable receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/receipts/2026-09-05-global-npm-prefix.md)
+The [global executable receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/terminal-product/2026-09-05-global-npm-prefix.md)
 records the regression found after the initial runtime-only proof and its stock
 desktop checks. npm documents [global executable locations](https://docs.npmjs.com/cli/v10/configuring-npm/folders#executables)
 and the [distribution built-in configuration](https://docs.npmjs.com/cli/v10/configuring-npm/npmrc#built-in-config-file).
