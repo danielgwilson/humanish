@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Removed
+
+- `docs/assets/humanish-drawdb-hero.png` and `docs/assets/humanish-observer-hero.png` from the
+  npm package. The README no longer shows either: it opens with the tagline, the demo poster and
+  the keyless quick start. An earlier version's README loads its image from that version on
+  unpkg, which keeps it.
+
 ### Deprecated
 
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now

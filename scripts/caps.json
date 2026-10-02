@@ -63,6 +63,9 @@
       "history": 1,
       "series-codes": 0,
       "name-refs": 0
+    },
+    "markdown": {
+      "title-case-headers": 5
     }
   },
   "vocabulary": {
