@@ -10,11 +10,11 @@ import { writeFixtureRun } from "../helpers/run-fixtures.js";
 
 // Why this module exists at all, as an executable claim.
 //
-// `listRuns` walks every run tree — screenshots included — and parses every bundle. That is the
+// `listRuns` walks every run tree (screenshots included) and parses every bundle. That is the
 // right shape for a command that prints once and exits, and the wrong shape for a surface that
 // refreshes on a cadence over SSH, where the same work repeats every tick.
 //
-// These assertions are RELATIVE and generate their own tree, so they mean the same thing on a
+// These assertions are relative and generate their own tree, so they mean the same thing on a
 // laptop, in CI, and on a loaded machine. Absolute millisecond thresholds would only be measuring
 // the runner. Measured on the real 25-run/270MB project tree when this landed:
 // listRuns 167ms · index cold 16ms · index warm 2.8ms.
@@ -66,8 +66,8 @@ describe("run index cost, measured against the existing listing", () => {
     await listRuns(cwd);
     await readRunIndex(cwd);
 
-    // Best of five for each reader. A single sample at the millisecond scale is one GC pause away
-    // from inverting warm and cold (CI on 2026-09-03: warm 4.6 ms, cold 3.2 ms, #606); the minimum
+    // Best of five for each reader. A single sample at the millisecond scale is one gc pause away
+    // from inverting warm and cold (CI on 2026-09-03: warm 4.6 ms, cold 3.2 ms); the minimum
     // is the algorithm's cost, the rest is the runner's.
     const bestOf = async <T>(
       reader: () => Promise<T>,
@@ -90,7 +90,7 @@ describe("run index cost, measured against the existing listing", () => {
     await readRunIndex(cwd, { cache });
     const { result: warm, ms: indexWarmMs } = await bestOf(() => readRunIndex(cwd, { cache }));
 
-    // Same runs — cheaper is only worth anything if it is also complete.
+    // Same runs: cheaper is only worth anything if it is also complete.
     expect(listed.ok).toBe(true);
     expect(listed.runs).toHaveLength(RUN_COUNT);
     expect(cold.runs).toHaveLength(RUN_COUNT);

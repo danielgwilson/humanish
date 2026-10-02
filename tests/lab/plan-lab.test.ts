@@ -287,7 +287,7 @@ describe("planLab on the preview route", () => {
   });
 });
 
-// ARCHITECTURE.md's invariant "Goldens pin route output": every route has a dry-run run-directory
+// Architecture.md's invariant "Goldens pin route output": every route has a dry-run run-directory
 // golden from runDirSnapshot (tests/helpers/run-golden.ts). The record fails typecheck when a route
 // is added to LabRoute without an entry here, and the test fails when the golden file is missing.
 describe("route goldens", () => {

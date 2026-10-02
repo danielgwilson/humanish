@@ -1,6 +1,6 @@
 // Pins what each library entry point does today with a config that breaks one admission rule, or
 // needs something it lacks: the parser, runLab, and the route's exported runner. The planLab
-// migration (handoffs PLAN-DESIGN.md) must keep this golden byte-identical except for changes its
+// migration (handoffs plan-design.md) must keep this golden byte-identical except for changes its
 // compatibility contract lists. Every refusal is also checked for side effects: no run directory,
 // no desktop module, no caller executor or provider, and no subprocess.
 

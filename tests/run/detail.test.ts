@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { readRunDetail } from "../../src/run/detail.js";
 
-// Shapes here mirror what a REAL run writes (`humanish.actor-trace.v1` under `stream.actor`, and
+// Shapes here mirror what a real run writes (`humanish.actor-trace.v1` under `stream.actor`, and
 // `stream.liveActor` mid-flight), read off an actual computer-use run rather than invented.
 
 const ACTOR_TRACE = {
@@ -77,7 +77,7 @@ describe("what one run's participants are doing", () => {
     expect(participant?.traits).toEqual(["patience:medium", "skill:medium", "constraints:3"]);
     expect(participant?.turns).toBe(26);
     expect(participant?.estimatedCostUsd).toBeCloseTo(0.629308);
-    // The LATEST thought, quoted exactly as the provider wrote it — markdown lead included, because
+    // The latest thought, quoted exactly as the provider wrote it: markdown lead included, because
     // normalizing it is the surface's job and paraphrasing it is nobody's.
     expect(participant?.thought?.text).toContain("Connecting fields for relationships");
     expect(participant?.thought?.title).toBe("reasoning turn 25");
@@ -145,7 +145,7 @@ describe("what one run's participants are doing", () => {
   });
 
   it("counts the thoughts, so a live participant shows progress before counts exist", async () => {
-    // The mid-run flush carries trace ITEMS but no `counts` block, so a live lane has no turn
+    // The mid-run flush carries trace items but no `counts` block, so a live lane has no turn
     // number. Counting the recorded thoughts is a true statement about progress; inferring a turn
     // number from the shape of the trace would not be.
     await writeBundle(cwd, "run-live", {
@@ -169,7 +169,7 @@ describe("what one run's participants are doing", () => {
     expect(detail?.participants[0]?.turns).toBeUndefined();
   });
 
-  it("a run with no bundle yet is null, not a failure — that is a run that just started", async () => {
+  it("a run with no bundle yet is null, not a failure: that is a run that just started", async () => {
     expect(await readRunDetail(cwd, "nope")).toBeNull();
   });
 

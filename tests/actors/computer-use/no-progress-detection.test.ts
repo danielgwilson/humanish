@@ -1,16 +1,16 @@
-// #383: the no-progress backstop must not end a lane that is working.
+// The no-progress backstop must not end a lane that is working.
 //
 // What went wrong. The backstop's only input was a 16x16 grayscale frame hash at 2 bits per cell,
 // with no contrast normalization. On a light-themed web app the area-average of nearly every cell
 // landed at the top of the range: a measured live run had 93% of the 256 cells pinned to the top
 // level and the two darkest levels never used at all. The hash was effectively constant, so 9
-// visibly different consecutive frames — one auto-named table becoming two named tables with fields
-// and an expanded editor panel — produced ONE identical signature. The backstop read that as a stuck
+// visibly different consecutive frames: one auto-named table becoming two named tables with fields
+// and an expanded editor panel: produced one identical signature. The backstop read that as a stuck
 // agent, ended the lane as `gave_up`, and recorded the run as 0/2 passed while the agent was a
 // foreign key away from finishing its mission.
 //
-// Two things are pinned here. The signature must SEE a widget-sized change on a light UI, and a
-// stale frame alone must never be enough to call an agent stuck — that now also requires the agent
+// Two things are pinned here. The signature must see a widget-sized change on a light UI, and a
+// stale frame alone must never be enough to call an agent stuck: that now also requires the agent
 // to be repeating itself.
 import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
@@ -21,7 +21,7 @@ import { actionFingerprint } from "../../../src/actors/computer-use/loop/actions
 
 /**
  * A light-themed app frame at desktop resolution: near-white page, a grey sidebar, and `rows`
- * sidebar entries. This reproduces the shape that defeated the old hash — the only thing that
+ * sidebar entries. This reproduces the shape that defeated the old hash: the only thing that
  * changes between frames is a small amount of dark text in a large light field.
  */
 function lightUiFrame(rows: number, options: { panel?: boolean } = {}): Buffer {
@@ -40,7 +40,7 @@ function lightUiFrame(rows: number, options: { panel?: boolean } = {}): Buffer {
       put(x, y, x < 380 ? 246 : 252); // sidebar slightly greyer than the canvas
     }
   }
-  // Each sidebar row is a band of dark text ~20px tall — a realistic widget-sized change.
+  // Each sidebar row is a band of dark text ~20px tall: a realistic widget-sized change.
   for (let r = 0; r < rows; r += 1) {
     const top = 300 + r * 52;
     for (let y = top; y < top + 20 && y < height; y += 1) {
@@ -57,7 +57,7 @@ function lightUiFrame(rows: number, options: { panel?: boolean } = {}): Buffer {
 }
 
 describe("perceptualSignature on a light-themed UI", () => {
-  it("sees a sidebar gaining a row — the change the old hash was blind to", () => {
+  it("sees a sidebar gaining a row: the change the old hash was blind to", () => {
     const oneRow = perceptualSignature(lightUiFrame(1));
     const twoRows = perceptualSignature(lightUiFrame(2));
     expect(oneRow).not.toBe(twoRows);
@@ -79,12 +79,12 @@ describe("perceptualSignature on a light-themed UI", () => {
     for (const ch of perceptualSignature(lightUiFrame(2, { panel: true })))
       levels.push(Number.parseInt(ch, 16));
 
-    // The measured failure was a hash confined to the TOP of its range: 93% of cells at the maximum
+    // The measured failure was a hash confined to the top of its range: 93% of cells at the maximum
     // level and the two darkest levels never occupied at all, which is why a dark-on-light change
     // could not move it. Contrast normalization anchors each frame's own darkest content at 0 and its
     // lightest at the maximum, so the levels a change has to cross are actually available.
     //
-    // (A mostly-uniform frame still has most CELLS at one level — that is the image being uniform,
+    // (A mostly-uniform frame still has most cells at one level: that is the image being uniform,
     // not the hash being blind, so the property to assert is the range, not the distribution.)
     expect(Math.min(...levels)).toBe(0);
     expect(Math.max(...levels)).toBe(15);
@@ -107,7 +107,7 @@ describe("actionFingerprint (the corroboration input)", () => {
     expect(actionFingerprint([click(200, 400)])).not.toBe(actionFingerprint([click(900, 400)]));
   });
 
-  it("never includes typed text — only its length, so it cannot become a keylogger", () => {
+  it("never includes typed text: only its length, so it cannot become a keylogger", () => {
     const secret = actionFingerprint([{ kind: "type", text: "hunter2!" }]);
     expect(secret).not.toContain("hunter2");
     expect(secret).toBe(actionFingerprint([{ kind: "type", text: "12345678" }]));

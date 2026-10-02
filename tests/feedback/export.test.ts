@@ -40,8 +40,8 @@ function verified(
     }) as unknown as VerifyResult;
 }
 
-// A run is a directory; sharing it meant a tunnel or a hand-zipped bundle (#471). Export writes
-// one file, and it runs verify and the share_ready gate INSIDE the flow, fail-closed.
+// A run is a directory; sharing it meant a tunnel or a hand-zipped bundle. Export writes
+// one file, and it runs verify and the share_ready gate inside the flow, fail-closed.
 describe("humanish export", () => {
   let cwd: string;
   let runDir: string;
@@ -86,7 +86,7 @@ describe("humanish export", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("writes ONE file with every in-run image inlined, and leaves what it cannot vouch for alone", async () => {
+  it("writes one file with every in-run image inlined, and leaves what it cannot vouch for alone", async () => {
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
     expect(result.path).toBe(path.join(".humanish", "exports", `${RUN}.html`));
@@ -104,7 +104,7 @@ describe("humanish export", () => {
     expect(html).not.toContain("humanish-local-only");
     expect(html).toContain('<meta name="humanish-observer-mode" content="snapshot">');
     expect(formatExportHuman(result)).toContain("1 image(s) embedded");
-    // The file says what verify said, so its chrome can agree with the result envelope (#584).
+    // The file says what verify said, so its chrome can agree with the result envelope.
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
   });
 

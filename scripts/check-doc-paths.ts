@@ -3,9 +3,11 @@
  * code map misses a src/ folder or lists one that is gone, when no index links a checked page
  * under docs/, when a checked doc opens a line with `Date:` or `Status:`, when `README.md` or a
  * site page links into docs/history/, or when a site page links a docs/architecture/ page outside
- * `SITE_LINKABLE_ARCHITECTURE`. Run by docs:check.
+ * `SITE_LINKABLE_ARCHITECTURE`. On a site page, a `repo:` link must name a file or folder that
+ * exists here and at the release tag of package.json's version, when that tag is present, and a
+ * GitHub link to main must name a path in `SITE_MAIN_LINKABLE`. Run by docs:check.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +20,12 @@ import {
   markdownAnchors,
 } from "./lib/doc-paths.js";
 import { findCodeMapIssues, requiredFolders } from "./lib/code-map.js";
+import {
+  findMainLinks,
+  findRepoLinks,
+  isSitePage,
+  repoLinkProblem,
+} from "./lib/site-repo-links.js";
 import {
   citesEvidenceOnly,
   findHistoryLinks,
@@ -52,6 +60,51 @@ const issues = [
   ...docs.flatMap((path) => findDocPathIssues(path, read(path), index, anchorsOf)),
   ...sources.flatMap((path) => findCommentPathIssues(path, read(path), index)),
 ];
+
+const sitePages = docs.filter(isSitePage);
+const repoLinks = sitePages.flatMap((page) =>
+  findRepoLinks(read(page)).map((link) => ({ page, ...link })),
+);
+const repoLinkIssues = repoLinks.flatMap(({ page, line, path, fragment }) => {
+  const problem = repoLinkProblem(
+    path,
+    (file) => index.files.has(file),
+    (folder) => index.directories.has(`${folder}/`),
+  );
+  if (problem !== undefined) return [`${page}:${line} repo:${path} ${problem}`];
+  const anchors = fragment === undefined ? undefined : anchorsOf(path);
+  if (anchors && !anchors.has(fragment!))
+    return [`${page}:${line} repo:${path} has no #${fragment}`];
+  return [];
+});
+// The tag the site links is the one for package.json's version. A checkout without it (a release
+// commit before its tag exists, or a clone without tags) checks the paths here only.
+const { version } = JSON.parse(read("package.json")) as { version: string };
+const tag = `v${version}`;
+const tagPresent =
+  spawnSync("git", ["rev-parse", "--verify", "--quiet", `refs/tags/${tag}`], { cwd: root })
+    .status === 0;
+if (tagPresent && repoLinks.length > 0) {
+  const queries = repoLinks.map(({ path }) => `${tag}:${path.replace(/\/$/, "")}`);
+  const answers = execFileSync("git", ["cat-file", "--batch-check"], {
+    cwd: root,
+    encoding: "utf8",
+    input: `${queries.join("\n")}\n`,
+  }).split("\n");
+  repoLinks.forEach(({ page, line, path }, n) => {
+    if (answers[n]?.endsWith(" missing")) {
+      repoLinkIssues.push(
+        `${page}:${line} repo:${path} does not exist at ${tag}, the version the site documents`,
+      );
+    }
+  });
+}
+const mainLinkIssues = sitePages.flatMap((page) =>
+  findMainLinks(read(page)).map(
+    ({ line, path }) => `${page}:${line} links ${path} on main; write repo:${path}`,
+  ),
+);
+for (const issue of [...repoLinkIssues, ...mainLinkIssues]) process.stderr.write(`${issue}\n`);
 
 const codeMapIssues = findCodeMapIssues(read("ARCHITECTURE.md"), paths);
 for (const issue of codeMapIssues) process.stderr.write(`${issue}\n`);
@@ -116,6 +169,11 @@ if (preambles.length > 0) {
     `${preambles.length} preamble line(s). Delete them, keeping a scope sentence where it carries a fact.\n`,
   );
 }
+if (repoLinkIssues.length + mainLinkIssues.length > 0) {
+  process.stderr.write(
+    `${repoLinkIssues.length + mainLinkIssues.length} site repository link(s) to fix.\n`,
+  );
+}
 if (siteArchitecture.length > 0) {
   process.stderr.write(`${siteArchitecture.length} site link(s) to a docs/architecture/ page.\n`);
 }
@@ -128,7 +186,9 @@ if (
   unindexed.length > 0 ||
   preambles.length > 0 ||
   historyLinks.length > 0 ||
-  siteArchitecture.length > 0
+  siteArchitecture.length > 0 ||
+  repoLinkIssues.length > 0 ||
+  mainLinkIssues.length > 0
 ) {
   process.exitCode = 1;
 } else {
@@ -136,4 +196,7 @@ if (
   process.stdout.write(`The code map covers all ${requiredFolders(paths).length} src folders.\n`);
   process.stdout.write("An index links every checked page under docs/, and none has a preamble.\n");
   process.stdout.write("The README and the site cite no page under docs/history/.\n");
+  process.stdout.write(
+    `Site pages link ${repoLinks.length} repository files at ${tagPresent ? tag : "this checkout (no tag)"}.\n`,
+  );
 }

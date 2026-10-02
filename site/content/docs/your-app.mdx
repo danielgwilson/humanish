@@ -99,11 +99,11 @@ The start command shown fits a Next.js app; use yours, with a readiness URL on t
 
 If you edit the scaffolded `cua-browser.yaml` directly, change `scenario.mode` from `dry-run` to `live` and add a budget; a dry run produces contract evidence, not a study of the app.
 
-For uncommitted code, `subject.source: local-tree` packages a selected working tree with a content pin. Environment allowlists, state seeding and the other subject routes are in the [computer-use reference](/docs/computer-use#choose-a-subject) and the [schema contract](https://github.com/danielgwilson/humanish/blob/main/docs/contracts/schemas.md).
+For uncommitted code, `subject.source: local-tree` packages a selected working tree with a content pin. Environment allowlists, state seeding and the other subject routes are in the [computer-use reference](/docs/computer-use#choose-a-subject) and the [schema contract](repo:docs/contracts/schemas.md).
 
 ## Study your running local app
 
-This route drives a browser on your own machine through your signed-in Codex account, so it needs neither E2B nor an OpenAI API key. It needs a supported Codex CLI with a file-backed ChatGPT login, plus either Linux x64 with rootful Docker Engine, KVM and TUN, or an M3-or-newer Mac with native ARM64 Node and Lima 2.2 or later. Docker Desktop is not supported. Check the [account profile](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md) and [platform setup](/docs/local-browser) first.
+This route drives a browser on your own machine through your signed-in Codex account, so it needs neither E2B nor an OpenAI API key. It needs a supported Codex CLI with a file-backed ChatGPT login, plus either Linux x64 with rootful Docker Engine, KVM and TUN, or an M3-or-newer Mac with native ARM64 Node and Lima 2.2 or later. Docker Desktop is not supported. Check the [account profile](repo:docs/architecture/restricted-codex-analysis.md) and [platform setup](/docs/local-browser) first.
 
 Start your app, then replace the URL and the task:
 

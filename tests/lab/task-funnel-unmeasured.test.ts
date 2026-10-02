@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { TaskTracker } from "../../src/lab/tasks.js";
 import type { LabTask } from "../../src/lab/tasks.js";
 
-// #514: a three-lane study declared `reach-prices` with `urlIncludes: pricing`, and every lane
+// A three-lane study declared `reach-prices` with `urlIncludes: pricing`, and every lane
 // opened on a URL containing that literal substring. The funnel reported `completed: 0, sessions:
 // 3`, and the summary rendered "reach-prices 0/3", which reads as "no participant could find the
 // pricing page". What actually happened is that the observer never supplied a url, so the criterion
@@ -35,20 +35,20 @@ describe("task funnel distinguishes unmeasured from failed", () => {
     expect(funnel.completed).toBe(0);
     expect(funnel.unmeasured).toBe(1);
     expect(funnel.tasks[0]?.inputsObserved).toBe(false);
-    // And it is NOT reported as where the participant stopped.
+    // And it is not reported as where the participant stopped.
     expect(funnel.stoppedAt).toBeUndefined();
   });
 
   it("reports a genuine failure as a failure, not as unmeasured", () => {
     const tracker = new TaskTracker([urlTask]);
-    // The url WAS observed. It simply never matched.
+    // The url was observed. It simply never matched.
     tracker.observe({ url: "https://example.com/about" }, 0);
 
     const funnel = tracker.funnel();
     expect(funnel.completed).toBe(0);
     expect(funnel.unmeasured).toBe(0);
     expect(funnel.tasks[0]?.inputsObserved).toBe(true);
-    // This one IS where they stopped, and saying so is fair.
+    // This one is where they stopped, and saying so is fair.
     expect(funnel.stoppedAt).toBe("reach-prices");
   });
 
@@ -74,7 +74,7 @@ describe("task funnel distinguishes unmeasured from failed", () => {
     expect(funnel.tasks[0]?.inputsObserved).toBeUndefined();
   });
 
-  it("counts a task measured when ANY field its rules read arrived", () => {
+  it("counts a task measured when any field its rules read arrived", () => {
     // `any` semantics: one satisfiable rule needing a field we saw is enough to call it measured.
     const tracker = new TaskTracker([
       {

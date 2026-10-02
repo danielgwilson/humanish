@@ -1,13 +1,13 @@
 // Two ways the harness stopped seeing a working participant, both found by real runs.
 //
-// #393: inside a scroll-pinned (scrollytelling) section the viewport stays visually fixed while
+// Inside a scroll-pinned (scrollytelling) section the viewport stays visually fixed while
 // the participant advances, so the frame hash read "no change" and the no-progress backstop ended
-// working reading sessions as gave_up — three live lanes died this way in one day. Scroll position
+// working reading sessions as gave_up: three live lanes died this way in one day. Scroll position
 // is state: it rides the progress key, bucketed.
 //
-// Tab pinning: the CDP state observer selected the LAUNCH tab forever, so a verification link
-// opening in a new tab left the observed URL frozen — stopWhen and task criteria went blind, and a
-// live funnel read "reach-dashboard 0/2" under a screenshot OF the dashboard. The state observer
+// Tab pinning: the CDP state observer selected the launch tab forever, so a verification link
+// opening in a new tab left the observed URL frozen: stopWhen and task criteria went blind, and a
+// live funnel read "reach-dashboard 0/2" under a screenshot of the dashboard. The state observer
 // now follows the participant's active tab; the geometry observer keeps its launch-window pin.
 
 import { describe, expect, it } from "vitest";
@@ -62,7 +62,7 @@ class RepeatScrollProvider implements CuaProvider {
   readonly version = "fake-1";
   readonly capabilities = FAKE_CAPS;
   async nextTurn(_req: CuaTurnRequest): Promise<CuaTurn> {
-    // The same bucketed fingerprint every turn — exactly what reading a long page looks like.
+    // The same bucketed fingerprint every turn: exactly what reading a long page looks like.
     return {
       actions: [{ kind: "scroll", x: 640, y: 400, dx: 0, dy: 300 }],
       pendingSafetyChecks: [],
@@ -80,7 +80,7 @@ function scrollingExecutor(
     async observe(): Promise<CuaObservation> {
       const scrollY = scrollYFor(executor.observes);
       executor.observes += 1;
-      // The PINNED frame: identical signature every time, like a scrollytelling section.
+      // The pinned frame: identical signature every time, like a scrollytelling section.
       return {
         screenshot: staticFrame,
         stateSignature: "pinned",
@@ -99,7 +99,7 @@ function monotonicClock(step = 1000): () => number {
 
 describe("scroll position is state", () => {
   it("a participant scrolling through a pinned section is never ended as gave_up", async () => {
-    // scrollY advances 300px per observation — every observation crosses a progress bucket.
+    // scrollY advances 300px per observation: every observation crosses a progress bucket.
     const executor = scrollingExecutor((index) => index * 300);
     const result = await runComputerUseLoop({
       instructions: "Read the whole page.",
@@ -118,7 +118,7 @@ describe("scroll position is state", () => {
     expect(result.trace.counts.noProgressTurns ?? 0).toBe(0);
   });
 
-  it("still ends a participant nudging a dead panel — sub-bucket jiggle is not progress", async () => {
+  it("still ends a participant nudging a dead panel: sub-bucket jiggle is not progress", async () => {
     // scrollY wiggles within one 200px bucket forever: same key, same fingerprint, honest gave_up.
     const executor = scrollingExecutor((index) => (index % 2) * 40);
     const result = await runComputerUseLoop({

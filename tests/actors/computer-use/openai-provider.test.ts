@@ -265,7 +265,7 @@ describe("parseOpenAiResponse", () => {
     expect(parsed.outputItems.length).toBe(3);
   });
 
-  it("maps the REAL Responses shape: computer_call.actions is an ARRAY (a call can carry several)", () => {
+  it("maps the real Responses shape: computer_call.actions is an array (a call can carry several)", () => {
     // This is the live API shape (verified against gpt-5.5). The parser previously read a
     // singular `action`, dropping every action → the loop saw zero actions and false-passed.
     const parsed = parseOpenAiResponse({
@@ -422,7 +422,7 @@ describe("request builders", () => {
   it("buildInitialRequest asks for reasoning summaries only when the context sets it", () => {
     const body = buildInitialRequest({ ...ctx, reasoningSummary: "auto" });
     expect(body.reasoning).toEqual({ effort: "medium", summary: "auto" });
-    // The bare ctx (no reasoningSummary) keeps the pre-#427 wire shape.
+    // The bare ctx (no reasoningSummary) keeps the wire shape without a summary request.
     expect(buildInitialRequest(ctx).reasoning).toEqual({ effort: "medium" });
   });
 

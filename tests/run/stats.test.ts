@@ -9,7 +9,7 @@ import { writeFixtureRuns } from "../helpers/run-fixtures.js";
 
 const NOW = Date.parse("2026-09-01T20:00:00.000Z");
 
-// "What has this month of studies cost" meant reading run.json files by hand (#472). The roll-up
+// "What has this month of studies cost" meant reading run.json files by hand. The roll-up
 // keeps the per-run rules: estimates stay estimates, an unknown cost is unknown and never zero,
 // every rate carries its denominator.
 describe("humanish stats", () => {

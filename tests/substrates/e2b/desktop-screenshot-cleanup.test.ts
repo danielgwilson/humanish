@@ -134,7 +134,7 @@ describe("SDK screenshot cleanup compatibility", () => {
     expect(protectedRun.stdout).toContain("cleanup-failures=1");
     expect(protectedRun.stderr).toContain("screenshot temporary-file cleanup failed (1)");
     expect(protectedRun.stderr).not.toContain("synthetic-cleanup-failure");
-    // Even the SAME path outside the screenshot's async scope remains an ordinary rejection.
+    // Even the same path outside the screenshot's async scope remains an ordinary rejection.
     const unrelated = run(true, true);
     expect(unrelated.status).toBe(1);
     expect(unrelated.stderr).toContain("synthetic-cleanup-failure");
