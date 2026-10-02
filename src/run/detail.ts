@@ -1,4 +1,4 @@
-// What ONE run is doing right now: who is in it, what they are thinking, how far they have got.
+// What one run is doing right now: who is in it, what they are thinking, how far they have got.
 // Unlike the run index, it opens the bundle, which is affordable for the one run someone is
 // looking at.
 //
@@ -51,7 +51,7 @@ export interface RunParticipant {
   turns?: number;
   actions?: number;
   /**
-   * Thoughts recorded so far. The mid-run flush carries the trace ITEMS but not the `counts` block,
+   * Thoughts recorded so far. The mid-run flush carries the trace items but not the `counts` block,
    * so a live participant has no turn count to show — but the thoughts can be counted directly, and
    * "8 thoughts" is a true statement about progress rather than an inferred turn number.
    */
@@ -97,7 +97,7 @@ interface StreamFacts {
 /**
  * The latest reasoning a participant has recorded.
  *
- * Takes the LAST reasoning item rather than the newest by timestamp: the trace is append-ordered by
+ * Takes the last reasoning item rather than the newest by timestamp: the trace is append-ordered by
  * construction, and half of a live flush may not carry `at` yet. An item still in flight is skipped
  * — a partial thought read mid-write would be quoted as though the participant had finished it.
  */
@@ -146,7 +146,7 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
 /**
  * What a participant has spent, priced the same way whether the run is finished or in flight.
  *
- * A finished trace carries its own `estimatedCost`. A live one carries the RUNNING usage and the
+ * A finished trace carries its own `estimatedCost`. A live one carries the running usage and the
  * model it prices at, so the same estimator gives a figure mid-run instead of the screen reporting
  * the cost as unknown until the moment the run ends — which is the half of a run where knowing what
  * it is costing actually changes what you do.
@@ -173,7 +173,7 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
  * Read one run's participants. Returns null when the run has no readable bundle yet — an ordinary
  * state for a run that has just started, not a failure.
  *
- * Reads the bundle NARROWLY rather than through `loadRunBundle`, which applies the strict
+ * Reads the bundle narrowly rather than through `loadRunBundle`, which applies the strict
  * evidence-of-record guard. That guard is right for verification and wrong here: a mid-run flush is
  * a partial document by definition, so validating it as a complete bundle would make the live view
  * — the only view that needs this — the one case that never renders. Nothing read here is treated

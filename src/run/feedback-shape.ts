@@ -35,7 +35,7 @@ export function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCand
     isFeedbackNextState(value.proposed_next_state) &&
     Array.isArray(value.acceptance_proof) &&
     value.acceptance_proof.every((item) => typeof item === "string") &&
-    // Optional, adapter-namespaced product-noun block: when present, validate only its SHAPE
+    // Optional, adapter-namespaced product-noun block: when present, validate only its shape
     // (a non-empty namespace + a data record). Core never inspects the keys inside `data`.
     (value.adapter === undefined || isFeedbackAdapterBlock(value.adapter))
   );

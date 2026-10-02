@@ -3,7 +3,7 @@
 // the parts most likely to be wrong are testable without a terminal.
 //
 // The honesty rules these encode, because they are the ones a UI is most tempted to break:
-//   - a statistic ALWAYS carries its denominator, and says when it has none;
+//   - a statistic always carries its denominator, and says when it has none;
 //   - an unknown cost is `null` (declared absent), never 0;
 //   - truncation is reported, never silent;
 //   - a participant's reported thinking is quoted, never paraphrased or summarized.
@@ -90,11 +90,11 @@ export interface LabExpectation {
 }
 
 /**
- * Derive what to expect from a lab's own history. Only FINISHED runs count: an interrupted run's
+ * Derive what to expect from a lab's own history. Only finished runs count: an interrupted run's
  * duration is the length of an accident, not of a study, and including it would quietly bias the
  * estimate the operator uses to decide whether to press Start.
  *
- * MODE MATTERS, and mixing modes is a lie rather than an imprecision. A dry run spends nothing and
+ * The mode matters: mixing modes produces a false figure. A dry run spends nothing and
  * takes no time, so a median over nine dry runs and one live one reports that a live run is free —
  * next to a control that spends money. Pass the mode the figure is about; omit it only for a
  * summary that is not attached to an action.
@@ -115,7 +115,7 @@ export function expectationFor(
     .map((entry) => entry.estimatedCostUsd)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
     .sort((a, b) => a - b);
-  // A cost is unknown whether it was DECLARED absent (`null`) or never recorded at all
+  // A cost is unknown whether it was declared absent (`null`) or never recorded at all
   // (`undefined` — every fail-closed exit finalized with no outcome). Counting only the first
   // reports "~$1.20 median · 3 runs" for a sample where two runs were never priced, which claims a
   // denominator the figure does not have.
@@ -175,7 +175,7 @@ export function expectationLine(expectation: LabExpectation): string {
 /**
  * The one line a lab may say about itself, wherever it is shown.
  *
- * Prefers LIVE figures: cost and duration are what someone reads before spending, and a median
+ * Prefers live figures: cost and duration are what someone reads before spending, and a median
  * diluted by dry runs reports a live study as cheaper and faster than it has ever been. With no
  * live history it reports the count and claims nothing about time or money — which is why this is
  * shared rather than reimplemented per surface, since the two disagreeing is the whole failure.
@@ -301,15 +301,15 @@ export function livenessLabel(entry: Pick<RunIndexEntry, "liveness" | "verdict">
 /** A lab as the labs list shows it: what is declared, joined to what actually happened. */
 export interface LabRow {
   /**
-   * Stable identity for THIS ROW. A manifest's path when it has one, else the lab id — because two
+   * Stable identity for this row. A manifest's path when it has one, else the lab id, because two
    * manifests can declare the same id, and keying rows by id makes them collapse into a pair of
    * indistinguishable duplicates.
    */
   key: string;
-  /** The declared id. Run history attributes to this, so it is NOT unique across manifests. */
+  /** The declared id. Run history attributes to this, so it is not unique across manifests. */
   labId: string;
   /**
-   * The handle an operator would actually type. Lab resolution is by FILENAME, so the manifest
+   * The handle an operator would actually type. Lab resolution is by filename, so the manifest
    * `\`.humanish/labs/persona-contrast-live.yaml\`` is reached as `persona-contrast-live` even when
    * the id inside it says something else.
    */
@@ -317,25 +317,25 @@ export interface LabRow {
   /** The manifest's own title, when it has one. */
   title?: string;
   /**
-   * The shortest label that is UNIQUE among the rows it is listed with: the title when no other
+   * The shortest label that is unique among the rows it is listed with: the title when no other
    * lab shares it, else the filename, else the full path. A list is only navigable if every row can
    * be told from every other one, and a title is not guaranteed to be distinct — two manifests in
-   * this repo carry the same title AND the same declared id, differing only by filename.
+   * this repo carry the same title and the same declared id, differing only by filename.
    */
   label: string;
-  /** The manifest's own words, for the list to say what this study IS. */
+  /** The manifest's own words, for the list to say what this study is. */
   description?: string;
   /** Repo-relative manifest path, absent for a lab known only from run history. */
   path?: string;
   origin?: "committed" | "ignored" | "explicit";
   /**
-   * False for a lab that has runs but NO manifest here — renamed, deleted, or run from a path that
+   * False for a lab that has runs but no manifest here: renamed, deleted, or run from a path that
    * is gone. Its runs are still evidence and must stay reachable, so it is listed and marked rather
    * than dropped.
    */
   declared: boolean;
   /**
-   * How many OTHER manifests declare this same lab id. Above zero, the run history below is shared
+   * How many other manifests declare this same lab id. Above zero, the run history below is shared
    * between them and cannot be attributed to one file — worth saying, because it is a
    * misconfiguration the operator almost certainly does not know about.
    */
@@ -374,13 +374,13 @@ export interface DeclaredLab {
  * deleted — that evidence still exists on disk, so dropping those rows would make real runs
  * unreachable from the surface that is supposed to list them.
  *
- * ONE ROW PER MANIFEST, not per id. The two are not the same thing: a manifest is addressed by its
+ * One row per manifest, not per id. The two are not the same thing: a manifest is addressed by its
  * filename while its runs attribute to the id declared inside it, so several files can legitimately
  * share an id. Collapsing them hides a real file; keying by id duplicates a row with no way to tell
  * the copies apart. Both happen in practice — this repo has exactly that pair.
  *
  * Order puts a lab someone is working in first, then labs by how recently they ran, then declared
- * labs that have never run (alphabetically BY WHAT IS DISPLAYED, so the order on screen is the
+ * labs that have never run (alphabetically by the displayed label, so the order on screen is the
  * order a reader can predict), then labs known only from history.
  */
 export function labRows(
@@ -435,7 +435,7 @@ export function labRows(
       .map((lab) => build(lab.labId, undefined, false)),
   ];
 
-  // Resolve each row's label BEFORE sorting, so the list is ordered by what a reader actually sees.
+  // Resolve each row's label before sorting, so the list is ordered by what a reader actually sees.
   assignLabels(rows);
 
   const label = (row: LabRow): string => row.label;

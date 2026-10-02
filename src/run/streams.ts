@@ -72,9 +72,9 @@ interface RunStreamCompletion {
 }
 
 /**
- * The CLOSED set of core meaningful-use scoring components. Closed by design: these are the generic
+ * The closed set of core meaningful-use scoring components. Closed by design: these are the generic
  * dimensions core itself meters (setup/filesystem/nested/actor/product/feedback). A
- * product-specific scorecard does NOT extend this enum, so adopters' nouns stay out of core. It
+ * product-specific scorecard does not extend this enum, so adopters' nouns stay out of core. It
  * ships as a thin in-repo extension that emits a namespaced `RunAdapterScore` via the route's
  * `score` hook, leaving its own component breakdown in that score's `data`. Exported so a thin
  * adapter can type against core's score shape without forking.
@@ -108,14 +108,14 @@ export interface RunDesktopGeometry {
     requested: { width: number; height: number };
     verified?: { width: number; height: number; source: "xdpyinfo" };
     /**
-     * The device preset as DECLARED by the lab, present only when it differs from `requested`
+     * The device preset as declared by the lab, present only when it differs from `requested`
      * because the rendered width was floored to MIN_DESKTOP_RENDER_WIDTH.
      *
      * Without this, a floored run is indistinguishable from a faithful one: `verified` compares
      * the floored number with itself and reports a match, so a reader of the bundle sees
      * requested 500 / verified 500 and reasonably concludes a 500-wide preset was asked for. A
      * `mobile` (414) and a `small-mobile` (360) seat both render at 500 and look identical here.
-     * When this field is set, the preset width did NOT render; see #221.
+     * When this field is set, the preset width did not render; see #221.
      */
     declared?: { width: number; height: number; preset: string };
   };
@@ -161,9 +161,9 @@ export interface RunDesktopGeometry {
       source: "cdp";
     };
     /**
-     * Page targets the participant drove AFTER the launch page (a link that opened in a new tab)
+     * Page targets the participant drove after the launch page (a link that opened in a new tab)
      * whose own read-back reported the requested viewport width (#623). Absent when the
-     * participant never left the launch tab; a later tab that did NOT report the width is a
+     * participant never left the launch tab; a later tab that did not report the width is a
      * participant warning instead.
      */
     laterTargets?: {
@@ -283,10 +283,10 @@ export interface RunStream {
   // Populated alongside the raw `codex` evidence; carries persona.traitsApplied.
   actor?: ActorTrace;
   /**
-   * Mid-run partial actor evidence (#441): the redacted trace items recorded SO FAR,
+   * Mid-run partial actor evidence (#441): the redacted trace items recorded so far,
    * flushed while a live participant is still running so the attached Observer's timeline can
-   * grow. Deliberately NOT an ActorTrace — a running participant has no honest status,
-   * completionReason, or completedAt, and this shape cannot claim them. Present ONLY on
+   * grow. It is deliberately not an ActorTrace: a running participant has no honest status,
+   * completionReason, or completedAt, and this shape cannot claim them. Present only on
    * `inProgress` bundles; the final write replaces it with the real `actor` and never
    * carries it.
    */

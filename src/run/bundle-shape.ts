@@ -71,14 +71,14 @@ export function isRunBundle(value: unknown): value is RunBundle {
     (value.subject === undefined || isRunSubjectProvenance(value.subject)) &&
     (value.desktopBrowser === undefined || isDesktopBrowserEvidence(value.desktopBrowser)) &&
     (value.rerun === undefined || isRunRerunLineage(value.rerun)) &&
-    // Optional shared-world fields. Tolerant SHAPE guard only; the interaction semantics
+    // Optional shared-world fields. Tolerant shape guard only; the interaction semantics
     // (timeline well-formedness, single-plane, delta-on-pass) are the verify check's job.
     (value.attributionClass === undefined ||
       value.attributionClass === "isolated" ||
       value.attributionClass === "shared-world") &&
     (value.sharedWorld === undefined || isSharedWorldEvidence(value.sharedWorld)) &&
     // Optional, adapter-namespaced product score (the extension seam). When present, validate only
-    // its SHAPE; core never reads the adapter's `data` payload.
+    // its shape; core never reads the adapter's `data` payload.
     (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore)) &&
     // Optional scorer provenance. Library callers may omit it; when present it must be
     // well-shaped.
@@ -240,7 +240,7 @@ export function isRunAdapterScore(value: unknown): value is RunAdapterScore {
   );
 }
 
-// The local-tree archive content pin: sha256 hex, full 64 chars (NOT the repo's 16-char
+// The local-tree archive content pin: sha256 hex, full 64 chars (unlike the repo's 16-char
 // display-digest convention -- this value is the provenance pin itself, persisted in full).
 export const ARCHIVE_SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
