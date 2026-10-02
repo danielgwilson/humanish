@@ -475,6 +475,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
     ...(deps.signal === undefined ? {} : { signal: deps.signal }),
     ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),
     ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
+    warnings: base.warnings,
   });
   const result = attemptResult(base, analysis);
   if (!(await publishAttempt(prepared, analysis, result, finalizeExecution)))

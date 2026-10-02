@@ -171,6 +171,7 @@ export function judgmentOf(verdict: Verdict, dryRun: boolean): Judgment {
 type ExecutionFailureKind =
   | "harness"
   | "provider-cleanup"
+  | "provider-policy"
   | "sandbox-cleanup"
   | "evidence"
   | "cap"

@@ -224,7 +224,9 @@ export function concurrentLabFailure(envelope: {
 
 /**
  * The run's execution failures: a run error (the handoff, the plane), each seat whose session
- * failed in the harness, each sandbox whose release is unconfirmed, and an Observer that failed.
+ * failed in the harness, each provider whose cleanup is unconfirmed or that reported a disallowed
+ * item after its last request, each sandbox whose release is unconfirmed, and an Observer that
+ * failed.
  */
 function sharedWorldExecutionFailures(args: {
   runId: string;
@@ -249,6 +251,16 @@ function sharedWorldExecutionFailures(args: {
             {
               kind: "provider-cleanup" as const,
               message: `${result.spec.planned.id}: ${result.outcome.providerCleanupError}`,
+            },
+          ],
+    ),
+    ...actorResults.flatMap((result) =>
+      result.outcome.providerPolicyError === undefined
+        ? []
+        : [
+            {
+              kind: "provider-policy" as const,
+              message: `${result.spec.planned.id}: ${result.outcome.providerPolicyError}`,
             },
           ],
     ),

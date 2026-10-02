@@ -32,8 +32,15 @@ import {
   parseParticipantTool,
   parseParticipantFinal,
 } from "./restricted-participant-policy.js";
+import { truncatedFrameWarning, unknownNotificationsWarning } from "./restricted-notifications.js";
 
-export type ParticipantProviderCloseResult = { status: "confirmed" | "unconfirmed" };
+export type ParticipantProviderCloseResult = {
+  status: "confirmed" | "unconfirmed";
+  /** Run warnings from the native session, such as notification methods humanish does not know. */
+  warnings?: string[];
+  /** A refusal after the last request, such as a disallowed item outside a turn. It fails the run. */
+  refusal?: RestrictedCodexAnalysisErrorCode;
+};
 export interface RestrictedParticipantOptions {
   session?: RestrictedCodexSessionOptions;
   requestTimeoutMs?: number;
@@ -385,6 +392,21 @@ function closeParticipantSession(state: ParticipantState): Promise<boolean> {
     }));
 }
 
+/** What the closed native session reports beside cleanup: its run warnings and a late refusal. */
+function sessionReport(
+  session: RestrictedCodexSession,
+): Pick<ParticipantProviderCloseResult, "warnings" | "refusal"> {
+  const warnings = [
+    unknownNotificationsWarning(session.unknownNotifications, session.cliVersion),
+    truncatedFrameWarning(session.truncatedFrameBytes),
+  ].filter((warning) => warning !== undefined);
+  const refusal = session.policyRefusal;
+  return {
+    ...(warnings.length === 0 ? {} : { warnings }),
+    ...(refusal === undefined ? {} : { refusal }),
+  };
+}
+
 /** Stops the conversation: abort the native run, reject a waiting tool call, close the session. */
 function revokeParticipant(state: ParticipantState): void {
   state.closed = true;
@@ -586,7 +608,10 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
           ([, ok]) => ok,
         );
         if (!(await withinCleanupBudget(work, state.abortAt!))) state.failedCleanup = true;
-        return { status: state.failedCleanup ? "unconfirmed" : "confirmed" };
+        return {
+          status: state.failedCleanup ? "unconfirmed" : "confirmed",
+          ...sessionReport(state.session),
+        };
       })();
       return closing;
     },

@@ -1,12 +1,14 @@
 // One restricted Codex request's turn: the notifications and tool requests the app-server sends
 // while the turn runs. Each is checked against the tool policy, the turn's identity and the output
-// limits, and any violation stops the request's deadline with a refusal code.
+// limits, and any violation stops the request's deadline with a refusal code. A policy violation
+// goes through the session, which records it when the request can no longer report it.
 import {
   CODEX_MAX_OUTPUT_BYTES,
   CODEX_MAX_REQUEST_BYTES,
   codexRecord,
   restrictedCodexUsage,
   toolPolicyViolation,
+  type RestrictedCodexAnalysisErrorCode,
   type RestrictedCodexResult,
   type RestrictedCodexUsage,
 } from "./restricted-policy.js";
@@ -15,16 +17,17 @@ import {
   type RestrictedCodexDeadline,
   type RestrictedCodexTransport,
 } from "./restricted-transport.js";
+import {
+  ANALYST_ITEM_TYPES,
+  ANALYST_RAW_ITEM_TYPES,
+  KNOWN_CODEX_NOTIFICATIONS,
+  PARTICIPANT_ITEM_TYPES,
+  PARTICIPANT_RAW_ITEM_TYPES,
+  itemPolicyOf,
+  type NotificationPolicy,
+} from "./restricted-notifications.js";
 
 const rawCompactionTypes = ["compaction", "compaction_summary", "context_compaction"];
-const analystRawItemTypes = ["message", "reasoning", ...rawCompactionTypes];
-const participantRawItemTypes = [
-  ...analystRawItemTypes,
-  "custom_tool_call",
-  "custom_tool_call_output",
-  "function_call",
-  "function_call_output",
-];
 
 type Event = { method: string; params: Record<string, unknown> };
 
@@ -55,9 +58,11 @@ function hasScopedIdentity(
       params.turnId.length > 0 &&
       (turnId === undefined || params.turnId === turnId)
     );
+  // Before the turn's id is known, an event that names a turn waits in the early buffer, and
+  // handleTurnEvent checks it again against the acknowledged id.
   return (
     (params.threadId === undefined || params.threadId === threadId) &&
-    (params.turnId === undefined || params.turnId === turnId)
+    (params.turnId === undefined || turnId === undefined || params.turnId === turnId)
   );
 }
 
@@ -100,12 +105,24 @@ export interface RestrictedCodexTurnContext {
   ): void;
   /** The turn the session interrupts if it closes now. */
   turnStarted(turnId: string): void;
+  /** The item policy every notification's item passes, whatever its method. */
+  readonly policy: NotificationPolicy;
+  /** The session's handler for notifications that arrive before this turn is dispatched. */
+  idle(method: string, params: Record<string, unknown>): void;
+  /** Counts a notification method this humanish does not know that carried no item. */
+  recordUnknown(method: string): void;
+  /**
+   * A policy refusal: stops this request with `code`, and the session records it when the
+   * request already stopped for another reason, such as a close.
+   */
+  refuse(code: RestrictedCodexAnalysisErrorCode): void;
 }
 
 /**
- * Drain: every notification and tool request of one turn. Nothing is handled before `dispatched`;
- * events that arrive before turn/start's reply wait until acknowledge() and are then checked in
- * order. `finished` resolves only with a completed, validated final answer.
+ * Drain: every notification and tool request of one turn. Before `dispatched`, notifications go
+ * to the session's idle handler; events that arrive after dispatch but before turn/start's reply
+ * pass the item policy at once, then wait until acknowledge() and are checked in order.
+ * `finished` resolves only with a completed, validated final answer.
  */
 export class RestrictedCodexTurn {
   dispatched = false;
@@ -128,7 +145,9 @@ export class RestrictedCodexTurn {
 
   constructor(private readonly context: RestrictedCodexTurnContext) {
     this.inferenceUsage = context.participant ? [] : null;
-    this.allowedRawItemTypes = context.participant ? participantRawItemTypes : analystRawItemTypes;
+    this.allowedRawItemTypes = context.participant
+      ? PARTICIPANT_RAW_ITEM_TYPES
+      : ANALYST_RAW_ITEM_TYPES;
     this.finished = new Promise((resolve) => {
       this.resolveFinished = resolve;
     });
@@ -155,7 +174,23 @@ export class RestrictedCodexTurn {
 
   readonly onNotification: RestrictedCodexTransport["onNotification"] = (method, params) => {
     const { deadline } = this.context;
-    if (!this.dispatched) return;
+    if (!this.dispatched) {
+      this.context.idle(method, params);
+      return;
+    }
+    // The single tool-policy check, first: an event that also fails the identity or delta checks
+    // below still has its items recorded. Tool requests must fail even if the turn-start
+    // acknowledgment is lost, and every event reaches handleTurnEvent only from here, directly or
+    // through the early buffer, so no event skips it. Every item is checked, whatever the method
+    // that carries it and wherever the schema nests it.
+    const items = itemPolicyOf(method, params, this.context.policy);
+    if (
+      toolPolicyViolation(method, codexRecord(params.item), this.allowedRawItemTypes) ||
+      items === "violation"
+    ) {
+      this.context.refuse("codex_tool_call");
+      return;
+    }
     if (
       !hasScopedIdentity(method, params, this.context.threadId(), this.turnId ?? this.earlyTurnId)
     ) {
@@ -173,13 +208,8 @@ export class RestrictedCodexTurn {
         return;
       }
     }
-    // The single tool-policy check. Tool requests must fail even if the turn-start
-    // acknowledgment is lost, and every event reaches handleTurnEvent only from here, directly
-    // or through the early buffer, so no event skips it.
-    if (toolPolicyViolation(method, codexRecord(params.item), this.allowedRawItemTypes)) {
-      deadline.stop("codex_tool_call");
-      return;
-    }
+    if (items === "none" && !KNOWN_CODEX_NOTIFICATIONS.has(method))
+      this.context.recordUnknown(method);
     if (method === "turn/started") {
       const value = codexRecord(params.turn).id;
       if (
@@ -203,7 +233,10 @@ export class RestrictedCodexTurn {
   ) => {
     const { deadline, participant, toolCallIds } = this.context;
     const callId = params.callId;
+    // A request before turn/start is sent, or after the turn completed, is outside the turn.
     if (
+      !this.dispatched ||
+      this.completed ||
       !participant ||
       method !== "item/tool/call" ||
       params.threadId !== this.context.threadId() ||
@@ -218,12 +251,12 @@ export class RestrictedCodexTurn {
       toolCallIds.has(callId) ||
       this.toolRequestPending
     )
-      throw new RestrictedCodexStop("codex_tool_call");
+      this.refuseRequest();
     // Mark the request outstanding before waiting for a same-chunk turn/start
     // acknowledgment, so an early completion can never be accepted.
     this.toolRequestPending = true;
     const activeTurnId = this.turnId ?? this.earlyTurnId ?? (await deadline.wait(this.turnReady));
-    if (params.turnId !== activeTurnId) throw new RestrictedCodexStop("codex_tool_call");
+    if (params.turnId !== activeTurnId) this.refuseRequest();
     toolCallIds.add(callId);
     deadline.pause();
     const text = await deadline.wait(this.context.tool().call(params.arguments));
@@ -236,6 +269,12 @@ export class RestrictedCodexTurn {
     }
     return { success: true, contentItems: [{ type: "inputText", text }] };
   };
+
+  /** Refuses a tool request: the session records the refusal, and the transport answers it. */
+  private refuseRequest(): never {
+    this.context.refuse("codex_tool_call");
+    throw new RestrictedCodexStop("codex_tool_call");
+  }
 
   readonly onRequestComplete = (): void => {
     this.toolRequestPending = false;
@@ -297,11 +336,9 @@ export class RestrictedCodexTurn {
   /** The item allowlist, the participant's one dynamic tool and the final answer's shape. */
   private admitsItem(method: string, item: Record<string, unknown>): boolean {
     const { deadline, participant } = this.context;
-    const allowedItems = participant
-      ? ["userMessage", "agentMessage", "reasoning", "contextCompaction", "dynamicToolCall"]
-      : ["userMessage", "agentMessage", "reasoning", "contextCompaction"];
+    const allowedItems = participant ? PARTICIPANT_ITEM_TYPES : ANALYST_ITEM_TYPES;
     if (!allowedItems.includes(String(item.type))) {
-      deadline.stop("codex_tool_call");
+      this.context.refuse("codex_tool_call");
       return false;
     }
     if (
@@ -311,7 +348,7 @@ export class RestrictedCodexTurn {
         (method === "item/started" && item.status !== "inProgress") ||
         (method === "item/completed" && (item.status !== "completed" || item.success !== true)))
     ) {
-      deadline.stop("codex_tool_call");
+      this.context.refuse("codex_tool_call");
       return false;
     }
     if (

@@ -28,6 +28,10 @@ import {
   validateAnalysisInputMetadata,
 } from "./validation.js";
 import { EVIDENCE_LIMITS } from "./evidence.js";
+import {
+  truncatedFrameWarning,
+  unknownNotificationsWarning,
+} from "../actors/codex/restricted-notifications.js";
 
 export const ANALYSIS_PROMPT_VERSION = "study-evidence-6";
 const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
@@ -414,6 +418,8 @@ interface RunAnalysisOptions {
   /** Set by automatic analysis to its job attempt id, claimed before any provider call. */
   analysisId?: string;
   beforeDispatch?: (context: AnalysisDispatchContext) => Promise<void>;
+  /** Receives the provider's run warnings, such as Codex notification methods humanish does not know. */
+  warnings?: string[];
 }
 
 /** Check the caller's id, input metadata and admission; throw the stable code a direct caller receives. */
@@ -624,6 +630,12 @@ export async function runAnalysis(
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
   recordProviderUsage(artifact, config, response);
+  if (config.provider === "codex")
+    for (const warning of [
+      unknownNotificationsWarning(response.unknownNotifications, config.identity.cliVersion),
+      truncatedFrameWarning(response.truncatedFrameBytes),
+    ])
+      if (warning !== undefined) options.warnings?.push(warning);
   if (response.status !== "completed") {
     artifact.status = response.status === "cancelled" ? "cancelled" : "failed";
     artifact.error = `analysis_${response.errorCode ?? "provider_failed"}`;
