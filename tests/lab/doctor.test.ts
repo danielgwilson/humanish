@@ -15,6 +15,14 @@ import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
+// What a hosted Codex participant's operator handshake reports when it passes.
+const hostedReady = {
+  ready: true,
+  errorCode: null,
+  cliVersion: "0.160.0",
+  resolvedModel: "synthetic-operator-model",
+  authentication: "chatgpt-account" as const,
+};
 const keyless = { HUMANISH_STRICT_KEYS: "1", PATH: "" };
 const lab = (actor = "openai-computer-use", mode = "live") =>
   [
@@ -390,6 +398,7 @@ describe("selected lab setup without paid dispatch", () => {
             stderr: "Logged in using ChatGPT\nprivate-account-marker",
           }),
         },
+        codexParticipantReadiness: async () => hostedReady,
       });
       expect(result.ok).toBe(true);
       expect(
@@ -569,6 +578,7 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
         env: keyless,
         agents,
         keyPresent: () => false,
+        codexParticipantReadiness: async () => hostedReady,
       }),
     );
   }
