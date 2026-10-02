@@ -81,5 +81,9 @@
     "sim": 21,
     "lab": 2337,
     "doc-backend": 17
+  },
+  "site": {
+    "css-hex-literals": 11,
+    "unused-classes": 0
   }
 }
