@@ -14,7 +14,13 @@
       "honest": 72,
       "history": 18,
       "series-codes": 0,
-      "name-refs": 0
+      "name-refs": 0,
+      "string-em-dashes": 160,
+      "string-issue-refs": 10,
+      "string-slice": 10,
+      "string-rationale": 30,
+      "string-plural-s": 62,
+      "string-caps": 278
     },
     "tests": {
       "issue-refs": 58,

@@ -93,7 +93,8 @@ Two kinds of change need one more step:
 It also holds three counts to caps: oxlint warnings (`lint`, capped in package.json), prose in
 comments and test names under `src/`, `tests/`, `scripts/` and `tui/` (`prose:check`: issue
 references, `FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and the
-other kinds listed at the top of `scripts/check-code-prose.mjs`), and identifiers and file names in
+other kinds listed at the top of `scripts/check-code-prose.mjs`, which also counts the text of
+`src/` string literals), and identifiers and file names in
 `src/` outside the exempt contract modules that still say a retired participant word (lane, seat,
 role or sim) or lab (`vocabulary:check`). A study is what a user designs and runs, and a run is
 one execution of it; lab is the old name for a study. The last two read their caps from `scripts/caps.json`. Each check fails when its count rises above
