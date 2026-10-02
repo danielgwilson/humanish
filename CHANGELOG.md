@@ -68,13 +68,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 ### Changed
 
 - Terminal studies that declare no `actors[0].model` now run on `gpt-5.6-sol`, humanish's
-  participant default, in place of whichever default the Codex release ships. Codex's `--json`
-  stream does not name its model, so the route now always passes `--model`. The bundle's `runtime`
-  names the model with `modelStatus` `declared` or `humanish-default`, where it was
+  participant default (#1408), in place of whichever default the Codex release ships. Codex's
+  `--json` stream does not name its model, so the route now always passes `--model`. The bundle's
+  `runtime` names the model with `modelStatus` `declared` or `humanish-default`, where it was
   `runtime_default_unobserved`. `run.json`'s `cost` and the trace's `estimatedCost` now price the
   agent's tokens from that model. Codex reports usage per turn, summed over the turn's requests, so
   the estimate uses base rates (cached input at the cached rate) and carries `basis:
-aggregated_turns_base_rate`. Before, that line was `null` with `no_rate_for_model` for model
+  aggregated_turns_base_rate`. Before, that line was `null` with `no_rate_for_model` for model
   `codex`.
 
 - An analysis response that fails validation is kept locally for diagnosis (#1403) at
