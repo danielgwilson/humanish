@@ -5,13 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { prepareLocalVmStudy } from "../src/routes/computer-use/local-vm.js";
 
-const localStudy = vi.hoisted(() =>
+const localVm = vi.hoisted(() =>
   vi.fn<typeof prepareLocalVmStudy>(() => {
     throw new Error("unexpected local study");
   }),
 );
 vi.mock("../src/routes/computer-use/local-vm.js", () => ({
-  prepareLocalVmStudy: localStudy,
+  prepareLocalVmStudy: localVm,
 }));
 
 import { runLab } from "../src/run-lab.js";
@@ -50,21 +50,17 @@ describe("local browser study selection", () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-select-"));
   });
   afterEach(async () => {
-    localStudy.mockClear();
+    localVm.mockClear();
     await rm(cwd, { recursive: true, force: true });
   });
 
   it("plans a local browser lab with the local study's bindings and keeps the scorer", async () => {
     const close = vi.fn(async () => {});
-    localStudy.mockImplementationOnce(({ scorerProvenance: _provenance, ...options }) => ({
-      // A dry run creates no desktop, so a stand-in lane is enough to plan and run with. The
+    localVm.mockImplementationOnce(({ scorerProvenance: _provenance, ...options }) => ({
+      // A dry run creates no desktop, so a stand-in desktop is enough to plan and run with. The
       // synthetic scorer provenance names no real file, so the stand-in run leaves it out.
-      options: {
-        ...options,
-        dryRun: true,
-        open: false,
-        cuaHooks: { ...options.cuaHooks, createDesktopLane: vi.fn() },
-      },
+      options: { ...options, dryRun: true, open: false },
+      localVm: { desktop: vi.fn(), analysisGate: () => undefined },
       close,
     }));
 
@@ -75,8 +71,8 @@ describe("local browser study selection", () => {
       scorerProvenance,
     });
 
-    expect(localStudy).toHaveBeenCalledOnce();
-    const options = localStudy.mock.calls[0]![0];
+    expect(localVm).toHaveBeenCalledOnce();
+    const options = localVm.mock.calls[0]![0];
     expect(options.cuaHooks?.score).toBe(score);
     expect(options.scorerProvenance).toBe(scorerProvenance);
     expect(options.config.execution?.target).toBe("local");
@@ -86,16 +82,16 @@ describe("local browser study selection", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
-  it("leaves the desktop to a caller that supplies createDesktopLane", async () => {
-    const createDesktopLane = vi.fn();
+  it("keeps a caller's prepared local VM in place of a second study", async () => {
+    const desktop = vi.fn();
     const outcome = await runLab(config, {
       cwd,
       dryRun: true,
       open: false,
-      cuaHooks: { createDesktopLane, score },
+      localVm: { desktop, analysisGate: () => undefined },
     });
 
-    expect(localStudy).not.toHaveBeenCalled();
+    expect(localVm).not.toHaveBeenCalled();
     expect(outcome.backend).toBe("cua");
     expect((outcome.result as { ok?: boolean }).ok).toBe(true);
   });
@@ -112,7 +108,7 @@ describe("local browser study selection", () => {
       { cwd, dryRun: true, open: false, cuaHooks: { buildExecutor } },
     );
 
-    expect(localStudy).not.toHaveBeenCalled();
+    expect(localVm).not.toHaveBeenCalled();
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     expect(outcome.result.ok).toBe(false);

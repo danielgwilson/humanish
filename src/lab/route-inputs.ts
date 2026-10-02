@@ -21,6 +21,7 @@ export function computerUseInput(options: InternalRunLabOptions): ComputerUseRun
     ...(options.runId === undefined ? {} : { runId: options.runId }),
     ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
     ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+    ...(options.localVm === undefined ? {} : { localVm: options.localVm }),
     ...scorerOf(options),
   };
 }

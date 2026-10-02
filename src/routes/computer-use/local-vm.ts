@@ -6,11 +6,8 @@ import {
   inboxRecipientFor,
   type ParticipantDesktop,
   type ParticipantDesktopEvidence,
-  PARTICIPANT_DESKTOP,
-  type HooksWithParticipantDesktop,
 } from "./participant-desktop.js";
-import type { CuaActorLabHooks, DesktopParticipantRun } from "./types.js";
-import { runCuaActorSession } from "../../actors/computer-use/actor.js";
+import type { CuaActorLabHooks, DesktopParticipantRun, LocalVmInput } from "./types.js";
 import {
   createLocalFirecrackerDesktop,
   type LocalFirecrackerAssets,
@@ -227,8 +224,10 @@ function accountProvider(state: LocalStudyState): Pick<CuaActorLabHooks, "buildP
 
 /** A local browser study's bindings, and the cleanup of what its lanes started. */
 export interface LocalVmStudy {
-  /** The caller's runLab options with this study's desktop lane, provider and abort signal. */
+  /** The caller's runLab options, with the account provider when the study runs one. */
   readonly options: InternalRunLabOptions;
+  /** The desktop, the analysis gate and the abort signal the computer-use run takes. */
+  readonly localVm: LocalVmInput;
   close(): Promise<void>;
 }
 
@@ -248,7 +247,6 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
   // neither checked nor used.
   const account =
     config.actors[0]?.type === "local-agent" && callerHooks?.buildProvider === undefined;
-  const baseRunSession = callerHooks?.runSession ?? runCuaActorSession;
   const state: LocalStudyState = { sessions: [], participants: [], cleanupUnconfirmed: false };
   const context: LocalParticipantContext = {
     config,
@@ -260,31 +258,20 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
     state,
   };
   const { config: _config, assets: _assets, signal: _signal, ...runOptions } = options;
-  // These overrides go over the caller's hooks so this study's desktop always wins:
-  // participantDesktopOf takes [PARTICIPANT_DESKTOP] before a caller's createDesktopLane.
-  const cuaHooks: HooksWithParticipantDesktop = {
+  // The account provider goes over the caller's hooks until it becomes createProvider.
+  const cuaHooks: CuaActorLabHooks = {
     ...callerHooks,
-    [PARTICIPANT_DESKTOP]: (run, warnings, artifactRoot) =>
-      createLocalParticipantDesktop(context, run, warnings, artifactRoot),
     ...(account ? accountProvider(state) : {}),
-    ...(options.signal
-      ? {
-          runSession: (input: Parameters<typeof runCuaActorSession>[0]) =>
-            baseRunSession({ ...input, signal: options.signal! }),
-        }
-      : {}),
   };
   return {
-    options: {
-      ...runOptions,
-      automaticAnalysis: {
-        ...options.automaticAnalysis,
-        onStart() {
-          if (state.cleanupUnconfirmed) throw new Error("Local study cleanup is unconfirmed.");
-          return options.automaticAnalysis?.onStart?.();
-        },
+    options: { ...runOptions, cuaHooks },
+    localVm: {
+      desktop: (run, warnings, artifactRoot) =>
+        createLocalParticipantDesktop(context, run, warnings, artifactRoot),
+      analysisGate: () => {
+        if (state.cleanupUnconfirmed) throw new Error("Local study cleanup is unconfirmed.");
       },
-      cuaHooks,
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
     },
     async close() {
       await Promise.allSettled(state.participants.map((participant) => participant.close()));

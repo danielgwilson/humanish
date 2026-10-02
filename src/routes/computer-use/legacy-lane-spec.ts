@@ -1,7 +1,6 @@
 // Translation module: legacy lane spellings stay only in modules like this one, so the rest of the
-// route reads participants. CuaActorLabHooks is public API in the deprecated compatibility section, and two of its hooks,
-// buildProvider and createDesktopLane, receive a lane. They keep receiving this flat record until
-// the next minor removes the section. Internally a lane is a DesktopParticipantRun.
+// route reads participants. The deprecated cuaHooks.buildProvider receives a lane, as this flat
+// record, until it becomes createProvider. Internally a lane is a DesktopParticipantRun.
 
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
@@ -12,8 +11,8 @@ import type { RunStream } from "../../run/streams.js";
 import type { DesktopParticipantRun } from "./types.js";
 
 /**
- * A lane as the deprecated cuaHooks.buildProvider and cuaHooks.createDesktopLane receive it: a flat
- * copy of a DesktopParticipantRun.
+ * A lane as the deprecated cuaHooks.buildProvider receives it: a flat copy of a
+ * DesktopParticipantRun.
  * @deprecated Use RunLabOptions.createProvider, which receives a ParticipantRef. Removed with the
  * compatibility section in the next minor.
  */

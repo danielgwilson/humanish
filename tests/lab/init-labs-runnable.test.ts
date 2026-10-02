@@ -13,6 +13,7 @@ import { resolveLabManifest, listLabManifests } from "../../src/lab/discover.js"
 import { runLab } from "../../src/run-lab.js";
 import { selectLabBackend } from "../../src/lab/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { isLocalBrowserLab } from "../../src/substrates/local/runtime-config.js";
 
 // The labs `humanish init` writes must actually RUN.
 //
@@ -123,24 +124,33 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
       ).not.toBe(false);
 
       if (selectLabBackend(config) !== "cua") continue;
+      // Past admission the run asks for its desktop: the local study's for a local browser lab,
+      // the E2B module for a hosted one. Either throws here, so no desktop is created.
       const admitted = new Error("admission passed; no desktop is created in this test");
-      const createDesktopLane = vi.fn(() => {
+      const desktopReached = vi.fn(() => {
         throw admitted;
       });
+      const local = isLocalBrowserLab(config);
       let refusal = "";
       try {
         const live = await runCuaActorLab({
           cwd,
           config: { ...config, scenario: { ...config.scenario, mode: "live" } },
           dryRun: false,
-          hooks: { env, createDesktopLane },
+          hooks: {
+            env: { ...env, E2B_API_KEY: "synthetic-starter-e2b-key" },
+            ...(local ? {} : { loadDesktopModule: async () => desktopReached() }),
+          },
+          ...(local
+            ? { localVm: { desktop: () => desktopReached(), analysisGate: () => undefined } }
+            : {}),
         });
         refusal = `${live.error?.code} ${live.error?.message}`;
       } catch (error) {
         if (error !== admitted) throw error;
       }
       expect(
-        createDesktopLane,
+        desktopReached,
         `${file.path} (${config.actors[0]?.type}) was refused before a desktop: ${refusal}`,
       ).toHaveBeenCalled();
     }

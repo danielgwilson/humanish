@@ -171,16 +171,22 @@ function completeCuaAnalysis(
   result: CuaActorLabResult,
   finished: FinishedRun | undefined,
 ): Promise<CuaActorLabResult> {
-  return completeAutomaticAnalysis(
-    result,
-    finished,
-    plan.analysis?.config,
-    input.automaticAnalysis,
-    {
-      ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
-      preferLargerOutput: plan.analysis?.preferLargerOutput === true,
-    },
-  );
+  // A local VM study whose cleanup is unconfirmed stops automatic analysis before it starts.
+  const gate = input.localVm?.analysisGate;
+  const analysisHooks =
+    gate === undefined
+      ? input.automaticAnalysis
+      : {
+          ...input.automaticAnalysis,
+          onStart() {
+            gate();
+            return input.automaticAnalysis?.onStart?.();
+          },
+        };
+  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, analysisHooks, {
+    ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
+    preferLargerOutput: plan.analysis?.preferLargerOutput === true,
+  });
 }
 
 async function runPlanInScope(

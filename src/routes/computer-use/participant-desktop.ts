@@ -1,8 +1,7 @@
 import type { CuaExecutor } from "../../actors/computer-use/loop.js";
-import type { CuaActorLabHooks, DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
+import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
 import type { LabCommsEmail, LabCommsRecipient } from "../../lab/types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
-import { legacyHookSpecOf } from "./legacy-lane-spec.js";
 import { recipientParticipantId } from "../../lab/parse/comms.js";
 
 /** A prepared desktop supplies only participant input/observation and its inbox location. */
@@ -57,33 +56,6 @@ export type ParticipantDesktopFactory = (
   warnings: string[],
   artifactRoot: PreparedOutputRoot,
 ) => ParticipantDesktop;
-
-/**
- * The hook-bag member a study that owns its desktops (the local VM study) sets to its factory. A
- * symbol keeps it out of the public CuaActorLabHooks, whose deprecated createDesktopLane takes the
- * flat lane record; a spread of the bag copies it like any other own member.
- */
-export const PARTICIPANT_DESKTOP: unique symbol = Symbol("humanish.participantDesktop");
-
-/** A hook bag that may carry a study's own desktop factory. */
-export type HooksWithParticipantDesktop = CuaActorLabHooks & {
-  readonly [PARTICIPANT_DESKTOP]?: ParticipantDesktopFactory;
-};
-
-/**
- * The desktop factory a run uses: the study's own, else the caller's deprecated createDesktopLane,
- * given the flat view of each run. Undefined means the route provisions its own desktop.
- */
-export function participantDesktopOf(
-  hooks: CuaActorLabHooks,
-): ParticipantDesktopFactory | undefined {
-  const own = (hooks as HooksWithParticipantDesktop)[PARTICIPANT_DESKTOP];
-  if (own !== undefined) return own;
-  const caller = hooks.createDesktopLane;
-  return caller === undefined
-    ? undefined
-    : (run, warnings, artifactRoot) => caller(legacyHookSpecOf(run), warnings, artifactRoot);
-}
 
 /** The lane's addressed comms recipient, when one exists — the gate AND the address source for the
  *  inbox instruction (#351). A lane told to check an inbox it can never receive into would stall,

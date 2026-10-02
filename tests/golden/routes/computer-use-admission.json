@@ -945,7 +945,7 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
-  "local browser without a runtime and lanes and count": {
+  "lanes and count and local browser without a runtime": {
     "schema": "humanish.cua-lab-result.v2",
     "ok": false,
     "cwd": "[cwd]",
@@ -957,13 +957,97 @@
     "lanes": [],
     "warnings": [],
     "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "shared-world topology and local browser without a runtime": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "count override above the cap and local browser without a runtime": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "in-process fan-out and local browser without a runtime": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "local browser without a runtime and live without keys": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": false,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
       "code": "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
       "message": "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   },
   "lanes and count and sandbox deadline": {

@@ -30,6 +30,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- A local-browser lab (an app-url subject with `execution.target: local`) that has no local
+  desktop now reports any planning refusal before `HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING`: an
+  invalid roster, a count above the cap, in-process fan-out, or `subject.topology: shared-world`.
+  The count cap reads committed personas, so a malformed persona file can now throw first. runLab
+  always gives such a lab its local desktop, so only a library caller using `inProcess` sees the
+  change. The desktop check moved from planning to admission, so a local-browser lab can be planned
+  without one.
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
   `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
   (#1336).

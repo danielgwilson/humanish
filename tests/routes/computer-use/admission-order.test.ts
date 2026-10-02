@@ -125,6 +125,7 @@ const rules = new Map<string, Rule>([
       },
     },
   ],
+  // Admission checks this after every planner rule, so its pairs name it as the later rule.
   ["local browser without a runtime", { mutate: (c) => (record(c, "execution").target = "local") }],
   [
     "lanes and count",
@@ -169,7 +170,13 @@ const pairs: [string, string][] = [
   ["public app url", "executor without provider"],
   ["executor without provider", "local-app without executor"],
   ["local-app without executor", "lanes and count"],
-  ["local browser without a runtime", "lanes and count"],
+  // A planner rule refuses before admission finds no local desktop.
+  ["lanes and count", "local browser without a runtime"],
+  ["shared-world topology", "local browser without a runtime"],
+  ["count override above the cap", "local browser without a runtime"],
+  ["in-process fan-out", "local browser without a runtime"],
+  // Admission checks for the local desktop before it checks keys.
+  ["local browser without a runtime", "live without keys"],
   ["lanes and count", "sandbox deadline"],
   ["sandbox deadline", "count override above the cap"],
   ["sandbox deadline", "shared-world topology"],
