@@ -52,7 +52,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   without one (#1359).
 - A scorer's warnings about a dropped output name `scorer.score`, `scorer.deriveFeedback` and
   `scorer.deriveArtifacts`. They named the removed `cuaHooks`, `sharedWorldHooks` and
-  `terminalHooks` bags (#PRNUM).
+  `terminalHooks` bags (#1362).
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
   `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
   (#1336).
