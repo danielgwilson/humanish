@@ -57,6 +57,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- An analysis response that fails validation is kept locally for diagnosis at
+  `.humanish/analysis-diagnostics/<run>/<analysis>.json`. Strings are scrubbed and redacted, and
+  each write keeps only the newest 20 across runs. `humanish analyze` and a lab run's automatic
+  analysis print the path, and the result carries it as `rejectedOutputPath`. The file is outside
+  the run directory, so export, verify and the Observer never read it. The run's analysis record
+  still keeps only the error code. Before, a failure such as
+  `analysis_validation_failed_quote_invalid` left nothing that showed which quote failed.
+
 - `humanish doctor --lab` checks a hosted Codex participant (a local-agent lab on an E2B desktop) by
   starting it as a run would, up to an ephemeral thread and without a turn (#1380): the release
   check, then `initialize`, `config/read`, `account/read` and `thread/start` with the operator's

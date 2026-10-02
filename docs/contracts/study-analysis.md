@@ -176,6 +176,26 @@ It never includes provider output, exception text, evidence values or IDs.
 Historical artifacts with the generic `analysis_validation_failed` code remain
 valid and unchanged.
 
+A rejected response is never stored in the run directory or in any shareable
+artifact. For diagnosis, humanish keeps it locally at
+`.humanish/analysis-diagnostics/<run>/<analysis>.json`
+(`humanish.analysis-rejected-output.v1`). The record holds:
+
+- the run and analysis IDs, the model and the prompt version;
+- the allowlisted code and every failed rule code;
+- the response, with each string passed through the transient-secret scrub and
+  shape redaction.
+
+When validation ran, the response is the one validation saw, after the narrative
+scrub. A schema or scrub rejection keeps the parsed response. An unexpected
+validation exception keeps nothing.
+
+The directory sits outside every run directory, and export, verify and the
+Observer read only run directories. `humanish analyze` returns the file's path as
+`rejectedOutputPath` and prints it, and so does a lab run's automatic analysis.
+Each write removes all but the newest 20 records across runs. The record's
+feedback quotes cite evidence IDs that the run's own `analysis.json` resolves.
+
 Participant reviews cite distinct packet-local evidence IDs belonging only to
 that participant's stream; source event IDs are not citation IDs. Shared
 interactions can cite multiple included participants in findings and concern
