@@ -1,7 +1,7 @@
 import { Command, Option } from "commander";
 import { openTarget, renderObserver, serveObserver } from "../../observer/render.js";
 import type { ObserverResult } from "../../observer/render.js";
-import { SERVE_SCHEMA, serveObserverLibrary } from "../../observer/serve.js";
+import { type HiddenRunGroup, SERVE_SCHEMA, serveObserverLibrary } from "../../observer/serve.js";
 import type { ServeErrorCode, ServeLibraryServer, ServeResult } from "../../observer/serve.js";
 import { startExposedObserver, validateExposure } from "../../observer/exposure.js";
 import type { ExposurePlan, ExposureResult } from "../../observer/exposure.js";
@@ -441,6 +441,7 @@ async function reportServe(
       : {}),
     runsListed: server.runsListed,
     ...(server.shareReadyCount !== undefined ? { shareReadyCount: server.shareReadyCount } : {}),
+    ...(server.hiddenRuns !== undefined ? { hiddenRuns: server.hiddenRuns } : {}),
     ...(server.entryRunId ? { entryRunId: server.entryRunId } : {}),
     opened: openResult.opened,
     ...(openResult.command ? { openCommand: openResult.command } : {}),
@@ -465,6 +466,28 @@ async function reportServe(
   );
 }
 
+/**
+ * The runs --safe left out, grouped by grade and reasons, and how to share one. A run held back
+ * only for raw screenshots can be exported as a copy with blurred screenshots; the read-results
+ * docs name that step.
+ */
+function hiddenRunLines(groups: readonly HiddenRunGroup[]): string[] {
+  const total = groups.reduce((sum, group) => sum + group.runs, 0);
+  if (total === 0) return [];
+  const runs = (count: number): string => `${count} run${count === 1 ? "" : "s"}`;
+  const lines = [`hidden: ${runs(total)} not share_ready`];
+  for (const group of groups) {
+    const reasons = group.reasons.length > 0 ? ` (${group.reasons.join(", ")})` : "";
+    lines.push(`  ${runs(group.runs)} ${group.status}${reasons}`);
+  }
+  if (groups.some((group) => group.reasons.join(",") === "RAW_SCREENSHOTS"))
+    lines.push(
+      "share: a run held back only for RAW_SCREENSHOTS can be copied with blurred screenshots: `humanish export --run <id> --format bundle --redact-screenshots --out <dir>`, then `humanish serve --safe --cwd <dir>`",
+    );
+  lines.push("why: `humanish verify --run <id>` explains each reason");
+  return lines;
+}
+
 function formatServeHuman(result: ServeResult): string {
   if (!result.ok) {
     return (
@@ -482,6 +505,7 @@ function formatServeHuman(result: ServeResult): string {
     `mode: ${result.mode}${modeSuffix}`,
     `library: ${result.url ?? ""}`,
     `runs: ${result.runsListed}`,
+    ...hiddenRunLines(result.hiddenRuns ?? []),
   ];
   if (result.publicUrl) {
     lines.push(`public: ${result.publicUrl}`);
