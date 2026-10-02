@@ -20,7 +20,7 @@
 //      (default/require 0 = no-spend) + maxMinutes (wall-clock kill of the codex command).
 //      Enforced in plan.ts (caps required), live-sandbox.ts and lifetime.ts (the wall clock).
 //   3. Public surfaces only. The mission references only subject.product.publicSurfaces + the
-//      author mission. No clone, no private-source access — nothing is git-cloned on this route.
+//      author mission. No clone and no private-source access: nothing is git-cloned on this route.
 //      Enforced in session.ts, which composes the prompt.
 //   4. Deny-by-default credentials. The command envs are built from an allowlist holding only the
 //      declared runtime key; GITHUB_TOKEN/GH_TOKEN/payment/deploy/db/media keys are excluded by

@@ -109,7 +109,7 @@ export function actorRunPassed(result: ActorRunResult | undefined): boolean {
  *
  * None of those is adopter-scored proof that the mission text was completed. In particular, a
  * productive `budget_reached` session can coexist with lobby convergence without becoming a
- * `goal_satisfied` result (#364).
+ * `goal_satisfied` result.
  */
 function formatSharedWorldActorOutcomes(
   outcomes: SharedWorldOutcome[],
@@ -265,7 +265,7 @@ function sharedWorldEvidence(
         seedDigest: args.seedDigest,
         envNames: [],
         // publicOriginDigest is the observed convergence origin; declaredOriginDigest records the
-        // operator-declared origin for reference (a redirect makes them differ — not a failure).
+        // operator-declared origin for reference (a redirect that makes them differ is no failure).
         ...(args.publicOriginDigest === undefined
           ? {}
           : { publicOriginDigest: args.publicOriginDigest }),
@@ -357,7 +357,7 @@ function concurrencyReview(
     ? `; lobby convergence ${args.lobbyConvergenceDigest ? "PROVEN (all participants reached one /lobby/CODE)" : "not observed"}`
     : "";
   // The count that matters is how many participants were live at once, which can be fewer than exist:
-  // a 6-participant run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
+  // a 6-participant run capped at 3 must never read as 6-wide concurrency.
   const capForReport = plan.concurrency;
   const maxLive = maxSimultaneousWindows(windows);
   events.push({
@@ -370,7 +370,7 @@ function concurrencyReview(
 
   // The judge's verdict (judgeSharedWorld): every seat produced a terminal, engaged, passed session.
   // Mission endpoint and completion reasons are reported separately below; `outcomes[].ok` is not
-  // renamed into mission success (#364).
+  // renamed into mission success.
   const verdict = args.judgment.verdict;
   const actorOutcomeSummary = formatSharedWorldActorOutcomes(outcomes, actorSpecs.length);
 
@@ -379,7 +379,7 @@ function concurrencyReview(
     verdict,
     // Plane-class-aware: the external-public plane has no getHost/clone/seed and carries no
     // authoritative state series, so its summary must not claim a getHost-exposed plane (dry-run) nor
-    // report "state delta(s) under load" (live) — it reports lobby convergence instead.
+    // report "state delta(s) under load" (live). It reports lobby convergence instead.
     summary: dryRun
       ? external
         ? `Dry-run concurrent shared-world contract: ${actorSpecs.length} persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.`
@@ -416,7 +416,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
-  // Public-safe label only — neither the raw getHost URL (provisioned) nor the raw public origin
+  // Public-safe label only: neither the raw getHost URL (provisioned) nor the raw public origin
   // (external-public) lands in the bundle. The plane identity is a digest (plane.hostDigest on
   // getHost; plane.publicOriginDigest on external-public).
   const appUrl = external ? "[external-public-plane]" : "[provisioned-subject]";

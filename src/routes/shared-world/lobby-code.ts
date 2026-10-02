@@ -12,7 +12,7 @@ import { OPENAI_RESPONSES_URL } from "../../actors/openai-endpoint.js";
 const LOBBY_CODE_PATTERN = /\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/;
 
 /** Extract the shared-session code from a (runtime-only) observed URL, or undefined. Exported for the
- *  handoff regex table test — pure, no side effects, never persists its input. */
+ *  handoff regex table test. Pure, no side effects, never persists its input. */
 export function extractLobbyCode(url: string | undefined): string | undefined {
   if (typeof url !== "string") return undefined;
   const match = url.match(LOBBY_CODE_PATTERN);
@@ -22,7 +22,7 @@ export function extractLobbyCode(url: string | undefined): string | undefined {
 /**
  * Extract a lobby code from free-form actor narration (the host's reasoning/message where it states
  * the lobby URL it sees), where the /lobby/CODE is followed by arbitrary prose (a space, backtick,
- * newline) rather than end-of-string or /?# — so the strict LOBBY_CODE_PATTERN would miss it. Uses a
+ * newline) rather than end-of-string or /?#, so the strict LOBBY_CODE_PATTERN would miss it. Uses a
  * negative-lookahead boundary (exactly 6 code chars). This is the CDP-INDEPENDENT handoff path: the
  * host reads the code on screen and states it, and this reads it from the model's own text. Pure;
  * input is runtime-only; only the code is used (as a digest).
@@ -69,7 +69,7 @@ export function extractResponsesOutputText(parsed: unknown): string | undefined 
 }
 
 /** Parse a vision reply into a lobby code. Precision-first: accept only when the whole reply is the
- *  six-character code, or when it echoes an explicit /lobby/CODE — never a bare 6-letter token buried in
+ *  six-character code, or when it echoes an explicit /lobby/CODE; never a bare 6-letter token buried in
  *  prose (e.g. "I see a home `SCREEN`"), because a wrong latch fails the entire run, whereas a miss just
  *  retries on the next frame while the host keeps waiting. `NONE` (the instructed "no code" reply) is
  *  rejected. Pure. */
@@ -90,7 +90,7 @@ const LOBBY_CODE_VISION_PROMPT =
   "code is visible on this screen (e.g. it is the home screen or a game round), reply exactly NONE.";
 
 // A single-frame OCR-style read. gpt-5.5 (the computer-use default) is used deliberately: it reliably reads the
-// 6-char code off a dense MOBILE-viewport waiting room — a smaller/cheaper model (gpt-4.1-mini) was
+// 6-char code off a dense MOBILE-viewport waiting room. A smaller/cheaper model (gpt-4.1-mini) was
 // tried and could not read it. reasoning.effort stays "low" (minimal) and the output budget is small
 // but comfortably clear of the "incomplete on reasoning overflow" edge. Kept on the same account/key
 // as the actor; the same full-fidelity frame is already sent to this API by the computer-use provider, so this

@@ -30,7 +30,7 @@ const BUILD_TIMEOUT_MS = 10 * 60_000;
 const DEFAULT_READY_TIMEOUT_MS = 180_000;
 
 /**
- * Run a provisioning step and, when it fails with an exit code, run it once more (#602): a
+ * Run a provisioning step and, when it fails with an exit code, run it once more: a
  * transient network error inside `npm install` is the common case. A timeout is not retried: its
  * budget is already spent, and a second wait would double it. The retry runs under its own step
  * name so both logs stay.
@@ -218,7 +218,7 @@ interface ServeStep {
 }
 
 /**
- * Provide the runtime the pipeline needs before running it (#371). The stock desktop template
+ * Provide the runtime the pipeline needs before running it. The stock desktop template
  * ships python3 and curl but no Node. Probe first, so a template that ships its own Node pays
  * nothing.
  */
@@ -305,7 +305,7 @@ async function installSubject(step: ServeStep, command: string): Promise<void> {
         : "subject install failed",
   );
   if (!install.ok) {
-    // Lead with the line a person can act on; npm's own trace follows it (#602).
+    // Lead with the line a person can act on; npm's own trace follows it.
     const headline = install.timedOut
       ? `subject install timed out after ${step.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS}ms`
       : install.attempts === 2

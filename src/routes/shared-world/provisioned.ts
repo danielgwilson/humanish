@@ -143,7 +143,7 @@ class SubjectPlane {
   private subjectAllocation: OwnedDesktopAllocation | undefined;
   private subjectDesktop: E2BDesktopSandbox | undefined;
   private subjectShell: Shell | undefined;
-  // The in-sandbox email catch on the one subject sandbox (#297); drained at teardown. Undefined
+  // The in-sandbox email catch on the one subject sandbox; drained at teardown. Undefined
   // unless a comms lab declared it.
   private deployedComms: DeployedCommsCatch | undefined;
   // Background prober dispose signal, cleared in teardown.
@@ -152,7 +152,7 @@ class SubjectPlane {
   private readonly disposeSignal: Promise<void>;
   private proberLoop: Promise<void> | undefined;
   private snapshotIndex = 0;
-  // Persona inbox surface (#297 slice B, shared-world): the serve->getHost origin-rewrite map
+  // Persona inbox surface: the serve->getHost origin-rewrite map
   // (required here so the app's loopback verify links resolve to a reachable host), and the
   // dedicated surface render loop.
   private commsOriginMap: OriginMap = [];
@@ -328,7 +328,7 @@ class SubjectPlane {
     this.getHostUrl = hostUrl;
   }
 
-  // Persona inbox surface (#297 slice B, shared-world): getHost-expose the read-only inbox listener so
+  // Persona inbox surface: getHost-expose the read-only inbox listener so
   // a persona in another sandbox can open it; build the serve->getHost origin map (required here:
   // the app's loopback verify links must be rewritten to a reachable host); provision the surface
   // channel; write the empty inbox up front (so /inbox never 404s); and start a render loop that drains
@@ -364,7 +364,7 @@ class SubjectPlane {
     const surfaceCadenceMs = 2500;
     this.surfaceLoop = (async () => {
       // Full, idempotent rebuild each tick; surfaceRenderedCount advances only on a successful render,
-      // so a transient failure retries cleanly. Real timer (dispose-interruptible + cleared) — an
+      // so a transient failure retries cleanly. Real timer (dispose-interruptible + cleared): an
       // unbounded loop must not busy-spin on the injected instant clock.
       for (;;) {
         try {
@@ -424,7 +424,7 @@ class SubjectPlane {
       await this.proberLoop.catch(() => undefined);
     }
     // Stop the inbox-surface render loop too (shares the prober's dispose signal), before the teardown
-    // evidence drain below — so the two in-sandbox reads never overlap and the surface state is final.
+    // evidence drain below, so the two in-sandbox reads never overlap and the surface state is final.
     if (this.surfaceLoop) {
       await this.surfaceLoop.catch(() => undefined);
     }
@@ -548,7 +548,7 @@ function runParticipants(
     // Tell this persona its (getHost-reachable) inbox URL, but only when comms is live and this participant
     // has a declared recipient it can actually receive mail into (else it would stall on an empty
     // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
-    // external-public plane's (#387).
+    // external-public plane's.
     const actorSpec =
       commsEmail && plane.commsInboxUrl && participantHasInboxRecipient(commsEmail, spec.planned.id)
         ? withInboxMission(
