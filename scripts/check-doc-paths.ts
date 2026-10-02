@@ -1,8 +1,9 @@
 /**
  * Fails when a doc or a src/ comment names a repo file that does not exist, when `ARCHITECTURE.md`'s
  * code map misses a src/ folder or lists one that is gone, when no index links a checked page
- * under docs/, when a checked doc opens a line with `Date:` or `Status:`, or when `README.md` or a
- * site page links into docs/history/. Run by docs:check.
+ * under docs/, when a checked doc opens a line with `Date:` or `Status:`, when `README.md` or a
+ * site page links into docs/history/, or when a site page links a docs/architecture/ page outside
+ * `SITE_LINKABLE_ARCHITECTURE`. Run by docs:check.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -21,6 +22,7 @@ import {
   citesEvidenceOnly,
   findHistoryLinks,
   findPreambleLines,
+  findSiteArchitectureLinks,
   findUnindexedDocs,
 } from "./lib/doc-index.js";
 
@@ -70,6 +72,14 @@ const historyLinks = docs
 for (const at of historyLinks) {
   process.stderr.write(`${at} links into docs/history/; cite docs/evidence/ or a current page\n`);
 }
+const siteArchitecture = docs.flatMap((path) =>
+  findSiteArchitectureLinks(path, read(path)).map((page) => `${path} links ${page}`),
+);
+for (const link of siteArchitecture) {
+  process.stderr.write(
+    `${link}; move a user guide onto the site, or list reference in doc-index.ts\n`,
+  );
+}
 for (const path of unindexed) {
   process.stderr.write(
     `${path} is linked from no README.md in its folders, up to docs/README.md\n`,
@@ -106,6 +116,9 @@ if (preambles.length > 0) {
     `${preambles.length} preamble line(s). Delete them, keeping a scope sentence where it carries a fact.\n`,
   );
 }
+if (siteArchitecture.length > 0) {
+  process.stderr.write(`${siteArchitecture.length} site link(s) to a docs/architecture/ page.\n`);
+}
 if (historyLinks.length > 0) {
   process.stderr.write(`${historyLinks.length} history link(s) from the README or the site.\n`);
 }
@@ -114,7 +127,8 @@ if (
   codeMapIssues.length > 0 ||
   unindexed.length > 0 ||
   preambles.length > 0 ||
-  historyLinks.length > 0
+  historyLinks.length > 0 ||
+  siteArchitecture.length > 0
 ) {
   process.exitCode = 1;
 } else {

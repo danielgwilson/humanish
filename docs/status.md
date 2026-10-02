@@ -114,7 +114,7 @@ The library-assisted `local-app` route now includes a
 Its deterministic provider demonstrates the integration with a real loopback
 app; it does not establish persona effectiveness or independent adoption.
 
-The [local browser runtime](architecture/local-browser-runtime.md)
+The [local browser runtime](https://humanish.dev/docs/local-browser)
 runs isolated Linux browser participants through the same scheduler, recordings
 and automatic analysis as hosted studies. It uses Docker-owned resources and
 ordinary TAP/NAT networking. Continue managed-local work from this complete study

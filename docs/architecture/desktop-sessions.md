@@ -81,7 +81,7 @@ adapter cannot establish them.
 
 Independent hosted browser and terminal participants, local Firecracker participants, and
 shared-world participants that use `runCuaParticipant` use this boundary. Local execution is
-described in [local browser studies](local-browser-runtime.md).
+described in [local browser studies](https://humanish.dev/docs/local-browser).
 
 The `runSession` testing hook for independent participants now receives a constructed
 `executor` instead of `desktop`/`executorOptions`. A hook should consume the

@@ -1,7 +1,7 @@
 # Headed browser guest components
 
 These internal components implement native input and full-desktop captures for the browser guest
-that [local browser studies](local-browser-runtime.md) run in a Firecracker VM. This page covers
+that [local browser studies](https://humanish.dev/docs/local-browser) run in a Firecracker VM. This page covers
 the guest driver and its container proof; the local browser page covers the VM, its network
 policy and the installed study.
 
@@ -96,4 +96,4 @@ native scrolling and cancellation. CI reruns this proof for changes to the guest
 recipe, protocol or dependency lockfile. Its deterministic fixture is not a model participant, a
 run bundle, a host network policy, an independent watchdog or a Linux/Mac installed study. The
 local browser runtime is qualified separately; see [local browser
-studies](local-browser-runtime.md).
+studies](https://humanish.dev/docs/local-browser).

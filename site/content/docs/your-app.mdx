@@ -103,7 +103,7 @@ For uncommitted code, `subject.source: local-tree` packages a selected working t
 
 ## Study your running local app
 
-This route drives a browser on your own machine through your signed-in Codex account, so it needs neither E2B nor an OpenAI API key. It needs a supported Codex CLI with a file-backed ChatGPT login, plus either Linux x64 with rootful Docker Engine, KVM and TUN, or an M3-or-newer Mac with native ARM64 Node and Lima 2.2 or later. Docker Desktop is not supported. Check the [account profile](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md) and [platform setup](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/local-browser-runtime.md) first.
+This route drives a browser on your own machine through your signed-in Codex account, so it needs neither E2B nor an OpenAI API key. It needs a supported Codex CLI with a file-backed ChatGPT login, plus either Linux x64 with rootful Docker Engine, KVM and TUN, or an M3-or-newer Mac with native ARM64 Node and Lima 2.2 or later. Docker Desktop is not supported. Check the [account profile](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md) and [platform setup](/docs/local-browser) first.
 
 Start your app, then replace the URL and the task:
 
@@ -126,7 +126,7 @@ npx humanish observe --run latest --open
 npx humanish verify --run latest --json
 ```
 
-For signup flows, point your test app's outgoing mail at the [local captured inbox](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/comms-inbox.md#local-browser-studies). It accepts HTTP mail or optional SMTP and never receives mail sent to a real mailbox.
+For signup flows, point your test app's outgoing mail at the [local captured inbox](/docs/comms-inbox#local-browser-studies). It accepts HTTP mail or optional SMTP and never receives mail sent to a real mailbox.
 
 ## Give the participant a background
 

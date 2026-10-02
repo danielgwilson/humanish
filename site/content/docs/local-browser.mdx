@@ -1,4 +1,7 @@
-# Local browser studies
+---
+title: Run a local browser study
+description: Run isolated Firecracker browser participants on Linux x64 or an Apple Silicon Mac, from the installed CLI or TUI.
+---
 
 Linux x64 and supported Apple Silicon Mac users can run isolated Firecracker
 browser participants from the installed CLI or TUI. Docker manages their
@@ -13,7 +16,7 @@ rootful Docker Engine, KVM (`/dev/kvm`) and TUN (`/dev/net/tun`). Macs need an
 M3-or-newer chip, native ARM64 Node, Lima 2.2+ (`brew install lima`) and a macOS
 version supporting nested virtualization; see [Mac setup](#apple-silicon-macs).
 Docker Desktop is unnecessary. See
-[Codex account setup](restricted-codex-analysis.md) for the qualified version
+[Codex account setup](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md) for the qualified version
 and account restrictions. Docker access is an administrative capability.
 humanish does not install Docker on Linux or change host permissions. On Mac,
 setup installs Docker only inside the dedicated Lima host.
@@ -109,9 +112,9 @@ Later participant actions and observations do not use this startup wait.
 - Chromium at 960×720, 2 vCPUs and 2 GiB guest RAM per participant. Docker's
   enclosing memory limit is 3 GiB. Start with a small concurrency for your host;
   these allocations are not a promise of measured peak memory or capacity.
-- Browser-only by default. [Optional camera and spoken conversation](participant-media.md)
+- Browser-only by default. [Optional camera and spoken conversation](/docs/participant-media)
   use a separate media image and the same study loop.
-- [Captured inboxes](comms-inbox.md#local-browser-studies) use an operator-run mail catch.
+- [Captured inboxes](/docs/comms-inbox#local-browser-studies) use an operator-run mail catch.
   Real email receiving remains unsupported on the local route.
 - A 20-minute default and maximum participant session budget, within the runtime
   image's 30-minute process lifetime. A shorter `execution.timeoutMs` is supported.

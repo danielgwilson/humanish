@@ -62,24 +62,24 @@ preview and local-browser setup need only `humanish`.
 
 Choose how the participant runs:
 
-| Setup                                                             | Participant authentication            | Desktop                                              | Automatic findings                               |
-| ----------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
-| `first-run` preview                                               | None; synthetic evidence only         | None                                                 | No model analysis                                |
-| [Local browser study](docs/architecture/local-browser-runtime.md) | Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM or M3+ Mac + Lima; no E2B key | Separate Codex account analyst by default        |
-| `openai-computer-use`                                             | `OPENAI_API_KEY`                      | `E2B_API_KEY` + desktop SDK                          | Separate OpenAI request                          |
-| [`local-agent`](https://humanish.dev/docs/local-agents)           | Codex or Claude Code's own login      | `E2B_API_KEY` + desktop SDK                          | Still needs `OPENAI_API_KEY`; skipped without it |
+| Setup                                                          | Participant authentication            | Desktop                                              | Automatic findings                               |
+| -------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| `first-run` preview                                            | None; synthetic evidence only         | None                                                 | No model analysis                                |
+| [Local browser study](https://humanish.dev/docs/local-browser) | Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM or M3+ Mac + Lima; no E2B key | Separate Codex account analyst by default        |
+| `openai-computer-use`                                          | `OPENAI_API_KEY`                      | `E2B_API_KEY` + desktop SDK                          | Separate OpenAI request                          |
+| [`local-agent`](https://humanish.dev/docs/local-agents)        | Codex or Claude Code's own login      | `E2B_API_KEY` + desktop SDK                          | Still needs `OPENAI_API_KEY`; skipped without it |
 
 A Codex ChatGPT login can power a `local-agent` participant. It does not
 authenticate humanish's OpenAI API requests. Choose the actor explicitly in
 your lab; installing Codex does not change an `openai-computer-use` lab.
 
 For local browsers, install only `humanish` and follow the
-[local study setup](docs/architecture/local-browser-runtime.md). The first live
+[local study setup](https://humanish.dev/docs/local-browser). The first live
 run downloads a verified runtime image; `npx humanish runtime setup` prepares it
 ahead of time. Supported Macs use Lima instead of Docker Desktop.
-[Optional camera and spoken conversation](docs/architecture/participant-media.md)
-use a separate media runtime. [Optional desktop video/audio](docs/architecture/desktop-recording.md)
-adds continuous Observer playback; screenshots remain the default. [Local captured inboxes](docs/architecture/comms-inbox.md#local-browser-studies) support email verification without mailbox-provider credentials.
+[Optional camera and spoken conversation](https://humanish.dev/docs/participant-media)
+use a separate media runtime. [Optional desktop video/audio](https://humanish.dev/docs/desktop-recording)
+adds continuous Observer playback; screenshots remain the default. [Local captured inboxes](https://humanish.dev/docs/comms-inbox#local-browser-studies) support email verification without mailbox-provider credentials.
 
 For a new local lab, initialize with your app URL and task:
 
@@ -366,7 +366,7 @@ a TTY. Agents should use `lab list --json`, `lab inspect <lab> --json`, and
 `runs --json`. Read [TUI behavior and JSON alternatives](https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts).
 
 Its Connections screen (**c**) adds an AgentMail key for
-[real email receiving](docs/architecture/real-email-receiving.md), which gives each participant a
+[real email receiving](https://humanish.dev/docs/email-receiving), which gives each participant a
 fresh hosted inbox.
 
 ## Find more guides
@@ -470,7 +470,7 @@ Maintainers draft this repository's feedback issues with
 - [Contributing: reading order, commands and pull requests](CONTRIBUTING.md)
 - [Contributor and agent ramp](docs/ramp/README.md)
 - [Architecture: the run path, code map and invariants](ARCHITECTURE.md)
-- [Project layout: the `humanish/` and `.humanish/` folders](docs/architecture/project-layout.md)
+- [Project layout: the `humanish/` and `.humanish/` folders](https://humanish.dev/docs/project-layout)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Publish a release](docs/release/publish.md)
 

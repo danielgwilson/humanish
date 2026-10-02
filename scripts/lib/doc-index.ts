@@ -88,3 +88,24 @@ export function findHistoryLinks(path: string, text: string): number[] {
   });
   return lines;
 }
+
+// The docs/architecture/ pages a site page may link: contributor reference that a user guide
+// points to for depth. A user how-to belongs on the site itself, so a site link to any other
+// architecture page fails; add a page here only when it is reference.
+export const SITE_LINKABLE_ARCHITECTURE = new Set([
+  "docs/architecture/restricted-codex-analysis.md",
+  "docs/architecture/serve.md",
+  "docs/architecture/state-driven-executor.md",
+  "docs/architecture/terminal-product-route.md",
+]);
+
+/** The docs/architecture/ pages a site page links that `SITE_LINKABLE_ARCHITECTURE` leaves out. */
+export function findSiteArchitectureLinks(path: string, text: string): string[] {
+  if (!(path.startsWith("site/content/") && path.endsWith(".mdx"))) return [];
+  const linked = [
+    ...text.matchAll(
+      /github\.com\/[\w.-]+\/humanish\/blob\/main\/(docs\/architecture\/[\w.-]+\.md)/g,
+    ),
+  ].map((match) => match[1]!);
+  return [...new Set(linked)].filter((page) => !SITE_LINKABLE_ARCHITECTURE.has(page));
+}
