@@ -114,10 +114,10 @@ function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     namespace: FANOUT_ADAPTER_NAMESPACE,
     status: "fail",
     score: 15,
-    summary: `${ctx.backend} fan-out adapter found no product-level success evidence.`,
+    summary: `${ctx.route} fan-out adapter found no product-level success evidence.`,
     data: {
-      backend: ctx.backend,
-      laneCount: ctx.laneCount,
+      route: ctx.route,
+      participantCount: ctx.participantCount,
     },
   };
 }
@@ -1976,7 +1976,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     ) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(FANOUT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
-    expect(bundle.adapterScore?.data?.laneCount).toBe(4);
+    expect(bundle.adapterScore?.data?.participantCount).toBe(4);
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(
       true,

@@ -15,6 +15,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   from `--help`, sets the same count and prints one stderr warning naming `--count`; the next
   minor removes it. `--count` now also sets a preview lab's participant count, which only
   `--sims` did before.
+- `BrowserLabScoringContext.laneCount` and `.backend`, the scorer context on computer-use and
+  shared-world runs. Read `participantCount` and `route` (`computer-use` or `shared-world`),
+  which the context now carries. The older fields still carry the same facts, and the first
+  read of each prints one `DeprecationWarning` with code
+  `HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED`. The next minor removes them.
 
 ### Removed
 

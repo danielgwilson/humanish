@@ -1560,7 +1560,7 @@ terminal-agent candidate names its substrate honestly; browser candidates use
 the existing `e2b-desktop` substrate. The routes invoke hooks over FULLY-ASSEMBLED,
 redacted evidence (`TerminalProductScoringContext` or
 `BrowserLabScoringContext`: `bundle`, runtime-only `runDir`, run identifiers,
-actor/backend metadata; all exported public types), scrub+redact returned
+actor and route metadata; all exported public types), scrub+redact returned
 payloads, and DROP any malformed score, candidate, or artifact reference with a
 warning so a bad extension never poisons a verifiable bundle. On the terminal
 route the context also carries `transcript`: the FULL normalized session
