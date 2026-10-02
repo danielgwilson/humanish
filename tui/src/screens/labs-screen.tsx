@@ -67,20 +67,20 @@ export function LabsScreen({
     // they are in the wrong place, and `npx humanish tui` is easy to type anywhere.
     return initialized ? (
       <Box flexDirection="column">
-        <Text>no labs here yet</Text>
+        <Text>No studies here yet.</Text>
         <Box marginTop={1} flexDirection="column">
-          <Text dimColor>a lab is a study: who to send, to what, and what counts as done.</Text>
-          <Text dimColor>write one in humanish/labs/, or `humanish init` for starter studies.</Text>
+          <Text dimColor>A study file says who to send, to what, and what counts as done.</Text>
+          <Text dimColor>
+            Write one in humanish/labs/, or run `humanish init` for starter studies.
+          </Text>
         </Box>
       </Box>
     ) : (
       <Box flexDirection="column">
-        <Text>this directory is not a humanish project</Text>
+        <Text>This directory is not a humanish project.</Text>
         <Box marginTop={1} flexDirection="column">
-          <Text dimColor>
-            humanish studies live in a project: a humanish/ directory of labs and
-          </Text>
-          <Text dimColor>personas beside the app they study.</Text>
+          <Text dimColor>A project is a humanish/ directory of studies and personas,</Text>
+          <Text dimColor>kept beside the app they study.</Text>
         </Box>
         {/* An ACTION, not an instruction to leave. The person reading this has just arrived, and
             telling them to cd elsewhere and type a command was a dead end at exactly the moment
@@ -163,7 +163,9 @@ export function LabsScreen({
           reads as a detail bar for the selection rather than as another list item. Added because
           a stakeholder scanning this list could not tell what any of these studies were. */}
       <Box marginTop={1} width={columns}>
-        <Text {...color(PALETTE.accent)}>▸</Text>
+        <Box flexShrink={0}>
+          <Text {...color(PALETTE.accent)}>▸</Text>
+        </Box>
         <Text dimColor wrap="truncate-end">{` ${describe(rows[selected], peerSelected)}`}</Text>
       </Box>
     </Box>
@@ -176,7 +178,7 @@ export function LabsScreen({
  * like an answer while adding nothing.
  */
 function describe(row: LabRow | undefined, peerSelected: boolean): string {
-  if (peerSelected) return "every run in this project, newest first — across every lab";
+  if (peerSelected) return "every run in this project, newest first, across every study";
   if (row === undefined) return "";
   const described = row.description?.split(/(?<=[.!?])\s/)[0]?.trim();
   return described !== undefined && described.length > 0
