@@ -61,6 +61,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   `routesToProvisionedSharedWorld` adds `subject.source` `clone` or `local-tree`, and
   `routesToExternalPublicSharedWorld` adds `subject.source` `app-url`. `selectLabBackend`
   returned the old names, which map to routes as above.
+- The `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` value of `TerminalProductLabResult.error.code`.
+  No humanish release since 0.106.0 produces it; the terminal agent runs only inside the terminal
+  route. Migration: delete any branch that matches it.
 
 ### Changed
 
