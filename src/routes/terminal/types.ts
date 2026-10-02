@@ -49,6 +49,14 @@ export const PRODUCT_SETUP_TIMEOUT_MS = 300_000;
 // How much of a captured stream / log tail rides a (redacted) message field.
 export const TAIL_CHARS = 2000;
 
+// How much of one decoded agent message or reasoning item the actor trace keeps.
+export const MESSAGE_CHARS = 8000;
+
+// How many message and reasoning items the actor trace keeps, and their total text bytes. Analysis
+// reads at most 160 KiB of evidence text, and the trace is stored twice (actor.json and run.json).
+export const TEXT_ITEMS_MAX = 200;
+export const TEXT_ITEMS_BYTES = 128 * 1024;
+
 // Hard cap on the retained event-stream + transcript size, so a runaway agent cannot balloon the
 // bundle. Redaction runs PRE-truncation so a cut can never split a secret past the scrubber.
 export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
@@ -199,11 +207,6 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
   observer?: ObserverResult;
   warnings: string[];
   error?: {
-    /**
-     * HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED is deprecated and no longer produced: the terminal
-     * agent runs only inside this route, and its fail-closed direct runner is gone. That code
-     * goes in the next minor.
-     */
     code:
       | "HUMANISH_LAB_ANALYSIS_INVALID"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
@@ -220,8 +223,7 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
       | "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
       | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"
       | "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
-      | "HUMANISH_RUN_ID_IN_USE"
-      | "HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED";
+      | "HUMANISH_RUN_ID_IN_USE";
     message: string;
   };
 }

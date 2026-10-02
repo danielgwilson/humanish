@@ -52,7 +52,7 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
 
 function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSummary {
   const { specs, outcomes } = args;
-  // The judge's verdict: live fan-out must prove every lane (judgeParticipants).
+  // The judge's verdict: live fan-out must prove every participant (judgeParticipants).
   const verdict = args.verdict;
 
   const passedParticipants = (outcomes ?? []).filter((outcome) =>
@@ -67,10 +67,10 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
   const participants =
     terminalOutcomes.length > 0
       ? tallyParticipantOutcomes(
-          // A NO-ENGAGEMENT lane is not a participant who reached the goal. It said "done" having
+          // A NO-ENGAGEMENT participant is not one who reached the goal. It said "done" having
           // taken zero actions and said nothing, and `passedParticipants` above already refuses to
           // count it — but `reachedGoal` was reading the trace status directly, so one run could be both
-          // "not a passed lane" AND "1/1 reached the goal". The headline number a researcher reads
+          // "not a passed participant" AND "1/1 reached the goal". The headline number a researcher reads
           // first was the dishonest one. Found by a provider bug that ended a study on turn one.
           terminalOutcomes.map((outcome) =>
             participantStatus(outcome.session.status, {
@@ -135,7 +135,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
   return review;
 }
 
-/** The configured browser and, when every lane resolved the same one, that browser. */
+/** The configured browser and, when every participant resolved the same one, that browser. */
 function fanoutDesktopBrowser(args: CuaFanoutBundleArgs) {
   const { outcomes, plan } = args;
   const configuredBrowser = plan.residual.execution?.desktop?.browser;
@@ -156,9 +156,9 @@ function fanoutDesktopBrowser(args: CuaFanoutBundleArgs) {
 
 function fanoutCost(args: CuaFanoutBundleArgs) {
   const { specs, outcomes } = args;
-  // Run-level cost ESTIMATE: one model-token line per lane that ran a session (from its persisted
+  // Run-level cost ESTIMATE: one model-token line per participant that ran a session (from its persisted
   // trace.estimatedCost) + a desktop line per owned allocation, priced at its observed resources.
-  // Per-lane worlds have no shared provisioning to double-count. Omitted on a pure dry-run.
+  // `per-lane-worlds` participants have no shared provisioning to double-count. Omitted on a pure dry-run.
   const costTraces = specs
     .map((spec, index) => ({ participantId: spec.planned.id, outcome: outcomes?.[index] }))
     .filter(
@@ -208,10 +208,10 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
 }
 
 /**
- * Project N>1 fan-out lanes into a humanish.run-bundle.v1 (the evidence schema is unchanged; this
- * is a new producer for the multi-stream shape). One sim + one stream per lane; per-lane
+ * Project N>1 fan-out participants into a humanish.run-bundle.v1 (the evidence schema is unchanged; this
+ * is a new producer for the multi-stream shape). One sim + one stream per participant; per-participant
  * provenance/session events; a recorded `cua-lab.fanout.plan` event (and a `cua-lab.fanout.fail-fast`
- * event when a harness error skipped queued lanes). N-ary verify/Observer already handle multiple
+ * event when a harness error skipped queued participants). N-ary verify/Observer already handle multiple
  * streams. A single-participant run without a rerun never reaches here: buildCuaRunBundle
  * (bundle.ts) sends it to buildSingleParticipantBundle (single-bundle.ts).
  */
@@ -288,9 +288,9 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     scenario: {
       id: `cua-${plan.labId}`,
       title: plan.title ?? `Computer-use fan-out: ${plan.labId}`,
-      // Redacted at WRITE time, like every other raw-text surface in the bundle. Lane records are
-      // digest-only by design, but scenario.goal keeps one lane's composed instructions verbatim —
-      // and an adopter whose authored lane text must name a runtime world URL (an inbox on a route
+      // Redacted at WRITE time, like every other raw-text surface in the bundle. Participant records are
+      // digest-only by design, but scenario.goal keeps one participant's composed instructions verbatim —
+      // and an adopter whose authored participant text must name a runtime world URL (an inbox on a route
       // where the harness does not inject one) put an *.e2b.app address in it. That landed raw here
       // and in observer-data.json, the sensitive-text scanner matched it, and verify failed a bundle
       // this writer produced. The only adopter-side workaround was scanner evasion (#412).

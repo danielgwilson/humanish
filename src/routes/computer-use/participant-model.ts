@@ -1,6 +1,6 @@
-// The model side of one computer-use lane: the provider a local agent brings, the session options
+// The model side of one computer-use participant: the provider a local agent brings, the session options
 // the loop runs with, the study's shared spend ledger, the provider cleanup, and the checks on the
-// finished session. The desktop side stays with the lane runner.
+// finished session. The desktop side stays with the participant runner.
 
 import type {
   CuaExecutor,
@@ -34,7 +34,7 @@ import type { ReadyParticipantDesktop } from "./participant-desktop.js";
 const closeReports = new WeakMap<CuaProvider, () => Promise<ParticipantProviderCloseResult>>();
 
 /**
- * Registers a caller's provider as backed by a native Codex session: the lane reads the session's
+ * Registers a caller's provider as backed by a native Codex session: the participant runner reads the session's
  * run warnings and a refusal no request reported from `report` when it closes the provider.
  */
 export function withCloseReport<T extends CuaProvider>(
@@ -45,14 +45,14 @@ export function withCloseReport<T extends CuaProvider>(
   return provider;
 }
 
-/** The model a lane brings besides the default API client, and the handles its cleanup needs. */
+/** The model a participant brings besides the default API client, and the handles its cleanup needs. */
 export interface ParticipantModel {
   provider?: CuaProvider;
   codexParticipant?: ReturnType<typeof createRestrictedCodexParticipant>;
   claudeSession?: Awaited<ReturnType<typeof startClaudeSession>>;
 }
 
-/** Starts the lane's model: a caller's provider, the operator's Codex, a Claude session, or none. */
+/** Starts the participant's model: a caller's provider, the operator's Codex, a Claude session, or none. */
 export async function startParticipantModel(
   spec: DesktopParticipantRun,
   deps: ParticipantModelDeps,
@@ -116,7 +116,7 @@ export async function startParticipantModel(
   return {};
 }
 
-/** The options the lane's session runs with: prompt, model settings, spend caps and callbacks. */
+/** The options the participant's session runs with: prompt, model settings, spend caps and callbacks. */
 export function participantSessionOptions(
   spec: DesktopParticipantRun,
   deps: ParticipantModelDeps,
@@ -144,7 +144,8 @@ export function participantSessionOptions(
     openai: {
       apiKey: deps.openaiApiKey,
       ...(deps.brain.declaredModel ? { model: deps.brain.declaredModel } : {}),
-      // Per-LANE, not per-actor: two lanes at different efforts is the control this exists for.
+      // Per-participant, not per-actor: two participants at different efforts is the control this
+      // exists for.
       ...(spec.planned.limits.reasoningEffort === undefined
         ? {}
         : { reasoningEffort: spec.planned.limits.reasoningEffort }),
@@ -176,8 +177,9 @@ export function participantSessionOptions(
       : { stopWhen: spec.planned.limits.stopWhen }),
     ...(spec.planned.limits.dwell === undefined ? {} : { dwell: spec.planned.limits.dwell }),
     ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
-    // The STUDY budget (#299): this lane notes its own running estimate on the shared ledger
-    // and stops when the RUN total crosses the cap — independent of the per-lane maxUsd above.
+    // The STUDY budget (#299): this participant notes its own running estimate on the shared
+    // ledger and stops when the RUN total crosses the cap — independent of the per-participant
+    // maxUsd above.
     ...(deps.runBudget === undefined
       ? {}
       : {
@@ -199,7 +201,7 @@ export function participantSessionOptions(
     ...(deps.onTrace === undefined
       ? {}
       : {
-          // Forwards the RUNNING usage as well: the lane is where both are known, and usage
+          // Forwards the RUNNING usage as well: the participant runner is where both are known, and usage
           // without it never reaches the flush — which is how the live cost stayed unknown.
           onTrace: (
             items: readonly ActorTraceItem[],
@@ -211,7 +213,7 @@ export function participantSessionOptions(
 }
 
 /**
- * Closes the lane's model, in the order it was opened. Returns true when a provider's cleanup is
+ * Closes the participant's model, in the order it was opened. Returns true when a provider's cleanup is
  * unconfirmed; each failure also adds a warning.
  */
 export async function closeParticipantModel(
@@ -267,7 +269,7 @@ export async function recordParticipantTrace(
   session: CuaLoopResult,
   warnings: string[],
 ): Promise<void> {
-  // Per-lane model-token cost ESTIMATE, attached to the trace before it is persisted (the model
+  // Per-participant model-token cost ESTIMATE, attached to the trace before it is persisted (the model
   // id is authoritative here — provider.version). Kept at the lab boundary so the pure loop
   // never depends on the operator rate table. estimateActorCost declares absent (null) for an
   // unknown rate / missing usage rather than guessing.
