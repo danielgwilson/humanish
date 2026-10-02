@@ -37,19 +37,25 @@ model turn; it does not guarantee current quota or model access.
 
 Each launch also checks the release's app-server schema. After `--version`, the launcher runs
 `codex app-server generate-json-schema --experimental` into its private work directory, bounded
-at 15 seconds and 64 KiB of output, and removes the schema after reading it.
+at 15 seconds and 64 KiB of output. It reads only regular files of at most 16 MiB, waits on the
+request deadline while reading, and removes the schema afterwards.
 [`src/actors/codex/protocol-contract.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/protocol-contract.ts)
-lists each method humanish calls with the params fields it sends and the response fields it reads,
-and each notification and server request it consumes. The schema does not link a response to its
-method, so the table names each response definition. A field humanish reads that is gone or
-allows another type, a value humanish compares against that the release dropped, a params field
-the release newly requires, or a missing method or definition refuses the launch as
-`codex_incompatible_release` before app-server starts, and the refusal lists each change. A value
-beyond those the admitted releases offer, such as a new item type, is recorded on the result and
-reported as a warning; a new item type that arrives is still refused by the item allowlist.
-The check covers only
-the listed fields. It does not attest the binary, and the `config/read` keys the schema leaves
-untyped are checked by exact value after launch.
+lists each method humanish calls with the fields and values it sends and the response fields it
+reads, each notification and server request it consumes, the reply it sends to a tool call, and
+the containers (`items`, `turn.items`, `thread.turns[].items`) its item policy reads in every
+notification. The schema does not link a response to its method, so the table names each
+response definition. A read field is checked in every alternative the schema allows, including
+each object or array on its path; a sent field needs one alternative that still accepts it.
+`allOf` members intersect, and `false` allows no value. The launch refuses as
+`codex_incompatible_release` before app-server starts, listing each change, when a read field is
+gone or allows another type, a compared value is no longer allowed, a sent field or value is no
+longer accepted, a field humanish does not send is newly required, or a method or definition is
+missing. A value beyond those the admitted releases offer, such as a new item type, is recorded
+on an admitted launch and reported as a warning; a new item type that arrives is still refused by
+the item allowlist. Values humanish only refuses, such as an asynchronous delivery, are listed as
+known values: their removal does not refuse the launch, since it cannot make humanish accept more. The check covers
+only the listed fields. It does not attest the binary, and the `config/read` keys the schema
+leaves untyped are checked by exact value after launch.
 
 ## Authority and request limits
 

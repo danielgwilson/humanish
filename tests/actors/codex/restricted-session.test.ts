@@ -381,17 +381,21 @@ describe("restricted Codex analyst session", () => {
     ["schema-incompatible", "thread/start response thread.id is no longer in the schema"],
     ["schema-exit", "it did not generate an app-server schema"],
     ["schema-missing", "its generated app-server schema could not be read"],
+    ["schema-special-file", "its generated app-server schema could not be read"],
   ])(
     "refuses %s at the protocol check, before app-server starts",
     async (scenario, incompatibility) => {
       const f = await fixture(scenario);
-      expect(await f.run(request)).toMatchObject({
+      const result = await f.run(request);
+      expect(result).toMatchObject({
         status: "failed",
         output: null,
         dispatched: false,
         errorCode: "codex_incompatible_release",
         protocolIncompatibilities: [incompatibility],
       });
+      // schema-incompatible also adds an item type; a refused launch reports none as recorded.
+      expect(result).not.toHaveProperty("protocolAdditions");
       expect((await f.entries()).map((entry) => entry.operation)).toEqual([
         "--version",
         "generate-json-schema",
@@ -412,6 +416,10 @@ describe("restricted Codex analyst session", () => {
     });
     expect(result.protocolIncompatibilities).toBeUndefined();
     expect(await (await fixture()).run(request)).not.toHaveProperty("protocolAdditions");
+    // Readiness carries them too, for doctor's row.
+    expect(
+      await checkRestrictedCodexAnalysisReadiness({}, (await fixture("schema-addition")).options),
+    ).toMatchObject({ ready: true, protocolAdditions: result.protocolAdditions });
   });
 
   it("refuses missing file login, unsupported platform/model and numeric token caps without model dispatch", async () => {
@@ -1836,6 +1844,21 @@ describe("hosted Codex participant readiness", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
+  it("reports schema values beyond the baseline from a handshake that passed", async () => {
+    const f = await fixture("participant-schema-addition");
+    const result = await checkRestrictedCodexParticipantReadiness({
+      session: { ...f.options, env: operatorEnv(f) },
+      reasoningEffort: "high",
+    });
+    expect(result).toMatchObject({
+      ready: true,
+      protocolAdditions: [
+        "item/started item.type now also allows synthetic_new_item",
+        "item/completed item.type now also allows synthetic_new_item",
+      ],
+    });
+  });
+
   it("refuses a release whose schema changed at the protocol check, before the handshake", async () => {
     const f = await fixture("schema-incompatible");
     const result = await checkRestrictedCodexParticipantReadiness({
@@ -1847,6 +1870,7 @@ describe("hosted Codex participant readiness", () => {
       cliVersion: "0.157.1",
       protocolIncompatibilities: ["thread/start response thread.id is no longer in the schema"],
     });
+    expect(result).not.toHaveProperty("protocolAdditions");
     expect((await f.entries()).map((entry) => entry.operation)).toEqual([
       "--version",
       "generate-json-schema",

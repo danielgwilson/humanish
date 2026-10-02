@@ -26,12 +26,18 @@ if (operation === "generate-json-schema") {
     for (const name of fs.readdirSync(source)) fs.copyFileSync(path.join(source, name), path.join(out, name));
     const v2File = path.join(out, "codex_app_server_protocol.v2.schemas.json");
     const v2 = JSON.parse(fs.readFileSync(v2File, "utf8"));
-    // schema-incompatible: thread/start's reply no longer names its thread.
+    // schema-incompatible: thread/start's reply no longer names its thread. It also adds the
+    // item type below, which a refused launch must not report as recorded.
     if (scenario === "schema-incompatible") delete v2.definitions.Thread.properties.id;
-    // schema-addition: a thread item type no admitted release has.
-    if (scenario === "schema-addition")
+    // schema-addition (and participant-schema-addition): a thread item type no admitted release has.
+    if (scenario.endsWith("schema-addition") || scenario === "schema-incompatible")
       v2.definitions.ThreadItem.oneOf.push({ type: "object", required: ["type"], properties: { type: { type: "string", enum: ["synthetic_new_item"] } } });
     fs.writeFileSync(v2File, JSON.stringify(v2));
+    // schema-special-file: a schema file that is a link to an endless device.
+    if (scenario === "schema-special-file") {
+      fs.rmSync(path.join(out, "ClientRequest.json"));
+      fs.symlinkSync("/dev/zero", path.join(out, "ClientRequest.json"));
+    }
   }
 } else if (operation === "--version") {
   if (scenario === "hang-version") setInterval(() => undefined, 1000);

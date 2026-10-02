@@ -1,14 +1,15 @@
 /**
  * Writes the test fixture for the app-server protocol check (tests/fixtures/restricted-codex/
  * app-server-schema) from a release's generated schema: the definitions the protocol contract
- * names, the params of each request it sends, and every definition those reference.
+ * names, the params of each request it sends, the notifications that carry a turn, thread or item
+ * list (the item carriers) or that it reads, and every definition those reference.
  *
  *   codex app-server generate-json-schema --experimental --out <dir>
  *   tsx scripts/codex-schema-fixture.ts <dir> tests/fixtures/restricted-codex/app-server-schema
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { PROTOCOL_CONTRACT } from "../src/actors/codex/protocol-contract.js";
+import { protocolContract } from "../src/actors/codex/protocol-contract.js";
 
 type Json = Record<string, unknown>;
 const record = (value: unknown): Json =>
@@ -26,22 +27,39 @@ const read = async (file: string): Promise<Json> =>
 const v2 = await read("codex_app_server_protocol.v2.schemas.json");
 const full = await read("codex_app_server_protocol.schemas.json");
 const requests = await read("ClientRequest.json");
+const notifications = await read("ServerNotification.json");
+const contract = protocolContract({ reasoningEffort: "low", platform: "linux" });
 
 // The full bundle nests the v2 definitions under `v2`; the v2 bundle wins for a shared name.
 const all: Json = { ...record(full.definitions), ...record(v2.definitions) };
 delete all.v2;
-const methods = new Set(PROTOCOL_CONTRACT.requests.map((request) => request.method));
-const branches = (Array.isArray(requests.oneOf) ? requests.oneOf : []).filter((branch) => {
-  const method = record(record(record(branch).properties).method).enum;
-  return Array.isArray(method) && methods.has(String(method[0]));
-});
 const refName = (ref: unknown): string => String(ref).split("/").pop()!;
+const methodOf = (branch: unknown): string =>
+  String((record(record(record(branch).properties).method).enum as unknown[] | undefined)?.[0]);
+const paramsOf = (branch: unknown): string =>
+  refName(record(record(record(branch).properties).params).$ref);
+const oneOf = (union: Json): unknown[] => (Array.isArray(union.oneOf) ? union.oneOf : []);
+const requestMethods = new Set(contract.requests.map((request) => request.method));
+const branches = oneOf(requests).filter((branch) => requestMethods.has(methodOf(branch)));
+const carrierRoots = new Set(contract.itemCarriers.map((rule) => rule.path.split(/[.[]/)[0]));
+const messageMethods = new Set(contract.messages.map((message) => message.method));
+const notificationBranches = oneOf(notifications).filter(
+  (branch) =>
+    messageMethods.has(methodOf(branch)) ||
+    Object.keys(record(record(all[paramsOf(branch)]).properties)).some((key) =>
+      carrierRoots.has(key),
+    ),
+);
 const roots = [
-  ...PROTOCOL_CONTRACT.requests.flatMap((request) =>
+  ...contract.requests.flatMap((request) =>
     request.response === undefined ? [] : [request.response.definition],
   ),
-  ...PROTOCOL_CONTRACT.messages.map((message) => message.definition),
-  ...branches.map((branch) => refName(record(record(record(branch).properties).params).$ref)),
+  ...contract.messages.flatMap((message) => [
+    message.definition,
+    ...(message.reply === undefined ? [] : [message.reply.definition]),
+  ]),
+  ...branches.map(paramsOf),
+  ...notificationBranches.map(paramsOf),
 ];
 
 const keep = new Set<string>();
@@ -79,5 +97,10 @@ await write("ClientRequest.json", {
   $schema: requests.$schema,
   title: requests.title,
   oneOf: branches,
+});
+await write("ServerNotification.json", {
+  $schema: notifications.$schema,
+  title: notifications.title,
+  oneOf: notificationBranches,
 });
 process.stdout.write(`${keep.size} definitions\n`);

@@ -43,6 +43,7 @@ export async function checkRestrictedCodexAnalysisReadiness(
   ready: boolean;
   errorCode: RestrictedCodexAnalysisErrorCode | null;
   protocolIncompatibilities?: readonly string[];
+  protocolAdditions?: readonly string[];
 }> {
   const result = await checkRestrictedCodexSessionReadiness(input, options);
   return {
@@ -51,5 +52,8 @@ export async function checkRestrictedCodexAnalysisReadiness(
     ...(result.protocolIncompatibilities === undefined
       ? {}
       : { protocolIncompatibilities: result.protocolIncompatibilities }),
+    ...(result.protocolAdditions === undefined
+      ? {}
+      : { protocolAdditions: result.protocolAdditions }),
   };
 }

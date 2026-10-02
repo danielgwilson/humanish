@@ -17,7 +17,7 @@ import {
   resolveExecutable,
 } from "./restricted-executable.js";
 import { checkProtocol, loadProtocolSchema } from "./protocol-compat.js";
-import { PROTOCOL_CONTRACT } from "./protocol-contract.js";
+import { protocolContract, type ProtocolContractHost } from "./protocol-contract.js";
 import {
   admitsRestrictedCodexConfig,
   admitsRestrictedCodexThread,
@@ -253,7 +253,9 @@ export function admitMcpStatus(reply: Record<string, unknown>): Admission<void> 
 /**
  * The release's own app-server schema against the fields humanish reads and sends
  * (protocol-contract.ts), generated into the private work directory on every launch. A change
- * there refuses as codex_incompatible_release; a value beyond the baseline is recorded.
+ * there refuses as codex_incompatible_release; a value beyond the baseline is recorded when the
+ * launch is admitted. Reading the schema waits on the deadline; a stop leaves the directory to
+ * the session's teardown, which removes the whole work directory.
  */
 async function admitProtocol(
   file: string,
@@ -261,6 +263,7 @@ async function admitProtocol(
   state: LaunchState,
   spawnFn: RestrictedCodexSpawn,
   deadline: RestrictedCodexDeadline,
+  host: ProtocolContractHost,
 ): Promise<void> {
   const directory = path.join(state.work!, "schema");
   const generated = await generateProtocolSchema(
@@ -271,23 +274,27 @@ async function admitProtocol(
     spawnFn,
     deadline,
   );
-  deadline.check();
-  const result = generated
-    ? await loadProtocolSchema(directory).then(
-        (schema) => checkProtocol(schema, PROTOCOL_CONTRACT),
-        () => ({
-          incompatibilities: ["its generated app-server schema could not be read"],
+  const schema = generated
+    ? await deadline.wait(loadProtocolSchema(directory).catch(() => undefined))
+    : undefined;
+  const result =
+    schema === undefined
+      ? {
+          incompatibilities: [
+            generated
+              ? "its generated app-server schema could not be read"
+              : "it did not generate an app-server schema",
+          ],
           additions: [],
-        }),
-      )
-    : { incompatibilities: ["it did not generate an app-server schema"], additions: [] };
+        }
+      : checkProtocol(schema, protocolContract(host));
   await rm(directory, { recursive: true, force: true });
   deadline.check();
-  state.protocolAdditions = result.additions;
   if (result.incompatibilities.length > 0) {
     state.protocolIncompatibilities = result.incompatibilities;
     throw new RestrictedCodexStop("codex_incompatible_release");
   }
+  state.protocolAdditions = result.additions;
 }
 
 /** The host's Codex auth.json, which a private home links to instead of copying. */
@@ -337,7 +344,10 @@ export async function launchAdmittedAppServer(
     settings.admittedVersions,
     options.cliVersion,
   );
-  await admitProtocol(file, env, state, spawnFn, deadline);
+  await admitProtocol(file, env, state, spawnFn, deadline, {
+    reasoningEffort,
+    platform: settings.platform,
+  });
   const configMode = {
     participantCodeMode: participant !== undefined,
     reasoningEffort,

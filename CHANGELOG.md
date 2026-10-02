@@ -78,15 +78,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 - Every restricted Codex launch (account analysis, readiness checks and Codex participants)
   checks the release's own app-server schema after `--version` and before app-server starts. It
   runs `codex app-server generate-json-schema --experimental` in the launch's private directory
-  and compares the result with the fields humanish sends and reads, listed in
-  `src/actors/codex/protocol-contract.ts`. A field humanish reads that is gone or retyped, a value
-  it compares against that the release dropped, a params field the release newly requires, or a
-  missing method refuses with the new code `codex_incompatible_release` (analysis error
-  `analysis_codex_incompatible_release`), and the warning names each change; doctor prints the
-  same list with the install command. A value no admitted release offered, such as a new item
-  type, is recorded on the result and printed as a warning. The admitted releases (0.154.0,
-  0.157.1, 0.159.2, 0.159.3 and 0.160.0) pass with nothing refused or recorded. A launch now
-  spawns one more Codex process, which took 0.08 s on 0.159.3.
+  and compares the result with `src/actors/codex/protocol-contract.ts`: the fields and values
+  humanish sends in each request and in its tool-call reply, the fields it reads in each response,
+  notification and server request, and the containers its item policy reads in every
+  notification. The launch refuses with the new code `codex_incompatible_release` (analysis error
+  `analysis_codex_incompatible_release`) when:
+  - a field humanish reads is gone or allows another type, there or in a container on its path;
+  - a value it compares against is no longer allowed;
+  - a field or value it sends is no longer accepted, or a field it does not send is now required;
+  - a method or definition is missing.
+    The warning names each change, and doctor prints the same list with the install command. A
+    value no admitted release offered, such as a new item type, is recorded on the result and
+    printed as a warning, including on doctor's ready rows. The admitted releases (0.154.0, 0.157.1,
+    0.159.2, 0.159.3 and 0.160.0) pass with nothing refused or recorded. A launch now spawns one more
+    Codex process, which took 0.08 s on 0.159.3.
 - `humanish doctor --lab` checks a hosted Codex participant (a local-agent lab on an E2B desktop) by
   starting it as a run would, up to an ephemeral thread and without a turn (#1380): the release
   check, then `initialize`, `config/read`, `account/read` and `thread/start` with the operator's

@@ -298,6 +298,8 @@ export interface ParticipantReadiness {
   cliVersion?: string;
   /** How the release's schema differs from the fields humanish reads, when that refused it. */
   protocolIncompatibilities?: readonly string[];
+  /** Schema values beyond the baseline, recorded by a launch that passed. */
+  protocolAdditions?: readonly string[];
   /** The model thread/start resolved from the operator's configuration or the declared model. */
   resolvedModel?: string;
   authentication?: "chatgpt-account" | "api-key";
@@ -346,6 +348,9 @@ export async function checkRestrictedCodexParticipantReadiness(options: {
     ...(session.protocolIncompatibilities === undefined
       ? {}
       : { protocolIncompatibilities: session.protocolIncompatibilities }),
+    ...(session.protocolAdditions === undefined || session.protocolAdditions.length === 0
+      ? {}
+      : { protocolAdditions: session.protocolAdditions }),
     ...(session.resolvedModel === undefined ? {} : { resolvedModel: session.resolvedModel }),
     ...(session.authentication === undefined ? {} : { authentication: session.authentication }),
   };
