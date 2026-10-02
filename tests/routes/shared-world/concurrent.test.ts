@@ -64,16 +64,16 @@ import {
 import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.js";
 
 // ---------------------------------------------------------------------------
-// Fakes for the N+1 substrate. The module records create/kill BY id and exposes
-// NO `list` (enumerate-and-kill is impossible by construction). Each fake sandbox
-// has getHost(port) → a BARE tokenless host keyed on its id (no scheme, exactly as
-// the real @e2b SDK returns it — the orchestrator normalizes it to https://). The command handler drives
-// the detached primitive (provisioning + checkpoints) and returns STATEFUL
+// Fakes for the N+1 substrate. The module records create/kill by id and exposes
+// no `list` (enumerate-and-kill is impossible by construction). Each fake sandbox
+// has getHost(port) → a bare tokenless host keyed on its id (no scheme, exactly as
+// the real @e2b SDK returns it: the orchestrator normalizes it to https://). The command handler drives
+// the detached primitive (provisioning + checkpoints) and returns stateful
 // checkpoint output (a shared worldVersion the fake runSession bumps per turn).
 //
-// FIX-1: overlap is PRODUCED, not injected. The fake runSession blocks on a
-// RENDEZVOUS LATCH until all N actors have entered, so N lane fns are genuinely
-// in-flight while the REAL orchestrator clock (Date.now — NOT overridden) measures
+// Overlap is produced, not injected. The fake runSession blocks on a
+// rendezvous latch until all N actors have entered, so N lane fns are genuinely
+// in-flight while the real orchestrator clock (Date.now, not overridden) measures
 // the wrapped [start,end] laneWindows. The windows therefore overlap for real.
 // ---------------------------------------------------------------------------
 
@@ -123,7 +123,7 @@ function makeFakeSandbox(
     open: async (fileOrUrl: string) => {
       calls.push(["open", fileOrUrl]);
     },
-    getHost: (port: number) => `${port}-${id}.e2b.app`, // BARE host (no scheme) — matches the real @e2b SDK
+    getHost: (port: number) => `${port}-${id}.e2b.app`, // bare host (no scheme); matches the real @e2b SDK
     async screenshot() {
       return new Uint8Array([1, 2, 3, 4]);
     },
@@ -152,15 +152,15 @@ function makeFakeModule(
   sandboxes: FakeSandbox[];
 } {
   const created: E2BDesktopCreateOptions[] = [];
-  // Parallel to `created`: the custom template each create() got — subject AND every actor sandbox.
-  // undefined == called with NO template arg (the byte-stable default).
+  // Parallel to `created`: the custom template each create() got; subject and every actor sandbox.
+  // undefined == called with no template arg (the byte-stable default).
   const templates: (string | undefined)[] = [];
   const killed: string[] = [];
   const sandboxes: FakeSandbox[] = [];
   let n = 0;
   const module: E2BDesktopModule = {
     Sandbox: {
-      // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
+      // Mirror the real @e2b/desktop overload: create(opts) or create(template, opts).
       create: async (
         templateOrOptions: string | E2BDesktopCreateOptions,
         maybeOptions?: E2BDesktopCreateOptions,
@@ -189,7 +189,7 @@ function makeFakeModule(
         killed.push(sandboxId);
         return true;
       },
-      // NOTE: NO `list` method.
+      // NOTE: no `list` method.
     },
   };
   return { module, created, templates, killed, sandboxes };
@@ -228,7 +228,7 @@ function makeCommandHandler(state: {
 }
 
 /** A rendezvous latch: the returned fn blocks until `count` callers have entered, then releases
- *  them all — so `count` lane fns are genuinely in-flight at once (real overlap). */
+ *  them all, so `count` lane fns are genuinely in-flight at once (real overlap). */
 function makeRendezvous(count: number): () => Promise<void> {
   let arrived = 0;
   let release: () => void = () => {};
@@ -339,14 +339,14 @@ function makeRunSession(
   let calls = -1;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
     calls += 1;
-    // The override targets a LANE (by its persona id), never "the Nth call": concurrent lanes
-    // interleave however the scheduler likes, so call order is an accident — asserting on it made
-    // these tests flake the moment an unrelated await shifted the schedule (#359 CI).
+    // The override targets a lane (by its persona id), never "the Nth call": concurrent lanes
+    // interleave however the scheduler likes, so call order is an accident: asserting on it made
+    // these tests flake the moment an unrelated await shifted the schedule.
     const personaMatch = /^persona-(\d+)$/.exec(options.persona.id);
     const myIndex = personaMatch ? Number(personaMatch[1]) - 1 : calls;
     await rendezvous(); // all actors are in-flight here → their windows overlap on the real clock
     // All lanes were released together; hold them concurrently for a measurable interval so the
-    // REAL orchestrator clock records overlapping [start,end] windows (Date.now is ms-resolution —
+    // real orchestrator clock records overlapping [start,end] windows (Date.now is ms-resolution:
     // without this the instant fake collapses every window to a zero-width point). The overlap is
     // genuinely produced (all lanes are in this delay at once), not injected.
     await new Promise<void>((resolve) => {
@@ -642,7 +642,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
   });
 
-  it("execution.desktop.template: BOTH the subject AND every actor sandbox launch on the template; bundle records it; absent stays byte-stable", async () => {
+  it("execution.desktop.template: both the subject and every actor sandbox launch on the template; bundle records it; absent stays byte-stable", async () => {
     // With a custom template: all N+1 creates (subject + N actors) get it.
     const withState = { worldVersion: 0 };
     const withTemplate = baseSeams(withState, makeRendezvous(3));
@@ -662,7 +662,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     );
     expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
 
-    // Byte-stable default: NO template → every create called with NO template arg, bundle omits it.
+    // Byte-stable default: no template → every create called with no template arg, bundle omits it.
     const noState = { worldVersion: 0 };
     const noTemplate = baseSeams(noState, makeRendezvous(3));
     const result2 = await runConcurrentSharedWorld({
@@ -764,7 +764,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ]);
   });
 
-  it("GOOD run: ONE subject + N actors all torn down BY id (killed==created, N+1), same getHost URL, REAL overlap, state delta, verify ok", async () => {
+  it("good run: one subject + N actors all torn down by id (killed==created, N+1), same getHost URL, real overlap, state delta, verify ok", async () => {
     const state = { worldVersion: 0 };
     const { env, created, killed, sandboxes, deps } = baseSeams(state, makeRendezvous(3));
     const result = await runConcurrentSharedWorld({
@@ -778,7 +778,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.ok).toBe(true);
     expect(result.error).toBeUndefined();
 
-    // ONE subject sandbox + 3 actor sandboxes = 4 created; ALL torn down BY exact id (no list).
+    // One subject sandbox + 3 actor sandboxes = 4 created; all torn down by exact id (no list).
     expect(created).toHaveLength(4);
     expect(sandboxes).toHaveLength(4);
     expect(created[0]?.metadata?.kind).toBe("subject");
@@ -787,20 +787,20 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect([...killed].sort()).toEqual(createdIds); // killed-set == created-set (N+1)
     expect(result.subjectSandbox).toEqual({ sandboxId: "fake-sandbox-001", killed: true });
 
-    // Subject creds entered ONLY the subject sandbox (FIX-10): actor creates carry no envs.
+    // Subject creds entered only the subject sandbox: actor creates carry no envs.
     expect(created[0]?.envs).toEqual({ DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" });
     for (const createOpts of created.slice(1)) {
       expect(createOpts.envs).toBeUndefined();
     }
 
-    // provisionCloneSubject ran EXACTLY once, on the SUBJECT sandbox only (one git clone written).
+    // provisionCloneSubject ran exactly once, on the subject sandbox only (one git clone written).
     const cloneWrites = sandboxes
       .flatMap((s) => s.calls)
       .filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
     expect(cloneWrites).toHaveLength(1);
 
-    // Every actor ACTUALLY opened the SAME harness-minted getHost URL (FIX-2): one shared plane.
-    // (The raw URL appears only in the in-memory fake's recorded calls — never in the bundle.)
+    // Every actor actually opened the same harness-minted getHost URL: one shared plane.
+    // (The raw URL appears only in the in-memory fake's recorded calls, never in the bundle.)
     const getHostUrl = `https://3000-fake-sandbox-001.e2b.app`;
     const actorSandboxes = sandboxes.slice(1);
     expect(actorSandboxes).toHaveLength(3);
@@ -809,7 +809,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       expect(opened, "each actor opens a seat URL").toBeTruthy();
       expect(new URL(opened!).origin).toBe(new URL(getHostUrl).origin);
     }
-    // The published bundle records the host as a DIGEST (public-safe), never the raw e2b URL; the
+    // The published bundle records the host as a digest (public-safe), never the raw e2b URL; the
     // raw tokenless URL is surfaced only on the ephemeral result.
     expect(result.host).toBe(getHostUrl);
     const runText = await readFile(
@@ -848,7 +848,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       expect(stream.viewport).toEqual({ ...FAKE_DESKTOP_VIEWPORT, isMobile: false });
     }
 
-    // PROVEN CONCURRENCY (FIX-1): the laneWindows the REAL clock measured overlap (≥2 in flight).
+    // Proven concurrency: the laneWindows the real clock measured overlap (≥2 in flight).
     const windows = bundle.sharedWorld.laneWindows as Array<{
       startedAt: number;
       endedAt: number;
@@ -868,12 +868,12 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     );
     expect(overlapping).toBe(true);
     expect(result.overlapProven).toBe(true);
-    // Every actor drove EXACTLY the harness-minted host (FIX-2): routeHostDigest == plane.hostDigest.
+    // Every actor drove exactly the harness-minted host: routeHostDigest == plane.hostDigest.
     for (const w of windows) {
       expect(w.routeHostDigest).toBe(bundle.sharedWorld.plane.hostDigest);
     }
 
-    // A stateSeries delta occurred under load (the world changed; FIX-6).
+    // A stateSeries delta occurred under load (the world changed).
     const series = bundle.sharedWorld.stateSeries as Array<{ timestamp: number; digest: string }>;
     expect(series.length).toBeGreaterThanOrEqual(2);
     expect(series.some((s, i) => i > 0 && s.digest !== series[i - 1]!.digest)).toBe(true);
@@ -895,7 +895,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ]);
     expect((bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).every((o) => o.ok)).toBe(true);
 
-    // verifyRun ok on the GOOD concurrent bundle (incl. the concurrency-on-pass gate).
+    // verifyRun ok on the good concurrent bundle (incl. the concurrency-on-pass gate).
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
@@ -938,7 +938,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json", "stream-003.json"]);
   });
 
-  it("comms:email:fake — deploys the catch on the SUBJECT sandbox, injects env there ONLY, drains to run-level evidence", async () => {
+  it("comms:email:fake: deploys the catch on the subject sandbox, injects env there only, drains to run-level evidence", async () => {
     const state = { worldVersion: 0 };
     const commsPort = 8025;
     const verificationHtml =
@@ -991,8 +991,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(result.ok).toBe(true);
 
-    // The catch base-URL env is injected into the SUBJECT sandbox (created[0]) alongside DATABASE_URL —
-    // and NOWHERE else: the actor sandboxes still carry no envs (FIX-10 preserved).
+    // The catch base-URL env is injected into the subject sandbox (created[0]) alongside DATABASE_URL:
+    // and nowhere else: the actor sandboxes still carry no envs.
     expect(created[0]?.envs?.RESEND_API_URL).toBe(`http://127.0.0.1:${commsPort}`);
     expect(created[0]?.envs?.DATABASE_URL).toBe("opaque-pw-7f3a9c2e-do-not-leak");
     for (let i = 1; i < created.length; i += 1)
@@ -1001,7 +1001,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       ).toBeUndefined();
 
     // The captured mail was drained at subject teardown + written as a run-level digest-only artifact,
-    // registered ONCE on the first stream (a property of the shared app, not any single persona).
+    // registered once on the first stream (a property of the shared app, not any single persona).
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     const onStream0 = bundle.streams[0].artifacts.find(
@@ -1026,7 +1026,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(verify.ok).toBe(true);
   });
 
-  it("comms:email:fake — getHost-exposes the inbox, renders the live surface on the SUBJECT, and tells the matching persona its inbox URL", async () => {
+  it("comms:email:fake: getHost-exposes the inbox, renders the live surface on the subject, and tells the matching persona its inbox URL", async () => {
     const state = { worldVersion: 0 };
     const commsPort = 8025;
     const verificationHtml =
@@ -1070,7 +1070,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     };
     const config: LabConfig = {
       ...concurrentConfig(3, 3),
-      // Recipient lane matches the FIRST persona's lane id, so only it is told to check the inbox.
+      // Recipient lane matches the first persona's lane id, so only it is told to check the inbox.
       comms: {
         email: {
           kind: "fake",
@@ -1083,11 +1083,11 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(result.ok).toBe(true);
 
-    // The read-only inbox listener was getHost-exposed on commsPort+1; the matching persona was told THAT
-    // URL (a getHost host, reachable from its own — different — sandbox), not the loopback capture URL.
+    // The read-only inbox listener was getHost-exposed on commsPort+1; the matching persona was told that
+    // URL (a getHost host, reachable from its own (different) sandbox), not the loopback capture URL.
     const inboxHost = `https://${commsPort + 1}-${sandboxes[0]!.sandboxId}.e2b.app/inbox`;
     expect(seenInstructions.some((text) => text.includes(inboxHost))).toBe(true);
-    // The full handoff (#351) rides the same injection on this route too: address + wait steering.
+    // The full handoff rides the same injection on this route too: address + wait steering.
     expect(
       seenInstructions.some((text) => text.includes("Your email address is user@example.test")),
     ).toBe(true);
@@ -1098,7 +1098,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ).toBe(true);
     expect(seenInstructions.some((text) => text.includes(`127.0.0.1:${commsPort}`))).toBe(false); // never the capture URL
 
-    // The live inbox surface was rendered into the SUBJECT sandbox (created first) during the run.
+    // The live inbox surface was rendered into the subject sandbox (created first) during the run.
     expect(
       sandboxes[0]!.calls.some(
         ([name, p]) =>
@@ -1349,7 +1349,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     config.actors[0]!.stopWhen = actorDefault;
     config.actors[0]!.lanes![1]!.stopWhen = laneOverride;
 
-    // Keyed by lane persona, not call order — concurrent completion order is not a contract.
+    // Keyed by lane persona, not call order: concurrent completion order is not a contract.
     const seen = new Map<string, CuaActorSessionOptions["stopWhen"]>();
     const runSession = deps.runSession!;
     deps.runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
@@ -1774,9 +1774,9 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(sharedWorldValidationReason(unattested)).toContain("exposure: synthetic");
   });
 
-  it("INDEPENDENT actors (FIX-11): one actor's harness error does NOT block the swarm or suppress overlap", async () => {
+  it("independent actors: one actor's harness error does not block the swarm or suppress overlap", async () => {
     const state = { worldVersion: 0 };
-    // Actor index 1 throws AFTER entering the rendezvous (so all 3 windows still overlap).
+    // Actor index 1 throws after entering the rendezvous (so all 3 windows still overlap).
     const { env, deps } = baseSeams(state, makeRendezvous(3), (index) =>
       index === 1 ? { throwMessage: "boom in actor 1" } : undefined,
     );
@@ -1789,7 +1789,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       deps,
     }).finally(stderr.stop);
 
-    // The swarm did not run fully coherently → ok false, but the other actors STILL ran (no gate).
+    // The swarm did not run fully coherently → ok false, but the other actors still ran (no gate).
     expect(result.ok).toBe(false);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -1804,7 +1804,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       ),
     ).toBe(true);
     // 2 of 3 sessions passed the credibility checks; the failed one is recorded as data, not a
-    // swarm-blocker. Mission and convergence claims remain separate in the review summary (#364).
+    // swarm-blocker. Mission and convergence claims remain separate in the review summary.
     const okCount = (bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).filter(
       (o) => o.ok,
     ).length;
@@ -1850,7 +1850,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
 // The same concurrent shared-world composition, but driven from the operator's own packed working
 // tree (subject.source: local-tree) instead of a clone - the follow-up to the local-tree keystone
-// that wires provisionLocalTreeSubject into the ONE subject sandbox (issue #261 follow-up). The N
+// that wires provisionLocalTreeSubject into the one subject sandbox. The N
 // actor desktops still drive the getHost URL exactly as today - only the subject's provisioning +
 // provenance source changes.
 describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree)", () => {
@@ -1916,7 +1916,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(verify.ok).toBe(true);
   });
 
-  it("GOOD run: packs ONCE, uploads to the SUBJECT sandbox only, extracts, provisions via provisionLocalTreeSubject; provenance carries archiveSha256 + commit + dirty; N actors unaffected; verify ok", async () => {
+  it("good run: packs once, uploads to the subject sandbox only, extracts, provisions via provisionLocalTreeSubject; provenance carries archiveSha256 + commit + dirty; N actors unaffected; verify ok", async () => {
     const state = { worldVersion: 0 };
     const { env, created, killed, sandboxes, deps } = baseSeams(state, makeRendezvous(3));
     const packCalls: Array<{ root: string }> = [];
@@ -1935,16 +1935,16 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(result.ok).toBe(true);
     expect(result.error).toBeUndefined();
 
-    // Packed exactly ONCE, before ANY (subject or actor) sandbox is created.
+    // Packed exactly once, before any (subject or actor) sandbox is created.
     expect(packCalls).toHaveLength(1);
     expect(packCalls[0]?.root).toBe(cwd);
 
-    // ONE subject sandbox + 3 actor sandboxes = 4 created; ALL torn down BY exact id.
+    // One subject sandbox + 3 actor sandboxes = 4 created; all torn down by exact id.
     expect(created).toHaveLength(4);
     const createdIds = sandboxes.map((s) => s.sandboxId).sort();
     expect([...killed].sort()).toEqual(createdIds);
 
-    // The archive uploaded ONLY to the subject sandbox (sandboxes[0]), never any actor sandbox.
+    // The archive uploaded only to the subject sandbox (sandboxes[0]), never any actor sandbox.
     const subjectUploads = sandboxes[0]!.calls.filter(
       (call): call is [string, string, ArrayBuffer] =>
         call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz",
@@ -1964,7 +1964,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       .filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
     expect(cloneWrites).toHaveLength(0);
 
-    // Provenance: source local-tree + archiveSha256 (the pin - ONE archive, no per-lane unanimity
+    // Provenance: source local-tree + archiveSha256 (the pin - one archive, no per-lane unanimity
     // math needed) + commit/dirty from the host-packed archive; no repo/publicRepo for local-tree.
     const expectedSubject = {
       source: "local-tree",
@@ -2000,7 +2000,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
   });
 
-  it("subjectPhaseSink: the ONE subject sandbox's provision reports upload/extract (never clone), then install/ready, in order", async () => {
+  it("subjectPhaseSink: the one subject sandbox's provision reports upload/extract (never clone), then install/ready, in order", async () => {
     const state = { worldVersion: 0 };
     const { env, phaseEvents, deps } = baseSeams(state, makeRendezvous(3));
     deps.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
@@ -2026,7 +2026,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(phaseEvents.some((e) => e.type.includes(".clone."))).toBe(false);
   });
 
-  it("packing failure (hook throws) fails the run closed BEFORE any sandbox (subject or actor) is created", async () => {
+  it("packing failure (hook throws) fails the run closed before any sandbox (subject or actor) is created", async () => {
     const state = { worldVersion: 0 };
     const { env, created, deps } = baseSeams(state, makeRendezvous(3));
     deps.packLocalTree = async () => {
@@ -2262,7 +2262,7 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
     const { runId, bundlePath, ok } = await goodConcurrentRun();
     expect(ok).toBe(true);
     const baseline = await verifyRun(cwd, runId);
-    expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
+    expect(baseline.ok).toBe(true); // the un-mutated bundle must verify (so a failure is attributable)
     const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
     mutate(bundle);
     await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -2476,7 +2476,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
   });
 
-  it("drives this exact committed config through the REAL orchestrator on a fake N+1 substrate ($0): one plane, real overlap, a state delta, verify ok", async () => {
+  it("drives this exact committed config through the real orchestrator on a fake N+1 substrate ($0): one plane, real overlap, a state delta, verify ok", async () => {
     const state = { worldVersion: 0 };
     const { env, created, killed, sandboxes, deps } = baseSeams(state, makeRendezvous(3));
     const result = await runConcurrentSharedWorld({
@@ -2488,7 +2488,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     });
 
     expect(result.ok).toBe(true);
-    // ONE subject sandbox + 3 actor sandboxes, ALL torn down BY id (N+1).
+    // One subject sandbox + 3 actor sandboxes, all torn down by id (N+1).
     expect(created).toHaveLength(4);
     expect([...killed].sort()).toEqual(sandboxes.map((s) => s.sandboxId).sort());
     expect(result.subjectSandbox?.killed).toBe(true);
@@ -2508,7 +2508,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
 });
 
 describe("lobby-code handoff relays (CDP-independent: narration + vision-off-frame)", () => {
-  it("extractLobbyCodeFromNarration reads a /lobby/CODE or a labeled UPPERCASE code, never lowercase prose", () => {
+  it("extractLobbyCodeFromNarration reads a /lobby/CODE or a labeled uppercase code, never lowercase prose", () => {
     expect(
       extractLobbyCodeFromNarration(
         "I'm in! The link is https://lobby-trivia.example.test/en/lobby/UDYCPH now.",
@@ -2516,7 +2516,7 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     ).toBe("UDYCPH");
     expect(extractLobbyCodeFromNarration("lobby code: MHDTP2")).toBe("MHDTP2");
     expect(extractLobbyCodeFromNarration("LOBBY_CODE=AB8K9Q done")).toBe("AB8K9Q");
-    // A wrong latch fails the whole run: ordinary lowercase words after "lobby code" must NOT latch,
+    // A wrong latch fails the whole run: ordinary lowercase words after "lobby code" must not latch,
     // even though the label match is case-insensitive (regression: the /i flag used to grab them).
     expect(
       extractLobbyCodeFromNarration("I clicked the lobby code screen to check"),
@@ -2526,14 +2526,14 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     expect(extractLobbyCodeFromNarration(undefined)).toBeUndefined();
   });
 
-  it("parseLobbyCodeReply is PRECISION-FIRST: only a bare code or an echoed /lobby/CODE, never prose", () => {
+  it("parseLobbyCodeReply is precision-first: only a bare code or an echoed /lobby/CODE, never prose", () => {
     expect(parseLobbyCodeReply("UDYCPH")).toBe("UDYCPH");
     expect(parseLobbyCodeReply("  mhdtp2 ")).toBe("MHDTP2");
     expect(parseLobbyCodeReply("/lobby/QW3RTY")).toBe("QW3RTY");
     expect(parseLobbyCodeReply("https://lobby-trivia.example.test/en/lobby/QW3RTY?x=1")).toBe(
       "QW3RTY",
     );
-    // A wrong latch fails the whole run, so these must NOT match — a miss just retries next frame.
+    // A wrong latch fails the whole run, so these must not match: a miss just retries next frame.
     expect(parseLobbyCodeReply("The code is ABC234")).toBeUndefined();
     expect(parseLobbyCodeReply("I see a home SCREEN")).toBeUndefined();
     expect(parseLobbyCodeReply("NONE")).toBeUndefined();
@@ -2567,7 +2567,7 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     const code = await readLobbyCodeFromFrame(frame, "sk-test", { fetchFn: okFetch });
     expect(code).toBe("QW3RTY");
     expect(calls).toHaveLength(1);
-    // The frame is sent as a base64 data URL (same shape the CU provider already uses); key never in body.
+    // The frame is sent as a base64 data URL (same shape the computer-use provider already uses); key never in body.
     expect(calls[0]!.body).toContain("data:image/png;base64,");
     expect(calls[0]!.body).not.toContain("sk-test");
     // A timeout signal is always attached even when the caller passes none, so a stalled request cannot

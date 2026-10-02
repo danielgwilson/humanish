@@ -4,18 +4,18 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// SLICE 4 conformance proof (deterministic, $0, NO live E2B): the layer-6 product-adapter EXTENSION
-// SEAM (issue #154 acceptance #8 — "product-adapter hooks WITHOUT forking core"). A THIN in-repo
-// EXAMPLE adapter (below, ~40 lines, simulating what a real adopter would write in ITS own repo)
+// Conformance proof (deterministic, $0, no live E2B): the product-adapter extension
+// seam ("product-adapter hooks without forking core"). A thin in-repo
+// example adapter (below, ~40 lines, simulating what a real adopter would write in its own repo)
 // registers a terminal-product scorer + feedback strategy as the run's `scorer`,
-// attaches ADAPTER-NAMESPACED product nouns to a feedback candidate, and the produced bundle
-// VERIFIES — proving the seam closes the fork-forcing gap WITHOUT a fork.
+// attaches adapter-namespaced product nouns to a feedback candidate, and the produced bundle
+// verifies: proving the seam closes the fork-forcing gap without a fork.
 //
-// THE LOAD-BEARING PROOF: the example adapter imports ONLY from the public package barrel
-// ("../src/index.js" — the exact surface published as humanish), never a deep `src/` module. If
+// The main proof: the example adapter imports only from the public package barrel
+// ("../src/index.js": the exact surface published as humanish), never a deep `src/` module. If
 // the contract types it needs (RunFeedbackCandidate / RunAdapterScore / TerminalProductScoringContext
-// / ActorTrace) were not exported, this file would not type-check — which IS the fork-forcing gap
-// acceptance #8 names. The ledger shape is reached as TerminalProductScoringContext["ledgers"].
+// / ActorTrace) were not exported, this file would not type-check, which is the fork-forcing gap
+// the seam removes. The ledger shape is reached as TerminalProductScoringContext["ledgers"].
 import {
   type ActorTrace,
   type RunAdapterScore,
@@ -27,9 +27,9 @@ import {
 // The ledgers reach an adapter through its scoring context; the type needs no export of its own.
 type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 
-// Reuse the SLICE-2/3 fake-E2B-module + mock-CLI pattern. (parseLabConfig + runTerminalProductLab +
+// Reuse the slice-2/3 fake-E2B-module + mock-CLI pattern. (parseLabConfig + runTerminalProductLab +
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
-// harness in-test — the ADAPTER itself uses the barrel exclusively, asserted below.)
+// harness in-test: the adapter itself uses the barrel exclusively, asserted below.)
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
@@ -42,11 +42,11 @@ import { DECLARED_SCORER_MALFORMED } from "../../../src/lab/adapter-extension.js
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 
 // =============================================================================================
-// THE THIN EXAMPLE ADAPTER — this is the ~40-line extension an adopter would write in ITS repo.
-// It types ONLY against humanish's PUBLIC barrel; it knows nothing of core internals. It scores
-// the product attempt with ITS OWN (off-core) rubric and records ITS product nouns (public CLI
+// The thin example adapter: this is the ~40-line extension an adopter would write in its repo.
+// It types only against humanish's public barrel; it knows nothing of core internals. It scores
+// the product attempt with its own (off-core) rubric and records its product nouns (public CLI
 // command observed, hosted success/blocker, feedback id, media/job ids, no-media-spend, friction
-// risk) under an ADAPTER-NAMESPACED block — never as core enums. NEUTRAL fictional product name.
+// risk) under an adapter-namespaced block, never as core enums. Neutral fictional product name.
 // =============================================================================================
 const ADAPTER_NAMESPACE = "pixelforge-studio";
 
@@ -82,7 +82,7 @@ function exampleAdapterFeedback(ctx: TerminalProductScoringContext): RunFeedback
       scenario_id: `terminal-${ctx.labId}`,
       persona_id: ctx.trace.persona.id,
       actor: "codex-exec",
-      substrate: "e2b-terminal", // SLICE-4 substrate enum addition.
+      substrate: "e2b-terminal", // slice-4 substrate enum addition.
       failure_owner: ctx.trace.status === "passed" ? "harness" : "actor",
       summary: "Autonomous agent attempted a durable Pixelforge image task from public surfaces.",
       expected:
@@ -98,8 +98,8 @@ function exampleAdapterFeedback(ctx: TerminalProductScoringContext): RunFeedback
       idempotency_key: `${ADAPTER_NAMESPACE}:${ctx.runId}:attempt`,
       proposed_next_state: "watch",
       acceptance_proof: [`pnpm humanish -- verify --run ${ctx.runId} --json`],
-      // THE NON-CORE PRODUCT NOUNS (issue #154's "record product-specific concepts as NON-core nouns"
-      // list) — namespaced so core schemas stay product-agnostic and an inert-field audit never misfires.
+      // The non-core product nouns (the "record product-specific concepts as non-core nouns"
+      // list): namespaced so core schemas stay product-agnostic and an inert-field audit never misfires.
       adapter: {
         namespace: ADAPTER_NAMESPACE,
         data: {
@@ -249,7 +249,7 @@ function passingRun(
   };
 }
 
-describe("terminal-product extension seam (SLICE 4 conformance — thin adapter, not a fork)", () => {
+describe("terminal-product extension seam: a thin adapter, with no fork of core", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-seam-"));
@@ -258,7 +258,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("runs the adapter scorer + feedback strategy, attaches NAMESPACED nouns, and the bundle VERIFIES", async () => {
+  it("runs the adapter scorer + feedback strategy, attaches namespaced nouns, and the bundle verifies", async () => {
     const inputs = passingRun({
       score: exampleAdapterScore,
       deriveFeedback: exampleAdapterFeedback,
@@ -274,7 +274,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
 
-    // (1) The scorer hook RAN and its namespaced score is in the bundle.
+    // (1) The scorer hook ran and its namespaced score is in the bundle.
     expect(bundle.adapterScore).toBeDefined();
     expect(bundle.adapterScore?.schema).toBe("humanish.adapter-score.v1");
     expect(bundle.adapterScore?.namespace).toBe(ADAPTER_NAMESPACE);
@@ -284,26 +284,26 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
       (bundle.adapterScore?.data as Record<string, unknown> | undefined)?.hostedProductSucceeded,
     ).toBe(true);
 
-    // (2) The derived feedback candidate is in the bundle, and its product nouns are NAMESPACED.
+    // (2) The derived feedback candidate is in the bundle, and its product nouns are namespaced.
     expect(bundle.feedbackCandidates.length).toBe(1);
     const candidate = bundle.feedbackCandidates[0]!;
-    expect(candidate.substrate).toBe("e2b-terminal"); // SLICE-4 substrate enum addition.
+    expect(candidate.substrate).toBe("e2b-terminal"); // slice-4 substrate enum addition.
     expect(candidate.adapter?.namespace).toBe(ADAPTER_NAMESPACE);
-    // The product nouns are ALL under the namespaced block — NONE are core top-level fields.
+    // The product nouns are all under the namespaced block: none are core top-level fields.
     expect(candidate.adapter?.data).toMatchObject({
       publicCommandObserved: expect.any(String),
       hostedProductOutcome: "success",
       defectionFrictionRisk: "low",
     });
 
-    // (3) CORE STAYED PRODUCT-AGNOSTIC: no adopter noun leaked into a core enum/field. The core
+    // (3) core stayed product-agnostic: no adopter noun leaked into a core enum/field. The core
     // feedback-candidate keys are exactly the documented core set + the single namespaced `adapter`.
     const coreKeys = new Set(Object.keys(candidate).filter((k) => k !== "adapter"));
     expect(coreKeys.has("publicCommandObserved")).toBe(false);
     expect(coreKeys.has("hostedProductOutcome")).toBe(false);
     expect(coreKeys.has("mediaJobIds")).toBe(false);
 
-    // (4) THE BUNDLE VERIFIES (verifyRun ok) — the seam closed the gap WITHOUT a fork.
+    // (4) the bundle verifies (verifyRun ok): the seam closed the gap without a fork.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
     expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(true);
@@ -314,7 +314,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
   });
 
   it("the scorer receives the full normalized transcript: evidence beyond the ~2KB tail can flip a dimension", async () => {
-    // Command-tier evidence emitted EARLY in the session, then >2KB of narration: every tail
+    // Command-tier evidence emitted early in the session, then >2KB of narration: every tail
     // projection (trace items' outputTail / message text) misses it; only the full transcript has it.
     const deepEvidence = "PIXELFORGE_DEEP_EVIDENCE pixelforge generate --prompt 'first-light'";
     const padding = Array.from(
@@ -333,8 +333,8 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
         }),
       score: (ctx) => {
         capturedTranscript = ctx.transcript;
-        // The adopter rubric keys on command-tier evidence ANYWHERE in the session — the exact
-        // #341 shape: with only the tail this dimension cannot fire and the score stays partial.
+        // The adopter rubric keys on command-tier evidence anywhere in the session: the exact
+        // case: with only the tail this dimension cannot fire and the score stays partial.
         const hasDeepEvidence = ctx.transcript.includes("PIXELFORGE_DEEP_EVIDENCE");
         return {
           schema: "humanish.adapter-score.v1",
@@ -355,12 +355,12 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
 
-    // (1) The dimension FLIPPED: the scorer saw the full session, not the tail.
+    // (1) The dimension flipped: the scorer saw the full session, not the tail.
     expect(bundle.adapterScore?.status).toBe("pass");
     expect(bundle.adapterScore?.score).toBe(90);
 
-    // (2) The truncated-window CONTROL: the same evidence is INVISIBLE through every tail
-    // projection the trace carries — proving the window (not rubric drift) is what moved the
+    // (2) The truncated-window control: the same evidence is invisible through every tail
+    // projection the trace carries: proving the window (not rubric drift) is what moved the
     // verdict. actor.json holds only ~2KB tails; the deep evidence must be absent from it.
     expect(capturedTranscript).toBeDefined();
     expect(capturedTranscript!.length).toBeGreaterThan(2000);
@@ -368,7 +368,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     expect(traceJson).not.toContain("PIXELFORGE_DEEP_EVIDENCE");
 
     // (3) Byte-identity: the scorer's transcript is exactly the persisted terminal-transcript.txt
-    // (same scrub, same cap — no new exposure beyond what disk already holds).
+    // (same scrub, same cap: no new exposure beyond what disk already holds).
     const persisted = await readFile(path.join(runDir, "terminal-transcript.txt"), "utf8");
     expect(`${capturedTranscript!}\n`).toBe(persisted);
 
@@ -379,7 +379,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     expect(verified.ok).toBe(true);
   });
 
-  it("DEFAULT behavior is UNCHANGED when no scorer/feedback hook is given", async () => {
+  it("default behavior is unchanged when no scorer/feedback hook is given", async () => {
     const inputs = passingRun({}); // no score, no deriveFeedback
     const result = await runTerminalProductLab({
       cwd,
@@ -392,7 +392,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
-    // No adapter score, no derived feedback — the mission-based verdict stands alone.
+    // No adapter score, no derived feedback: the mission-based verdict stands alone.
     expect(bundle.adapterScore).toBeUndefined();
     expect(bundle.feedbackCandidates.length).toBe(0);
     expect(bundle.review.verdict).toBe("pass"); // unchanged mission-based verdict (nonce-verified)
@@ -401,9 +401,9 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     expect(verified.ok).toBe(true);
   });
 
-  it("fails CLOSED on a malformed adapter score/candidate — a bad extension never poisons a verifiable bundle", async () => {
+  it("fails closed on a malformed adapter score/candidate: a bad extension never poisons a verifiable bundle", async () => {
     const inputs = passingRun({
-      // A malformed score (missing namespace) and a malformed candidate (empty summary) — both dropped.
+      // A malformed score (missing namespace) and a malformed candidate (empty summary): both dropped.
       score: () =>
         ({
           schema: "humanish.adapter-score.v1",
@@ -443,7 +443,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     ).toBe(true);
 
     const verified = await verifyRun(cwd, result.runId);
-    expect(verified.ok).toBe(true); // the bundle still verifies — the seam stayed fail-closed
+    expect(verified.ok).toBe(true); // the bundle still verifies: the seam stayed fail-closed
   });
 
   it.each([
@@ -589,9 +589,9 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     });
   });
 
-  // The contract types the adapter needs ARE exported (ActorTrace directly, TerminalLedgers as
+  // The contract types the adapter needs are exported (ActorTrace directly, TerminalLedgers as
   // TerminalProductScoringContext["ledgers"]); this no-op assertion makes the "adapter typed only against the public barrel"
-  // claim explicit and load-bearing in CI — if any export disappeared this would fail to type-check.
+  // claim explicit and enforced in CI: if any export disappeared this would fail to type-check.
   it("the adapter contract types are all reachable from the public package barrel", () => {
     const _typecheck: (ctx: TerminalProductScoringContext) => {
       score: RunAdapterScore;
