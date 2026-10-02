@@ -699,7 +699,7 @@ describe("humanish CLI scaffold", () => {
       async (cwd) => {
         // A missing --env-file would fail on its own; the refusal has to come first.
         const base = ["--app-url", "http://127.0.0.1:3000", "--env-file", "missing.env"];
-        const direct = await runCli(["run", ...base, "--sims", "2", "--cwd", cwd, "--json"]);
+        const direct = await runCli(["run", ...base, "--count", "2", "--cwd", cwd, "--json"]);
         const withLab = await runCli(["run", "first-run", ...base, "--cwd", cwd, "--json"]);
         const human = await runCli(["run", ...base, "--cwd", cwd]);
 

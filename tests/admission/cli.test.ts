@@ -55,7 +55,7 @@ const cases: readonly (readonly string[])[] = [
   ["lab", "run", "adm-cu", "--lanes", "lane-01", "--json"],
   ["lab", "run", "adm-cu", "--count", "0", "--json"],
   ["lab", "run", "adm-cu", "--port", "99999", "--json"],
-  ["lab", "run", "adm-preview", "--sims", "0", "--json"],
+  ["lab", "run", "adm-preview", "--count", "0", "--json"],
   ["lab", "run", "adm-scripted", "--scorer", "./scorer.mjs", "--json"],
   // The count is checked before the scorer loads, so its host code never runs (F4).
   ["lab", "run", "adm-cu", "--scorer", "./scorer.mjs", "--count", "0", "--json"],

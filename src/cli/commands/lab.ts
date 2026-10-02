@@ -9,6 +9,7 @@ import {
   type LabPreflightResult,
 } from "../../lab/preflight.js";
 import { runLabCommand } from "./lab-run.js";
+import { countOption } from "../renamed-options.js";
 import {
   applyEnvFileOption,
   type CliIo,
@@ -69,8 +70,9 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--sims <count>", "Override the synthetic or headed desktop participant count.")
-    .option("--count <count>", "Computer-use only: override the headed desktop participant count.")
+    .option("--count <count>", "Override the participant count of a preview or computer-use lab.")
+    // The older spelling of --count, hidden and noted on stderr (renamed-options.ts).
+    .addOption(new Option("--sims <count>").hideHelp())
     .option(
       "--rerun-failed-from <run>",
       "CUA fan-out only: create a new run for failed participants from a prior run.",
@@ -184,9 +186,10 @@ async function handleLabPreflight(
 async function handleLabRun(
   io: CliIo,
   labName: string,
-  options: LabCommandOptions,
+  options: LabCommandOptions & { sims?: string },
   command: Command,
 ): Promise<void> {
+  const count = countOption(io, options);
   if (
     !(await applyEnvFileOption({
       command,
@@ -205,7 +208,7 @@ async function handleLabRun(
     io,
     lab: labName,
     mode: "run",
-    options,
+    options: { ...options, count },
   });
 }
 

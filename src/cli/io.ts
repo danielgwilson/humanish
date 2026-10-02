@@ -58,7 +58,6 @@ export interface LabCommandOptions {
   runId?: string | undefined;
   /** #316: repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
   scorer?: string | undefined;
-  sims?: string | undefined;
   // watch --expose surface (tunnel-edge auth). Only the CUA backend live-serves a run; other
   // backends refuse exposure. See runCuaBackend + validateExposure.
   expose?: boolean | undefined;

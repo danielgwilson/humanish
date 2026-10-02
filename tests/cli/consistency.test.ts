@@ -39,6 +39,7 @@ describe("the two ways to run a lab agree", () => {
       "--detach",
       "--port",
       "--run-id",
+      "--count",
       "--sims",
     ]) {
       expect(run.has(shared), `humanish run is missing ${shared}`).toBe(true);

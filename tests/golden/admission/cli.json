@@ -72,7 +72,7 @@
   "lab run adm-cu --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
-    "stderr": "error: --count/--sims must be a positive integer.\n",
+    "stderr": "error: --count must be a positive integer.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -99,7 +99,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-preview --sims 0 --json": {
+  "lab run adm-preview --count 0 --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.run-result.v1",
@@ -108,7 +108,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_INVALID_SIM_COUNT",
-        "message": "--sims must be a positive integer."
+        "message": "--count must be a positive integer."
       }
     },
     "stderr": "",
@@ -136,7 +136,7 @@
   "lab run adm-cu --scorer ./scorer.mjs --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
-    "stderr": "error: --count/--sims must be a positive integer.\n",
+    "stderr": "error: --count must be a positive integer.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
