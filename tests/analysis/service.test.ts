@@ -12,7 +12,7 @@ import {
 } from "../../src/analysis/service.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { listAnalyses, writeAnalysis } from "../../src/analysis/store.js";
-import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
+import { listAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { draftFeedback, renderIssueUrl } from "../../src/feedback/feedback.js";
 import { exportRun } from "../../src/feedback/export.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";
@@ -23,10 +23,7 @@ import { type RunBundle } from "../../src/run/bundle.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { syntheticArtifact, syntheticResult } from "./fixtures.js";
 import { computeStats } from "../../src/run/stats.js";
-import {
-  runAutomaticStudyAnalysis,
-  readAutomaticStudyAnalysis,
-} from "../../src/analysis/automatic.js";
+import { runAutomaticAnalysis, readAutomaticAnalysis } from "../../src/analysis/automatic.js";
 
 const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
@@ -107,7 +104,7 @@ describe("ordinary study analysis flow", () => {
 
   it("binds an expanded automatic allowance to the job, one dispatch and immutable artifacts", async () => {
     const fetch = await transport();
-    const outcome = await runAutomaticStudyAnalysis(
+    const outcome = await runAutomaticAnalysis(
       cwd,
       "analysis-flow",
       { ...config, maxOutputTokens: 16384 },
@@ -118,10 +115,10 @@ describe("ordinary study analysis flow", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     const saved = await showAnalysis(cwd, "analysis-flow");
     expect(saved.analysis?.config.maxOutputTokens).toBe(32768);
-    expect(await readAutomaticStudyAnalysis(cwd, "analysis-flow")).toMatchObject({
+    expect(await readAutomaticAnalysis(cwd, "analysis-flow")).toMatchObject({
       state: outcome.state,
     });
-    const repeated = await runAutomaticStudyAnalysis(
+    const repeated = await runAutomaticAnalysis(
       cwd,
       "analysis-flow",
       { ...config, maxOutputTokens: 16384 },
@@ -604,7 +601,7 @@ describe("ordinary study analysis flow", () => {
     expect(result.artifactPath).toBeUndefined();
     const prepared = (await resolveRunPath(cwd, "analysis-flow"))!;
     expect(await listAnalyses(prepared)).toEqual([]);
-    expect((await listStudyAnalysisExecutions(prepared)).receipts).toMatchObject([
+    expect((await listAnalysisExecutions(prepared)).receipts).toMatchObject([
       {
         id: result.analysisId,
         model: config.model,

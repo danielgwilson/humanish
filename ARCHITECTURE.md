@@ -68,7 +68,7 @@ not.
    `verifyRunPrepared` (`src/verify/verify.ts`) and writes `observer/index.html` from
    `buildObserverData` (`src/observer/data.ts`).
 8. **Analysis.** `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`) runs
-   `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`) on the `FinishedRun` that `Run.finish`
+   `runAutomaticAnalysis` (`src/analysis/automatic.ts`) on the `FinishedRun` that `Run.finish`
    issued. Dry runs and labs with `review.analysis: false` skip it.
 
 ## Find the code for each part of the system

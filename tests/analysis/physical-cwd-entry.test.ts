@@ -13,7 +13,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readAutomaticStudyAnalysis } from "../../src/analysis/automatic.js";
+import { readAutomaticAnalysis } from "../../src/analysis/automatic.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import { analyzeRun, showAnalysis } from "../../src/analysis/service.js";
@@ -103,8 +103,8 @@ describe("analysis entry points given a symlinked project", () => {
     const viaAlias = await readRunDetail(alias, runId);
     const viaPhysical = await readRunDetail(original, runId);
     expect(viaAlias).toEqual(viaPhysical);
-    expect(await readAutomaticStudyAnalysis(alias, runId)).toEqual(
-      await readAutomaticStudyAnalysis(original, runId),
+    expect(await readAutomaticAnalysis(alias, runId)).toEqual(
+      await readAutomaticAnalysis(original, runId),
     );
   });
 });

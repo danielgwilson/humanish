@@ -15,7 +15,7 @@ import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { appendAnalysisCorrection, writeAnalysis } from "../../src/analysis/store.js";
-import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
+import { writeAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { loadAnalysis } from "../../src/analysis/load.js";
 import { hashAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact } from "../analysis/fixtures.js";
@@ -80,7 +80,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     await writeFile(path.join(root, "actor.json"), JSON.stringify(actor));
     const input = await captureEvidence(prepared, await readFile(path.join(root, "run.json")));
     const artifact = syntheticArtifact(input);
-    await writeStudyAnalysisExecutionReceipt(prepared, artifact);
+    await writeAnalysisExecutionReceipt(prepared, artifact);
     await writeAnalysis(prepared, artifact);
     const correction = {
       schema: "humanish.study-analysis-correction.v1" as const,
