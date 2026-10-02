@@ -1,8 +1,8 @@
-// The caps prose:check and vocabulary:check hold their counts to live in scripts/caps.json:
-// { "prose": { "<root>": { "<kind>": n } }, "vocabulary": { "<word>": n } }. A count above its cap
-// fails, and so does one below it, so the PR that removes the prose lowers the cap. A count with no
-// cap fails, and so does a cap with no count, so a merge cannot leave a count unchecked or keep a
-// cap for a count that is gone. check-cap-direction.mjs reads the same file to keep caps moving down.
+// The caps prose:check, vocabulary:check and site-css:check hold their counts to live in
+// scripts/caps.json: { "prose": { "<root>": { "<kind>": n } }, "vocabulary": { "<word>": n },
+// "site": { "<kind>": n } }. A count above its cap fails, and so does one below it, so the PR that
+// removes the prose lowers the cap. A count with no cap fails, and so does a cap with no count, so a
+// merge cannot leave a count unchecked or keep a cap for a count that is gone. check-cap-direction.mjs reads the same file to keep caps moving down.
 import { readFileSync } from "node:fs";
 
 export const CAPS_FILE = "scripts/caps.json";
