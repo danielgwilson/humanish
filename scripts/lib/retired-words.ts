@@ -1,11 +1,12 @@
 // Counts identifiers and file names in src/ that still use the retired words. The code says
 // participant; lane, seat, role and sim survive only as contract spellings, which belong in the
 // modules that translate the manifest and the run bundle, and in the Observer that renders them.
-// Study gives way to analysis and run; what remains spells saved or wire names, such as a stop
-// cause, an env var and a summary JSON key. vocabulary:check holds each word's count to its cap.
+// Lab gives way to study: a study is what a user designs and runs, and a run is one execution of
+// it. What remains spells the lab paths, commands, codes and types that the study rename replaces.
+// vocabulary:check holds each word's count to its cap.
 import { parseSync } from "oxc-parser";
 
-export const RETIRED_WORDS = ["lane", "seat", "role", "sim", "study"] as const;
+export const RETIRED_WORDS = ["lane", "seat", "role", "sim", "lab"] as const;
 export type RetiredWord = (typeof RETIRED_WORDS)[number];
 
 // Paths under src/ whose identifiers may keep the contract spellings. A path ending in / exempts
@@ -54,12 +55,8 @@ export function identifierWords(name: string): string[] {
 /** The retired word a single identifier word spells, singular or plural, in any case. */
 export function retiredWordOf(word: string): RetiredWord | undefined {
   const lower = word.toLowerCase();
-  // "studies" is the plural of "study"; the other words add a plain s.
-  const singular = lower.endsWith("ies")
-    ? `${lower.slice(0, -3)}y`
-    : lower.endsWith("s")
-      ? lower.slice(0, -1)
-      : lower;
+  // Every retired word forms its plural with a plain s.
+  const singular = lower.endsWith("s") ? lower.slice(0, -1) : lower;
   return (RETIRED_WORDS as readonly string[]).includes(singular)
     ? (singular as RetiredWord)
     : undefined;

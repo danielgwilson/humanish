@@ -92,8 +92,8 @@ comments and test names under `src/`, `tests/`, `scripts/` and `tui/` (`prose:ch
 references, `FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and the
 other kinds listed at the top of `scripts/check-code-prose.mjs`), and identifiers and file names in
 `src/` outside the exempt contract modules that still say a retired participant word (lane, seat,
-role or sim) or study (`vocabulary:check`). Prose keeps the word study; identifiers say run or lab.
-The last two read their caps from `scripts/caps.json`. Each check fails when its count rises above
+role or sim) or lab (`vocabulary:check`). A study is what a user designs and runs, and a run is
+one execution of it; lab is the old name for a study. The last two read their caps from `scripts/caps.json`. Each check fails when its count rises above
 the cap and also when it falls below it, so the PR that reduces a count lowers the cap in the same
 commit; the failure message names the cap and the new value. A count with no cap fails as well. CI's
 `caps` workflow (`scripts/check-cap-direction.mjs`) also fails a PR that raises or removes a cap
