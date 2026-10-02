@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -9,10 +9,12 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { routeOf } from "../../src/lab/plan.js";
 import { normalizeRunLabOptions } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
+import { runPackageLab, type RunLabOptions } from "../../src/run-lab.js";
 import { lab } from "../admission/fixtures.js";
 
-// Each old field with a new home warns once per process. This file runs in its own worker, so the
-// once-per-process record starts empty here.
+// rerun.laneIds warns once per process. This file runs in its own worker, so the
+// once-per-process record starts empty here. The route hook bags were removed from the package's
+// RunLabOptions: its runLab refuses them, and only tests set them on the internal options.
 
 function config(): LabConfig {
   const parsed = parseLabConfig(lab("cuAppUrl"));
@@ -30,7 +32,7 @@ const deprecations = (spy: WarningSpy): string[] =>
     })
     .map(([message]) => String(message));
 
-describe("an old RunLabOptions field", () => {
+describe("rerun.laneIds", () => {
   let emitWarning: WarningSpy & { mockRestore: () => void };
   beforeEach(() => {
     emitWarning = vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
@@ -40,41 +42,22 @@ describe("an old RunLabOptions field", () => {
   });
 
   it("warns once per process, naming its home", () => {
-    const score = () => ({
-      schema: "humanish.adapter-score.v1" as const,
-      namespace: "example",
-      status: "pass" as const,
-      score: 1,
-      summary: "ok",
-    });
     const labConfig = config();
-    for (let i = 0; i < 2; i += 1)
-      normalizeRunLabOptions(labConfig, routeOf(labConfig), { cwd: "/tmp/x", cuaHooks: { score } });
-    expect(deprecations(emitWarning)).toEqual([
-      "RunLabOptions.cuaHooks.score is deprecated and is removed in the next minor. Use RunLabOptions.scorer.",
-    ]);
-  });
-
-  it("warns once for cuaHooks.createDesktopLane, which has no replacement", () => {
-    const labConfig = config();
-    const createDesktopLane = () => {
-      throw new Error("not called: normalizing options creates no desktop");
-    };
     for (let i = 0; i < 2; i += 1)
       normalizeRunLabOptions(labConfig, routeOf(labConfig), {
         cwd: "/tmp/x",
-        cuaHooks: { createDesktopLane },
+        rerun: { sourceRunId: "r", laneIds: ["lane-01"] },
       });
     expect(deprecations(emitWarning)).toEqual([
-      "RunLabOptions.cuaHooks.createDesktopLane is deprecated and is removed in the next minor. It has no replacement.",
+      "RunLabOptions.rerun.laneIds is deprecated and is removed in the next minor. Use RunLabOptions.rerun.participantIds.",
     ]);
   });
 
-  it("does not warn for a test seam with no new home, or for a refused call", () => {
+  it("is the only field that warns: a route's hook bag is internal and silent", () => {
     const labConfig = config();
     normalizeRunLabOptions(labConfig, routeOf(labConfig), {
       cwd: "/tmp/x",
-      cuaHooks: { loadDesktopModule: async () => ({}) as never },
+      cuaHooks: { loadDesktopModule: async () => ({}) as never, env: {} },
     });
     normalizeRunLabOptions(labConfig, routeOf(labConfig), {
       cwd: "/tmp/x",
@@ -82,6 +65,50 @@ describe("an old RunLabOptions field", () => {
       terminalHooks: { env: {} },
     });
     expect(deprecations(emitWarning)).toEqual([]);
+  });
+});
+
+describe("the package's runLab", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-lab-removed-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it.each([
+    [
+      "cuaHooks",
+      "Use scorer, createProvider, inProcess, prepareDesktop, env, onEvent and onStream.",
+    ],
+    ["scriptedHooks", "Use prepareDesktop and env."],
+    ["terminalHooks", "Use scorer and env."],
+    ["sharedWorldHooks", "Use scorer, prepareDesktop, env, onEvent and onStream."],
+    ["automaticAnalysis", "Use onEvent (analysis-started, analysis-finished) and analysisSignal."],
+    ["lab", "The humanish CLI sets it."],
+    ["scorerProvenance", "The humanish CLI sets it."],
+  ])("refuses %s in the route's envelope before anything runs", async (field, home) => {
+    const options = { cwd, dryRun: true, [field]: {} } as unknown as RunLabOptions;
+    const outcome = await runPackageLab(config(), options);
+    expect(outcome.route).toBe("computer-use");
+    expect(outcome.result.ok).toBe(false);
+    expect(outcome.result.error).toEqual({
+      code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+      message: `RunLabOptions.${field} was removed. ${home} See docs/contracts/schemas.md, "Library options".`,
+    });
+    expect(await readdir(cwd)).toEqual([]);
+  });
+
+  it("runs a lab given only the typed options", async () => {
+    const outcome = await runPackageLab(config(), { cwd, dryRun: true });
+    expect(outcome.route).toBe("computer-use");
+    expect(outcome.result.ok).toBe(true);
+  });
+
+  it("is the runLab src/index.ts exports", async () => {
+    const humanish = await import("../../src/index.js");
+    expect(humanish.runLab).toBe(runPackageLab);
   });
 });
 

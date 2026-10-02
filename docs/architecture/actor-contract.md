@@ -374,8 +374,8 @@ attaches product-specific scoring + feedback as a THIN in-repo extension WITHOUT
 core. The seam is exported contract types (`RunBundle`, `RunFeedbackCandidate`,
 `RunAdapterScore`, `ActorTrace`, `AdapterScorerModule` and the terminal-route
 `TerminalProductScoringContext`) plus a registrable scorer module, `RunLabOptions.scorer`,
-with optional `score` and `deriveFeedback`. The older `score` / `deriveFeedback` members of
-`terminalHooks` and `cuaHooks` are deprecated. The adapter records its product nouns ONLY
+with optional `score` and `deriveFeedback`. The older `terminalHooks` and `cuaHooks` bags were
+removed from `RunLabOptions`. The adapter records its product nouns ONLY
 under an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
 `RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
 is hardcoded into a core enum. Default (no hook) behavior is unchanged. See

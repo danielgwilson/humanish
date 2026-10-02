@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { COMMS_PROVIDERS, saveCommsConnection } from "../../comms/connections.js";
+import { catchTokenRefusal } from "../../comms/external-evidence.js";
 import { readCommsSetup } from "../../comms/setup.js";
 import { checkCommsConnection, configureCommsLab } from "../../comms/setup.js";
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
@@ -109,7 +110,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     )
     .option(
       "--token <value>",
-      "Require this bearer token on GET /deliveries (recommended when reachable off-host).",
+      "Require this bearer token, at least 16 characters, on GET /deliveries (recommended when reachable off-host).",
     )
     .option(
       "--smtp-port <port>",
@@ -296,6 +297,14 @@ async function handleCommsCatch(
     recipient?: string[];
   },
 ): Promise<void> {
+  const tokenRefusal = catchTokenRefusal(options.token);
+  if (tokenRefusal !== undefined) {
+    io.writeErr(
+      `--token: ${tokenRefusal} The token guards GET /deliveries, and runs scrub it from their warnings.\n`,
+    );
+    io.setExitCode(2);
+    return;
+  }
   const port = Number.parseInt(options.port, 10);
   if (!Number.isInteger(port) || port <= 0 || port > 65_534) {
     io.writeErr("--port must be an integer between 1 and 65534.\n");

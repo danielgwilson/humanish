@@ -8,6 +8,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Removed
+
+- `RunLabOptions` no longer takes the route hook bags `cuaHooks`, `scriptedHooks`,
+  `terminalHooks`, `sharedWorldHooks` and `automaticAnalysis` (#1353). Use the typed options:
+  `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `env`, `onEvent`, `onStream` and
+  `analysisSignal`. `docs/contracts/schemas.md`, "Library options", maps each bag field to its
+  option. A JavaScript caller that still passes a bag gets `HUMANISH_LAB_OPTION_UNSUPPORTED`
+  before anything runs, naming the options to use. `lab` and `scorerProvenance` are refused the
+  same way; the humanish CLI sets them, and they had no deprecation warning.
+- The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab` and
+  `runConcurrentSharedWorld`, and their option types `RunCuaActorLabOptions`,
+  `RunScriptedBrowserLabOptions`, `RunTerminalProductLabOptions` and
+  `RunConcurrentSharedWorldLabOptions`. Use `runLab(config, options)` with the typed options;
+  its result is `LabResult<route>`.
+- The hook bag types `CuaActorLabHooks`, `ScriptedBrowserLabHooks`, `TerminalProductLabHooks`,
+  `SharedWorldLabHooks`, `AutomaticAnalysisHooks` and `BrowserLabAdapterHooks`. Use the typed
+  options; `AdapterScorerModule` is the scorer's type.
+- `HUMANISH_LAB_OPTION_CONFLICT` now covers only `rerun.laneIds` beside `rerun.participantIds`,
+  and only `rerun.laneIds` emits `HUMANISH_RUN_LAB_OPTION_DEPRECATED`.
+
 ### Changed
 
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
@@ -16,7 +36,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
-- A scripted scenario's `press` step sends its key. Before, `press` ran as `click` and its `key` was
+- An adopter-hosted email catch's warnings no longer carry a provisioned value or the catch's
+  bearer token (#1343). Shared-world runs only pattern-redacted a failed drain's error, and
+  neither route removed the catch token, its encoded forms (percent-encoded, JSON-escaped, hex, or
+  base64 at any byte offset) or a token inside the catch URL. Both routes now scrub every comms
+  warning of those values before redacting it, and a warning that held escapes shows them decoded.
+  A catch token shorter than 16 characters, or not well-formed Unicode, is refused by a live run
+  (`HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID`, `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID`)
+  and by `humanish comms catch --token`.
+- A scripted scenario's `press` step sends its key (#1352). Before, `press` ran as `click` and its `key` was
   dropped, so a step that pressed Enter in a form field clicked the field instead, and a 0.106.1
   live pass on TodoMVC ended `fail` at "Visible page state did not change". `press` now needs `key`
   (Playwright key syntax: `Enter`, `Tab`, `Control+A`). With a `selector` it focuses that element

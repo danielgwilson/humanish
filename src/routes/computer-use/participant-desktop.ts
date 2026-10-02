@@ -61,7 +61,7 @@ export type ParticipantDesktopFactory = (
 /**
  * The hook-bag member a study that owns its desktops (the local VM study) sets to its factory. A
  * symbol keeps it out of the public CuaActorLabHooks, whose deprecated createDesktopLane takes the
- * flat lane record; withHookOverrides forwards it like any other member of the bag.
+ * flat lane record; a spread of the bag copies it like any other own member.
  */
 export const PARTICIPANT_DESKTOP: unique symbol = Symbol("humanish.participantDesktop");
 

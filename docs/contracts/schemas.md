@@ -324,7 +324,12 @@ dwell? }`. The parser expands it into
   pass for a catch), the teardown drain over `GET /deliveries`, and the same
   digest-only evidence. `authTokenEnv` names an env var holding a bearer token
   for the drain read. The NAME is recorded as evidence; the value never
-  persists. Declaring `external` on a harness-provisioned subject warns: two
+  persists. A live run refuses a token shorter than 16 characters, or not
+  well-formed Unicode, before it probes the catch
+  (`HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID`,
+  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID`), as
+  `humanish comms catch --token` does, and scrubs the token and its encoded
+  forms from every comms warning. Declaring `external` on a harness-provisioned subject warns: two
   catches would exist and the app would point at humanish's own. `linkOrigin`
   is an optional operator-declared origin the app bakes into links when it
   differs from the serve origin; the harness rewrites captured links through it
@@ -1419,41 +1424,44 @@ Refusals:
 
 - `HUMANISH_LAB_OPTION_UNSUPPORTED`: the route cannot honor the option, for example `scorer` on
   a preview or scripted lab, `createProvider` off computer use, or `prepareDesktop` where no E2B
-  desktop exists. The message names the option and the route.
-- `HUMANISH_LAB_OPTION_CONFLICT`: a new option is set together with the older field it replaces.
+  desktop exists. The message names the option and the route. The same code refuses a field
+  `RunLabOptions` no longer has (below); that message names the field and where its job went.
+- `HUMANISH_LAB_OPTION_CONFLICT`: `rerun.laneIds` and `rerun.participantIds` are both set.
 
-The older route hook bags (`cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks`) and
-`rerun.laneIds` keep their behavior in this minor and are removed in the next. Each old field in
-use emits one `DeprecationWarning` (code `HUMANISH_RUN_LAB_OPTION_DEPRECATED`) per process:
+`rerun.laneIds` keeps its behavior in this minor and is removed in the next. It emits one
+`DeprecationWarning` (code `HUMANISH_RUN_LAB_OPTION_DEPRECATED`) per process; use
+`rerun.participantIds`.
 
-| Old field                                                                                          | New home               |
-| -------------------------------------------------------------------------------------------------- | ---------------------- |
-| `score`, `deriveFeedback` on `cuaHooks`, `sharedWorldHooks` or `terminalHooks`                     | `scorer`               |
-| `deriveArtifacts` on `cuaHooks` or `sharedWorldHooks`                                              | `scorer`               |
-| `cuaHooks.buildProvider`                                                                           | `createProvider`       |
-| `cuaHooks.buildExecutor`                                                                           | `inProcess.executor`   |
-| `prepareDesktop` on `cuaHooks`, `scriptedHooks` or `sharedWorldHooks`                              | `prepareDesktop`       |
-| `cuaHooks.onPreflight`; `onPhase` on `cuaHooks` or `sharedWorldHooks`; `automaticAnalysis.onStart` | `onEvent`              |
-| `onRuntimeStreamReady`, `onRuntimeStreamEnded` on `cuaHooks` or `sharedWorldHooks`                 | `onStream`             |
-| `automaticAnalysis.deps.signal`                                                                    | `analysisSignal`       |
-| `env` on any bag                                                                                   | `env`                  |
-| `rerun.laneIds`                                                                                    | `rerun.participantIds` |
-| `cuaHooks.createDesktopLane`                                                                       | none                   |
+The route hook bags (`cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks`,
+`automaticAnalysis`) were removed from `RunLabOptions`, with the hook bag types and the four route
+runners that took them (`runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab`,
+`runConcurrentSharedWorld`). `lab` and `scorerProvenance` are set only by the humanish CLI. A
+JavaScript caller that passes any of these fields is refused before anything runs. Where each
+bag field's job went:
 
-`cuaHooks.createDesktopLane` warns and goes in the next minor with no replacement: a run's desktop
-is E2B, the local VM or in process. The bags' other fields are test seams with no public
-replacement, and they do not warn. A
-`scorer` passed through `RunLabOptions` behaves exactly like the same functions in the old bag,
-including the route-specific verdict rules in the next section.
+| Removed field                                                                                      | Use                  |
+| -------------------------------------------------------------------------------------------------- | -------------------- |
+| `score`, `deriveFeedback` on `cuaHooks`, `sharedWorldHooks` or `terminalHooks`                     | `scorer`             |
+| `deriveArtifacts` on `cuaHooks` or `sharedWorldHooks`                                              | `scorer`             |
+| `cuaHooks.buildProvider`                                                                           | `createProvider`     |
+| `cuaHooks.buildExecutor`                                                                           | `inProcess.executor` |
+| `prepareDesktop` on `cuaHooks`, `scriptedHooks` or `sharedWorldHooks`                              | `prepareDesktop`     |
+| `cuaHooks.onPreflight`; `onPhase` on `cuaHooks` or `sharedWorldHooks`; `automaticAnalysis.onStart` | `onEvent`            |
+| `onRuntimeStreamReady`, `onRuntimeStreamEnded` on `cuaHooks` or `sharedWorldHooks`                 | `onStream`           |
+| `automaticAnalysis.deps.signal`                                                                    | `analysisSignal`     |
+| `env` on any bag                                                                                   | `env`                |
+| `cuaHooks.createDesktopLane`                                                                       | none                 |
+
+`cuaHooks.createDesktopLane` has no replacement: a run's desktop is E2B, the local VM or in
+process. The bags' other fields were test seams with no public replacement. `scorer` keeps the
+route-specific verdict rules in the next section.
 
 ## Product-Adapter Extension Seam
 
 The terminal-product and browser/computer-use routes let an adopter attach
 product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
 core. The seam is `RunLabOptions.scorer`, an `AdapterScorerModule`, for terminal-product,
-computer-use and shared-world runs; the CLI loads the same module with `--scorer`. The older
-`TerminalProductLabHooks`, `CuaActorLabHooks` and `SharedWorldLabHooks` fields still accept the
-same functions in this minor. This is never a built-in product scorer (the adopter's scorecard
+computer-use and shared-world runs; the CLI loads the same module with `--scorer`. This is never a built-in product scorer (the adopter's scorecard
 lives in the adopter's repo).
 
 Three product-agnostic carriers keep core's nouns closed while letting the adapter

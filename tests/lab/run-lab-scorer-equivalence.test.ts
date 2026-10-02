@@ -5,17 +5,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab, type RunLabOptions } from "../../src/run-lab.js";
+import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
 import { lab } from "../admission/fixtures.js";
 import { passingHooks, terminalConfig } from "../helpers/terminal-live-fake.js";
-import { allowDeprecationsInThisFile } from "../helpers/deprecations.js";
-
-allowDeprecationsInThisFile(
-  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-  "This file checks the deprecated scorer hooks against RunLabOptions.scorer.",
-);
 
 // RunLabOptions.scorer is the legacy scorer hook under a new name: for each route and each scorer
 // behavior, with and without CLI provenance, the review, the adapter score, the result and its
@@ -61,9 +55,9 @@ function parsed(base: "cuAppUrl" | "sharedProvisioned"): LabConfig {
 interface Route {
   config: () => LabConfig;
   /** Options both runs share: dry run or the fake live terminal. */
-  base: () => Partial<RunLabOptions>;
+  base: () => Partial<InternalRunLabOptions>;
   /** The same scorer through the route's legacy hook bag. */
-  legacy: (score: Score) => Partial<RunLabOptions>;
+  legacy: (score: Score) => Partial<InternalRunLabOptions>;
 }
 
 const routes: Record<string, Route> = {
@@ -93,7 +87,7 @@ describe("RunLabOptions.scorer matches the legacy scorer hook", () => {
     await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
   });
 
-  async function evidence(route: Route, options: Partial<RunLabOptions>) {
+  async function evidence(route: Route, options: Partial<InternalRunLabOptions>) {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-equivalence-"));
     dirs.push(cwd);
     const outcome = await runLab(route.config(), {
@@ -101,7 +95,7 @@ describe("RunLabOptions.scorer matches the legacy scorer hook", () => {
       ...options,
       cwd,
       runId: "equivalence",
-    } as RunLabOptions);
+    } as InternalRunLabOptions);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", "equivalence", "run.json"), "utf8"),
     ) as { review: unknown; adapterScore?: RunAdapterScore; scorerProvenance?: unknown };
@@ -167,7 +161,7 @@ describe("scorer failures fold into one verdict the bundle, status and result ag
             ...(declared ? { scorerProvenance: provenance } : {}),
             cwd,
             runId: "fold",
-          } as RunLabOptions);
+          } as InternalRunLabOptions);
           const runDir = path.join(cwd, ".humanish", "runs", "fold");
           const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as {
             review: { verdict: string; gaps: string[] };

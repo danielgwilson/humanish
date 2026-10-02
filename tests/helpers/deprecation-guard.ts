@@ -7,7 +7,7 @@ import {
 
 // A humanish DeprecationWarning means first-party code used a surface that the next minor
 // removes, so it fails the test that emitted it. A test that uses that surface on purpose allows
-// the code with allowDeprecationsInThisFile or allowDeprecationsInThisTest (./deprecations.ts);
+// the code with allowDeprecationsInThisTest (./deprecations.ts);
 // allowed warnings are dropped so they do not clutter the suite's output. Every other warning
 // reaches its listeners unchanged. Tests that spy on process.emitWarning wrap this filter, so
 // they still see every call.
@@ -40,7 +40,7 @@ process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
     return;
   }
   const state = deprecationGuardState();
-  if (state.file.has(code) || state.test.has(code)) return;
+  if (state.test.has(code)) return;
   state.unexpected.push(`[${code}] ${typeof warning === "string" ? warning : warning.message}`);
 }) as typeof process.emitWarning;
 
@@ -49,8 +49,8 @@ function failOnUnexpected(): void {
   if (found.length === 0) return;
   throw new Error(
     "A humanish DeprecationWarning fired without an allowance. Use the replacement it names, or, " +
-      "when the test is about the deprecated surface, call allowDeprecationsInThisTest or " +
-      `allowDeprecationsInThisFile from tests/helpers/deprecations.ts with the reason.\n${found.join("\n")}`,
+      "when the test is about the deprecated surface, call allowDeprecationsInThisTest from " +
+      `tests/helpers/deprecations.ts with the reason.\n${found.join("\n")}`,
   );
 }
 

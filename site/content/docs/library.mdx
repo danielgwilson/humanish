@@ -84,10 +84,14 @@ An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser route
 [scorer example](https://github.com/danielgwilson/humanish/tree/main/examples/scorer) does both.
 Every scoring context carries `ctx.bundle` and `ctx.runId`.
 
-## Deprecated exports
+## Removed and deprecated exports
 
-The route runners (`runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab`,
-`runConcurrentSharedWorld`, `runDryRun`), their option and result types, the hook bag types and
-`runCuaActorSession` still work in this minor and print one `DeprecationWarning` each. They are
-removed in the next minor. Use `runLab` with the options above. `LabOutcome.backend` is
+The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab` and
+`runConcurrentSharedWorld`, their option types, and the hook bag types are removed, along with the
+`cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks` and `automaticAnalysis` options.
+Use `runLab` with the options above. A JavaScript caller that still passes a bag is refused with
+`HUMANISH_LAB_OPTION_UNSUPPORTED`, naming the option to use.
+
+`runDryRun`, the route result types and `runCuaActorSession` still work in this minor and print
+one `DeprecationWarning` each. They are removed in the next minor. `LabOutcome.backend` is
 deprecated too; narrow on `outcome.route`.

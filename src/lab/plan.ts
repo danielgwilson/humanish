@@ -10,7 +10,7 @@ import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
-import type { RunLabOptions } from "../run-lab.js";
+import type { InternalRunLabOptions } from "../run-lab.js";
 import { THIS_REPO_DRY_RUN_ONLY } from "./composition-rules.js";
 import { planBase } from "./plan-base.js";
 import type { LabPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
@@ -105,7 +105,7 @@ export function resolveLabDryRun(
  */
 function planPreview(
   config: LabConfig,
-  options: RunLabOptions,
+  options: InternalRunLabOptions,
   input: { readonly dryRun: boolean; readonly lab?: RunLabProvenance },
 ): RoutePlanResult {
   const refuse = (code: PreviewRefusalCode, message: string): RoutePlanResult => ({
@@ -147,7 +147,7 @@ type RoutePlanResult =
  * makes every refusal that route makes, in the route's order and with its codes and messages; the
  * route's exported runner calls the same planner.
  */
-export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
+export function planLab(config: LabConfig, options: InternalRunLabOptions): PlanResult {
   const lab = localBrowserDefaults(config);
   const input = {
     dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true,
@@ -161,7 +161,7 @@ export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
 function planRoute(
   route: LabRoute,
   lab: LabConfig,
-  options: RunLabOptions,
+  options: InternalRunLabOptions,
   input: { readonly dryRun: boolean; readonly lab?: RunLabProvenance },
 ): RoutePlanResult {
   switch (route) {

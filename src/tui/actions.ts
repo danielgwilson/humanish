@@ -153,12 +153,14 @@ export function createTuiObserverSession(
  * has children: the CLI, and whatever it spawned to reach the sandbox. Signalling only the parent
  * leaves those orphaned and still working.
  *
- * SIGTERM, never SIGKILL: the run's own handlers get the chance to finalize its record and release
- * what it holds. A killed run leaves a `running` record to go stale, which reads as interrupted —
- * true, but strictly less informative than a run that was told to stop.
+ * SIGTERM, never SIGKILL, so the run's children can close what they hold. The run itself has no
+ * signal handler outside post-run analysis: it exits at once, its `running` record stops refreshing
+ * and reads as interrupted once stale, and run.json keeps its last live flush. A local VM's
+ * container exits when the run's process goes.
  *
- * This stops the PROCESS. Sandboxes it created are a separate resource with their own receipts, and
- * `Reclaim` is what stops those — the run screen offers it as soon as this succeeds.
+ * This stops the PROCESS. Each E2B sandbox it created is in sandbox-receipts.ndjson, and `Reclaim`
+ * kills those by id; the run screen offers it as soon as this succeeds. Each sandbox's create-time
+ * timeout is the backstop.
  */
 export async function stopRun(
   cwd: string,

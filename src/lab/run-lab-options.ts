@@ -1,7 +1,7 @@
 // The typed homes on RunLabOptions and the one place they meet the route hook bags. runLab calls
-// normalizeRunLabOptions first: it refuses an option the route cannot honor, or a new option set
-// together with the old field it replaces, and otherwise maps each new option into the bag the
-// route reads today. Old fields pass through untouched, so they keep their exact behavior.
+// normalizeRunLabOptions first: it refuses an option the route cannot honor and otherwise maps each
+// typed option into the bag the route reads today. The bags themselves are internal: only tests
+// set them, and the package's runLab refuses them (removedOptionRefusal).
 
 import path from "node:path";
 
@@ -18,8 +18,7 @@ import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { defaultSharedWorldPhaseSink, defaultSubjectPhaseSink } from "../subject/steps.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
-import { HOOK_MEMBERS, withHookOverrides } from "./bag-overrides.js";
-import type { LabOutcome, RunLabOptions } from "../run-lab.js";
+import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
 import {
@@ -90,8 +89,8 @@ type Refusal = {
 
 type Normalized = {
   ok: true;
-  /** The options with every new field mapped into the old bags and removed. */
-  options: RunLabOptions;
+  /** The options with every typed home mapped into the route's bag and removed. */
+  options: InternalRunLabOptions;
   /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
   warnings: string[];
 };
@@ -108,93 +107,45 @@ const unsupported = (option: string, route: LabRoute, reason: string): Refusal =
   message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
 });
 
-/**
- * Whether a caller's bag sets `key`, from its property descriptors: a data property counts when its
- * value is defined, an accessor counts without being called. Nothing the caller defined runs.
- */
-function hasMember(bag: object | undefined, key: string): boolean {
-  for (
-    let source: object | null = bag ?? null;
-    source !== null && source !== Object.prototype;
-    source = Object.getPrototypeOf(source) as object | null
-  ) {
-    const descriptor = Object.getOwnPropertyDescriptor(source, key);
-    if (descriptor !== undefined)
-      return "value" in descriptor ? descriptor.value !== undefined : true;
-  }
-  return false;
-}
+let olderRerunNameWarned = false;
 
-/**
- * Every old field the options set that has a new home, and whether its home is set too. Presence
- * comes from property descriptors (hasMember), so no getter of the caller's runs.
- */
-function oldFieldsInUse(options: RunLabOptions): { home: string; old: string; clash: boolean }[] {
-  const pairs: [home: string, bag: string, member: string][] = [
-    ["env", "cuaHooks", "env"],
-    ["env", "scriptedHooks", "env"],
-    ["env", "terminalHooks", "env"],
-    ["env", "sharedWorldHooks", "env"],
-    ["scorer", "cuaHooks", "score"],
-    ["scorer", "cuaHooks", "deriveFeedback"],
-    ["scorer", "cuaHooks", "deriveArtifacts"],
-    ["scorer", "sharedWorldHooks", "score"],
-    ["scorer", "sharedWorldHooks", "deriveFeedback"],
-    ["scorer", "sharedWorldHooks", "deriveArtifacts"],
-    ["scorer", "terminalHooks", "score"],
-    ["scorer", "terminalHooks", "deriveFeedback"],
-    ["prepareDesktop", "cuaHooks", "prepareDesktop"],
-    ["prepareDesktop", "scriptedHooks", "prepareDesktop"],
-    ["prepareDesktop", "sharedWorldHooks", "prepareDesktop"],
-    ["onEvent", "cuaHooks", "onPreflight"],
-    ["onEvent", "cuaHooks", "onPhase"],
-    ["onEvent", "sharedWorldHooks", "onPhase"],
-    ["onEvent", "automaticAnalysis", "onStart"],
-    ["onStream", "cuaHooks", "onRuntimeStreamReady"],
-    ["onStream", "cuaHooks", "onRuntimeStreamEnded"],
-    ["onStream", "sharedWorldHooks", "onRuntimeStreamReady"],
-    ["onStream", "sharedWorldHooks", "onRuntimeStreamEnded"],
-    ["analysisSignal", "automaticAnalysis.deps", "signal"],
-    ["createProvider", "cuaHooks", "buildProvider"],
-    ["inProcess", "cuaHooks", "buildExecutor"],
-    ["rerun.participantIds", "rerun", "laneIds"],
-  ];
-  const home = (name: string): boolean =>
-    name === "rerun.participantIds"
-      ? options.rerun?.participantIds !== undefined
-      : options[name as keyof RunLabHomes | "createProvider" | "inProcess"] !== undefined;
-  const bagOf = (name: string): object | undefined =>
-    name === "automaticAnalysis.deps"
-      ? options.automaticAnalysis?.deps
-      : (options[name as keyof RunLabOptions] as object | undefined);
-  return pairs
-    .filter(([, bag, member]) => hasMember(bagOf(bag), member))
-    .map(([name, bag, member]) => ({ home: name, old: `${bag}.${member}`, clash: home(name) }));
-}
-
-/** Old fields removed in the next minor with no replacement. They warn, and they never clash. */
-function retiredFieldsInUse(options: RunLabOptions): string[] {
-  return hasMember(options.cuaHooks, "createDesktopLane") ? ["cuaHooks.createDesktopLane"] : [];
-}
-
-const warned = new Set<string>();
-
-/** One DeprecationWarning per old field per process. The bags' other test seams never warn. */
-function warnDeprecated(home: string | undefined, old: string): void {
-  if (warned.has(old)) return;
-  warned.add(old);
-  const replacement = home === undefined ? "It has no replacement." : `Use RunLabOptions.${home}.`;
+/** `rerun.laneIds`, the older name of `rerun.participantIds`, warns once per process. */
+function warnOlderRerunName(): void {
+  if (olderRerunNameWarned) return;
+  olderRerunNameWarned = true;
   process.emitWarning(
-    `RunLabOptions.${old} is deprecated and is removed in the next minor. ${replacement}`,
+    "RunLabOptions.rerun.laneIds is deprecated and is removed in the next minor. Use RunLabOptions.rerun.participantIds.",
     { type: "DeprecationWarning", code: "HUMANISH_RUN_LAB_OPTION_DEPRECATED" },
   );
+}
+
+// Fields RunLabOptions no longer has, and where each one's job went.
+const REMOVED_OPTIONS: Readonly<Record<string, string>> = {
+  cuaHooks: "Use scorer, createProvider, inProcess, prepareDesktop, env, onEvent and onStream.",
+  scriptedHooks: "Use prepareDesktop and env.",
+  terminalHooks: "Use scorer and env.",
+  sharedWorldHooks: "Use scorer, prepareDesktop, env, onEvent and onStream.",
+  automaticAnalysis: "Use onEvent (analysis-started, analysis-finished) and analysisSignal.",
+  lab: "The humanish CLI sets it.",
+  scorerProvenance: "The humanish CLI sets it.",
+};
+
+/** The refusal for a field a JavaScript caller passed that RunLabOptions no longer has. */
+export function removedOptionRefusal(options: RunLabOptions): Refusal | undefined {
+  const field = Object.keys(REMOVED_OPTIONS).find((key) => Reflect.get(options, key) !== undefined);
+  if (field === undefined) return undefined;
+  return {
+    ok: false,
+    code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+    message: `RunLabOptions.${field} was removed. ${REMOVED_OPTIONS[field]} See docs/contracts/schemas.md, "Library options".`,
+  };
 }
 
 /** Why the route cannot honor an option it was given, or undefined when it can. */
 function unsupportedOption(
   config: LabConfig,
   route: LabRoute,
-  options: RunLabOptions,
+  options: InternalRunLabOptions,
 ): Refusal | undefined {
   const { scorer, createProvider, inProcess, prepareDesktop } = options;
   if (inProcess !== undefined && createProvider === undefined)
@@ -227,7 +178,7 @@ function unsupportedOption(
       // cuaHooks.buildExecutor. Either way no desktop exists to prepare.
       if (
         inProcess !== undefined ||
-        hasMember(options.cuaHooks, "buildExecutor") ||
+        options.cuaHooks?.buildExecutor !== undefined ||
         source === "local-app"
       )
         return unsupported("prepareDesktop", route, "an in-process run has no desktop.");
@@ -248,21 +199,20 @@ function unsupportedOption(
 }
 
 /**
- * Refuse what the route cannot honor, then map the new options into the old bags. Nothing here
- * touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
+ * Refuse what the route cannot honor, then map the typed options into the route's bag. Nothing
+ * here touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
  */
 export function normalizeRunLabOptions(
   config: LabConfig,
   route: LabRoute,
-  options: RunLabOptions,
+  options: InternalRunLabOptions,
 ): Normalized | Refusal {
-  const inUse = oldFieldsInUse(options);
-  const clash = inUse.find((field) => field.clash);
-  if (clash) return conflict(clash.home, clash.old);
+  const olderRerunIds = options.rerun?.laneIds;
+  if (olderRerunIds !== undefined && options.rerun?.participantIds !== undefined)
+    return conflict("rerun.participantIds", "rerun.laneIds");
   const refused = unsupportedOption(config, route, options);
   if (refused) return refused;
-  for (const { home, old } of inUse) warnDeprecated(home, old);
-  for (const old of retiredFieldsInUse(options)) warnDeprecated(undefined, old);
+  if (olderRerunIds !== undefined) warnOlderRerunName();
 
   const warnings: string[] = [];
   const {
@@ -283,13 +233,13 @@ export function normalizeRunLabOptions(
     knownSecretValues(config, options, forwardedEnv),
   );
 
-  const normalized: RunLabOptions = { ...legacy };
+  const normalized: InternalRunLabOptions = { ...legacy };
   const participantIds = options.rerun?.participantIds;
   if (options.rerun !== undefined && participantIds !== undefined) {
     const { participantIds: _ids, ...rerun } = options.rerun;
     normalized.rerun = { ...rerun, laneIds: participantIds };
   }
-  const analysis = withMapped(legacy.automaticAnalysis, HOOK_MEMBERS.analysis, {
+  const analysis = withMapped(legacy.automaticAnalysis, {
     ...(analysisSignal === undefined
       ? {}
       : { deps: { ...legacy.automaticAnalysis?.deps, signal: analysisSignal } }),
@@ -307,7 +257,7 @@ export function normalizeRunLabOptions(
   const scoring = scorer === undefined ? {} : scorerHooks(scorer);
   switch (route) {
     case "computer-use": {
-      const hooks = withMapped(legacy.cuaHooks, HOOK_MEMBERS.cua, {
+      const hooks = withMapped(legacy.cuaHooks, {
         ...envHome,
         ...scoring,
         ...computerUseHooks(
@@ -317,7 +267,7 @@ export function normalizeRunLabOptions(
             onStream,
             createProvider,
             inProcess,
-            legacyInProcess: hasMember(legacy.cuaHooks, "buildExecutor"),
+            legacyInProcess: legacy.cuaHooks?.buildExecutor !== undefined,
           },
           emit,
         ),
@@ -326,7 +276,7 @@ export function normalizeRunLabOptions(
       break;
     }
     case "shared-world": {
-      const hooks = withMapped(legacy.sharedWorldHooks, HOOK_MEMBERS.sharedWorld, {
+      const hooks = withMapped(legacy.sharedWorldHooks, {
         ...envHome,
         ...scoring,
         ...sharedWorldHooks({ prepareDesktop, onStream }, emit),
@@ -335,22 +285,16 @@ export function normalizeRunLabOptions(
       break;
     }
     case "terminal": {
-      const hooks = withMapped<TerminalProductLabHooks>(
-        legacy.terminalHooks,
-        HOOK_MEMBERS.terminal,
-        {
-          ...envHome,
-          ...(scorer?.score === undefined ? {} : { score: scorer.score }),
-          ...(scorer?.deriveFeedback === undefined
-            ? {}
-            : { deriveFeedback: scorer.deriveFeedback }),
-        },
-      );
+      const hooks = withMapped<TerminalProductLabHooks>(legacy.terminalHooks, {
+        ...envHome,
+        ...(scorer?.score === undefined ? {} : { score: scorer.score }),
+        ...(scorer?.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
+      });
       if (hooks !== undefined) normalized.terminalHooks = hooks;
       break;
     }
     case "scripted": {
-      const hooks = withMapped(legacy.scriptedHooks, HOOK_MEMBERS.scripted, {
+      const hooks = withMapped(legacy.scriptedHooks, {
         ...envHome,
         ...(prepareDesktop === undefined
           ? {}
@@ -368,14 +312,10 @@ export function normalizeRunLabOptions(
   return { ok: true, options: normalized, warnings };
 }
 
-/** A caller's bag with new options mapped into it. With nothing to map, it is the same object. */
-function withMapped<T extends object>(
-  bag: T | undefined,
-  declared: readonly string[],
-  mapped: Partial<T>,
-): T | undefined {
+/** A bag with typed options mapped over it. With nothing to map, it is the same object. */
+function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
   if (Object.keys(mapped).length === 0) return bag;
-  return withHookOverrides(bag, declared, mapped);
+  return { ...bag, ...mapped } as T;
 }
 
 export function scorerHooks(
