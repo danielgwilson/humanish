@@ -179,6 +179,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `role: subject`, and the shared-world one `participantCount` in place of `roleCount`. Nothing in
   humanish reads these labels back; an E2B dashboard filter on the old keys needs the new ones
   (#1419).
+- `humanish --help` lists the commands in workflow order (init, doctor, run, watch, observe,
+  verify, review, analyze, feedback, export, then the rest), each on one line that says what it
+  does: for example "Run a study, as a dry run or with live participants." in place of "Run a
+  persona/scenario simulation or dry-run bundle.", and "Check that a run's resources were
+  stopped." in place of "Write a resource cleanup inspection receipt.".
+  - `-v` prints the version; `-V` is gone. `humanish help <command>` prints that command's help.
+  - Every help screen ends with links to https://humanish.dev/docs and
+    https://humanish.dev/docs/cli.
+  - `humanish codex` is hidden from help and the CLI reference, and works as before.
+  - The command index in llms.txt gives each command's full description.
 
 ### Fixes
 

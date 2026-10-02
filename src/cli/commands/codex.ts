@@ -30,10 +30,11 @@ interface CodexAppServerUiCliResult {
 }
 
 export function registerCodexCommands(parent: Command, io: CliIo): void {
+  // Hidden from --help and the CLI reference: it drives a Codex app-server session directly and
+  // is not a step in running or reviewing a study.
   const codex = parent
-    .command("codex")
-    .description("Run Codex-native humanish integration surfaces.")
-    .summary("Run Codex-native humanish integration surfaces.");
+    .command("codex", { hidden: true })
+    .description("Run Codex-native humanish integration surfaces.");
 
   codex
     .command("app-server")

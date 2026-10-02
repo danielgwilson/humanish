@@ -109,10 +109,10 @@ export function registerTuiCommand(
 ): void {
   parent
     .command("tui")
-    .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
-    .summary(
-      "Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.",
+    .description(
+      "Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect <lab> --json and humanish runs --json.",
     )
+    .summary("Browse studies and runs in a terminal UI for people.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(
       "--env-file <path>",
