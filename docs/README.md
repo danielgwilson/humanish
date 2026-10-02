@@ -38,7 +38,7 @@ than one kind is split file by file.
 - [architecture/task-protocol-support.md](architecture/task-protocol-support.md): which routes
   accept `actors[0].tasks`.
 - [architecture/external-public-shared-world.md](architecture/external-public-shared-world.md) and
-  [architecture/terminal-product-lane.md](architecture/terminal-product-lane.md): two routes in
+  [architecture/terminal-product-route.md](architecture/terminal-product-route.md): two routes in
   depth. Both keep dated slice notes beside the current rules.
 - [architecture/restricted-codex-analysis.md](architecture/restricted-codex-analysis.md) and
   [product/automatic-analysis.md](product/automatic-analysis.md): study analysis.

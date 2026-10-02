@@ -803,7 +803,7 @@ humanish lab run [options] <lab>
 | `--port <port>` | Local observer server port when following. (default: "0") |
 | `--count <count>` | Override the participant count of a preview or computer-use lab. |
 | `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed participants from a prior run. |
-| `--lanes <participant-ids>` | CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position. |
+| `--participants <ids>` | CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position. |
 | `--run-id <id>` | Explicit lab run id; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |

@@ -15,6 +15,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   from `--help`, sets the same count and prints one stderr warning naming `--count`; the next
   minor removes it. `--count` now also sets a preview lab's participant count, which only
   `--sims` did before.
+- `--lanes` on `humanish lab run`. Use `--participants`, which takes the same comma-separated
+  participant ids for `--rerun-failed-from`. `--lanes` is hidden from `--help`, selects the same
+  participants and prints one stderr warning naming `--participants`; the next minor removes it.
+- `CuaLoopOptions.onObservedUrl`, `onMessage` and `onScreenshot`, the lobby taps on
+  `runComputerUseLoop`. Wrap the executor's `observe` and read `url` or `screenshot` from each
+  observation, or wrap the provider's `nextTurn` and read `reasoning` and `message` from each
+  turn. The options work as before and print no warning; the next minor removes them.
 - `BrowserLabScoringContext.laneCount` and `.backend`, the scorer context on computer-use and
   shared-world runs. Read `participantCount` and `route` (`computer-use` or `shared-world`),
   which the context now carries. The older fields still carry the same facts, and the first
@@ -100,9 +107,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: `inProcess` without `createProvider` gets
   `HUMANISH_LAB_OPTION_UNSUPPORTED` before planning, and the `cuaHooks.buildExecutor` path to it
   is refused like every bag field since #1353.
-- `humanish lab run --help` says what `--lanes` takes: a participant's declared
-  `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
-  (#1336).
+- `humanish lab run --help` says what `--participants`, formerly `--lanes`, takes: a
+  participant's declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the
+  lab declares none (#1336).
 
 ### Fixes
 

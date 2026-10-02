@@ -52,7 +52,7 @@ const cases: readonly (readonly string[])[] = [
   ["lab", "run", "adm-terminal-live-no-caps", "--json"],
   ["lab", "run", "adm-scripted", "--rerun-failed-from", "prior-run", "--json"],
   // These two refuse on stderr with no envelope, even under --json.
-  ["lab", "run", "adm-cu", "--lanes", "lane-01", "--json"],
+  ["lab", "run", "adm-cu", "--participants", "lane-01", "--json"],
   ["lab", "run", "adm-cu", "--count", "0", "--json"],
   ["lab", "run", "adm-cu", "--port", "99999", "--json"],
   ["lab", "run", "adm-preview", "--count", "0", "--json"],
