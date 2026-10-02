@@ -87,11 +87,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   - a value it compares against is no longer allowed;
   - a field or value it sends is no longer accepted, or a field it does not send is now required;
   - a method or definition is missing.
-    The warning names each change, and doctor prints the same list with the install command. A
-    value no admitted release offered, such as a new item type, is recorded on the result and
-    printed as a warning, including on doctor's ready rows. The admitted releases (0.154.0, 0.157.1,
-    0.159.2, 0.159.3 and 0.160.0) pass with nothing refused or recorded. A launch now spawns one more
-    Codex process, which took 0.08 s on 0.159.3.
+
+  The warning names each change, and doctor prints the same list with the install command. A
+  value no admitted release offered, such as a new item type, is recorded on the result and
+  printed as a warning, including on doctor's ready rows. The admitted releases (0.154.0, 0.157.1,
+  0.159.2, 0.159.3 and 0.160.0) pass with nothing refused or recorded. A launch now spawns one more
+  Codex process, which took 0.08 s on 0.159.3.
+
 - `humanish doctor --lab` checks a hosted Codex participant (a local-agent lab on an E2B desktop) by
   starting it as a run would, up to an ephemeral thread and without a turn (#1380): the release
   check, then `initialize`, `config/read`, `account/read` and `thread/start` with the operator's
