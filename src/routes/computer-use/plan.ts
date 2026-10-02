@@ -77,7 +77,7 @@ export function cuaDescriptorOf(actor: string): CuaActorDescriptor {
 }
 
 /**
- * The subject a lab declares, read from its config and hooks for the planner's checks. The checks
+ * The subject a lab declares, read from its config and the caller's driving for the planner's checks. The checks
  * read the declaration because the planned subject falls back to app-url when a provisioned
  * subject cannot be built, which would hide the declaration a refusal has to name. A planned run
  * reads `plan.runner.subject` instead.
@@ -102,7 +102,7 @@ interface DeclaredSubjectRoute {
   subjectEnvNames: string[];
 }
 
-function declaredSubjectRoute(config: LabConfig, hooks: CuaActorLabHooks): DeclaredSubjectRoute {
+function declaredSubjectRoute(config: LabConfig, driving: CallerDriving): DeclaredSubjectRoute {
   const cloneRoute = config.subject.source === "clone";
   const localTreeRoute = config.subject.source === "local-tree";
   const provisionedRoute = cloneRoute || localTreeRoute;
@@ -113,11 +113,28 @@ function declaredSubjectRoute(config: LabConfig, hooks: CuaActorLabHooks): Decla
     localTreeRoute,
     provisionedRoute,
     localAppSubject: config.subject.source === "local-app",
-    inProcessRoute: hooks.buildExecutor !== undefined,
+    inProcessRoute: driving.inProcess,
     serve,
     appUrl: (provisionedRoute ? serve?.url : config.subject.appUrl) ?? "",
     subjectRepo: cloneRoute ? (config.subject.repos?.[0] ?? "") : undefined,
     subjectEnvNames: provisionedRoute ? (config.subject.env ?? []) : [],
+  };
+}
+
+/** Which of the caller's driving homes, createProvider and inProcess, a run has. */
+export interface CallerDriving {
+  readonly inProcess: boolean;
+  readonly createProvider: boolean;
+}
+
+/** The driving a computer-use run's options carry. */
+export function callerDrivingOf(options: {
+  readonly inProcess?: unknown;
+  readonly createProvider?: unknown;
+}): CallerDriving {
+  return {
+    inProcess: options.inProcess !== undefined,
+    createProvider: options.createProvider !== undefined,
   };
 }
 
@@ -155,13 +172,14 @@ const invalid = (message: string): Rejection => ({
 function cuaLabRejection(
   config: LabConfig,
   hooks: CuaActorLabHooks,
+  driving: CallerDriving,
   subjectRoute: DeclaredSubjectRoute,
 ): Rejection {
   return (
-    unsupportedDeclarationReason(config, hooks, subjectRoute) ??
+    unsupportedDeclarationReason(config, hooks, driving, subjectRoute) ??
     subjectStructureReason(config, subjectRoute) ??
     entryTargetReason(config, subjectRoute) ??
-    driverReason(hooks, subjectRoute) ??
+    driverReason(driving, subjectRoute) ??
     rosterShapeReason(config)
   );
 }
@@ -170,6 +188,7 @@ function cuaLabRejection(
 function unsupportedDeclarationReason(
   config: LabConfig,
   hooks: CuaActorLabHooks,
+  driving: CallerDriving,
   { inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
   const reason =
@@ -179,7 +198,7 @@ function unsupportedDeclarationReason(
   if (reason) return invalid(reason);
   if (
     config.actors[0]?.maxOutputTokens !== undefined &&
-    (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)
+    (hooks.runSession || driving.createProvider || driving.inProcess)
   )
     return invalid(
       "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.",
@@ -257,16 +276,16 @@ function entryTargetReason(config: LabConfig, subjectRoute: DeclaredSubjectRoute
 
 /** Something to drive the subject: the caller's executor with its provider. */
 function driverReason(
-  hooks: CuaActorLabHooks,
+  driving: CallerDriving,
   { localAppSubject, inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
   // A custom executor needs a custom provider too: the default OpenAI provider is vision-based
   // and would fail closed against an executor that returns no screenshot.
-  if (hooks.buildExecutor !== undefined && hooks.buildProvider === undefined)
+  if (driving.inProcess && !driving.createProvider)
     return {
       code: "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
       message:
-        "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
+        "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
     };
   // There is no built-in in-process driver for a local app.
   if (localAppSubject && !inProcessRoute)
@@ -308,11 +327,14 @@ export function planComputerUseLab(
     readonly dryRun: boolean;
     readonly lab?: RunLabProvenance;
     readonly hooks?: CuaActorLabHooks;
+    /** Which of the caller's driving homes are set; neither when absent. */
+    readonly driving?: CallerDriving;
     readonly countOverride?: number;
     readonly rerun?: RunCuaActorLabOptions["rerun"];
   },
 ): ComputerUsePlanResult {
   const hooks = input.hooks ?? {};
+  const driving = input.driving ?? { inProcess: false, createProvider: false };
   const refuse = (
     stage: ComputerUseRefusal["stage"],
     code: CuaActorLabErrorCode,
@@ -345,7 +367,7 @@ export function planComputerUseLab(
       `actors[0].type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
-  const rejection = cuaLabRejection(config, hooks, declaredSubjectRoute(config, hooks));
+  const rejection = cuaLabRejection(config, hooks, driving, declaredSubjectRoute(config, driving));
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
   // A shared world runs every seat against one app; this route would run them as separate lanes.
   // It comes after the rules above, so a shared-world config that breaks one of them, which runLab
@@ -361,13 +383,13 @@ export function planComputerUseLab(
   // skip the subject a clone, local-tree or desktop-cli lab declares.
   const source = config.subject.source;
   if (
-    hooks.buildExecutor !== undefined &&
+    driving.inProcess &&
     (source === "clone" || source === "local-tree" || source === "desktop-cli")
   )
     return refuse(
       "in-scope",
       "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      `cuaHooks.buildExecutor drives subject.appUrl in this process, and a ${source} subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop.`,
+      `RunLabOptions.inProcess drives subject.appUrl in this process, and a ${source} subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop.`,
       actor,
     );
   // The parser's rule; without a product the desktop study fails later.
@@ -384,11 +406,11 @@ export function planComputerUseLab(
       actor,
     );
   const [first, ...rest] = participants;
-  if (hooks.buildExecutor !== undefined && rest.length > 0)
+  if (driving.inProcess && rest.length > 0)
     return refuse(
       "after-personas",
       "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route.",
+      "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route.",
       actor,
     );
   if (first === undefined) throw new Error("computerUseParticipants returned no participant");
@@ -407,18 +429,17 @@ export function planComputerUseLab(
     source === "desktop-cli" && product !== undefined
       ? ({ kind: "desktop-cli", product, ...serveUrl } as const)
       : (provisionedSubject(config) ?? appUrlSubject);
-  const brain = brainOf(config, hooks.buildProvider !== undefined);
-  const runner: ComputerUseRunner =
-    hooks.buildExecutor !== undefined
-      ? {
-          desktop: "in-process",
-          brain: callerBrainOf(config),
-          participants: [first],
-          subject: source === "local-app" ? { kind: "local-app", appUrl } : appUrlSubject,
-        }
-      : isLocalBrowserLab(config)
-        ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
-        : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
+  const brain = brainOf(config, driving.createProvider);
+  const runner: ComputerUseRunner = driving.inProcess
+    ? {
+        desktop: "in-process",
+        brain: callerBrainOf(config),
+        participants: [first],
+        subject: source === "local-app" ? { kind: "local-app", appUrl } : appUrlSubject,
+      }
+    : isLocalBrowserLab(config)
+      ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
+      : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
   const declared = config.execution?.concurrency;
   const n = participants.length;
   const provisioned = source === "clone" || source === "local-tree";

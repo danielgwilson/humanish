@@ -249,7 +249,7 @@ export interface LabSubject {
    *
    * `local-app`: the loopback http(s) URL of an already-running LOCAL dev server the caller's
    * custom CuaExecutor drives in-process (no sandbox, no public-target option — always
-   * loopback). Passed to `buildExecutor` so the bridge knows where the app lives.
+   * loopback). Passed to `inProcess.executor` so the bridge knows where the app lives.
    */
   appUrl?: string;
   /** `clone` (computer-use route): how the cloned app is served in-sandbox. */

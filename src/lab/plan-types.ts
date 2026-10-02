@@ -48,9 +48,9 @@ export type Requirement =
   | { readonly kind: "external-catch"; readonly url: string };
 
 /**
- * Config fields no plan field decides. After admission, computer use reads the config only for the
- * deprecated buildProvider and buildExecutor hooks; its planner, refusal envelopes and local VM
- * study read it before a plan exists. Shared world, terminal and scripted still read some config
+ * Config fields no plan field decides. After admission, computer use reads the config only to pass
+ * it to the caller's createProvider and inProcess executor; its planner, refusal envelopes and local
+ * VM study read it before a plan exists. Shared world, terminal and scripted still read some config
  * fields at run time.
  */
 export type ResidualConfig = Pick<
@@ -94,7 +94,7 @@ interface PreviewPlan extends PlanBase {
 }
 
 /**
- * The model driving a desktop participant. `caller` is the library caller's buildProvider.
+ * The model driving a desktop participant. `caller` is the library caller's createProvider.
  * `declaredModel` is actors[0].model as the lab wrote it, absent when undeclared: the providers
  * take it as written, and spend is priced at it, else the default (pricedModel). An openai
  * brain's `model` is the one its provider runs, with that default applied.

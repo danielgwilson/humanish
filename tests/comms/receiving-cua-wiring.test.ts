@@ -100,7 +100,6 @@ describe("real inbox wiring through the actual CUA lane", () => {
           instructions: "Explore the app.",
         });
         const deps: CuaParticipantDeps & { receiving: CommsReceivingRun } = {
-          config: parsed.config,
           residual: parsed.config,
           labId: parsed.config.id,
           caps: {},

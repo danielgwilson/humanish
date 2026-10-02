@@ -18,7 +18,6 @@ import {
 import { normalizeRunLabOptions, type StreamEvent } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
-import type { CuaLaneSpec } from "../../src/routes/computer-use/legacy-lane-spec.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
@@ -302,38 +301,11 @@ describe("each new option lands in the bag the route reads", () => {
     ]);
   });
 
-  it("createProvider gets the config, the participant and the executor", async () => {
-    const seen: unknown[] = [];
-    const labConfig = config("cuAppUrl");
-    const hooks = normalized(labConfig, {
-      createProvider: async (ctx) => {
-        seen.push(ctx);
-        return provider;
-      },
-    }).cuaHooks!;
-    const built = await hooks.buildProvider!({
-      config: labConfig,
-      actor: {} as never,
-      lane: { laneId: "lane-02", laneIndex: 1 } as CuaLaneSpec,
-      laneCount: 3,
-      executor,
-    });
-    expect(built).toBe(provider);
-    expect(seen).toEqual([
-      { config: labConfig, participant: { id: "lane-02", index: 1, count: 3 }, executor },
-    ]);
-  });
-
-  it("inProcess.executor becomes buildExecutor", async () => {
-    const labConfig = config("cuLocalApp");
-    const hooks = normalized(labConfig, { inProcess, createProvider }).cuaHooks!;
-    await expect(
-      hooks.buildExecutor!({
-        config: labConfig,
-        actor: {} as never,
-        appUrl: "http://127.0.0.1:3000/",
-      }),
-    ).resolves.toBe(executor);
+  it("createProvider and inProcess stay on the options for computer use", () => {
+    const options = normalized(config("cuLocalApp"), { inProcess, createProvider });
+    expect(options.createProvider).toBe(createProvider);
+    expect(options.inProcess).toBe(inProcess);
+    expect(options.cuaHooks).toBeUndefined();
   });
 });
 
@@ -402,17 +374,11 @@ describe("stream, rerun and analysis options land where the route reads them", (
       analysisSignal: AbortSignal.abort(),
       createProvider,
     });
-    // scorer and onStream stay: the routes read them directly.
+    // scorer, onStream and createProvider stay: the routes read them directly.
     expect(options.scorer).toBe(scorer);
     expect(options.onStream).toBe(onStream);
-    for (const key of [
-      "env",
-      "prepareDesktop",
-      "onEvent",
-      "analysisSignal",
-      "createProvider",
-      "inProcess",
-    ])
+    expect(options.createProvider).toBe(createProvider);
+    for (const key of ["env", "prepareDesktop", "onEvent", "analysisSignal"])
       expect(options).not.toHaveProperty(key);
   });
 });
@@ -610,18 +576,11 @@ describe("an onEvent failure never escapes", () => {
   });
 });
 
-describe("the in-process check sees the legacy executor too", () => {
-  const legacyInProcess = { buildExecutor: inProcess.executor, buildProvider: createProvider };
-
-  it("refuses prepareDesktop beside cuaHooks.buildExecutor, as beside inProcess", () => {
-    for (const options of [
-      { cuaHooks: legacyInProcess, prepareDesktop },
-      { inProcess, createProvider, prepareDesktop },
-    ]) {
-      const result = normalize(config("cuAppUrl"), options);
-      expect(result).toMatchObject({ ok: false, code: "HUMANISH_LAB_OPTION_UNSUPPORTED" });
-      if (!result.ok) expect(result.message).toContain("RunLabOptions.prepareDesktop");
-    }
+describe("an in-process run has no desktop to prepare", () => {
+  it("refuses prepareDesktop beside inProcess", () => {
+    const result = normalize(config("cuAppUrl"), { inProcess, createProvider, prepareDesktop });
+    expect(result).toMatchObject({ ok: false, code: "HUMANISH_LAB_OPTION_UNSUPPORTED" });
+    if (!result.ok) expect(result.message).toContain("RunLabOptions.prepareDesktop");
   });
 });
 

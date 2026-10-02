@@ -6103,9 +6103,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       cuaHooks: {
         // If anything on this route touched E2B, created[] would grow — this is the proof probe.
         loadDesktopModule: async () => module,
-        buildExecutor: async () => stateExecutor,
-        buildProvider: async () => makeStateProvider(),
       },
+      inProcess: { executor: async () => stateExecutor },
+      createProvider: async () => makeStateProvider(),
     });
 
     expect(outcome.backend).toBe("cua");
@@ -6162,23 +6162,25 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const stateExecutor = makeStateExecutor();
     const provider = { ...makeStateProvider(), close: vi.fn(async () => undefined) };
-    const buildExecutor = vi.fn(async () => stateExecutor);
-    const buildProvider = vi.fn(async (_context: { executor: CuaExecutor }) => provider);
+    const executor = vi.fn(async () => stateExecutor);
+    const createProvider = vi.fn(async (_context: { executor: CuaExecutor }) => provider);
     const onStream = vi.fn();
 
     const outcome = await runLab(localAppConfig(), {
       cwd,
       onStream,
-      cuaHooks: { loadDesktopModule: async () => module, buildExecutor, buildProvider },
+      cuaHooks: { loadDesktopModule: async () => module },
+      inProcess: { executor },
+      createProvider,
     });
 
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
     expect(outcome.result.ok).toBe(true);
     // No desktop starts in process, so no stream event fires.
     expect(onStream).not.toHaveBeenCalled();
-    expect(buildExecutor).toHaveBeenCalledOnce();
-    expect(buildProvider).toHaveBeenCalledOnce();
-    expect(buildProvider.mock.calls[0]![0].executor).toBe(stateExecutor);
+    expect(executor).toHaveBeenCalledOnce();
+    expect(createProvider).toHaveBeenCalledOnce();
+    expect(createProvider.mock.calls[0]![0].executor).toBe(stateExecutor);
     expect(provider.close).toHaveBeenCalledOnce();
     expect(created).toHaveLength(0);
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
@@ -6200,9 +6202,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
         cwd,
         cuaHooks: {
           loadDesktopModule: async () => module,
-          buildExecutor: async () => makeStateExecutor(),
-          buildProvider: async () => makeStateProvider(),
         },
+        inProcess: { executor: async () => makeStateExecutor() },
+        createProvider: async () => makeStateProvider(),
       });
 
       if (outcome.backend !== "cua") throw new Error("expected the cua backend");
@@ -6226,9 +6228,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       cwd,
       cuaHooks: {
         loadDesktopModule: async () => module,
-        buildExecutor: async () => makeStateExecutor(),
-        buildProvider: async () => provider,
       },
+      inProcess: { executor: async () => makeStateExecutor() },
+      createProvider: async () => provider,
     });
 
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
@@ -6271,9 +6273,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       cuaHooks: {
         env: { OPENAI_API_KEY: canary },
         loadDesktopModule: async () => module,
-        buildExecutor: async () => makeStateExecutor(),
-        buildProvider: async () => provider,
       },
+      inProcess: { executor: async () => makeStateExecutor() },
+      createProvider: async () => provider,
     });
 
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
@@ -6290,16 +6292,16 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       cwd,
       cuaHooks: {
         loadDesktopModule: async () => module,
-        buildExecutor: async () => makeStateExecutor(),
-        // A brain that immediately reports done with no action and no message → hollow.
-        buildProvider: async (): Promise<CuaProvider> => ({
-          id: "hollow-brain",
-          capabilities: STATE_CAPS,
-          async nextTurn(): Promise<CuaTurn> {
-            return { actions: [], pendingSafetyChecks: [], done: true };
-          },
-        }),
       },
+      inProcess: { executor: async () => makeStateExecutor() },
+      // A brain that immediately reports done with no action and no message → hollow.
+      createProvider: async (): Promise<CuaProvider> => ({
+        id: "hollow-brain",
+        capabilities: STATE_CAPS,
+        async nextTurn(): Promise<CuaTurn> {
+          return { actions: [], pendingSafetyChecks: [], done: true };
+        },
+      }),
     });
     expect(created).toHaveLength(0);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
@@ -6317,20 +6319,20 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       cwd,
       cuaHooks: {
         loadDesktopModule: async () => module,
-        buildExecutor: async () => makeStateExecutor(),
-        buildProvider: async (): Promise<CuaProvider> => ({
-          id: "idle-brain",
-          capabilities: STATE_CAPS,
-          async nextTurn(): Promise<CuaTurn> {
-            return {
-              actions: [{ kind: "wait", ms: 1 }],
-              pendingSafetyChecks: [],
-              done: false,
-              message: "Still waiting.",
-            };
-          },
-        }),
       },
+      inProcess: { executor: async () => makeStateExecutor() },
+      createProvider: async (): Promise<CuaProvider> => ({
+        id: "idle-brain",
+        capabilities: STATE_CAPS,
+        async nextTurn(): Promise<CuaTurn> {
+          return {
+            actions: [{ kind: "wait", ms: 1 }],
+            pendingSafetyChecks: [],
+            done: false,
+            message: "Still waiting.",
+          };
+        },
+      }),
     });
     expect(created).toHaveLength(0);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
@@ -6357,7 +6359,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
   });
 
   // RUNG 5: the two boot-time fail-closed guards, both BEFORE any key check / any E2B touch.
-  it("buildExecutor WITHOUT buildProvider → EXECUTOR_NO_PROVIDER (before any key check)", async () => {
+  it("inProcess WITHOUT createProvider → EXECUTOR_NO_PROVIDER (before any key check)", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runCuaActorLab({
       cwd,
@@ -6366,9 +6368,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       hooks: {
         env: {}, // NO keys — proves the guard precedes key-gating
         loadDesktopModule: async () => module,
-        buildExecutor: async () => makeStateExecutor(),
-        // buildProvider deliberately omitted
       },
+      // createProvider deliberately omitted
+      inProcess: { executor: async () => makeStateExecutor() },
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
@@ -6385,26 +6387,25 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       hooks: {
         env: {}, // NO keys — the local-app guard must win over KEYS_MISSING
         loadDesktopModule: async () => module,
-        // no buildExecutor / buildProvider
+        // no inProcess or createProvider
       },
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
     expect(outcome.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
-    // The message names the typed homes, not the deprecated cuaHooks.buildExecutor.
     expect(outcome.error?.message).toContain("inProcess: { executor }, createProvider");
     expect(outcome.error?.message).not.toContain("cuaHooks");
     expect(outcome.sandbox).toBeUndefined();
   });
 
-  it("buildProvider ALONE (a model swap) does NOT take the in-process route — it still provisions E2B", async () => {
-    // buildProvider without buildExecutor is allowed and stays on the normal E2B route; with no
+  it("createProvider ALONE (a model swap) does NOT take the in-process route — it still provisions E2B", async () => {
+    // createProvider without inProcess is allowed and stays on the normal E2B route; with no
     // keys/dry-run we just confirm it does NOT trip EXECUTOR_NO_PROVIDER and is NOT treated as
     // in-process (a dry-run produces a contract bundle with no sandbox, the normal route).
     const outcome = await runLab(cuaConfig(), {
       cwd,
       dryRun: true,
-      cuaHooks: { buildProvider: async () => makeStateProvider() },
+      createProvider: async () => makeStateProvider(),
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -7415,9 +7416,9 @@ describe("computer-use run directory goldens", () => {
         env: {},
         loadDesktopModule: async () => module,
         now: () => (clock += 30_000),
-        buildExecutor: async () => makeStateExecutor(),
-        buildProvider: async () => makeStateProvider(),
       },
+      inProcess: { executor: async () => makeStateExecutor() },
+      createProvider: async () => makeStateProvider(),
     }).finally(stderr.stop);
     expect(created).toHaveLength(0);
     const runId = outcome.result.runId;

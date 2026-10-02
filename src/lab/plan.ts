@@ -4,7 +4,7 @@
 // backend names.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
-import { planComputerUseLab } from "../routes/computer-use/plan.js";
+import { callerDrivingOf, planComputerUseLab } from "../routes/computer-use/plan.js";
 import { injectedBrowser, planScriptedLab } from "../routes/scripted/plan.js";
 import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
@@ -177,6 +177,7 @@ function planRoute(
       return planComputerUseLab(lab, {
         ...input,
         ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+        driving: callerDrivingOf(options),
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
       });

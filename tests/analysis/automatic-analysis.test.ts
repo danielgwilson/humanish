@@ -242,10 +242,10 @@ describe("automatic analysis admission and producer boundary", () => {
           env: {},
           loadDesktopModule: forbidden,
           runSession: forbidden,
-          buildExecutor: forbidden,
-          buildProvider: forbidden,
           renderObserverFn: forbidden,
         },
+        inProcess: { executor: forbidden },
+        createProvider: forbidden,
       });
       expect(result.error?.code).toBe("HUMANISH_LAB_ANALYSIS_INVALID");
       expect(forbidden).not.toHaveBeenCalled();

@@ -127,18 +127,23 @@ describe("planLab", () => {
       subject: { source: "local-app", appUrl: "http://127.0.0.1:3000/" },
       execution: { target: "local", timeoutMs: 60_000 },
     });
-    expect(gap(parsed(cuApp), { cwd: ROOT, cuaHooks: { buildExecutor: executor } })).toBe(
+    // The type pairs inProcess with createProvider; a JavaScript caller can still omit it.
+    const executorOnly = { cwd: ROOT, inProcess: { executor } } as unknown as Parameters<
+      typeof planLab
+    >[1];
+    expect(gap(parsed(cuApp), executorOnly)).toBe(
       "computer-use HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
     );
     expect(gap(local, { cwd: ROOT })).toBe("computer-use HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
-    expect(
-      gap(local, { cwd: ROOT, cuaHooks: { buildExecutor: executor, buildProvider: provider } }),
-    ).toBe("planned");
+    expect(gap(local, { cwd: ROOT, inProcess: { executor }, createProvider: provider })).toBe(
+      "planned",
+    );
     expect(
       gap(parsed(cuApp), {
         cwd: ROOT,
         count: 2,
-        cuaHooks: { buildExecutor: executor, buildProvider: provider },
+        inProcess: { executor },
+        createProvider: provider,
       }),
     ).toBe("computer-use HUMANISH_CUA_LAB_FANOUT_INVALID");
     expect(gap(parsed(cuApp), { cwd: ROOT, count: 17 })).toBe(
@@ -222,18 +227,16 @@ describe("planLab", () => {
     ]);
   });
 
-  it("plans a caller-provided brain from the hooks and freezes the residual config", () => {
-    const cuaHooks = {
-      buildProvider: async () => {
-        throw new Error("not called");
-      },
+  it("plans a caller-provided brain from createProvider and freezes the residual config", () => {
+    const createProvider = async (): Promise<never> => {
+      throw new Error("not called");
     };
     const result = planLab(
       parsed({
         ...cuApp,
         comms: { email: { kind: "fake", external: { catchBaseUrl: "http://127.0.0.1:9/" } } },
       }),
-      { cwd: ROOT, cuaHooks },
+      { cwd: ROOT, createProvider },
     );
     if (!result.ok) throw new Error(`refused on ${result.refusal.route}`);
     const plan = result.planned.plan;

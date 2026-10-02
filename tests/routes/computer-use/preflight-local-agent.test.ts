@@ -35,7 +35,6 @@ function rejection(dir: string, caps: { maxUsd?: number } = {}) {
   return liveCuaRejection({
     caps,
     brain: { kind: "local-agent", agent: "codex" },
-    hooks: {},
     env: { PATH: dir, HOME: dir, E2B_API_KEY: "e2b-test-key" },
     requirements: [
       { kind: "key", name: "E2B_API_KEY" },

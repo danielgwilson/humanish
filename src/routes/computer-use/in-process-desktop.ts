@@ -2,18 +2,11 @@
 // hosted and local-VM desktops implement. It acquires no sandbox, stream, subject or recording, so
 // its evidence claims none of them.
 
-import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabConfig } from "../../lab/types.js";
 import type { ParticipantDesktop, ReadyParticipantDesktop } from "./participant-desktop.js";
-import type { CuaActorLabHooks } from "./types.js";
+import type { CuaParticipantDeps } from "./types.js";
 
-/** What an in-process desktop reads: the caller's executor hook and the arguments it receives. */
-interface InProcessDesktopDeps {
-  config: LabConfig;
-  descriptor: CuaActorDescriptor;
-  appUrl: string;
-  hooks: Pick<CuaActorLabHooks, "buildExecutor">;
-}
+/** What an in-process desktop reads: the caller's executor and the app it drives. */
+type InProcessDesktopDeps = Pick<CuaParticipantDeps, "appUrl" | "inProcessExecutor">;
 
 /**
  * The caller's executor as a participant desktop. prepare acquires nothing; openSession builds the
@@ -37,15 +30,9 @@ export function createInProcessDesktop(deps: InProcessDesktopDeps): ParticipantD
           "The participant desktop must be prepared and may only be opened once, before finalization.",
         );
       opened = true;
-      const buildExecutor = deps.hooks.buildExecutor;
-      if (buildExecutor === undefined)
-        throw new Error("The in-process route needs hooks.buildExecutor.");
-      const executor = await buildExecutor({
-        config: deps.config,
-        actor: deps.descriptor,
-        appUrl: deps.appUrl,
-      });
-      return { executor };
+      if (deps.inProcessExecutor === undefined)
+        throw new Error("The in-process route needs RunLabOptions.inProcess.");
+      return { executor: await deps.inProcessExecutor(deps.appUrl) };
     },
     finalize() {
       return (finalization ??= Promise.resolve());

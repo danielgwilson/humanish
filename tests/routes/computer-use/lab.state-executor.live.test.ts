@@ -60,7 +60,7 @@ function makeLocalApp(): LocalApp {
 // getState() as appState; execute() maps the model intent onto the contract.
 function createAppContractExecutor(app: LocalApp, appUrl: string): CuaExecutor {
   // appUrl is unused for routing here (the bridge is in-process); kept to mirror the public
-  // buildExecutor ctx, which passes the entry appUrl to a real bridge.
+  // inProcess.executor ctx, which passes the entry appUrl to a real bridge.
   void appUrl;
   return {
     async observe(): Promise<CuaObservation> {
@@ -162,10 +162,8 @@ describe.skipIf(!LIVE)(
 
         const outcome = await runLab(parsed.config, {
           cwd,
-          cuaHooks: {
-            buildExecutor: async (ctx) => createAppContractExecutor(app, ctx.appUrl),
-            buildProvider: async () => createStateBrain(),
-          },
+          inProcess: { executor: async (ctx) => createAppContractExecutor(app, ctx.appUrl) },
+          createProvider: async () => createStateBrain(),
         });
 
         expect(outcome.backend).toBe("cua");
