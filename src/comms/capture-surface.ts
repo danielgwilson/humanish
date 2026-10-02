@@ -142,7 +142,7 @@ function esc(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Defense-in-depth stripping before rendering the app's real email HTML. The LOAD-BEARING protection is
+/** Defense-in-depth stripping before rendering the app's real email HTML. The main protection is
  *  the page CSP (`script-src 'none'`, set both as a page() meta and as a catch response header), which is
  *  browser-enforced and neuters inline handlers, `javascript:` URLs, and injected <script> regardless of
  *  what this misses. This strip additionally removes elements CSP does not cover (a redirecting
@@ -272,7 +272,7 @@ const PAGE_CSS =
   ".inbox-list tr{padding:12px 0;border-bottom:1px solid #ddd}.inbox-list td{padding:3px 0;border:0}" +
   ".inbox-list td:first-child a{display:block;min-height:32px;font-weight:600}.inbox-list td[data-label]::before{content:attr(data-label) ': ';font-size:13px;color:#666}}";
 
-/** The surface CSP: the browser-enforced, load-bearing protection against the app-authored email running
+/** The surface CSP: the browser-enforced main protection against the app-authored email running
  *  script or hijacking navigation on the surface page. `script-src 'none'` blocks inline handlers,
  *  `javascript:` URLs, and any injected <script>; `object-src`/`frame-src 'none'` block plugins/frames;
  *  `base-uri 'none'` blocks <base> reroot. Images/styles stay permissive so the real email still renders.

@@ -270,8 +270,8 @@ export async function drainCommsEvidence(args: {
       return path;
     }
     if (collected.captured > 0) {
-      // Captured mail that matched no declared recipient must not vanish silently (invariant 6:
-      // honest signals): tell the operator to declare comms.email.recipients[].address to match
+      // Captured mail that matched no declared recipient must not vanish silently: tell the
+      // operator to declare comms.email.recipients[].address to match
       // the address the app actually sends to (e.g. the one the persona surface will sign up with).
       warnings.push(
         `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,

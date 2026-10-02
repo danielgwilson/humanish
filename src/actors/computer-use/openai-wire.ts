@@ -309,7 +309,7 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
     // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
     tools: [{ type: "computer" }],
     truncation: "auto",
-    // `summary` asks for the provider-SANCTIONED reasoning summary items; the
+    // `summary` asks for the provider-sanctioned reasoning summary items; the
     // capture side never scrapes or reconstructs raw chain-of-thought. Parsed by
     // parseOpenAiResponse into turn.reasoning; the loop records them as redacted
     // `kind: "reasoning"` trace items.

@@ -99,7 +99,7 @@ export function boundedConcurrency(declared: number | undefined, participantCoun
 
 /**
  * The planned bound, lowered by the env override. The override may only lower it (never raise
- * concurrent paid desktops, per invariant 3), and a lowering is reported via envLoweredFrom so the
+ * concurrent paid desktops), and a lowering is reported via envLoweredFrom so the
  * plan never silently disagrees with the manifest.
  */
 function envLoweredConcurrency(

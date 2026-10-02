@@ -1,6 +1,6 @@
 // The boundary between the CLI and the terminal UI.
 //
-// `humanish tui` loads a PRE-BUILT bundle (dist/tui-app.js) that contains Ink, React and the
+// `humanish tui` loads a pre-built bundle (dist/tui-app.js) that contains Ink, React and the
 // screens, and nothing else. Everything the surface needs to know is passed across this interface
 // by the CLI, which imports it from the same modules every other command uses.
 //

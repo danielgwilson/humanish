@@ -122,7 +122,7 @@ function candidates(session: CuaLoopResult) {
   });
 }
 
-describe("participant feedback survives completion mechanisms (#657)", () => {
+describe("participant feedback survives completion mechanisms", () => {
   it.each(ENDINGS)("preserves the Save report when %s ends the actual loop", async (ending) => {
     const session = await runSession(ending, { closing: REPORT });
     expect(session.status).toBe("passed");
@@ -286,7 +286,7 @@ const CAPTURED_NO_FRICTION_REPORTS = [
   "REACHED THE GOAL.\nAdded the task “Draft proposal,” then edited and saved it as “Send proposal.” Everything behaved as expected; the Add, Edit, and Save controls were clear, with no confusion or hesitation.",
 ];
 
-describe("coordinated no-friction reports (#669)", () => {
+describe("coordinated no-friction reports", () => {
   it.each(ENDINGS)("does not promote captured clean reports with %s completion", async (ending) => {
     for (const report of CAPTURED_NO_FRICTION_REPORTS) {
       const session = await runSession(ending, { messages: [report], closing: report });

@@ -40,7 +40,7 @@ export function checkLiveTerminalMachine(
     );
   }
 
-  // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
+  // --- Deny-by-default credentials: build the command-scoped allowlist. ---
   const runtimeEnv = buildRuntimeAuth({ runtimeAuth: plan.runtime.auth, env });
   if (!runtimeEnv.ok) return runtimeEnv;
   // The sandbox is created with E2B_API_KEY, so a missing key is refused before the run starts.
@@ -182,7 +182,7 @@ async function prepareLivePrompt(args: {
 }) {
   const { plan, cwd, runtimeEnv, env, warnings } = args;
   const { product } = plan;
-  // Compose the prompt from public surfaces and the author mission alone (safety contract item 3).
+  // Compose the prompt from public surfaces and the author mission alone.
   // Inject a per-run verdict nonce: the agent echoes HUMANISH_ACTOR_VERDICT=<status>
   // HUMANISH_ACTOR_NONCE=<nonce>; the scorer verifies the nonce so replayed text cannot forge it.
   const mission = plan.mission ?? defaultMission(product.name);
@@ -197,10 +197,10 @@ async function prepareLivePrompt(args: {
   });
   const promptDigest = digestText(composedPrompt);
 
-  // --- Safety contract item 5: literal-scrub every known value, then pattern-redact, at the source. ---
+  // --- Literal-scrub every known value, then pattern-redact, at the source. ---
   // The runtime key value (+ any other provisioned value) is scrubbed by literal match before
   // anything persists (a key has no detectable "shape" if it is an arbitrary token); redactText is
-  // the second pass for secret-SHAPED content. Applied PRE-truncation so a cut can never split a
+  // the second pass for secret-shaped content. Applied pre-truncation so a cut can never split a
   // value past the scrubber.
   const knownSecretValues = [runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""].filter(
     (v) => v.length >= 4,

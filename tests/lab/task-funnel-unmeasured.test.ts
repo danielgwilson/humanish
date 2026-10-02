@@ -24,7 +24,7 @@ const textTask: LabTask = {
   success: { any: [{ id: "total-visible", textIncludes: "Total" }] },
 };
 
-describe("task funnel distinguishes unmeasured from failed (#514)", () => {
+describe("task funnel distinguishes unmeasured from failed", () => {
   it("marks a task unmeasured when its criterion's input never arrived", () => {
     const tracker = new TaskTracker([urlTask]);
     // Turns ran, but the browser-state observer yielded nothing with a url in it.
@@ -52,7 +52,7 @@ describe("task funnel distinguishes unmeasured from failed (#514)", () => {
     expect(funnel.stoppedAt).toBe("reach-prices");
   });
 
-  it("reproduces the #514 case: a criterion true at turn 0 that was never measured", () => {
+  it("a criterion true at turn 0 is unmeasured until an observation carries its input", () => {
     const tracker = new TaskTracker([urlTask]);
     // Every lane opened on https://vercel.com/pricing. Had the url reached the tracker, this task
     // would have completed on turn 0 without a single action.

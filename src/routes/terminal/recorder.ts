@@ -46,7 +46,7 @@ export function createTerminalRecorder(args: {
       return;
     }
     transcriptBytes += Buffer.byteLength(raw, "utf8");
-    // Scrub, then redact, at the source (safety contract item 5). Only the participant reader below
+    // Scrub, then redact, at the source. Only the participant reader below
     // sees the raw bytes, and it stores none of them.
     terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
     if (stream === "stdout") participantText.append(raw);

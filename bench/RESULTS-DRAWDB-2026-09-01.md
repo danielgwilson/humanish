@@ -45,7 +45,7 @@ participant, the same class as the TodoMVC arm's one unverified row.
 | drawDB (0.65.0 to 0.67.0) | third party | no | 11 | 11 of 12 | 0 |
 
 Twenty participants on apps we did not write, 0 invented defects. Row 8 is the finding a mouse-only
-study would have missed; `docs/goals/computer-use-actor/receipts/persona-contrast-live-2026-09-01.md`
+study would have missed; `docs/evidence/computer-use/persona-contrast-live-2026-09-01.md`
 has the two runs.
 
 ## Runs

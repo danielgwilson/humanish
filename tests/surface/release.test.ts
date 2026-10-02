@@ -55,15 +55,14 @@ describe("release readiness", () => {
       "CHANGELOG.md",
       "dist",
       "docs/architecture",
-      "docs/assets",
       "docs/contracts",
       "docs/decisions",
-      "docs/goals/current.md",
+      "docs/status.md",
       "docs/principles",
       "docs/product",
       "docs/ramp",
       "docs/release",
-      "docs/roadmap",
+      "docs/history/roadmap",
       "examples",
       "skills",
       "README.md",
@@ -76,7 +75,9 @@ describe("release readiness", () => {
     ]);
     expect(packageJson.scripts.prepack).toBe("pnpm build");
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
-    expect(packageJson.scripts["skill:check"]).toBe("DISABLE_TELEMETRY=1 npx skills add . --list");
+    expect(packageJson.scripts["skill:check"]).toBe(
+      "DISABLE_TELEMETRY=1 pnpm exec skills add . --list",
+    );
     expect(packageJson.scripts["pack:dry-run"]).toBe("npm pack --dry-run");
     expect(packageJson.scripts["api:proof"]).toBe("node scripts/public-api-proof.mjs");
     expect(packageJson.scripts["release:check"]).toBe(
@@ -86,7 +87,7 @@ describe("release readiness", () => {
 
   it("keeps local machine paths out of the ramp and goal docs", async () => {
     const ramp = await readFile("docs/ramp/README.md", "utf8");
-    const goals = await readFile("docs/goals/current.md", "utf8");
+    const goals = await readFile("docs/status.md", "utf8");
     const forbidden = [
       ["", "Users", ""].join("/"),
       ["local", "git"].join("_"),
@@ -98,13 +99,8 @@ describe("release readiness", () => {
     }
   });
 
-  it("links the version-pinned drawDB study hero and ships it in the npm payload", async () => {
+  it("ships no image that `README.md` does not show", async () => {
     const readme = await readFile("README.md", "utf8");
-    const screenshotPath = "docs/assets/humanish-drawdb-hero.png";
-    const screenshotMarkdown =
-      `![humanish Observer grid of a live four-persona drawDB study: four completed participants, each showing its final full-desktop screenshot and outcome]` +
-      `(https://unpkg.com/humanish@0.16.0/${screenshotPath})`;
-    const screenshot = await stat(screenshotPath);
     const inventory = JSON.parse(
       execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
         cwd: process.cwd(),
@@ -112,42 +108,15 @@ describe("release readiness", () => {
         maxBuffer: 5 * 1024 * 1024,
         timeout: 30_000,
       }),
-    ) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
+    ) as Array<{ files?: Array<{ path?: string }> }>;
 
     expect(inventory).toHaveLength(1);
-    const packedScreenshot = inventory[0]?.files?.find((file) => file.path === screenshotPath);
-    if (!packedScreenshot) {
-      throw new Error(`npm pack inventory omitted ${screenshotPath}`);
-    }
-
-    expect(readme).toContain(screenshotMarkdown);
-    expect(readme).toContain("it is not a humanish adopter or endorser");
-    expect(readme).not.toContain(`https://unpkg.com/humanish@latest/${screenshotPath}`);
-    expect(packedScreenshot.size).toBe(screenshot.size);
-    expect(packedScreenshot.size).toBeGreaterThan(50_000);
+    const images = (inventory[0]?.files ?? [])
+      .map((file) => file.path ?? "")
+      .filter((path) => /\.(png|jpe?g|gif|svg|webp)$/i.test(path));
+    expect(images.filter((path) => !readme.includes(path))).toEqual([]);
   }, 45_000);
 
-  it("keeps the legacy synthetic hero in the npm payload for older pinned READMEs", async () => {
-    const screenshotPath = "docs/assets/humanish-observer-hero.png";
-    const screenshot = await stat(screenshotPath);
-    const inventory = JSON.parse(
-      execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
-        cwd: process.cwd(),
-        encoding: "utf8",
-        maxBuffer: 5 * 1024 * 1024,
-        timeout: 30_000,
-      }),
-    ) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
-
-    expect(inventory).toHaveLength(1);
-    const packedScreenshot = inventory[0]?.files?.find((file) => file.path === screenshotPath);
-    if (!packedScreenshot) {
-      throw new Error(`npm pack inventory omitted ${screenshotPath}`);
-    }
-
-    expect(packedScreenshot.size).toBe(screenshot.size);
-    expect(packedScreenshot.size).toBeGreaterThan(50_000);
-  }, 45_000);
   // Inside node_modules a relative link can only reach what the package ships. Links to repo-only
   // files use GitHub URLs, which docs:check validates.
   it("ships every file that a relative link in a shipped doc names", async () => {

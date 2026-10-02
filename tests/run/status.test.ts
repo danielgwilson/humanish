@@ -23,7 +23,7 @@ import {
   type RunStatusRecord,
 } from "../../src/run/status.js";
 
-describe("run status: identity + liveness on disk (#455)", () => {
+describe("run status: identity + liveness on disk", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-status-"));

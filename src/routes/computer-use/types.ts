@@ -55,12 +55,12 @@ import type { ResolvedParticipant } from "../../run/participant.js";
 
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
-// The only fan-out topology this slice ships: N participants = N independent E2B desktop
-// sandboxes, each its own world (clone/serve + subject.state per participant). Shared-world is layer 7.
+// The fan-out topology of this route: N participants = N independent E2B desktop sandboxes,
+// each its own world (clone/serve + subject.state per participant). Shared-world has its own route.
 export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
 
 // Env override that may only lower the effective concurrency (never raise concurrent paid
-// desktops, per invariant 3). Read names-only into a local; the value never persists.
+// desktops). Read names-only into a local; the value never persists.
 export const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
 
 // The default session budget, sized so a study can finish (docs/principles/three-roles.md: a
@@ -81,11 +81,11 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 
 // Device/screen size comes from the named-preset registry (device-presets.ts), selectable per run
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
-// per-PERSONA device dimension (N personas × devices, as the bespoke sims author) lands with
+// per-persona device dimension (N personas × devices, as the bespoke sims author) lands with
 // fan-out. On this E2B-desktop route only width/height physically render; isMobile/DSF are
 // honest metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
 // rendered width is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
-// screen the browser can't shrink to does not overflow + clip (see resolveLaneDevice).
+// screen the browser can't shrink to does not overflow + clip (see resolveParticipantDevice).
 
 /**
  * What a computer-use run takes besides its plan and config. The count override and rerun go to
@@ -275,7 +275,7 @@ export type CuaActorLabErrorCode =
   // well-formed Unicode (src/comms/external-evidence.ts). Refused at preflight, before the catch is
   // probed.
   | "HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID"
-  // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by runCuaBackend
+  // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by prepareCuaWatch
   // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
   // render through the same formatter as any other CUA lab failure.
   | "HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH"
@@ -288,7 +288,7 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_SERVE_TUNNEL_NOT_FOUND"
   | "HUMANISH_SERVE_TUNNEL_START_FAILED";
 
-/** Subject provenance projection (invariant 5): what the actor actually drove. */
+/** Subject provenance projection: what the actor actually drove. */
 export interface CuaSubjectProjection {
   source: "app-url" | "clone" | "local-tree";
   /** Clone-route only: the (possibly redacted) owner/repo slug. */
@@ -356,7 +356,7 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
      * surfaced on the result; the sandbox is already dead by the time the result exists. */
     streamUrlPresent: boolean;
   };
-  /** Subject provenance (invariant 5): what the actor actually drove. At N>1 this is the
+  /** Subject provenance: what the actor actually drove. At N>1 this is the
    *  unanimity-gated aggregate (top-level `commit` only when every participant resolved the same one). */
   subject?: CuaSubjectProjection;
   /** The pre-flight participant plan (present once participants resolve; absent on early validation errors). */
@@ -404,7 +404,7 @@ export interface ParticipantRunsAndPlan {
 
 /**
  * The study's shared spend ledger: one counter across every participant. Each one notes its
- * own latest running MODEL-spend estimate (monotone per participant: an estimate can only grow)
+ * own latest running model-spend estimate (monotone per participant: an estimate can only grow)
  * and reads back the run total; the loop stops the participant the moment the total crosses the study budget.
  * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
  */
@@ -466,7 +466,7 @@ export interface E2BDesktopDeps {
    *  declared. Carries the parsed comms block (recipients drive the per-participant inbox instruction)
    *  and the inbox URL the persona opens. The drain runs once at run level, not per participant. */
   externalComms?: { email: LabCommsEmail; inboxUrl: string };
-  /** Injected clock (ms). Used to measure the host-side E2B desktop create->teardown span so the
+  /** Injected clock (ms). It measures the host-side E2B desktop create->teardown span so the
    *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
   now: () => number;
   /** Loads the E2B SDK for the participant's desktop. Defaults to loadE2BDesktopModule. */
@@ -508,16 +508,16 @@ export interface ParticipantModelDeps {
    *  live run. Preflight already refused the cap on an unpriced model. */
   runBudget?: CuaRunBudget;
   /**
-   * RUNTIME-ONLY observed-URL callback (the shared-world handoff): threaded into the participant's session so the
+   * runtime-only observed-URL callback (the shared-world handoff): threaded into the participant's session so the
    * orchestrator watches this seat's live location.href mid-run. Never persisted (see
    * CuaLoopOptions.onObservedUrl). The concurrent shared-world barrier passes a host-seat latch here
    * to extract a /lobby/CODE; on ordinary routes it is undefined (no-op).
    */
   onObservedUrl?: (url: string | undefined) => void;
-  /** RUNTIME-ONLY per-turn narration callback; see CuaLoopOptions.onMessage. The concurrent
+  /** runtime-only per-turn narration callback; see CuaLoopOptions.onMessage. The concurrent
    * shared-world barrier passes a host-seat message scanner here to latch the lobby code. */
   onMessage?: (text: string) => void;
-  /** RUNTIME-ONLY per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
+  /** runtime-only per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
    * shared-world barrier passes a host-seat vision reader here to latch the lobby code off-screen. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot from a participant's loop, keyed by participant. The live path

@@ -326,6 +326,19 @@ export function normalizeCliArgv(argv: string[]): string[] {
   return argv;
 }
 
+/**
+ * The root help's examples, in the order a newcomer runs them. Each passes on a freshly
+ * initialized project (tests/cli/root-help-examples.test.ts).
+ */
+export const ROOT_HELP_EXAMPLES = [
+  "humanish init --yes",
+  "humanish run first-run",
+  "humanish observe --run latest --open",
+  "humanish doctor --lab try-live",
+  "humanish run try-live",
+  "humanish verify --json",
+] as const;
+
 export function createProgram(
   io: Partial<CliIo> & { tuiRuntime?: Partial<TuiRuntime> } = {},
 ): Command {
@@ -343,8 +356,23 @@ export function createProgram(
   const program = new HumanishCommand(undefined, cliIo);
 
   // Bare `humanish` orients instead of printing sixteen subcommands. --help is untouched;
-  // this is only what happens when no command was chosen at all.
+  // this is only what happens when no command was chosen at all. A word that names no command
+  // (`humanish verfy`) lands here too, and gets the closest command in place of the help dump.
   program.action(async (options: { json?: boolean }) => {
+    const [word] = program.args;
+    if (word !== undefined) {
+      const suggestion = closestCommand(
+        word,
+        program.commands.map((command) => command.name()),
+      );
+      cliIo.writeErr(
+        suggestion === undefined
+          ? `error: unknown command '${word}'. humanish --help lists the commands.\n`
+          : `error: unknown command '${word}'. Did you mean '${suggestion}'?\n`,
+      );
+      cliIo.setExitCode(1);
+      return;
+    }
     const state = await readOrientation(".");
     if (options.json === true) {
       cliIo.writeOut(`${JSON.stringify(state, null, 2)}\n`);
@@ -376,14 +404,7 @@ export function createProgram(
       [
         "",
         "Examples:",
-        "  humanish watch",
-        "  humanish watch first-run",
-        "  humanish watch --lab .humanish/labs/local.yaml",
-        "  humanish watch --run latest --detach",
-        "  humanish watch --json --no-open",
-        "  humanish lab list",
-        "  humanish lab run first-run --json --no-open",
-        "  humanish verify --run latest --json",
+        ...ROOT_HELP_EXAMPLES.map((example) => `  ${example}`),
         "",
         "Public-safety boundary:",
         "  humanish must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
@@ -413,6 +434,41 @@ export function createProgram(
   registerCodexCommands(program, cliIo);
   registerLabCommands(program, cliIo);
   registerFeedbackCommands(program, cliIo);
+  // Only the root takes a stray word, so the action above can name the command it meant. Set after
+  // registration: commander copies this setting into each subcommand when it is created.
+  program.allowExcessArguments(true);
 
   return program;
+}
+
+/** The registered command closest to a mistyped word, or undefined when none is close. */
+function closestCommand(word: string, names: readonly string[]): string | undefined {
+  let best: { name: string; distance: number } | undefined;
+  for (const name of names) {
+    const distance = editDistance(word.toLowerCase(), name);
+    if (distance <= Math.max(1, Math.floor(name.length / 3)) && (!best || distance < best.distance))
+      best = { name, distance };
+  }
+  return best?.name;
+}
+
+/** Levenshtein distance, with an adjacent transposition counted as one edit. */
+function editDistance(a: string, b: string): number {
+  const rows = Array.from({ length: a.length + 1 }, (_, i) => [
+    i,
+    ...Array<number>(b.length).fill(0),
+  ]);
+  for (let j = 1; j <= b.length; j++) rows[0]![j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      rows[i]![j] = Math.min(
+        rows[i - 1]![j]! + 1,
+        rows[i]![j - 1]! + 1,
+        rows[i - 1]![j - 1]! + cost,
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        rows[i]![j] = Math.min(rows[i]![j]!, rows[i - 2]![j - 2]! + 1);
+    }
+  return rows[a.length]![b.length]!;
 }

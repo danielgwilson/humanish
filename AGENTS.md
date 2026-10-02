@@ -4,8 +4,8 @@ humanish runs persona studies: AI participants use a target app, CLI or agent-fa
 hosted or local desktops, and every run leaves a verifiable evidence bundle. Run bundles are the
 source of truth; the Observer is their review surface.
 
-Sub-guides take precedence inside their directories: [observer/](https://github.com/danielgwilson/humanish/blob/main/observer/AGENTS.md),
-[tui/](https://github.com/danielgwilson/humanish/blob/main/tui/AGENTS.md), [site/](https://github.com/danielgwilson/humanish/blob/main/site/AGENTS.md). The reasoning behind the rules below is in
+Sub-guides take precedence inside their directories: [observer/](https://github.com/danielgwilson/humanish/blob/main/observer/README.md),
+[tui/](https://github.com/danielgwilson/humanish/blob/main/tui/README.md), [site/](https://github.com/danielgwilson/humanish/blob/main/site/README.md). The reasoning behind the rules below is in
 [docs/principles/engineering.md](docs/principles/engineering.md). [CONTEXT.md](CONTEXT.md) defines
 the domain terms, and [docs/decisions/](docs/decisions/README.md) records the decisions that
 shape the code.
@@ -32,13 +32,15 @@ temporary project, compares its export names with `tests/golden/public-api.json`
 `examples/`. After an intended export change, run `pnpm api:proof --update` and review the golden
 diff.
 
-Three counts are held to caps in package.json: oxlint warnings (`lint`, `--max-warnings`), comment
-prose (`prose:check`) and the retired words lane, seat, role, sim and study in `src/` identifiers
-and file names (`vocabulary:check`). Each checker fails when a count is above its cap or below it,
-so the PR that reduces a count lowers its cap to the new count; the failure names the flag and the
-value. A count with no flag fails too, naming the flag to add. CI's `caps` workflow fails a PR that
-raises or removes a cap against the base branch, unless the PR has the `raise-cap` label and a
-`Cap raise:` line in its body that says why.
+Three counts are held to caps: oxlint warnings (`lint`, `--max-warnings` in package.json), comment
+prose (`prose:check`) and words in `src/` identifiers and file names (`vocabulary:check`). The last
+two read their caps from `scripts/caps.json`. The retired participant words are lane, seat, role and
+sim. `study` stays the prose word for what a run produces; identifiers say run or lab, so
+vocabulary:check counts it too. Each checker fails when a count is above its cap or below it, so the
+PR that reduces a count lowers its cap to the new count; the failure names the cap and the value. A
+count with no cap fails too, naming the cap to add. CI's `caps` workflow fails a PR that raises or
+removes a cap against the base branch, unless the PR has the `raise-cap` label and a `Cap raise:`
+line in its body that says why.
 
 ## Layout
 
@@ -60,7 +62,8 @@ the file to read first. Keep these layout rules:
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
   PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis,
   and no em dashes (`—`, or two hyphens between spaces): use a colon, a comma or two sentences.
-  `prose:check` counts violations in `src/`.
+  `prose:check` counts violations in comments and test names under `src/`, `tests/`, `scripts/`
+  and `tui/`.
 - Tests assert behavior. Do not pin prose in docs or comments with `toContain`. The default test
   timeout is 20 s. Provider-API fixtures come from captured wire shapes.
 - New dependencies go in the pnpm catalog (`pnpm-workspace.yaml`) when more than one workspace
@@ -84,10 +87,26 @@ Assume this repository is public.
 - Naming the owner's other projects, products or domains in public material needs explicit
   sign-off. Use fictional examples. Named public third-party OSS study subjects are fine.
 
+## Run safety
+
+- Copy the run bundles a worktree's `.humanish/runs` holds before removing the worktree.
+- Managed paths bind to validated filesystem identities. A stored provider id is evidence:
+  reclaim only resources the operation owns, and leave cleanup it cannot confirm marked
+  unresolved.
+- `humanish verify` grades a run `share_ready`, `local_only` or `blocked`, and only
+  `share_ready` evidence is shared. Feedback drafts do not mutate GitHub by default. Live spend,
+  publishing, external mutation and broader credential access each need an explicit choice.
+- Credential placement depends on the route. The computer-use model key stays on the host; the
+  default terminal runtime gets command-scoped credentials.
+- Report a cost estimate, an unknown or a failure as it is, never as zero or success. Run more
+  than one participant where a claim depends on replication.
+- Issue readiness grants no authority. Its machine-readiness fields gate automated queue pickup,
+  and directly assigned work follows its assignment.
+
 ## Working
 
-- Read the files in [CONTRIBUTING.md's reading order](CONTRIBUTING.md#read-these-in-order), then
-  the current task; read the contract for the boundary you are changing. Historical plans do not
+- Read the current task and the contract for the boundary you are changing.
+  [CONTRIBUTING.md](CONTRIBUTING.md#look-up-how-the-code-works) lists the reference pages. Historical plans do not
   authorize work.
 - Keep `main` clean: one worktree and branch per task, reviewable commits, squash merges.
 - Before adding a service, protocol, mode or framework, state the concrete need in the PR.
@@ -96,6 +115,5 @@ Assume this repository is public.
   behavior need a retained run bundle, since dry runs do not establish live behavior. PRs say
   what changed, what was checked and what was not.
 - With shipping authority: push, open the PR, address checks, merge when green, fast-forward
-  main and remove the worktree and branch. Releases follow the
-  [release procedure](docs/release/open-source-readiness.md). Stay on `0.x` until the maintainer
-  chooses 1.0; the minor after `0.99.0` is `0.100.0`.
+  main and remove the worktree and branch. Releases follow
+  [docs/release/publish.md](docs/release/publish.md).

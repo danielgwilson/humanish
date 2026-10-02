@@ -1,7 +1,5 @@
 # Public Readiness Standard
 
-Status: researched working standard for public repository and npm release hygiene.
-
 This document separates real public-release risk from preference cleanup. The
 goal is to keep `humanish` safe, useful, and professional without deleting the
 durable context future contributors and agents need.
@@ -169,7 +167,7 @@ Nice-to-have after public launch:
 
 For `humanish`, the honest standard is:
 
-- Keep `docs/ramp/` and `docs/goals/` if they are public-safe. They are essential
+- Keep `docs/ramp/` and `docs/history/goals/` if they are public-safe. They are essential
   project memory for future coding agents and contributors.
 - Keep the package docs and skill docs focused on public install, public-safe
   examples, and synthetic proof.

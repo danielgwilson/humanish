@@ -1,0 +1,38 @@
+name: Bug report
+description: Something humanish did that it should not, or did not do that it should
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is public. Leave out keys, tokens, private screenshots, private transcripts and personal data. Paste redacted output.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `npx humanish --version`.
+      placeholder: "0.107.0"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The command you ran, with its flags.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: The output or behavior you saw. Paste the error line and its code if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true

@@ -1,16 +1,10 @@
-# Terminal-product real-agent route (issue #154)
+# Terminal-product route
 
-Date: 2026-06-16 (runtime-auth contract updated 2026-09-05)
-
-Status: live terminal-product route shipped in `0.8.0`. The in-sandbox backend,
-command-scoped credential placement, exact-id cleanup proof, an interventions ledger,
-cost/no-spend ledger, caps, and product scoring/feedback hooks are implemented;
-the kept 2026-07-09 live receipt verifies 15/15 checks and `share_ready` at a
-`$0` cap. That capability receipt is not adopter replacement: no deletion
-branch has yet removed the reference adopter's bespoke generic study harness.
-See the goal packet
-([`docs/goals/terminal-product-lane/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/goal.md))
-for the full slice plan and the safety contract.
+The live terminal-product route has shipped since `0.8.0`, with the in-sandbox runtime,
+command-scoped credential placement, exact-id cleanup proof, an interventions ledger, a cost and
+no-spend ledger, caps, and product scoring and feedback hooks. The
+[goal packet](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/terminal-product-lane/goal.md)
+holds the slice plan and the safety contract.
 
 ## What this is
 
@@ -23,9 +17,9 @@ routes. It tests whether an autonomous agent can discover and use a CLI/product
 surface from public materials. It does not test whether a browser can click a
 local web app.
 
-It rides the established route-addition pattern (proven by the scripted-browser
-and local-app routes): a new `subject.source` × `execution.target`, a routing
-predicate, a backend enum + dispatch, a registered actor that declares the run kind in its capabilities,
+It follows the pattern the scripted-browser and local-app routes added: a new
+`subject.source` × `execution.target` pairing, a `terminal` case in `routeOf(config)`
+and its dispatch, a registered actor that declares the run kind in its capabilities,
 fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition
@@ -155,7 +149,7 @@ and [E2B's CA installer](https://github.com/e2b-dev/infra/blob/main/packages/env
 E2B's installed
 SDK documents that transformed headers override request headers. Deterministic
 request/redaction tests do not establish live wire behavior. The [2026-09-05
-transport receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md)
+transport receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/terminal-product/2026-09-05-runtime-egress-auth.md)
 records the controlled live header/auth checks and their scope.
 
 ## Runtime prerequisite
@@ -180,7 +174,7 @@ checks Node/npm in both ordinary and sudo shells after installation. The existin
 runtime fast path preserves user-specific installations; a later sudo product
 install can still fail if that installation is absent from sudo's PATH.
 
-The [global executable receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/receipts/2026-09-05-global-npm-prefix.md)
+The [global executable receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/terminal-product/2026-09-05-global-npm-prefix.md)
 records the regression found after the initial runtime-only proof and its stock
 desktop checks. npm documents [global executable locations](https://docs.npmjs.com/cli/v10/configuring-npm/folders#executables)
 and the [distribution built-in configuration](https://docs.npmjs.com/cli/v10/configuring-npm/npmrc#built-in-config-file).
@@ -219,45 +213,17 @@ keyed off that capability, plus the deny-by-default credential allowlist, the
 positive-allowlist sandbox metadata, the cleanup proof, the interventions ledger,
 and a minimal fail-closed cap.
 
-## Historical SLICE 1 scope (DRY-RUN only when shipped)
+## Test seams
 
-At SLICE 1, `runTerminalProductLab` implemented only the dry-run path: it built a valid
-`humanish.run-bundle.v1` contract bundle, honestly labeled contract-only, with:
+The route reads `env` and `scorer` from its options (`src/routes/terminal/types.ts`), and a test
+passes its seams (`desktopModule`, `renderObserver`, `now`, `costProbe`) as `LabDeps`
+(`src/lab/lab-deps.ts`).
 
-- the subject declared as a terminal-product with its public surfaces, provenance
-  **UNPINNED** (the agent drives public surfaces, not a clone; invariant 5);
-- the author mission recorded as plaintext (public-safe committed lab text) + a
-  **digest** of the full composed prompt (nothing beyond the author mission goes
-  plaintext);
-- the caps / deny-by-default policies / runtime-auth channel recorded as
-  declarations (names only; invariant 1);
-- a terminal-kind stream that is an honest **contract placeholder**: stdin
-  disabled, empty tail, `transport: snapshot`, **not** `pty` (captured
-  non-interactive exec output is never an interactive PTY; invariant 6 + the
-  goal packet's PTY ruling). SLICE 2 later added redacted exec-stream capture;
-- empty/placeholder ledgers (substrate lifecycle, command log, terminal event
-  stream, interventions, cost) that SLICE 2/3 later filled.
+## The product-adapter extension seam
 
-The dry-run bundle passed the existing `verifyRun`. Terminal-specific verifier
-checks (terminal/transcript presence, lifecycle, cleanup, interventions,
-metadata allowlist, no-credential-in-artifacts, no-spend) landed in SLICE 2/3.
-
-At SLICE 1, a non-dry-run call returned a structured
-`HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` failure before launch or spend.
-SLICE 2 implemented the real session.
-
-SLICE 1 declared the DI seams SLICE 2 needed (`loadModule`, `buildSandbox`,
-`runtimeAuthEnv`, `detachedTimers`) on a terminal hook bag; only the dry-run path was
-implemented in that slice. The bag is gone. The route reads `env` and `scorer` from its
-options (`src/routes/terminal/types.ts`), and a test passes its seams (`desktopModule`,
-`renderObserver`, `now`, `costProbe`) as `LabDeps` (`src/lab/lab-deps.ts`).
-
-## SLICE 4: the product-adapter extension seam (layer 6)
-
-This route is proof-roadmap **layer 6**: an adopter attaches product-specific
-scoring + feedback as a THIN in-repo extension WITHOUT forking core. SLICE 4
-ships the SEAM. Core ships no built-in product scorer; the adopter's scorecard
-lives in the adopter's repo:
+An adopter attaches product-specific scoring and feedback as a thin in-repo extension, without
+forking core. Core ships the seam and no built-in product scorer; the adopter's scorecard lives in
+the adopter's repo:
 
 - **Exported contract types** a thin adapter types against from the package barrel
   (`humanish`) alone, never through a deep `src/` import: `RunBundle`,

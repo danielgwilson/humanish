@@ -126,7 +126,7 @@ export async function runLabCommand(args: {
   // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
   const signals = beginRunSignalPhase(args.io);
   try {
-    // Resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any
+    // Resolve + load a config-declared/CLI-flagged adopter scorer fail-closed, before any
     // spend, and only for a plan that will run. A declared gate that cannot load (bad ref, not
     // found, load failure, no hooks, unsupported route) aborts with exit 2 rather than green-passing.
     await runRoute(

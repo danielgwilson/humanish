@@ -1,12 +1,10 @@
 # Run Bundle Contract
 
-Date: 2026-06-02 (current-state note updated 2026-07-14)
-
-Status: `humanish.run-bundle.v1` is the shipped evidence contract. The
-TypeScript shape in `src/run/bundle.ts` (with `streams[]` in `src/run/streams.ts` and
-`sharedWorld` as `SharedWorldEvidence` in `src/run/shared-world-evidence.ts`) and fail-closed verification in `src/verify/verify.ts` are
-authoritative; this document explains the stable public fields and extension
-rules rather than independently versioning the runtime.
+`humanish.run-bundle.v1` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
+(with `streams[]` in `src/run/streams.ts` and `sharedWorld` as `SharedWorldEvidence` in
+`src/run/shared-world-evidence.ts`) and the fail-closed checks in `src/verify/verify.ts` are the
+source of truth. This page explains the stable public fields and the extension rules; it does not
+version the runtime separately.
 
 ## Purpose
 
@@ -190,7 +188,7 @@ field means no retained video, not proof that nothing happened between captures.
 Verification checks the local file, declared size, MP4 header and matching artifact
 entry without loading the whole video into memory. Raw continuous media makes the
 run `local_only` regardless of screenshot redaction. Analysis input remains text
-and screenshots. See [desktop recording](../architecture/desktop-recording.md).
+and screenshots. See [desktop recording](https://humanish.dev/docs/desktop-recording).
 
 ## Hosted Desktop Geometry
 
@@ -232,8 +230,8 @@ exactly; this hosted-desktop rule does not change that contract.
 ## Subject Provenance
 
 `subject` is an optional, additive top-level field: structured provenance for
-what the computer-use, shared-world or scripted-browser backend actually drove (code pin plus state story). It
-is absent on pre-existing bundles and on bundles from backends that have not
+what the computer-use, shared-world or scripted route actually drove (code pin plus state story). It
+is absent on pre-existing bundles and on bundles from routes that have not
 adopted it. The field shape, its three sources (`clone`, `app-url`,
 `local-tree`), and the `humanish verify` checks that guard it are the schema doc's
 job, not this one: see the `subject` entry under

@@ -1,9 +1,9 @@
 // Is this directory a humanish project at all?
 //
-// The surface has two very different empty states and used to render one screen for both. A
-// project with no labs yet needs "write one"; a directory that is not a project (someone's home
-// directory, because `npx humanish tui` is easy to type anywhere) needs to know that first. The
-// second is what Daniel hit, and being told "no labs here yet" in `~` reads as a broken tool.
+// The surface has two empty states and renders a different screen for each. A project with no
+// labs yet needs "write one"; a directory that is not a project (someone's home directory,
+// because `npx humanish tui` is easy to type anywhere) needs to know that first. Being told "no
+// labs here yet" in `~` reads as a broken tool.
 
 import { existsSync } from "node:fs";
 import path from "node:path";

@@ -99,7 +99,7 @@ export function resolveSubjectState(args: {
   };
 }
 
-/** Build the per-participant subject projection (invariant 5). Local-tree participants all share
+/** Build the per-participant subject projection. Local-tree participants all share
  *  one host-packed archive, so every participant's projection carries the identical archiveSha256/
  *  commit/dirty (no divergence is possible, unlike the clone route's per-participant
  *  in-sandbox commit). */

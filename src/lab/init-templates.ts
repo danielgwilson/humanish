@@ -32,9 +32,10 @@ function localBrowserLab(
 id: local-browser
 title: Local browser · your app · Codex account
 description: >-
-  Run a Codex-account participant in an isolated local browser against your loopback app—no E2B
-  or OpenAI API key. Inference is remote and uses account quota. Before the first live run, use
-  humanish doctor --lab local-browser to check the supported Codex login and local runtime.
+  Runs one participant on your Codex account in an isolated local browser against your loopback
+  app. Needs no E2B or OpenAI API key: inference is remote and uses your Codex account quota.
+  Before the first live run, check the Codex login and the local runtime with humanish doctor
+  --lab local-browser.
 subject:
   source: app-url
   appUrl: ${JSON.stringify(starter.appUrl)}
@@ -64,13 +65,13 @@ type StarterActor = "openai-computer-use" | "local-agent";
  */
 function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): StarterFile {
   const account = actor === "local-agent";
-  const cost = account
-    ? `  WHAT IT COSTS: one participant, one small task, a few E2B desktop minutes and your Codex
-  account's usage. Account usage has no dollar price humanish can enforce, so the ten-minute
-  session limit below bounds the run.`
-    : `  WHAT IT COSTS: one participant, one small task, and a $2 cap on estimated model spend. The
-  run stops before its next model request once the estimate passes $2, so the last request can take
-  it slightly over. Hosted desktop time is billed separately.`;
+  const needs = account
+    ? `  Needs E2B_API_KEY and the coding agent signed in on this machine. Cost: one small task, a few
+  E2B desktop minutes and the agent's account usage. humanish cannot put a dollar cap on account
+  usage, so the ten-minute session limit below bounds the run.`
+    : `  Needs E2B_API_KEY and OPENAI_API_KEY. Cost: one small task with a $2 cap on estimated model
+  spend. The run stops before its next model request once the estimate passes $2, so the last
+  request can go slightly over, and hosted desktop time is billed separately.`;
   const participant = account
     ? `  # Your machine has a coding agent signed in, so this lab uses it: no provider API key,
   # only E2B. To use a provider key instead, swap to \`type: openai-computer-use\` and add
@@ -91,19 +92,15 @@ function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): St
     plane: "source",
     contents: `schema: humanish.lab.v2
 id: try-live
-title: Your first REAL study — one participant, a real app, a hosted desktop
+title: "Your first live study: one participant on a demo app"
 description: >-
-  This lab runs live out of the box, on purpose. Every other starter file here is a template you
-  have to fill in first, and a first live run that cannot succeed is where most people stop.
-  THE SUBJECT IS A DEMO, NOT YOUR APP: it clones drawDB, a real public open-source diagram editor,
-  and serves it inside the sandbox. That is what makes this runnable with nothing to configure.
-  Once you have watched it work, point subject at your own app (see humanish/labs/cua-browser.yaml
-  for the shape) — that is the study you actually want.
-${cost}
-  WHAT A GOOD RESULT LOOKS LIKE: not necessarily a pass. A participant who gets stuck and says so
-  is the most useful thing this tool produces — humanish will refuse to call that a credible pass,
-  on purpose, and the friction they describe is the finding. A first run that ends in "I could not
-  do it, and here is where I got lost" worked exactly as intended.
+  Runs one participant live on drawDB, a public open-source diagram editor that humanish clones
+  and serves in a hosted desktop, so it runs with nothing to configure. The app under study is
+  that demo, not yours. The other starter labs need your app's details first.
+${needs}
+  A participant who gets stuck and says where is a useful result: humanish does not count that
+  run as a pass, and the friction the participant describes is the finding. To study your own
+  app, change subject; humanish/labs/cua-browser.yaml shows the shape.
 subject:
   source: clone
   repos:
@@ -111,7 +108,7 @@ subject:
   clone:
     depth: 1
   serve:
-    # Plain npm — humanish provides the Node runtime the stock desktop image does not ship.
+    # Plain npm: humanish provides the Node runtime that the stock desktop image lacks.
     install: npm install --no-audit --no-fund
     build: npm run build
     start: npx vite preview --host 127.0.0.1 --port 3000
@@ -126,7 +123,7 @@ execution:
   target: e2b-desktop
 ${bound}
 scenario:
-  mode: live # the point of this lab — the others start as dry-run
+  mode: live # the other starter labs start as dry runs
 defaults:
   open: true
 `,
@@ -139,7 +136,8 @@ export const starterFiles: StarterFile[] = [
     plane: "source",
     contents: `# humanish
 
-This directory is the committed source of persona simulation intent for this app.
+This directory holds the committed definitions of this app's humanish studies: labs, personas and
+scenarios.
 
 Keep this directory public-safe:
 
@@ -238,7 +236,9 @@ steps:
     contents: `schema: humanish.lab.v2
 id: first-run
 title: First-run synthetic Observer
-description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
+description: >-
+  Writes a preview run: a synthetic run bundle and Observer for four participants. Needs no browser,
+  model or keys, and costs nothing. Run it with humanish run first-run.
 subject:
   source: this-repo
 actors:
@@ -259,13 +259,13 @@ defaults:
 id: cua-browser
 title: Computer-use browser lab
 description: >-
-  A registered computer-use actor drives your app in a hosted desktop browser and emits an
-  evidence bundle into gitignored .humanish/. Screenshots are full-fidelity (raw) by default;
-  set policies.redactScreenshots: true to blur at capture for a share-as-is bundle. Typed
-  text is recorded as length only. Dry-run by default; switch scenario.mode to live (with
-  OPENAI_API_KEY + E2B_API_KEY via --env-file) for a real session. The clone subject below
-  serves your repo INSIDE the sandbox; declared subject env NAMES are provisioned from
-  --env-file (values are never persisted).
+  A computer-use participant drives your app in a hosted desktop browser and writes its evidence
+  to gitignored .humanish/. Starts as a dry run. For a live session, set scenario.mode to live
+  and pass OPENAI_API_KEY and E2B_API_KEY with --env-file. The clone subject below serves your
+  repo inside the sandbox, and the env names declared under subject get their values from
+  --env-file without the values being saved. Screenshots keep full fidelity by default; set
+  policies.redactScreenshots: true to blur them at capture for a bundle you can share as is.
+  Typed text is recorded as its length only.
 subject:
   source: clone
   repos: [your-org/your-app]
@@ -277,7 +277,7 @@ subject:
     # installTimeoutMs: 1200000   # bump for monorepo-scale installs/builds (default 600000)
     # buildTimeoutMs: 1800000
   # env: [DATABASE_URL]
-  # state:                        # the subject's STATE story (recorded as provenance):
+  # state:                        # the subject's state, recorded as provenance:
   #   seed:                       # ordered, bounded seed/migration/fixture steps (commands are
   #     - name: db-up             # author-trusted; evidence records sha256 digests, never text)
   #       command: sudo service postgresql start && pg_isready -t 30
@@ -285,44 +285,42 @@ subject:
   #     - name: db-migrate
   #       command: pnpm prisma migrate deploy
   #       timeoutMs: 300000       # per-step budget (default 300000)
-  #     - name: admin-user        # after-ready steps run against the RUNNING app
+  #     - name: admin-user        # after-ready steps run against the running app
   #       command: curl -sf -X POST http://127.0.0.1:3000/api/test/bootstrap-admin
   #       when: after-ready
-  #   # Or point at a shared DB you do NOT control — recorded as UNPINNED in provenance;
+  #   # Or point at a shared DB you do not control; provenance records it as unpinned.
   #   # each name must also be declared in subject.env:
   #   # external: [DATABASE_URL]
   # clone:
-  #   keep: true                  # leave the sandbox up on FAILURE so you can debug install/boot
+  #   keep: true                  # keep the sandbox after a failure to debug install or boot
   # Alternative: drive a deployment you own (Vercel preview, staging) instead of a clone:
   # source: app-url
   # appUrl: https://your-preview.vercel.app/
 actors:
   - type: openai-computer-use
-    persona: first-time-visitor
+    persona: synthetic-new-user
     mission: >-
       Explore the app as a brand-new user trying to complete its primary flow. Note anything
       confusing. Stop when the flow completes or you are stuck.
 execution:
   target: e2b-desktop
-  # 20 minutes: a session should end because the participant finished, not because a timer fired,
-  # so this is as long as the substrate allows rather than as long as seems reasonable. This route
-  # clones, installs, builds and serves the subject before the actor starts, so the sandbox deadline
-  # is this budget PLUS 40 minutes of provisioning and teardown headroom — and a sandbox may not
-  # live longer than 60. Raising this above 20 minutes fails the run closed before it starts; raise
-  # execution.desktop.sandboxTimeoutMs deliberately if you need more.
-  # Spend protection belongs to the dollar caps, not the clock.
+  # 20 minutes, the longest this route allows, so a session ends when the participant finishes.
+  # The route clones, installs, builds and serves the subject before the participant starts, so
+  # the sandbox deadline is this budget plus 40 minutes of provisioning and teardown, and a sandbox
+  # lives at most 60 minutes. A value above 20 minutes fails the run before it starts; raise
+  # execution.desktop.sandboxTimeoutMs if you need more. The dollar caps limit spend.
   timeoutMs: 1200000
   desktop:
     device: desktop             # mobile | small-mobile | narrow-mobile | tablet | desktop | wide
     # browser: chrome            # default | chrome | chromium | firefox; concrete values fail closed
     # Presets size the physical screen; Chrome's window width has a ~500px minimum.
     # For mobile presets, opt into CSS viewport, touch, DPR and mobile user-agent emulation:
-    # fidelity: { mobileEmulation: true } # Chrome/Chromium only; desktop/tablet lanes unchanged
+    # fidelity: { mobileEmulation: true } # Chrome/Chromium only; desktop and tablet are unchanged
     # The bundle records measured screen, page viewport and emulation fidelity separately.
 scenario:
   mode: dry-run
 # policies:
-#   redactScreenshots: true       # blur persisted frames (default off — full fidelity for local use)
+#   redactScreenshots: true       # blur saved frames (off by default: full fidelity for local use)
 #   allowPublicTargets: true      # required to drive a non-loopback app-url (a deployment you own)
 defaults:
   open: true
@@ -333,37 +331,37 @@ defaults:
     plane: "source",
     contents: `schema: humanish.lab.v2
 id: lobby-trivia-3player
-title: External-public shared world (N mobile personas share ONE public app at once)
+title: "Shared world on a public app: three mobile participants in one lobby"
 description: >-
-  A worked example of the EXTERNAL-PUBLIC shared-world route (#164 phase 2): N mobile-LAYOUT
-  personas play the SAME multiplayer lobby on a REAL public deployment AT ONCE. The public site is
-  the shared plane DIRECTLY — NO clone, NO getHost, NO subject sandbox, NO seed. A host-first barrier
-  extracts the shared-session code from the host seat's CDP-observed URL and threads it into the
-  follower join missions (followers go through the real Join flow). Dry-run (the default) emits ONE
-  external-public evidence bundle at $0. A live run needs OPENAI_API_KEY + E2B_API_KEY and
-  scenario.mode: live. Point appUrl + publicTarget at a public deployment YOU own/operate.
-  MOBILE FIDELITY: by default Chrome's physical window has a 500px minimum width, no touch
-  emulation and desktop DPR/user-agent behavior. Set execution.desktop.fidelity.mobileEmulation to true
-  to request the mobile preset's CSS viewport, touch, DPR and mobile user agent on Chrome/Chromium.
-  The bundle records measured geometry and emulation fidelity. HONESTY: attribution stays
-  shared-world, but every strength claim degrades honestly — provenance external-public (not seeded),
-  NO synthetic attestation (you cannot claim synthetic on a real site), NO authoritative shared-state
-  proof, concurrency by temporal co-occupancy + observed lobby convergence.
+  A worked example of the external-public shared-world route: three participants on mobile layouts
+  play the same multiplayer lobby on a public deployment at the same time. The public site is the
+  shared plane, so there is no clone, subject sandbox or seed. The host participant creates the
+  lobby, humanish reads the session code from the host's page URL, and the other participants get
+  it in their missions and join through the app's own join flow. Starts as a dry run, which writes
+  one evidence bundle at no cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and scenario.mode:
+  live. Point appUrl and publicTarget at a public deployment you own or operate. Mobile layout:
+  Chrome's physical window is at least 500px wide and has no touch emulation, desktop pixel ratio
+  and a desktop user agent. Set execution.desktop.fidelity.mobileEmulation to true to request the
+  preset's CSS viewport, touch, pixel ratio and mobile user agent on Chrome or Chromium; the bundle
+  records the measured geometry and emulation fidelity. A run on a public site proves less than a
+  provisioned one: its provenance is external-public, it carries no synthetic-data attestation and
+  no authoritative shared-state proof, and concurrency rests on overlapping sessions and every
+  participant reaching the same lobby.
 subject:
-  source: app-url # the real public deployment IS the shared plane (no clone, no getHost)
+  source: app-url # the public deployment is the shared plane: no clone and no getHost
   topology: shared-world # the declared override of the per-lane-worlds default
-  appUrl: https://your-public-app.example/ # a deployment YOU own/operate
-  publicTarget: # REQUIRED ownership attestation (the honest analog of exposure: synthetic)
+  appUrl: https://your-public-app.example/ # a deployment you own or operate
+  publicTarget: # required: your attestation that you own or operate this deployment
     owner: your-org/your-app
     authorized: true
 policies:
-  allowPublicTargets: true # REQUIRED: the shared plane is a real non-loopback public deployment
+  allowPublicTargets: true # required: the shared plane is a public, non-loopback deployment
 actors:
   - type: openai-computer-use
     mission: You are one of several users on the same shared session at once. Play your role, then stop.
-    lanes: # the roster (>=2) with EXACTLY ONE host: true seat
+    lanes: # at least two participants, exactly one with host: true
       - id: host
-        host: true # the designated host seat that creates the shared session
+        host: true # this participant creates the shared session
         device: mobile # 414x896 preset; physical window width floors to 500 (see emulation above)
         instruction: Create a shared lobby, wait for the others to join, then start and play.
       - id: player-2
@@ -374,15 +372,14 @@ actors:
         instruction: Join the lobby you're told the code for, then play.
 execution:
   target: e2b-desktop
-  # PER-SEAT session budget; also caps the host-first handoff deadline. Budget for the WHOLE arc:
-  # seat provisioning + shared-session assembly + actual play. A first live run of the worked
-  # example died at 120000 with every seat expiring mid game and zero mission actions taken.
+  # Each participant's session budget, which also bounds the host's handoff deadline. It has to
+  # cover provisioning, joining the shared session and play; 420000 ms (7 minutes) does.
   timeoutMs: 420000
-  concurrency: 3 # all 3 seats live at once (the default when omitted); lower only to cap paid desktops
+  concurrency: 3 # all three participants at once, the default; lower it only to limit paid desktops
   # desktop:
   #   fidelity: { mobileEmulation: true } # opt into mobile CSS viewport, touch, DPR and user agent
 scenario:
-  mode: dry-run # default; the live path opens N real mobile-layout seats against the public app
+  mode: dry-run # a live run opens three mobile-layout desktops against the public app
 defaults:
   open: true
 `,

@@ -2,32 +2,30 @@
 
 Use this page when you are starting cold on `humanish`. It is meant to be
 useful without chat history, private notes, local machine paths, or maintainer
-context. It is the last step of the reading order in
-[CONTRIBUTING.md](../../CONTRIBUTING.md#read-these-in-order) and adds current state, how to pick
-work and the quality bar.
+context. [CONTRIBUTING.md](../../CONTRIBUTING.md#look-up-how-the-code-works) lists it with the
+other reference pages. It adds current state, how to pick work and the quality bar.
 
 ## First Read
 
-Start with three things:
+Start with two things:
 
-1. The files in [CONTRIBUTING.md's reading order](../../CONTRIBUTING.md#read-these-in-order).
-2. The current task and [`docs/goals/current.md`](../goals/current.md) for current
+1. The current task and [`docs/status.md`](../status.md) for current
    product status. Explicit task direction takes precedence over historical queues.
-3. Instructions in the component being changed, then its relevant contracts.
+2. Instructions in the component being changed, then its relevant contracts.
 
 Use the references below as needed. Historical plans are context, not a backlog
 to resume automatically. Keep one concise current task handoff with the requested
 outcome, demonstrated behavior, next complete result, constraints and rejected or
 deferred approaches; link evidence rather than repeating its chronology.
 
-| When working on                            | Reference                                                                                                                                                                      |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Install, commands or first-run UX          | [`README.md`](../../README.md), [install experience](../product/open-source-install-experience.md)                                                                             |
-| Security, evidence handling or defaults    | [Invariants and defaults](../principles/invariants-and-defaults.md)                                                                                                            |
-| Observer                                   | [Observer architecture](../architecture/observer.md) and its component instructions                                                                                            |
-| Bundle formats or policy                   | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md)                                                                                                     |
-| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/open-source-readiness.md)                                                 |
-| Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md), [historical delivery roadmap](../roadmap/world-class-open-source-v0.md) |
+| When working on                            | Reference                                                                                                                                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Install, commands or first-run UX          | [`README.md`](../../README.md), [the docs tutorial](https://humanish.dev/docs)                                                                                                                 |
+| Security, evidence handling or defaults    | [Invariants and defaults](../principles/invariants-and-defaults.md)                                                                                                                            |
+| Observer                                   | [Observer architecture](../architecture/observer.md) and its component instructions                                                                                                            |
+| Bundle formats or policy                   | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md)                                                                                                                     |
+| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/publish.md)                                                                               |
+| Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/proof-roadmap/goal.md), [historical delivery roadmap](../history/roadmap/world-class-open-source-v0.md) |
 
 ## Mental Model
 
@@ -140,20 +138,20 @@ browser row. Accepted rows have further required fields, such as `subject.serve`
 the parse error names the missing one. The computer-use actors are `openai-computer-use` and
 `local-agent`.
 
-| Route (backend name)                       | `subject.source`                                 | `execution.target`       | `actors[0].type`                       | Result                                                                         |
-| ------------------------------------------ | ------------------------------------------------ | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `computer-use` (`cua`)                     | `app-url`                                        | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` (`cua`)                     | `app-url`                                        | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
-| `computer-use` (`cua`)                     | `clone`, `local-tree`                            | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` (`cua`)                     | `desktop-cli`                                    | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
-| `computer-use` (`cua`)                     | `local-app`                                      | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
-| `shared-world` (`concurrent-shared-world`) | `clone`, `local-tree` + `topology: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `shared-world` (`concurrent-shared-world`) | `app-url` + `topology: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
-| `scripted`                                 | `app-url` with a loopback URL                    | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
-| `scripted`                                 | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
-| `terminal`                                 | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
-| `preview` (`synthetic`)                    | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
-| none                                       | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
+| Route          | `subject.source`                                 | `execution.target`       | `actors[0].type`                       | Result                                                                         |
+| -------------- | ------------------------------------------------ | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
+| `computer-use` | `app-url`                                        | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` | `app-url`                                        | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
+| `computer-use` | `clone`, `local-tree`                            | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` | `desktop-cli`                                    | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
+| `computer-use` | `local-app`                                      | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
+| `shared-world` | `clone`, `local-tree` + `topology: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `shared-world` | `app-url` + `topology: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
+| `scripted`     | `app-url` with a loopback URL                    | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
+| `scripted`     | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
+| `terminal`     | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
+| `preview`      | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
+| none           | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
 
 The fixture's `supported` field records which routes accept declared `actors[0].tasks`. The
 computer-use labs in the fixture accept them. The other routes refuse them at parse.
@@ -189,7 +187,7 @@ pnpm humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local
 
 ## How To Pick Work
 
-Start from [`docs/goals/current.md`](../goals/current.md).
+Start from [`docs/status.md`](../status.md).
 
 Prefer work that makes humanish more believable to a new maintainer:
 
@@ -200,9 +198,8 @@ Prefer work that makes humanish more believable to a new maintainer:
 - feedback drafts become more actionable;
 - public-safety gates catch a class of leak or stale residue.
 
-If no GitHub issue exists for substantial work, draft one with the repo issue
-template before building. Use labels to communicate authority, area, risk, and
-required proof.
+If no GitHub issue exists for substantial work, open one with an issue form
+before building. A maintainer labels the issue.
 
 ## Quality Bar
 

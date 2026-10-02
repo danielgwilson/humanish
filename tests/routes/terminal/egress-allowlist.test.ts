@@ -25,7 +25,7 @@ function parse(execution: Record<string, unknown>) {
   });
 }
 
-describe("terminal egress allowlist (#538)", () => {
+describe("terminal egress allowlist", () => {
   it("is absent by default, which keeps egress unrestricted", () => {
     const result = parse({});
     expect(result.ok).toBe(true);

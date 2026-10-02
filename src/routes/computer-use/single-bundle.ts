@@ -106,7 +106,7 @@ function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string
           screen: { requested: { width: args.resolution[0], height: args.resolution[1] } },
         });
 
-  // Honest labels (invariant 6: claims match mechanism): every screenshot label names the
+  // Claims match mechanism: every screenshot label names the
   // run's actual mode. The session trace is the evidence-of-record; the capture policy covers
   // frames written before a mid-session failure produced a trace.
   const traceScreenshotMode = args.session?.trace.redaction.screenshots;
@@ -237,7 +237,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
           at: args.run.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.declared",
-          // Invariant 5: declare what the subject was, including the absence of a pin. A
+          // Declare what the subject was, including the absence of a pin. A
           // local-app / in-process subject is an already-running local dev server the caller
           // provisioned; it cannot be commit-pinned, so its provenance is unpinned and
           // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox, or,
@@ -326,7 +326,7 @@ function singleReview(
       ? aggregateTaskFunnels([args.session.trace.taskFunnel])
       : undefined;
   // What happened to the participant, as the route judged it: the same rule the fan-out roll-up
-  // applies (participantStatusForOutcome). Reading the actor's own status instead would write up
+  // applies (participantStatus in src/run/judge.ts). Reading the actor's own status instead would write up
   // a run the route refused as "not a credible pass" as verdict pass, 1/1 reached the goal, and
   // every projection of the bundle (Observer tally, `runs`, the status index) would repeat it.
   const participantStatus: ActorStatus | undefined =
@@ -427,8 +427,8 @@ export function buildSingleParticipantBundle(args: {
    * + digests only, never values or command text), including the subject's state story. */
   subjectProvenance?: CuaSubjectProvenanceArg;
   /**
-   * Entry kind for the non-clone subject.declared event (invariant 5: declare what the subject
-   * was). "local-app": an already-running local dev server driven in-process, un-pinnable, and
+   * Entry kind for the non-clone subject.declared event, which declares what the subject
+   * was. "local-app": an already-running local dev server driven in-process, un-pinnable, and
    * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
    */
   entryKind?: "local-app";
@@ -533,7 +533,7 @@ export function buildSingleParticipantBundle(args: {
     ...(args.providerResources === undefined || args.providerResources.length === 0
       ? {}
       : { providerResources: args.providerResources }),
-    // Structured subject provenance (invariant 5): code pin + state story. Uniform and
+    // Structured subject provenance: code pin + state story. Uniform and
     // honest on app-url bundles too: the caller minted the URL, its state is the caller's.
     // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
     // shaped, so no reconstruction is needed beyond the app-url fallback.

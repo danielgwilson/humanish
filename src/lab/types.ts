@@ -35,7 +35,7 @@ type LabSubjectSource =
  * mutable service plane that N participants use at the same time, so their actions interact through
  * shared state. Consumed only on the shared-world routes (a provisioned clone plane, or an
  * external-public app-url plane) with a computer-use actor; inert/warned everywhere else
- * (invariant 6).
+ * (claims match mechanism).
  */
 type LabSubjectTopology = "per-lane-worlds" | "shared-world";
 
@@ -88,7 +88,7 @@ interface LabSubjectStateStep {
   /**
    * [a-z0-9-] step label (must start alphanumeric), <=40 chars, unique across steps; becomes
    * the detached-step name `subject-state-<name>` (interpolates into in-sandbox file paths, so
-   * the shape is load-bearing, validated at parse and re-enforced in the engine).
+   * the shape is validated at parse and re-enforced in the engine).
    */
   name: string;
   /**
@@ -112,19 +112,19 @@ interface LabSubjectStateStep {
 /**
  * A shared-world state checkpoint: an author-trusted, read-only, aggregate/digest probe command
  * (counts, max-timestamps, hashes) run at baseline and after each role's turn. Reuses the
- * seed-step validation shape (name [a-z0-9-] ≤40, unique; command required). Persisted DIGEST-ONLY
+ * seed-step validation shape (name [a-z0-9-] ≤40, unique; command required). Persisted digest-only
  * (only sha256-16(scrub+redact(stdout)) ever lands, never the raw value), same lockdown as the
  * seed surface. Consumed only on the shared-world route; inert/warned elsewhere.
  */
 export interface LabSubjectStateCheckpoint {
   /**
    * [a-z0-9-] probe label (must start alphanumeric), <=40 chars, unique across checkpoints;
-   * names the detached step (`checkpoint-<snapshot>-<name>`), a load-bearing shape validated at
+   * names the detached step (`checkpoint-<snapshot>-<name>`), a shape validated at
    * parse and re-enforced in the engine.
    */
   name: string;
   /**
-   * Author-trusted READ-ONLY shell command (same trust class as serve/seed: the "serve commands
+   * Author-trusted read-only shell command (same trust class as serve/seed: the "serve commands
    * are author-trusted" corollary). Its stdout is scrubbed + pattern-redacted, then digested
    * (sha256-16); the raw value never persists.
    */
@@ -150,7 +150,7 @@ export interface LabSubjectState {
   /**
    * Shared-world state checkpoints: read-only digest probes run at baseline + after each
    * role's turn to produce the harness-clocked interaction timeline. Consumed only on the
-   * shared-world route; inert/warned elsewhere (invariant 6). Shape-validated everywhere.
+   * shared-world route; inert/warned elsewhere. Shape-validated everywhere.
    */
   checkpoint?: LabSubjectStateCheckpoint[];
 }
@@ -158,7 +158,7 @@ export interface LabSubjectState {
 /**
  * `terminal-product`: the product-under-study a terminal agent must discover and use from public
  * surfaces only (the terminal-product route's subject). The subject is not provisioned or cloned:
- * the agent drives the declared public surfaces, so provenance is unpinned (invariant 5). The
+ * the agent drives the declared public surfaces, so provenance is declared unpinned. The
  * concrete product name + surfaces are operator data; committed fixtures use a neutral mock name.
  */
 export interface LabSubjectProduct {
@@ -234,7 +234,7 @@ export interface LabSubject {
    * `owner` is a public-safe operator/repo label; `authorized` must be true. This is author-trust:
    * the harness cannot verify ownership, and the evidence class says so. Required on the
    * external-public branch. On a non-`app-url` subject it is rejected (parse error); on any other
-   * `app-url` config that does not route to external-public shared-world it is IGNORED-WITH-A-WARNING
+   * `app-url` config that does not route to external-public shared-world it is ignored with a warning
    * (forwardDeclaredWarnings), never silently consumed, because it is meaningless without that plane.
    */
   publicTarget?: { owner: string; authorized: boolean };
@@ -274,7 +274,7 @@ export interface LabSubject {
   /**
    * `clone` (computer-use route): the subject's state story, as seed/migration/fixture steps
    * executed in-sandbox around the serve sequence, and/or declared external state. Recorded
-   * in the run bundle as structured provenance (invariant 5): seeded with command digests,
+   * in the run bundle as structured provenance: seeded with command digests,
    * unpinned for external state, declared-not-run for dry-run/failed provisioning.
    */
   state?: LabSubjectState;
@@ -308,7 +308,7 @@ export interface LabParticipantFocus {
  * paths). Consumed only on the computer-use E2B route (inert/warned elsewhere).
  */
 export interface LabParticipantEntry {
-  /** Public-safe participant id (interpolates into its evidence paths). Default lane-NN. */
+  /** Public-safe participant id (interpolates into its evidence paths). Default `lane-NN`. */
   id?: string;
   /**
    * App-defined actor type label for grouping simulated users ("operator", "viewer",
@@ -456,7 +456,7 @@ type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). It is not an
  *  interactive duplex PTY; labeling captured exec output "pty" would be a claim/mechanism
- *  mismatch (invariant 6 + the goal packet's PTY ruling), so this route uses "exec-stream". */
+ *  mismatch, so this route uses "exec-stream". */
 type LabTerminalTransport = "exec-stream";
 
 /** Whether operator stdin reaches the in-sandbox agent. Disabled by default (the run is
@@ -559,7 +559,7 @@ export interface LabExecution {
   target?: LabExecutionTarget;
   /** Actor session wall-clock budget. Consumed on the app-url route. */
   timeoutMs?: number;
-  /** FORWARD-DECLARED. */
+  /** Forward-declared: no route reads it yet, so a set value warns. */
   completionTimeoutMs?: number;
   /**
    * Bounds in-flight fan-out participants on the computer-use route. Shared-world needs at least 2 and
@@ -571,7 +571,7 @@ export interface LabExecution {
    * Blast-radius budget for each computer-use participant. Consumed on the CUA route: `caps.maxUsd`, when
    * set, is a fail-closed abort: the session stops the moment its running estimated spend crosses
    * it (the runaway-retry guard), and a cap on a model src/run/pricing.ts cannot price is refused at
-   * preflight rather than run uncapped. It is a PER-PARTICIPANT cap: enforced inside each participant's loop,
+   * preflight rather than run uncapped. It is a per-participant cap: enforced inside each participant's loop,
    * so an N-participant fan-out can spend up to N × maxUsd before any participant aborts (the run warns with the
    * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared study budget: one ledger
    * across every participant, the knob a researcher actually reasons with. Absent = uncapped (the
@@ -617,7 +617,7 @@ export interface LabScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
   maxUsd?: number;
   /**
-   * STUDY-LEVEL model-spend budget, the number a researcher actually reasons with: "this
+   * study-level model-spend budget, the number a researcher actually reasons with: "this
    * study is N participants, roughly $X", decided once, up front, where recruiting decisions are
    * made. The computer-use route reads it from `execution.caps.maxTotalUsd` only: every participant's
    * running estimated model spend feeds one shared ledger, and the moment the run total crosses
@@ -637,9 +637,9 @@ export interface LabScenarioCaps {
 
 export interface LabScenario {
   /** Reference a committed scenario by id (humanish/scenarios/<ref>.yaml) or path. Consumed
-   *  (and required) on the scripted-browser route; FORWARD-DECLARED elsewhere. */
+   *  (and required) on the scripted-browser route; forward-declared elsewhere. */
   ref?: string;
-  /** Or inline the scenario body. FORWARD-DECLARED (PR #2). */
+  /** Or inline the scenario body. Forward-declared: no route reads it yet, so a set value warns. */
   inline?: Record<string, unknown>;
   /** dry-run = contract evidence (no provider spend); live = real run. Consumed. */
   mode?: LabScenarioMode;
@@ -695,11 +695,11 @@ export interface LabPolicies {
 export interface LabReview {
   /** Analysis defaults on for eligible live recordings; false disables the separate request. */
   analysis?: LabAnalysis | false;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Forward-declared: no route reads it yet, so a set value warns. */
   scoring?: string;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Forward-declared: no route reads it yet, so a set value warns. */
   milestones?: string;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Forward-declared: no route reads it yet, so a set value warns. */
   vocabulary?: string;
   /**
    * Code escape hatch: a repo-relative path to an adopter scorer module (.mjs recommended) that
@@ -774,7 +774,7 @@ interface LabCommsCaptureEmail {
    * into the same captured-send shape the HTTP path produces, so the inbox surface, the drain, and
    * the evidence artifact are identical either way.
    *
-   * `hostEnv` and `portEnv` are ADOPTER-NAMED, exactly like `injectEnv`: the harness sets them to
+   * `hostEnv` and `portEnv` are adopter-named, exactly like `injectEnv`: the harness sets them to
    * its own loopback and the chosen port. Declare the pair your app actually reads.
    */
   smtp?: LabCommsSmtp;
@@ -795,7 +795,7 @@ interface LabCommsCaptureEmail {
    *  never silently dropped. */
   recipients?: LabCommsRecipient[];
   /**
-   * ADOPTER-HOSTED ingress. Declaring this says: the operator runs the catch and the inbox
+   * adopter-hosted ingress. Declaring this says: the operator runs the catch and the inbox
    * themselves, so humanish neither provisions the subject nor injects `injectEnv`. It points the
    * persona at the declared inbox, drains the declared catch over HTTP at teardown, and writes the
    * same digest-only evidence. This is what makes comms work on the app-url / operator-provisioned
@@ -830,7 +830,7 @@ export interface LabConfig {
   subject: LabSubject;
   actors: LabActor[];
   execution?: LabExecution;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Forward-declared: no route reads it yet, so a set value warns. */
   personas?: Record<string, unknown>[];
   scenario?: LabScenario;
   policies?: LabPolicies;

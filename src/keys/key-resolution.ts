@@ -1,7 +1,7 @@
 // Provider-key discovery: resolve the keys a live run needs through each vendor's
 // native chain instead of demanding a per-repo --env-file that operators hand-copy keys into.
 //
-// The chain, per key, FILL-ONLY (a rung never overrides anything already present):
+// The chain, per key, fill-only (a rung never overrides anything already present):
 //   1. process env, including whatever --env-file just loaded (explicit always wins);
 //   2. `.humanish/local/provider.env`, the project-local overlay this CLI's own --help
 //      examples document;
@@ -197,8 +197,8 @@ export async function discoverProviderKeys(args: {
   const fills: ResolvedKeyFill[] = [];
   const ignored: string[] = [];
   // Fill-only means presence wins, including an explicitly-set empty value: an operator who
-  // exported OPENAI_API_KEY="" said "off", and a rung that "fixes" that has overridden them
-  // (red-team finding). Only a truly-unset name is fillable.
+  // exported OPENAI_API_KEY="" said "off", and a rung that "fixes" that has overridden them.
+  // Only a truly-unset name is fillable.
   const fillable = (name: string): boolean => env[name] === undefined;
   const fill = (name: string, value: string, source: string): void => {
     env[name] = value;
@@ -206,8 +206,8 @@ export async function discoverProviderKeys(args: {
   };
 
   // Rung 2: the documented project-local overlay. Parsed atomically against a scratch env so a
-  // file loadEnvFile rejects can never half-apply (red-team finding: earlier lines used to land
-  // in env unannounced before the parse error aborted). Only allowlisted provider names cross
+  // file loadEnvFile rejects can never half-apply: otherwise lines before the parse error would
+  // land in env unannounced. Only allowlisted provider names cross
   // from the file into the real env.
   const overlayPath = path.resolve(cwd, PROJECT_OVERLAY_RELATIVE);
   if (isRegularFile(overlayPath) && !dirIsSymlink(overlayPath)) {
@@ -243,7 +243,7 @@ export async function discoverProviderKeys(args: {
 
   // Rung 4: the humanish user-level store, read with the same lenient parser `keys set`/`list`
   // use, so one hand-mangled line degrades to that line alone instead of silently voiding the
-  // whole store (red-team finding: the strict parser disagreed with the store's own reader).
+  // whole store, as the strict parser would.
   const storePath = userKeyStorePath(env, deps);
   if (isRegularFile(storePath) && !dirIsSymlink(storePath)) {
     for (const [name, value] of readStoreEntries(storePath)) {
@@ -267,7 +267,7 @@ export async function discoverProviderKeys(args: {
 }
 
 /** True when the file's parent directory is (or traverses) a symlink at its last component:
- *  the dir-level retarget that defeats a file-level lstat check (red-team finding). */
+ *  the dir-level retarget that defeats a file-level lstat check. */
 function dirIsSymlink(filePath: string): boolean {
   try {
     return lstatSync(path.dirname(filePath)).isSymbolicLink();
@@ -337,7 +337,7 @@ export async function probeKeySources(
   return names.map((name) => {
     const inEnv = args.env[name] !== undefined && args.env[name]?.trim() !== "";
     // GH_TOKEN and GITHUB_TOKEN are one credential with two spellings; a doctor row that says
-    // "missing" while GITHUB_TOKEN sits in the env would be wrong (red-team nit).
+    // "missing" while GITHUB_TOKEN sits in the env would be wrong.
     const aliasInEnv =
       name === "GH_TOKEN" &&
       args.env.GITHUB_TOKEN !== undefined &&
@@ -364,7 +364,7 @@ export function resolveKeyName(vendorOrName: string): string | null {
  *  are storable (the store feeds implicit discovery, so an arbitrary-name store would be an env
  *  injection vector with extra steps). The value must be a single non-empty line that
  *  round-trips the store's own parser byte-identically, and the write refuses symlinks at the
- *  file and its parent directory (red-team findings). */
+ *  file and its parent directory. */
 export function setUserKey(
   name: string,
   value: string,
@@ -442,8 +442,8 @@ function readStoreEntries(storePath: string): Map<string, string> {
 function writeStore(storePath: string, entries: Map<string, string>): void {
   const body = [...entries.entries()].map(([name, value]) => `${name}=${value}`).join("\n");
   const text = body.length > 0 ? `${body}\n` : "";
-  // O_NOFOLLOW: a symlinked keys.env must never carry the write to its target (red-team
-  // reproduced writing a secret through the link into an attacker-chosen file).
+  // O_NOFOLLOW: a symlinked keys.env must never carry the write to its target, which would put a
+  // secret into an attacker-chosen file.
   const fd = openSync(
     storePath,
     fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_NOFOLLOW,

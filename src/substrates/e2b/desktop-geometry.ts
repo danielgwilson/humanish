@@ -38,7 +38,7 @@ export function declaredScreenForRender(
 }
 
 /**
- * Verify the desktop screen geometry IN-SANDBOX (the participant's device claim is checked, never
+ * Verify the desktop screen geometry in-sandbox (the participant's device claim is checked, never
  * assumed). A parseable mismatch fails closed. Unavailable/unparseable evidence is returned as
  * an explicit warning: the participant may still run, but its bundle records only the requested screen
  * and never upgrades that request into a verified measurement.

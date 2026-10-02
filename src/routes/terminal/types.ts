@@ -61,13 +61,13 @@ export const TEXT_ITEMS_BYTES = 128 * 1024;
 export const PENDING_LINE_CHARS = 1024 * 1024;
 
 // Hard cap on the retained event-stream + transcript size, so a runaway agent cannot balloon the
-// bundle. Redaction runs PRE-truncation so a cut can never split a secret past the scrubber.
+// bundle. Redaction runs pre-truncation so a cut can never split a secret past the scrubber.
 export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
 
 export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
 
 /**
- * The read-only evidence a thin adapter's scorer/feedback hook sees (the layer-6 extension seam).
+ * The read-only evidence a thin adapter's scorer/feedback hook sees (the adapter extension seam).
  * It is the fully assembled, redacted, verifiable evidence: the live run
  * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
  * interventions/cleanup/cost/no-spend). Every member is an exported public type, so a thin adapter
@@ -110,9 +110,9 @@ export type TerminalCostProbe = (context: {
 /** The scorer functions a terminal run calls: `RunLabOptions.scorer` without `deriveArtifacts`. */
 export interface TerminalScorer {
   /**
-   * The layer-6 extension seam: product-adapter hooks without forking
+   * The adapter extension seam: product-adapter hooks without forking
    * core. A thin in-repo/out-of-tree adapter registers a product scorer here. The route calls it
-   * (when provided) over the fully-assembled evidence and attaches the returned, ADAPTER-NAMESPACED
+   * (when provided) over the fully-assembled evidence and attaches the returned, adapter-namespaced
    * `RunAdapterScore` to `bundle.adapterScore` without core knowing any product noun (the score is
    * namespaced + its component breakdown rides in `data`). When no scorer is given, the default
    * mission-based verdict (`review`) is unchanged. The adopter's scorecard plugs in here; product
@@ -123,7 +123,7 @@ export interface TerminalScorer {
    * Companion seam: derive product-feedback candidates from the same assembled evidence. The route
    * appends the returned candidates to `bundle.feedbackCandidates`. The adapter records its
    * product-specific concepts (public CLI command observed, hosted success-or-blocker, feedback id,
-   * media/job ids, no-spend proof, defection/friction risk) under each candidate's ADAPTER-NAMESPACED
+   * media/job ids, no-spend proof, defection/friction risk) under each candidate's adapter-namespaced
    * `adapter` block and never as core enums.
    * The candidates must still satisfy core's feedback-candidate shape (which
    * the bundle verifier enforces), so a malformed adapter candidate fails closed.
@@ -188,7 +188,7 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
   sandbox?: {
     sandboxId: string;
     killed: boolean;
-    /** BY-ID proof (never a re-list): 0 = confirmed reclaimed, 1 = still present (unconfirmed),
+    /** By-id proof (never a re-list): 0 = confirmed reclaimed, 1 = still present (unconfirmed),
      *  -1 = kill(id) itself failed or was unavailable. See TerminalLedgers["cleanup"]. */
     remaining: number;
   };
@@ -288,7 +288,7 @@ export interface InterventionRecord {
  *   - line absent  => not applicable to this route/run (n/a). The line simply does not appear in
  *                     `lines`. (The current route emits all four lines, so absence is reserved for
  *                     future routes that genuinely have no such category.)
- * `null` vs missing-key is the load-bearing distinction: a missing key means "this category does not
+ * `null` vs missing-key is the distinction that matters: a missing key means "this category does not
  * exist for this run"; a present key with `null` means "this category exists but we did not measure
  * it". A no-spend proof that claimed zero on a `null` line would claim more than it measured.
  */
@@ -342,7 +342,7 @@ export interface NoSpendProof {
   satisfied: boolean;
   /** Categories the ledger measured and found at (known) zero: the proof can vouch for these. */
   knownZeroLines: CostCategory[];
-  /** Categories the ledger measured with a known NON-zero spend (these break `satisfied`). */
+  /** Categories the ledger measured with a known non-zero spend (these break `satisfied`). */
   knownNonZeroLines: CostCategory[];
   /** Categories the ledger marks `null` (not measured). The proof lists these and does not claim
    *  they are zero; it claims only that this run could not measure them. */

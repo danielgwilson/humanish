@@ -46,7 +46,7 @@ const otherRoute = (routes: Routes): boolean => !promptRoute(routes) && !routes.
 /** Rows for each actor, reported as `actors[<index>].<field>`, in this order per actor. */
 const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
   // Shared-world-only fields on the roster: a participant's `entry` is inert anywhere else
-  // (invariant 6).
+  // (claims match mechanism).
   {
     field: "lanes[].entry",
     reason:
@@ -221,7 +221,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}:
   // dry-run records the contract; live execution enforces caps and command-scoped auth. On every
   // other route they are inert and must warn so a
-  // misplaced safety/budget field is never trusted to do something it cannot (invariant 6).
+  // misplaced safety/budget field is never trusted to do something it cannot.
   {
     field: "subject.product",
     reason: "needs subject.source: terminal-product or desktop-cli with the matching actor",
@@ -290,7 +290,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   // execution.desktop.template (the custom E2B desktop image) is consumed only where a desktop is
   // actually created via Sandbox.create: the e2b-desktop computer-use routes (cua/shared-world/
   // concurrent). It is inert on every other route (incl. the in-process local-app cua route, which
-  // creates no desktop): warn so an unconsumed template is never silently ignored (invariant 6).
+  // creates no desktop): warn so an unconsumed template is never silently ignored.
   {
     field: "execution.desktop.template",
     reason:

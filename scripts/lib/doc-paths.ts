@@ -45,9 +45,9 @@ export function buildRepoIndex(paths: Iterable<string>): RepoIndex {
   return { files, suffixes, directoryNames, directories };
 }
 
-// docs/goals/, docs/plans/ and docs/roadmap/ are dated history, so they may name files that
-// have since moved.
-const HISTORY_DIRECTORIES = ["docs/goals/", "docs/plans/", "docs/roadmap/"];
+// docs/history/ holds dated goal packets, plans and the roadmap, which may name files that have
+// since moved. docs/evidence/ holds the dated study records current pages cite, so it is checked.
+const HISTORY_DIRECTORIES = ["docs/history/"];
 const ROOT_GUIDES = new Set([
   "README.md",
   "AGENTS.md",

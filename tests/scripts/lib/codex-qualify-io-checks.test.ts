@@ -379,7 +379,7 @@ describe("codex:qualify live sampler and io_uring", () => {
   });
 });
 
-describe("codex:qualify fourth-review fixes", () => {
+describe("codex:qualify path exemptions and baseline checks", () => {
   it("never exempts a removal that climbs out of the private directory with ..", () => {
     // Codex's reproduction: <codex-home>/../../shared-cache was exempt as the run's own file.
     const escape = "<codex-home>/../../shared-cache";

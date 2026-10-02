@@ -313,7 +313,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     expect(runJson).not.toContain(FAKE_RUNTIME_KEY);
   });
 
-  it("the scorer receives the FULL normalized transcript — evidence beyond the ~2KB tail can flip a dimension (#341)", async () => {
+  it("the scorer receives the full normalized transcript: evidence beyond the ~2KB tail can flip a dimension", async () => {
     // Command-tier evidence emitted EARLY in the session, then >2KB of narration: every tail
     // projection (trace items' outputTail / message text) misses it; only the full transcript has it.
     const deepEvidence = "PIXELFORGE_DEEP_EVIDENCE pixelforge generate --prompt 'first-light'";

@@ -1,12 +1,9 @@
 # Contract Schema Index
 
-Date: 2026-06-02 (current-state note updated 2026-07-14)
-
-Status: reference map for the major contracts shipped through source version
-`0.107.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
-schema constants, parsers, and validators in `src/` are authoritative. Rows
-marked "reserved" name layering intent only; no code emits or validates them
-yet. Do not emit a reserved schema.
+This page maps the shipped contracts; it does not list every command or result envelope. The
+exported types, schema constants, parsers and validators in `src/` are the source of truth. A row
+marked "reserved" names layering intent only: no code emits or validates it yet, so do not emit a
+reserved schema.
 
 ## Purpose
 
@@ -108,7 +105,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   ONCE per run and uploads the identical archive to every fan-out participant. The
   in-sandbox commit refresh clone subjects use is skipped: `.git` is never
   uploaded, so identity comes from the host-side archive digest instead. See
-  [`docs/goals/local-tree-subject/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/local-tree-subject/goal.md);
+  [`docs/history/goals/local-tree-subject/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/local-tree-subject/goal.md);
 - `subject.product` (terminal-product subjects): the product the agent studies.
   `product.name` is a public-safe token (committed fixtures use a NEUTRAL mock
   name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
@@ -379,9 +376,9 @@ acquisition and cleanup status. It contains no raw addresses, bodies, provider I
 or content digests. `run.json` embeds the final projection as `commsReceiving` and
 carries `publication.restrictions: [real-communications]`. Verification keeps the
 run local-only regardless of screenshot redaction. See the
-[receiving contract](../architecture/real-email-receiving.md).
+[receiving contract](https://humanish.dev/docs/email-receiving).
 
-Lab backends report results in their own schemas (`humanish.run-result.v1`,
+Lab routes report results in their own schemas (`humanish.run-result.v1`,
 `humanish.cua-lab-result.v2`, `humanish.scripted-lab-result.v1`,
 `humanish.terminal-lab-result.v1`,
 `humanish.concurrent-shared-world-lab-result.v1`); the evidence record stays
@@ -475,7 +472,7 @@ Core-owned fields:
 dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
 unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
 commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
-}`. Emitted by the computer-use and shared-world backends and the clone
+}`. Emitted by the computer-use and shared-world routes and the clone
   scripted-browser route; absent on pre-existing and other bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
   porcelain status at pack time) are local-tree-route fields, additive under
@@ -493,7 +490,7 @@ provenance` check.
 - `attributionClass` (optional, additive): `isolated | shared-world`. Absent ==
   `isolated`, so every existing bundle is byte-stable. It is the
   interaction-attribution axis (#164), independent of the persona-sampling
-  evidence classes. Set to `shared-world` by the shared-world backend, paired
+  evidence classes. Set to `shared-world` by the shared-world route, paired
   with `sharedWorld`.
 - `sharedWorld` (optional, additive): the shared-world evidence block
   (`humanish.shared-world.v1`); see [Shared-World Evidence](#shared-world-evidence)
@@ -691,7 +688,7 @@ attribution contract. A kept 2026-06-17 live receipt separately proves one
 bounded three-persona trial against a synthetic plane. Neither the deterministic
 gate nor that receipt proves scale, repeatability, or adopter-harness replacement.
 
-### Concurrent plane classes: provisioned-getHost vs external-public (#164 phase 2, 0.20.0)
+### Concurrent plane classes: provisioned and external-public
 
 The CONCURRENT shape carries a PLANE-class discriminator, `sharedWorld.planeClass:
 "provisioned-getHost" | "external-public"`. Absent == `provisioned-getHost` (every existing
@@ -1084,7 +1081,7 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 ## Run Status (identity + liveness index)
 
 `humanish.run-status.v1` is `status.json`, written inside each run directory by
-every backend at run start, refreshed on a fixed cadence while the run is
+every route at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
 finished | interrupted, mode, lab?, pid, startedAt, updatedAt, completedAt?,
 signal?, outcome? }`.
@@ -1135,7 +1132,7 @@ terminal leaves exactly that shape, so the record reads as interrupted
 public-safe by construction: no hostname and no user paths, because a run
 directory may be shared.
 
-## Run Index, Run Detail, And The Terminal Surface (#455)
+## Run Index, Run Detail, And The Terminal Surface
 
 Three derived projections that exist so a surface can list, classify and watch
 runs without opening evidence for all of them. None is authoritative: `run.json`

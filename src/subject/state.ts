@@ -31,7 +31,7 @@ export async function runStateSteps(
   args: {
     state?: LabSubjectState;
     requestTimeoutMs: number;
-    /** Literal scrubber for known provisioned values, applied to log tails PRE-truncation. */
+    /** Literal scrubber for known provisioned values, applied to log tails pre-truncation. */
     scrub: (text: string) => string;
     onStateStep?: (record: RunSubjectStateStepRecord) => void;
     onPhase?: (event: SubjectPhaseEvent) => void;

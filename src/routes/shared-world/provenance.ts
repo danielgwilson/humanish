@@ -12,7 +12,7 @@ export function servePort(serveUrl: string): number {
   return url.protocol === "https:" ? 443 : 80;
 }
 
-/** A getHost URL must be tokenless (no userinfo and no query, so no authKey; invariant 1). */
+/** A getHost URL must be tokenless (no userinfo and no query, so no authKey reaches evidence). */
 export function isTokenlessHost(value: string): boolean {
   try {
     const url = new URL(value);
@@ -39,7 +39,7 @@ export function publicSafeRouteLabel(entry: string | undefined): string {
 }
 
 /**
- * Build the one subject sandbox's provenance (invariant 5): clone (repo + optional commit) or
+ * Build the one subject sandbox's provenance: clone (repo + optional commit) or
  * local-tree (archiveSha256 + optional commit/dirty from the once-per-run host-packed archive -
  * archiveSha256 is the pin; there is only one archive, so no per-participant unanimity math applies,
  * unlike the cua fan-out route). Used for both the in-progress and final bundle: the archive

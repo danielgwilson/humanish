@@ -22,12 +22,12 @@ const CONCURRENT_REQUIRED_LIMITS = [
 
 const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] as const;
 
-// EXTERNAL-PUBLIC plane class: the honest-downgrade required set. Keeps the concurrent family (an
+// External-public plane class: the honest-downgrade required set. Keeps the concurrent family (an
 // honest ceiling) and adds the mandatory disclosures for a plane the harness does not own: the
 // operator-attested target the harness does not control, the absence of a synthetic attestation (you
 // cannot claim synthetic on a real site), the absence of an authoritative shared-state proof (no
 // in-sandbox filesystem to digest), and concurrency evidenced by temporal co-occupancy only. Verify
-// fails closed if any is missing (an absent honest-downgrade limit overclaims), per invariant 5.
+// fails closed if any is missing (an absent honest-downgrade limit overclaims).
 const EXTERNAL_PUBLIC_EXTRA_LIMITS = [
   "external-public-plane",
   "operator-attested-target-not-harness-controlled",
@@ -80,7 +80,7 @@ const participantIdOf = (window: Row): string =>
   typeof window.roleId === "string" ? window.roleId : "(unnamed)";
 
 /**
- * PROVISIONED-getHost concurrent branch: a clone/local-tree subject served and getHost-exposed
+ * Provisioned-getHost concurrent branch: a clone/local-tree subject served and getHost-exposed
  * in-sandbox. The harness minted the host, so this asserts the synthetic-seeded attestation, the
  * harness-minted host identity, and an authoritative in-sandbox checkpoint state-delta on pass.
  */
@@ -200,7 +200,7 @@ function windowFindings(bundle: RunBundle, windows: Row[], routeTarget: string):
 }
 
 /**
- * The getHost plane: every actor drove exactly the harness-minted host (invariant 2), the subject is
+ * The getHost plane: every actor drove exactly the harness-minted host, the subject is
  * attested synthetic and seeded, and every laneWindow shares the plane's provenance.
  */
 function getHostPlaneFindings(
@@ -251,7 +251,7 @@ function getHostPlaneFindings(
   return findings;
 }
 
-/** stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field). */
+/** stateSeries is digest-only with the allowed-keys tripwire (no per-delta→actor field). */
 function stateSeriesFindings(stateSeries: Row[]): string[] {
   const findings: string[] = [];
   for (const snapshot of stateSeries) {
@@ -388,9 +388,9 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
 }
 
 /**
- * The external-public plane (the counterpart of invariant 2, with a weaker, disclosed claim): the seats
- * converged on one observed origin, nothing claims harness control or a synthetic seeded subject,
- * and every laneWindow shares the plane's provenance.
+ * The external-public plane (the counterpart of the harness-minted-URL rule, with a weaker,
+ * disclosed claim): the seats converged on one observed origin, nothing claims harness control
+ * or a synthetic seeded subject, and every laneWindow shares the plane's provenance.
  */
 function externalPublicPlaneFindings(
   bundle: RunBundle,

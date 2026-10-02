@@ -1,0 +1,79 @@
+{
+  "prose": {
+    "src": {
+      "issue-refs": 0,
+      "fix-tags": 0,
+      "caps": 0,
+      "lane-comments": 20,
+      "em-dashes": 0,
+      "invariant-refs": 0,
+      "authority": 0,
+      "archaeology": 0,
+      "seat-comments": 162,
+      "cua-route": 28,
+      "honest": 72,
+      "history": 18,
+      "series-codes": 0,
+      "name-refs": 0
+    },
+    "tests": {
+      "issue-refs": 93,
+      "fix-tags": 8,
+      "caps": 985,
+      "lane-comments": 340,
+      "em-dashes": 371,
+      "invariant-refs": 11,
+      "authority": 19,
+      "archaeology": 6,
+      "seat-comments": 87,
+      "cua-route": 26,
+      "honest": 56,
+      "history": 12,
+      "series-codes": 0,
+      "name-refs": 0
+    },
+    "scripts": {
+      "issue-refs": 5,
+      "fix-tags": 0,
+      "caps": 62,
+      "lane-comments": 7,
+      "em-dashes": 15,
+      "invariant-refs": 0,
+      "authority": 1,
+      "archaeology": 0,
+      "seat-comments": 2,
+      "cua-route": 0,
+      "honest": 3,
+      "history": 0,
+      "series-codes": 0,
+      "name-refs": 0
+    },
+    "tui": {
+      "issue-refs": 11,
+      "fix-tags": 0,
+      "caps": 154,
+      "lane-comments": 2,
+      "em-dashes": 96,
+      "invariant-refs": 0,
+      "authority": 0,
+      "archaeology": 0,
+      "seat-comments": 0,
+      "cua-route": 0,
+      "honest": 3,
+      "history": 1,
+      "series-codes": 0,
+      "name-refs": 0
+    },
+    "markdown": {
+      "title-case-headers": 5
+    }
+  },
+  "vocabulary": {
+    "lane": 98,
+    "seat": 0,
+    "role": 49,
+    "sim": 21,
+    "study": 9,
+    "doc-backend": 17
+  }
+}

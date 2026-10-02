@@ -6,10 +6,10 @@
 // This module is pure (node builtins only, no deps) and deterministic: the estimator functions take
 // an optional injected rate table/rate so tests drive assertions with a fake sheet and never depend
 // on the live numbers below. An unknown model/desktop rate yields a declared-absent estimate
-// (estimatedCostUsd: null + a reason) and never a guessed or silent-zero cost (invariant 5). A bare
+// (estimatedCostUsd: null + a reason) and never a guessed or silent-zero cost. A bare
 // `costUsd` elsewhere in the contract means a provider actually billed that amount; the
 // token-derived estimate here always lives under `estimatedCostUsd` so a reader can never confuse
-// an estimate for an authoritative charge (invariant 6).
+// an estimate for an authoritative charge.
 
 // A type-only import, erased at compile time, so the pricing <-> src/actors/contract.ts cycle is
 // not a runtime cycle.
@@ -42,7 +42,7 @@ export interface ModelRate {
     inputMultiplier: number;
     outputMultiplier: number;
   };
-  /** "YYYY-MM-DD" the entry was last checked against `source`. */
+  /** The `YYYY-MM-DD` date the entry was last checked against `source`. */
   asOf: string;
   /** Public pricing page the number came from (a comment/URL, never a secret). */
   source: string;
@@ -104,7 +104,7 @@ export interface ActorEstimatedCost {
     /** Of `inputTokens`, how many were billed at the reduced cached rate. Present only when the
      *  provider reported cache hits and the rate sheet models a cached rate. */
     cachedInputTokens?: number;
-    /** Of `inputTokens`, how many were billed at the cache-WRITE rate (OpenAI 5.6+). */
+    /** Of `inputTokens`, how many were billed at the cache-write rate (OpenAI 5.6+). */
     cacheWriteInputTokens?: number;
     /** How many requests crossed the long-context threshold and were re-tiered. Present only
      *  when per-request `turns` records made exact tiering possible. */
@@ -176,7 +176,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     asOf: "2026-08-01",
     source: "openai.com/api/pricing (computer-use-preview)",
   },
-  // gpt-5.5: the PREVIOUS-generation CUA default, kept so pinned labs and old bundles still
+  // gpt-5.5: the previous-generation CUA default, kept so pinned labs and old bundles still
   // price. Pre-5.6 models bill no cache-write fee (prompt-caching guide) and no long-context
   // tier was published for it.
   "gpt-5.5": {
@@ -297,7 +297,7 @@ export function round6(n: number): number {
 
 /**
  * Estimate one actor trace's model-token cost from its trace tokenUsage + model id. Deterministic;
- * the rate table is injectable (tests pass a fake sheet). Returns a DECLARED-ABSENT estimate
+ * the rate table is injectable (tests pass a fake sheet). Returns a declared-absent estimate
  * (estimatedCostUsd: null + a reason) for a missing rate or missing usage, never a guessed cost.
  */
 export function estimateActorCostForExecution(
@@ -396,7 +396,7 @@ export function estimateActorCost(
   ): void => {
     const reqIn = usage.input ?? 0;
     const reqOut = usage.output ?? 0;
-    // Tiering applies only to a real per-REQUEST record: session totals crossing the threshold
+    // Tiering applies only to a real per-request record: session totals crossing the threshold
     // say nothing about any single request, so totals always price on the base tier.
     const long =
       tierable && rate.longContext !== undefined && reqIn > rate.longContext.thresholdInputTokens;
@@ -457,7 +457,7 @@ export function estimateActorCost(
 
 /**
  * Estimate the E2B desktop-minute cost from a host-side create->teardown span (minutes). The rate
- * is injectable. Returns a DECLARED-ABSENT estimate (null + "no_duration") when no duration was
+ * is injectable. Returns a declared-absent estimate (null + "no_duration") when no duration was
  * measured (no sandbox / unmeasurable span), never a guessed 0.
  */
 export function estimateDesktopCost(

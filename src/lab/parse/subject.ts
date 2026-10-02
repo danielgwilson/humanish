@@ -35,7 +35,7 @@ export function parseSubject(
 
   // topology is enum-validated everywhere; its semantics (shared-world requires clone × e2b-desktop
   // × a ≥2 roster) are enforced in the shared-world cross-validation below, and a set-but-unconsumed
-  // topology warns as inert off the shared-world route (invariant 6).
+  // topology warns as inert off the shared-world route.
   if (raw.topology !== undefined) {
     const topology = str(raw.topology);
     if (topology !== "per-lane-worlds" && topology !== "shared-world") {
@@ -81,8 +81,8 @@ function misplacedFieldFailure(
   source: LabSubject["source"],
   raw: Record<string, unknown>,
 ): LabConfigParseFailure | undefined {
-  // `product` is terminal-product-only; reject it elsewhere (invariant 6: a field that cannot act
-  // on this route is an honest parse error, not silently dropped).
+  // `product` is terminal-product-only; reject it elsewhere. A field that cannot act on this
+  // route is a parse error and is never silently dropped.
   if (source !== "terminal-product" && source !== "desktop-cli" && raw.product !== undefined) {
     return invalid(
       "`subject.product` applies only to terminal-product and desktop-cli subjects (the CLI a participant studies from public surfaces).",
@@ -114,7 +114,7 @@ function misplacedFieldFailure(
       "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves).",
     );
   }
-  // repos/clone are clone-ONLY (a fresh-clone subject's git inputs). local-tree packs the
+  // repos/clone are clone-only (a fresh-clone subject's git inputs). local-tree packs the
   // resolution cwd itself, so it has no repo slug to clone and gets its own precise reasons
   // rather than falling through to the generic clone-only message below.
   if (source === "local-tree" && raw.repos !== undefined) {
@@ -128,7 +128,7 @@ function misplacedFieldFailure(
     );
   }
   // Rejected, never silently dropped, on app-url/local-app/this-repo/terminal-product subjects
-  // too (invariant 6: a field that cannot act on this route is an honest parse error).
+  // too: a field that cannot act on this route is a parse error.
   if (source !== "clone" && raw.repos !== undefined) {
     return invalid(
       "`subject.repos` applies only to clone subjects (the owner/repo slugs to clone).",
@@ -137,14 +137,14 @@ function misplacedFieldFailure(
   if (source !== "clone" && raw.clone !== undefined) {
     return invalid("`subject.clone` applies only to clone subjects (clone depth/fanout/keep).");
   }
-  // localTree is local-tree-ONLY (pack/upload knobs for the packed working tree).
+  // localTree is local-tree-only (pack/upload knobs for the packed working tree).
   if (source !== "local-tree" && raw.localTree !== undefined) {
     return invalid(
       "`subject.localTree` applies only to local-tree subjects (keep/exclude/maxArchiveBytes for packing the working tree).",
     );
   }
-  // publicTarget is app-url-ONLY (the external-public shared-world ownership attestation). It is
-  // meaningless without a real public deployment as the plane, so reject it elsewhere (invariant 6).
+  // publicTarget is app-url-only (the external-public shared-world ownership attestation). It is
+  // meaningless without a real public deployment as the plane, so reject it elsewhere.
   if (source !== "app-url" && raw.publicTarget !== undefined) {
     return invalid(
       "`subject.publicTarget` applies only to app-url subjects on the external-public shared-world route (the operator's ownership attestation for a real public deployment used directly as the shared plane).",
@@ -268,7 +268,7 @@ function parseAppSubject(
   }
   subject.appUrl = appUrl;
   // publicTarget (external-public shared-world ownership attestation) is app-url-only. Shape it
-  // here; its REQUIRED-on-that-route semantics live in externalPublicSharedWorldValidationReason.
+  // here; its required-on-that-route semantics live in externalPublicSharedWorldValidationReason.
   if (source === "app-url" && raw.publicTarget !== undefined) {
     const publicTargetResult = parsePublicTarget(raw.publicTarget);
     if (!publicTargetResult.ok) {
@@ -320,7 +320,7 @@ function parsePublicTarget(
 }
 
 // The product name interpolates into evidence labels and the composed prompt; the public-safe
-// token shape is the same load-bearing constraint as a lab id.
+// token shape is the same strict constraint as a lab id.
 const PRODUCT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 function parseProduct(

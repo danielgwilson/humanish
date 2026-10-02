@@ -115,80 +115,77 @@ function createStateBrain(): CuaProvider {
   };
 }
 
-describe.skipIf(!LIVE)(
-  "cua-actor-lab state-driven executor (LIVE rung, no E2B, no vision) — issue #148",
-  () => {
-    let cwd: string;
-    let server: Server;
-    let appUrl: string;
+describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (live rung, no E2B, no vision)", () => {
+  let cwd: string;
+  let server: Server;
+  let appUrl: string;
 
-    beforeEach(async () => {
-      cwd = await mkdtemp(path.join(tmpdir(), "humanish-state-live-"));
-      // A real already-running local dev server on loopback (the subject the lab points at).
-      server = createServer((_req, res) => {
-        res.writeHead(200, { "content-type": "text/html" });
-        res.end("<!doctype html><h1>Local state app</h1>");
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-state-live-"));
+    // A real already-running local dev server on loopback (the subject the lab points at).
+    server = createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<!doctype html><h1>Local state app</h1>");
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as AddressInfo;
+    appUrl = `http://127.0.0.1:${port}/`;
+  });
+
+  afterEach(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await retainLiveRuns(cwd, "cua-state-executor");
+  });
+
+  it(
+    "drives an already-running local app via getState() to goal_satisfied with NO E2B sandbox",
+    { timeout: 60_000 },
+    async () => {
+      const app = makeLocalApp();
+      const parsed = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "downstream-local-app-state",
+        title: "State-driven local app (live rung)",
+        subject: { source: "local-app", appUrl },
+        actors: [
+          {
+            type: "openai-computer-use",
+            persona: "pixel-pat",
+            mission: "Greet the app, then stop when getState() reports greeted.",
+          },
+        ],
+        scenario: { mode: "live" },
       });
-      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-      const { port } = server.address() as AddressInfo;
-      appUrl = `http://127.0.0.1:${port}/`;
-    });
+      if (!parsed.ok) throw new Error(parsed.error.message);
 
-    afterEach(async () => {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-      await retainLiveRuns(cwd, "cua-state-executor");
-    });
+      const outcome = await runLab(parsed.config, {
+        cwd,
+        inProcess: { executor: async (ctx) => createAppContractExecutor(app, ctx.appUrl) },
+        createProvider: async () => createStateBrain(),
+      });
 
-    it(
-      "drives an already-running local app via getState() to goal_satisfied with NO E2B sandbox",
-      { timeout: 60_000 },
-      async () => {
-        const app = makeLocalApp();
-        const parsed = parseLabConfig({
-          schema: LAB_CONFIG_SCHEMA,
-          id: "downstream-local-app-state",
-          title: "State-driven local app (live rung)",
-          subject: { source: "local-app", appUrl },
-          actors: [
-            {
-              type: "openai-computer-use",
-              persona: "pixel-pat",
-              mission: "Greet the app, then stop when getState() reports greeted.",
-            },
-          ],
-          scenario: { mode: "live" },
-        });
-        if (!parsed.ok) throw new Error(parsed.error.message);
+      expect(outcome.route).toBe("computer-use");
+      if (outcome.route !== "computer-use") return;
+      const result = outcome.result;
 
-        const outcome = await runLab(parsed.config, {
-          cwd,
-          inProcess: { executor: async (ctx) => createAppContractExecutor(app, ctx.appUrl) },
-          createProvider: async () => createStateBrain(),
-        });
+      // The acceptance proof: goal_satisfied via getState(), and NO E2B sandbox created.
+      expect(result.session?.completionReason).toBe("goal_satisfied");
+      expect(result.sandbox).toBeUndefined();
+      expect("streamUrl" in result).toBe(false);
+      expect(result.ok).toBe(true);
 
-        expect(outcome.route).toBe("computer-use");
-        if (outcome.route !== "computer-use") return;
-        const result = outcome.result;
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+      expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
+      expect(bundle.streams[0].actor.provider).toBe("downstream-local-app-state-brain");
+      expect(bundle.streams[0].actor.redaction.screenshots).toBe("n/a");
+      expect(bundle.streams[0].actor.redaction.notes).toContain("App state was observed");
+      // appState never persists.
+      expect(JSON.stringify(bundle)).not.toContain('"appState"');
+      expect(JSON.stringify(bundle)).not.toContain("/greeted");
 
-        // The acceptance proof: goal_satisfied via getState(), and NO E2B sandbox created.
-        expect(result.session?.completionReason).toBe("goal_satisfied");
-        expect(result.sandbox).toBeUndefined();
-        expect("streamUrl" in result).toBe(false);
-        expect(result.ok).toBe(true);
-
-        const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-        const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-        expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
-        expect(bundle.streams[0].actor.provider).toBe("downstream-local-app-state-brain");
-        expect(bundle.streams[0].actor.redaction.screenshots).toBe("n/a");
-        expect(bundle.streams[0].actor.redaction.notes).toContain("App state was observed");
-        // appState never persists.
-        expect(JSON.stringify(bundle)).not.toContain('"appState"');
-        expect(JSON.stringify(bundle)).not.toContain("/greeted");
-
-        const verified = await verifyRun(cwd, result.runId);
-        expect(verified.ok).toBe(true);
-      },
-    );
-  },
-);
+      const verified = await verifyRun(cwd, result.runId);
+      expect(verified.ok).toBe(true);
+    },
+  );
+});

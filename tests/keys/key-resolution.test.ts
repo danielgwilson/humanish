@@ -16,7 +16,7 @@ import {
   userKeyStorePath,
 } from "../../src/keys/key-resolution.js";
 
-describe("provider-key discovery (#436)", () => {
+describe("provider-key discovery", () => {
   let cwd: string;
   let home: string;
 
@@ -79,14 +79,14 @@ describe("provider-key discovery (#436)", () => {
     expect(env.CODEX_API_KEY).toBe("from-user-store"); // the store still fills allowlisted names nothing else had
   });
 
-  it("an explicitly-set EMPTY env value is PRESENT and never overridden (red-team)", async () => {
+  it("an explicitly-set empty env value is present and never overridden", async () => {
     await writeE2bConfig({ teamApiKey: "from-e2b-config" });
     const env: NodeJS.ProcessEnv = { E2B_API_KEY: "" };
     await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
     expect(env.E2B_API_KEY).toBe(""); // "off" stays off
   });
 
-  it("ignores and NAMES non-provider names in the overlay — NODE_OPTIONS can never ride in (red-team)", async () => {
+  it("ignores and names non-provider names in the overlay: NODE_OPTIONS can never ride in", async () => {
     await writeOverlay([
       "OPENAI_API_KEY=k",
       "NODE_OPTIONS=--require /tmp/payload.js",
@@ -108,7 +108,7 @@ describe("provider-key discovery (#436)", () => {
     expect(announced.join("\n")).not.toContain("payload.js"); // names, never values
   });
 
-  it("a parse-invalid overlay applies NOTHING — no half-loaded unannounced fills (red-team)", async () => {
+  it("a parse-invalid overlay applies nothing: no half-loaded unannounced fills", async () => {
     await writeOverlay(["OPENAI_API_KEY=first", "not a valid line !!!"]);
     const env: NodeJS.ProcessEnv = {};
     const fills = await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
@@ -116,7 +116,7 @@ describe("provider-key discovery (#436)", () => {
     expect(fills).toEqual([]);
   });
 
-  it("one mangled store line degrades to that line alone — the store's own lenient grammar (red-team)", async () => {
+  it("one mangled store line degrades to that line alone: the store's own lenient grammar", async () => {
     await writeUserStore(["OPENAI_API_KEY=good-value", "mangled line without equals"]);
     const env: NodeJS.ProcessEnv = {};
     await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
@@ -264,7 +264,7 @@ describe("provider-key discovery (#436)", () => {
       expect(seen).not.toContain(value);
   });
 
-  it("HUMANISH_STRICT_KEYS=1 disables every rung (the pre-#436 behavior)", async () => {
+  it("HUMANISH_STRICT_KEYS=1 disables every rung", async () => {
     await writeOverlay(["OPENAI_API_KEY=from-overlay"]);
     const env: NodeJS.ProcessEnv = { HUMANISH_STRICT_KEYS: "1" };
     const fills = await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
@@ -358,14 +358,14 @@ describe("the user key store (`humanish keys`)", () => {
     expect(resolveKeyName("not a name")).toBeNull();
   });
 
-  it("the store holds PROVIDER keys only — an arbitrary-name store would be env injection with extra steps (red-team)", () => {
+  it("the store holds provider keys only: an arbitrary-name store would be env injection with extra steps", () => {
     expect(() => setUserKey("NODE_OPTIONS", "--require /tmp/x.js", {}, deps())).toThrow(
       /provider keys only/,
     );
     expect(() => setUserKey("MY_CUSTOM_KEY", "v", {}, deps())).toThrow(/provider keys only/);
   });
 
-  it("awkward values ('#'-leading, embedded '=') round-trip set -> discovery byte-identically (red-team)", async () => {
+  it("awkward values ('#'-leading, embedded '=') round-trip set -> discovery byte-identically", async () => {
     setUserKey("OPENAI_API_KEY", "#not-a-comment=with=equals", {}, deps());
     const env: NodeJS.ProcessEnv = {};
     await discoverProviderKeys({
@@ -377,7 +377,7 @@ describe("the user key store (`humanish keys`)", () => {
     expect(env.OPENAI_API_KEY).toBe("#not-a-comment=with=equals");
   });
 
-  it("set refuses a symlinked store FILE and a symlinked store DIRECTORY (red-team, reproduced writes-through-link)", async () => {
+  it("set refuses a symlinked store file and a symlinked store directory", async () => {
     const {
       mkdir: mkdirP,
       symlink: symlinkP,
@@ -417,7 +417,7 @@ describe("the user key store (`humanish keys`)", () => {
     }
   });
 
-  it("a relative XDG_CONFIG_HOME is IGNORED per spec — the store never lands in the current repo (red-team)", () => {
+  it("a relative XDG_CONFIG_HOME is ignored per spec: the store never lands in the current repo", () => {
     const env: NodeJS.ProcessEnv = { XDG_CONFIG_HOME: "relative/dir" };
     expect(path.isAbsolute(userKeyStorePath(env, deps()))).toBe(true);
     expect(userKeyStorePath(env, deps())).toContain(home);

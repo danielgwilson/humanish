@@ -31,7 +31,7 @@ import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } fro
 
 /**
  * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change: a new
- * producer only). DRY-RUN: a contract bundle. The terminal stream is a contract placeholder
+ * producer only). Dry run: a contract bundle. The terminal stream is a contract placeholder
  * (stdin disabled, no captured tail, because nothing ran), the subject is declared unpinned, and
  * the caps/policies/runtime-auth declarations are recorded without pretending that live ledgers
  * exist. The shipped live builder fills the same evidence contract. Exported for tests.
@@ -65,8 +65,8 @@ export function buildTerminalProductBundle(args: {
 
   // The terminal stream is a contract placeholder on the dry-run path: stdin is disabled and no
   // exec output was captured, so the tail is empty and transport stays "snapshot", never "pty"
-  // (captured non-interactive exec output is never an interactive PTY; invariant 6 + the PTY
-  // ruling). The shipped live builder fills terminal.tail from redacted exec-stream capture.
+  // (captured non-interactive exec output is never an interactive PTY). The shipped live builder
+  // fills terminal.tail from redacted exec-stream capture.
   const { simulation, stream } = terminalParticipant(args, {
     status: "contract_proof_only",
     reason,
@@ -95,7 +95,7 @@ export function buildTerminalProductBundle(args: {
       at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.subject.declared",
-      // Invariant 5: provenance recorded or its absence declared. The agent drives public surfaces
+      // Provenance is recorded or its absence declared. The agent drives public surfaces
       // and nothing is cloned, so the subject provenance is explicitly unpinned; evidence binds to the
       // composed-prompt digest. Public surfaces are recorded (they are public by declaration).
       message: `Subject product declared: ${args.productName}; public surfaces: ${args.publicSurfaces.join(", ")}. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest ${args.persona.promptDigest}.`,
@@ -105,7 +105,7 @@ export function buildTerminalProductBundle(args: {
       at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.credentials.declared",
-      // Names-only evidence (invariant 1): the runtime-auth channel is declared; no value is ever
+      // Names-only evidence: the runtime-auth channel is declared; no value is ever
       // recorded. The deny-by-default policies are recorded so the credential posture is auditable.
       message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
     }),

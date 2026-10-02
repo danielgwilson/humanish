@@ -23,7 +23,7 @@ const LANE_PROMPT = [
   "Lane focus: read your mail at https://8025-ixyzsandbox123.e2b.app/inbox and follow the link.",
 ].join("\n");
 
-describe("scenario.goal redaction (#412)", () => {
+describe("scenario.goal redaction", () => {
   it("the raw prompt is exactly what the scanner rejects", () => {
     // Establishes the premise: without redaction this text fails the public-safety gate.
     expect(containsSensitive(LANE_PROMPT)).toBe(true);

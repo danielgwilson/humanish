@@ -329,7 +329,7 @@ export async function finishCuaRun(
   const { runId } = run;
   const participantCount = participantRuns.length;
   const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = ran;
-  // Per-participant subject projections (invariant 5).
+  // Per-participant subject projections.
   const subjects = projectParticipantSubjects({ ...subjectArgs, outcomes, dryRun });
 
   const aggregate = aggregateCuaSubject({ subjects, outcomes, participantCount, dryRun });

@@ -15,6 +15,7 @@
 
 import { listLabManifests } from "../lab/discover.js";
 import { listRuns } from "../run/stored-runs.js";
+import { supportsLocalBrowser } from "./first-run-path.js";
 
 export const ORIENTATION_SCHEMA = "humanish.orientation.v1" as const;
 
@@ -42,7 +43,10 @@ interface OrientationCommand {
  * Read the project's state. Pure-ish: it only reads, never writes, and never touches the network or
  * a provider: bare invocation must not be able to spend money or mutate a repo.
  */
-export async function readOrientation(cwd: string): Promise<OrientationState> {
+export async function readOrientation(
+  cwd: string,
+  host: { platform: NodeJS.Platform; arch: string } = process,
+): Promise<OrientationState> {
   const [labs, runs] = await Promise.all([
     listLabManifests(cwd).catch(() => undefined),
     listRuns(cwd).catch(() => undefined),
@@ -65,7 +69,7 @@ export async function readOrientation(cwd: string): Promise<OrientationState> {
     labIds: labIds.slice(0, 3),
     runCount: runIds.length,
     ...(latest === undefined ? {} : { latestRunId: latest }),
-    nextCommands: nextCommandsFor({ initialized, labIds, hasRun: runIds.length > 0 }),
+    nextCommands: nextCommandsFor({ initialized, labIds, hasRun: runIds.length > 0, host }),
   };
 }
 
@@ -77,41 +81,50 @@ function nextCommandsFor(args: {
   initialized: boolean;
   labIds: string[];
   hasRun: boolean;
+  host: { platform: NodeJS.Platform; arch: string };
 }): OrientationCommand[] {
+  const preview = {
+    command: "humanish run first-run",
+    why: "an evidence preview: no browser or model runs, no keys, no spend",
+  };
   if (!args.initialized) {
     return [
-      { command: "humanish init", why: "create humanish/ with a starter lab and persona" },
       {
-        command: "humanish run first-run",
-        why: "a synthetic run with no keys and no spend, to see the shape of the evidence",
+        command: "humanish init --yes",
+        why: "write starter labs, personas and an AGENTS.md (--dry-run lists every file first)",
       },
+      preview,
     ];
   }
 
-  const suggestedLab = args.labIds[0];
-  const commands: OrientationCommand[] = [
+  // The starter live lab this host can run. The other starter labs are templates whose subject
+  // still names your-org/your-app, so they are never suggested.
+  const liveLab = (
+    supportsLocalBrowser(args.host.platform, args.host.arch)
+      ? ["local-browser", "try-live"]
+      : ["try-live"]
+  ).find((id) => args.labIds.includes(id));
+  if (!args.hasRun) {
+    return [
+      preview,
+      liveLab === undefined
+        ? { command: "humanish lab list", why: "see the labs this project declares" }
+        : {
+            command: `humanish doctor --lab ${liveLab}`,
+            why: `check what the ${liveLab} lab still needs before a live run`,
+          },
+    ];
+  }
+  return [
+    ...(liveLab === undefined
+      ? []
+      : [{ command: `humanish run ${liveLab}`, why: "run a real participant against an app" }]),
     {
-      command: suggestedLab ? `humanish watch ${suggestedLab}` : "humanish watch",
-      why: "run a lab and open the Observer while it goes",
-    },
-  ];
-  if (args.hasRun) {
-    commands.push({
       command: "humanish verify --run latest",
       why: "check the last run's evidence and public-safety gates",
-    });
-    commands.push({
-      command: "humanish observe --run latest",
-      why: "reopen the last run's Observer",
-    });
-  } else {
-    commands.push({ command: "humanish lab list", why: "see the labs this project declares" });
-    commands.push({
-      command: "humanish doctor",
-      why: "check what this project still needs before a live run",
-    });
-  }
-  return commands;
+    },
+    { command: "humanish observe --run latest", why: "reopen the last run's Observer" },
+  ];
 }
 
 /**

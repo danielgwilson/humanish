@@ -13,7 +13,8 @@
     "scripts/fixtures/**",
     "tests/fixtures/**",
     "tests/golden/**",
-    "docs/goals/**/receipts/**",
+    "docs/evidence/*/**",
+    "docs/history/goals/**/receipts/**",
     "observer/index.html"
   ]
 }

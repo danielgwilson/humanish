@@ -96,7 +96,7 @@ async function collect(): Promise<FoundCommand[]> {
   return found;
 }
 
-describe("shipped command strings are commands the CLI accepts (#516)", () => {
+describe("shipped command strings are commands the CLI accepts", () => {
   it("advertises no invented subcommand or flag anywhere in src/", async () => {
     const program = createProgram({});
     const rootSpec = specOf(program);
@@ -135,7 +135,7 @@ describe("shipped command strings are commands the CLI accepts (#516)", () => {
     expect(problems).toEqual([]);
   });
 
-  it("would have caught the #516 regression", async () => {
+  it("`run` has no --scenario option and takes a lab as a positional", async () => {
     // The exact string that shipped, proving this test is load-bearing rather than decorative.
     const program = createProgram({});
     const rootSpec = specOf(program);

@@ -824,7 +824,7 @@ describe("serve library: labeled cost estimate", () => {
   });
 });
 
-describe("serve on a port somebody already holds (#484)", () => {
+describe("serve on a port somebody already holds", () => {
   it("reports HUMANISH_SERVE_PORT_IN_USE with the port, never HUMANISH_UNEXPECTED", async () => {
     const { createServer: createNetServer } = await import("node:net");
     const { freePort } = await import("../helpers/free-port.js");
