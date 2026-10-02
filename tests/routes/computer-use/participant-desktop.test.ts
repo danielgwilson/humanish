@@ -30,7 +30,6 @@ import {
 } from "../../../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { participantRun } from "../../helpers/participant-run.js";
-import { legacyHookSpecOf } from "../../../src/routes/computer-use/legacy-lane-spec.js";
 
 const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
@@ -73,13 +72,13 @@ async function fixture() {
     scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
+  const { config } = parsed;
   const spec = participantRun(specFields);
   const order: string[] = [];
   const loadDesktopModule = vi.fn(async () => {
     throw new Error("The alternate port must never load an E2B desktop");
   });
   const deps: CuaParticipantDeps = {
-    config: parsed.config,
     residual: parsed.config,
     labId: parsed.config.id,
     caps: {},
@@ -161,7 +160,7 @@ async function fixture() {
     snapshot: () => evidence,
   };
   deps.createDesktop = () => port;
-  return { cwd, spec, deps, order, port, backend, allocation, release, loadDesktopModule };
+  return { cwd, config, spec, deps, order, port, backend, allocation, release, loadDesktopModule };
 }
 
 describe("ready desktop lane contract", () => {
@@ -174,7 +173,7 @@ describe("ready desktop lane contract", () => {
     async ({ speech, template, expected }) => {
       const f = await fixture();
       const parsed = parseLabConfig({
-        ...f.deps.config,
+        ...f.config,
         actors: [
           {
             type: "local-agent",
@@ -184,7 +183,7 @@ describe("ready desktop lane contract", () => {
           },
         ],
         execution: {
-          ...f.deps.config.execution,
+          ...f.config.execution,
           desktop: {
             ...(template ? { template } : {}),
             ...(speech ? { media: { microphone: { source: "speech" } } } : {}),
@@ -193,7 +192,6 @@ describe("ready desktop lane contract", () => {
       });
       expect(parsed.ok).toBe(true);
       if (!parsed.ok) return;
-      f.deps.config = parsed.config;
       f.deps.residual = parsed.config;
       const create = vi.fn(async () => {
         throw new Error("synthetic allocation stop");
@@ -225,7 +223,7 @@ describe("ready desktop lane contract", () => {
     );
     await chmod(executable, 0o700);
     const parsed = parseLabConfig({
-      ...f.deps.config,
+      ...f.config,
       actors: [
         {
           type: "local-agent",
@@ -261,7 +259,7 @@ describe("ready desktop lane contract", () => {
     );
     await chmod(executable, 0o700);
     const parsed = parseLabConfig({
-      ...f.deps.config,
+      ...f.config,
       actors: [
         {
           type: "local-agent",
@@ -270,7 +268,7 @@ describe("ready desktop lane contract", () => {
           mission: "Save a note.",
         },
       ],
-      execution: { ...f.deps.config.execution, caps: { maxUsd: 1 } },
+      execution: { ...f.config.execution, caps: { maxUsd: 1 } },
       review: { analysis: false },
     });
     expect(parsed.ok).toBe(true);
@@ -372,10 +370,8 @@ describe("ready desktop lane contract", () => {
         f.order.push("model-closed");
       }),
     };
-    f.deps.hooks.buildProvider = vi.fn(async ({ lane }) => {
-      // The deprecated hook receives the flat view of the lane it runs.
-      expect(lane).toEqual(legacyHookSpecOf(f.spec));
-      expect(lane).toMatchObject({ laneId: "participant-a", laneIndex: 0, deviceName: "desktop" });
+    f.deps.createProvider = vi.fn(async (participant) => {
+      expect(participant).toEqual({ id: "participant-a", index: 0, count: 1 });
       return provider;
     });
     f.deps.runSession = runCuaActorSession;
@@ -415,7 +411,7 @@ describe("ready desktop lane contract", () => {
 
   it("releases the desktop even if model cleanup fails", async () => {
     const f = await fixture();
-    f.deps.hooks.buildProvider = async () => ({
+    f.deps.createProvider = async () => ({
       id: "synthetic-provider",
       capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
       nextTurn: async () => ({
@@ -442,8 +438,8 @@ describe("ready desktop lane contract", () => {
   it("never falls back to a hosted desktop for an unconfigured local target", async () => {
     const f = await fixture();
     const config = {
-      ...f.deps.config,
-      execution: { ...f.deps.config.execution, target: "local" as const },
+      ...f.config,
+      execution: { ...f.config.execution, target: "local" as const },
     };
     expect(parseLabConfig(config).ok).toBe(true);
     const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, hooks: f.deps.hooks });
@@ -458,9 +454,9 @@ describe("ready desktop lane contract", () => {
     // planner then plans an app-url subject. The declared source decides, as it did in the planner.
     const f = await fixture();
     const config = {
-      ...f.deps.config,
-      subject: { ...f.deps.config.subject, source: "this-repo" },
-      execution: { ...f.deps.config.execution, target: "local" as const },
+      ...f.config,
+      subject: { ...f.config.subject, source: "this-repo" },
+      execution: { ...f.config.execution, target: "local" as const },
     } as unknown as LabConfig;
     const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: true, hooks: f.deps.hooks });
     expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
@@ -479,8 +475,8 @@ describe("ready desktop lane contract", () => {
     }),
   });
   const localFeedbackLab = (f: Awaited<ReturnType<typeof fixture>>) => ({
-    ...f.deps.config,
-    execution: { ...f.deps.config.execution, target: "local" as const },
+    ...f.config,
+    execution: { ...f.config.execution, target: "local" as const },
     review: { analysis: false as const },
   });
 
@@ -492,7 +488,8 @@ describe("ready desktop lane contract", () => {
       runId: "local-feedback",
       dryRun: false,
       localVm: { desktop: () => f.port, analysisRefusal: () => undefined },
-      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider },
+      hooks: { ...f.deps.hooks, env: {} },
+      createProvider: reachedProvider,
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
     const bundle = JSON.parse(
@@ -526,7 +523,8 @@ describe("ready desktop lane contract", () => {
       runId: "local-unconfirmed",
       dryRun: false,
       localVm: { desktop: () => unconfirmed, analysisRefusal: () => undefined },
-      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider },
+      hooks: { ...f.deps.hooks, env: {} },
+      createProvider: reachedProvider,
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
     const status = JSON.parse(
@@ -563,7 +561,8 @@ describe("ready desktop lane contract", () => {
         analysisRefusal: () => "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
       },
       automaticAnalysis: { run },
-      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider },
+      hooks: { ...f.deps.hooks, env: {} },
+      createProvider: reachedProvider,
     });
     expect(run).toHaveBeenCalledOnce();
     expect(result.automaticAnalysis).toEqual({
@@ -583,7 +582,8 @@ describe("ready desktop lane contract", () => {
       config: localFeedbackLab(f),
       dryRun: false,
       localVm: { desktop: () => f.port, analysisRefusal: () => undefined, signal },
-      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider, runSession },
+      hooks: { ...f.deps.hooks, env: {}, runSession },
+      createProvider: reachedProvider,
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
     expect(runSession).toHaveBeenCalledOnce();

@@ -50,12 +50,11 @@ async function fixture() {
     })),
     execute: vi.fn(async () => undefined),
   };
-  const buildExecutor = vi.fn(async () => executor);
+  const inProcessExecutor = vi.fn(async (_appUrl: string) => executor);
   const loadDesktopModule = vi.fn(async () => {
     throw new Error("An in-process participant must never load an E2B desktop");
   });
   const deps: CuaParticipantDeps = {
-    config: parsed.config,
     residual: parsed.config,
     labId: parsed.config.id,
     caps: {},
@@ -76,11 +75,12 @@ async function fixture() {
     scrubKnownValues: (value) => value,
     runSession: runCuaActorSession,
     now: Date.now,
-    hooks: { buildExecutor, loadDesktopModule },
+    hooks: { loadDesktopModule },
+    inProcessExecutor,
     onStream: async () => undefined,
     reportSubjectPhase: () => undefined,
   };
-  return { spec, deps, executor, buildExecutor, loadDesktopModule };
+  return { spec, deps, executor, inProcessExecutor, loadDesktopModule };
 }
 
 const NO_SANDBOX = {
@@ -95,14 +95,10 @@ describe("in-process participant desktop", () => {
     const f = await fixture();
     const desktop = createInProcessDesktop(f.deps);
     await desktop.prepare();
-    expect(f.buildExecutor).not.toHaveBeenCalled();
+    expect(f.inProcessExecutor).not.toHaveBeenCalled();
     const ready = await desktop.openSession();
     expect(ready).toEqual({ executor: f.executor });
-    expect(f.buildExecutor).toHaveBeenCalledExactlyOnceWith({
-      config: f.deps.config,
-      actor: f.deps.descriptor,
-      appUrl: f.deps.appUrl,
-    });
+    expect(f.inProcessExecutor).toHaveBeenCalledExactlyOnceWith(f.deps.appUrl);
     await desktop.finalize({ failed: false });
     expect(desktop.snapshot()).toEqual(NO_SANDBOX);
   });
@@ -115,7 +111,7 @@ describe("in-process participant desktop", () => {
     await expect(desktop.prepare()).rejects.toThrow("only start once");
     await desktop.openSession();
     await expect(desktop.openSession()).rejects.toThrow("may only be opened once");
-    expect(f.buildExecutor).toHaveBeenCalledOnce();
+    expect(f.inProcessExecutor).toHaveBeenCalledOnce();
   });
 
   it("shares one finalization and cannot start after it", async () => {
@@ -126,7 +122,7 @@ describe("in-process participant desktop", () => {
     await closed;
     await expect(desktop.prepare()).rejects.toThrow("only start once");
     await expect(desktop.openSession()).rejects.toThrow("must be prepared");
-    expect(f.buildExecutor).not.toHaveBeenCalled();
+    expect(f.inProcessExecutor).not.toHaveBeenCalled();
     expect(desktop.snapshot()).toEqual(NO_SANDBOX);
   });
 
@@ -136,12 +132,12 @@ describe("in-process participant desktop", () => {
     await desktop.prepare();
     await desktop.finalize({ failed: true });
     await expect(desktop.openSession()).rejects.toThrow("before finalization");
-    expect(f.buildExecutor).not.toHaveBeenCalled();
+    expect(f.inProcessExecutor).not.toHaveBeenCalled();
   });
 
   it("keeps an executor failure and still finalizes", async () => {
     const f = await fixture();
-    f.buildExecutor.mockRejectedValueOnce(new Error("Synthetic executor failure"));
+    f.inProcessExecutor.mockRejectedValueOnce(new Error("Synthetic executor failure"));
     const desktop = createInProcessDesktop(f.deps);
     await desktop.prepare();
     await expect(desktop.openSession()).rejects.toThrow("Synthetic executor failure");
@@ -149,11 +145,11 @@ describe("in-process participant desktop", () => {
     expect(desktop.snapshot()).toEqual(NO_SANDBOX);
   });
 
-  it("refuses to open without a buildExecutor hook", async () => {
+  it("refuses to open without an inProcess executor", async () => {
     const f = await fixture();
-    const desktop = createInProcessDesktop({ ...f.deps, hooks: {} });
+    const desktop = createInProcessDesktop({ appUrl: f.deps.appUrl });
     await desktop.prepare();
-    await expect(desktop.openSession()).rejects.toThrow("needs hooks.buildExecutor");
+    await expect(desktop.openSession()).rejects.toThrow("needs RunLabOptions.inProcess");
   });
 
   it("runs a participant through the lane runner with one provider and no sandbox", async () => {
@@ -170,17 +166,17 @@ describe("in-process participant desktop", () => {
       }),
       close: vi.fn(async () => undefined),
     };
-    const buildProvider = vi.fn(async () => provider);
-    f.deps.hooks.buildProvider = buildProvider;
+    const createProvider = vi.fn(async () => provider);
+    f.deps.createProvider = createProvider;
     f.deps.createDesktop = () => createInProcessDesktop(f.deps);
 
     const result = await runCuaParticipant(f.spec, f.deps);
 
     expect(result.harnessError).toBe(false);
     expect(result.session?.status).toBe("passed");
-    expect(buildProvider).toHaveBeenCalledOnce();
+    expect(createProvider).toHaveBeenCalledOnce();
     expect(provider.close).toHaveBeenCalledOnce();
-    expect(f.buildExecutor).toHaveBeenCalledOnce();
+    expect(f.inProcessExecutor).toHaveBeenCalledOnce();
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(result).toMatchObject({ killed: false, streamUrlPresent: false });
     for (const field of [

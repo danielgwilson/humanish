@@ -9,7 +9,10 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
+import type {
+  CuaActorLabHooks,
+  RunCuaActorLabOptions,
+} from "../../../src/routes/computer-use/types.js";
 import { lab } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];
@@ -191,6 +194,7 @@ const pairs: [string, string][] = [
 function caseOf(names: readonly string[]): {
   config: LabConfig;
   hooks: CuaActorLabHooks;
+  driving: Pick<RunCuaActorLabOptions, "inProcess" | "createProvider">;
   countOverride?: number;
 } {
   const config = lab("cuAppUrl");
@@ -200,16 +204,16 @@ function caseOf(names: readonly string[]): {
   const never = async (): Promise<never> => {
     throw new Error("admission cases must not reach a caller hook");
   };
-  const hooks: CuaActorLabHooks = {
-    env: {},
-    loadDesktopModule: never,
-    ...(selected.some((rule) => rule.executor) ? { buildExecutor: never } : {}),
-    ...(selected.some((rule) => rule.provider) ? { buildProvider: never } : {}),
+  const hooks: CuaActorLabHooks = { env: {}, loadDesktopModule: never };
+  const driving = {
+    ...(selected.some((rule) => rule.executor) ? { inProcess: { executor: never } } : {}),
+    ...(selected.some((rule) => rule.provider) ? { createProvider: never } : {}),
   };
   const countOverride = selected.find((rule) => rule.countOverride !== undefined)?.countOverride;
   return {
     config: config as unknown as LabConfig,
     hooks,
+    driving,
     ...(countOverride === undefined ? {} : { countOverride }),
   };
 }
@@ -227,13 +231,14 @@ describe("computer-use admission order", () => {
     for (const [name, names] of cases) {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cu-admission-"));
       dirs.push(cwd);
-      const { config, hooks, countOverride } = caseOf(names);
+      const { config, hooks, driving, countOverride } = caseOf(names);
       const dryRun = config.scenario?.mode !== "live";
       const result = await runCuaActorLab({
         cwd,
         config,
         dryRun,
         hooks,
+        ...driving,
         ...(countOverride === undefined ? {} : { countOverride }),
       });
       expect(await readdir(cwd), name).toEqual([]);

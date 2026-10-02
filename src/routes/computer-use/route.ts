@@ -32,7 +32,7 @@ import { browserRouteScorer } from "../../lab/adapter-scorer-loader.js";
 import { withLateScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
-import { planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
+import { callerDrivingOf, planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
 import { runLabParticipants } from "./run-lanes.js";
 import { admitCuaRun, type AdmittedCuaRun, refuseCuaLab, startCuaRun } from "./setup.js";
@@ -55,6 +55,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     dryRun,
     ...(lab === undefined ? {} : { lab }),
     ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
+    driving: callerDrivingOf(input),
     ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
@@ -134,8 +135,7 @@ function cuaOutcome(result: CuaActorLabResult) {
  * finalizes any status record the run opened, on every exit, so a test or library caller does not
  * leave the 5 s status cadence writing into a directory something else is deleting (an unrelated
  * ENOTEMPTY). Participants, the brain, the subject, the caps and the residual config come from the
- * plan. `config` is read only by the deprecated buildProvider and buildExecutor hooks, which take
- * the whole config.
+ * plan. `config` is what the caller's createProvider and inProcess executor receive.
  */
 export async function runComputerUsePlan(
   plan: ComputerUsePlan,

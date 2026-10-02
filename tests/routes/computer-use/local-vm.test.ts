@@ -42,11 +42,6 @@ function localLab(type: "openai-computer-use" | "local-agent"): LabConfig {
   };
 }
 
-function studyHooks(study: ReturnType<typeof prepareLocalVmStudy>) {
-  expect(study.localVm.desktop).toBeTypeOf("function");
-  return study.options.cuaHooks!;
-}
-
 const laneRun = () =>
   participantRun({
     id: "lane-1",
@@ -85,21 +80,21 @@ describe("local study bindings", () => {
       scorerProvenance,
     });
 
-    const hooks = studyHooks(study);
+    expect(study.localVm.desktop).toBeTypeOf("function");
     expect(study.options.scorerProvenance).toBe(scorerProvenance);
     // The scorer stays on the options.
     expect(study.options.scorer?.score).toBe(score);
     expect(study.options.scorer?.deriveArtifacts).toBe(deriveArtifacts);
-    // The desktop goes to the run as localVm, not through the hooks.
-    expect(hooks.buildProvider).toBeUndefined();
-    expect(hooks.runSession).toBeUndefined();
+    // The desktop goes to the run as localVm, and an openai participant gets no account provider.
+    expect(study.options.createProvider).toBeUndefined();
+    expect(study.options.cuaHooks).toBeUndefined();
     expect(study.localVm.signal).toBeUndefined();
     expect(study.localVm.analysisRefusal()).toBeUndefined();
   });
 
   it("uses a caller's provider in place of the Codex account and hands the run the abort signal", async () => {
     const provider = { id: "synthetic-provider" } as CuaProvider;
-    const buildProvider = vi.fn(async () => provider);
+    const createProvider = vi.fn(async () => provider);
     const sessionResult = { status: "done" } as unknown as CuaLoopResult;
     const runSession = vi.fn(async (_options: CuaActorSessionOptions) => sessionResult);
     const close = vi.fn(async () => ({ status: "released" as const }));
@@ -114,21 +109,22 @@ describe("local study bindings", () => {
       dryRun: false,
       assets,
       signal,
-      cuaHooks: { buildProvider, runSession },
+      cuaHooks: { runSession },
+      createProvider,
     });
-    const hooks = studyHooks(study);
+    expect(study.localVm.desktop).toBeTypeOf("function");
     await study.localVm.desktop(laneRun(), [], {} as PreparedOutputRoot).prepare();
     await study.close();
 
-    await hooks.buildProvider!({} as never);
-    expect(buildProvider).toHaveBeenCalledOnce();
+    await study.options.createProvider!({} as never);
+    expect(createProvider).toHaveBeenCalledOnce();
     expect(seams.account).not.toHaveBeenCalled();
     expect(seams.createDesktop).toHaveBeenCalledWith(
       expect.objectContaining({ assets, appUrl, signal }),
     );
     expect(close).toHaveBeenCalled();
     // The caller's runSession stays as given; the computer-use run adds the study's signal.
-    expect(hooks.runSession).toBe(runSession);
+    expect(study.options.cuaHooks?.runSession).toBe(runSession);
     expect(study.localVm.signal).toBe(signal);
     expect(sessionResult).toBeDefined();
   });

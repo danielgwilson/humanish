@@ -53,6 +53,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A scorer's warnings about a dropped output name `scorer.score`, `scorer.deriveFeedback` and
   `scorer.deriveArtifacts`. They named the removed `cuaHooks`, `sharedWorldHooks` and
   `terminalHooks` bags (#1362).
+- Computer-use refusals about in-process runs name `RunLabOptions.inProcess` and
+  `RunLabOptions.createProvider`. They named the removed `cuaHooks.buildExecutor` and
+  `cuaHooks.buildProvider` (#1368). `runLab` no longer reaches
+  `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: `inProcess` without `createProvider` gets
+  `HUMANISH_LAB_OPTION_UNSUPPORTED` before planning, and the `cuaHooks.buildExecutor` path to it
+  is refused like every bag field since #1353.
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
   `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
   (#1336).

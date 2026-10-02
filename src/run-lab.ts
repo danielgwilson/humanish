@@ -85,8 +85,8 @@ export type PreparedLab =
 /**
  * Normalizes the options and plans the lab once, so a caller can present a refusal before it loads
  * anything the run needs. A local browser study's provider is bound first, so the plan is made with
- * it, and its desktop goes to the computer-use run as `localVm`; with buildExecutor the caller
- * drives the app in process and needs no desktop.
+ * it, and its desktop goes to the computer-use run as `localVm`; with inProcess the caller drives
+ * the app in process and needs no desktop.
  */
 export async function prepareLab(
   config: LabConfig,
@@ -98,11 +98,10 @@ export async function prepareLab(
   const normalized = normalizeRunLabOptions(lab, route, options);
   if (!normalized.ok)
     return { ok: false, outcome: optionRefusalOutcome(lab, route, options, normalized) };
-  const hooks = normalized.options.cuaHooks;
   // An in-process executor needs no desktop, and a caller that already prepared the study passes
   // its localVm, which a second study would replace.
   const prepareLocalVm =
-    isLocalBrowserLab(lab) && hooks?.buildExecutor === undefined && options.localVm === undefined
+    isLocalBrowserLab(lab) && options.inProcess === undefined && options.localVm === undefined
       ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmStudy
       : undefined;
   const vm = prepareLocalVm?.({ ...normalized.options, config: lab });

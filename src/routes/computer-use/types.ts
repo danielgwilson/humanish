@@ -25,8 +25,8 @@ import type {
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import type { LabDeps, PhaseParticipant } from "../../lab/lab-deps.js";
-import type { LabEvent } from "../../lab/run-lab-events.js";
-import type { RunLabHomes } from "../../lab/run-lab-options.js";
+import type { LabEvent, ParticipantRef } from "../../lab/run-lab-events.js";
+import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../lab/run-lab-options.js";
 import { type BrowserScorer } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
@@ -56,7 +56,6 @@ import type {
   SharedWorldParticipant,
 } from "../../lab/plan-participants.js";
 import type { ResolvedParticipant } from "../../run/participant.js";
-import type { CuaLaneSpec } from "./legacy-lane-spec.js";
 
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
@@ -110,34 +109,6 @@ export interface CuaActorLabHooks {
   ) => Promise<void>;
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
-  /**
-   * Supply a custom executor (e.g. a window.* JS-contract bridge over an already-running local
-   * dev server). When present (with `buildProvider`), `runCuaActorLab` takes the IN-PROCESS
-   * branch: it NEVER loads the E2B module, creates a sandbox, runs prepareDesktop, provisions a
-   * clone, opens a browser, or starts a stream — so `result.sandbox` is omitted, the verifiable
-   * "no E2B SDK call" proof. The whole bundle/Observer/redaction composition below the session
-   * call is desktop-agnostic and runs unchanged. Receives the resolved config, the
-   * registry-resolved descriptor, and the entry appUrl.
-   */
-  buildExecutor?: (ctx: {
-    config: LabConfig;
-    actor: CuaActorDescriptor;
-    appUrl: string;
-  }) => Promise<CuaExecutor>;
-  /**
-   * Supply a custom provider (a "brain" reasoning over app STATE). REQUIRED alongside
-   * `buildExecutor` — the default OpenAI provider is vision-based (requiresFrame) and would fail
-   * closed against a state-only executor that returns no screenshot. (`buildProvider` ALONE is
-   * allowed — that is just a model swap on the normal E2B route.)
-   */
-  buildProvider?: (ctx: {
-    config: LabConfig;
-    actor: CuaActorDescriptor;
-    lane: CuaLaneSpec;
-    /** How many participants the run has. */
-    laneCount: number;
-    executor: CuaExecutor;
-  }) => Promise<CuaProvider>;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
   /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
@@ -202,6 +173,10 @@ export interface RunCuaActorLabOptions {
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
   onStream?: NonNullable<RunLabHomes["onStream"]>;
+  /** The caller's brain for each participant, in place of the lab's own. */
+  createProvider?: ProviderFactory;
+  /** Drives an app-url or local-app subject in this process, with no desktop. Needs createProvider. */
+  inProcess?: InProcessDriver;
   /** Reports the plan and subject phases to onEvent; built by normalizeRunLabOptions. */
   emit?: (event: LabEvent) => void;
   /** Test seams. */
@@ -517,12 +492,10 @@ export interface CuaParticipantDeps {
     warnings: string[],
     artifactRoot: PreparedOutputRoot,
   ) => ParticipantDesktop;
-  /**
-   * Read only by the deprecated buildProvider and buildExecutor hooks, whose public signatures take
-   * the whole config. Everything else reads the plan's fields below. It goes with those hooks in
-   * 0.107.0.
-   */
-  config: LabConfig;
+  /** The caller's createProvider with the run's config bound. Absent, the plan's brain drives. */
+  createProvider?: (participant: ParticipantRef, executor: CuaExecutor) => Promise<CuaProvider>;
+  /** The caller's inProcess executor with the run's config bound. Read by the in-process desktop. */
+  inProcessExecutor?: (appUrl: string) => Promise<CuaExecutor>;
   /** The plan's residual config: comms, policies, the desktop and target, and subject leftovers. */
   residual: Readonly<ResidualConfig>;
   labId: string;

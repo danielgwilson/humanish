@@ -26,7 +26,6 @@ import {
 import { hollowCompletion } from "../../run/judge.js";
 import type { CuaParticipantDeps, CuaRunBudget, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
-import { legacyHookSpecOf } from "./legacy-lane-spec.js";
 
 /** The model a lane brings besides the default API client, and the handles its cleanup needs. */
 export interface ParticipantModel {
@@ -41,17 +40,14 @@ export async function startParticipantModel(
   deps: CuaParticipantDeps,
   executor: CuaExecutor,
 ): Promise<ParticipantModel> {
-  const { config, env, brain } = deps;
-  if (deps.hooks.buildProvider) {
-    return {
-      provider: await deps.hooks.buildProvider({
-        config,
-        actor: deps.descriptor,
-        lane: legacyHookSpecOf(spec),
-        laneCount: deps.participantCount,
-        executor,
-      }),
+  const { env, brain } = deps;
+  if (deps.createProvider) {
+    const participant = {
+      id: spec.planned.id,
+      index: spec.planned.index,
+      count: deps.participantCount,
     };
+    return { provider: await deps.createProvider(participant, executor) };
   }
   const localAgent = brain.kind === "local-agent" ? brain.agent : undefined;
   if (localAgent === "codex") {

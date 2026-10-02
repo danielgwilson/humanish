@@ -20,8 +20,6 @@ export const EXEMPT_PATHS = [
   // The saved sharedWorld block (roleId, laneWindows) and cost lines (laneId).
   "src/run/shared-world-evidence.ts",
   "src/run/cost-summary.ts",
-  // The deprecated cuaHooks record (CuaLaneSpec), public until the compatibility section goes.
-  "src/routes/computer-use/legacy-lane-spec.ts",
   // The manifest's actors[0].lanes and laneFocus keys, which the parser reads.
   "src/lab/parse/actors.ts",
   // The manifest's comms recipient key, `lane`, which the parser reads.

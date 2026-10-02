@@ -10,7 +10,8 @@ import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab } from "../../src/run-lab.js";
+import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
+import type { RunCuaActorLabOptions } from "../../src/routes/computer-use/types.js";
 import { resolveLabDryRun, selectLabBackend, type LabBackend } from "../../src/lab/plan.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
@@ -66,28 +67,30 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
     calls.desktop += 1;
     throw new Error("admission cases must not load a desktop module");
   };
-  const cuaHooks = {
-    env,
-    loadDesktopModule,
+  // The type pairs inProcess with createProvider; a JavaScript caller can still omit it.
+  const driving = {
     ...(options.hooks === "executor" || options.hooks === "executor+provider"
       ? {
-          buildExecutor: async (): Promise<never> => {
-            calls.executor += 1;
-            throw new Error("admission cases must not build an executor");
+          inProcess: {
+            executor: async (): Promise<never> => {
+              calls.executor += 1;
+              throw new Error("admission cases must not build an executor");
+            },
           },
         }
       : {}),
     ...(options.hooks === "provider" || options.hooks === "executor+provider"
       ? {
-          buildProvider: async (): Promise<never> => {
+          createProvider: async (): Promise<never> => {
             calls.provider += 1;
             throw new Error("admission cases must not build a provider");
           },
         }
       : {}),
-  };
+  } as Pick<RunCuaActorLabOptions, "inProcess" | "createProvider">;
   return {
-    cuaHooks,
+    cuaHooks: { env, loadDesktopModule },
+    driving,
     sharedWorldHooks: { env, loadDesktopModule },
     // The terminal and scripted routes read env and their seams directly.
     typed: { env, deps: { desktopModule: loadDesktopModule } },
@@ -105,7 +108,7 @@ async function runEntry(
     vi.stubEnv("HUMANISH_BROWSER_COMMAND", "");
   }
   const calls: Calls = { desktop: 0, executor: 0, provider: 0, subprocess: 0 };
-  const { typed, ...hooks } = hooksFor(options, calls);
+  const { typed, driving, ...hooks } = hooksFor(options, calls);
   const backend: LabBackend | "none" =
     options.runner ?? (entry === "runner" ? selectLabBackend(config) : "none");
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
@@ -119,11 +122,12 @@ async function runEntry(
         {
           cwd,
           ...hooks,
+          ...driving,
           env: typed.env,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.count === undefined ? {} : { count: options.count }),
           ...rerun,
-        },
+        } as InternalRunLabOptions,
         typed.deps,
       );
       result = { backend: outcome.backend, ...outcome.result };
@@ -133,6 +137,7 @@ async function runEntry(
         config,
         dryRun,
         hooks: hooks.cuaHooks,
+        ...driving,
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...rerun,
       });

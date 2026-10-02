@@ -8,7 +8,7 @@ import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { catchTokenOf, catchTokenRefusal } from "../../comms/external-evidence.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
-import type { CuaActorLabErrorCode, CuaActorLabHooks } from "./types.js";
+import type { CuaActorLabErrorCode } from "./types.js";
 
 /** The computer-use code for each local-agent refusal; shared-world keeps the same kinds. */
 const LOCAL_AGENT_REFUSAL_CODES = {
@@ -28,13 +28,12 @@ export async function liveCuaRejection(args: {
   caps: ComputerUsePlan["caps"];
   /** The plan's brain: whether a local agent drives the participant, and the model a cap prices. */
   brain: Brain;
-  hooks: CuaActorLabHooks;
   env: Record<string, string | undefined>;
   /** The plan's requirements: which keys and subject env names this run needs. */
   requirements: ComputerUsePlan["requirements"];
   externalCommsConfig: LabCommsExternal | undefined;
 }): Promise<{ code: CuaActorLabErrorCode; message: string } | undefined> {
-  const { caps, brain, hooks, env, requirements, externalCommsConfig } = args;
+  const { caps, brain, env, requirements, externalCommsConfig } = args;
   // The plan lists OPENAI_API_KEY only for an openai brain (a signed-in local agent or the
   // caller's provider needs none) and E2B_API_KEY only when this run creates hosted desktops.
   const localAgent = brain.kind === "local-agent" ? brain.agent : undefined;
@@ -59,7 +58,8 @@ export async function liveCuaRejection(args: {
       message: `Live computer-use labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}${suggestion}`,
     };
   }
-  if (localAgent && !hooks.buildProvider) {
+  // A caller's createProvider makes the brain `caller`, so only the lab's own local agent is checked.
+  if (localAgent) {
     // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
     // machine is paid for is the same information delivered at the worst possible moment.
     const refusal = await localAgentRefusal({ agent: localAgent, env, caps });

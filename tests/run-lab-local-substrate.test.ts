@@ -17,7 +17,7 @@ vi.mock("../src/routes/computer-use/local-vm.js", () => ({
 import { runLab } from "../src/run-lab.js";
 import type { LabConfig } from "../src/lab/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../src/run/bundle.js";
-import type { CuaExecutor } from "../src/actors/computer-use/loop.js";
+import type { CuaExecutor, CuaProvider } from "../src/actors/computer-use/loop.js";
 
 const config: LabConfig = {
   schema: "humanish.lab.v2",
@@ -100,22 +100,27 @@ describe("local browser study selection", () => {
   });
 
   it("keeps an in-process caller out of the local browser study", async () => {
-    const buildExecutor = vi.fn(async (): Promise<CuaExecutor> => {
+    const executor = vi.fn(async (): Promise<CuaExecutor> => {
       throw new Error("unexpected executor");
+    });
+    const createProvider = vi.fn(async (): Promise<CuaProvider> => {
+      throw new Error("unexpected provider");
     });
     const outcome = await runLab(
       {
         ...config,
         actors: [{ type: "local-agent", localAgent: "codex", mission: "Save a synthetic note." }],
       },
-      { cwd, dryRun: true, open: false, cuaHooks: { buildExecutor } },
+      { cwd, dryRun: true, open: false, inProcess: { executor }, createProvider },
     );
 
     expect(localVm).not.toHaveBeenCalled();
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
-    expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER");
-    expect(buildExecutor).not.toHaveBeenCalled();
+    // The local study is not started, so the run has no local desktop and refuses before either
+    // caller function runs.
+    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
+    expect(executor).not.toHaveBeenCalled();
+    expect(createProvider).not.toHaveBeenCalled();
   });
 });

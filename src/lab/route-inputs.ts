@@ -30,6 +30,8 @@ export function computerUseInput(
     ...(options.runId === undefined ? {} : { runId: options.runId }),
     ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
     ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+    ...(options.createProvider === undefined ? {} : { createProvider: options.createProvider }),
+    ...(options.inProcess === undefined ? {} : { inProcess: options.inProcess }),
     ...(options.localVm === undefined ? {} : { localVm: options.localVm }),
     ...observersOf(options, emit),
     deps,

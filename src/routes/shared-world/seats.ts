@@ -221,7 +221,6 @@ export function participantRunDeps(
   return {
     onTrace: (participantId, items, usage, metadata) =>
       live.flush?.flush(participantId, items, usage, metadata),
-    config,
     residual: ctx.plan.residual,
     labId: ctx.plan.labId,
     caps: ctx.plan.caps,
