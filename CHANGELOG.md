@@ -125,6 +125,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- The terminal trace's reader of the agent's output has two more limits. A stdout line that passes
+  1,048,576 characters without a newline is skipped up to its newline, and a `notice` item counts
+  the skipped lines. Agent message and reasoning items that start but never complete now count
+  against the 200-item limit, where before only completed items could be left out.
+
 - Automatic analysis of a terminal run quotes the agent's own words (#1402). The terminal trace now
   has one `message` item per Codex `agent_message` and one `reasoning` item per `reasoning` item.
   They are read from the raw exec JSON stream in memory, without the agent's verdict marker lines,
