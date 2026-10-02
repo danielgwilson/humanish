@@ -49,7 +49,7 @@ const SENSITIVE_QUESTION = {
 /** The spend cap on an analysis the lab did not declare. */
 export const DEFAULT_ANALYSIS_MAX_COST_USD = 3;
 
-/** Called for parsed manifests AND direct library configs, before participant execution. */
+/** Called for parsed manifests and direct library configs, before participant execution. */
 export function resolveAutomaticAnalysis(
   raw: unknown,
 ):

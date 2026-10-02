@@ -45,7 +45,7 @@ const otherRoute = (routes: Routes): boolean => !promptRoute(routes) && !routes.
 
 /** Rows for each actor, reported as `actors[<index>].<field>`, in this order per actor. */
 const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
-  // Shared-world ONLY fields on the roster: a participant's `entry` is inert anywhere else
+  // Shared-world-only fields on the roster: a participant's `entry` is inert anywhere else
   // (invariant 6).
   {
     field: "lanes[].entry",
@@ -54,7 +54,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
     applies: (actor, routes) =>
       Boolean(rosterOf(actor)?.some((entry) => entry.entry !== undefined)) && !routes.shared,
   },
-  // The host-seat marker acts ONLY on the external-public shared-world route; inert elsewhere.
+  // The host-seat marker acts only on the external-public shared-world route; inert elsewhere.
   {
     field: "lanes[].host",
     reason:
@@ -131,7 +131,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     field: "subject.state",
     applies: (config, routes) => Boolean(config.subject.state) && !routes.cua && !routes.scripted,
   },
-  // topology + checkpoint act ONLY on the shared-world route (#164); a set-but-unconsumed value
+  // topology + checkpoint act only on the shared-world route (#164); a set-but-unconsumed value
   // (incl. an explicit per-lane-worlds, which the cua route already is by mechanism) warns inert.
   {
     field: "subject.topology",
@@ -144,7 +144,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     reason: "the shared-world state-checkpoint probe; needs subject.topology: shared-world",
     applies: (config, routes) => config.subject.state?.checkpoint !== undefined && !routes.shared,
   },
-  // publicTarget (the external-public ownership attestation) acts ONLY on the external-public
+  // publicTarget (the external-public ownership attestation) acts only on the external-public
   // shared-world route; inert elsewhere. (It is already parse-rejected on non-app-url sources.)
   {
     field: "subject.publicTarget",
@@ -153,7 +153,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     applies: (config, routes) =>
       config.subject.publicTarget !== undefined && !routes.externalPublic,
   },
-  // exposure (the synthetic-subject attestation) acts ONLY on the shared-world route (the
+  // exposure (the synthetic-subject attestation) acts only on the shared-world route (the
   // getHost-exposed plane) and on scripted clones; inert elsewhere.
   {
     field: "subject.exposure",
@@ -164,7 +164,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
       !routes.shared &&
       !(routes.scripted && config.subject.source === "clone"),
   },
-  // comms.email drives the in-sandbox email/SMS catch, which needs a subject sandbox HUMANISH
+  // comms.email drives the in-sandbox email/SMS catch, which needs a subject sandbox that humanish
   // provisions (clone or local-tree) so it holds a handle to host the catch. On an app-url /
   // operator-provided subject there is no such handle, so a declared comms block would silently
   // collect nothing — a false green. Warn at parse time (fires on inspect + dry-run too).
@@ -189,8 +189,8 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
       Boolean(config.comms?.email?.external) &&
       (config.subject.source === "clone" || config.subject.source === "local-tree"),
   },
-  // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
-  // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
+  // clone.keep is consumed on the cua route (honored on failure: the sandbox is left up to debug
+  // a failed install/boot; otherwise always killed). clone.fanout is rejected on the cua route
   // (a hard parse error above), so it can never reach this warning list there.
   {
     field: "execution.timeoutMs",
@@ -204,13 +204,13 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     field: "execution.completionTimeoutMs",
     applies: (config) => config.execution?.completionTimeoutMs !== undefined,
   },
-  // execution.concurrency is CONSUMED on the cua route (it bounds in-flight fan-out participants);
+  // execution.concurrency is consumed on the cua route (it bounds in-flight fan-out participants);
   // inert (warned) everywhere else.
   {
     field: "execution.concurrency",
     applies: (config, routes) => config.execution?.concurrency !== undefined && !routes.cua,
   },
-  // execution.caps is CONSUMED on the cua route (maxUsd is the fail-closed spend abort); inert
+  // execution.caps is consumed on the cua route (maxUsd is the fail-closed spend abort); inert
   // (warned) everywhere else so a misplaced budget field is never trusted to cap a route it cannot.
   {
     field: "execution.caps",
@@ -220,7 +220,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   },
   // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}:
   // dry-run records the contract; live execution enforces caps and command-scoped auth. On every
-  // OTHER route they are inert and must warn so a
+  // other route they are inert and must warn so a
   // misplaced safety/budget field is never trusted to do something it cannot (invariant 6).
   {
     field: "subject.product",
@@ -287,9 +287,9 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     applies: (config, routes) =>
       !routes.cua && config.execution?.desktop?.sandboxTimeoutMs !== undefined,
   },
-  // execution.desktop.template (the custom E2B desktop image) is consumed ONLY where a desktop is
+  // execution.desktop.template (the custom E2B desktop image) is consumed only where a desktop is
   // actually created via Sandbox.create — the e2b-desktop computer-use routes (cua/shared-world/
-  // concurrent). It is INERT on every other route (incl. the in-process local-app cua route, which
+  // concurrent). It is inert on every other route (incl. the in-process local-app cua route, which
   // creates no desktop): warn so an unconsumed template is never silently ignored (invariant 6).
   {
     field: "execution.desktop.template",
@@ -305,7 +305,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     reason: "no current route reads it",
     applies: (config) => config.execution?.desktop?.codexAppServer !== undefined,
   },
-  // scenario.ref is CONSUMED on the scripted-browser route (required there); forward-declared
+  // scenario.ref is consumed on the scripted-browser route (required there); forward-declared
   // everywhere else.
   {
     field: "scenario.ref",
@@ -313,7 +313,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   },
   { field: "scenario.inline", applies: (config) => Boolean(config.scenario?.inline) },
   // review.{scoring,milestones,vocabulary} stay forward-declared (reserved for #319) on every route.
-  // review.scorer (#316) IS consumed (loaded + wired, or fail-closed at load) on every scorer-capable
+  // review.scorer (#316) is consumed (loaded + wired, or fail-closed at load) on every scorer-capable
   // route, so it does not warn there; on the scripted-browser route the actor carries no scorer seam,
   // so a declared scorer is flagged inert (the run also fails closed at load).
   {
@@ -364,7 +364,7 @@ function rowLabel(row: InertRow<never>, prefix = ""): string {
 }
 
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
-// setting that silently does nothing. Keeps the schema forward-correct AND honest.
+// setting that silently does nothing. Keeps the schema forward-correct and honest.
 export function forwardDeclaredWarnings(config: LabConfig): string[] {
   const routes = routesOf(config);
   const inert: string[] = [];
