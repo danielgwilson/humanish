@@ -64,7 +64,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
   if (participants === null) {
     return refused(requestedCwd, warnings, {
       code: "HUMANISH_INVALID_SIM_COUNT",
-      message: "--sims must be a positive integer.",
+      message: "--count must be a positive integer.",
     });
   }
 

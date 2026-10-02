@@ -96,8 +96,8 @@ describe("a CLI command shows the Observer its run rendered", () => {
     expect(JSON.parse(stdout).observer.ok).toBe(true);
   });
 
-  it("humanish watch --sims", async () => {
-    const watch = ["watch", "--sims", "2", "--run-id", RUN_ID, "--cwd", cwd, "--json"];
+  it("humanish watch --count", async () => {
+    const watch = ["watch", "--count", "2", "--run-id", RUN_ID, "--cwd", cwd, "--json"];
     const { exitCode } = await runCli(watch);
 
     expect(exitCode).toBe(0);

@@ -72,7 +72,7 @@ describe("provider-key discovery runs for live runs only", () => {
     ["lab run <live lab> --dry-run", ["lab", "run", "kd-live", "--dry-run"]],
     ["watch <live lab> --dry-run", ["watch", "kd-live", "--dry-run", "--detach"]],
     ["run without a lab (the preview)", ["run"]],
-    ["watch --sims", ["watch", "--sims", "1", "--detach"]],
+    ["watch --count", ["watch", "--count", "1", "--detach"]],
   ])("%s does not discover", async (_name, args) => {
     const cwd = await project();
     expect(

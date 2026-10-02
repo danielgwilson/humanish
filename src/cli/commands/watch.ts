@@ -5,6 +5,7 @@ import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
 import { runLabCommand } from "./lab-run.js";
+import { countOption } from "../renamed-options.js";
 import {
   applyEnvFileOption,
   type CliIo,
@@ -28,10 +29,11 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--run <id>", "Watch an existing run id or latest pointer.")
     .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
     .option(
-      "--sims <count>",
-      "Start a fresh synthetic run with this many participants before rendering. Defaults to 4 when --run is omitted.",
+      "--count <count>",
+      "With a lab, override a preview or computer-use lab's participant count. Without one, start a fresh synthetic run with this many participants; 4 when --run is omitted.",
     )
-    .option("--count <count>", "Lab only: override the headed desktop participant count.")
+    // The older spelling of --count, hidden and noted on stderr (renamed-options.ts).
+    .addOption(new Option("--sims <count>").hideHelp())
     .option(
       "--scorer <path>",
       "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code.",
@@ -111,7 +113,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
 
 interface WatchOptions {
   cwd: string;
-  count?: string;
+  count?: string | undefined;
   detach?: boolean;
   dryRun?: boolean;
   envFile?: string;
@@ -123,6 +125,7 @@ interface WatchOptions {
   run?: string;
   runId?: string;
   scorer?: string;
+  /** The older spelling of count; read only through countOption. */
   sims?: string;
   expose?: boolean;
   tunnel?: "ngrok";
@@ -139,9 +142,10 @@ type WatchRefusal = { code: NonNullable<RunResult["error"]>["code"]; message: st
 async function handleWatch(
   io: CliIo,
   labArg: string | undefined,
-  options: WatchOptions,
+  parsed: WatchOptions,
   command: Command,
 ): Promise<void> {
+  const options: WatchOptions = { ...parsed, count: countOption(io, parsed) };
   const lab = options.lab ?? labArg;
   if (options.lab !== undefined && labArg !== undefined) {
     refuseWatch(command, io, options.cwd, {
@@ -261,7 +265,6 @@ async function watchLab(
       port: options.port,
       ...(options.runId === undefined ? {} : { runId: options.runId }),
       ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
-      ...(options.sims === undefined ? {} : { sims: options.sims }),
       ...(options.expose === undefined ? {} : { expose: options.expose }),
       ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
       ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
@@ -275,7 +278,7 @@ async function watchLab(
   });
 }
 
-/** Without a lab, watch shows existing evidence (`--run`) or a fresh synthetic run (`--sims`). */
+/** Without a lab, watch shows existing evidence (`--run`) or a fresh synthetic run (`--count`). */
 function resolveWatchTarget(
   options: WatchOptions,
   command: Command,
@@ -286,16 +289,16 @@ function resolveWatchTarget(
       : undefined;
   const runWasOmitted = runOptionSource === undefined || runOptionSource === "default";
   const participantCount =
-    options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
+    options.count === undefined ? undefined : parsePositiveInteger(options.count);
   const port = parseObserverPort(options.port);
-  if (options.sims !== undefined && participantCount === null) {
-    return { code: "HUMANISH_INVALID_SIM_COUNT", message: "--sims must be a positive integer." };
+  if (participantCount === null) {
+    return { code: "HUMANISH_INVALID_SIM_COUNT", message: "--count must be a positive integer." };
   }
-  if (!runWasOmitted && options.sims !== undefined) {
+  if (!runWasOmitted && participantCount !== undefined) {
     return {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
       message:
-        "Use either --run to watch existing evidence or --sims to start a fresh run, not both.",
+        "Use either --run to watch existing evidence or --count to start a fresh run, not both.",
     };
   }
   if (!runWasOmitted && options.runId !== undefined) {

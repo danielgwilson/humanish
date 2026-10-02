@@ -142,12 +142,9 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     args.io.setExitCode(2);
     return undefined;
   }
-  const count = parseLabCount(
-    args.options.count ?? args.options.sims,
-    args.config.actors[0]?.count ?? 1,
-  );
+  const count = parseLabCount(args.options.count, args.config.actors[0]?.count ?? 1);
   if (count === null) {
-    args.io.writeErr("error: --count/--sims must be a positive integer.\n");
+    args.io.writeErr("error: --count must be a positive integer.\n");
     args.io.setExitCode(2);
     return undefined;
   }

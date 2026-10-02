@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Deprecated
+
+- `--sims` on `humanish run`, `humanish lab run` and `humanish watch`. Use `--count`, which
+  `humanish run` now takes and `humanish watch` now applies without a lab. `--sims` is hidden
+  from `--help`, sets the same count and prints one stderr warning naming `--count`; the next
+  minor removes it. `--count` now also sets a preview lab's participant count, which only
+  `--sims` did before.
+
 ### Removed
 
 - `RunLabOptions` no longer takes the route hook bags `cuaHooks`, `scriptedHooks`,
