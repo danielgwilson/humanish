@@ -14,6 +14,7 @@ import {
   readOrientation,
   ORIENTATION_SCHEMA,
 } from "../../src/cli/orientation.js";
+import { runDryRun } from "../../src/run/dry-run.js";
 
 let dir: string | undefined;
 afterEach(async () => {
@@ -48,27 +49,49 @@ describe("readOrientation", () => {
     expect(commands.join(" ")).not.toContain("--live");
   });
 
-  it("reports what an initialized project actually has, rather than a fixed menu", async () => {
-    dir = await emptyProject();
-    await mkdir(path.join(dir, "humanish", "labs"), { recursive: true });
-    await writeFile(
-      path.join(dir, "humanish", "labs", "demo.yaml"),
-      [
-        "schema: humanish.lab.v2",
-        "id: demo-lab",
-        "subject:",
-        "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona",
-      ].join("\n"),
-      "utf8",
-    );
+  async function projectWithLabs(ids: string[]): Promise<string> {
+    const created = await emptyProject();
+    await mkdir(path.join(created, "humanish", "labs"), { recursive: true });
+    for (const id of ids)
+      await writeFile(
+        path.join(created, "humanish", "labs", `${id}.yaml`),
+        ["schema: humanish.lab.v2", `id: ${id}`, "subject:", "  source: this-repo", "actors:"]
+          .concat(["  - type: synthetic-persona"])
+          .join("\n"),
+        "utf8",
+      );
+    return created;
+  }
+  const linux = { platform: "linux" as const, arch: "x64" };
+  const intelMac = { platform: "darwin" as const, arch: "x64" };
+  const starterLabs = ["cua-browser", "first-run", "local-browser", "terminal-cli", "try-live"];
 
-    const state = await readOrientation(dir);
-    expect(state.initialized).toBe(true);
-    expect(state.labIds).toContain("demo-lab");
-    // With a lab present the suggestion names THAT lab, not a placeholder.
-    expect(state.nextCommands[0]?.command).toContain("demo-lab");
+  it("starts an initialized project with the preview, then the live starter lab this host runs", async () => {
+    dir = await projectWithLabs(starterLabs);
+    const onLinux = (await readOrientation(dir, linux)).nextCommands.map((next) => next.command);
+    expect(onLinux).toEqual(["humanish run first-run", "humanish doctor --lab local-browser"]);
+    // Local browsers run on Linux x64 and Apple Silicon only.
+    const onIntelMac = (await readOrientation(dir, intelMac)).nextCommands.map((n) => n.command);
+    expect(onIntelMac).toEqual(["humanish run first-run", "humanish doctor --lab try-live"]);
+  });
+
+  it("never suggests a template lab whose subject is a placeholder", async () => {
+    dir = await projectWithLabs(["cua-browser", "terminal-cli", "demo-lab"]);
+    const commands = (await readOrientation(dir, linux)).nextCommands.map((n) => n.command);
+    expect(commands).toEqual(["humanish run first-run", "humanish lab list"]);
+  });
+
+  it("after a run, offers the live lab, then the last run's verify and Observer", async () => {
+    dir = await projectWithLabs(starterLabs);
+    const preview = await runDryRun({ cwd: dir, dryRun: true });
+    expect(preview.ok).toBe(true);
+    const state = await readOrientation(dir, linux);
+    expect(state.runCount).toBe(1);
+    expect(state.nextCommands.map((next) => next.command)).toEqual([
+      "humanish run local-browser",
+      "humanish verify --run latest",
+      "humanish observe --run latest",
+    ]);
   });
 
   it("never suggests a command that would spend money on first contact", async () => {

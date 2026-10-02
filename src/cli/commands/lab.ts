@@ -102,7 +102,6 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
         "",
         "Human watch path:",
         "  humanish watch first-run",
-        "  humanish watch --lab .humanish/labs/local.yaml",
       ].join("\n"),
     )
     .action((labName, options, command) => handleLabRun(io, labName, options, command));
