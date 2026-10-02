@@ -267,7 +267,7 @@ export function addressedRecipients(
   );
 }
 
-/** `comms.email.recipients`: which lane each captured address belongs to. */
+/** `comms.email.recipients`: which participant each captured address belongs to. */
 function parseRecipients(raw: unknown): Parsed<LabCommsRecipient[]> {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!Array.isArray(raw)) return invalid("`comms.email.recipients` must be a list.");

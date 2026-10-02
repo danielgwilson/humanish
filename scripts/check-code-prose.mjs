@@ -1,8 +1,11 @@
 #!/usr/bin/env node
-// Counts three kinds of prose in src/ comments that belong in issues and commit messages:
-// issue references (#123, except in TODO(#123)), red-team tags (FIX-5) and all-caps emphasis
-// (NOT, ONLY, NEVER). Each count is held to a flag in package.json's prose:check script: a count
-// above its cap fails, and so does one below it, so the PR that removes the prose lowers the cap.
+// Counts four kinds of prose in src/ comments. Three belong in issues and commit messages: issue
+// references (#123, except in TODO(#123)), red-team tags (FIX-5) and all-caps emphasis (NOT, ONLY,
+// NEVER). The fourth is the retired word "lane" or "lanes", which CONTEXT.md replaces with
+// participant; the contract spellings it lists (`lanes[]`, `laneId`, `per-lane-worlds`, `lane-NN`,
+// `--lanes`, and any code span) are not counted. Each count is held to a flag in package.json's
+// prose:check script: a count above its cap fails, and so does one below it, so the PR that removes
+// the prose lowers the cap.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -13,6 +16,7 @@ const { values } = parseArgs({
     "max-issue-refs": { type: "string" },
     "max-fix-tags": { type: "string" },
     "max-caps": { type: "string" },
+    "max-lane-comments": { type: "string" },
     list: { type: "boolean", default: false },
   },
 });
@@ -33,7 +37,11 @@ const files = readdirSync("src", { recursive: true, encoding: "utf8" })
   .map((file) => join("src", file))
   .sort();
 
-const hits = { "issue-refs": [], "fix-tags": [], caps: [] };
+// "lane" or "lanes" as a word, except in a property path (`actors[0].lanes`), an array
+// (`lanes[]`), a flag (`--lanes`), an id (`lane-01`, `lane-NN`) or the `per-lane-worlds` topology.
+const LANE_WORD = /(?<![\w.]|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
+
+const hits = { "issue-refs": [], "fix-tags": [], caps: [], "lane-comments": [] };
 for (const file of files) {
   const text = readFileSync(file, "utf8");
   for (const comment of parseSync(file, text).comments) {
@@ -51,6 +59,7 @@ for (const file of files) {
     for (const match of prose.matchAll(/(?<![\w/<-])[A-Z]{2,}(?![\w/>-])/g)) {
       if (!ACRONYMS.has(match[0])) hits.caps.push(at(match));
     }
+    for (const match of prose.matchAll(LANE_WORD)) hits["lane-comments"].push(at(match));
   }
 }
 

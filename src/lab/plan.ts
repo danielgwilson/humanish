@@ -61,8 +61,8 @@ export function routeOf(config: LabConfig): LabRoute {
   // A terminal-product subject goes to the terminal route even with an unregistered actor, so that
   // route refuses the actor instead of another route running something else.
   if (isTerminalProductComposition(config) || source === "terminal-product") return "terminal";
-  // Checked before computer use: the same composition without the topology declaration runs as
-  // independent lanes.
+  // Checked before computer use: the same composition without the topology declaration runs
+  // independent participants.
   if (isSharedWorldComposition(config)) return "shared-world";
   // A CLI studied at a desktop is a computer-use study whose subject is a terminal window.
   if (source === "desktop-cli") return "computer-use";
