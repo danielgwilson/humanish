@@ -381,7 +381,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   };
 
   it.skipIf(!live)(
-    "emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page (#221)",
+    "emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page",
     async (ctx) => {
       if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
       await settleLaunchPage();
@@ -523,7 +523,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   );
 
   it.skipIf(!live)(
-    "hold mode emulates a page target opened AFTER it attached, without pausing it (#623)",
+    "hold mode emulates a page target opened after it attached, without pausing it",
     async (ctx) => {
       if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
       await settleLaunchPage();
@@ -780,7 +780,7 @@ describe("hosted geometry wire capture: independent window and CSS measurements"
   });
 });
 
-describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: the unavailable seam (#514)", () => {
+describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: the unavailable seam", () => {
   function fakeDesktop(reply: {
     exitCode?: number;
     stdout?: string;
@@ -807,7 +807,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(reasons).toEqual(["no http page among 0 CDP targets on 127.0.0.1:9222"]);
   });
 
-  it("an interpreter that is not there (exit 127) is reported with the exit code, which is the #514 root cause", async () => {
+  it("an interpreter that is not there (exit 127) is reported with the exit code", async () => {
     const reasons: string[] = [];
     const observe = makeChromeBrowserStateObserver(
       fakeDesktop({ exitCode: 127, stdout: "", stderr: "sh: 1: python3: not found\n" }),
@@ -920,7 +920,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     targetId: "OTHER-TAB",
   });
 
-  it("a later tab whose own read-back reports the requested width is recorded as covered, never as drift (#623)", async () => {
+  it("a later tab whose own read-back reports the requested width is recorded as covered, never as drift", async () => {
     const { desktop, commands } = driftingDesktop(phoneReadBack);
     const drifts: string[] = [];
     const covered: [
@@ -954,7 +954,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(fidelityReads[0]).toContain('"targetId":"OTHER-TAB"');
   });
 
-  it("a later tab at the phone width but with no touch points is covered AND a touch warning (#623)", async () => {
+  it("a later tab at the phone width but with no touch points is covered and a touch warning", async () => {
     const noTouch = JSON.stringify({
       fidelity: {
         userAgent: "iPhone",
@@ -990,7 +990,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(drifts[0]).toContain("maxTouchPoints 0");
   });
 
-  it("a later tab that reports the window width is drift, once, with the number the page gave (#623)", async () => {
+  it("a later tab that reports the window width is drift, once, with the number the page gave", async () => {
     const { desktop } = driftingDesktop(desktopReadBack);
     const drifts: string[] = [];
     const observe = makeChromeBrowserStateObserver(
@@ -1012,7 +1012,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(drifts[0]).toContain("reports a 500 px viewport where 414 px was requested");
   });
 
-  it("a later tab whose read-back cannot be taken is drift with the uncertainty named (#623)", async () => {
+  it("a later tab whose read-back cannot be taken is drift with the uncertainty named", async () => {
     const { desktop } = driftingDesktop(undefined);
     const drifts: string[] = [];
     const observe = makeChromeBrowserStateObserver(

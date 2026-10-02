@@ -2606,7 +2606,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
   });
 });
 
-describe("terminal persona traits (#308)", () => {
+describe("terminal persona traits", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-persona-"));
@@ -2778,7 +2778,7 @@ describe("terminal run lifetime", () => {
     throw new Error("a refused run must not load the E2B module");
   };
 
-  it("T2: a refused start that names an older run never analyzes or changes it", async () => {
+  it("a refused start that names an older run never analyzes or changes it", async () => {
     const older = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
@@ -2829,7 +2829,7 @@ describe("terminal run lifetime", () => {
     expect(await snapshot()).toEqual(before);
   });
 
-  it("T3: the receipt lands before the first sandbox command and reclaim kills it after a failed teardown", async () => {
+  it("the receipt lands before the first sandbox command and reclaim kills it after a failed teardown", async () => {
     const receipts = path.join(cwd, ".humanish", "runs", "receipted", "sandbox-receipts.ndjson");
     const fake = makeFakeModule({
       creates: [],

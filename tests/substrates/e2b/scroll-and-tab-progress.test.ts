@@ -97,7 +97,7 @@ function monotonicClock(step = 1000): () => number {
   return () => (t += step);
 }
 
-describe("scroll position is state (#393)", () => {
+describe("scroll position is state", () => {
   it("a participant scrolling through a pinned section is never ended as gave_up", async () => {
     // scrollY advances 300px per observation — every observation crosses a progress bucket.
     const executor = scrollingExecutor((index) => index * 300);

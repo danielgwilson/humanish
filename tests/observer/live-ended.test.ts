@@ -21,7 +21,7 @@ function observerData(): ObserverData {
   } as unknown as ObserverData;
 }
 
-describe("withRuntimeStreamUrls lifecycle (#357)", () => {
+describe("withRuntimeStreamUrls lifecycle", () => {
   it("injects live iframes for active streams, falls back (liveEnded) for ended ones, leaves the rest untouched", () => {
     const runtime: ObserverRuntimeStreamUrl[] = [
       { streamId: "stream-a", url: "https://live.example.test/a" },

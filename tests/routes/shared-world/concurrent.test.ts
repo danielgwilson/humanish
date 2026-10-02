@@ -1164,7 +1164,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     }
   });
 
-  it("subjectPhaseSink (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr, and emits each as a subject event", async () => {
+  it("subjectPhaseSink (injected DI seam): the one shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr, and emits each as a subject event", async () => {
     const state = { worldVersion: 0 };
     const { env, phaseEvents, deps } = baseSeams(state, makeRendezvous(3));
     const emitted: LabEvent[] = [];
@@ -1366,7 +1366,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(seen.get("persona-3")).toEqual(actorDefault);
   });
 
-  it("threads actor-default and lane-level dwell windows into concurrent shared-world actors (#510)", async () => {
+  it("threads actor-default and participant-level dwell windows into concurrent shared-world actors", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const config = concurrentConfig(3, 3);
@@ -2767,7 +2767,7 @@ describe("concurrent shared-world run directory goldens", () => {
 });
 
 describe("concurrent run lifetime", () => {
-  it("W2: a throwing onObserverReady on the provisioned plane kills the subject, closes the run and runs no analysis", async () => {
+  it("a throwing onObserverReady on the provisioned plane kills the subject, closes the run and runs no analysis", async () => {
     const { env, created, killed, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const analysis = automaticAnalysisBoundary();
     const failure = new Error("synthetic observer failure");
@@ -2795,7 +2795,7 @@ describe("concurrent run lifetime", () => {
     expect(status).not.toHaveProperty("outcome");
   });
 
-  it("W5: after every teardown kill fails, reclaim kills the subject and each seat", async () => {
+  it("after every teardown kill fails, reclaim kills the subject and each seat", async () => {
     const { env, created, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const module = await deps.desktopModule!();
     const kill = module.Sandbox.kill!.bind(module.Sandbox);

@@ -291,7 +291,7 @@ describe("runComputerUseLoop", () => {
     expect(typed?.coord).toBeUndefined();
   });
 
-  it("onTrace (#441) streams growing snapshots: initial observation, then once per turn, frame included", async () => {
+  it("onTrace streams growing snapshots: initial observation, then once per turn, frame included", async () => {
     const provider = new ScriptedProvider([
       {
         actions: [{ kind: "click", x: 10, y: 20 }],
@@ -717,7 +717,7 @@ describe("runComputerUseLoop", () => {
     });
   });
 
-  it("reads the fixed closing line the prompt asks for, and nothing looser (#570, second half)", async () => {
+  it("reads the fixed closing line the prompt asks for, and nothing looser", async () => {
     expect(declaredOutcomeFromClosingLine("REACHED THE GOAL.\nAdded two tables.")).toBe("reached");
     expect(
       declaredOutcomeFromClosingLine("**Did not reach the goal**\n\nI gave up at the modal."),
@@ -783,7 +783,7 @@ describe("runComputerUseLoop", () => {
     expect(resultBoth.trace.declaredOutcome).toBe("reached");
   });
 
-  it("records the participant's declared outcome on the trace, and reads not_reached as gave_up (#570)", async () => {
+  it("records the participant's declared outcome on the trace, and reads not_reached as gave_up", async () => {
     const run = async (outcome: "reached" | "not_reached" | "blocked" | undefined) => {
       const provider: CuaProvider = {
         id: "declares",
@@ -830,7 +830,7 @@ describe("runComputerUseLoop", () => {
     expect(silent.trace.declaredOutcome).toBeUndefined();
   });
 
-  it("a provider turn that stalls is retried once with a notice, and the run goes on (#469)", async () => {
+  it("a provider turn that stalls is retried once with a notice, and the run goes on", async () => {
     // Three lanes of a real run stopped producing turns within seven seconds of each other and
     // were closed 36 minutes later as budget_reached, nothing in the trace saying why: one hung
     // HTTP request per lane, bounded only by the session budget.
@@ -907,7 +907,7 @@ describe("runComputerUseLoop", () => {
     });
   });
 
-  it("a `wait` that hangs inside the desktop SDK is skipped with a notice; the participant is not failed (#480)", async () => {
+  it("a `wait` that hangs inside the desktop SDK is skipped with a notice; the participant is not failed", async () => {
     // A default wait hung for ~90 s in the SDK after twelve turns of ordinary work and the lane
     // ended actor_error. A wait that has hung has, by definition, waited.
     let turns = 0;
@@ -1624,7 +1624,7 @@ class StateProvider implements CuaProvider {
   }
 }
 
-describe("stableProgressKey (issue #148)", () => {
+describe("stableProgressKey", () => {
   it("is order-independent: shuffled key order maps to the SAME key (no fabricated progress)", () => {
     const a = stableProgressKey({ route: "/home", turn: 3, modal: null, unread: 2 });
     const b = stableProgressKey({ unread: 2, modal: null, turn: 3, route: "/home" });
@@ -1654,7 +1654,7 @@ describe("stableProgressKey (issue #148)", () => {
   });
 });
 
-describe("runComputerUseLoop with a state-driven (non-vision) executor (issue #148)", () => {
+describe("runComputerUseLoop with a state-driven (non-vision) executor", () => {
   it("persists ZERO frames, resolves redaction.screenshots to n/a, and self-describes appState in redaction.notes", async () => {
     const provider = new StateProvider([
       { actions: [{ kind: "type", text: "hi" }], pendingSafetyChecks: [], done: false },
@@ -1805,7 +1805,7 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor (issue #1
   });
 });
 
-describe("runComputerUseLoop vision-provider frame guard (issue #148, RUNG 3)", () => {
+describe("runComputerUseLoop vision-provider frame guard", () => {
   it("a requiresFrame provider against a screenshot-less observation fails closed with the named reason (not a crash)", async () => {
     // A vision provider (requiresFrame: true) paired with a state-only executor (no screenshot).
     class VisionProvider implements CuaProvider {
@@ -1884,7 +1884,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
   const estimateTurnCostUsd = (usage: { input?: number; output?: number }): number =>
     ((usage.input ?? 0) + (usage.output ?? 0)) * 0.001;
 
-  it("fails CLOSED and LOUD when a stale positional estimator NaNs the running estimate (red-team)", async () => {
+  it("fails closed with an error when a stale positional estimator makes the running estimate NaN", async () => {
     const provider = new RepeatProvider(usageTurn);
     const executor = new SignatureExecutor(["a", "b", "c", "d"]);
     // The pre-#334 positional shape: arithmetic on the usage OBJECT yields NaN.
@@ -2081,7 +2081,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
   });
 });
 
-describe("dwell window (#510): the harness holds, looks, and requests no model turn", () => {
+describe("dwell window: the harness holds, looks, and requests no model turn", () => {
   const item = (text: string, signature: string) => ({
     screenshot: frame(),
     stateSignature: signature,

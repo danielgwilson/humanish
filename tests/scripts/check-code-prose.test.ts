@@ -20,6 +20,7 @@ const KINDS = [
   "honest",
   "history",
   "series-codes",
+  "name-refs",
 ] as const;
 const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui"] as const;
 type Count = `${(typeof KINDS)[number]}${(typeof ROOT_SUFFIXES)[number]}`;
@@ -262,7 +263,8 @@ describe("prose:check reads every root and counts test names", () => {
     const file = "tests/fixture.test.ts";
 
     expect((await hitsOf("series-codes-tests", source, file)).words).toEqual(["L14:", "W5."]);
-    expect((await hitsOf("issue-refs-tests", source, file)).words).toEqual(["#123"]);
+    expect((await hitsOf("name-refs-tests", source, file)).words).toEqual(["#123"]);
+    expect((await hitsOf("issue-refs-tests", source, file)).count).toBe(0);
     expect((await hitsOf("caps-tests", source, file)).words).toEqual(["NOT"]);
     expect((await hitsOf("em-dashes-tests", source, file)).count).toBe(1);
   });

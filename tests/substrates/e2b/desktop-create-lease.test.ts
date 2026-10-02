@@ -92,7 +92,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("desktop allocation ownership survives startup failure (#581)", () => {
+describe("desktop allocation ownership survives startup failure", () => {
   it("reclaims its constructed instance once through the guarded public create", async () => {
     const probe = sdkProbe({
       command: async () => {

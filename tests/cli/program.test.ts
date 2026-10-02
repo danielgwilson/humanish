@@ -144,7 +144,7 @@ describe("humanish CLI scaffold", () => {
     ["lab run", "lanes"],
     ["lab run", "roster"],
   ] as const)(
-    "%s rejects unknown %s fields in JSON before creating run evidence (#343)",
+    "%s rejects unknown %s fields in JSON before creating run evidence",
     async (command, field) => {
       const manifest = {
         schema: "humanish.lab.v2",
@@ -807,7 +807,7 @@ describe("humanish CLI scaffold", () => {
     );
   });
 
-  it("catches an unexpected fs error at the command boundary and emits a single HUMANISH_UNEXPECTED envelope (issue #262 repro A)", async () => {
+  it("catches an unexpected fs error at the command boundary and emits a single HUMANISH_UNEXPECTED envelope", async () => {
     await withTempApp({}, async (cwd) => {
       // .humanish/runs as a FILE (not a directory) makes the unguarded mkdir inside
       // runDryRun reject with ENOTDIR. Before the command-boundary catch-all this
@@ -847,7 +847,7 @@ describe("humanish CLI scaffold", () => {
     });
   });
 
-  it("never appends a second JSON document to stdout when the command boundary catch-all fires after a successful writeResult (issue #262 repro C)", async () => {
+  it("never appends a second JSON document to stdout when the command boundary catch-all fires after a successful writeResult", async () => {
     // Repro: `codex app-server --keep-open --json` calls writeResult to flush a
     // success envelope, then awaits further work that can still reject
     // (controller.completion; see codex-app-server-ui.ts's persistState()).
@@ -903,7 +903,7 @@ describe("humanish CLI scaffold", () => {
   });
 
   it.skipIf(isRunningAsRoot())(
-    "discriminates a real runs I/O failure from an empty runs directory (issue #262 repro B)",
+    "discriminates a real runs I/O failure from an empty runs directory",
     async () => {
       await withTempApp({}, async (cwd) => {
         const runsRoot = path.join(cwd, ".humanish", "runs");
@@ -1707,7 +1707,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
   });
 });
 
-describe("provider-key discovery at the CLI seam (#436)", () => {
+describe("provider-key discovery at the CLI seam", () => {
   it("runs discovery on env-taking commands and announces fills on stderr", async () => {
     const calls: Array<{ cwd: string }> = [];
     const stderr: string[] = [];
@@ -1751,7 +1751,7 @@ describe("provider-key discovery at the CLI seam (#436)", () => {
   });
 });
 
-describe("lab provenance survives the whole CLI path (#455)", () => {
+describe("lab provenance survives the whole CLI path", () => {
   // This test exists because a live run caught what the unit tests could not: the provenance was
   // built at the resolution site and forwarded through nine `runLab` call sites, and three of them
   // silently dropped it — TypeScript cannot catch that, because a spread of an optional field is
@@ -1855,7 +1855,7 @@ describe("study facts ride the result seam", () => {
   });
 });
 
-describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
+describe("HUMANISH_DEBUG_HANDLES", () => {
   it("names what is still alive after a command settles, and only when asked", async () => {
     const previous = process.env.HUMANISH_DEBUG_HANDLES;
     const stderr: string[] = [];
@@ -1888,7 +1888,7 @@ describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
   });
 });
 
-describe("a taken port at the command boundary (#484)", () => {
+describe("a taken port at the command boundary", () => {
   it("is HUMANISH_PORT_IN_USE in the JSON envelope and on stderr, never HUMANISH_UNEXPECTED", async () => {
     const { PortInUseError } = await import("../../src/observer/listen.js");
     const stdout: string[] = [];
@@ -1924,7 +1924,7 @@ describe("a taken port at the command boundary (#484)", () => {
   });
 });
 
-describe("run writes the same bundle watch does (#597)", () => {
+describe("run writes the same bundle watch does", () => {
   it("a `run` bundle carries observer/index.html, so it can be exported and opened like a watched one", async () => {
     await withTempApp(
       {

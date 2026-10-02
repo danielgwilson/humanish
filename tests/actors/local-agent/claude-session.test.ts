@@ -52,7 +52,7 @@ const textOf = (message: Record<string, unknown>): string => {
   return inner.content[0]!.text;
 };
 
-describe("one Claude Code session as the computer-use brain (#520)", () => {
+describe("one Claude Code session as the computer-use brain", () => {
   it("keeps ONE session for the whole run and states the persona once", async () => {
     // `claude -p` per turn started every turn cold: 188 actions over 90 turns and never finished,
     // against 21 actions over 8 turns for a participant that remembers.
@@ -199,7 +199,7 @@ describe("one Claude Code session as the computer-use brain (#520)", () => {
   });
 });
 
-describe("the participant's declared outcome (#570)", () => {
+describe("the participant's declared outcome", () => {
   it("rides the turn when the reply carries one of the three words, and only then", () => {
     const reached = turnFromResult({
       type: "result",

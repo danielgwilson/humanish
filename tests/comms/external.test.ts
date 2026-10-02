@@ -59,7 +59,7 @@ afterAll(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("adopter-hosted comms ingress (#328)", () => {
+describe("adopter-hosted comms ingress", () => {
   it("health asserts OUR service marker, so a bare 200 from someone else's server is not a catch", async () => {
     expect(await externalCatchHealthy({ catchBaseUrl: baseUrl })).toBe(true);
     // A server that answers 200 with something else must NOT pass — an adopter proxy or captive
@@ -125,7 +125,7 @@ describe("adopter-hosted comms ingress (#328)", () => {
   });
 });
 
-describe("comms.email.external config (#328)", () => {
+describe("comms.email.external config", () => {
   const appUrlLab = (comms: Record<string, unknown>) => ({
     schema: LAB_CONFIG_SCHEMA,
     id: "external-comms",

@@ -81,7 +81,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("SDK screenshot cleanup compatibility (#662)", () => {
+describe("SDK screenshot cleanup compatibility", () => {
   it("keeps screenshot cleanup safe in strict Node without swallowing unrelated removal failures", () => {
     const helper = fileURLToPath(
       new URL("../../../src/substrates/e2b/desktop-screenshot-cleanup.ts", import.meta.url),
