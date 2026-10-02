@@ -14,7 +14,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import type { CuaProviderFailurePhase } from "../computer-use/provider-error.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
-import { admittedCodexCliVersions } from "./qualified-versions.js";
+import { admitsCodexCliVersion, supportsIsolatedCodex } from "./codex-admission.js";
 import {
   launchAdmittedAppServer,
   type LaunchSettings,
@@ -67,8 +67,8 @@ export interface RestrictedCodexSessionOptions {
   /** The release a caller already recorded (an analysis identity); any other release is refused. */
   cliVersion?: string;
   /**
-   * Bypasses qualification: replaces this host's admitted releases with any list. It exists only
-   * so scripts/codex-qualify.mjs can launch an unqualified candidate. No library export, lab
+   * Bypasses launch admission: admits exactly this list. It exists only so
+   * scripts/codex-qualify.mjs can launch a candidate admission would refuse. No library export, lab
    * manifest, CLI flag, RunLabOptions field or LabDeps seam reaches it
    * (tests/actors/codex/cli-versions-seam.test.ts).
    */
@@ -523,9 +523,15 @@ function refusedRun(
   if (busy() || hasUnclosedChildren()) return restrictedCodexFailure("codex_busy");
   const supportedPlatform = operatorAuth
     ? restrictedCodexNpmTarget(platform, arch) !== undefined
-    : (platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64");
+    : supportsIsolatedCodex(platform, arch);
   if (!supportedPlatform) return restrictedCodexFailure("codex_unsupported_platform");
   return undefined;
+}
+
+/** Which releases a session starts: launch admission, or the qualifier's exact list. */
+function launchAdmission(options: RestrictedCodexSessionOptions): (version: string) => boolean {
+  const exact = options.cliVersions;
+  return exact === undefined ? admitsCodexCliVersion : (version) => exact.includes(version);
 }
 
 export function createRestrictedCodexSession(
@@ -545,7 +551,7 @@ export function createRestrictedCodexSession(
     operatorAuth: participant?.authMode === "operator",
     reasoningEffort: participant?.reasoningEffort ?? "low",
     spawnFn: options.spawnFn ?? ((file, args, spawnOptions) => spawn(file, args, spawnOptions)),
-    admittedVersions: options.cliVersions ?? admittedCodexCliVersions(platform, arch),
+    admits: launchAdmission(options),
   };
   const state: SessionState = {
     work: undefined,
@@ -670,7 +676,7 @@ export async function detectRestrictedCodexCliVersion(
 > {
   const platform = options.platform ?? process.platform,
     arch = options.arch ?? process.arch;
-  if (!((platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64")))
+  if (!supportsIsolatedCodex(platform, arch))
     return { cliVersion: null, errorCode: "codex_unsupported_platform" };
   const sourceEnv = options.env ?? process.env;
   const deadline = new RestrictedCodexDeadline(input.timeoutMs ?? 15_000, input.signal);
@@ -688,7 +694,7 @@ export async function detectRestrictedCodexCliVersion(
       work,
       options.spawnFn ?? ((command, args, settings) => spawn(command, args, settings)),
       deadline,
-      options.cliVersions ?? admittedCodexCliVersions(platform, arch),
+      launchAdmission(options),
       options.cliVersion,
     );
     return { cliVersion, errorCode: null };

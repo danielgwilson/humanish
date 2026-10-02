@@ -5,11 +5,18 @@ execution, with a separate conversation, process and tool authority. It can use
 the same host Codex login as a local-agent participant. Existing API analysis
 remains a separate provider.
 
-The qualified launcher profile is **a qualified Codex CLI release for the host, Linux x64
-or Apple Silicon macOS, file-backed ChatGPT login, `gpt-6-astra`, low reasoning effort**.
-Qualified releases are listed per host in
-[`src/actors/codex/qualified-versions.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/qualified-versions.ts).
-Linux x64 accepts 0.154.0, 0.157.1
+The launcher profile is **a stable Codex CLI release from 0.154.0 on, Linux x64 or Apple
+Silicon macOS, file-backed ChatGPT login, `gpt-6-astra`, low reasoning effort**.
+[`src/actors/codex/codex-admission.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/codex-admission.ts)
+admits every stable `MAJOR.MINOR.PATCH` release from 0.154.0, the oldest known to work, except
+those in `REFUSED_CODEX_CLI_VERSIONS` (none yet). There is no ceiling: a new release runs the
+day it ships, and one that breaks humanish is refused there until humanish handles it.
+Prereleases and older releases are refused, and the refusal names the release and why. Hosted
+participants (operator mode) run the same releases on Linux x64 and arm64 and macOS x64 and
+arm64; a hosted run on a release outside `TESTED_CODEX_CLI_VERSIONS` records a warning that its
+evidence rests on the checks each launch makes. `TESTED_CODEX_CLI_VERSIONS` gates nothing. It
+lists the releases the qualifier passed on Linux x64, and its newest is the default and the
+install target: 0.154.0, 0.157.1
 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.157.1-requalification-2026-09-30.md))
 0.159.2
 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.159.2-qualification-2026-09-30.md))
@@ -17,12 +24,9 @@ Linux x64 accepts 0.154.0, 0.157.1
 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.159.3-qualification-2026-10-01.md))
 and 0.160.0
 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.160.0-qualification-2026-10-01.md)).
-Apple Silicon accepts 0.154.0, which passed installed participant/analysis studies and the
-native dispatch restriction check on an M5 Max; later releases need the same check on a Mac.
-Hosted participants on Linux arm64 and Intel macOS keep 0.154.0 as a pre-existing admission,
-listed separately in `PREEXISTING_CODEX_CLI_ADMISSIONS`: it is what they ran before per-host
-lists existed, not a qualification, and no later release is admitted there. Other releases and
-platforms, keychain-only logins and API-key Codex logins are refused before a model turn.
+On Apple Silicon, 0.154.0 passed installed participant/analysis studies and the native dispatch
+restriction check on an M5 Max; no later release has run on a Mac. Other platforms,
+keychain-only logins and API-key Codex logins are refused before a model turn.
 
 A release string is a compatibility check, not binary attestation. The launcher compares the
 release that `codex --version`, initialize and thread start report, then executes the same
@@ -159,10 +163,11 @@ not established by that proof. Recovery deliberately fails closed if storage
 behaves differently. Keychain/other-platform support and whole-process-tree
 leases require their own qualification.
 
-## Admitting a Codex CLI release
+## Testing a Codex CLI release
 
-A release enters a host's list only with a dated receipt under
-`docs/goals/computer-use-actor/receipts/` showing all of the following, on that host:
+Admission does not wait for a test. A release enters `TESTED_CODEX_CLI_VERSIONS`, which gates
+nothing, with a dated receipt under `docs/goals/computer-use-actor/receipts/` showing all of
+the following, on Linux x64:
 
 1. The release notes since the baseline were read for changes near the tool boundary.
 2. A drift check against a release already qualified on the host found no exec, connection or
@@ -181,11 +186,12 @@ can show that an honest new release does nothing new in those scenarios; it cann
 binary built to evade it is safe. Pair that with the attestation limit above: the launcher
 admits by release string and does not pin the executable.
 
-Then commit the release in `QUALIFIED_CODEX_CLI_VERSIONS`
-(`src/actors/codex/qualified-versions.ts`) for that host. Readers need no change: saved
+Then commit the release in `TESTED_CODEX_CLI_VERSIONS` (`src/actors/codex/codex-admission.ts`);
+launch admission does not change. Readers need no change: saved
 profiles may name any stable release from `RECORDED_CODEX_CLI_FLOOR` (0.154.0) on, in
 `src/actors/contract.ts` and the Observer's copy (`observer/lib/actor-execution-profile.ts`).
-If any check fails, change no code and record what differs.
+If any check fails, record what differs; a release that breaks humanish goes in
+`REFUSED_CODEX_CLI_VERSIONS` with its issue.
 
 ### The qualifier
 

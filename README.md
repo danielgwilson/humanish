@@ -285,14 +285,14 @@ or runs a signed-in agent. The `*.live.test.ts` suites run only when a
 `HUMANISH_LIVE_*` variable and real keys are set. Live behavior is checked only
 by runs made outside CI.
 
-**Codex versions are pinned.** Codex participants (local browser studies and
-`local-agent` with Codex) and the Codex account analyst accept only the Codex
-CLI versions admitted for your host, listed in
-[`qualified-versions.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/qualified-versions.ts).
-On Linux x64 and Apple-silicon macOS those are the versions humanish has qualified. Linux arm64
-and Intel macOS keep the one version they ran before qualification began, which has not been
-qualified there. Any other version, including one Codex updated itself to, is refused with the
-list of accepted versions.
+**Codex releases are admitted by rule.** Codex participants (local browser studies and
+`local-agent` with Codex) and the Codex account analyst run any stable Codex CLI release from
+0.154.0 on, except releases humanish refuses, listed in
+[`codex-admission.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/codex-admission.ts).
+A new release runs the day it ships, including one Codex updated itself to. Each launch checks
+the release's app-server schema against the fields humanish uses and refuses one that changed
+them. Prereleases and releases below 0.154.0 are refused, and the refusal names the release and
+why. A hosted participant on a release humanish has not tested records a warning.
 
 **Credentials.** humanish fills each provider key that is not already set from
 the first of these sources that has it. It prints the name and source of a key it

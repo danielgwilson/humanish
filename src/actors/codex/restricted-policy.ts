@@ -2,8 +2,8 @@ import type { ReasoningEffort } from "../reasoning-effort.js";
 
 /** Versioned, deliberately narrow profile qualified with an account-backed vision turn.
  * The CLI still advertises code-mode tools: disabling their host is the enforcement
- * boundary. Feature names alone are not proof that a tool has been removed. The admitted
- * CLI releases are per host, in qualified-versions.ts. */
+ * boundary. Feature names alone are not proof that a tool has been removed. Which CLI
+ * releases launch is decided in codex-admission.ts. */
 export const RESTRICTED_CODEX_ANALYSIS_IDENTITY = {
   provider: "codex",
   authMode: "chatgpt",

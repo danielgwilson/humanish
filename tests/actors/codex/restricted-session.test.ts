@@ -12,7 +12,7 @@ import {
   checkRestrictedCodexAnalysisReadiness,
   createRestrictedCodexAnalysisProvider,
 } from "../../../src/analysis/restricted-codex.js";
-import { qualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
+import { TESTED_CODEX_CLI_VERSIONS } from "../../../src/actors/codex/codex-admission.js";
 import type { RestrictedCodexRequest } from "../../../src/actors/codex/restricted-policy.js";
 import {
   createRestrictedCodexSession,
@@ -267,8 +267,8 @@ describe("restricted Codex analyst session", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
-  it("admits each release qualified on Linux x64 and records the one that ran", async () => {
-    for (const version of qualifiedCodexCliVersions("linux", "x64")) {
+  it("admits every tested release and untested stable ones, and records the one that ran", async () => {
+    for (const version of [...TESTED_CODEX_CLI_VERSIONS, "0.158.0", "0.161.0"]) {
       const f = await fixture(`version-${version}`);
       const session = createRestrictedCodexSession({
         ...f.options,
@@ -292,16 +292,17 @@ describe("restricted Codex analyst session", () => {
   });
 
   it("admits only the releases a qualification run names through its seam", async () => {
-    const candidate = await fixture("version-0.158.0");
+    // 0.150.0 is below the floor: only the seam starts it.
+    const candidate = await fixture("version-0.150.0");
     expect(
       await createRestrictedCodexAnalysisProvider({
         ...candidate.options,
-        cliVersions: ["0.158.0"],
+        cliVersions: ["0.150.0"],
       })(request),
     ).toMatchObject({ status: "completed" });
     const current = await fixture("success");
     expect(
-      await createRestrictedCodexAnalysisProvider({ ...current.options, cliVersions: ["0.158.0"] })(
+      await createRestrictedCodexAnalysisProvider({ ...current.options, cliVersions: ["0.150.0"] })(
         request,
       ),
     ).toMatchObject({ errorCode: "codex_unsupported_version" });
@@ -317,7 +318,7 @@ describe("restricted Codex analyst session", () => {
     ).toEqual({ cliVersion: "0.154.0", errorCode: null });
     expect(qualified.spawns.map((entry) => entry.args)).toEqual([["--version"]]);
     expect(await readdir(qualified.tempRoot)).toEqual([]);
-    const unqualified = await fixture("version-0.158.0");
+    const unqualified = await fixture("version-0.150.0");
     expect(
       await detectRestrictedCodexCliVersion(
         {},
@@ -326,7 +327,7 @@ describe("restricted Codex analyst session", () => {
     ).toEqual({
       cliVersion: null,
       errorCode: "codex_unsupported_version",
-      detectedVersion: "0.158.0",
+      detectedVersion: "0.150.0",
     });
     expect(
       await detectRestrictedCodexCliVersion(
@@ -338,7 +339,8 @@ describe("restricted Codex analyst session", () => {
 
   it.each([
     ["wrong-version", "codex_unsupported_version"],
-    ["version-0.158.0", "codex_unsupported_version"],
+    ["version-0.150.0", "codex_unsupported_version"],
+    ["version-0.162.0-alpha.4", "codex_unsupported_version"],
     ["initialize-version-mismatch", "codex_unsupported_version"],
     ["thread-version-mismatch", "codex_unsafe_configuration"],
     ["api-key-auth", "codex_unsupported_auth"],

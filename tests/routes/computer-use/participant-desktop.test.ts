@@ -10,7 +10,7 @@ import type {
   CuaProvider,
   CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
-import { describeQualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
+import { describeCodexCliAdmission } from "../../../src/actors/codex/codex-admission.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
 import { type CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
@@ -252,7 +252,7 @@ describe("ready desktop lane contract", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toContain(describeQualifiedCodexCliVersions());
+    expect(result.error?.message).toContain(describeCodexCliAdmission());
     expect(result.error?.message).toContain("no desktop was launched");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(restrictedParticipantFactory).not.toHaveBeenCalled();

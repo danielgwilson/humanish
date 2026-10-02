@@ -1,4 +1,7 @@
-import { describeQualifiedCodexCliVersions } from "../actors/codex/qualified-versions.js";
+import {
+  defaultCodexCliVersion,
+  describeCodexCliAdmission,
+} from "../actors/codex/codex-admission.js";
 import { validCodexAnalysisConfig } from "./codex-config.js";
 import type { AnalysisFetch, AnalysisProvider } from "./provider.js";
 import { randomUUID } from "node:crypto";
@@ -139,9 +142,9 @@ const messages: Record<string, string> = {
 const codexRecovery: Record<string, string> = {
   analysis_codex_busy:
     "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then explicitly retry.",
-  analysis_codex_unavailable: `The qualified Codex CLI is unavailable. Install a qualified Codex CLI (${describeQualifiedCodexCliVersions()}) and sign in with a ChatGPT account, then retry --provider codex.`,
-  analysis_codex_unsupported_version: `Codex account analysis requires a qualified CLI version (${describeQualifiedCodexCliVersions()}). Other versions have not passed this tool-policy contract.`,
-  analysis_codex_incompatible_release: `This Codex CLI release changed app-server protocol fields humanish reads, so no request was sent; the warnings name each change. Install a release humanish was tested with (${describeQualifiedCodexCliVersions()}), then retry.`,
+  analysis_codex_unavailable: `The Codex CLI is unavailable. Install one (${describeCodexCliAdmission()}) and sign in with a ChatGPT account, then retry --provider codex.`,
+  analysis_codex_unsupported_version: `This Codex CLI release is refused: ${describeCodexCliAdmission()}. \`humanish doctor\` names the release it found, why, and the command that replaces it.`,
+  analysis_codex_incompatible_release: `This Codex CLI release changed app-server protocol fields humanish reads, so no request was sent; the warnings name each change. Install the last tested release (${defaultCodexCliVersion()}), then retry.`,
   analysis_codex_unsupported_platform:
     "This platform has not qualified the restricted Codex account launcher.",
   analysis_codex_login_required:

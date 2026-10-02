@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
-import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runInit } from "../../src/lab/init.js";
 import { starterFilesFor } from "../../src/lab/init-templates.js";
