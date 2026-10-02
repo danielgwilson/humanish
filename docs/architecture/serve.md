@@ -147,9 +147,11 @@ disk). See observer.md.
 `share_ready` was designed as the bar for feedback payloads: evidence eligible
 to leave the machine inside a public issue draft. Serve's `share-safe-open` mode
 extends that same gate to arbitrary-audience browsing, which is a broader
-exposure of the same artifacts. The honest caveat carries over unchanged:
+exposure of the same artifacts. The same caveat carries over:
 `humanish verify` does not yet detect free-form PII/PHI (names, emails, medical
-identifiers; see the README's public-safety boundary and issue #108), so
+identifiers; see
+[Share evidence safely](../../README.md#share-evidence-safely) and the
+[open detector issue](https://github.com/danielgwilson/humanish/issues/108)), so
 `share_ready` means the automated secret/path scan passed, not that a human would
 publish every pixel. Maintainers should treat open mode accordingly: synthetic
 data upstream, review before exposing, and treat `--safe` without edge auth as
@@ -168,7 +170,7 @@ any mutating route ships, the contract is:
 - an operator identity distinct from a viewer, sourced from the edge/control
   plane, not from a humanish-minted cookie;
 - mutating routes require CSRF defenses appropriate to the chosen edge session;
-- the spend rule is invariant 3 applied to remote hands: a phone-initiated live
+- the live-spend rule applies to remote hands too: a phone-initiated live
   run needs its own affirmative declaration at serve startup (an explicit opt-in
   naming the lab and budget), never a default the viewer UI can reach.
 
