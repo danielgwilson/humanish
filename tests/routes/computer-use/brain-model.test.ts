@@ -418,10 +418,14 @@ describe("computer-use participant model, the plan's brain, over the config", ()
     );
   });
 
-  it("fails the run when hosted Codex reports a disallowed item after its last request", async () => {
+  it("fails the run and keeps the warnings when hosted Codex reports a late disallowed item", async () => {
     vi.mocked(createRestrictedCodexParticipant).mockReturnValue({
       provider: doneProvider("restricted-codex-participant"),
-      close: async () => ({ status: "confirmed" as const, refusal: "codex_tool_call" as const }),
+      close: async () => ({
+        status: "confirmed" as const,
+        warnings: ["Codex CLI 0.160.0 sent notification methods humanish does not know: a/b ×1."],
+        refusal: "codex_tool_call" as const,
+      }),
     } as unknown as ReturnType<typeof createRestrictedCodexParticipant>);
     const result = await runWithBrain(
       labConfig({ actor: CODEX_ACTOR, model: undefined }),
@@ -435,6 +439,9 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       "Codex reported a disallowed item after the participant's last request (codex_tool_call).";
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain(message);
+    expect(result.warnings).toContain(
+      "Codex CLI 0.160.0 sent notification methods humanish does not know: a/b ×1.",
+    );
     const status = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"),
     ) as {
