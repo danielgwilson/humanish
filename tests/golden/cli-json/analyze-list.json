@@ -1,0 +1,11 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "executions": [],
+    "ok": "boolean",
+    "run": "string",
+    "schema": "string",
+    "versions": [],
+    "warnings": []
+  }
+}

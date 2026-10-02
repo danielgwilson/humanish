@@ -33,7 +33,12 @@ async function runJson(args: string[]): Promise<{ exitCode: number; json: unknow
     if (!(error instanceof CommanderError)) throw error;
     exitCode = error.exitCode;
   }
-  return { exitCode, json: JSON.parse(stdout.join("")) };
+  const text = stdout.join("");
+  try {
+    return { exitCode, json: JSON.parse(text) };
+  } catch {
+    throw new Error(`humanish ${args.join(" ")} printed no JSON: ${text.slice(0, 200)}`);
+  }
 }
 
 /** A value's shape: primitives become their type name; arrays merge their elements' shapes. */
@@ -81,7 +86,9 @@ function mergeShapes(a: Shape, b: Shape): Shape {
   return [...alternatives].sort().join(" | ");
 }
 
-// Run in order against one fresh project: doctor before init, then init and one dry run.
+// Run in order against one fresh project: doctor before init, then init and one dry run. Each
+// command gets `--cwd <project>` except those in NO_CWD, which take no project.
+const NO_CWD = new Set(["comms-providers", "keys-list", "telemetry-status"]);
 const STEPS: ReadonlyArray<readonly [name: string, args: string[]]> = [
   ["doctor-before-init", ["doctor"]],
   ["init", ["init", "--yes"]],
@@ -96,6 +103,18 @@ const STEPS: ReadonlyArray<readonly [name: string, args: string[]]> = [
   ["lab-inspect", ["lab", "inspect", "first-run"]],
   ["feedback-draft", ["feedback", "draft"]],
   ["export", ["export", "--local-only"]],
+  ["lab-preflight", ["lab", "preflight", "first-run"]],
+  ["analyze-refused", ["analyze"]],
+  ["analyze-list", ["analyze", "list"]],
+  ["feedback-list", ["feedback", "list"]],
+  ["feedback-verify", ["feedback", "verify"]],
+  ["feedback-issue-url", ["feedback", "issue-url", "--repo", "example/app"]],
+  ["reclaim", ["reclaim"]],
+  ["comms-providers", ["comms", "providers"]],
+  ["comms-connections-list", ["comms", "connections", "list"]],
+  ["keys-list", ["keys", "list"]],
+  ["telemetry-status", ["telemetry", "status"]],
+  ["lab-run", ["lab", "run", "first-run"]],
 ];
 
 describe("CLI JSON goldens", () => {
@@ -103,20 +122,32 @@ describe("CLI JSON goldens", () => {
   const shapes = new Map<string, { exitCode: number; shape: Shape }>();
 
   // A key exported in the developer's shell would turn a note row into an ok row.
-  const keyNames = ["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"];
+  const keyNames = [
+    "OPENAI_API_KEY",
+    "E2B_API_KEY",
+    "GH_TOKEN",
+    "CODEX_API_KEY",
+    "AGENTMAIL_API_KEY",
+  ];
   const savedKeys = new Map(keyNames.map((name) => [name, process.env[name]]));
+
+  const savedConfigHome = process.env.XDG_CONFIG_HOME;
 
   beforeAll(async () => {
     for (const name of keyNames) delete process.env[name];
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-json-goldens-"));
+    // keys list and telemetry status read the user config directory; give them an empty one.
+    process.env.XDG_CONFIG_HOME = path.join(cwd, "user-config");
     for (const [name, args] of STEPS) {
-      const { exitCode, json } = await runJson([...args, "--cwd", cwd]);
+      const { exitCode, json } = await runJson(NO_CWD.has(name) ? args : [...args, "--cwd", cwd]);
       shapes.set(name, { exitCode, shape: shapeOf(json) });
     }
   }, 120_000);
 
   afterAll(async () => {
     for (const [name, value] of savedKeys) if (value !== undefined) process.env[name] = value;
+    if (savedConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = savedConfigHome;
     await rm(cwd, { recursive: true, force: true });
   });
 
