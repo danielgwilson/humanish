@@ -15,7 +15,7 @@
       "history": 18,
       "series-codes": 0,
       "name-refs": 0,
-      "string-em-dashes": 158,
+      "string-em-dashes": 154,
       "string-issue-refs": 10,
       "string-slice": 10,
       "string-rationale": 28,
@@ -79,7 +79,7 @@
     "seat": 0,
     "role": 49,
     "sim": 21,
-    "lab": 2339,
+    "lab": 2337,
     "doc-backend": 17
   }
 }

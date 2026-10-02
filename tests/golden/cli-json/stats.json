@@ -11,9 +11,9 @@
           "analysisNotDispatchedAttempts": "number",
           "analysisUnpricedAttempts": "number",
           "analysisUnresolvedAttempts": "number",
-          "estimatedTotalUsd": "null",
+          "estimatedTotalUsd": "number",
           "incompleteRunEstimates": "number",
-          "runEstimatedUsd": "null"
+          "runEstimatedUsd": "number"
         },
         "runId": "string",
         "warnings": [
@@ -32,9 +32,9 @@
           "analysisNotDispatchedAttempts": "number",
           "analysisUnpricedAttempts": "number",
           "analysisUnresolvedAttempts": "number",
-          "estimatedTotalUsd": "null",
+          "estimatedTotalUsd": "number",
           "incompleteRunEstimates": "number",
-          "runEstimatedUsd": "null"
+          "runEstimatedUsd": "number"
         },
         "day": "string",
         "estimatedSpendUsd": "number",
@@ -53,9 +53,9 @@
           "analysisNotDispatchedAttempts": "number",
           "analysisUnpricedAttempts": "number",
           "analysisUnresolvedAttempts": "number",
-          "estimatedTotalUsd": "null",
+          "estimatedTotalUsd": "number",
           "incompleteRunEstimates": "number",
-          "runEstimatedUsd": "null"
+          "runEstimatedUsd": "number"
         },
         "costSamples": "number",
         "dryRun": "number",
@@ -63,6 +63,7 @@
         "judged": "number",
         "lab": "string",
         "live": "number",
+        "medianCostUsd": "number",
         "participants": {
           "reachedGoal": "number",
           "reportedFriction": "number",
@@ -86,9 +87,9 @@
         "analysisNotDispatchedAttempts": "number",
         "analysisUnpricedAttempts": "number",
         "analysisUnresolvedAttempts": "number",
-        "estimatedTotalUsd": "null",
+        "estimatedTotalUsd": "number",
         "incompleteRunEstimates": "number",
-        "runEstimatedUsd": "null"
+        "runEstimatedUsd": "number"
       },
       "dryRun": "number",
       "estimatedSpendUsd": "number",

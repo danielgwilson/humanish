@@ -14,7 +14,7 @@ import {
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
-import { labSetupChecks, labsByRequiredKey, type LabSetupCheckArgs } from "../lab/doctor.js";
+import { labSetupChecks, studiesByRequiredKey, type LabSetupCheckArgs } from "../lab/doctor.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
@@ -154,7 +154,7 @@ export async function doctor(
       })
     : undefined;
   // Without --lab, each key row names the labs that need it instead of failing.
-  const keyUsers = setup ? undefined : await labsByRequiredKey(cwd, keyPresent);
+  const keyUsers = setup ? undefined : await studiesByRequiredKey(cwd, keyPresent);
   const checks: DoctorCheck[] = [
     ...(await projectChecks(projectRoot)),
     await desktopSdkCheck(setup),
@@ -366,8 +366,10 @@ function localAgentChecks(agents: readonly DetectedLocalAgent[]): DoctorCheck[] 
 }
 
 /** "try-live", "try-live and local-browser", "a, b and c". */
-function labList(labs: readonly string[]): string {
-  return labs.length < 2 ? labs.join("") : `${labs.slice(0, -1).join(", ")} and ${labs.at(-1)}`;
+function studyList(studies: readonly string[]): string {
+  return studies.length < 2
+    ? studies.join("")
+    : `${studies.slice(0, -1).join(", ")} and ${studies.at(-1)}`;
 }
 
 /**
@@ -393,7 +395,7 @@ function keyChecks(
         : probe.hint;
     if (!setup) {
       const users = keyUsers?.get(probe.name) ?? [];
-      const usedBy = users.length > 0 ? `used by ${labList(users)}` : undefined;
+      const usedBy = users.length > 0 ? `used by ${studyList(users)}` : undefined;
       return {
         name: `key ${probe.name}`,
         ok: true,
