@@ -10,7 +10,7 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { routeOf } from "../../src/lab/plan.js";
 import { phaseEvent, planEvent, type LabEvent } from "../../src/lab/run-lab-events.js";
-import type { StreamEvent } from "../../src/lab/run-lab-homes.js";
+import { streamEvent, type StreamEvent } from "../../src/lab/run-lab-homes.js";
 import { normalizeRunLabOptions } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
@@ -269,21 +269,21 @@ describe("stream, rerun and analysis options land where the route reads them", (
       events.push(event);
       if (event.type === "ended") throw new Error("ended handler failed");
     });
-    const ready: StreamEvent = {
+    const ready = streamEvent({
       type: "ready",
       participantId: "lane-01",
       sandboxId: "sbx",
-      simId: "sim-001",
+      recordId: "sim-001",
       streamId: "stream-001",
       url: "https://stream.invalid/key",
-    };
+    });
     await streams.onStream(ready);
-    const ended: StreamEvent = {
+    const ended = streamEvent({
       type: "ended",
       participantId: "lane-01",
-      simId: "sim-001",
+      recordId: "sim-001",
       streamId: "stream-001",
-    };
+    });
     await expect(streams.onStream(ended)).rejects.toThrow("ended handler failed");
     expect(events).toEqual([ready, ended]);
   });

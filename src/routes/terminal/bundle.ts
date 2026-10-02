@@ -30,7 +30,7 @@ import type { TerminalLedgers } from "./types.js";
 import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } from "./ledger.js";
 
 /**
- * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change — a new
+ * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change: a new
  * producer only). DRY-RUN: a contract bundle. The terminal stream is a contract placeholder
  * (stdin disabled, no captured tail, because nothing ran), the subject is declared unpinned, and
  * the caps/policies/runtime-auth declarations are recorded without pretending that live ledgers
@@ -375,7 +375,7 @@ function terminalRunBundle(
     scenario: {
       id: `terminal-${args.labId}`,
       title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
-      // The author mission is public-safe committed lab text — recorded plaintext as the goal,
+      // The author mission is public-safe committed lab text. It is recorded plaintext as the goal,
       // redacted defensively before persisting (it never carries a secret, but the harness never
       // trusts that). The full composed prompt is bound by digest, not text.
       goal: redactText(args.mission),

@@ -2,9 +2,9 @@
 // for the host's lobby code, read from the host's URL, narration or screen, and then joins with it.
 // A follower fails closed without opening if the host never yields a code within the deadline.
 //
-// Temporary shim (tracked by #296): this CDP URL-relay handoff reads the host's /lobby/CODE off its
+// Temporary shim: this CDP URL-relay handoff reads the host's /lobby/CODE off its
 // own browser and threads it into the follower missions.
-// It is to be augmented/replaced by the actor message bus (fake SMS/email invite) in #297: the
+// It is to be augmented/replaced by the actor message bus (fake SMS/email invite): the
 // human-realistic version is the host sending the invite link and followers receiving and tapping
 // it, rather than the orchestrator relaying the code out-of-band.
 
@@ -30,7 +30,7 @@ import type { ActorRunResult, ExternalCommsWiring } from "./types.js";
 // shared-session (/lobby/CODE) URL within the deadline or the run fails closed and no follower
 // opens. The effective deadline scales with the per-seat run budget (execution.timeoutMs): a fixed
 // 2 min is too tight for a real create-a-lobby flow on a mobile-layout seat once you subtract the
-// seat's own desktop provisioning — the host reaches /lobby/CODE, but after the followers already
+// seat's own desktop provisioning: the host reaches /lobby/CODE, but after the followers already
 // gave up. So use max(floor, 40% of the budget), capped at the budget. The latch resolves the
 // instant the host actually reaches /lobby, so a generous ceiling only affects the fail-closed case.
 const DEFAULT_HANDOFF_DEADLINE_MS = 120_000;
@@ -102,7 +102,7 @@ export interface HandoffParticipantDeps {
  * The handoff latch, its deadline and what each seat observed. The latched code and observed URLs
  * are runtime-only and land in persisted metadata only as digests (origin + convergence). (The code
  * is a shareable game code, not a secret, and it still renders in the host's screenshots, which are
- * full-fidelity unless redactScreenshots is set — the digesting is about narration/URL metadata.)
+ * full-fidelity unless redactScreenshots is set. The digesting is about narration/URL metadata.)
  */
 export class LobbyHandoff {
   // Per-participant runtime-only observed state (never persisted raw): the last observed URL and the last
@@ -287,7 +287,7 @@ export class LobbyHandoff {
   }
 }
 
-// Adopter-hosted inbox (#387): the persona is told its address and inbox URL on this plane.
+// Adopter-hosted inbox: the persona is told its address and inbox URL on this plane.
 function withParticipantInbox(
   spec: DesktopParticipantRun,
   inbox: ExternalCommsWiring | undefined,
@@ -321,7 +321,7 @@ export async function runHost(
   // unreliable in practice). Two backups, both resolving the same latch; whichever sees the code first
   // wins, all digest-only:
   //   (1) onMessage: scan the host's own narration if it happens to state the lobby URL; and
-  //   (2) onScreenshot — vision-read the code straight off the host's waiting-room frame. This is the
+  //   (2) onScreenshot: vision-read the code straight off the host's waiting-room frame. This is the
   //       robust one: the code is rendered on screen even when CDP fails and when the host never
   //       narrates it, and the host is never asked to announce anything, so it keeps
   //       running (create -> wait for players -> Start -> play) instead of ending on a stray message.
@@ -397,7 +397,7 @@ export async function runFollower(
       route: deps.publicAppUrl,
     };
   }
-  // Followers also idle-wait — in the waiting room until the host starts, and between rounds. Raise
+  // Followers also idle-wait: in the waiting room until the host starts, and between rounds. Raise
   // their idle backstop too (less than the host's: they wait less), so a follower that joins ahead of
   // the other does not give up before the game begins. Per-seat timeout still bounds a stuck follower.
   const followerSpec: DesktopParticipantRun = {

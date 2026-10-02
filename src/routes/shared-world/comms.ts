@@ -38,9 +38,9 @@ export interface SubjectComms {
   env: Record<string, string>;
 }
 
-// Off-app comms (#297): on the provisioned-getHost plane the harness owns the one subject sandbox, so
+// Off-app comms: on the provisioned-getHost plane the harness owns the one subject sandbox, so
 // it can redirect the app's email-API sends into an in-sandbox catch and evidence them. Gated entirely
-// on config.comms — no comms declared → zero change. The base-URL env is injected into the subject
+// on config.comms: no comms declared → zero change. The base-URL env is injected into the subject
 // sandbox at create (fixed port known up front); the catch is deployed before serve; the drain + digest
 // evidence run at subject teardown, then register run-level in the bundle. Unavailable on the
 // external-public plane (the app is an operator-owned deployment the harness never provisions).
@@ -53,7 +53,7 @@ export function subjectCommsOf(
       ? config.comms.email
       : undefined;
   const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
-  // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
+  // injectEnv is absent on an adopter-hosted plane: there is no subject env to inject
   // because the operator points their own app at their own catch.
   const commsEnv: Record<string, string> =
     commsEmail?.injectEnv !== undefined && commsPort !== undefined
@@ -63,7 +63,7 @@ export function subjectCommsOf(
 }
 
 /**
- * Adopter-hosted ingress (#328): on the external-public plane the harness provisions nothing, so
+ * Adopter-hosted ingress: on the external-public plane the harness provisions nothing, so
  * it cannot host a catch. The operator can, and then humanish still does every other part of
  * the funnel: it tells each persona its address and inbox URL, drains the declared catch over
  * HTTP at teardown, and writes the same digest-only evidence. Declaring `external` is what turns
@@ -121,7 +121,7 @@ export async function prepareExternalComms(
 }
 
 /**
- * Off-app comms evidence (#297): drain everything the in-sandbox catch captured, route it into a
+ * Off-app comms evidence: drain everything the in-sandbox catch captured, route it into a
  * host fake inbox addressed to the declared recipients, and write the run-level digest-only thread
  * artifact while the subject is still alive, before it is killed. Wrapped so a drain error
  * never blocks teardown (invariant: all sandboxes torn down by id in the plane's finally). Returns
@@ -162,7 +162,7 @@ export async function drainSubjectComms(
         `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
       );
     } else {
-      // Zero captures is the silent-broken shape (#351): the app never posted to the catch.
+      // Zero captures is the silent-broken shape: the app never posted to the catch.
       warnings.push(
         `Comms catch captured ZERO email sends — the app never delivered mail through the catch. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`,
       );
@@ -176,8 +176,8 @@ export async function drainSubjectComms(
 }
 
 /**
- * Adopter-hosted drain (#328/#387): same routing and digest-only artifact as the in-sandbox
- * catch — only the transport differs (HTTP GET /deliveries against the catch the operator
+ * Adopter-hosted drain: same routing and digest-only artifact as the in-sandbox
+ * catch. Only the transport differs (HTTP GET /deliveries against the catch the operator
  * runs). Called in the plane's finally so the evidence survives a failed run; a drain error never
  * masks the run's own outcome. Returns the thread's path when one was written.
  */

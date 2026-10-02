@@ -4,6 +4,7 @@
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
+import { withDeprecatedFields } from "./deprecated-fields.js";
 import type { LabEvent, ParticipantRef, SetupTarget } from "./run-lab-events.js";
 import type { LabConfig } from "./types.js";
 
@@ -21,17 +22,41 @@ export interface InProcessDriver {
   executor: (ctx: { config: LabConfig; appUrl: string }) => Promise<CuaExecutor>;
 }
 
-export type StreamEvent =
-  /** Runtime only: `url` carries an auth key and must never be persisted. */
-  | {
+interface StreamEventIds {
+  participantId: string;
+  /**
+   * The id of this participant's entry in run.json `simulations[]` (`sim-001`), which
+   * `streams[].simId` also holds.
+   */
+  recordId: string;
+  streamId: string;
+}
+
+type StreamEventFields =
+  | (StreamEventIds & {
       type: "ready";
-      participantId: string;
       sandboxId: string;
-      simId: string;
-      streamId: string;
+      /** Runtime only: carries an auth key and must never be persisted. */
       url: string;
-    }
-  | { type: "ended"; participantId: string; simId: string; streamId: string };
+    })
+  | (StreamEventIds & { type: "ended" });
+
+export type StreamEvent = StreamEventFields & {
+  /**
+   * @deprecated Use `recordId`, which holds the same value. Reading it warns once per process; the
+   * next minor removes it.
+   */
+  readonly simId: string;
+};
+
+/** A stream event as the routes report it, with `simId` as a getter over `recordId`. */
+export function streamEvent(fields: StreamEventFields): StreamEvent {
+  return withDeprecatedFields(
+    { ...fields },
+    { name: "StreamEvent", code: "HUMANISH_STREAM_EVENT_FIELD_DEPRECATED" },
+    { simId: { replacement: "recordId", read: () => fields.recordId } },
+  ) as StreamEvent;
+}
 
 /** The options with a typed home, common to every route. */
 export interface RunLabHomes {

@@ -92,8 +92,8 @@
     "format:check": "oxfmt --check",
     "lint": "node scripts/check-lint-cap.mjs --max-warnings=442",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=275 --max-fix-tags=0 --max-caps=0 --max-lane-comments=20 --max-em-dashes=339",
-    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=98 --max-seat=0 --max-role=49 --max-sim=23 --max-study=9"
+    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=209 --max-fix-tags=0 --max-caps=0 --max-lane-comments=20 --max-em-dashes=288",
+    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=98 --max-seat=0 --max-role=49 --max-sim=21 --max-study=9"
   },
   "dependencies": {
     "commander": "^15.0.0",

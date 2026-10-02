@@ -32,7 +32,7 @@ export async function resolveTerminalPersona(args: {
 }): Promise<TerminalPersona> {
   const personaId = args.plan.personaId ?? "autonomous-terminal-agent";
   const physicalCwd = await realpath(args.cwd);
-  // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
+  // Resolve the committed persona so its traits actually shape the agent prompt; fail-safe to
   // the bare persona id (no traits applied) when no persona file is committed.
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
   const { persona, warnings } = await resolveCommittedPersona(projectRoot, personaId);

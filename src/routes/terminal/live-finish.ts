@@ -89,7 +89,7 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
     terminalEvents.map((e) => e.chunk).join(""),
   );
   // Parsed from the full stream: usage records arrive once per turn, and the tail
-  // would drop all but the last (#531).
+  // would drop all but the last.
   const terminalTokenUsage = parseTerminalTokenUsage(normalizedTranscript);
   const trace = buildTerminalActorTrace({
     persona,
@@ -158,7 +158,7 @@ async function settleLiveLedgers(
   );
 
   // Fail-closed caps enforcement: if a known spend line exceeds maxUsd (or a
-  // known job count exceeds maxJobs), the run fails closed — never a green result. Unknowns (null)
+  // known job count exceeds maxJobs), the run fails closed with no green result. Unknowns (null)
   // never trip the cap (we cannot claim a violation we did not measure) but never grant a pass
   // either (the no-spend proof reports them as unmeasured). maxMinutes is already wall-clock-
   // enforced above. A blown cap is an execution failure: the agent's own status stays the

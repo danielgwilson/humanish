@@ -35,6 +35,12 @@ if (outcome.route === "computer-use") {
 lists which routes accept each one and the refusals for the rest. `routeOf(config)` returns the
 route a config takes, and `LabResult<route>` is that route's result type.
 
+`onStream` receives each participant's `participantId`, `recordId` (the id of its entry in
+`run.json` `simulations[]`, such as `sim-001`) and `streamId`, and on `ready` its `sandboxId` and
+`url`. The older `simId` holds the same value as `recordId` and is removed in the next minor. The
+first time a callback reads it, it prints a `DeprecationWarning` with code
+`HUMANISH_STREAM_EVENT_FIELD_DEPRECATED`.
+
 ## Read a run
 
 ```ts
