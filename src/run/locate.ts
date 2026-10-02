@@ -19,12 +19,15 @@ import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
 import { isNodeError } from "./type-guards.js";
 
+/** The run input that resolves through latest.json rather than naming a run directory. */
+export const LATEST_RUN_ALIAS = "latest";
+
 /** Resolve "latest" or an explicit run id to its prepared artifact paths. */
 export async function resolveRunPath(
   cwd: string,
   runInput: string,
 ): Promise<PreparedRunArtifactPaths | null> {
-  if (runInput === "latest") {
+  if (runInput === LATEST_RUN_ALIAS) {
     const runsRoot = await bindExistingManagedHumanishOutputDirectory(cwd, "runs");
     if (!runsRoot) {
       return null;

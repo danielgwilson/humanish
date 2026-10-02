@@ -42,6 +42,10 @@ export async function runNotFinishedWarnings(
     seen.push(
       `${RUN_STATUS_FILE} state is ${record.state} and its owner updated it at ${record.updatedAt}, so the run may still be writing`,
     );
+  } else if (record.state === "interrupted") {
+    seen.push(
+      `${RUN_STATUS_FILE} state is interrupted${record.signal === undefined ? "" : ` by ${record.signal}`} at ${record.updatedAt}`,
+    );
   } else {
     seen.push(
       `${RUN_STATUS_FILE} state is ${record.state} and its owner stopped updating it at ${record.updatedAt}`,

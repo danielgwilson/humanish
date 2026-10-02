@@ -40,7 +40,11 @@ export interface RunLabProvenance {
   origin?: "committed" | "ignored" | "explicit";
 }
 
-type RunStatusState = "running" | "finished";
+type RunStatusState = "running" | "finished" | "interrupted";
+
+/** The signals the CLI's run handler records when it stops a run. */
+export type RunInterruptSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
+const RUN_INTERRUPT_SIGNALS: readonly string[] = ["SIGINT", "SIGTERM", "SIGHUP"];
 
 /** The outcome summary a finalized record carries. Derived from the bundle; never authoritative. */
 interface RunStatusOutcome {
@@ -95,6 +99,8 @@ export interface RunStatusRecord {
   /** Refreshed on a fixed cadence while the run is alive; the staleness signal. */
   updatedAt: string;
   completedAt?: string;
+  /** The signal that stopped the run, on an `interrupted` record. */
+  signal?: RunInterruptSignal;
   outcome?: RunStatusOutcome;
 }
 
@@ -110,12 +116,17 @@ export interface RunStatusHandle {
   /** After finish, add the result's ok and execution outcome to the finished record, so status.json
    *  and the result agree. Before finish it does nothing. */
   settle(result: { ok: boolean; execution: ExecutionOutcome }): Promise<void>;
+  /** The process is being stopped by `signal`: state `interrupted`, `completedAt` and the signal.
+   *  It stops the cadence and makes a later finish or settle a no-op, so the route cannot write
+   *  `running` or `finished` over it. When the run had finished it writes nothing, waits for the
+   *  writes already queued and resolves false. */
+  interrupt(signal: RunInterruptSignal): Promise<boolean>;
 }
 
 export interface BeginRunStatusOptions {
   runId: string;
   mode: "dry-run" | "live";
-  lab?: RunLabProvenance;
+  lab?: RunLabProvenance | undefined;
 }
 
 /**
@@ -206,11 +217,25 @@ export function beginRunStatus(
       };
       await write(finishedRecord);
     },
+    async interrupt(signal) {
+      // A finish that has not landed yet is in the chain: wait for it so the process does not
+      // exit with `running` on disk.
+      if (finished) {
+        await writing;
+        return false;
+      }
+      finished = true;
+      clearInterval(timer);
+      const completedAt = iso();
+      await write({ ...base, state: "interrupted", updatedAt: completedAt, completedAt, signal });
+      return true;
+    },
   };
   return handle;
 }
 
-/** The three ways a run reads from disk. `interrupted` is a `running` record gone stale. */
+/** The three ways a run reads from disk. `interrupted` is a record its stopped process wrote, or a
+ *  `running` record gone stale. */
 export type RunLiveness = "running" | "interrupted" | "finished";
 
 /**
@@ -223,6 +248,7 @@ export function classifyRunStatus(
   staleMs: number = RUN_STATUS_STALE_MS,
 ): RunLiveness {
   if (record.state === "finished") return "finished";
+  if (record.state === "interrupted") return "interrupted";
   const updated = Date.parse(record.updatedAt);
   if (!Number.isFinite(updated)) return "interrupted";
   return nowMs - updated <= staleMs ? "running" : "interrupted";
@@ -234,7 +260,13 @@ export function isRunStatusRecord(value: unknown): value is RunStatusRecord {
   const record = value as Record<string, unknown>;
   if (record.schema !== RUN_STATUS_SCHEMA) return false;
   if (typeof record.runId !== "string" || record.runId === "") return false;
-  if (record.state !== "running" && record.state !== "finished") return false;
+  if (record.state !== "running" && record.state !== "finished" && record.state !== "interrupted")
+    return false;
+  if (
+    record.signal !== undefined &&
+    (typeof record.signal !== "string" || !RUN_INTERRUPT_SIGNALS.includes(record.signal))
+  )
+    return false;
   if (record.mode !== "dry-run" && record.mode !== "live") return false;
   if (typeof record.pid !== "number") return false;
   if (typeof record.startedAt !== "string" || typeof record.updatedAt !== "string") return false;
