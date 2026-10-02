@@ -60,7 +60,7 @@ TCP forward grants access to the selected loopback app port, preserving the
 original URL, HTTPS and WebSocket byte streams without an HTTP parser.
 
 The existing guest browser control interface implements `DesktopSession`.
-`CuaDesktopLane` plugs it into the existing scheduler, participant loop and
+`ParticipantDesktop` plugs it into the existing scheduler, participant loop and
 recording pipeline. Each Codex request retains its own process, home and thread.
 The guest exits on controller disconnect; Firecracker's reboot path exits the
 VMM, and Docker removes the container and its anonymous state volume. Abrupt
