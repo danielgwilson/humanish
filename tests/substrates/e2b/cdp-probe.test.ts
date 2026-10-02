@@ -158,6 +158,29 @@ describe("chrome-cdp-probe: port resolution under the real python3", () => {
   );
 });
 
+/** Signal a process group; a group that is already gone is not an error. */
+function signalGroup(group: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(-group, signal);
+  } catch {
+    // ESRCH: nothing left in the group.
+  }
+}
+
+/** True once no process is left in the group, false if one still is after `timeoutMs`. */
+async function groupGone(group: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      process.kill(-group, 0);
+    } catch {
+      return true;
+    }
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 describe("chrome-cdp-probe: against a real headless Chrome", () => {
   let server: Server | undefined;
   let pageUrl = "";
@@ -182,6 +205,8 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
     pageUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/index.html`;
     profileDir = await mkdtemp(path.join(tmpdir(), "humanish-cdp-chrome-"));
+    // Detached, so Chrome leads its own process group: its zygote, GPU, network and renderer
+    // helpers join that group, and afterAll can signal and wait for all of them at once.
     browser = spawn(
       chrome,
       [
@@ -193,8 +218,14 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         `--user-data-dir=${profileDir}`,
         pageUrl,
       ],
-      { stdio: "ignore" },
+      { stdio: "ignore", detached: true },
     );
+    // A worker that exits without afterAll must not leave a detached Chrome running.
+    const group = browser.pid;
+    if (group !== undefined)
+      process.once("exit", () => {
+        signalGroup(group, "SIGKILL");
+      });
     // Same seam the sandbox uses: the marker file appears once DevTools is listening.
     const markerPath = path.join(profileDir, "DevToolsActivePort");
     for (let attempt = 0; attempt < 240; attempt += 1) {
@@ -228,20 +259,23 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   }, 120_000);
 
   afterAll(async () => {
-    if (browser !== undefined && browser.exitCode === null) {
-      // Let Chrome shut its helpers down before the profile dir goes; a SIGKILL followed by an
-      // immediate rm raced Chrome's own writers (ENOTEMPTY on Default/) in the full suite.
-      const exited = new Promise<void>((resolve) => browser!.once("exit", () => resolve()));
-      browser.kill("SIGTERM");
-      await Promise.race([exited, new Promise<void>((resolve) => setTimeout(resolve, 3_000))]);
-      if (browser.exitCode === null) {
-        browser.kill("SIGKILL");
-        await Promise.race([exited, new Promise<void>((resolve) => setTimeout(resolve, 2_000))]);
+    // Chrome's helpers outlive its main process, and one still running can write into the profile
+    // dir after rm. Stop the whole group and wait until it is empty before removing anything.
+    const group = browser?.pid;
+    if (group !== undefined) {
+      signalGroup(group, "SIGTERM");
+      if (!(await groupGone(group, 5_000))) {
+        signalGroup(group, "SIGKILL");
+        await groupGone(group, 3_000);
       }
     }
     await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()));
-    if (profileDir)
+    if (profileDir) {
       await rm(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      // A writer the group wait missed recreates the dir; look once more and remove it again.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await rm(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    }
   }, 20_000);
 
   const live = python3 && chrome !== undefined;
