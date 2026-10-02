@@ -274,17 +274,17 @@ export async function readRunIndex(
     if (statusKey !== null) {
       const cached = cache?.get(runId, statusKey);
       if (cached !== undefined) {
-        // Liveness is time-dependent, so it is recomputed even on a cache hit — a record that has
-        // not changed can still have gone stale since the last read.
+        // A running record's liveness is time-dependent, so it is recomputed even on a cache hit:
+        // an unchanged record can still have gone stale. An ended record (finished or
+        // interrupted, both with completedAt) keeps the liveness it was cached with.
         runs.push(
-          cached.derivedFrom === "status" && cached.updatedAt !== undefined
+          cached.derivedFrom === "status" &&
+            cached.updatedAt !== undefined &&
+            cached.completedAt === undefined
             ? {
                 ...cached,
                 liveness: classifyRunStatus(
-                  {
-                    state: cached.completedAt === undefined ? "running" : "finished",
-                    updatedAt: cached.updatedAt,
-                  },
+                  { state: "running", updatedAt: cached.updatedAt },
                   nowMs,
                 ),
               }

@@ -14,7 +14,7 @@ import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { defaultSharedWorldPhaseSink, defaultSubjectPhaseSink } from "../subject/steps.js";
-import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
+import { browserRouteScorer, type AdapterScorerModule } from "./adapter-scorer-loader.js";
 import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
@@ -55,7 +55,11 @@ type StreamEvent =
 export interface RunLabHomes {
   /** Keys and subject env for the run. Defaults to process.env. */
   env?: Readonly<Record<string, string | undefined>>;
-  /** Scores the assembled evidence: computer use, shared world and terminal. */
+  /**
+   * Scores the assembled evidence: computer use, shared world and terminal. A scorer written for
+   * one context passes through `browserScorer` or `terminalScorer`; one that narrows `ctx` at
+   * runtime passes as it is.
+   */
   scorer?: AdapterScorerModule;
   /** E2B only. Runs after the sandbox exists and before provisioning, once per target. */
   prepareDesktop?: (desktop: E2BDesktopSandbox, target: SetupTarget) => Promise<void>;
@@ -305,8 +309,9 @@ function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T
 }
 
 export function scorerHooks(
-  scorer: AdapterScorerModule,
+  runLabScorer: AdapterScorerModule,
 ): Pick<CuaActorLabHooks, "score" | "deriveFeedback" | "deriveArtifacts"> {
+  const scorer = browserRouteScorer(runLabScorer);
   return {
     ...(scorer.score === undefined ? {} : { score: scorer.score }),
     ...(scorer.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),

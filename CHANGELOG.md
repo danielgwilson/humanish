@@ -30,13 +30,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- The first SIGINT, SIGTERM or SIGHUP to `humanish run`, `lab run` or `watch` during a live run
+  (outside post-run analysis) writes `status.json` `state: "interrupted"` with the signal (#1354).
+  It then kills the E2B sandboxes the run's create-time receipts name, records them in
+  `reclaim-receipt.json` as `humanish reclaim` does, closes a watch's Observer server and tunnel,
+  and exits 128+n, all within 10 s. A second signal exits at once. The TUI's Stop shows the run as
+  interrupted at once instead of after the stale window. Before, the process exited at once, its
+  record read `running` until stale, and its sandboxes waited for `humanish reclaim` or their
+  timeout. An older humanish reading the new state falls back to bundle liveness.
+- `AdapterScorerModule<C>` takes the context its functions read as a type parameter, defaulting to
+  the union of the browser and terminal contexts (#1357). `browserScorer` and `terminalScorer`
+  pass a scorer written for one context as `RunLabOptions.scorer` without a cast (#1360): a
+  scorer whose functions took `BrowserLabScoringContext` or `TerminalProductScoringContext` did
+  not typecheck as `scorer` before. Inline scorers keep their contextual types.
 - A local-browser lab (an app-url subject with `execution.target: local`) that has no local
   desktop now reports any planning refusal before `HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING`: an
   invalid roster, a count above the cap, in-process fan-out, or `subject.topology: shared-world`.
   The count cap reads committed personas, so a malformed persona file can now throw first. runLab
   always gives such a lab its local desktop, so only a library caller using `inProcess` sees the
   change. The desktop check moved from planning to admission, so a local-browser lab can be planned
-  without one.
+  without one (#1359).
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
   `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
   (#1336).

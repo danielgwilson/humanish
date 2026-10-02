@@ -1,10 +1,11 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { RunIndexCache, readRunIndex } from "../../src/run/run-index.js";
+import { RUN_STATUS_SCHEMA } from "../../src/run/status.js";
 import { writeFixtureRun, writeFixtureRuns } from "../helpers/run-fixtures.js";
 
 const NOW = Date.parse("2026-08-19T10:05:00.000Z");
@@ -151,6 +152,31 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
     // now read as interrupted — liveness is time-dependent and is recomputed on every read.
     const later = await readRunIndex(cwd, { cache, nowMs: NOW + 600_000 });
     expect(later.runs[0]?.liveness).toBe("interrupted");
+  });
+
+  it("the cache keeps an interrupted record interrupted", async () => {
+    const runDir = path.join(cwd, ".humanish", "runs", "r-stopped");
+    await mkdir(runDir, { recursive: true });
+    const at = new Date(NOW - 1_000).toISOString();
+    await writeFile(
+      path.join(runDir, "status.json"),
+      JSON.stringify({
+        schema: RUN_STATUS_SCHEMA,
+        runId: "r-stopped",
+        state: "interrupted",
+        signal: "SIGTERM",
+        mode: "live",
+        pid: 4242,
+        startedAt: new Date(NOW - 60_000).toISOString(),
+        updatedAt: at,
+        completedAt: at,
+      }),
+    );
+    const cache = new RunIndexCache();
+    for (let read = 0; read < 2; read += 1) {
+      const index = await readRunIndex(cwd, { cache, nowMs: NOW });
+      expect(index.runs[0]?.liveness).toBe("interrupted");
+    }
   });
 
   it("the cache drops runs that no longer exist", async () => {

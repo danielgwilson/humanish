@@ -232,7 +232,7 @@ async function withLocalRunStatus(
     if (timestampsValid) {
       if (record.state === "finished") {
         state = "finished";
-      } else if (now - updated <= RUN_STATUS_STALE_MS) {
+      } else if (record.state === "running" && now - updated <= RUN_STATUS_STALE_MS) {
         state = "running";
       }
     }

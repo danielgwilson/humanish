@@ -1086,7 +1086,8 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 `humanish.run-status.v1` is `status.json`, written inside each run directory by
 every backend at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
-finished, mode, lab?, pid, startedAt, updatedAt, completedAt?, outcome? }`.
+finished | interrupted, mode, lab?, pid, startedAt, updatedAt, completedAt?,
+signal?, outcome? }`.
 `outcome` carries the bundle's `verdict`, `participants` and `estimatedCostUsd`
 when the run finishes, then the result's `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` once the Observer has rendered. The
@@ -1098,6 +1099,16 @@ same shape, holds the failures the policy lets warn and is omitted when empty:
 on computer-use, shared-world and scripted runs, a `sandbox-cleanup` entry for
 each sandbox whose release was not confirmed, with the participant (or
 `subject`), the release warning and the `humanish reclaim --run <id>` command.
+
+`interrupted` with `signal` (`SIGINT`, `SIGTERM` or `SIGHUP`) is written by
+the CLI's run command when that signal stops a live run outside post-run
+analysis. It then kills the E2B sandboxes the run's `sandbox-receipts.ndjson`
+names, writes `reclaim-receipt.json` as `humanish reclaim` does, and exits
+128+n. The bundle is not finished: run.json keeps its last live flush, and no
+`outcome` is written. A `running` record that stopped refreshing still reads as
+interrupted once stale. A library caller of `runLab` gets no signal handling. A
+humanish older than this field rejects the state and falls back to the bundle's
+own liveness.
 
 It answers two questions the filesystem could not answer before: **which lab**
 a run belongs to, and **whether it is still alive**, including for runs an
@@ -1397,7 +1408,7 @@ refusal comes back in the route's own result envelope, with no run directory, re
 | Option                                   | What it does                                                                                                                                                                                                                                       | Routes                                                                                                                                                                  |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `env`                                    | Keys and subject env for the run. Defaults to `process.env`                                                                                                                                                                                        | all                                                                                                                                                                     |
-| `scorer`                                 | An `AdapterScorerModule` (`score`, `deriveFeedback`, and `deriveArtifacts` on browser routes) over the finished evidence                                                                                                                           | computer use, shared world, terminal                                                                                                                                    |
+| `scorer`                                 | An `AdapterScorerModule` (`score`, `deriveFeedback`, and `deriveArtifacts` on browser routes) over the finished evidence. A scorer written for one context passes through `browserScorer` or `terminalScorer`                                      | computer use, shared world, terminal                                                                                                                                    |
 | `createProvider(ctx)`                    | The participant's brain. `ctx` is `ProviderContext`: `config`, `participant { id, index, count }` and `executor`                                                                                                                                   | computer use: E2B, local VM or in process                                                                                                                               |
 | `inProcess.executor({ config, appUrl })` | Drives an `app-url` or `local-app` subject in process, one participant. Requires `createProvider`                                                                                                                                                  | computer use                                                                                                                                                            |
 | `prepareDesktop(desktop, target)`        | Runs on an E2B sandbox before provisioning. `target` is `{ kind: "subject" }` or `{ kind: "participant", participant }`                                                                                                                            | computer use on E2B (each participant); shared world (provisioned: the subject, then each participant; external-public: each participant); scripted clone (the subject) |

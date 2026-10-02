@@ -153,14 +153,14 @@ export function createTuiObserverSession(
  * has children: the CLI, and whatever it spawned to reach the sandbox. Signalling only the parent
  * leaves those orphaned and still working.
  *
- * SIGTERM, never SIGKILL, so the run's children can close what they hold. The run itself has no
- * signal handler outside post-run analysis: it exits at once, its `running` record stops refreshing
- * and reads as interrupted once stale, and run.json keeps its last live flush. A local VM's
- * container exits when the run's process goes.
+ * SIGTERM, never SIGKILL, so the run's handler gets to act. Outside post-run analysis the run
+ * command (src/cli/commands/run-signals.ts) marks the run `interrupted` in status.json, kills the
+ * E2B sandboxes its receipts name, writes reclaim-receipt.json and exits; run.json keeps its last
+ * live flush. During analysis the signal cancels analysis instead. A local VM's container exits
+ * when the run's process goes.
  *
- * This stops the PROCESS. Each E2B sandbox it created is in sandbox-receipts.ndjson, and `Reclaim`
- * kills those by id; the run screen offers it as soon as this succeeds. Each sandbox's create-time
- * timeout is the backstop.
+ * `Reclaim` stays on offer: it retries by id any kill the handler could not confirm within its
+ * 10 s deadline. Each sandbox's create-time timeout is the backstop.
  */
 export async function stopRun(
   cwd: string,
@@ -217,6 +217,13 @@ export async function stopRun(
       };
     return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run already finished" };
   }
+  if (record.state === "interrupted") {
+    return {
+      schema: TUI_ACTION_SCHEMA,
+      ok: false,
+      message: `this run already stopped (${record.signal ?? "interrupted"}); Reclaim releases any sandbox it left`,
+    };
+  }
 
   const pid = record.pid;
   if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 1) {
@@ -254,6 +261,6 @@ export async function stopRun(
     schema: TUI_ACTION_SCHEMA,
     ok: true,
     message:
-      "asked the run to stop — its sandboxes are separate, so Reclaim them once it reports interrupted",
+      "asked the run to stop; it marks itself interrupted and kills its E2B sandboxes, and Reclaim retries any kill it could not confirm",
   };
 }

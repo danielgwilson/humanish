@@ -28,6 +28,7 @@ import {
   writeResult,
 } from "../io.js";
 import { watchExposeRequested } from "../observer-follow.js";
+import { beginRunSignalPhase } from "./run-signals.js";
 import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 
 export async function runLabCommand(args: {
@@ -113,42 +114,55 @@ export async function runLabCommand(args: {
   const run = routeRunFor(route, { ...args, config, labProvenance: lab });
   if (run === undefined) return;
 
-  // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any spend,
-  // and only for a plan that will run. A declared gate that cannot load (bad ref, not found, load
-  // failure, no hooks, unsupported route) aborts with exit 2 rather than green-passing.
-  await runRoute(config, run, async () => {
-    const scorerLoad = await maybeLoadAdapterScorer({
-      cwd: args.options.cwd,
+  // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
+  const signals = beginRunSignalPhase(args.io);
+  try {
+    // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any
+    // spend, and only for a plan that will run. A declared gate that cannot load (bad ref, not
+    // found, load failure, no hooks, unsupported route) aborts with exit 2 rather than green-passing.
+    await runRoute(
       config,
-      route,
-      flag: args.options.scorer,
-    });
-    if (!scorerLoad.ok) {
-      const result: RunResult = {
-        schema: "humanish.run-result.v1",
-        ok: false,
-        cwd: resolve(args.options.cwd),
-        warnings: [],
-        error: scorerLoad.error,
-      };
-      writeResult(args.command, args.io, result, formatRunHuman);
-      args.io.setExitCode(2);
-      return undefined;
-    }
-    const scorer = scorerLoad.scorer;
-    if (scorer) {
-      // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest.
-      // Surface it so the invoker (who may not be the manifest author) knows executable code ran.
-      args.io.writeErr(
-        `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`,
-      );
-    }
-    const analysisBudget = automaticAnalysisBudget(config.review?.analysis, route);
-    if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
-      args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
-    }
-    return scorer === undefined ? {} : { scorer };
-  });
+      run,
+      async () => {
+        const scorerLoad = await maybeLoadAdapterScorer({
+          cwd: args.options.cwd,
+          config,
+          route,
+          flag: args.options.scorer,
+        });
+        if (!scorerLoad.ok) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: resolve(args.options.cwd),
+            warnings: [],
+            error: scorerLoad.error,
+          };
+          writeResult(args.command, args.io, result, formatRunHuman);
+          args.io.setExitCode(2);
+          return undefined;
+        }
+        const scorer = scorerLoad.scorer;
+        if (scorer) {
+          // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest.
+          // Surface it so the invoker (who may not be the manifest author) knows executable code ran.
+          args.io.writeErr(
+            `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`,
+          );
+        }
+        const analysisBudget = automaticAnalysisBudget(config.review?.analysis, route);
+        if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
+          args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
+        }
+        return scorer === undefined ? {} : { scorer };
+      },
+      // The run is over before presentation, which may own shutdown itself (watch's Observer).
+      // A shutdown already begun keeps its handlers and finishes through its cleanups.
+      signals.release,
+    );
+  } finally {
+    signals.release();
+  }
 }
 
 /** The route's CLI setup. Undefined when the setup has already written its own result. */
