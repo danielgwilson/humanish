@@ -55,7 +55,7 @@ const signedIn = (version: string) =>
 describe("a local-agent participant's CLI at preflight", () => {
   it("is refused as AGENT_MISSING when the CLI is not on `PATH`", async () => {
     const refusal = await rejection(await pathWithCodex(undefined));
-    expect(refusal?.code).toBe("HUMANISH_CUA_LAB_AGENT_MISSING");
+    expect(refusal?.code).toBe("HUMANISH_COMPUTER_USE_AGENT_MISSING");
     expect(refusal?.message).toContain("needs the codex CLI on PATH and signed in");
   });
 
@@ -68,13 +68,13 @@ describe("a local-agent participant's CLI at preflight", () => {
     ],
   ])("is refused as AGENT_SIGNIN_REQUIRED when the CLI %s", async (_name, script, message) => {
     const refusal = await rejection(await pathWithCodex(script));
-    expect(refusal?.code).toBe("HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED");
+    expect(refusal?.code).toBe("HUMANISH_COMPUTER_USE_AGENT_SIGNIN_REQUIRED");
     expect(refusal?.message).toContain(message);
   });
 
   it("is refused as ACTOR_UNSUPPORTED when the CLI is a release below the floor", async () => {
     const refusal = await rejection(await pathWithCodex(signedIn("0.0.1")));
-    expect(refusal?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
+    expect(refusal?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
   });
 
   const qualified = defaultCodexCliVersion();
@@ -82,7 +82,7 @@ describe("a local-agent participant's CLI at preflight", () => {
     "is refused as UNPRICED_CAP when a ChatGPT-account Codex has a dollar cap",
     async () => {
       const refusal = await rejection(await pathWithCodex(signedIn(qualified!)), { maxUsd: 1 });
-      expect(refusal?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+      expect(refusal?.code).toBe("HUMANISH_COMPUTER_USE_UNPRICED_CAP");
       expect(refusal?.message).toContain("no API-dollar price");
     },
   );

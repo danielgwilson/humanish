@@ -356,8 +356,7 @@ function formatDoctorHuman(result: DoctorResult): string {
       // fresh desktop got `- missing package.json: package.json is present and safe to read`, which
       // contradicts itself in eleven words (labs/tui-self-study.yaml).
       ...result.checks.map(
-        (check) =>
-          `- ${check.ok ? "ok" : check.checked === false ? "not checked" : "missing"} ${check.name}: ${check.message}`,
+        (check) => `- ${check.status.replace("_", " ")} ${check.name}: ${check.message}`,
       ),
     ].join("\n") + "\n"
   );

@@ -29,5 +29,5 @@ Refusal precedes run storage, source preparation, user hooks, local processes,
 sandbox allocation, and model calls. No task content appears in the error.
 
 A future route gains support only after proving participant goals, hidden criteria,
-observation-backed completion, honest missing-input treatment, and per-participant
+observation-backed completion, explicit missing-input handling, and per-participant
 bundle evidence together. Appending goals to a prompt alone is insufficient.

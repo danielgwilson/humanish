@@ -65,7 +65,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
       runId: runId ?? args.options.runId ?? "not-created",
       roles: [],
       warnings: [],
-      error: { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message },
+      error: { code: "HUMANISH_SHARED_WORLD_FAILED", message },
     };
     writeResult(args.command, args.io, result, formatConcurrentSharedWorldLabHuman);
     args.io.setExitCode(2);

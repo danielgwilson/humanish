@@ -88,29 +88,29 @@ export type SharedWorldRunInput = Omit<
 >;
 
 export type ConcurrentSharedWorldLabErrorCode =
-  | "HUMANISH_LAB_ANALYSIS_INVALID"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-  | "HUMANISH_LAB_OPTION_UNSUPPORTED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
+  | "HUMANISH_STUDY_ANALYSIS_INVALID"
+  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
+  | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
+  | "HUMANISH_SHARED_WORLD_FAILED"
+  | "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED"
+  | "HUMANISH_SHARED_WORLD_INVALID"
+  | "HUMANISH_SHARED_WORLD_KEYS_MISSING"
   /** A local-agent brain's CLI is not on `PATH`. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING"
+  | "HUMANISH_SHARED_WORLD_AGENT_MISSING"
   /** A local-agent brain's CLI is signed out, or could not report its sign-in status. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
+  | "HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED"
   /** A dollar cap that cannot be priced: an unpriced model, or a ChatGPT-account Codex brain. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
+  | "HUMANISH_SHARED_WORLD_UNPRICED_CAP"
+  | "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING"
+  | "HUMANISH_SHARED_WORLD_GETHOST_UNAVAILABLE"
+  | "HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT"
   | "HUMANISH_RUN_ID_IN_USE"
   /** A declared adopter-hosted comms catch did not answer as a humanish catch. Fail closed
    *  before any actor spend, since the funnel would silently collect nothing. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE"
+  | "HUMANISH_SHARED_WORLD_COMMS_CATCH_UNREACHABLE"
   /** comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
    *  well-formed Unicode (src/comms/external-evidence.ts). Refused before the catch is probed. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID";
+  | "HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID";
 
 /** The two plane classes of the concurrent shared-world route. */
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";

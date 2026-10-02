@@ -16,7 +16,7 @@ rootful Docker Engine, KVM (`/dev/kvm`) and TUN (`/dev/net/tun`). Macs need an
 M3-or-newer chip, native ARM64 Node, Lima 2.2+ (`brew install lima`) and a macOS
 version supporting nested virtualization; see [Mac setup](#apple-silicon-macs).
 Docker Desktop is unnecessary. See
-[Codex account setup](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md) for the qualified version
+[Codex account setup](repo:docs/architecture/restricted-codex-analysis.md) for the qualified version
 and account restrictions. Docker access is an administrative capability.
 humanish does not install Docker on Linux or change host permissions. On Mac,
 setup installs Docker only inside the dedicated Lima host.
@@ -137,7 +137,7 @@ not download those archives. Updating a runtime requires a reviewed catalog
 change and a new CLI release.
 
 Source builders can use the
-[maintained recipes](https://github.com/danielgwilson/humanish/blob/main/runtime/local-firecracker/README.md) and set
+[maintained recipes](repo:runtime/local-firecracker/README.md) and set
 `HUMANISH_LOCAL_RUNTIME_IMAGE` to an already-built compatible local image. An
 invalid override fails; it does not cause an implicit registry pull.
 

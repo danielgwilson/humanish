@@ -22,7 +22,7 @@ import { isLocalBrowserLab } from "../../src/substrates/local/runtime-config.js"
 // `execution.timeoutMs: 1800000`, which the computer-use route rejects before it starts, because a
 // 30-minute session plus 40 minutes of provisioning headroom exceeds the 60-minute sandbox ceiling.
 // So a brand-new user who ran `humanish init` and then tried the flagship lab got
-// HUMANISH_CUA_LAB_SUBJECT_INVALID: in dry-run, at zero spend, but as a dead first impression.
+// HUMANISH_COMPUTER_USE_SUBJECT_INVALID: in dry-run, at zero spend, but as a dead first impression.
 //
 // Structural tests could not have caught it: the manifest parses fine and routes fine. The
 // contradiction only exists between the template and a backend's runtime budget check, so the only
@@ -76,7 +76,7 @@ describe("every lab `humanish init` writes is runnable", () => {
 });
 
 // Dry runs skip live admission, which is where a ChatGPT-account participant refuses a dollar cap
-// (HUMANISH_CUA_LAB_UNPRICED_CAP). So each starter set also runs the live admission for the actor
+// (HUMANISH_COMPUTER_USE_UNPRICED_CAP). So each starter set also runs the live admission for the actor
 // its computer-use labs declare, stopping at the first desktop request.
 describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter set", (actor) => {
   let cwd: string;

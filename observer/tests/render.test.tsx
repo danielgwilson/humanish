@@ -148,7 +148,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
     window.localStorage.removeItem("humanish-sidebar");
     await mount(<App data={data} />);
     expect(container.querySelector(".side")).not.toBeNull();
-    const toggle = container.querySelector('[aria-label="Toggle run library"]') as Element;
+    const toggle = container.querySelector('[aria-label="Toggle study library"]') as Element;
     await click(toggle);
     expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
     expect(window.localStorage.getItem("humanish-sidebar")).toBe("closed");
@@ -168,7 +168,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
     })) as unknown as typeof window.matchMedia;
     try {
       await mount(<App data={data} />);
-      const toggle = container.querySelector('[aria-label="Toggle run library"]') as Element;
+      const toggle = container.querySelector('[aria-label="Toggle study library"]') as Element;
       await click(toggle);
       const pop = document.querySelector(".drawer-pop");
       expect(pop).not.toBeNull();
@@ -772,13 +772,13 @@ describe("study shell continuity", () => {
     await mount(<App data={data} report={emptyReport} snapshot />);
     await click(container.querySelector(".study-views a:last-child")!);
     expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
-    await click(container.querySelector('[aria-label="Toggle run library"]')!);
+    await click(container.querySelector('[aria-label="Toggle study library"]')!);
     expect(localStorage.getItem("humanish-sidebar")).toBe("open");
     expect(container.querySelector(".side")).not.toBeNull();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     await click(container.querySelector(".study-views a:first-child")!);
     expect(container.querySelector(".side")).not.toBeNull();
-    await click(container.querySelector('[aria-label="Toggle run library"]')!);
+    await click(container.querySelector('[aria-label="Toggle study library"]')!);
     await click(container.querySelector(".study-views a:last-child")!);
     expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
     expect(localStorage.getItem("humanish-sidebar")).toBe("closed");

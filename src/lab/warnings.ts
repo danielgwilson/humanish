@@ -363,9 +363,11 @@ function rowLabel(row: InertRow<never>, prefix = ""): string {
     : `${prefix}${row.field} (${row.reason})`;
 }
 
-// Report fields that are present but not yet consumed by the engine, so a user never trusts a
-// setting that silently does nothing. Keeps the schema forward-correct and honest.
-export function forwardDeclaredWarnings(config: LabConfig): string[] {
+/**
+ * The fields a config sets that its route does not read, each as `field` or `field (reason)`. A v2
+ * file gets them as one warning; a v3 study is refused for any of them.
+ */
+export function inertFieldLabels(config: LabConfig): string[] {
   const routes = routesOf(config);
   const inert: string[] = [];
   for (const [index, actor] of config.actors.entries()) {
@@ -373,6 +375,14 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
       if (row.applies(actor, routes)) inert.push(rowLabel(row, `actors[${index}].`));
   }
   for (const row of CONFIG_ROWS) if (row.applies(config, routes)) inert.push(rowLabel(row));
+  return inert;
+}
+
+// Report fields that are present but not yet consumed by the engine, so a user never trusts a
+// setting that silently does nothing.
+export function forwardDeclaredWarnings(config: LabConfig): string[] {
+  const routes = routesOf(config);
+  const inert = inertFieldLabels(config);
   const warnings =
     inert.length === 0
       ? []

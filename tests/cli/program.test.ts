@@ -175,7 +175,7 @@ describe("humanish CLI scaffold", () => {
         expect(result.stderr).toBe("");
         const envelope = JSON.parse(result.stdout);
         expect(envelope.ok).toBe(false);
-        expect(envelope.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(envelope.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(envelope.error.message).toContain(
           `Unknown lab field(s) in \`actors[0].${field}[0]\`: runtme`,
         );
@@ -2041,7 +2041,10 @@ describe("CUA ending output", () => {
       ]);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("diagnostic: preview");
-      expect(result.stdout.match(/contract_proof_only · preview/g)).toHaveLength(2);
+      expect(result.stdout).toContain(
+        "humanish run preview: dry run finished\nroute: computer-use\n",
+      );
+      expect(result.stdout.match(/dry run, nothing ran live · preview/g)).toHaveLength(2);
       const verified = await runCli(["verify", "--run", "latest", "--cwd", cwd, "--json"]);
       expect(verified.exitCode).toBe(0);
       expect(JSON.parse(verified.stdout).ok).toBe(true);

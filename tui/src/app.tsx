@@ -316,7 +316,7 @@ export function App({
         return;
       }
       if (action === "reclaim") {
-        setActionNote("reclaiming — stopping sandboxes, keeping evidence…");
+        setActionNote("reclaiming: stopping sandboxes, keeping evidence…");
         const result = await options.capabilities.reclaimRun(options.cwd, run.runId);
         setActionNote(
           result.ok
@@ -334,13 +334,13 @@ export function App({
             []);
       if (matching.length > 1) {
         setActionNote(
-          "multiple manifests share this lab id — choose the exact lab from the list to run again",
+          "multiple manifests share this study id; choose the exact one from the list to run again",
         );
         return;
       }
       const row = matching[0];
       if (row === undefined || !row.declared) {
-        setActionNote("cannot run this again — its lab has no manifest here any more");
+        setActionNote("cannot run this again: its study has no manifest here any more");
         return;
       }
       setActionNote(`starting ${row.name}…`);
@@ -682,7 +682,7 @@ export function App({
       breadcrumb={showConnections ? "‹ connections" : breadcrumbOf(screen, data)}
       hints={
         showConnections
-          ? "↑↓ move   ⏎ select   esc back   q quit"
+          ? "↑↓ move  ⏎ select  esc back  q quit"
           : showHelp
             ? "any key returns   q quit"
             : keyHints(screen, data, selected, confirming, projectState.initialized) +
@@ -749,19 +749,19 @@ function keyHints(
     case "labs":
       // Nothing to move through or open on an empty screen, and a legend that lists inert keys
       // teaches the wrong model of the surface.
-      if ((data?.rows.length ?? 0) > 0) return `${move}   ⏎ open   ? keys   q quit`;
+      if ((data?.rows.length ?? 0) > 0) return `${move}  ⏎ open  ? keys  q quit`;
       // An empty screen with ONE action still has that action; a legend that omits it makes the
       // row look decorative.
-      return initialized === false ? "⏎ set up humanish here   ? keys   q quit" : "? keys   q quit";
+      return initialized === false ? "⏎ set up humanish here  ? keys  q quit" : "? keys  q quit";
     case "lab": {
-      if (confirming !== undefined) return "↵ confirm · esc cancel";
+      if (confirming !== undefined) return "⏎ confirm  esc cancel";
       const item =
         data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
-      const enter = item?.kind === "start" ? "⏎ start" : "⏎ open run";
-      return `${move}   ${enter}   esc back   ? keys   q quit`;
+      const enter = item?.kind === "start" ? "⏎ start" : "⏎ open";
+      return `${move}  ${enter}  esc back  ? keys  q quit`;
     }
     case "all-runs":
-      return `${move}   ⏎ open run   esc back   ? keys   q quit`;
+      return `${move}  ⏎ open  esc back  ? keys  q quit`;
     default: {
       // Only when the card actually has actions — an empty legend beats one promising a key that
       // does nothing on a run still in flight.
@@ -771,8 +771,8 @@ function keyHints(
           : data.runsById.get(screen.name === "run" ? screen.runId : "");
       const hasActions = run !== undefined && runActions(run, undefined).length > 0;
       return hasActions
-        ? `${move}   ⏎ select   esc back   ? keys   q quit`
-        : "esc back   ? keys   q quit";
+        ? `${move}  ⏎ select  esc back  ? keys  q quit`
+        : "esc back  ? keys  q quit";
     }
   }
 }

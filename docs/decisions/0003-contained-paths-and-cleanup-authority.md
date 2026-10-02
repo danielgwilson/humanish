@@ -1,6 +1,6 @@
 # 0003: Managed paths bind to physical identities; cleanup uses create-time receipts
 
-Accepted in 0.15.1 (#280), extended in 0.36.0 (`humanish reclaim`).
+Accepted in 0.15.1, extended in 0.36.0 (`humanish reclaim`).
 
 ## Context
 
@@ -32,4 +32,4 @@ Separately, an account-wide provider operation once destroyed unrelated infrastr
 - `src/run/paths.ts` and `src/run/contained-output.ts`, with `tests/run/path-containment.test.ts`.
 - `src/run/git-workspace.ts`, with `tests/run/git-state.test.ts`.
 - `src/run/reclaim.ts`, with `tests/run/reclaim.test.ts`.
-- Invariant 7 in [invariants and defaults](../principles/invariants-and-defaults.md).
+- Reclamation by exact created id, in [invariants and defaults](../principles/invariants-and-defaults.md).

@@ -55,7 +55,7 @@
       "Sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced."
     ],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN",
+      "code": "HUMANISH_TERMINAL_CLEANUP_UNPROVEN",
       "message": "Live terminal-product run could not prove sandbox teardown (killed=true, remaining=1): kill(id) returned true (found and killed) but getInfo(id) still reports state=running; this sandbox's teardown is not confirmed by id. A run that cannot prove teardown fails closed."
     },
     "automaticAnalysisTrigger": "default",

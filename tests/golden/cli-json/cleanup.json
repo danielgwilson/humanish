@@ -1,0 +1,25 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "adapterResults": [],
+    "bundlePath": "string",
+    "checkedAt": "string",
+    "cleanupPath": "string",
+    "cwd": "string",
+    "ok": "boolean",
+    "resources": [],
+    "run": "string",
+    "runId": "string",
+    "schema": "string",
+    "summary": {
+      "alreadyClean": "number",
+      "failed": "number",
+      "killed": "number",
+      "resources": "number",
+      "skipped": "number"
+    },
+    "warnings": [
+      "string"
+    ]
+  }
+}

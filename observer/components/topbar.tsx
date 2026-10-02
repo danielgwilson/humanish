@@ -27,7 +27,7 @@ export function Topbar({
         <Wordmark label="humanish Observer" />
         <IconButton
           className="side-toggle"
-          label="Toggle run library"
+          label="Toggle study library"
           hint="Study library"
           aria-expanded={sideOpen}
           onClick={onLibrary}

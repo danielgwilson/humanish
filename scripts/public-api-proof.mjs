@@ -6,8 +6,10 @@
 // tests/golden/public-api.json. This is an export-name guard: a change inside a named type is
 // caught only where the probe, an example or a consumer file in scripts/api-consumers/ uses it.
 // Last, it typechecks a probe importing every name, the examples and the consumer files, and runs
-// each example from the packed copy. Run after `pnpm build`.
-// `--update` rewrites the golden.
+// each example from the packed copy. It also compares the packed file paths outside `dist/` with
+// `tests/golden/package-files.json`, so a doc or folder joins or leaves the package only in a
+// reviewed diff. `dist/` is left out because it follows `src/`. Run after `pnpm build`.
+// `--update` rewrites both goldens.
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
@@ -29,6 +31,7 @@ import { parseSync } from "oxc-parser";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const goldenPath = join(root, "tests/golden/public-api.json");
+const filesGoldenPath = join(root, "tests/golden/package-files.json");
 const update = process.argv.includes("--update");
 const timings = {};
 
@@ -46,7 +49,8 @@ async function install(work) {
     ["pack", "--ignore-scripts", "--json", "--pack-destination", work],
     { cwd: root, encoding: "utf8" },
   );
-  const tarball = join(work, JSON.parse(packed)[0].filename);
+  const [pack] = JSON.parse(packed);
+  const tarball = join(work, pack.filename);
   const app = join(work, "app");
   const modules = join(app, "node_modules");
   await mkdir(modules, { recursive: true });
@@ -64,7 +68,11 @@ async function install(work) {
     await mkdir(dirname(to), { recursive: true });
     await symlink(await realpath(from), to, "dir");
   }
-  return app;
+  const files = pack.files
+    .map((file) => file.path)
+    .filter((path) => !path.startsWith("dist/"))
+    .sort();
+  return { app, files };
 }
 
 /** Copy each shipped example out of the installed package, as a user would run it. */
@@ -152,12 +160,12 @@ async function typecheck(app, names) {
   }
 }
 
-function difference(label, expected, actual) {
+function difference(label, expected, actual, verb = "exported") {
   const missing = expected.filter((name) => !actual.includes(name));
   const added = actual.filter((name) => !expected.includes(name));
   return [
-    ...missing.map((name) => `${label}: ${name} is no longer exported`),
-    ...added.map((name) => `${label}: ${name} is newly exported`),
+    ...missing.map((name) => `${label}: ${name} is no longer ${verb}`),
+    ...added.map((name) => `${label}: ${name} is newly ${verb}`),
   ];
 }
 
@@ -184,7 +192,7 @@ const env = {
   DO_NOT_TRACK: "1",
 };
 try {
-  const app = await timed("pack and install", () => install(work));
+  const { app, files } = await timed("pack and install", () => install(work));
   const examples = await copyExamples(app);
   const runtime = await timed("runtime exports", () => runtimeNames(app, env));
   const api = await timed("declared exports", () => declaredNames(app));
@@ -198,15 +206,18 @@ try {
   const current = { values: runtime, types: api.types };
   if (update) {
     await writeFile(goldenPath, `${JSON.stringify(current, null, 2)}\n`);
+    await writeFile(filesGoldenPath, `${JSON.stringify(files, null, 2)}\n`);
   } else {
     const golden = JSON.parse(await readFile(goldenPath, "utf8"));
     problems.push(...difference("values", golden.values, current.values));
     problems.push(...difference("types", golden.types, current.types));
+    const packedGolden = JSON.parse(await readFile(filesGoldenPath, "utf8"));
+    problems.push(...difference("packed files outside dist/", packedGolden, files, "packed"));
   }
   if (problems.length > 0) {
     process.stderr.write(`${problems.join("\n")}\n`);
     process.stderr.write(
-      "Public API differs from tests/golden/public-api.json. If intended, run `pnpm api:proof --update` and review the diff.\n",
+      "The package differs from tests/golden/public-api.json or tests/golden/package-files.json. If intended, run `pnpm api:proof --update` and review the diff.\n",
     );
     process.exitCode = 1;
   } else {

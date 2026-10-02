@@ -109,7 +109,7 @@ describe("lab preflight", () => {
 
         expect(result.ok).toBe(false);
         expect(created).toBe(0);
-        expect(result.error?.code).toBe("HUMANISH_LAB_PREFLIGHT_TARGET_POLICY");
+        expect(result.error?.code).toBe("HUMANISH_STUDY_PREFLIGHT_TARGET_POLICY");
         expect(result.targets.some((target) => target.status === "blocked")).toBe(true);
       },
     );
@@ -196,7 +196,7 @@ describe("lab preflight", () => {
         });
 
         expect(result.ok).toBe(false);
-        expect(result.error?.code).toBe("HUMANISH_LAB_INVALID");
+        expect(result.error?.code).toBe("HUMANISH_STUDY_INVALID");
         expect(result.sandbox.created).toBe(false);
       },
     );

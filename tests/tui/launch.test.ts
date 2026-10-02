@@ -164,7 +164,7 @@ describe("starting a run from the terminal surface", () => {
         cliPath: "/x/cli.js",
       });
       expect(result.ok).toBe(false);
-      expect(result.ok === false && result.error.code).toBe("HUMANISH_LAUNCH_INVALID_LAB");
+      expect(result.ok === false && result.error.code).toBe("HUMANISH_LAUNCH_INVALID_STUDY");
       // Nothing was spawned: the refusal happens before any process exists.
       expect(calls).toHaveLength(0);
     }

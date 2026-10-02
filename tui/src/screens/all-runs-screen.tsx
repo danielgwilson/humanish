@@ -47,8 +47,8 @@ export function AllRunsScreen({
   if (runs.length === 0) {
     return (
       <Box flexDirection="column">
-        <Text>nobody is working right now</Text>
-        <Text dimColor>start a run from any lab and it appears here</Text>
+        <Text>No one is working right now.</Text>
+        <Text dimColor>Start a run from any study and it appears here.</Text>
       </Box>
     );
   }
@@ -193,7 +193,7 @@ function spendLine(runs: readonly RunIndexEntry[], details: Map<string, RunDetai
       priced += 1;
     }
   }
-  if (priced === 0) return "no spend recorded yet — a live run prices itself as it goes";
+  if (priced === 0) return "no spend recorded yet; a live run prices itself as it goes";
   const unpriced = runs.length - priced;
   const tail = unpriced === 0 ? "" : ` · ${unpriced} not priced yet`;
   return `run spend ~$${total.toFixed(2)} across ${priced} of ${runs.length}${tail} · excludes analysis`;

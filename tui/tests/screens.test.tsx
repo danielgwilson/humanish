@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import React from "react";
@@ -208,14 +208,14 @@ describe("the labs screen, rendered", () => {
     });
     const rendered = await renderToText(<App options={empty} now={NOW} tick={0} />, {
       columns: 80,
-      until: (frame) => frame.includes("no labs"),
+      until: (frame) => frame.includes("No studies"),
     });
     rendered.unmount();
     const frame = normalizeFrame(rendered.last);
-    expect(frame).toContain("no labs here yet");
-    // The empty state says what a lab IS before telling you to run a command — someone seeing this
+    expect(frame).toContain("No studies here yet.");
+    // The empty state says what a study IS before telling you to run a command — someone seeing this
     // screen in their home directory has no idea what they are being asked to make.
-    expect(frame).toContain("a lab is a study");
+    expect(frame).toContain("A study file says");
     expect(frame).toContain("humanish init");
   });
 
@@ -308,10 +308,10 @@ describe("the two empty states are different problems", () => {
           message: "asked the run to stop",
         }),
       },
-      (candidate) => candidate.includes("no labs here yet"),
+      (candidate) => candidate.includes("No studies here yet."),
     );
-    expect(frame).toContain("no labs here yet");
-    expect(frame).toContain("a lab is a study");
+    expect(frame).toContain("No studies here yet.");
+    expect(frame).toContain("A study file says");
   });
 
   it("a directory that is not a project is told THAT first", async () => {
@@ -331,8 +331,8 @@ describe("the two empty states are different problems", () => {
       },
       (candidate) => candidate.includes("not a humanish project"),
     );
-    expect(frame).toContain("this directory is not a humanish project");
-    expect(frame).not.toContain("no labs here yet");
+    expect(frame).toContain("This directory is not a humanish project.");
+    expect(frame).not.toContain("No studies here yet.");
     // It now OFFERS to fix it rather than telling the reader to leave. "cd somewhere else and run
     // a command" was a dead end shown to exactly the person most likely to give up (#505), and the
     // row says what it will write before it writes it.
@@ -468,5 +468,24 @@ describe('the labs list says what a study IS (stakeholder feedback: "so i know w
     surface.unmount();
     expect(frame).toContain("no description in the manifest");
     expect(frame).not.toContain("▸ never-run-lab");
+  });
+});
+
+describe("the key legend", () => {
+  // A legend that wraps leaves a lone "quit" on the last line, which reads as a stray word.
+  it("fits on one line at the width of every golden", async () => {
+    const files = (await readdir(GOLDEN_DIR)).filter((file) => file.endsWith(".txt"));
+    expect(files.length).toBeGreaterThan(0);
+    const wrapped: string[] = [];
+    for (const file of files) {
+      const columns = Number(/-(\d+)\.txt$/.exec(file)?.[1]);
+      const lines = (await readFile(path.join(GOLDEN_DIR, file), "utf8"))
+        .replace(/\n$/, "")
+        .split("\n");
+      const legend = lines.at(-1) ?? "";
+      const oneLine = legend.endsWith("q quit") && lines.at(-2) === "";
+      if (!oneLine || [...legend].length > columns) wrapped.push(file);
+    }
+    expect(wrapped).toEqual([]);
   });
 });

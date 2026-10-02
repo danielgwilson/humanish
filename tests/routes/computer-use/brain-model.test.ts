@@ -256,7 +256,7 @@ describe("computer-use participant model, openai brain", () => {
       labConfig({ actor: OPENAI_ACTOR, model: "", maxUsd: 5 }),
     );
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_UNPRICED_CAP");
     expect(result.error?.message).toContain('no rate for model ""');
     expect(sessions).toHaveLength(0);
   });

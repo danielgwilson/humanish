@@ -73,9 +73,8 @@ export function startLiveTraceFlush(args: {
                   schema: "humanish.live-actor.v1" as const,
                   updatedAt,
                   // Who this participant is, carried while the run is live. Without it a
-                  // surface watching a live run can only name the participant id, and
-                  // `CUA browser — observer-live-check` is the harness talking about itself where
-                  // the participant should be.
+                  // surface watching a live run can only name the participant id and the stream
+                  // label (`<participant id> · browser`), which describe the harness, not the participant.
                   ...(personaByStream.get(stream.id) === undefined
                     ? {}
                     : { persona: { id: personaByStream.get(stream.id)! } }),

@@ -182,7 +182,7 @@ the following, on Linux x64:
    participant stays on ChatGPT-account billing.
 
 The drift check compares a candidate with a vendor release that has already been qualified. It
-can show that an honest new release does nothing new in those scenarios; it cannot show that a
+can show that a benign new release does nothing new in those scenarios; it cannot show that a
 binary built to evade it is safe. Pair that with the attestation limit above: the launcher
 admits by release string and does not pin the executable.
 
@@ -196,7 +196,7 @@ If any check fails, record what differs; a release that breaks humanish goes in
 ### The qualifier
 
 `pnpm codex:qualify` produces the drift evidence step 2 above requires. Its threat model:
-it detects an honest new vendor release that, in these scenarios, executes a program, connects
+it detects a benign new vendor release that, in these scenarios, executes a program, connects
 to a destination or writes a file the baseline release did not, and it fails closed when the
 harness cannot see (a failed trace, sampler read or parse). A binary built to evade it is out of
 scope. Named limits, none of which it inspects:

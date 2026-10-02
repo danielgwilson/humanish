@@ -44,7 +44,7 @@
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "error": {
-      "code": "HUMANISH_SCRIPTED_LAB_FAILED",
+      "code": "HUMANISH_SCRIPTED_FAILED",
       "message": "Scripted session ended with a harness error: Scripted browser launch failed: chromium executable missing"
     },
     "automaticAnalysisTrigger": "default",

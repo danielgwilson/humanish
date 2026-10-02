@@ -54,7 +54,7 @@ describe("shared-world email receiving setup failure", () => {
 
     expect(result).toMatchObject({
       ok: false,
-      error: { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID" },
+      error: { code: "HUMANISH_SHARED_WORLD_INVALID" },
     });
     expect(desktops).toBe(0);
     const runsRoot = path.join(cwd, ".humanish", "runs");
