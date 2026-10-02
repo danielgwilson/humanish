@@ -1,0 +1,110 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "costsByRun": [
+      {
+        "costs": {
+          "analysisAttempts": "number",
+          "analysisDispatchedAttempts": "number",
+          "analysisEstimatedUsd": "null",
+          "analysisHistoryUncertainRuns": "number",
+          "analysisNotDispatchedAttempts": "number",
+          "analysisUnpricedAttempts": "number",
+          "analysisUnresolvedAttempts": "number",
+          "estimatedTotalUsd": "null",
+          "incompleteRunEstimates": "number",
+          "runEstimatedUsd": "null"
+        },
+        "runId": "string",
+        "warnings": [
+          "string"
+        ]
+      }
+    ],
+    "cwd": "string",
+    "days": [
+      {
+        "costs": {
+          "analysisAttempts": "number",
+          "analysisDispatchedAttempts": "number",
+          "analysisEstimatedUsd": "null",
+          "analysisHistoryUncertainRuns": "number",
+          "analysisNotDispatchedAttempts": "number",
+          "analysisUnpricedAttempts": "number",
+          "analysisUnresolvedAttempts": "number",
+          "estimatedTotalUsd": "null",
+          "incompleteRunEstimates": "number",
+          "runEstimatedUsd": "null"
+        },
+        "day": "string",
+        "estimatedSpendUsd": "number",
+        "live": "number",
+        "runs": "number",
+        "unpricedRuns": "number"
+      }
+    ],
+    "labs": [
+      {
+        "costs": {
+          "analysisAttempts": "number",
+          "analysisDispatchedAttempts": "number",
+          "analysisEstimatedUsd": "null",
+          "analysisHistoryUncertainRuns": "number",
+          "analysisNotDispatchedAttempts": "number",
+          "analysisUnpricedAttempts": "number",
+          "analysisUnresolvedAttempts": "number",
+          "estimatedTotalUsd": "null",
+          "incompleteRunEstimates": "number",
+          "runEstimatedUsd": "null"
+        },
+        "costSamples": "number",
+        "dryRun": "number",
+        "durationSamples": "number",
+        "judged": "number",
+        "lab": "string",
+        "live": "number",
+        "participants": {
+          "reachedGoal": "number",
+          "reportedFriction": "number",
+          "total": "number"
+        },
+        "passed": "number",
+        "passRate": "number",
+        "runs": "number",
+        "unpricedRuns": "number"
+      }
+    ],
+    "note": "string",
+    "ok": "boolean",
+    "schema": "string",
+    "totals": {
+      "costs": {
+        "analysisAttempts": "number",
+        "analysisDispatchedAttempts": "number",
+        "analysisEstimatedUsd": "null",
+        "analysisHistoryUncertainRuns": "number",
+        "analysisNotDispatchedAttempts": "number",
+        "analysisUnpricedAttempts": "number",
+        "analysisUnresolvedAttempts": "number",
+        "estimatedTotalUsd": "null",
+        "incompleteRunEstimates": "number",
+        "runEstimatedUsd": "null"
+      },
+      "dryRun": "number",
+      "estimatedSpendUsd": "number",
+      "live": "number",
+      "participants": {
+        "reachedGoal": "number",
+        "reportedFriction": "number",
+        "total": "number"
+      },
+      "running": "number",
+      "runs": "number",
+      "unpricedRuns": "number",
+      "verdicts": {
+        "contract_proof_only": "number"
+      }
+    },
+    "unreadable": []
+  }
+}

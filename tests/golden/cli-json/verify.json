@@ -1,0 +1,22 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "bundlePath": "string",
+    "checks": [
+      {
+        "message": "string",
+        "name": "string",
+        "ok": "boolean"
+      }
+    ],
+    "cwd": "string",
+    "ok": "boolean",
+    "run": "string",
+    "schema": "string",
+    "shareSafety": {
+      "reasons": [],
+      "status": "string"
+    },
+    "warnings": []
+  }
+}
