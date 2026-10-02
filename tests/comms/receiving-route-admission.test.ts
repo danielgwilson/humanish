@@ -57,14 +57,11 @@ describe("real receiving admission on non-receiving backends", () => {
       };
       const output = path.join(cwd, "must-not-exist");
       for (const dryRun of [false, true]) {
-        const outcome = await runLab(resolved, {
-          cwd: output,
-          dryRun,
-          env: {},
-          sharedWorldHooks: hooks,
-          terminalHooks: hooks,
-          scriptedHooks: hooks,
-        });
+        const outcome = await runLab(
+          resolved,
+          { cwd: output, dryRun, env: {}, sharedWorldHooks: hooks, scriptedHooks: hooks },
+          { desktopModule: forbidden, renderObserver: forbidden },
+        );
         expect(outcome.backend).toBe(backend);
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.message).toMatch(/Real email receiving is unsupported/);

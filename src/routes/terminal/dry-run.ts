@@ -34,11 +34,10 @@ export async function runDryTerminalLab(args: {
 }): Promise<TerminalProductLabResult> {
   const { plan, input, cwd, warnings, failed, scope } = args;
   const { product } = plan;
-  const hooks = input.hooks ?? {};
   const { evidenceMission, physicalCwd, persona } = await prepareDryPersona({
     plan,
     cwd,
-    env: hooks.env ?? process.env,
+    env: input.env ?? process.env,
     warnings,
   });
 
@@ -49,7 +48,7 @@ export async function runDryTerminalLab(args: {
     mode: "dry-run",
     lab: plan.lab,
     renderReview: renderTerminalReviewMarkdown,
-    observer: { open: input.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: input.deps?.renderObserver },
   });
   if (!started.ok) return failed(started.code, started.message);
   const { run } = started;

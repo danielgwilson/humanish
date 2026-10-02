@@ -3,7 +3,7 @@
 
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import type { TerminalProductLabHooks } from "../../src/routes/terminal/types.js";
+import type { RunTerminalProductLabOptions } from "../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 const FAKE_RUNTIME_KEY = "FAKEKEY-scorer-loader-do-not-leak-1234567890";
@@ -104,29 +104,35 @@ export function terminalConfig(extra?: Record<string, unknown>): LabConfig {
   return parsed.config;
 }
 
-/** Hooks for a passing live run; each codex command (which carries the prompt) is pushed to `codexCommands`. */
-export function passingHooks(
-  extra: Partial<TerminalProductLabHooks>,
+/** A terminal run's typed options and test seams, as a test spreads them into the runner's options. */
+export type TerminalTestInputs = Pick<RunTerminalProductLabOptions, "env" | "scorer" | "deps">;
+
+/** A passing live run; each codex command (which carries the prompt) is pushed to `codexCommands`. */
+export function passingRun(
+  extra: TerminalTestInputs = {},
   codexCommands: string[] = [],
-): TerminalProductLabHooks {
+): TerminalTestInputs {
   const killed: string[] = [];
   return {
-    env: {
+    env: extra.env ?? {
       OPENAI_API_KEY: FAKE_RUNTIME_KEY,
       E2B_API_KEY: "FAKE-E2B-KEY-also-do-not-leak-0987654321",
     },
-    now: () => 4_000,
-    loadModule: async () =>
-      makeFakeModule({
-        killed,
-        codexBehavior: (cmd) => {
-          codexCommands.push(cmd);
-          return {
-            exitCode: 0,
-            stdout: `made a durable widget\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
-          };
-        },
-      }),
-    ...extra,
+    ...(extra.scorer === undefined ? {} : { scorer: extra.scorer }),
+    deps: {
+      now: () => 4_000,
+      desktopModule: async () =>
+        makeFakeModule({
+          killed,
+          codexBehavior: (cmd) => {
+            codexCommands.push(cmd);
+            return {
+              exitCode: 0,
+              stdout: `made a durable widget\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            };
+          },
+        }),
+      ...extra.deps,
+    },
   };
 }

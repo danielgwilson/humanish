@@ -13,9 +13,9 @@ import type { CostCategory } from "../../run/terminal-contract.js";
 import type { RunScope } from "../../run/run.js";
 import type { buildRuntimeAuth } from "./credentials.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 import type { LabConfig } from "../../lab/types.js";
-import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
-import { renderObserver, type ObserverResult } from "../../observer/render.js";
+import type { ObserverResult } from "../../observer/render.js";
 import {
   type RunAdapterScore,
   type RunBundle,
@@ -91,32 +91,16 @@ export interface TerminalProductScoringContext {
 }
 
 /**
- * Library-level hooks: the DI seams that drive the full live path against a fake sandbox + mock
- * CLI at zero spend. The deterministic merge-gate test wires loadModule (a fake @e2b/desktop
- * module) + env (the operator key source) + now (an injected clock); the live rung uses none of
- * them (it loads the real module and reads the real environment).
+ * Known spend lines for the terminal cost ledger. Core has no product, media or payment spend
+ * signal, so it fills only the provider line from trace tokenUsage when present. A test injects
+ * known lines through `LabDeps.costProbe`; absent signals keep the null-discipline default.
  */
-export interface TerminalProductLabHooks {
-  /** Lazy-load the E2B module (tests inject a fake; default loadE2BDesktopModule). */
-  loadModule?: () => Promise<E2BDesktopModule>;
-  /**
-   * The operator environment the lane reads the runtime key from (and from which it asserts no
-   * banned credential is requested). Defaults to process.env. The runtime key is injected ONLY
-   * into command-scoped `codex` env or an external header transform — NEVER Sandbox.create envs (the credential
-   * boundary); tests plant a fake key here and assert it never reaches metadata/global env/artifacts.
-   */
-  env?: Record<string, string | undefined>;
-  renderObserverFn?: typeof renderObserver;
-  /** Injected clock for deterministic timestamps + wall-clock arithmetic (tests only). */
-  now?: () => number;
-  /**
-   * Optional cost-ledger seam. Core has no product/media/payment spend signal, so it populates only
-   * the provider line from trace tokenUsage when present. Tests and adapters can inject KNOWN spend
-   * lines; absent signals retain the null-discipline default.
-   */
-  costProbe?: (context: {
-    tokenCostUsd?: number;
-  }) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
+export type TerminalCostProbe = (context: {
+  tokenCostUsd?: number;
+}) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
+
+/** The scorer functions a terminal run calls: `RunLabOptions.scorer` without `deriveArtifacts`. */
+export interface TerminalScorer {
   /**
    * THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8: "product-adapter hooks WITHOUT forking
    * core"). A thin in-repo/out-of-tree adapter registers a product scorer here. The lane calls it
@@ -151,12 +135,21 @@ export interface RunTerminalProductLabOptions {
   dryRun: boolean;
   open?: boolean;
   runId?: string;
-  hooks?: TerminalProductLabHooks;
   /**
-   * Present ONLY when the scorer hooks were CONFIG-DECLARED and loaded by the CLI (#316). Its presence
+   * The operator environment the lane reads the runtime key from (and from which it asserts no
+   * banned credential is requested). Defaults to process.env. The runtime key is injected ONLY
+   * into command-scoped `codex` env or an external header transform — NEVER Sandbox.create envs (the credential
+   * boundary); tests plant a fake key here and assert it never reaches metadata/global env/artifacts.
+   */
+  env?: Readonly<Record<string, string | undefined>>;
+  scorer?: TerminalScorer;
+  /** Test seams: the E2B module, the Observer renderer, the clock and the cost probe. */
+  deps?: LabDeps;
+  /**
+   * Present ONLY when the scorer was CONFIG-DECLARED and loaded by the CLI (#316). Its presence
    * is the "declared" marker: a config-declared terminal scorer returning status:"fail" FLIPS
    * bundle.review.verdict (like the browser routes), and one that throws becomes a visible review.gaps
-   * entry. A LIBRARY caller passing `hooks` directly leaves this ABSENT and keeps today's purely
+   * entry. A LIBRARY caller passing `scorer` leaves this ABSENT and keeps today's purely
    * additive terminal behavior (verdict unchanged). Core-computed, never adopter-supplied.
    */
   scorerProvenance?: RunScorerProvenance;

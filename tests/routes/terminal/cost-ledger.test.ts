@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
-import { type TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
+import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { estimateAllocatedDesktopCost } from "../../../src/run/pricing.js";
@@ -147,17 +147,19 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
   it("(a) a no-spend run produces a VERIFIED no-spend proof derived from the ledger", async () => {
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     expect(result.ok).toBe(true);
@@ -199,17 +201,19 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
         '"output_tokens":1409}}\n' +
         `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}`,
     });
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: codexWithUsage }),
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () => makeFakeModule({ killed, codexBehavior: codexWithUsage }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     expect(result.ok).toBe(true);
@@ -257,27 +261,27 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
   it("(b) null-for-unknown vs 0-for-known-zero vs the absence distinction are persisted crisply", async () => {
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
-      // Inject a KNOWN-ZERO product line (metered, billed nothing) while media/payment/provider stay
-      // null (unmeasured). This is the load-bearing distinction: 0 != null.
-      costProbe: () => ({
-        product: {
-          usd: 0,
-          count: 0,
-          source: "no-spend-signal",
-          note: "metered product spend: zero billable jobs",
-        },
-      }),
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+        costProbe: () => ({
+          product: {
+            usd: 0,
+            count: 0,
+            source: "no-spend-signal",
+            note: "metered product spend: zero billable jobs",
+          },
+        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
 
@@ -322,26 +326,26 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
   it("(c) a ledger showing KNOWN spend > maxUsd fails the run closed and keeps the agent's verdict", async () => {
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
-      // A KNOWN provider spend of $2.50 that exceeds the maxUsd:1 cap — the run must fail closed even
-      // though the agent itself reported a passing verdict.
-      costProbe: () => ({
-        provider: {
-          usd: 2.5,
-          source: "provider-token-usage",
-          note: "metered provider spend (injected for the cap test)",
-        },
-      }),
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+        costProbe: () => ({
+          provider: {
+            usd: 2.5,
+            source: "provider-token-usage",
+            note: "metered provider spend (injected for the cap test)",
+          },
+        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig({ maxUsd: 1, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     expect(result.ok).toBe(false);
@@ -373,17 +377,19 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
   it("(d) a no-spend proof that claims zero on a null (unmeasured) line FAILS verify", async () => {
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
 
@@ -414,10 +420,10 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
       config: liveConfig({ maxUsd: 2, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () => {
+        desktopModule: async () => {
           moduleLoads += 1;
           return makeFakeModule({ killed, codexBehavior: passingCodex() });
         },
@@ -441,10 +447,10 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
       config: liveConfig({ maxUsd: 2, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+        desktopModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
         costProbe: () => ({
           product: { usd: 0.5, source: "no-spend-signal", note: "metered product spend" },
         }),
@@ -488,11 +494,10 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
-        // Each reading is one second later, so the sandbox span is positive.
+      env: baseEnv(),
+      deps: {
         now: () => (clock += 1_000),
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             killed,
             codexBehavior: codexWithUsage,

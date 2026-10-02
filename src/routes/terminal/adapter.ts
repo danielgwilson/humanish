@@ -15,11 +15,7 @@ import {
   type ScorerOutcome,
 } from "../../lab/adapter-extension.js";
 import { isRecord } from "../../run/type-guards.js";
-import type {
-  TerminalLedgers,
-  TerminalProductLabHooks,
-  TerminalProductScoringContext,
-} from "./types.js";
+import type { TerminalLedgers, TerminalScorer, TerminalProductScoringContext } from "./types.js";
 
 /**
  * Run the layer-6 product-adapter extension seam (issue #154 acceptance #8) over the assembled
@@ -40,7 +36,7 @@ import type {
  * re-checks the surviving shapes downstream, so the seam stays fail-closed end to end.
  */
 export async function applyAdapterExtensionSeam(args: {
-  hooks: TerminalProductLabHooks;
+  scorer: TerminalScorer | undefined;
   bundle: RunBundle;
   trace: ActorTrace;
   ledgers: TerminalLedgers;
@@ -55,7 +51,7 @@ export async function applyAdapterExtensionSeam(args: {
   scorerProvenance?: RunScorerProvenance;
 }): Promise<ScorerOutcome> {
   const {
-    hooks,
+    scorer,
     bundle,
     trace,
     ledgers,
@@ -67,7 +63,7 @@ export async function applyAdapterExtensionSeam(args: {
     warnings,
     scorerProvenance,
   } = args;
-  if (!hooks.score && !hooks.deriveFeedback) return { failures: [] };
+  if (!scorer?.score && !scorer?.deriveFeedback) return { failures: [] };
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
   // still loaded and attempted).
@@ -99,9 +95,9 @@ export async function applyAdapterExtensionSeam(args: {
   // pass is a fail, never a silent green. Empty for a library caller and for a passing scorer.
   const failures: string[] = [];
 
-  if (hooks.score) {
+  if (scorer?.score) {
     try {
-      const score = await hooks.score(ctx);
+      const score = await scorer.score(ctx);
       const cleaned = scrubValue(score);
       if (isAdapterScoreShape(cleaned)) {
         bundle.adapterScore = cleaned;
@@ -127,9 +123,9 @@ export async function applyAdapterExtensionSeam(args: {
     }
   }
 
-  if (hooks.deriveFeedback) {
+  if (scorer?.deriveFeedback) {
     try {
-      const candidates = await hooks.deriveFeedback(ctx);
+      const candidates = await scorer.deriveFeedback(ctx);
       const accepted: RunFeedbackCandidate[] = [];
       for (const candidate of Array.isArray(candidates) ? candidates : []) {
         const cleaned = scrubValue(candidate);

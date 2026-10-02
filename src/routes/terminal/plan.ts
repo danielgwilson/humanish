@@ -42,8 +42,8 @@ export function planTerminalLab(
   input: {
     readonly dryRun: boolean;
     readonly lab?: RunLabProvenance;
-    /** A caller's costProbe can measure spend lines, so a positive maxUsd can trip. */
-    readonly hooks?: { readonly costProbe?: unknown };
+    /** A test's costProbe can measure spend lines, so a positive maxUsd can trip. */
+    readonly hasCostProbe?: boolean;
   },
 ): TerminalPlanResult {
   const refuse = (
@@ -149,7 +149,7 @@ export function planTerminalLab(
   // product, media or payment signal, so without a costProbe every line is null and a positive
   // maxUsd could never trip. That cap would promise a bound nothing enforces, so it is refused;
   // maxMinutes is what bounds a live run.
-  if (maxUsd > 0 && input.hooks?.costProbe === undefined)
+  if (maxUsd > 0 && input.hasCostProbe !== true)
     return refuse(
       "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
       `scenario.caps.maxUsd=${maxUsd} cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,

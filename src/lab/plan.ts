@@ -11,6 +11,7 @@ import { planTerminalLab } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { InternalRunLabOptions } from "../run-lab.js";
+import type { LabDeps } from "./lab-deps.js";
 import { THIS_REPO_DRY_RUN_ONLY } from "./composition-rules.js";
 import { planBase } from "./plan-base.js";
 import type { LabPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
@@ -147,13 +148,17 @@ type RoutePlanResult =
  * makes every refusal that route makes, in the route's order and with its codes and messages; the
  * route's exported runner calls the same planner.
  */
-export function planLab(config: LabConfig, options: InternalRunLabOptions): PlanResult {
+export function planLab(
+  config: LabConfig,
+  options: InternalRunLabOptions,
+  deps: LabDeps = {},
+): PlanResult {
   const lab = localBrowserDefaults(config);
   const input = {
     dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true,
     ...(options.lab === undefined ? {} : { lab: options.lab }),
   };
-  const result = planRoute(routeOf(config), lab, options, input);
+  const result = planRoute(routeOf(config), lab, options, input, deps);
   if (!result.ok) return result;
   return { ok: true, planned: { plan: result.plan } };
 }
@@ -163,6 +168,7 @@ function planRoute(
   lab: LabConfig,
   options: InternalRunLabOptions,
   input: { readonly dryRun: boolean; readonly lab?: RunLabProvenance },
+  deps: LabDeps,
 ): RoutePlanResult {
   switch (route) {
     case "preview":
@@ -180,10 +186,7 @@ function planRoute(
         ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
       });
     case "terminal":
-      return planTerminalLab(lab, {
-        ...input,
-        ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
-      });
+      return planTerminalLab(lab, { ...input, hasCostProbe: deps.costProbe !== undefined });
     case "scripted":
       return planScriptedLab(lab, {
         ...input,

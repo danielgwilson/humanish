@@ -17,7 +17,7 @@ import { foldScorerFailures } from "../../src/run/judge.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { verifyRun } from "../../src/verify/verify.js";
-import { passingHooks, terminalConfig } from "../helpers/terminal-live-fake.js";
+import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../src/index.js";
 
 // ---------------------------------------------------------------------------------------------
@@ -393,13 +393,13 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
 
-    const hooks = passingHooks(loaded.hooks.score ? { score: loaded.hooks.score } : {});
+    const inputs = passingRun({ scorer: loaded.hooks.score ? { score: loaded.hooks.score } : {} });
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
       scorerProvenance: loaded.provenance,
     });
 
@@ -474,13 +474,13 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
   };
 
   it("a CONFIG-DECLARED terminal scorer returning fail FLIPS review.verdict to fail", async () => {
-    const hooks = passingHooks({ score: () => failScore() });
+    const inputs = passingRun({ scorer: { score: () => failScore() } });
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
       scorerProvenance: provenance,
     });
 
@@ -495,13 +495,13 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
   });
 
   it("a LIBRARY caller (no scorerProvenance) keeps the additive no-flip behavior", async () => {
-    const hooks = passingHooks({ score: () => failScore() });
+    const inputs = passingRun({ scorer: { score: () => failScore() } });
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     const bundle = await readBundle(cwd, result.runId);
@@ -512,9 +512,11 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
   });
 
   it("a DECLARED scorer that THROWS becomes a visible review.gaps entry (never a silent pass)", async () => {
-    const hooks = passingHooks({
-      score: () => {
-        throw new Error("scorer boom");
+    const inputs = passingRun({
+      scorer: {
+        score: () => {
+          throw new Error("scorer boom");
+        },
       },
     });
     const result = await runTerminalProductLab({
@@ -522,7 +524,7 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
       config: terminalConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
       scorerProvenance: provenance,
     });
 
@@ -539,21 +541,23 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
   it("a DECLARED terminal scorer returning a MALFORMED value fails the run (never a silent green)", async () => {
     // status/score/summary present but namespace empty → fails isAdapterScoreShape. A scorer that MEANT
     // to fail but mis-shaped its return must not silent-green (red-team finding #1).
-    const hooks = passingHooks({
-      score: () => ({
-        schema: "humanish.adapter-score.v1",
-        namespace: "",
-        status: "fail",
-        score: 3,
-        summary: "gate",
-      }),
+    const inputs = passingRun({
+      scorer: {
+        score: () => ({
+          schema: "humanish.adapter-score.v1",
+          namespace: "",
+          status: "fail",
+          score: 3,
+          summary: "gate",
+        }),
+      },
     });
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
       scorerProvenance: provenance,
     });
 
@@ -724,13 +728,13 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
   });
 
   it("a pre-#316 / library-caller bundle (no scorerProvenance) still verifies", async () => {
-    const hooks = passingHooks({});
+    const inputs = passingRun();
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     const bundle = await readBundle(cwd, result.runId);
     expect(bundle.scorerProvenance).toBeUndefined();
@@ -743,13 +747,13 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
     const loaded = await loadAdapterScorer({ cwd, ref, route: "terminal", source: "manifest" });
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    const hooks = passingHooks(loaded.hooks.score ? { score: loaded.hooks.score } : {});
+    const inputs = passingRun({ scorer: loaded.hooks.score ? { score: loaded.hooks.score } : {} });
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
       scorerProvenance: loaded.provenance,
     });
 

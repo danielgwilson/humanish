@@ -2,6 +2,7 @@
 // hook bag, the automatic-analysis hooks and the declared scorer's provenance.
 
 import type { InternalRunLabOptions } from "../run-lab.js";
+import type { LabDeps } from "./lab-deps.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
 import { scorerHooks } from "./run-lab-options.js";
 import type { ComputerUseRunInput } from "../routes/computer-use/types.js";
@@ -34,13 +35,15 @@ export function scriptedInput(options: InternalRunLabOptions): ScriptedRunInput 
   };
 }
 
-export function terminalInput(options: InternalRunLabOptions): TerminalRunInput {
+export function terminalInput(options: InternalRunLabOptions, deps: LabDeps): TerminalRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
-    ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
+    ...(options.env === undefined ? {} : { env: options.env }),
+    ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
+    deps,
     ...scorerOf(options),
   };
 }
@@ -78,20 +81,17 @@ export function sharedWorldInputWithScorer(
   return withLateScorer(input, hooks, late);
 }
 
-/** The terminal input with a scorer loaded after admission. Terminal runs take no deriveArtifacts. */
+/** The terminal input with a scorer loaded after admission, and the scorer's provenance. */
 export function terminalInputWithScorer(
   input: TerminalRunInput,
   late: LateScorer | undefined,
 ): TerminalRunInput {
-  const scorer = late?.scorer;
-  const hooks =
-    scorer === undefined
-      ? undefined
-      : {
-          ...(scorer.score === undefined ? {} : { score: scorer.score }),
-          ...(scorer.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
-        };
-  return withLateScorer(input, hooks, late);
+  if (late === undefined) return input;
+  return {
+    ...input,
+    ...(late.scorer === undefined ? {} : { scorer: late.scorer }),
+    ...(late.scorerProvenance === undefined ? {} : { scorerProvenance: late.scorerProvenance }),
+  };
 }
 
 /**

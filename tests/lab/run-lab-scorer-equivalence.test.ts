@@ -9,11 +9,13 @@ import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
 import { lab } from "../admission/fixtures.js";
-import { passingHooks, terminalConfig } from "../helpers/terminal-live-fake.js";
+import type { LabDeps } from "../../src/lab/lab-deps.js";
+import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 
-// RunLabOptions.scorer is the legacy scorer hook under a new name: for each route and each scorer
-// behavior, with and without CLI provenance, the review, the adapter score, the result and its
-// warnings match the run that passed the same function through the route's hook bag.
+// RunLabOptions.scorer is the legacy scorer hook under a new name: for each route that still has a
+// hook bag and each scorer behavior, with and without CLI provenance, the review, the adapter
+// score, the result and its warnings match the run that passed the same function through the bag.
+// The terminal route has no bag; it reads scorer directly.
 
 type Score = () => RunAdapterScore;
 
@@ -56,8 +58,10 @@ interface Route {
   config: () => LabConfig;
   /** Options both runs share: dry run or the fake live terminal. */
   base: () => Partial<InternalRunLabOptions>;
-  /** The same scorer through the route's legacy hook bag. */
-  legacy: (score: Score) => Partial<InternalRunLabOptions>;
+  /** The route's test seams, where it has them outside a bag. */
+  deps?: () => LabDeps;
+  /** The same scorer through the route's legacy hook bag, on a route that still has one. */
+  legacy?: (score: Score) => Partial<InternalRunLabOptions>;
 }
 
 const routes: Record<string, Route> = {
@@ -73,8 +77,8 @@ const routes: Record<string, Route> = {
   },
   terminal: {
     config: () => terminalConfig(),
-    base: () => ({ dryRun: false, terminalHooks: passingHooks({}) }),
-    legacy: (score) => ({ dryRun: false, terminalHooks: passingHooks({ score }) }),
+    base: () => ({ dryRun: false, env: passingRun().env! }),
+    deps: () => passingRun().deps!,
   },
 };
 
@@ -90,12 +94,11 @@ describe("RunLabOptions.scorer matches the legacy scorer hook", () => {
   async function evidence(route: Route, options: Partial<InternalRunLabOptions>) {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-equivalence-"));
     dirs.push(cwd);
-    const outcome = await runLab(route.config(), {
-      ...route.base(),
-      ...options,
-      cwd,
-      runId: "equivalence",
-    } as InternalRunLabOptions);
+    const outcome = await runLab(
+      route.config(),
+      { ...route.base(), ...options, cwd, runId: "equivalence" } as InternalRunLabOptions,
+      route.deps?.(),
+    );
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", "equivalence", "run.json"), "utf8"),
     ) as { review: unknown; adapterScore?: RunAdapterScore; scorerProvenance?: unknown };
@@ -113,12 +116,14 @@ describe("RunLabOptions.scorer matches the legacy scorer hook", () => {
   }
 
   for (const [routeName, route] of Object.entries(routes)) {
+    const { legacy } = route;
+    if (legacy === undefined) continue;
     for (const [behavior, score] of Object.entries(behaviors)) {
       for (const declared of [false, true]) {
         it(`${routeName}: ${behavior}${declared ? " with CLI provenance" : ""}`, async () => {
           const withProvenance = declared ? { scorerProvenance: provenance } : {};
           const viaHome = await evidence(route, { scorer: { score }, ...withProvenance });
-          const viaHook = await evidence(route, { ...route.legacy(score), ...withProvenance });
+          const viaHook = await evidence(route, { ...legacy(score), ...withProvenance });
 
           expect(viaHome).toEqual(viaHook);
           if (behavior === "valid pass") expect(viaHome.adapterScore?.status).toBe("pass");
@@ -155,13 +160,17 @@ describe("scorer failures fold into one verdict the bundle, status and result ag
         it(`${routeName}: ${behavior}${declared ? " with CLI provenance" : ""}`, async () => {
           const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-fold-"));
           dirs.push(cwd);
-          const outcome = await runLab(route.config(), {
-            ...route.base(),
-            scorer: { score: behaviors[behavior]! },
-            ...(declared ? { scorerProvenance: provenance } : {}),
-            cwd,
-            runId: "fold",
-          } as InternalRunLabOptions);
+          const outcome = await runLab(
+            route.config(),
+            {
+              ...route.base(),
+              scorer: { score: behaviors[behavior]! },
+              ...(declared ? { scorerProvenance: provenance } : {}),
+              cwd,
+              runId: "fold",
+            } as InternalRunLabOptions,
+            route.deps?.(),
+          );
           const runDir = path.join(cwd, ".humanish", "runs", "fold");
           const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as {
             review: { verdict: string; gaps: string[] };

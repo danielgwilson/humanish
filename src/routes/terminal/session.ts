@@ -31,7 +31,7 @@ export function checkLiveTerminalMachine(
 ):
   | { readonly ok: true; readonly runtimeEnv: LiveTerminalAuth }
   | { readonly ok: false; readonly code: TerminalProductLabErrorCode; readonly message: string } {
-  const env = input.hooks?.env ?? process.env;
+  const env = input.env ?? process.env;
   const { maxUsd } = plan.caps;
   // planTerminalLab refuses a positive maxUsd without a costProbe, so one is present here.
   if (maxUsd > 0) {
@@ -68,9 +68,9 @@ export async function runLiveTerminalSession(
   const { plan, input, cwd, warnings, failed, scope, runtimeEnv } = args;
   const { actor, product } = plan;
   const { maxUsd, maxMinutes } = plan.caps;
-  const hooks = input.hooks ?? {};
-  const env = hooks.env ?? process.env;
-  const now = hooks.now ?? (() => Date.now());
+  const deps = input.deps ?? {};
+  const env = input.env ?? process.env;
+  const now = deps.now ?? (() => Date.now());
   const nowIso = (): string => new Date(now()).toISOString();
 
   const prepared = await prepareLivePrompt({ plan, cwd, runtimeEnv, env, warnings });
@@ -85,7 +85,7 @@ export async function runLiveTerminalSession(
     mode: "live",
     lab: plan.lab,
     renderReview: renderTerminalReviewMarkdown,
-    observer: { open: input.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: deps.renderObserver },
     now,
   });
   if (!started.ok) return failed(started.code, started.message);
@@ -117,7 +117,7 @@ export async function runLiveTerminalSession(
   const session = new LiveTerminalSandbox({
     plan,
     cwd,
-    hooks,
+    deps,
     now,
     nowIso,
     sanitize,
@@ -153,7 +153,6 @@ export async function runLiveTerminalSession(
     plan,
     input,
     cwd,
-    hooks,
     sanitize,
     nowIso,
     knownSecretValues,

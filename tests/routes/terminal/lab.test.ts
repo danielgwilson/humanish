@@ -12,7 +12,8 @@ import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig, type LabRuntimeAuth } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
-import { type TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
+import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
+import { type TerminalCostProbe } from "../../../src/routes/terminal/types.js";
 import {
   guardDesktopSandboxCreate,
   type E2BDesktopCreateOptions,
@@ -411,10 +412,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         dryRun: false,
         open: false,
         automaticAnalysis: { run: analyze },
-        hooks: {
-          env: baseEnv(),
-          loadModule: async () => probe.module,
-        },
+        env: baseEnv(),
+        deps: { desktopModule: async () => probe.module },
       });
       expect(analyze).toHaveBeenCalledOnce();
       expect(result.automaticAnalysis?.reason).toBe("synthetic_no_provider");
@@ -448,10 +447,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
-        loadModule: async () => probe.module,
-      },
+      env: baseEnv(),
+      deps: { desktopModule: async () => probe.module },
     });
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
     expect(result.error?.message).toContain("synthetic Xvfb startup failure");
@@ -477,10 +474,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
-        loadModule: async () => probe.module,
-      },
+      env: baseEnv(),
+      deps: { desktopModule: async () => probe.module },
     });
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
     expect(probe.killed).toEqual([1]);
@@ -504,9 +499,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
-        loadModule: async () =>
+      env: baseEnv(),
+      deps: {
+        desktopModule: async () =>
           makeFakeModule({
             creates: [],
             runs: [],
@@ -538,9 +533,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
-        loadModule: async () =>
+      env: baseEnv(),
+      deps: {
+        desktopModule: async () =>
           makeFakeModule({
             creates: [],
             runs: [],
@@ -656,8 +651,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config,
       dryRun: true,
       open: false,
-      hooks: {
-        loadModule: async () => {
+      deps: {
+        desktopModule: async () => {
           throw new Error("must not resolve or allocate");
         },
       },
@@ -686,8 +681,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config,
       dryRun: true,
       open: false,
-      hooks: {
-        loadModule: async () => {
+      deps: {
+        desktopModule: async () => {
           throw new Error("must not resolve or allocate");
         },
       },
@@ -715,10 +710,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config,
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -781,10 +776,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config,
         dryRun: false,
         open: false,
-        hooks: {
-          env: baseEnv(),
+        env: baseEnv(),
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -820,10 +815,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config,
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -855,10 +850,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config,
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -908,10 +903,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config,
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -948,10 +943,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config,
         dryRun: false,
         open: false,
-        hooks: {
-          env: baseEnv(),
+        env: baseEnv(),
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -984,10 +979,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => clock,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1025,11 +1020,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
-        // Each reading is one second later, so the session completes after the run was created.
+      env: baseEnv(),
+      deps: {
         now: () => (clock += 1_000),
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1058,9 +1052,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config,
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
-        loadModule: async () => {
+      env: baseEnv(),
+      deps: {
+        desktopModule: async () => {
           throw new Error("must not load or allocate");
         },
       },
@@ -1106,10 +1100,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       dryRun: false,
       open: false,
       automaticAnalysis: { deps: { apiKey: "synthetic-analysis-key", fetch } },
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates: [],
             runs: [],
@@ -1187,10 +1181,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config: liveConfig(),
         dryRun: false,
         open: false,
-        hooks: {
-          env: baseEnv(),
+        env: baseEnv(),
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -1241,10 +1235,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config: liveConfig({ caps: { maxUsd: 0, maxMinutes: 1 } }),
         dryRun: false,
         open: false,
-        hooks: {
-          env: baseEnv(),
+        env: baseEnv(),
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -1291,10 +1285,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config: liveConfig(),
         dryRun: false,
         open: false,
-        hooks: {
-          env: baseEnv(),
+        env: baseEnv(),
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -1354,10 +1348,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1403,10 +1397,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config: liveConfig(),
         dryRun: false,
         open: false,
-        hooks: {
-          env: baseEnv(),
+        env: baseEnv(),
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -1457,10 +1451,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config: liveConfig(),
         dryRun: false,
         open: false,
-        hooks: {
-          env: baseEnv(),
+        env: baseEnv(),
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -1510,10 +1504,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1542,10 +1536,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1590,10 +1584,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1624,10 +1618,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1667,10 +1661,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config,
         dryRun: false,
         open: false,
-        hooks: {
-          env: { ...baseEnv(), OPENAI_BASE_URL: "https://example.com/custom-provider" },
+        env: { ...baseEnv(), OPENAI_BASE_URL: "https://example.com/custom-provider" },
+        deps: {
           now: () => 1_000,
-          loadModule: async () =>
+          desktopModule: async () =>
             makeFakeModule({
               creates,
               runs,
@@ -1737,10 +1731,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             createErrors: [new Error("12: [unimplemented] HTTP 404")],
@@ -1772,10 +1766,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             createErrors: [new Error("401: Unauthorized")],
@@ -1800,10 +1794,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig({ runtimeAuth: "openai-egress" }),
       dryRun: false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates,
             runs,
@@ -1844,27 +1838,35 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
     const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 1_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          listCalls,
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            // A real agent echoes the nonce-verified verdict AND some output — INCLUDING the key value
-            // (simulating an agent that transcribed its key into output). The scrub must catch it.
-            stdout: `working on it... key seen: ${FAKE_RUNTIME_KEY}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            listCalls,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              // A real agent echoes the nonce-verified verdict AND some output — INCLUDING the key value
+              // (simulating an agent that transcribed its key into output). The scrub must catch it.
+              stdout: `working on it... key seen: ${FAKE_RUNTIME_KEY}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
 
     const config = liveConfig();
     config.actors[0]!.mission = `Discover widgetsmith-cli using ${FAKE_RUNTIME_KEY}.`;
-    const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, hooks });
+    const result = await runTerminalProductLab({
+      cwd,
+      config,
+      dryRun: false,
+      open: false,
+      ...inputs,
+    });
 
     // Sandbox created + killed; cleanup proven BY EXACT ID (getInfo(id) confirms
     // SandboxNotFoundError). Sandbox.list is NEVER called on the teardown path.
@@ -1955,26 +1957,28 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 4_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 4_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     const readinessIndex = runs.findIndex((r) => r.command.includes("HUMANISH_SHELL_READY"));
@@ -2007,24 +2011,26 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 5_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          // If this ever runs, the lane failed to fail closed on the bootstrap error first.
-          codexBehavior: () => ({
-            exitCode: 0,
-            stdout: "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=should-not-run\n",
+      deps: {
+        now: () => 5_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            // If this ever runs, the lane failed to fail closed on the bootstrap error first.
+            codexBehavior: () => ({
+              exitCode: 0,
+              stdout: "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=should-not-run\n",
+            }),
+            // Real-SDK-accurate: the real @e2b/desktop Sandbox THROWS a CommandExitError on a
+            // non-zero exit rather than returning one; cover the THROWING shape, not just a
+            // structural non-zero return.
+            bootstrapThrow: () => ({ exitCode: 1, stderr: "sudo: a password is required" }),
           }),
-          // Real-SDK-accurate: the real @e2b/desktop Sandbox THROWS a CommandExitError on a
-          // non-zero exit rather than returning one; cover the THROWING shape, not just a
-          // structural non-zero return.
-          bootstrapThrow: () => ({ exitCode: 1, stderr: "sudo: a password is required" }),
-        }),
+      },
     };
     const stderr = captureStderr();
     const result = await runTerminalProductLab({
@@ -2032,7 +2038,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     }).finally(stderr.stop);
 
     // The keyed exec is NEVER attempted once the runtime bootstrap has failed.
@@ -2070,17 +2076,19 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      loadModule: async () =>
-        makeFakeModule({ creates, runs, killed, codexBehavior: () => ({ exitCode: 0 }) }),
+      deps: {
+        desktopModule: async () =>
+          makeFakeModule({ creates, runs, killed, codexBehavior: () => ({ exitCode: 0 }) }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig({ caps: null }),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_MISSING");
@@ -2091,24 +2099,26 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 2_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          // Exits 0 but emits NO nonce-verified verdict marker -> blocked evidence, not a hollow pass.
-          codexBehavior: () => ({ exitCode: 0, stdout: "I could not find the product docs.\n" }),
-        }),
+      deps: {
+        now: () => 2_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            // Exits 0 but emits NO nonce-verified verdict marker -> blocked evidence, not a hollow pass.
+            codexBehavior: () => ({ exitCode: 0, stdout: "I could not find the product docs.\n" }),
+          }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.session?.status).toBe("blocked");
     expect(killed.length).toBe(1);
@@ -2122,23 +2132,25 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
     const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 3_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          listCalls,
-          // kill(id) resolves, but getInfo(id) STILL reports the sandbox running -> not confirmed
-          // reclaimed by id. Never a re-list.
-          getInfoState: "running",
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 3_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            listCalls,
+            // kill(id) resolves, but getInfo(id) STILL reports the sandbox running -> not confirmed
+            // reclaimed by id. Never a re-list.
+            getInfoState: "running",
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const stderr = captureStderr();
     const result = await runTerminalProductLab({
@@ -2146,7 +2158,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     }).finally(stderr.stop);
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
@@ -2175,33 +2187,35 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   it("reads a not-found kill(id) error as already gone; getInfo confirms it (remaining=0, run passes)", async () => {
     const killed: string[] = [];
     const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 3_400,
-      loadModule: async () =>
-        makeFakeModule({
-          creates: [],
-          runs: [],
-          killed,
-          listCalls,
-          // The exact sandbox is gone before kill(id) runs: the SDK throws SandboxNotFoundError.
-          killThrows: (sandboxId) => ({
-            message: `Sandbox ${sandboxId} not found`,
-            name: "SandboxNotFoundError",
+      deps: {
+        now: () => 3_400,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates: [],
+            runs: [],
+            killed,
+            listCalls,
+            // The exact sandbox is gone before kill(id) runs: the SDK throws SandboxNotFoundError.
+            killThrows: (sandboxId) => ({
+              message: `Sandbox ${sandboxId} not found`,
+              name: "SandboxNotFoundError",
+            }),
+            getInfoState: "not-found",
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-          getInfoState: "not-found",
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
-          }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
     expect(result.sandbox?.killed).toBe(true);
@@ -2211,27 +2225,29 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   });
 
   it("does not count a non-boolean kill(id) answer as proof (remaining=-1, fails closed)", async () => {
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 3_450,
-      loadModule: async () =>
-        makeFakeModule({
-          creates: [],
-          runs: [],
-          killed: [],
-          killAnswer: "ok",
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 3_450,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates: [],
+            runs: [],
+            killed: [],
+            killAnswer: "ok",
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
@@ -2251,28 +2267,30 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       const runs: RecordedRun[] = [];
       const killed: string[] = [];
       const listCalls: string[] = [];
-      const hooks: TerminalProductLabHooks = {
+      const inputs: TerminalTestInputs = {
         env: baseEnv(),
-        now: () => 3_500,
-        loadModule: async () =>
-          makeFakeModule({
-            creates,
-            runs,
-            killed,
-            listCalls,
-            killThrows: () => ({ message }),
-            codexBehavior: (cmd) => ({
-              exitCode: 0,
-              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+        deps: {
+          now: () => 3_500,
+          desktopModule: async () =>
+            makeFakeModule({
+              creates,
+              runs,
+              killed,
+              listCalls,
+              killThrows: () => ({ message }),
+              codexBehavior: (cmd) => ({
+                exitCode: 0,
+                stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+              }),
             }),
-          }),
+        },
       };
       const result = await runTerminalProductLab({
         cwd,
         config: liveConfig(),
         dryRun: false,
         open: false,
-        hooks,
+        ...inputs,
       });
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
@@ -2287,28 +2305,30 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
     const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 3_700,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          listCalls,
-          getInfoState: "not-found", // the exact sandbox no longer exists -> confirmed reclaimed
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 3_700,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            listCalls,
+            getInfoState: "not-found", // the exact sandbox no longer exists -> confirmed reclaimed
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
     expect(result.sandbox?.killed).toBe(true);
@@ -2328,28 +2348,30 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
     const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 3_900,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          listCalls,
-          noGetInfo: true, // an older SDK: kill(id) returning true is the sole by-id proof
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 3_900,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            listCalls,
+            noGetInfo: true, // an older SDK: kill(id) returning true is the sole by-id proof
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
     expect(result.sandbox?.killed).toBe(true);
@@ -2362,31 +2384,33 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
     const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 3_950,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          listCalls,
-          noGetInfo: true,
-          // The server-side kill-on-timeout raced ahead: the exact sandbox is already gone, so
-          // kill(id) returns false (404). That is proof of absence, not an unproven teardown.
-          killResult: false,
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 3_950,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            listCalls,
+            noGetInfo: true,
+            // The server-side kill-on-timeout raced ahead: the exact sandbox is already gone, so
+            // kill(id) returns false (404). That is proof of absence, not an unproven teardown.
+            killResult: false,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
     expect(result.sandbox?.remaining).toBe(0);
@@ -2398,29 +2422,31 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
     const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 3_960,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          listCalls,
-          killResult: false,
-          getInfoState: "not-found",
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 3_960,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            listCalls,
+            killResult: false,
+            getInfoState: "not-found",
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
     expect(result.sandbox?.remaining).toBe(0);
@@ -2444,26 +2470,28 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     const env = baseEnv();
     delete env.OPENAI_API_KEY;
     env.CODEX_API_KEY = FAKE_RUNTIME_KEY;
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env,
-      now: () => 6_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 6_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.envs).toEqual({
@@ -2483,26 +2511,28 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
-    const hooks: TerminalProductLabHooks = {
-      env: baseEnv(), // OPENAI_API_KEY only, no CODEX_API_KEY
-      now: () => 7_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+    const inputs: TerminalTestInputs = {
+      env: baseEnv(),
+      deps: {
+        now: () => 7_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.envs).toEqual({
@@ -2528,26 +2558,28 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     const killed: string[] = [];
     const env = baseEnv();
     env.CODEX_API_KEY = "FAKEKEY-codex-wins-0000000000000000";
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env,
-      now: () => 8_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 8_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.envs).toEqual({
@@ -2592,20 +2624,22 @@ describe("terminal persona traits (#308)", () => {
     );
 
     const runs: RecordedRun[] = [];
-    const hooks: TerminalProductLabHooks = {
+    const inputs: TerminalTestInputs = {
       env: baseEnv(),
-      now: () => 1_000,
-      loadModule: async () =>
-        makeFakeModule({
-          creates: [],
-          runs,
-          killed: [],
-          listCalls: [],
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates: [],
+            runs,
+            killed: [],
+            listCalls: [],
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
+      },
     };
 
     const result = await runTerminalProductLab({
@@ -2613,7 +2647,7 @@ describe("terminal persona traits (#308)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     expect(result.ok).toBe(true);
 
@@ -2655,10 +2689,10 @@ describe("terminal run directory golden", () => {
       dryRun: false,
       open: false,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates: [],
             runs,
@@ -2696,10 +2730,10 @@ describe("terminal run directory golden", () => {
       dryRun: true,
       open: false,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => 1_000,
-        loadModule: async () => {
+        desktopModule: async () => {
           throw new Error("a dry run must not load the E2B module");
         },
       },
@@ -2739,7 +2773,8 @@ describe("terminal run lifetime", () => {
       dryRun: true,
       open: false,
       runId: "older",
-      hooks: { env: baseEnv(), loadModule: noModule },
+      env: baseEnv(),
+      deps: { desktopModule: noModule },
     });
     expect(older.ok).toBe(true);
     const runDir = path.join(cwd, ".humanish", "runs", "older");
@@ -2759,7 +2794,8 @@ describe("terminal run lifetime", () => {
       open: false,
       runId: "older",
       automaticAnalysis: { run: analysis },
-      hooks: { env: { E2B_API_KEY: "FAKE-E2B-KEY" }, loadModule: noModule },
+      env: { E2B_API_KEY: "FAKE-E2B-KEY" },
+      deps: { desktopModule: noModule },
     });
     expect(keyless).toMatchObject({ ok: false, runId: "older", automaticAnalysis: skipped });
 
@@ -2770,7 +2806,8 @@ describe("terminal run lifetime", () => {
       open: false,
       runId: "older",
       automaticAnalysis: { run: analysis },
-      hooks: { env: baseEnv(), loadModule: noModule },
+      env: baseEnv(),
+      deps: { desktopModule: noModule },
     });
     expect(inUse).toMatchObject({
       ok: false,
@@ -2812,7 +2849,8 @@ describe("terminal run lifetime", () => {
       dryRun: false,
       open: false,
       runId: "receipted",
-      hooks: { env: baseEnv(), now: () => 1_000, loadModule: async () => fake },
+      env: baseEnv(),
+      deps: { now: () => 1_000, desktopModule: async () => fake },
     });
 
     expect(result.sandbox).toMatchObject({ sandboxId: "fake-sandbox-1", killed: false });
@@ -2852,7 +2890,7 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
     codexBehavior?: (cmd: string) => { exitCode: number; stdout?: string };
     getInfoState?: "running";
     killThrows?: boolean;
-    costProbe?: TerminalProductLabHooks["costProbe"];
+    costProbe?: TerminalCostProbe;
     outlastClock?: boolean;
     dryRun?: boolean;
   };
@@ -2864,11 +2902,11 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
       config: liveConfig(),
       dryRun: options.dryRun ?? false,
       open: false,
-      hooks: {
-        env: baseEnv(),
+      env: baseEnv(),
+      deps: {
         now: () => clock,
         ...(options.costProbe ? { costProbe: options.costProbe } : {}),
-        loadModule: async () =>
+        desktopModule: async () =>
           makeFakeModule({
             creates: [],
             runs: [],

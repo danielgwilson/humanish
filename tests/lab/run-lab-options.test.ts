@@ -243,7 +243,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
 describe("each new option lands in the bag the route reads", () => {
   const lane = { laneId: "lane-02", laneIndex: 1, laneCount: 3 };
 
-  it("scorer goes to the browser bags whole and to the terminal bag without artifacts", () => {
+  it("scorer goes to the browser bags whole and stays on the options for terminal", () => {
     const module: AdapterScorerModule = {
       score: scorer.score!,
       deriveFeedback: () => [],
@@ -261,20 +261,27 @@ describe("each new option lands in the bag the route reads", () => {
       module.deriveFeedback,
       module.deriveArtifacts,
     ]);
-    const terminal = normalized(config("terminal"), { scorer: module }).terminalHooks!;
-    expect(terminal).toEqual({ score: module.score, deriveFeedback: module.deriveFeedback });
+    // The terminal route reads scorer itself and never calls deriveArtifacts.
+    expect(normalized(config("terminal"), { scorer: module }).scorer).toBe(module);
   });
 
   it("env goes to the route's bag, beside the bag's other fields", async () => {
-    const loadModule = async () => {
+    const loadDesktopModule = async () => {
       throw new Error("unused");
     };
-    const options = normalized(config("terminal"), {
+    const options = normalized(config("scriptedAppUrl"), {
       env: { OPENAI_API_KEY: "k" },
-      terminalHooks: { loadModule },
+      scriptedHooks: { loadDesktopModule },
     });
-    expect(options.terminalHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
-    await expect(options.terminalHooks!.loadModule!()).rejects.toThrow("unused");
+    expect(options.scriptedHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
+    await expect(options.scriptedHooks!.loadDesktopModule!()).rejects.toThrow("unused");
+  });
+
+  it("env stays on the options for terminal, as a copy", () => {
+    const env = { OPENAI_API_KEY: "k" };
+    const options = normalized(config("terminal"), { env });
+    expect(options.env).toEqual(env);
+    expect(options.env).not.toBe(env);
   });
 
   it("prepareDesktop gets a participant target on computer use and the subject on scripted", async () => {

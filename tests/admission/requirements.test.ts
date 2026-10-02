@@ -10,6 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { planLab } from "../../src/lab/plan.js";
 import type { Requirement } from "../../src/lab/plan-types.js";
+import type { LabDeps } from "../../src/lab/lab-deps.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 import {
@@ -79,9 +80,18 @@ function options(cwd: string, env: Record<string, string>, loads: { count: numbe
     env,
     cuaHooks: { loadDesktopModule: load },
     scriptedHooks: { loadDesktopModule: load, launchBrowser },
-    terminalHooks: { loadModule: load },
     sharedWorldHooks: { loadDesktopModule: load },
   } satisfies InternalRunLabOptions;
+}
+
+/** The terminal route's seams: its E2B module load counts as a load too. */
+function deps(loads: { count: number }): LabDeps {
+  return {
+    desktopModule: async (): Promise<never> => {
+      loads.count += 1;
+      throw new Error("a key refusal must come before any desktop or sandbox module loads");
+    },
+  };
 }
 
 describe("plan.requirements keys", () => {
@@ -103,7 +113,7 @@ describe("plan.requirements keys", () => {
           Object.entries(ALL_KEYS).filter(([name]) => !names.includes(name)),
         );
         const loads = { count: 0 };
-        const outcome = await runLab(parsed.config, options(cwd, env, loads));
+        const outcome = await runLab(parsed.config, options(cwd, env, loads), deps(loads));
         const runs = await readdir(path.join(cwd, ".humanish", "runs")).catch(() => []);
         expect({ without: names, ok: outcome.result.ok, runs, loads: loads.count }).toEqual({
           without: names,
@@ -136,7 +146,11 @@ describe("plan.requirements keys", () => {
       const env = Object.fromEntries(
         Object.entries(ALL_KEYS).filter(([name]) => declared.has(name)),
       );
-      const outcome = await runLab(parsed.config, options(cwd, env, { count: 0 }));
+      const outcome = await runLab(
+        parsed.config,
+        options(cwd, env, { count: 0 }),
+        deps({ count: 0 }),
+      );
       expect(outcome.result.error?.code ?? "").not.toMatch(/_(KEYS|RUNTIME_AUTH)_MISSING$/);
     },
     60_000,
@@ -224,7 +238,7 @@ async function liveRun(raw: RawLab, env: Record<string, string>) {
   if (!parsed.ok) throw new Error(parsed.error.message);
   const cwd = await projectDir();
   const loads = { count: 0 };
-  const outcome = await runLab(parsed.config, options(cwd, env, loads));
+  const outcome = await runLab(parsed.config, options(cwd, env, loads), deps(loads));
   const runs = await readdir(path.join(cwd, ".humanish", "runs")).catch(() => []);
   return { code: outcome.result.error?.code ?? "", runs, loads: loads.count };
 }

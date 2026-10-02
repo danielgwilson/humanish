@@ -413,7 +413,7 @@ describe("runTerminalProductLab (dry-run)", () => {
         cwd,
         config,
         dryRun: true,
-        hooks: { env: { [keyName]: secret } },
+        env: { [keyName]: secret },
       });
       expect(result.ok).toBe(true);
       const runDir = path.join(cwd, ".humanish", "runs", result.runId);

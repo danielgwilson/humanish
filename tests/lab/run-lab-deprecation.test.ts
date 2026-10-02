@@ -62,7 +62,7 @@ describe("rerun.laneIds", () => {
     normalizeRunLabOptions(labConfig, routeOf(labConfig), {
       cwd: "/tmp/x",
       env: {},
-      terminalHooks: { env: {} },
+      scriptedHooks: { env: {} },
     });
     expect(deprecations(emitWarning)).toEqual([]);
   });
