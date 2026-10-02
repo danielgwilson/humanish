@@ -76,7 +76,7 @@ export function Sidebar({
       aria-hidden={collapsed || undefined}
       inert={collapsed || undefined}
     >
-      <nav aria-label="Run library">
+      <nav aria-label="Studies">
         <div className="grp">
           <span className="o-label">
             Studies <span className="library-count">{allRuns.length}</span>
@@ -84,7 +84,7 @@ export function Sidebar({
           {allRuns.length > 1 ? (
             <input
               className="library-search"
-              aria-label="Find a run"
+              aria-label="Find a study"
               placeholder="Find a study…"
               type="search"
               value={query}

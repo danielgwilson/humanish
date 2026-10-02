@@ -1014,7 +1014,7 @@
           "focus": "Sign up from a phone."
         },
         "kind": "browser",
-        "label": "CUA participant mobile-newcomer: fanout-proof",
+        "label": "mobile-newcomer · browser",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1022,7 +1022,7 @@
         "embed": {
           "kind": "screenshot",
           "url": "screenshots/mobile-newcomer/turn-01.png",
-          "title": "CUA desktop mobile-newcomer (raw)"
+          "title": "Desktop (raw)"
         },
         "viewport": {
           "width": 500,
@@ -1219,7 +1219,7 @@
           "focus": "Skim and bounce."
         },
         "kind": "browser",
-        "label": "CUA participant small-skimmer: fanout-proof",
+        "label": "small-skimmer · browser",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1227,7 +1227,7 @@
         "embed": {
           "kind": "screenshot",
           "url": "screenshots/small-skimmer/turn-01.png",
-          "title": "CUA desktop small-skimmer (raw)"
+          "title": "Desktop (raw)"
         },
         "viewport": {
           "width": 500,
@@ -1424,7 +1424,7 @@
           "focus": "Open advanced settings."
         },
         "kind": "browser",
-        "label": "CUA participant desktop-power: fanout-proof",
+        "label": "desktop-power · browser",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1432,7 +1432,7 @@
         "embed": {
           "kind": "screenshot",
           "url": "screenshots/desktop-power/turn-01.png",
-          "title": "CUA desktop desktop-power (raw)"
+          "title": "Desktop (raw)"
         },
         "viewport": {
           "width": 1440,
@@ -1624,7 +1624,7 @@
           "focus": "Compare the plans."
         },
         "kind": "browser",
-        "label": "CUA participant wide-researcher: fanout-proof",
+        "label": "wide-researcher · browser",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1632,7 +1632,7 @@
         "embed": {
           "kind": "screenshot",
           "url": "screenshots/wide-researcher/turn-01.png",
-          "title": "CUA desktop wide-researcher (raw)"
+          "title": "Desktop (raw)"
         },
         "viewport": {
           "width": 1920,

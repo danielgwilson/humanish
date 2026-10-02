@@ -41,6 +41,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Computer-use streams in `run.json` are labelled `<participant id> · browser`, such as
+  `lane-01 · browser`, in place of `CUA browser — <study>` and `CUA participant <id>: <study>`, and
+  their screenshot embed title is `Desktop (raw)` or `Desktop (blurred)` in place of
+  `CUA desktop …`. Bundles written earlier keep their labels. The Observer says participant where it
+  said lane (`Participant`, `Est. participant cost`, `Assigned focus`, `Declared UI route`), calls
+  its library the study library, and uses `·` in labels and a colon in sentences where it showed an
+  em dash.
+
 - The first commands a newcomer runs say the right thing.
   - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
     init --yes" and ".gitignore does not list .humanish/; run humanish init --yes". Before, these

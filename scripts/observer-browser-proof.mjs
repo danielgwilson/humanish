@@ -2749,7 +2749,7 @@ try {
       async ({ page, record, snap }) => {
         await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/2`);
         const selectedFrame = await displayedFrame(page);
-        const library = page.getByRole("button", { name: "Toggle run library", exact: true });
+        const library = page.getByRole("button", { name: "Toggle study library", exact: true });
         // Desktop library preference is stable across study views; phones use a drawer.
         if (!phone && (await library.getAttribute("aria-expanded")) === "true")
           await library.click();
@@ -2759,7 +2759,7 @@ try {
         const drawer = phone
           ? page.getByRole("dialog", { name: "Study library", exact: true })
           : page.locator(".frame > .side");
-        await drawer.getByRole("navigation", { name: "Run library", exact: true }).waitFor();
+        await drawer.getByRole("navigation", { name: "Studies", exact: true }).waitFor();
         await snap("library-from-player");
         if (phone) await page.keyboard.press("Escape");
         else await library.click();
@@ -2784,7 +2784,7 @@ try {
         }
         if (phone) await library.tap();
         else await library.click();
-        await drawer.getByRole("navigation", { name: "Run library", exact: true }).waitFor();
+        await drawer.getByRole("navigation", { name: "Studies", exact: true }).waitFor();
         await snap("library-from-comparison");
         if (phone) await page.keyboard.press("Escape");
         else await library.click();
@@ -2994,7 +2994,7 @@ try {
     },
   );
   await runCase("keyboard-phone", { phone: true }, async ({ page, record, snap }) => {
-    const library = page.getByRole("button", { name: "Toggle run library", exact: true });
+    const library = page.getByRole("button", { name: "Toggle study library", exact: true });
     await library.click();
     await page.getByRole("dialog", { name: "Study library", exact: true }).waitFor();
     await snap("phone-library");

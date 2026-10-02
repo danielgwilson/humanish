@@ -2819,7 +2819,7 @@ describe("runCuaActorLab", () => {
     ).toBe(true);
 
     // Claims match mechanism: a raw run must never be labeled "redacted" anywhere.
-    expect(bundle.streams[0].embed.title).toBe("CUA desktop (raw)");
+    expect(bundle.streams[0].embed.title).toBe("Desktop (raw)");
     const screenshotLabels = bundle.streams[0].artifacts
       .filter((a: { kind: string }) => a.kind === "screenshot")
       .map((a: { label: string }) => a.label);
@@ -2873,7 +2873,7 @@ describe("runCuaActorLab", () => {
     );
 
     // Claims match mechanism: the blurred mode is named as such, not a vague "redacted".
-    expect(bundle.streams[0].embed.title).toBe("CUA desktop (blurred)");
+    expect(bundle.streams[0].embed.title).toBe("Desktop (blurred)");
     const screenshotLabels = bundle.streams[0].artifacts
       .filter((a: { kind: string }) => a.kind === "screenshot")
       .map((a: { label: string }) => a.label);
@@ -6180,14 +6180,14 @@ describe("buildSingleParticipantBundle", () => {
 
     const blurred = buildSingleParticipantBundle({ ...base, captureRedaction: "blurred" });
     expect(blurred.simulations[0]?.progress).toBe(100);
-    expect(blurred.streams[0]?.embed?.title).toBe("CUA desktop (blurred)");
+    expect(blurred.streams[0]?.embed?.title).toBe("Desktop (blurred)");
     expect(blurred.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (blurred)")).toBe(
       true,
     );
     expect(blurred.redaction.notes).toContain("capture policy (blurred)");
 
     const raw = buildSingleParticipantBundle({ ...base, captureRedaction: "raw" });
-    expect(raw.streams[0]?.embed?.title).toBe("CUA desktop (raw)");
+    expect(raw.streams[0]?.embed?.title).toBe("Desktop (raw)");
     expect(raw.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (raw)")).toBe(true);
     expect(raw.redaction.notes).toContain("capture policy (raw)");
     expect(JSON.stringify(raw)).not.toContain("(redacted)");

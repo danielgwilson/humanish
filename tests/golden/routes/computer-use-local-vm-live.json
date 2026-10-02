@@ -452,14 +452,14 @@
           "mission": "Save a synthetic note."
         },
         "kind": "browser",
-        "label": "CUA browser — local-vm-golden",
+        "label": "lane-01 · browser",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "screenshot",
           "url": "screenshots/turn-01.png",
-          "title": "CUA desktop (raw)"
+          "title": "Desktop (raw)"
         },
         "desktopGeometry": {
           "screen": {
