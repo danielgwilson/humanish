@@ -113,7 +113,7 @@ function isNonRuntimeCredentialName(name: string): boolean {
 
 /**
  * Build the sandbox metadata from a positive allowlist (safety contract item 6). This is the only
- * way metadata is set on the terminal route — it carries solely non-secret labels and rejects any
+ * way metadata is set on the terminal route. It carries solely non-secret labels and rejects any
  * value that is not a plain short label. A verifier check asserts the persisted metadata has no
  * prompt/token/secret shapes; this builder makes that true by construction.
  */

@@ -30,7 +30,7 @@ import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 // The default per-seat session budget is derived from the route. On a provisioned route the binding
 // constraint is the subject sandbox (it must outlive every seat: timeoutMs + provisioning +
 // seeding + teardown buffer, and E2B refuses a sandbox over one hour), so the derivation hands
-// each seat the most that cap allows — capped at 15 minutes, floored at the historical 300s so a
+// each seat the most that cap allows, capped at 15 minutes, floored at the historical 300s so a
 // seed-heavy lab never gets less room than it always had. App-url seats have no subject sandbox
 // and default to 30 minutes (seat sandbox: 30m + 10m buffer stays well under the hour). An
 // explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
@@ -174,7 +174,7 @@ function participantStreams(
 ): NonNullable<SharedWorldRunInput["onStream"]> {
   return (event) => {
     if (event.type === "ready") live.streamUrls.push({ streamId: event.streamId, url: event.url });
-    // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
+    // Mark, never remove: the tile falls back to recorded evidence and says why.
     else
       for (const entry of live.streamUrls)
         if (entry.streamId === event.streamId) entry.ended = true;
@@ -240,7 +240,7 @@ export function participantRunDeps(
 
 /**
  * Each participant's actor spec, with committed personas compiled in so each prompt carries real
- * behavioral directives (#381). Evidence copies of the assignment, instructions and persona are
+ * behavioral directives. Evidence copies of the assignment, instructions and persona are
  * scrubbed of the run's known secret values.
  */
 export async function buildParticipantSpecs(

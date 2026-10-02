@@ -36,7 +36,7 @@ export const UPLOAD_MAX_BYTES = 64 * 1024 * 1024;
 /**
  * Server-side reclamation buffer past the codex command's own wall-clock (caps.maxMinutes) kill.
  * Shorter than the desktop routes' SANDBOX_TIMEOUT_BUFFER_MS (src/substrates/e2b/lifetime.ts):
- * when #158 set it, the terminal sandbox ran nothing but the codex command, and after its kill only
+ * when this buffer was set, the terminal sandbox ran nothing but the codex command, and after its kill only
  * teardown remained.
  */
 export const TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS = 5 * 60_000;
@@ -67,11 +67,11 @@ export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
 export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
 
 /**
- * The read-only evidence a thin adapter's scorer/feedback hook sees (the layer-6 extension seam,
- * issue #154 acceptance #8). It is the FULLY-ASSEMBLED, redacted, verifiable evidence — the live run
+ * The read-only evidence a thin adapter's scorer/feedback hook sees (the layer-6 extension seam).
+ * It is the fully assembled, redacted, verifiable evidence: the live run
  * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
  * interventions/cleanup/cost/no-spend). Every member is an exported public type, so a thin adapter
- * types against `import("humanish")` alone — never a deep `src/` import. The adapter reads this
+ * types against `import("humanish")` alone and never needs a deep `src/` import. The adapter reads this
  * to score the product attempt and derive feedback; it cannot mutate core's evidence (the route
  * attaches only the namespaced `RunAdapterScore` it returns + the feedback candidates it derives).
  */
@@ -87,7 +87,7 @@ export interface TerminalProductScoringContext {
    * values) then redacted (shape patterns) at the source, capped at MAX_TRANSCRIPT_BYTES, and
    * byte-identical to the persisted terminal-transcript.txt artifact. The trace's transcriptTail
    * is a ~2KB projection of this; a scorer needs the whole session so a rubric can find
-   * command-tier evidence anywhere in it, not only in the tail window (#341).
+   * command-tier evidence anywhere in it.
    */
   transcript: string;
   /** The studied product name (public-safe). */
@@ -110,8 +110,8 @@ export type TerminalCostProbe = (context: {
 /** The scorer functions a terminal run calls: `RunLabOptions.scorer` without `deriveArtifacts`. */
 export interface TerminalScorer {
   /**
-   * The layer-6 extension seam (issue #154 acceptance #8: "product-adapter hooks without forking
-   * core"). A thin in-repo/out-of-tree adapter registers a product scorer here. The route calls it
+   * The layer-6 extension seam: product-adapter hooks without forking
+   * core. A thin in-repo/out-of-tree adapter registers a product scorer here. The route calls it
    * (when provided) over the fully-assembled evidence and attaches the returned, ADAPTER-NAMESPACED
    * `RunAdapterScore` to `bundle.adapterScore` without core knowing any product noun (the score is
    * namespaced + its component breakdown rides in `data`). When no scorer is given, the default
@@ -124,8 +124,8 @@ export interface TerminalScorer {
    * appends the returned candidates to `bundle.feedbackCandidates`. The adapter records its
    * product-specific concepts (public CLI command observed, hosted success-or-blocker, feedback id,
    * media/job ids, no-spend proof, defection/friction risk) under each candidate's ADAPTER-NAMESPACED
-   * `adapter` block — never as core enums (issue #154's "record product-specific concepts as
-   * NON-core nouns" list). The candidates must still satisfy core's feedback-candidate shape (which
+   * `adapter` block and never as core enums.
+   * The candidates must still satisfy core's feedback-candidate shape (which
    * the bundle verifier enforces), so a malformed adapter candidate fails closed.
    */
   deriveFeedback?: (
@@ -155,7 +155,7 @@ export interface RunTerminalProductLabOptions {
   /** Test seams: the E2B module, the Observer renderer, the clock and the cost probe. */
   deps?: LabDeps;
   /**
-   * Present only when the scorer was config-declared and loaded by the CLI (#316). Its presence
+   * Present only when the scorer was config-declared and loaded by the CLI. Its presence
    * is the "declared" marker: a config-declared terminal scorer returning status:"fail" flips
    * bundle.review.verdict (like the browser routes), and one that throws becomes a visible review.gaps
    * entry. A library caller passing `scorer` leaves this absent and keeps today's purely
@@ -192,7 +192,7 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
      *  -1 = kill(id) itself failed or was unavailable. See TerminalLedgers["cleanup"]. */
     remaining: number;
   };
-  /** Live-only: the spend ledger surfaced on the result — unknowns are null, never guessed.
+  /** Live-only: the spend ledger surfaced on the result. Unknowns are null, never guessed.
    *  Lets a programmatic caller read spend without parsing the bundle. */
   cost?: {
     knownTotalUsd: number;
@@ -248,7 +248,7 @@ export interface CommandLogRecord {
   at: string;
   /** A public-safe label for the command (e.g. "codex-exec"); the full argv is bound by digest only. */
   label: string;
-  /** sha256-12 of the exact command string — pins "same recipe" without persisting it. */
+  /** sha256-12 of the exact command string. It pins "same recipe" without persisting it. */
   commandDigest: string;
   /** The env var names injected command-scoped (values never persisted): the credential evidence. */
   envNames: string[];
@@ -278,7 +278,7 @@ export interface InterventionRecord {
 }
 
 /**
- * One cost line of the spend ledger. The null discipline (issue #154, the cost/no-spend asks):
+ * One cost line of the spend ledger. The null discipline:
  * three distinct states are kept apart:
  *   - `usd: 0`     => known to be zero. A measured-and-zero spend (we metered this category and it
  *                     billed nothing). The no-spend proof may legitimately assert this is zero.
@@ -304,7 +304,7 @@ export interface CostLine {
     | "operator-cap"
     | "unmeasured"
     /** Tokens were counted but no rate could price them, so `usd` stays null while the note
-     *  carries the measured token totals (#531). Distinct from "unmeasured", which means no
+     *  carries the measured token totals. Distinct from "unmeasured", which means no
      *  signal at all. */
     | "unpriced-token-usage";
   /** A short, public-safe note (never a secret value). */
@@ -328,8 +328,8 @@ export interface TerminalCostLedger {
 }
 
 /**
- * The no-spend proof, derived from the cost ledger (issue #154: "derived from a ledger, not
- * asserted"). It lists the known-zero lines it can vouch for and, separately, the unmeasured
+ * The no-spend proof, derived from the cost ledger.
+ * It lists the known-zero lines it can vouch for and, separately, the unmeasured
  * (null) lines it cannot vouch for. `satisfied` is true only when every known line is zero (a
  * known non-zero line fails it). A proof with unmeasured lines says it could not measure them;
  * it never claims zero on a line the ledger marks null.

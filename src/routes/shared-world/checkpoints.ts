@@ -18,7 +18,7 @@ export function combineCheckpointDigest(parts: string[]): string {
  * Run one checkpoint snapshot live: each declared probe runs read-only via the detached
  * primitive; its stdout is literal-scrubbed (provisioned values + the probe's declared redact
  * literals, folded into `scrub`) then pattern-redacted, then digested. Only the combined digest
- * persists — never the raw value (the seed-step lockdown). Unique step names per snapshot prevent
+ * persists, never the raw value (the seed-step lockdown). Unique step names per snapshot prevent
  * stale-status reuse across snapshots.
  */
 export async function runCheckpointSnapshot(args: {

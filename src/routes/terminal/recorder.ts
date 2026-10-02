@@ -52,7 +52,7 @@ export function createTerminalRecorder(args: {
     if (stream === "stdout") participantText.append(raw);
   };
 
-  // E2B can stream every byte through callbacks and return the same complete output (#667).
+  // E2B can stream every byte through callbacks and return the same complete output.
   // Track transport delivery, independently per stream, rather than deduplicating participant
   // lines or equal usage records. Hash raw callback bytes before redaction/truncation so the
   // comparison cannot confuse two values that redact identically or lose capped-away delivery.
