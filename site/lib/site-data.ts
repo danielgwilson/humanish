@@ -4,7 +4,7 @@
  * receipt first, then this file.
  */
 export const GITHUB = "https://github.com/danielgwilson/humanish";
-export const RECEIPTS = `${GITHUB}/blob/main/docs/goals/computer-use-actor/receipts`;
+export const RECEIPTS = `${GITHUB}/blob/main/docs/evidence/computer-use`;
 export const BENCH = `${GITHUB}/blob/main/bench`;
 /** The root package.json version, read at build time by next.config.mjs. */
 export const VERSION = process.env.NEXT_PUBLIC_HUMANISH_VERSION ?? "0.0.0";

@@ -8,7 +8,7 @@
 //      live-sandbox.ts and live-finish.ts); a dry plan publishes its contract bundle (dry-run.ts);
 //   4. automatic analysis of a run that published its final bundle.
 //
-// The safety contract (`docs/goals/terminal-product-lane/goal.md`) is enforced by construction in
+// The safety contract (`docs/history/goals/terminal-product-lane/goal.md`) is enforced by construction in
 // the files each item names, and checked by the verifier (verify/actor.ts
 // validateTerminalProductEvidence):
 //   1. Explicit key placement. openai-env (default) injects the raw runtime key command-scoped,

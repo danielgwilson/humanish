@@ -354,7 +354,7 @@ describe("humanish export", () => {
     expect(result.error.message).toMatch(/\d+ bytes \(1 images/);
   });
 
-  it("renders the Observer for a `run` bundle that has none, so what produced the run never decides whether it can be sent (#597)", async () => {
+  it("renders the Observer for a `run` bundle that has none, so what produced the run never decides whether it can be sent", async () => {
     await rm(path.join(runDir, "observer", "index.html"));
     let rendered = 0;
     const render = async () => {

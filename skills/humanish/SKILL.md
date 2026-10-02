@@ -125,7 +125,7 @@ Use `humanish runtime status --json` and `humanish doctor --lab <path> --json`
 for read-only setup inspection. `humanish runtime setup` downloads and verifies
 the pinned runtime; a live local run also prepares it automatically. The normal
 `humanish lab run <path>` command and TUI use the same study runner and Observer.
-See [the complete example and limits](../../docs/architecture/local-browser-runtime.md).
+See [the complete example and limits](https://humanish.dev/docs/local-browser).
 
 Local browsers currently require a loopback app URL with an explicit port above
 1023 and use a 960×720 Chromium desktop. For email-gated local apps, start
@@ -134,9 +134,9 @@ Local browsers currently require a loopback app URL with an explicit port above
 routes. This captures app sends without mailbox-provider credentials; it does
 not receive arbitrary internet email. Each participant gets only its assigned
 inbox through the local desktop. Real receiving still needs a supported hosted
-route. See [captured inbox setup](../../docs/architecture/comms-inbox.md#local-browser-studies).
+route. See [captured inbox setup](https://humanish.dev/docs/comms-inbox#local-browser-studies).
 Optional camera and spoken conversation require a separate media
-runtime; follow [participant media](../../docs/architecture/participant-media.md)
+runtime; follow [participant media](https://humanish.dev/docs/participant-media)
 for setup and provider limits. Speech uses the same continuing Codex participant,
 not a second conversation. Do not claim that installing the CLI also installs
 Docker or Lima, or qualifies a machine for arbitrary participant counts.
@@ -144,7 +144,7 @@ Docker or Lima, or qualifies a machine for arbitrary participant counts.
 For continuous desktop playback, independent computer-use participants can opt into
 `execution.desktop.recording: { audio: true }` (`false` for screen-only video).
 Screenshots remain the default. Recording does not enable camera or speech;
-the raw media stays local-only. See [desktop recording](../../docs/architecture/desktop-recording.md)
+the raw media stays local-only. See [desktop recording](https://humanish.dev/docs/desktop-recording)
 for runtime requirements and export limits.
 
 ## Format Stack
@@ -316,7 +316,7 @@ and model charges are separate. Use `humanish comms recover --json` after an
 interrupted run, then `humanish comms recover --run <id> --apply --json` for its
 privately recorded resources. Never derive deletion authority from run artifacts.
 SMS, participant sending, borrowed inboxes and other providers remain unavailable.
-See `docs/architecture/real-email-receiving.md` for limits and recovery.
+See [real email receiving](https://humanish.dev/docs/email-receiving) for limits and recovery.
 
 The following configuration selects **local capture**:
 

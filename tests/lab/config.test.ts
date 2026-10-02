@@ -129,7 +129,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
   });
 
-  it("comms recipients fail loud on unknown lanes, fill per-lane when omitted, and warn on partial coverage (#351)", () => {
+  it("comms recipients fail loud on unknown participants, fill per-participant when omitted, and warn on partial coverage", () => {
     const multiLane = (comms?: Record<string, unknown>) => ({
       schema: LAB_CONFIG_SCHEMA,
       id: "comms-multi",
@@ -207,7 +207,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     }
   });
 
-  it("declaredParticipantIds mirrors the engine's lane naming (the #351 validation cannot drift)", () => {
+  it("declaredParticipantIds mirrors the engine's participant ids, so recipient validation cannot drift", () => {
     const base = {
       schema: LAB_CONFIG_SCHEMA,
       id: "lanes",
@@ -520,7 +520,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings[0]).not.toContain("laneFocus.instruction");
     });
 
-    it("warns that comms.email is inert on an app-url subject — the in-sandbox catch has no sandbox to host (#328)", () => {
+    it("warns that comms.email is inert on an app-url subject: the in-sandbox catch has no sandbox to host", () => {
       const result = parseLabConfig({
         ...validCua,
         comms: {
@@ -537,7 +537,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(commsWarning).toContain("clone or local-tree");
     });
 
-    it("does NOT warn about comms.email on a clone subject, which the catch can host (#328)", () => {
+    it("does not warn about comms.email on a clone subject, which the catch can host", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
         id: "clone-comms",
@@ -610,7 +610,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain("stopWhen");
     });
 
-    it("parses an actor-level dwell window with defaults and a lane-level override (#510)", () => {
+    it("parses an actor-level dwell window with defaults and a participant-level override", () => {
       const result = parseLabConfig({
         ...validCua,
         actors: [
@@ -664,7 +664,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain("dwell");
     });
 
-    it("parses a synthetic camera and the permission policy (#509)", () => {
+    it("parses a synthetic camera and the permission policy", () => {
       const result = parseLabConfig({
         ...validCua,
         execution: {
@@ -775,9 +775,9 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
     });
 
-    describe("multi-lane fan-out (#163)", () => {
+    describe("multi-participant fan-out", () => {
       it.each(["misson", "runtme", "count", "constructor"])(
-        "rejects an unknown lane field %s before it can disappear (#343)",
+        "rejects an unknown participant field %s before it can disappear",
         (key) => {
           const result = parseLabConfig({
             ...validCua,
@@ -794,7 +794,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         },
       );
 
-      it("names all unknown roster fields at the declared group index before expansion (#343)", () => {
+      it("names all unknown roster fields at the declared group index before expansion", () => {
         const result = parseLabConfig({
           ...validCua,
           actors: [
@@ -1213,7 +1213,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
       });
 
-      it("warns actors[0].lanes as inert on a non-cua route (regression: other routes' rules fire)", () => {
+      it("warns actors[0].lanes as inert on a non-cua route, and the other routes' rules still fire", () => {
         const result = parseLabConfig({
           schema: LAB_CONFIG_SCHEMA,
           id: "synthetic-lanes",
@@ -1297,7 +1297,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("execution.desktop.fidelity parses on the cua route with zero warnings, and rejects bad shapes (#221)", () => {
+    it("execution.desktop.fidelity parses on the cua route with zero warnings, and rejects bad shapes", () => {
       const ok = parseLabConfig({
         ...validCua,
         execution: {
@@ -2020,7 +2020,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
 // RUNG 1 (#148): the local-app subject.source — an already-running local dev server driven
 // in-process via a custom CuaExecutor (no clone, no E2B desktop). Parse-validated fail-closed.
-describe("parseLabConfig (local-app subject — issue #148)", () => {
+describe("parseLabConfig (local-app subject)", () => {
   const validLocalApp = {
     schema: LAB_CONFIG_SCHEMA,
     id: "local-app-state",
@@ -2248,7 +2248,7 @@ function validSharedWorldLocalTree(overrides?: {
   };
 }
 
-describe("shared-world topology routing + cross-validation (#164)", () => {
+describe("shared-world topology routing + cross-validation", () => {
   it("parses a valid shared-world lab, routes to the shared-world backend, no warnings", () => {
     const result = parseLabConfig(validSharedWorld());
     expect(result.ok).toBe(true);
@@ -2274,7 +2274,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     ]);
   });
 
-  it("accepts subject.source: local-tree (issue #261 follow-up): parses, routes to shared-world, no warnings", () => {
+  it("accepts subject.source: local-tree: parses, routes to shared-world, no warnings", () => {
     const result = parseLabConfig(validSharedWorldLocalTree());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -2659,7 +2659,7 @@ function validConcurrent(overrides?: {
   };
 }
 
-describe("concurrent shared-world routing + cross-validation (#164 phase 2)", () => {
+describe("concurrent shared-world routing + cross-validation", () => {
   it("routes shared-world + concurrency>1 to the concurrent backend; no warnings", () => {
     const result = parseLabConfig(validConcurrent());
     expect(result.ok).toBe(true);
@@ -2793,7 +2793,7 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
 // RUNG 1: the local-tree subject.source (issue #261) - packs the operator's own working tree
 // (the lab resolution cwd) and provisions it in-sandbox in place of a clone. Routing requires
 // execution.target: e2b-desktop and a computer-use actor; everything else fails closed at parse.
-describe("parseLabConfig (local-tree subject - issue #261)", () => {
+describe("parseLabConfig (local-tree subject)", () => {
   const validLocalTree = {
     schema: LAB_CONFIG_SCHEMA,
     id: "local-tree-lab",

@@ -17,13 +17,13 @@ arm64; a hosted run on a release outside `TESTED_CODEX_CLI_VERSIONS` records a w
 evidence rests on the checks each launch makes. `TESTED_CODEX_CLI_VERSIONS` gates nothing. It
 lists the releases the qualifier passed on Linux x64, and its newest is the default and the
 install target: 0.154.0, 0.157.1
-([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.157.1-requalification-2026-09-30.md))
+([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/codex-cli-0.157.1-requalification-2026-09-30.md))
 0.159.2
-([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.159.2-qualification-2026-09-30.md))
+([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/codex-cli-0.159.2-qualification-2026-09-30.md))
 0.159.3
-([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.159.3-qualification-2026-10-01.md))
+([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/codex-cli-0.159.3-qualification-2026-10-01.md))
 and 0.160.0
-([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.160.0-qualification-2026-10-01.md)).
+([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/codex-cli-0.160.0-qualification-2026-10-01.md)).
 On Apple Silicon, 0.154.0 passed installed participant/analysis studies and the native dispatch
 restriction check on an M5 Max; no later release has run on a Mac. Other platforms,
 keychain-only logins and API-key Codex logins are refused before a model turn.
@@ -166,7 +166,7 @@ leases require their own qualification.
 ## Testing a Codex CLI release
 
 Admission does not wait for a test. A release enters `TESTED_CODEX_CLI_VERSIONS`, which gates
-nothing, with a dated receipt under `docs/goals/computer-use-actor/receipts/` showing all of
+nothing, with a dated receipt under `docs/evidence/computer-use/` showing all of
 the following, on Linux x64:
 
 1. The release notes since the baseline were read for changes near the tool boundary.

@@ -1,59 +1,31 @@
 # humanish
 
 Synthetic user research for apps, CLIs, and agent-facing product flows.
-Open-source and public-safe.
-
-humanish runs studies. Realistic synthetic participants, each with its own
-goals, patience, and skill, actually use your product on isolated desktops while
-you watch. A study leaves verifiable evidence: screenshots, action traces,
-per-task completion funnels, participant outcomes with the denominator
-attached, and estimated cost lines. A fail-closed share-safety gate decides what
-goes into feedback drafts, export bundles and a `serve --safe` library, and the
-end of the pipeline is a public-safe feedback draft you can turn into a real
-issue. Committed lab source lives under `humanish/`; run evidence lands under
-gitignored `.humanish/`.
 
 [![The Observer grid of a saved eight-participant study: eight desktops in one multiplayer lobby, each tile a participant's live screen](https://humanish.dev/runs/lobby-0927/poster.jpg)](https://humanish.dev/demo)
 
-**[Watch a saved run](https://humanish.dev/demo).** Eight synthetic participants
-joined one lobby of a multiplayer game on its live deployment, each on its own
-hosted desktop, and played five rounds. Six reached the final standings, two were
-blocked, and `humanish analyze` turned the 13-minute recording into seven
-findings, each linked to the capture behind it. The page replays the real
-Observer; nothing runs from it.
+**[Watch a saved run](https://humanish.dev/demo).** Eight synthetic participants joined one
+lobby of a multiplayer game on its live deployment, each on its own hosted desktop. The page
+replays the real Observer; nothing runs from it.
 
-**Numbers so far, every one with its run ids.** Recall on five planted defects
-in a small task app: 15 of 15 across three live runs
-([benchmark](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-2026-09-04-0.76.0.md)). Precision on apps the
-maintainer did not write: TodoMVC 5 of 6 findings confirmed against the source,
-drawDB 11 of 12, none invented
-([TodoMVC](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-TODOMVC-2026-09-01.md), [drawDB](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-DRAWDB-2026-09-01.md)).
-Cold install to a live study: 9 of 9 fresh directories reached the goal in 108 to 200 seconds;
-the five on the API route cost $0.16 to $0.35 each, and the four on Codex or Claude Code are
-unpriced ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
-Same mission, different personas: keyboard-first participants reported drawDB's
-database modal 5 of 5 times and TodoMVC's mouse-only rename 6 of 6; mouse newcomers
-reported them 0 of 5 and 0 of 6 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/persona-axis-phone-2026-09-03.md)).
-Planted defects are more legible than real ones and the largest cell is six runs;
-read these as what the machinery found, not as rates for your users.
+## Try it without keys
 
-![humanish Observer grid of a live four-persona drawDB study: four completed participants, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
-
-An earlier study, kept here because the image ships in the npm package: four
-personas on [drawDB](https://github.com/drawdb-io/drawdb), a public open-source
-database diagram editor, driven against a commit-pinned local checkout. Every participant
-ran a real computer-use session on a hosted desktop; the captions are each persona's
-own final report. drawDB is the application studied; it is not a humanish adopter or endorser.
-
-[Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
-
-## Install
-
-Use **Node.js 22.19 or newer**, in a project directory:
+In a project directory, with Node.js 22.19 or newer:
 
 ```bash
 npm install --save-dev humanish
+npx humanish init --yes
+npx humanish run first-run
+npx humanish observe --run latest --open
 ```
+
+This writes a preview study with no model calls and no spend, so you can read the evidence format
+before you add keys. To run participants against your own app, follow the
+[own-app guide](https://humanish.dev/docs/your-app).
+
+[Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
+
+## Run a live study
 
 `@e2b/desktop` is the optional peer for live hosted desktops. Install it alongside
 humanish when choosing that route (`npm install --save-dev @e2b/desktop`) so the
@@ -62,24 +34,26 @@ preview and local-browser setup need only `humanish`.
 
 Choose how the participant runs:
 
-| Setup                                                             | Participant authentication            | Desktop                                              | Automatic findings                               |
-| ----------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
-| `first-run` preview                                               | None; synthetic evidence only         | None                                                 | No model analysis                                |
-| [Local browser study](docs/architecture/local-browser-runtime.md) | Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM or M3+ Mac + Lima; no E2B key | Separate Codex account analyst by default        |
-| `openai-computer-use`                                             | `OPENAI_API_KEY`                      | `E2B_API_KEY` + desktop SDK                          | Separate OpenAI request                          |
-| [`local-agent`](https://humanish.dev/docs/local-agents)           | Codex or Claude Code's own login      | `E2B_API_KEY` + desktop SDK                          | Still needs `OPENAI_API_KEY`; skipped without it |
+| Setup                                                          | Participant authentication            | Desktop                                              | Automatic findings                               |
+| -------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| `first-run` preview                                            | None; synthetic evidence only         | None                                                 | No model analysis                                |
+| [Local browser study](https://humanish.dev/docs/local-browser) | Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM or M3+ Mac + Lima; no E2B key | Separate Codex account analyst by default        |
+| `openai-computer-use`                                          | `OPENAI_API_KEY`                      | `E2B_API_KEY` + desktop SDK                          | Separate OpenAI request                          |
+| [`local-agent`](https://humanish.dev/docs/local-agents)        | Codex or Claude Code's own login      | `E2B_API_KEY` + desktop SDK                          | Still needs `OPENAI_API_KEY`; skipped without it |
 
 A Codex ChatGPT login can power a `local-agent` participant. It does not
 authenticate humanish's OpenAI API requests. Choose the actor explicitly in
 your lab; installing Codex does not change an `openai-computer-use` lab.
 
+### Study your app in a local browser
+
 For local browsers, install only `humanish` and follow the
-[local study setup](docs/architecture/local-browser-runtime.md). The first live
+[local study setup](https://humanish.dev/docs/local-browser). The first live
 run downloads a verified runtime image; `npx humanish runtime setup` prepares it
 ahead of time. Supported Macs use Lima instead of Docker Desktop.
-[Optional camera and spoken conversation](docs/architecture/participant-media.md)
-use a separate media runtime. [Optional desktop video/audio](docs/architecture/desktop-recording.md)
-adds continuous Observer playback; screenshots remain the default. [Local captured inboxes](docs/architecture/comms-inbox.md#local-browser-studies) support email verification without mailbox-provider credentials.
+[Optional camera and spoken conversation](https://humanish.dev/docs/participant-media)
+use a separate media runtime. [Optional desktop video/audio](https://humanish.dev/docs/desktop-recording)
+adds continuous Observer playback; screenshots remain the default. [Local captured inboxes](https://humanish.dev/docs/comms-inbox#local-browser-studies) support email verification without mailbox-provider credentials.
 
 For a new local lab, initialize with your app URL and task:
 
@@ -99,7 +73,7 @@ preserves existing files and warns when supplied settings cannot be applied.
 
 `init` also adds `humanish:*` scripts to `package.json`. `npm run humanish:doctor` and
 `npm run humanish:verify` run those commands, and `humanish:watch` runs a study and keeps the
-Observer attached. `humanish:run` is `humanish run --dry-run`: a contract-proof dry run with no
+Observer attached. `humanish:run` is `humanish run --dry-run`: a dry run with no
 browser or model, not the live study above.
 
 `doctor` only inspects setup. It does not install or start the runtime, open a
@@ -107,8 +81,10 @@ browser, or use Codex account quota. The local study needs a supported Codex CLI
 version and ChatGPT login. Linux x64 also needs local rootful Docker, KVM and
 TUN; M3-or-newer Apple Silicon Macs need native ARM64 Node and Lima 2.2+.
 
-**Run a live study with the API route.** Set the desktop and model keys with hidden prompts, then
-send one synthetic participant into the included drawDB study:
+### Study drawDB through the API route
+
+Set the desktop and model keys with hidden prompts, then send one synthetic participant into the
+included drawDB study:
 
 ```bash
 npx humanish keys set e2b
@@ -130,40 +106,50 @@ overwrites an existing lab file. With an OpenAI key, from the environment or the
 `keys set` store, the participant is `openai-computer-use` and its **$2 cap covers
 estimated participant model spend**. With no OpenAI key and a signed-in Codex or
 Claude Code, it is `local-agent`, bounded by a ten-minute session limit with no
-dollar cap. Post-run analysis defaults to a separate
-**$3 admission estimate limit**; set `review.analysis: false` to disable it.
+dollar cap. Automatic analysis after the run is a separate request;
+[Read the results](#read-the-results) gives its limit and how to turn it off.
 Hosted desktop time is additional. Participant caps are checked
 between turns and are not provider billing ceilings. Allow a few minutes for
 the app to build and the participant to work. See [budgets and privacy](https://humanish.dev/docs/budgets-and-privacy).
 
-**Preview without keys.** To see the evidence format before connecting providers:
+## See what studies have found
 
-```bash
-npx humanish init --yes
-npx humanish run first-run
-npx humanish observe --run latest --open
-```
+humanish runs studies. Realistic synthetic participants, each with its own
+goals, patience, and skill, actually use your product on isolated desktops while
+you watch. A study leaves verifiable evidence: screenshots, action traces,
+per-task completion funnels, participant outcomes with the denominator
+attached, and estimated cost lines. A fail-closed share-safety gate decides what
+goes into feedback drafts, export bundles and a `serve --safe` library, and the
+end of the pipeline is a public-safe feedback draft you can turn into a real
+issue. Committed lab source lives under `humanish/`; run evidence lands under
+gitignored `.humanish/`. [ARCHITECTURE.md](ARCHITECTURE.md) traces `humanish run <lab>` through
+the code.
 
-This generates an evidence preview with no provider spend. It does not open
-your app, run an actor, or validate product behavior. To study your own product,
-follow the complete [own-app lab](https://humanish.dev/docs/your-app).
+The researcher declares the study, the participant tries the product, and the
+stakeholder reads what happened. [Three roles](docs/principles/three-roles.md)
+explains the design; the [email-gated signup study records](https://github.com/danielgwilson/humanish/tree/main/docs/evidence/email-signup/)
+show a completed two-participant study and a reported keyboard-accessibility finding.
 
-For coding agents, install the companion skill:
+In the [saved run](https://humanish.dev/demo), eight participants played five rounds. Six
+reached the final standings, two were blocked, and `humanish analyze` turned the 13-minute
+recording into seven findings, each linked to the capture behind it.
 
-```bash
-npx skills add danielgwilson/humanish --skill humanish
-```
+**Numbers so far, every one with its run ids.** Recall on five planted defects
+in a small task app: 15 of 15 across three live runs
+([benchmark](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-2026-09-04-0.76.0.md)). Precision on apps the
+maintainer did not write: TodoMVC 5 of 6 findings confirmed against the source,
+drawDB 11 of 12, none invented
+([TodoMVC](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-TODOMVC-2026-09-01.md), [drawDB](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-DRAWDB-2026-09-01.md)).
+Cold install to a live study: 9 of 9 fresh directories reached the goal in 108 to 200 seconds;
+the five on the API route cost $0.16 to $0.35 each, and the four on Codex or Claude Code are
+unpriced ([study record](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/cold-install-try-live-2026-09-01.md)).
+Same mission, different personas: keyboard-first participants reported drawDB's
+database modal 5 of 5 times and TodoMVC's mouse-only rename 6 of 6; mouse newcomers
+reported them 0 of 5 and 0 of 6 ([study record](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/persona-axis-phone-2026-09-03.md)).
+Planted defects are more legible than real ones and the largest cell is six runs;
+read these as what the machinery found, not as rates for your users.
 
-Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
-
-## How It Works
-
-```text
-humanish/     committed labs, personas, scenarios, coverage notes
-.humanish/   ignored run evidence, Observer output, reviews, local state
-```
-
-[ARCHITECTURE.md](ARCHITECTURE.md) traces `humanish run <lab>` through the code.
+## Read the results
 
 After a run, read its findings and verification grade:
 
@@ -211,10 +197,9 @@ command that runs it. Opening the TUI or Observer never starts a request.
 See [automatic analysis](docs/product/automatic-analysis.md) for configuration,
 cancellation, and failure behavior.
 
-## Public-Safety Boundary
+## Share evidence safely
 
-humanish is designed for public repositories and public issue queues. The
-boundary is three planks, each enforced where it actually holds:
+humanish is designed for public repositories and public issue queues.
 
 **1. This repo and the published package are kept public-safe by CI.** Every
 push runs a public-surface scan (secret/key/path shapes, a sha256 binary-asset
@@ -285,7 +270,7 @@ or runs a signed-in agent. The `*.live.test.ts` suites run only when a
 `HUMANISH_LIVE_*` variable and real keys are set. Live behavior is checked only
 by runs made outside CI.
 
-**Codex releases are admitted by rule.** Codex participants (local browser studies and
+**Codex versions.** Codex participants (local browser studies and
 `local-agent` with Codex) and the Codex account analyst run any stable Codex CLI release from
 0.154.0 on, except releases humanish refuses, listed in
 [`codex-admission.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/codex-admission.ts).
@@ -293,6 +278,8 @@ A new release runs the day it ships, including one Codex updated itself to. Each
 the release's app-server schema against the fields humanish uses and refuses one that changed
 them. Prereleases and releases below 0.154.0 are refused, and the refusal names the release and
 why. A hosted participant on a release humanish has not tested records a warning.
+
+**Mobile emulation.** Mobile viewport and touch flags do not certify gesture equivalence.
 
 **Credentials.** humanish fills each provider key that is not already set from
 the first of these sources that has it. It prints the name and source of a key it
@@ -328,9 +315,9 @@ has the providers' retention terms.
 | OpenAI               | Each step's screenshot, the persona, the mission and the actions so far; after a run, selected text and captures for analysis; for an external-public shared-world lab, the host participant's screen while its lobby code is read; for a terminal study, the agent's requests from the E2B sandbox                                                         | `openai-computer-use` participants; automatic or `humanish analyze` runs; external-public shared-world labs; terminal studies |
 | Codex or Claude Code | The same screenshots and prompts, through your signed-in agent and its provider                                                                                                                                                                                                                                                                             | `local-agent` participants, local browser studies, the Codex analyst                                                          |
 | E2B                  | A desktop or shell running your app and everything on its screen; the repository a `clone` subject names; your working tree for a `local-tree` subject, minus gitignored files, `.env*` and other secret-shaped files; the credentials you declare for the subject app; for a terminal study, your OpenAI key unless `execution.runtimeAuth: openai-egress` | Every hosted study                                                                                                            |
-| PostHog              | Telemetry events, described [below](#telemetry)                                                                                                                                                                                                                                                                                                             | By default                                                                                                                    |
+| PostHog              | Telemetry events, described [below](#check-what-telemetry-sends)                                                                                                                                                                                                                                                                                            | By default                                                                                                                    |
 
-## Commands
+## Find the main commands
 
 Use `npx humanish` from your project. Full arguments and options are generated
 from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
@@ -349,16 +336,16 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 | `humanish verify --run latest --json`                    | Check evidence and share-safety gates.                                    |
 | `humanish feedback issue --run latest --repo owner/repo` | Print an eligible feedback draft.                                         |
 
-## Exit Codes
+## Check exit codes
 
 | Code    | Meaning                                                                                   |
 | ------- | ----------------------------------------------------------------------------------------- |
 | `0`     | Success.                                                                                  |
-| `1`     | Commander usage error: unknown command, unknown option, or a missing/invalid argument.    |
+| `1`     | Usage error: unknown command, unknown option, or a missing/invalid argument.              |
 | `2`     | humanish domain or validation failure. Check the JSON envelope's `error.code` for detail. |
 | `128+N` | Terminated by signal `N`: `130` for SIGINT, `143` for SIGTERM, `129` for SIGHUP.          |
 
-## The Terminal Surface
+## Browse labs in the terminal
 
 `humanish tui` is for a person browsing labs and runs. It needs an
 interactive stdin/stdout, and refuses detected coding-agent sessions even with
@@ -366,8 +353,18 @@ a TTY. Agents should use `lab list --json`, `lab inspect <lab> --json`, and
 `runs --json`. Read [TUI behavior and JSON alternatives](https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts).
 
 Its Connections screen (**c**) adds an AgentMail key for
-[real email receiving](docs/architecture/real-email-receiving.md), which gives each participant a
+[real email receiving](https://humanish.dev/docs/email-receiving), which gives each participant a
 fresh hosted inbox.
+
+## Give coding agents the skill
+
+For coding agents, install the companion skill:
+
+```bash
+npx skills add danielgwilson/humanish --skill humanish
+```
+
+Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
 
 ## Find more guides
 
@@ -385,11 +382,6 @@ fresh hosted inbox.
   [live viewing from a phone](https://humanish.dev/docs/review-surfaces#watch-a-live-run-from-your-phone)
   and share-safe public exposure.
 
-Mobile viewport and touch flags do not certify gesture equivalence. The
-[2026-09-05 input-conformance correction](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
-qualifies the historical results from phone-sized participants: they describe humanish's
-measured input path, not established physical-device app behavior.
-
 ## Drive an already-running local app
 
 Use a custom executor and non-vision provider to drive your app's state contract
@@ -404,7 +396,7 @@ Run it after installing `humanish`. It makes no model calls; it proves the
 integration, not persona behavior. See [state-driven local adapters](https://humanish.dev/docs/computer-use#state-driven-local-adapters)
 for the supported library seam.
 
-## Library API
+## Use humanish as a library
 
 `import ... from "humanish"` covers four things:
 
@@ -420,14 +412,7 @@ Everything else runs through the `humanish` command. The
 [the options contract](docs/contracts/schemas.md#library-options-runlaboptions) lists which routes
 take which option.
 
-## Three Roles
-
-The researcher declares the study, the participant tries the product, and the
-stakeholder reads what happened. [Three roles](docs/principles/three-roles.md)
-explains the design; the [email-gated signup receipts](https://github.com/danielgwilson/humanish/tree/main/docs/goals/email-gated-signup/receipts/)
-show a completed two-participant study and a reported keyboard-accessibility finding.
-
-## Telemetry
+## Check what telemetry sends
 
 humanish sends anonymous usage events to PostHog by default. Each event carries
 the command, the humanish version, your OS and Node major version, whether it
@@ -441,7 +426,7 @@ subjects, personas, prompts, paths, run ids and evidence are never sent.
 disable` or `DO_NOT_TRACK=1` turns it off. [TELEMETRY.md](TELEMETRY.md) lists
 every field.
 
-## Development
+## Contribute
 
 Contributors: read [CONTRIBUTING.md](CONTRIBUTING.md) first. It gives the reading order, the
 commands CI runs and what a pull request needs.
@@ -460,24 +445,11 @@ pnpm humanish verify
 pnpm humanish lab list
 ```
 
-Maintainers draft this repository's feedback issues with
-`pnpm humanish feedback issue --repo danielgwilson/humanish`. It prints a draft and posts nothing.
-
-## Docs
+## Browse the docs
 
 - [User guides and generated CLI reference](https://humanish.dev/docs)
-- [Current safety state and goals](docs/goals/current.md)
 - [Contributing: reading order, commands and pull requests](CONTRIBUTING.md)
 - [Contributor and agent ramp](docs/ramp/README.md)
 - [Architecture: the run path, code map and invariants](ARCHITECTURE.md)
-- [Project layout: the `humanish/` and `.humanish/` folders](docs/architecture/project-layout.md)
+- [Project layout: the `humanish/` and `.humanish/` folders](https://humanish.dev/docs/project-layout)
 - [Feedback contract](docs/contracts/feedback.md)
-- [Publish a release](docs/release/publish.md)
-
-Dated design documents may preserve historical mechanisms. Start with the
-current goals and the executable CLI when checking what is supported.
-
-## Release Status
-
-The package is published on npm. Publishing a new version requires explicit
-maintainer authorization; see the [release procedure](docs/release/publish.md).

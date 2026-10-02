@@ -105,7 +105,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   ONCE per run and uploads the identical archive to every fan-out participant. The
   in-sandbox commit refresh clone subjects use is skipped: `.git` is never
   uploaded, so identity comes from the host-side archive digest instead. See
-  [`docs/goals/local-tree-subject/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/local-tree-subject/goal.md);
+  [`docs/history/goals/local-tree-subject/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/local-tree-subject/goal.md);
 - `subject.product` (terminal-product subjects): the product the agent studies.
   `product.name` is a public-safe token (committed fixtures use a NEUTRAL mock
   name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
@@ -376,7 +376,7 @@ acquisition and cleanup status. It contains no raw addresses, bodies, provider I
 or content digests. `run.json` embeds the final projection as `commsReceiving` and
 carries `publication.restrictions: [real-communications]`. Verification keeps the
 run local-only regardless of screenshot redaction. See the
-[receiving contract](../architecture/real-email-receiving.md).
+[receiving contract](https://humanish.dev/docs/email-receiving).
 
 Lab routes report results in their own schemas (`humanish.run-result.v1`,
 `humanish.cua-lab-result.v2`, `humanish.scripted-lab-result.v1`,
@@ -688,7 +688,7 @@ attribution contract. A kept 2026-06-17 live receipt separately proves one
 bounded three-persona trial against a synthetic plane. Neither the deterministic
 gate nor that receipt proves scale, repeatability, or adopter-harness replacement.
 
-### Concurrent plane classes: provisioned-getHost vs external-public (#164 phase 2, 0.20.0)
+### Concurrent plane classes: provisioned and external-public
 
 The CONCURRENT shape carries a PLANE-class discriminator, `sharedWorld.planeClass:
 "provisioned-getHost" | "external-public"`. Absent == `provisioned-getHost` (every existing
@@ -1132,7 +1132,7 @@ terminal leaves exactly that shape, so the record reads as interrupted
 public-safe by construction: no hostname and no user paths, because a run
 directory may be shared.
 
-## Run Index, Run Detail, And The Terminal Surface (#455)
+## Run Index, Run Detail, And The Terminal Surface
 
 Three derived projections that exist so a surface can list, classify and watch
 runs without opening evidence for all of them. None is authoritative: `run.json`

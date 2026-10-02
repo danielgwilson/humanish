@@ -1064,7 +1064,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
   // Captured verbatim from the real Codex event shape on 2026-09-05. This record has no
   // identifiers or participant prose. The E2B callback/returned-stdout duplication is proven
-  // byte-for-byte in docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md.
+  // byte-for-byte in docs/evidence/terminal-product/2026-09-05-runtime-egress-auth.md.
   const capturedUsage =
     '{"type":"turn.completed","usage":{"input_tokens":94325,"cached_input_tokens":55936,"cache_write_input_tokens":0,"output_tokens":1407,"reasoning_output_tokens":864}}\n';
 
@@ -2606,7 +2606,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
   });
 });
 
-describe("terminal persona traits (#308)", () => {
+describe("terminal persona traits", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-persona-"));
@@ -2778,7 +2778,7 @@ describe("terminal run lifetime", () => {
     throw new Error("a refused run must not load the E2B module");
   };
 
-  it("T2: a refused start that names an older run never analyzes or changes it", async () => {
+  it("a refused start that names an older run never analyzes or changes it", async () => {
     const older = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
@@ -2829,7 +2829,7 @@ describe("terminal run lifetime", () => {
     expect(await snapshot()).toEqual(before);
   });
 
-  it("T3: the receipt lands before the first sandbox command and reclaim kills it after a failed teardown", async () => {
+  it("the receipt lands before the first sandbox command and reclaim kills it after a failed teardown", async () => {
     const receipts = path.join(cwd, ".humanish", "runs", "receipted", "sandbox-receipts.ndjson");
     const fake = makeFakeModule({
       creates: [],

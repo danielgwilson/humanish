@@ -505,7 +505,7 @@ describe("archive shape", () => {
   });
 });
 
-describe("adversarial-review hardening (PR #265 pre-merge findings)", () => {
+describe("local-tree archive: excludes, extraExclude input, git state and error text", () => {
   it("excludes credential-shaped filenames beyond key material, even when tracked", async () => {
     const root = await makeTempRoot("denylist-credentials");
     await writeFile(path.join(root, "app.txt"), "app\n");

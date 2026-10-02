@@ -10,7 +10,7 @@ import { writeFixtureRun, writeFixtureRuns } from "../helpers/run-fixtures.js";
 
 const NOW = Date.parse("2026-08-19T10:05:00.000Z");
 
-describe("run index: list and classify without parsing bundles (#455)", () => {
+describe("run index: list and classify without parsing bundles", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-index-"));
