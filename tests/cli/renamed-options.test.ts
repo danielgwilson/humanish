@@ -1,13 +1,17 @@
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import type { Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
+import { lab } from "../admission/fixtures.js";
 
 const SIMS_NOTE = "warning: --sims is deprecated and is removed in the next minor. Use --count.\n";
+const LANES_NOTE =
+  "warning: --lanes is deprecated and is removed in the next minor. Use --participants.\n";
 
 interface CliRun {
   exitCode: number;
@@ -95,5 +99,51 @@ describe("--count and its older spelling --sims", () => {
     const help = subcommand(names).helpInformation();
     expect(help).toContain("--count <count>");
     expect(help).not.toContain("--sims");
+  });
+});
+
+describe("--participants and its older spelling --lanes", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-renamed-options-"));
+    await writeFile(path.join(cwd, "package.json"), '{ "name": "renamed-options-fixture" }\n');
+    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    const raw = lab("cuAppUrl", {}, { lanes: [{ id: "lane-01" }, { id: "lane-02" }] });
+    await writeFile(
+      path.join(cwd, "humanish", "labs", "fanout.yaml"),
+      stringify({ ...raw, id: "fanout" }),
+    );
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  const base = () => ["lab", "run", "fanout", "--dry-run", "--cwd", cwd, "--json"];
+
+  it("reaches the rerun check from either spelling, and --lanes prints one note", async () => {
+    const rerun = ["--rerun-failed-from", "latest"];
+    const participants = await runCli([...base(), ...rerun, "--participants", "lane-02"]);
+    const lanes = await runCli([...base(), ...rerun, "--lanes", "lane-02"]);
+
+    for (const result of [participants, lanes]) {
+      expect(result.exitCode).toBe(2);
+      // No earlier run exists, so the selection reaches the rerun check and stops there.
+      expect(JSON.parse(result.stdout).error.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
+    }
+    expect(participants.stderr).not.toContain("--lanes");
+    expect(lanes.stderr.split(LANES_NOTE)).toHaveLength(2);
+  });
+
+  it("refuses --lanes without --rerun-failed-from, naming --participants", async () => {
+    const lanes = await runCli([...base(), "--lanes", "lane-02"]);
+
+    expect(lanes.exitCode).toBe(2);
+    expect(lanes.stderr).toBe(`${LANES_NOTE}error: --participants requires --rerun-failed-from.\n`);
+  });
+
+  it("lab run --help lists --participants only", () => {
+    const help = subcommand(["lab", "run"]).helpInformation();
+    expect(help).toContain("--participants <ids>");
+    expect(help).not.toContain("--lanes");
   });
 });

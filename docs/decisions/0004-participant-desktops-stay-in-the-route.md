@@ -22,7 +22,8 @@ only the interface to `src/substrates/` would split one concept across two folde
 - A reader finds the desktop contract and its implementations in one folder, beside the runner
   that calls them.
 - `src/substrates/` stays free of route types; it does not import from `src/routes/`.
-- Shared-world seats reach the same desktops through computer-use's participant runner.
+- Shared-world participants reach the same desktops through computer-use's `runCuaParticipant`
+  (`src/routes/computer-use/participant-execution.ts`).
 
 ## Enforced by
 
