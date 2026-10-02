@@ -3,6 +3,8 @@
 // run ended at "step-03-add: Visible page state did not change". This replays that scenario on an
 // in-memory TodoMVC where only Enter adds the typed todo.
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -143,16 +145,28 @@ async function runTodoScenario(step3: Record<string, unknown>) {
   const parsed = parse(todoScenario(step3));
   if (!parsed.journey) throw new Error(parsed.failure ?? "no journey");
   const app = todoMvc();
-  const result = await runScriptedBrowserSession({
-    appUrl: "http://127.0.0.1:3000/",
-    journey: parsed.journey,
-    surface: browserSurfaces[0]!,
-    persona,
-    timeoutMs: 10_000,
-    artifactRoot,
-    launchBrowser: async () => app.browser,
+  // The session probes the app URL over HTTP before its first step, so the test serves one on an
+  // ephemeral port rather than relying on whatever listens on a fixed port.
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end("<main>todos</main>");
   });
-  return { parsed, result, pressed: app.pressed };
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    const result = await runScriptedBrowserSession({
+      appUrl: `http://127.0.0.1:${port}/`,
+      journey: parsed.journey,
+      surface: browserSurfaces[0]!,
+      persona,
+      timeoutMs: 10_000,
+      artifactRoot,
+      launchBrowser: async () => app.browser,
+    });
+    return { parsed, result, pressed: app.pressed };
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 }
 
 describe("scripted press step", () => {
