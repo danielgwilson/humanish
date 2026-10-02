@@ -207,11 +207,6 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
   observer?: ObserverResult;
   warnings: string[];
   error?: {
-    /**
-     * HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED is deprecated and no longer produced: the terminal
-     * agent runs only inside this route, and its fail-closed direct runner is gone. That code
-     * goes in the next minor.
-     */
     code:
       | "HUMANISH_LAB_ANALYSIS_INVALID"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
@@ -229,8 +224,7 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
       | "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
       | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"
       | "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
-      | "HUMANISH_RUN_ID_IN_USE"
-      | "HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED";
+      | "HUMANISH_RUN_ID_IN_USE";
     message: string;
   };
 }
