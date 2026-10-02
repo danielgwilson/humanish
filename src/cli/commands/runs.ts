@@ -13,6 +13,7 @@ import type { CleanupResult, RunResult } from "../../run/results.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { runLabCommand } from "./lab-run.js";
+import { countOption } from "../renamed-options.js";
 import {
   applyEnvFileOption,
   type CliIo,
@@ -42,7 +43,12 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without an attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--sims <count>", "Simulation count. A dry run accepts any positive count.")
+    .option(
+      "--count <count>",
+      "Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab.",
+    )
+    // The older spelling of --count, hidden and noted on stderr (renamed-options.ts).
+    .addOption(new Option("--sims <count>").hideHelp())
     // Agents with an older installed skill still send --app-url. Accepting it hidden lets the
     // refusal name the replacement; commander's bare unknown-option error names nothing. Delete
     // after 0.106.x.
@@ -59,6 +65,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
         lab: string | undefined,
         options: {
           appUrl?: string;
+          count?: string;
           cwd: string;
           dryRun?: boolean;
           envFile?: string;
@@ -68,6 +75,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
         },
         command,
       ) => {
+        const count = countOption(io, options);
         if (options.appUrl !== undefined) {
           const result: RunResult = {
             schema: "humanish.run-result.v1",
@@ -105,14 +113,13 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
             mode: "run",
             // Forwarded wholesale, exactly as `lab run` does. Cherry-picking a subset here is what
             // made the two commands disagree in the first place.
-            options: options as LabCommandOptions,
+            options: { ...options, count } as LabCommandOptions,
           });
           return;
         }
 
-        const participantCount =
-          options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
-        if (options.sims !== undefined && participantCount === null) {
+        const participantCount = count === undefined ? undefined : parsePositiveInteger(count);
+        if (participantCount === null) {
           const result: RunResult = {
             schema: "humanish.run-result.v1",
             ok: false,
@@ -120,7 +127,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
             warnings: [],
             error: {
               code: "HUMANISH_INVALID_SIM_COUNT",
-              message: "--sims must be a positive integer.",
+              message: "--count must be a positive integer.",
             },
           };
           writeResult(command, io, result, formatRunHuman);
@@ -132,9 +139,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           cwd: options.cwd,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.runId === undefined ? {} : { runId: options.runId }),
-          ...(participantCount === undefined || participantCount === null
-            ? {}
-            : { simCount: participantCount }),
+          ...(participantCount === undefined ? {} : { simCount: participantCount }),
           // Rendered the way `watch` renders it, so a bundle is the same bundle whichever command
           // produced it (#597). A render failure is a warning on the result.
           observer: { open: false },

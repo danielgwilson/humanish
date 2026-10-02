@@ -224,7 +224,7 @@ humanish run [options] [lab]
 | `--no-open` | Render without opening a browser. |
 | `--detach` | Render/open once and exit without an attached watch server. |
 | `--port <port>` | Local observer server port when following. (default: "0") |
-| `--sims <count>` | Simulation count. A dry run accepts any positive count. |
+| `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--env-file <path>` | Load a local env file for this run without persisting values. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
@@ -616,8 +616,7 @@ humanish watch [options] [lab]
 | `--lab <id-or-path>` | Explicit lab id or .yaml path. |
 | `--run <id>` | Watch an existing run id or latest pointer. |
 | `--dry-run` | Lab only: render contract evidence without live provider spend. |
-| `--sims <count>` | Start a fresh synthetic run with this many participants before rendering. Defaults to 4 when --run is omitted. |
-| `--count <count>` | Lab only: override the headed desktop participant count. |
+| `--count <count>` | With a lab, override a preview or computer-use lab's participant count. Without one, start a fresh synthetic run with this many participants; 4 when --run is omitted. |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
@@ -802,8 +801,7 @@ humanish lab run [options] <lab>
 | `--no-open` | Render without opening a browser. |
 | `--detach` | Render/open once and exit without attached watch server. |
 | `--port <port>` | Local observer server port when following. (default: "0") |
-| `--sims <count>` | Override the synthetic or headed desktop participant count. |
-| `--count <count>` | Computer-use only: override the headed desktop participant count. |
+| `--count <count>` | Override the participant count of a preview or computer-use lab. |
 | `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed participants from a prior run. |
 | `--lanes <participant-ids>` | CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position. |
 | `--run-id <id>` | Explicit lab run id; refused when that run already exists. |

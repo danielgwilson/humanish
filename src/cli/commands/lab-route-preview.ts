@@ -21,11 +21,11 @@ interface PreviewRouteArgs {
 }
 
 /**
- * The preview route's CLI setup: the sim count and Observer plan, its runLab options, and how it
+ * The preview route's CLI setup: the participant count and Observer plan, its runLab options, and how it
  * presents the outcome. Undefined when setup has already written its own result.
  */
 export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
-  const participantCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
+  const participantCount = parseLabCount(args.options.count, args.config.actors[0]?.count ?? 4);
   if (participantCount === null) {
     const result: RunResult = {
       schema: "humanish.run-result.v1",
@@ -34,7 +34,7 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
       warnings: [],
       error: {
         code: "HUMANISH_INVALID_SIM_COUNT",
-        message: "--sims must be a positive integer.",
+        message: "--count must be a positive integer.",
       },
     };
     writeResult(args.command, args.io, result, formatRunHuman);
