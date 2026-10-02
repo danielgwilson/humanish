@@ -41,9 +41,9 @@ export function createE2BParticipantDesktop(
     onSubjectPhase: (event: SubjectPhaseEvent): void => {
       if (event.ok !== undefined) state.phaseRecords.push(event);
       deps.reportSubjectPhase(event, {
-        laneId: spec.planned.id,
-        laneIndex: spec.planned.index,
-        laneCount: deps.participantCount,
+        id: spec.planned.id,
+        index: spec.planned.index,
+        count: deps.participantCount,
       });
     },
   };

@@ -120,7 +120,7 @@ export class ScriptedSubject {
           mode: "scripted-browser-lab",
           tool: "humanish",
           labId: plan.labId,
-          role: "subject",
+          kind: "subject",
           actor: plan.actor,
         },
         ...(subjectEnvNames.length > 0

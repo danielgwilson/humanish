@@ -212,8 +212,8 @@ class SubjectPlane {
           labId: plan.labId,
           topology: "shared-world",
           topologyMode: "concurrent",
-          role: "subject",
-          roleCount: String(plan.plane.participants.length),
+          kind: "subject",
+          participantCount: String(plan.plane.participants.length),
         },
         ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
           ? {

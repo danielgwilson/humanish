@@ -148,7 +148,7 @@ async function waitForCondition(
 }
 
 interface FanoutModuleOptions {
-  /** Override the geometry a given sandbox reports (laneIndex from metadata). Default: matches. */
+  /** Override the geometry a given sandbox reports (participantIndex from metadata). Default: matches. */
   geometryOverride?: (laneIndex: number, requested: [number, number]) => [number, number];
   /** Every kill by id throws, as when the provider cannot be reached at teardown. */
   killFails?: boolean;
@@ -182,7 +182,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
 
   const makeSandbox = (id: string, createOptions: E2BDesktopCreateOptions): E2BDesktopSandbox => {
     const requested = createOptions.resolution ?? [1440, 950];
-    const laneIndex = Number(createOptions.metadata?.laneIndex ?? "0");
+    const laneIndex = Number(createOptions.metadata?.participantIndex ?? "0");
     const reported = options.geometryOverride
       ? options.geometryOverride(laneIndex, requested)
       : requested;
@@ -1089,14 +1089,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
     // Four sandboxes created, each with per-lane metadata.
     expect(handle.created).toHaveLength(4);
-    expect(handle.created.map((c) => c.metadata?.laneId)).toEqual([
+    expect(handle.created.map((c) => c.metadata?.participantId)).toEqual([
       "mobile-newcomer",
       "small-skimmer",
       "desktop-power",
       "wide-researcher",
     ]);
-    expect(handle.created.map((c) => c.metadata?.laneIndex)).toEqual(["0", "1", "2", "3"]);
-    expect(handle.created.every((c) => c.metadata?.laneCount === "4")).toBe(true);
+    expect(handle.created.map((c) => c.metadata?.participantIndex)).toEqual(["0", "1", "2", "3"]);
+    expect(handle.created.every((c) => c.metadata?.participantCount === "4")).toBe(true);
     // Per-lane device geometry drove each sandbox's resolution (sub-500 mobile widths floored to the
     // 500px Chrome window minimum so the window fits its X screen — no clip).
     expect(handle.created.map((c) => c.resolution)).toEqual([
@@ -1277,7 +1277,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         harnessErrors: 0,
       });
       expect(proof.rerunHandle.created).toHaveLength(1);
-      expect(proof.rerunHandle.created[0]?.metadata?.laneId).toBe("desktop-power");
+      expect(proof.rerunHandle.created[0]?.metadata?.participantId).toBe("desktop-power");
 
       expect(proof.rerunBundle.rerun).toEqual(proof.rerun.rerun);
       expect(proof.rerunBundle.events.some((event) => event.type === "cua-lab.fanout.rerun")).toBe(
@@ -1361,7 +1361,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       selectedLaneIds: ["small-skimmer"],
       previous: [{ laneId: "small-skimmer", status: "passed" }],
     });
-    expect(rerunHandle.created.map((created) => created.metadata?.laneId)).toEqual([
+    expect(rerunHandle.created.map((created) => created.metadata?.participantId)).toEqual([
       "small-skimmer",
     ]);
 
@@ -2081,7 +2081,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(result.ok).toBe(false);
     // Only lane 0's sandbox was ever created; the gate kept lanes 2-4 from starting.
     expect(handle.created).toHaveLength(1);
-    expect(handle.created[0]?.metadata?.laneId).toBe("mobile-newcomer");
+    expect(handle.created[0]?.metadata?.participantId).toBe("mobile-newcomer");
     // Lane 0's sandbox was still torn down by id.
     expect(handle.killed).toEqual(["fake-sandbox-01"]);
     // The other lanes are reported blocked.

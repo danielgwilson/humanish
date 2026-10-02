@@ -330,7 +330,7 @@ async function renderWatchEvidence(
     const runResult = await runDryRun({
       cwd: options.cwd,
       dryRun: true,
-      simCount: requestedParticipantCount,
+      participantCount: requestedParticipantCount,
       ...(options.runId === undefined ? {} : { runId: options.runId }),
       observer: { open: staticOpen },
     });

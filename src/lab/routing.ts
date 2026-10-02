@@ -3,9 +3,9 @@ import { actorRegistry } from "../actors/registry.js";
 import { isLoopbackUrl } from "./parse/subject.js";
 import type { LabConfig } from "./types.js";
 
-// Hard cap on fan-out participants (per the ratified design). No HUMANISH_MAX_LANES escape above this
-// until a reference panel demands it — N concurrent paid desktops is real money.
-export const MAX_CUA_LANES = 16;
+// Hard cap on computer-use participants. No setting raises it: each participant is a paid desktop,
+// and they all run at once.
+export const MAX_COMPUTER_USE_PARTICIPANTS = 16;
 
 type ActorRunKind = ActorCapabilities["lanes"][number];
 
@@ -68,7 +68,7 @@ export function registeredTerminalActors(): string[] {
  * a homogeneous `count`, else 1. The single source of truth shared by the parser, the engine,
  * and the pre-flight plan so the participant count is computed the same way everywhere.
  */
-export function cuaLaneCount(config: LabConfig): number {
+export function computerUseParticipantCount(config: LabConfig): number {
   const actor = config.actors[0];
   if (actor?.lanes !== undefined) {
     return actor.lanes.length;
@@ -169,11 +169,11 @@ export function isExternalPublicSharedWorldComposition(config: LabConfig): boole
 }
 
 /**
- * Resolve a shared-world seat's entry URL from `serve.url` + a role's `entry` (relative path or
- * same-origin absolute URL). Returns null when the combination is not a same-origin loopback URL
- * (the load-bearing public-safety boundary — a seat only ever drives the in-sandbox app).
+ * Resolve a shared-world participant's entry URL from `serve.url` and its roster entry's `entry`
+ * (a relative path or a same-origin absolute URL). Returns null when the result is not a
+ * same-origin loopback URL, so a participant only ever drives the in-sandbox app.
  */
-export function resolveSeatUrl(serveUrl: string, entry: string | undefined): string | null {
+export function resolveEntryUrl(serveUrl: string, entry: string | undefined): string | null {
   if (entry === undefined || entry === "") {
     return isLoopbackUrl(serveUrl) ? serveUrl : null;
   }

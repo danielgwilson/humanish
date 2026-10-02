@@ -13,7 +13,7 @@ export interface RunOptions {
   cwd: string;
   dryRun?: boolean;
   runId?: string;
-  simCount?: number;
+  participantCount?: number;
   /** Render the run's Observer through the finished run, opening the page when `open` is true.
    *  Without it the preview writes no observer/index.html. */
   observer?: { open: boolean };

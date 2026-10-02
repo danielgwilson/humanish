@@ -129,7 +129,7 @@ export async function runLiveTerminalSession(
     maxMinutes,
     e2bApiKey,
     runPaths,
-    metadata: buildSandboxMetadata({ labId: plan.labId, simId: "sim-001", runId }),
+    metadata: buildSandboxMetadata({ labId: plan.labId, recordId: "sim-001", runId }),
     warnings,
     recorder,
   });

@@ -5,7 +5,7 @@ import {
   sharedWorldValidationReason,
 } from "../../src/lab/validation.js";
 import {
-  resolveSeatUrl,
+  resolveEntryUrl,
   isComputerUseComposition,
   isSharedWorldComposition,
   isProvisionedScriptedBrowserComposition,
@@ -2533,15 +2533,15 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
   });
 
   it("entry validation accepts same-origin paths + absolute loopback URLs, rejects cross-origin/non-loopback", () => {
-    expect(resolveSeatUrl("http://127.0.0.1:3000/", "/compose")).toBe(
+    expect(resolveEntryUrl("http://127.0.0.1:3000/", "/compose")).toBe(
       "http://127.0.0.1:3000/compose",
     );
-    expect(resolveSeatUrl("http://127.0.0.1:3000/", "http://127.0.0.1:3000/inbox")).toBe(
+    expect(resolveEntryUrl("http://127.0.0.1:3000/", "http://127.0.0.1:3000/inbox")).toBe(
       "http://127.0.0.1:3000/inbox",
     );
-    expect(resolveSeatUrl("http://127.0.0.1:3000/", undefined)).toBe("http://127.0.0.1:3000/");
-    expect(resolveSeatUrl("http://127.0.0.1:3000/", "http://127.0.0.1:4000/x")).toBeNull(); // different port → cross-origin
-    expect(resolveSeatUrl("http://127.0.0.1:3000/", "http://example.com/x")).toBeNull(); // cross-origin
+    expect(resolveEntryUrl("http://127.0.0.1:3000/", undefined)).toBe("http://127.0.0.1:3000/");
+    expect(resolveEntryUrl("http://127.0.0.1:3000/", "http://127.0.0.1:4000/x")).toBeNull(); // different port → cross-origin
+    expect(resolveEntryUrl("http://127.0.0.1:3000/", "http://example.com/x")).toBeNull(); // cross-origin
   });
 
   it("rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact)", () => {

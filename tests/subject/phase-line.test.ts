@@ -13,8 +13,8 @@ describe("the subject phase line on stderr", () => {
       message: "subject dependencies installed",
     };
 
-    defaultSubjectPhaseSink(event, { laneId: "lane-02", laneCount: 2 });
-    defaultSubjectPhaseSink(event, { laneId: "lane-01", laneCount: 1 });
+    defaultSubjectPhaseSink(event, { id: "lane-02", count: 2 });
+    defaultSubjectPhaseSink(event, { id: "lane-01", count: 1 });
 
     expect(write.mock.calls.map(([text]) => text)).toEqual([
       "humanish computer-use [lane-02]: subject dependencies installed (5ms)\n",

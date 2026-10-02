@@ -119,7 +119,7 @@ function isNonRuntimeCredentialName(name: string): boolean {
  */
 export function buildSandboxMetadata(allowlist: {
   labId: string;
-  simId: string;
+  recordId: string;
   runId: string;
 }): Record<string, string> {
   return {
@@ -127,7 +127,7 @@ export function buildSandboxMetadata(allowlist: {
     tool: TERMINAL_PRODUCT_LAB_PROVIDER_METADATA.tool,
     provider: "codex",
     labId: allowlist.labId,
-    simId: allowlist.simId,
+    recordId: allowlist.recordId,
     // The run id is a harness-minted token (terminal-<ts>-<hex>), not user data.
     runId: allowlist.runId,
   };

@@ -1883,6 +1883,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     // CREDENTIAL BOUNDARY: Sandbox.create carried NO envs (key never sandbox-global) and no key in metadata.
     expect(creates[0]?.envs).toBeUndefined();
     expect(JSON.stringify(creates[0]?.metadata ?? {})).not.toContain(FAKE_RUNTIME_KEY);
+    // The labels name the lab and the participant's run.json simulations[] record.
+    expect(creates[0]?.metadata).toMatchObject({ labId: config.id, recordId: "sim-001" });
 
     // The codex command run carried the key in its OWN envs (command-scoped) — and ONLY the runtime key.
     const codexRun = runs.find((r) => r.command.includes(" exec "));

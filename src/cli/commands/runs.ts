@@ -139,7 +139,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           cwd: options.cwd,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.runId === undefined ? {} : { runId: options.runId }),
-          ...(participantCount === undefined ? {} : { simCount: participantCount }),
+          ...(participantCount === undefined ? {} : { participantCount }),
           // Rendered the way `watch` renders it, so a bundle is the same bundle whichever command
           // produced it (#597). A render failure is a warning on the result.
           observer: { open: false },

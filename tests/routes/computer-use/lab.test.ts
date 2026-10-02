@@ -4324,7 +4324,7 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
     const phaseEvents: SubjectPhaseEvent[] = [];
-    const phaseCtxs: Array<{ laneId: string; laneIndex: number; laneCount: number }> = [];
+    const phaseCtxs: Array<{ id: string; index: number; count: number }> = [];
     const emitted: LabEvent[] = [];
 
     const outcome = await runLab(
@@ -4402,9 +4402,9 @@ describe("runCuaActorLab", () => {
       expect(event.message).not.toContain("pnpm");
     }
 
-    // Single lane: every sink call names lane-01 with laneCount 1 (no fan-out prefixing).
+    // One participant: every sink call names lane-01 with count 1 (no fan-out prefixing).
     for (const ctx of phaseCtxs) {
-      expect(ctx).toEqual({ laneId: "lane-01", laneIndex: 0, laneCount: 1 });
+      expect(ctx).toEqual({ id: "lane-01", index: 0, count: 1 });
     }
   });
 
@@ -5784,7 +5784,7 @@ describe("buildSingleParticipantBundle", () => {
       const { module } = makeFakeModule(sandbox);
       const phaseCalls: Array<{
         event: { type: string; ok?: boolean };
-        ctx: { laneId: string; laneCount: number };
+        ctx: { id: string; count: number };
       }> = [];
 
       const outcome = await runLab(
@@ -5810,17 +5810,17 @@ describe("buildSingleParticipantBundle", () => {
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       expect(outcome.result.ok).toBe(true);
 
-      // (c) laneCount > 1: the default-sink prefix logic (defaultSubjectPhaseSink) reads
-      // ctx.laneCount to decide whether to prefix lines with the lane id. Every captured ctx here
-      // carries the TOTAL fan-out width (2), never a per-lane count.
+      // (c) count > 1: the default-sink prefix logic (defaultSubjectPhaseSink) reads ctx.count to
+      // decide whether to prefix lines with the participant id. Every captured ctx here carries
+      // the total fan-out width (2), never a per-participant count.
       expect(phaseCalls.length).toBeGreaterThan(0);
-      expect(phaseCalls.every(({ ctx }) => ctx.laneCount === 2)).toBe(true);
+      expect(phaseCalls.every(({ ctx }) => ctx.count === 2)).toBe(true);
 
       // (a) BOTH lanes reported phase events under their OWN distinct lane id, and each lane's own
       // boundary sequence is the full upload/extract/install/build/ready chain (no lane silently
       // skipped, no cross-lane mixing within a single lane's sequence).
-      const laneIds = [...new Set(phaseCalls.map(({ ctx }) => ctx.laneId))].sort();
-      expect(laneIds).toEqual(["lane-01", "lane-02"]);
+      const participantIds = [...new Set(phaseCalls.map(({ ctx }) => ctx.id))].sort();
+      expect(participantIds).toEqual(["lane-01", "lane-02"]);
       const expectedTypes = [
         "cua-lab.subject.upload.started",
         "cua-lab.subject.upload.completed",
@@ -5836,9 +5836,9 @@ describe("buildSingleParticipantBundle", () => {
         "cua-lab.subject.ready.started",
         "cua-lab.subject.ready.completed",
       ];
-      for (const laneId of laneIds) {
+      for (const participantId of participantIds) {
         const types = phaseCalls
-          .filter(({ ctx }) => ctx.laneId === laneId)
+          .filter(({ ctx }) => ctx.id === participantId)
           .map(({ event }) => event.type);
         expect(types).toEqual(expectedTypes);
       }

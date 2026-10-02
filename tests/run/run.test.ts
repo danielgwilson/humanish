@@ -522,7 +522,7 @@ describe("dry-run bundles", () => {
         cwd,
         dryRun: true,
         runId: "dryrun-sims-65",
-        simCount: 65,
+        participantCount: 65,
       });
 
       expect(run.ok).toBe(true);
@@ -1602,7 +1602,7 @@ describe("verify: subject state provenance", () => {
 
   it("keeps verifying pre-existing bundles that carry no subject block at all", async () => {
     await withFixtureCopy(async (cwd) => {
-      const result = await runDryRun({ cwd, dryRun: true, simCount: 1 });
+      const result = await runDryRun({ cwd, dryRun: true, participantCount: 1 });
       expect(result.ok).toBe(true);
       const verify = await verifyRun(cwd, "latest");
       expect(verify.ok).toBe(true);

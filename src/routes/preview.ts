@@ -46,7 +46,7 @@ function runPreviewPlan(
     ...(plan.lab === undefined ? {} : { lab: plan.lab }),
     cwd: input.cwd,
     dryRun: true,
-    simCount: plan.participantCount,
+    participantCount: plan.participantCount,
     ...(input.runId === undefined ? {} : { runId: input.runId }),
     ...(input.open === undefined ? {} : { observer: { open: input.open } }),
   });

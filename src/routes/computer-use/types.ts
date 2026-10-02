@@ -21,7 +21,7 @@ import type {
   ActorTraceItem,
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabDeps, PhaseParticipant } from "../../lab/lab-deps.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 import type { LabEvent, ParticipantRef } from "../../lab/run-lab-events.js";
 import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../lab/run-lab-homes.js";
 import { type BrowserScorer } from "../../lab/adapter-extension.js";
@@ -478,7 +478,7 @@ export interface E2BDesktopDeps {
   /** Receives each live stream's ready and ended: the Observer's tracker, then the caller's onStream. */
   onStream: NonNullable<RunLabHomes["onStream"]>;
   /** Reports a subject phase to the phase sink (stderr by default) and to onEvent. */
-  reportSubjectPhase: (event: SubjectPhaseEvent, participant: PhaseParticipant) => void;
+  reportSubjectPhase: (event: SubjectPhaseEvent, participant: ParticipantRef) => void;
   /**
    * How a parseable requested-vs-verified screen mismatch is treated. Default ("fail-closed"):
    * the participant's device claim is falsified, so it fails with DEVICE_GEOMETRY (the
