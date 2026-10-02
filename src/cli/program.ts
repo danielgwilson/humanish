@@ -152,7 +152,7 @@ async function recordCommandTelemetry(
  * HUMANISH_DEBUG_HANDLES=1: after a command's handler settles, name what is still keeping the
  * process alive (#581). A live terminal run wrote its result 64 s in and the CLI stayed up for
  * sixteen more minutes; nothing in the bundle could say what held it, and an in-process probe of
- * the lane found nothing of ours. This is the one line that answers it next time: the resource
+ * the run found nothing of ours. This is the one line that answers it next time: the resource
  * types Node reports, once, to stderr, after one macrotask so settled work has cleared.
  */
 function reportActiveHandles(command: Command, io: CliIo): void {

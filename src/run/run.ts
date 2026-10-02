@@ -45,7 +45,7 @@ interface Run {
   readonly mode: "dry-run" | "live";
   /** The manifest the run came from (#455); bundleHead copies it into the bundle. */
   readonly lab?: RunLabProvenance;
-  /** Routes write their evidence files through these and hand them to lanes. */
+  /** Routes write their evidence files through these and hand them to participants. */
   readonly paths: PreparedRunArtifactPaths;
   /**
    * Publish an in-progress bundle: run.json, review.json, review.md, events.ndjson and

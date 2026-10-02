@@ -235,7 +235,7 @@ interface RunLabBase {
   open?: boolean;
   /** Participant count override: preview participants or computer-use desktops. */
   count?: number;
-  /** CUA fan-out only: create a new run for failed/selected lanes from a prior run. */
+  /** CUA fan-out only: create a new run for failed/selected participants from a prior run. */
   rerun?: {
     sourceRunId: string;
     participantIds?: string[];

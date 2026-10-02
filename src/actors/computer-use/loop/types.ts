@@ -223,7 +223,7 @@ export interface CuaProvider {
   nextTurn(req: CuaTurnRequest, signal: AbortSignal, spend?: CuaSpendGate): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
-  /** Release lane-owned model resources. Idempotent; reject if cleanup is unconfirmed. */
+  /** Release the participant's model resources. Idempotent; reject if cleanup is unconfirmed. */
   close?(): Promise<void>;
 }
 
@@ -257,7 +257,7 @@ export interface CuaLoopOptions {
   /**
    * Per-attempt bound on the provider call (#469), so a hung request is told apart from a
    * participant still thinking. A stalled turn is retried once with a notice; a second stall ends
-   * the lane as harness_error.
+   * the participant as harness_error.
    */
   turnTimeoutMs?: number;
   /**
@@ -304,7 +304,7 @@ export interface CuaLoopOptions {
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
   /**
    * Deterministic harness-owned success guards. Evaluated after the initial observation and after
-   * every post-action observation, before another model turn is requested. This keeps a lane from
+   * every post-action observation, before another model turn is requested. This keeps a participant from
    * wandering after the product already reached an app-visible endpoint.
    */
   stopWhen?: StopWhen;
@@ -342,8 +342,8 @@ export interface CuaLoopOptions {
    */
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /**
-   * RUN-LEVEL spend guard (#299): called with this lane's running usage each turn, at the same
-   * point the per-lane cap is checked. Returns a human-readable reason when the STUDY's shared
+   * RUN-LEVEL spend guard (#299): called with this participant's running usage each turn, at the same
+   * point the per-participant cap is checked. Returns a human-readable reason when the STUDY's shared
    * budget is exhausted, else null. On a non-null return the loop stops with `budget_reached`
    * regardless of material progress — a study-level stop is a recruiting decision hitting its
    * limit, not this participant's runaway, so it never reads as `gave_up`.

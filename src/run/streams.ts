@@ -75,7 +75,7 @@ interface RunStreamCompletion {
  * The CLOSED set of core meaningful-use scoring components. Closed by design: these are the generic
  * dimensions core itself meters (setup/filesystem/nested/actor/product/feedback). A
  * product-specific scorecard does NOT extend this enum, so adopters' nouns stay out of core. It
- * ships as a thin in-repo extension that emits a namespaced `RunAdapterScore` via the lane's
+ * ships as a thin in-repo extension that emits a namespaced `RunAdapterScore` via the route's
  * `score` hook, leaving its own component breakdown in that score's `data`. Exported so a thin
  * adapter can type against core's score shape without forking.
  */
@@ -163,8 +163,8 @@ export interface RunDesktopGeometry {
     /**
      * Page targets the participant drove AFTER the launch page (a link that opened in a new tab)
      * whose own read-back reported the requested viewport width (#623). Absent when the
-     * participant never left the launch tab; a later tab that did NOT report the width is a lane
-     * warning instead.
+     * participant never left the launch tab; a later tab that did NOT report the width is a
+     * participant warning instead.
      */
     laterTargets?: {
       targetId: string;
@@ -193,15 +193,15 @@ export interface RunParticipantAssignment {
 export interface RunStream {
   id: string;
   simId: string;
-  /** Adapter-owned lane id for fan-out / target-swarm runs. Safe categorical metadata only. */
+  /** Adapter-owned participant id for fan-out / target-swarm runs. Safe categorical metadata only. */
   laneId?: string;
-  /** Adapter-owned actor class for grouping lanes, e.g. viewer/reviewer/admin. */
+  /** Adapter-owned actor class for grouping participants, e.g. viewer/reviewer/admin. */
   actorType?: string;
-  /** Adapter-owned product surface label for grouping lanes without parsing URLs. */
+  /** Adapter-owned product surface label for grouping participants without parsing URLs. */
   surface?: string;
   /** Adapter-owned scenario/case grouping label. */
   caseGroup?: string;
-  /** Authored/default mission and lane focus, redacted before persistence. Missing on older
+  /** Authored/default mission and participant focus, redacted before persistence. Missing on older
    * bundles and uninstrumented routes; never reconstructed from study context or narration. */
   assignment?: RunParticipantAssignment;
   kind: RunStreamKind;
@@ -222,7 +222,7 @@ export interface RunStream {
     url?: string;
     title?: string;
   };
-  /** Set by the attached watch server when the lane's sandbox is gone: the injected live URL
+  /** Set by the attached watch server when the participant's sandbox is gone: the injected live URL
    *  would render a provider error page, so viewers fall back to recorded evidence. Runtime-only
    *  and never persisted into bundles; declared here because the served observer-data carries it
    *  and the client is typed against this contract. */
@@ -238,7 +238,7 @@ export interface RunStream {
     deviceScaleFactor?: number;
     isMobile?: boolean;
   };
-  /** Truthful screen/window/viewport evidence for hosted desktop browser lanes. */
+  /** Truthful screen/window/viewport evidence for hosted desktop browser participants. */
   desktopGeometry?: RunDesktopGeometry;
   terminal?: {
     title: string;
@@ -284,8 +284,8 @@ export interface RunStream {
   actor?: ActorTrace;
   /**
    * Mid-run partial actor evidence (#441): the redacted trace items recorded SO FAR,
-   * flushed while a live lane is still running so the attached Observer's timeline can
-   * grow. Deliberately NOT an ActorTrace — a running lane has no honest status,
+   * flushed while a live participant is still running so the attached Observer's timeline can
+   * grow. Deliberately NOT an ActorTrace — a running participant has no honest status,
    * completionReason, or completedAt, and this shape cannot claim them. Present ONLY on
    * `inProgress` bundles; the final write replaces it with the real `actor` and never
    * carries it.

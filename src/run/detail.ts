@@ -31,9 +31,9 @@ interface RunThought {
 }
 
 export interface RunParticipant {
-  /** Stream id — stable within a run, and what distinguishes lanes of one study. */
+  /** Stream id — stable within a run, and what distinguishes participants of one study. */
   id: string;
-  /** What to call them on screen: the lane's own label, else the persona id. */
+  /** What to call them on screen: the participant's own label, else the persona id. */
   label: string;
   /** The persona id, when the trace recorded one. */
   personaId?: string;
@@ -43,7 +43,7 @@ export interface RunParticipant {
    * name alone does not.
    */
   traits: string[];
-  /** `running`, `passed`, `failed`, `contract_proof_only` — the lane's own word for itself. */
+  /** `running`, `passed`, `failed`, `contract_proof_only` — the participant's own word for itself. */
   status?: string;
   /** Why the actor stopped, when it has. */
   completionReason?: string;

@@ -73,7 +73,7 @@ export interface DesktopResourceRate {
 }
 
 /**
- * The token-derived cost ESTIMATE for one actor lane. `estimatedCostUsd: null` = DECLARED ABSENT
+ * The token-derived cost ESTIMATE for one actor trace. `estimatedCostUsd: null` = DECLARED ABSENT
  * (unknown rate or no token usage) — never coerced to 0. A non-null figure ALWAYS carries its
  * pricing provenance (`ratesAsOf` + `source`) so the mechanism (a rate-table multiply) matches
  * the claim (an estimate, not a charge). Defined here so the rate table and the field that
@@ -292,7 +292,7 @@ export function round6(n: number): number {
 }
 
 /**
- * Estimate one actor lane's model-token cost from its trace tokenUsage + model id. Deterministic;
+ * Estimate one actor trace's model-token cost from its trace tokenUsage + model id. Deterministic;
  * the rate table is injectable (tests pass a fake sheet). Returns a DECLARED-ABSENT estimate
  * (estimatedCostUsd: null + a reason) for a missing rate or missing usage — never a guessed cost.
  */

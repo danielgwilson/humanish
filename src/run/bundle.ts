@@ -298,7 +298,7 @@ export interface RunBundle {
    */
   desktopTemplate?: string;
   /**
-   * Browser family requested for hosted desktop actor lanes and the in-sandbox command that opened
+   * Browser family requested for hosted desktop participants and the in-sandbox command that opened
    * it, when explicitly configured. Optional + additive; absent means the historical default opener
    * path was used or the backend does not create a headed desktop.
    */
@@ -317,8 +317,8 @@ export interface RunBundle {
     };
   };
   /**
-   * Optional lineage for a run that intentionally re-executes selected lanes from a prior
-   * multi-lane run. This keeps retry-like workflows explicit: the new run is linked to the old
+   * Optional lineage for a run that intentionally re-executes selected participants from a
+   * prior multi-participant run. This keeps retry-like workflows explicit: the new run is linked to the old
    * evidence, but it never mutates or silently "fixes" the original verdict.
    */
   rerun?: RunRerunLineage;
@@ -334,7 +334,7 @@ export interface RunBundle {
   sharedWorld?: SharedWorldEvidence;
   /**
    * OPTIONAL, ADAPTER-NAMESPACED product score (the layer-6 extension seam, issue #154 acceptance
-   * #8). A thin adapter's `score` hook returns a `RunAdapterScore`; the lane attaches it here
+   * #8). A thin adapter's `score` hook returns a `RunAdapterScore`; the route attaches it here
    * WITHOUT core knowing any product noun (the score is namespaced + its breakdown lives in `data`).
    * The default mission-based verdict (`review`) is unchanged when no scorer hook is given.
    */
@@ -366,7 +366,7 @@ export interface RunBundle {
   lab?: RunLabProvenance;
   /**
    * OPTIONAL, ADDITIVE run-level cost ESTIMATE (humanish.run-cost-summary.v1): the sum of every
-   * lane's model-token estimate PLUS the E2B desktop-minute estimate, carrying the SAME
+   * participant's model-token estimate PLUS the E2B desktop-minute estimate, carrying the SAME
    * null-discipline the terminal cost ledger already ships. Absent on pre-existing bundles and
    * dry runs; a live run that spends nothing records an explicit zero with no lines. Every dollar figure here is an ESTIMATE,
    * never an authoritative charge; verify asserts its LABELING/provenance, never its magnitude.
@@ -533,7 +533,7 @@ export interface ReviewSummary {
  * many sessions produced a funnel. This is "where did people get stuck" as data — the number a
  * researcher reads first — where the per-participant funnels answer it one journey at a time.
  *
- * Aggregated by task id in declaration order. Every lane in a run shares the actor's protocol, so
+ * Aggregated by task id in declaration order. Every participant in a run shares the actor's protocol, so
  * ids line up across participants; a funnel missing a task id (a future mixed-protocol route)
  * simply does not count toward that task's denominator.
  */
