@@ -157,10 +157,11 @@ export async function runLabCommand(args: {
         return scorer === undefined ? {} : { scorer };
       },
       // The run is over before presentation, which may own shutdown itself (watch's Observer).
-      signals.end,
+      // A shutdown already begun keeps its handlers and finishes through its cleanups.
+      signals.release,
     );
   } finally {
-    signals.end();
+    signals.release();
   }
 }
 

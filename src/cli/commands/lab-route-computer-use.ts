@@ -13,6 +13,7 @@ import type { ExposurePlan } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
+import { onRunShutdown } from "./run-signals.js";
 import {
   type CliIo,
   type LabCommandOptions,
@@ -60,6 +61,7 @@ export function computerUseRouteRun(args: ComputerUseRouteArgs): RouteRun | unde
     tunnel: undefined,
     exposeWarnings: [],
     publicTarget: undefined,
+    releaseShutdown: undefined,
   };
   return {
     options: cuaRunOptions(args, settings, prepared, live),
@@ -68,7 +70,11 @@ export function computerUseRouteRun(args: ComputerUseRouteArgs): RouteRun | unde
       if (outcome.route !== "computer-use") {
         throw new Error(`Expected the computer-use route, got ${outcome.route}.`);
       }
-      await reportCuaRun(args, prepared, outcome.result, live);
+      try {
+        await reportCuaRun(args, prepared, outcome.result, live);
+      } finally {
+        live.releaseShutdown?.();
+      }
     },
   };
 }
@@ -97,6 +103,8 @@ interface CuaLiveAttachment {
   tunnel: ServeTunnel | undefined;
   exposeWarnings: string[];
   publicTarget: string | undefined;
+  /** Removes the server and tunnel close from the run's signal shutdown (run-signals.ts). */
+  releaseShutdown: (() => void) | undefined;
 }
 
 function refuseCua(
@@ -245,6 +253,19 @@ function cuaRunOptions(
   };
 }
 
+/** Closes the loopback server and any tunnel the watch attached. Safe to call twice. */
+async function closeLiveAttachment(io: CliIo, live: CuaLiveAttachment): Promise<void> {
+  const { server, tunnel } = live;
+  live.server = null;
+  live.tunnel = undefined;
+  await server?.close().catch((cleanupError: unknown) => {
+    io.writeErr(
+      `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
+    );
+  });
+  await tunnel?.close().catch(() => undefined);
+}
+
 /**
  * Tears down the loopback server and any tunnel started inside onObserverReady, then reports a
  * tunnel startup failure or rethrows. The sandbox is created after onObserverReady returns, so a
@@ -256,16 +277,8 @@ async function closeLiveAfterRunError(
   live: CuaLiveAttachment,
   error: unknown,
 ): Promise<void> {
-  await live.server?.close().catch((cleanupError: unknown) => {
-    args.io.writeErr(
-      `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
-    );
-  });
-  live.server = null;
-  if (live.tunnel) {
-    await live.tunnel.close().catch(() => undefined);
-    live.tunnel = undefined;
-  }
+  await closeLiveAttachment(args.io, live);
+  live.releaseShutdown?.();
   if (error instanceof ServeTunnelError) {
     refuseCua(args, settings.dryRun, error.code, error.message);
     return;
@@ -288,6 +301,8 @@ async function attachLiveObserver(
       port: settings.port,
       exposed: exposure.exposed,
     });
+    // A signal that stops the run closes the server and any tunnel before the process exits.
+    live.releaseShutdown ??= onRunShutdown(() => closeLiveAttachment(io, live));
   }
   if (exposure.exposed) {
     const activeServer = live.server;

@@ -5,7 +5,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
-import { beginRunSignalPhase, handOverRunSignals } from "../../src/cli/commands/run-signals.js";
+import {
+  beginRunSignalPhase,
+  handOverRunSignals,
+  onRunShutdown,
+} from "../../src/cli/commands/run-signals.js";
 import { registerActiveRun } from "../../src/run/active-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -17,63 +21,67 @@ import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 // The run command's handler: the first signal marks the run interrupted, reclaims the sandboxes
 // its receipts name and exits 128+n; a second exits at once; analysis takes the signals over.
+let cwd: string;
+let target: EventEmitter;
+let cleanups: Array<() => void>;
+const RUN = "cua-2026-10-01T00-00-00-000Z-5191a1ed";
+
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-signals-"));
+  target = new EventEmitter();
+  cleanups = [];
+  expect((await runDryRun({ cwd, dryRun: true, runId: RUN })).ok).toBe(true);
+  const runPaths = await resolveRunPath(cwd, RUN);
+  if (!runPaths) throw new Error("dry run left no run");
+  await appendSandboxReceipt(runPaths, { at: "t1", laneId: "lane-01", sandboxId: "sb-1" });
+});
+afterEach(async () => {
+  for (const cleanup of cleanups) cleanup();
+  await rm(cwd, { recursive: true, force: true });
+});
+
+async function setup(options: {
+  runId?: string;
+  interrupted?: boolean;
+  interrupt?: () => Promise<boolean>;
+  kill?: (sandboxId: string) => Promise<boolean>;
+  deadlineMs?: number;
+}) {
+  const runId = options.runId ?? RUN;
+  const interrupt = vi.fn(
+    async (_signal: RunInterruptSignal) =>
+      (await options.interrupt?.()) ?? options.interrupted ?? true,
+  );
+  const paths = await prepareRunArtifactPaths(cwd, runId);
+  cleanups.push(registerActiveRun({ cwd, runId, paths, status: { interrupt } }));
+  const killed: string[] = [];
+  const module = {
+    Sandbox: {
+      create: async () => {
+        throw new Error("reclaim never creates sandboxes");
+      },
+      kill: async (sandboxId: string) => {
+        killed.push(sandboxId);
+        return (options.kill ?? (async () => true))(sandboxId);
+      },
+    },
+  } as unknown as E2BDesktopModule;
+  const exit = vi.fn();
+  let stderr = "";
+  const phase = beginRunSignalPhase(
+    { writeErr: (text) => (stderr += text) },
+    {
+      signalTarget: target,
+      exit,
+      reclaim: { loadModule: async () => module },
+      ...(options.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
+    },
+  );
+  cleanups.push(phase.end);
+  return { interrupt, killed, exit, phase, stderr: () => stderr };
+}
+
 describe("the run command's signal handler", () => {
-  let cwd: string;
-  let target: EventEmitter;
-  let cleanups: Array<() => void>;
-  const RUN = "cua-2026-10-01T00-00-00-000Z-5191a1ed";
-
-  beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-signals-"));
-    target = new EventEmitter();
-    cleanups = [];
-    expect((await runDryRun({ cwd, dryRun: true, runId: RUN })).ok).toBe(true);
-    const runPaths = await resolveRunPath(cwd, RUN);
-    if (!runPaths) throw new Error("dry run left no run");
-    await appendSandboxReceipt(runPaths, { at: "t1", laneId: "lane-01", sandboxId: "sb-1" });
-  });
-  afterEach(async () => {
-    for (const cleanup of cleanups) cleanup();
-    await rm(cwd, { recursive: true, force: true });
-  });
-
-  async function setup(options: {
-    runId?: string;
-    interrupted?: boolean;
-    kill?: (sandboxId: string) => Promise<boolean>;
-    deadlineMs?: number;
-  }) {
-    const runId = options.runId ?? RUN;
-    const interrupt = vi.fn(async (_signal: RunInterruptSignal) => options.interrupted ?? true);
-    const paths = await prepareRunArtifactPaths(cwd, runId);
-    cleanups.push(registerActiveRun({ cwd, runId, paths, status: { interrupt } }));
-    const killed: string[] = [];
-    const module = {
-      Sandbox: {
-        create: async () => {
-          throw new Error("reclaim never creates sandboxes");
-        },
-        kill: async (sandboxId: string) => {
-          killed.push(sandboxId);
-          return (options.kill ?? (async () => true))(sandboxId);
-        },
-      },
-    } as unknown as E2BDesktopModule;
-    const exit = vi.fn();
-    let stderr = "";
-    const phase = beginRunSignalPhase(
-      { writeErr: (text) => (stderr += text) },
-      {
-        signalTarget: target,
-        exit,
-        reclaim: { loadModule: async () => module },
-        ...(options.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
-      },
-    );
-    cleanups.push(phase.end);
-    return { interrupt, killed, exit, phase, stderr: () => stderr };
-  }
-
   it("marks the run interrupted, reclaims its receipts and exits 128+n", async () => {
     const run = await setup({});
     target.emit("SIGTERM");
@@ -123,7 +131,10 @@ describe("the run command's signal handler", () => {
     target.emit("SIGTERM");
     expect(run.exit).not.toHaveBeenCalled();
   });
+});
 
+// Shutdown edges: aliases, stalled writes, the run returning or analysis starting mid-shutdown.
+describe("the run command's signal handler at shutdown edges", () => {
   it("reclaims the run it registered even when its id is an alias", async () => {
     // A run named `latest`, then another run that moves the latest pointer to itself.
     expect((await runDryRun({ cwd, dryRun: true, runId: "latest" })).ok).toBe(true);
@@ -152,6 +163,62 @@ describe("the run command's signal handler", () => {
     handOverRunSignals();
     target.emit("SIGTERM");
     expect(run.exit).toHaveBeenCalledExactlyOnceWith(143);
+  });
+
+  it("never prints a reclaim command that would resolve another run", async () => {
+    expect((await runDryRun({ cwd, dryRun: true, runId: "latest" })).ok).toBe(true);
+    const named = await prepareRunArtifactPaths(cwd, "latest");
+    await appendSandboxReceipt(named, { at: "t1", laneId: "lane-01", sandboxId: "sb-named" });
+    const run = await setup({
+      runId: "latest",
+      kill: () => new Promise<boolean>(() => undefined),
+      deadlineMs: 50,
+    });
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    expect(run.stderr()).not.toContain("reclaim --run latest");
+    expect(run.stderr()).toContain(
+      path.join(".humanish", "runs", "latest", "sandbox-receipts.ndjson"),
+    );
+  });
+
+  it("exits at the deadline even when the status write never settles", async () => {
+    const run = await setup({
+      interrupt: () => new Promise<boolean>(() => undefined),
+      deadlineMs: 50,
+    });
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    expect(run.killed).toEqual([]);
+    expect(run.stderr()).toContain("stopping did not finish within 0.05 s");
+  });
+
+  it("keeps second-signal exit when the run returns after shutdown began", async () => {
+    const run = await setup({
+      kill: () => new Promise<boolean>(() => undefined),
+      deadlineMs: 2_000,
+    });
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.killed).toEqual(["sb-1"]));
+    // The run returned; the run command releases its handling before presentation.
+    run.phase.release();
+    target.emit("SIGTERM");
+    expect(run.exit).toHaveBeenCalledExactlyOnceWith(143);
+  });
+
+  it("finishes the registered shutdown cleanups before it exits", async () => {
+    const order: string[] = [];
+    cleanups.push(
+      onRunShutdown(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        order.push("tunnel closed");
+      }),
+    );
+    const run = await setup({});
+    run.exit.mockImplementation(() => order.push("exit"));
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    expect(order).toEqual(["tunnel closed", "exit"]);
   });
 
   it("hands the signals to analysis cancellation when analysis starts", () => {
