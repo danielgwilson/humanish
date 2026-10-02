@@ -229,7 +229,7 @@ function formatFeedbackHuman(result: FeedbackResult): string {
             ...(result.draft ? [`summary: ${result.draft.summary}`] : []),
           ]
         : []),
-      // Every finding the run produced, so the second and third are one flag away (#609).
+      // Every finding the run produced, so the second and third are one flag away.
       ...(candidates.length > 1 || (candidates.length === 1 && result.draft === undefined)
         ? [
             `candidates (${candidates.length}; choose one with --candidate <id>):`,

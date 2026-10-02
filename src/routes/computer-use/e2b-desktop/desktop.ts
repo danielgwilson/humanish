@@ -29,7 +29,7 @@ export function createE2BParticipantDesktop(
     warnings,
     targetUrl,
     desktopCliRoute: deps.subject.kind === "desktop-cli",
-    // Off-app comms (#297): gated entirely on config.comms; no comms declared, no change.
+    // Off-app comms: gated entirely on config.comms; no comms declared, no change.
     comms: planParticipantComms(
       deps.residual.comms,
       participantServeUrl(deps.subject),

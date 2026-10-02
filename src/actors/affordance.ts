@@ -1,9 +1,9 @@
-// Affordance classification (#369): which kind of route an actor took to accomplish a step.
+// Affordance classification: which kind of route an actor took to accomplish a step.
 //
 // Why this exists. A computer-use actor in a human-persona study typed a `javascript:` URL into
 // the address bar to get past a step, and the run finished green: the actor routed around the
 // friction the study existed to measure, and nothing in the evidence said so. Whether that is a
-// defect depends on a question the bundle never recorded — who is this study's user? For a human
+// defect depends on a question the bundle never recorded: who is this study's user? For a human
 // population it invalidates the run; for an agent-facing product whose users are agents the same
 // act is faithful, and the fact the agent reached for it is itself a finding about how legible
 // the surface is. So the harness records the class and bakes no verdict: the adopter's scorer
@@ -11,7 +11,7 @@
 //
 // Two design facts drive the shape:
 //
-//  1. The computer-use action space is mouse + keyboard only — there is no `goto` action. Typing a
+//  1. The computer-use action space is mouse + keyboard only; there is no `goto` action. Typing a
 //     URL is a `type` action whose text happens to be a URL, and typing script is a `type` action
 //     whose text happens to start with `javascript:`. Classification therefore has to look at the
 //     typed text, which exists only at dispatch time.
@@ -34,7 +34,7 @@ export const AFFORDANCE_CLASS_SCHEMA = "humanish.affordance-use.v1";
  * direct navigation, "shortcut" (MAS-Bench) for a non-UI route to the same outcome.
  */
 export type AffordanceClass =
-  /** Pointer or drag interaction with what is rendered on screen — the naturalistic core. */
+  /** Pointer or drag interaction with what is rendered on screen: the naturalistic core. */
   | "pointer"
   /** Keyboard input into the page: typed text that is not a URL and not script. */
   | "keyboard"
@@ -148,7 +148,7 @@ export function classifyCuaAction(action: CuaAction): AffordanceObservation {
         return { affordance: "browser-internal", signal: schemeOf(text) };
       }
       if (HTTP_URL.test(text)) {
-        // Scheme only — a full URL can carry a session token or an identifying path.
+        // Scheme only: a full URL can carry a session token or an identifying path.
         return { affordance: "url-navigation", signal: schemeOf(text) };
       }
       if (BARE_HOST.test(text)) {
@@ -193,7 +193,7 @@ function normalizeChord(keys: readonly string[]): string {
   return [...modifiers, ...rest].join("+");
 }
 
-/** The scheme alone, lowercased — never the rest of a URL, which can carry a session token. */
+/** The scheme alone, lowercased; never the rest of a URL, which can carry a session token. */
 function schemeOf(text: string): string {
   const trimmed = text.trim();
   const colon = trimmed.indexOf(":");

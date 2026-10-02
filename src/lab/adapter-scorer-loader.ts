@@ -1,12 +1,12 @@
-// #316 — CLI-loadable adopter scorer. Resolve `review.scorer.ref` / `--scorer` to an out-of-tree
+// CLI-loadable adopter scorer. Resolve `review.scorer.ref` / `--scorer` to an out-of-tree
 // scorer module, load it fail-closed (typed error + exit 2, before any spend), and pick off only the
 // whitelisted read-model hooks {score, deriveFeedback, deriveArtifacts}. `costProbe` is deliberately
 // not loadable: an injected provider cost line overwrites the core-measured one and can forge a
 // satisfied no-spend proof, so it stays library-only.
 //
 // Trust model: the party who writes `review.scorer.ref` is the party
-// who runs `humanish lab run` in their own checkout — identical trust to humanish.lab.yml or a
-// package.json script. #316 adds no new execution capability; it relocates where the reference is
+// who runs `humanish lab run` in their own checkout: identical trust to humanish.lab.yml or a
+// package.json script. The loader adds no new execution capability; it relocates where the reference is
 // declared. Containment is ENTRY-FILE-ONLY: `readContainedRegularFile` blocks abs/`..`/symlink/
 // hardlink/realpath-escape/TOCTOU on the entry module, but `import()` then executes the transitive
 // graph + npm deps with no clamp, and `import()` runs top-level module code before any whitelist
@@ -34,12 +34,12 @@ import {
   readContainedRegularFile,
 } from "../run/contained-output.js";
 
-/** The read-model context a loaded scorer sees — the terminal or browser scoring context. The module
+/** The read-model context a loaded scorer sees: the terminal or browser scoring context. The module
  *  narrows it at runtime (`"product" in ctx` ⇒ terminal; `"route" in ctx` ⇒ browser). */
 export type AdapterScoringContext = TerminalProductScoringContext | BrowserLabScoringContext;
 
 /**
- * The adopter-facing scorer module contract (#316). Export any subset of these from a `.mjs` (or a
+ * The adopter-facing scorer module contract. Export any subset of these from a `.mjs` (or a
  * `.js`/`.cjs` whose package.json type matches): named exports or a single default object. The
  * loader wires only these three; an exported `executor`/`env`/`provisionSubject`/`costProbe` is never
  * picked up (the whitelist is the scope guard). A module exporting none of them is a hard load error.
@@ -105,8 +105,8 @@ export type AdapterScorerLoadResult =
   | { ok: true; hooks: AdapterScorerModule; provenance: RunScorerProvenance }
   | { ok: false; error: { code: AdapterScorerLoadErrorCode; message: string } };
 
-/** The routes whose hooks bag can carry the loaded scorer. A declared scorer on any other route
- *  (scripted or preview) aborts at load — a gate that cannot run must never green-pass. */
+/** The routes that can run the loaded scorer. A declared scorer on any other route
+ *  (scripted or preview) aborts at load: a gate that cannot run must never green-pass. */
 const SCORER_CAPABLE_ROUTES: ReadonlySet<LabRoute> = new Set<LabRoute>([
   "terminal",
   "computer-use",
@@ -114,7 +114,7 @@ const SCORER_CAPABLE_ROUTES: ReadonlySet<LabRoute> = new Set<LabRoute>([
 ]);
 
 /** `.mjs` is required-canonical; `.js`/`.cjs` accepted but the module system is the adopter repo's
- *  package.json `type`. `.ts` is rejected — the compiled `dist/` CLI ships no TypeScript loader. */
+ *  package.json `type`. `.ts` is rejected: the compiled `dist/` CLI ships no TypeScript loader. */
 const SCORER_EXTENSIONS: ReadonlySet<string> = new Set([".mjs", ".js", ".cjs"]);
 
 /**
@@ -149,7 +149,7 @@ export async function loadAdapterScorer(args: {
       "review.scorer.ref must be a non-empty repo-relative path ending in .mjs (recommended), .js, or .cjs.",
     );
   }
-  // Provenance is recorded repo-relative — an absolute ref (even one that happens to land inside cwd)
+  // Provenance is recorded repo-relative: an absolute ref (even one that happens to land inside cwd)
   // is rejected up front rather than silently rewritten to its in-tree relative form.
   if (path.isAbsolute(trimmed)) {
     return fail(

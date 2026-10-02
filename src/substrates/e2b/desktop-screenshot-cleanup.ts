@@ -19,7 +19,7 @@ export function desktopScreenshotCleanupFailures(desktop: object): number {
 /**
  * @e2b/desktop 2.3.3 screenshot() awaits capture and files.read(path), then discards the
  * files.remove(path) promise. A removal that races sandbox teardown can therefore crash Node
- * after valid bytes were returned. Installed-SDK conformance tests pin that behavior (#662).
+ * after valid bytes were returned. Installed-SDK conformance tests pin that behavior.
  *
  * Observe only removal of a file successfully read within this screenshot invocation. The
  * exact path comes from the SDK, not a guessed filename pattern. AsyncLocalStorage isolates

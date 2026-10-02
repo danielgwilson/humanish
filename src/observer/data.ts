@@ -46,14 +46,14 @@ export interface ObserverData {
      * run to one word for a gate; this is the study result, and it is what the person watching
      * through the glass actually wants to know. Absent on a bundle with no participants.
      *
-     * A viewing room that shows only vivid moments manufactures certainty from n=1 — so the count
+     * A viewing room that shows only vivid moments manufactures certainty from n=1, so the count
      * travels with the outcome here, always (docs/principles/three-roles.md).
      */
     participants?: RunBundle["review"]["participants"];
     /** The same thing as one readable line, so a renderer cannot accidentally show a number
      *  without its denominator. */
     participantsLine?: string;
-    /** The study's per-task completion rates (#414), when the lab declared a protocol. */
+    /** The study's per-task completion rates, when the lab declared a protocol. */
     tasks?: RunBundle["review"]["tasks"];
     /** Pre-formatted like participantsLine, denominator on every number. */
     tasksLine?: string;
@@ -79,7 +79,7 @@ export interface ObserverData {
     publishable: false;
     note: string;
     /**
-     * Additive + optional (#584): the result of verification at static render or
+     * Additive + optional: the result of verification at static render or
      * export time. Unverified projections omit this field. The timestamp records
      * that check; it is not an assertion about subsequent file changes.
      */
@@ -161,7 +161,7 @@ export function buildObserverData(
       bundle.simulations.find((candidate) => candidate.id === stream.simId) ??
       fallbackSimulation(bundle, stream);
     // A natural session can finish its protocol while the participant explicitly reports a
-    // blocker (#690). Match the review's typed-outcome rule without rewriting the raw trace or
+    // blocker. Match the review's typed-outcome rule without rewriting the raw trace or
     // guessing from prose. Never turn an active or failed harness into a participant outcome.
     const status =
       (stream.status === "passed" || stream.status === "complete") &&

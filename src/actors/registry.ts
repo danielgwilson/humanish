@@ -80,7 +80,7 @@ export type ActorDescriptor =
 
 /**
  * Registry contract: an actor whose capabilities include the "computer-use" lane is a
- * CuaActorDescriptor — its runSession takes CuaActorSessionOptions and returns a CuaLoopResult.
+ * CuaActorDescriptor: its runSession takes CuaActorSessionOptions and returns a CuaLoopResult.
  * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature and add
  * its id to CuaActorDescriptor["id"], so code narrowed by this guard can still tell the ids apart.
  * This guard is what lets the lab dispatch on capabilities rather than on hardcoded actor ids.
@@ -95,7 +95,7 @@ export function isCuaActorDescriptor(
  * Registry contract (mirror of isCuaActorDescriptor): an actor whose capabilities include the
  * "scripted-browser" lane is a ScriptedBrowserActorDescriptor; runSession takes
  * ScriptedBrowserSessionOptions and returns ScriptedBrowserSessionResult (trace fully formed,
- * like the CUA shape — no separate toActorTrace). Any future scripted driver (e.g. a HAR
+ * like the CUA shape; no separate toActorTrace). Any future scripted driver (e.g. a HAR
  * replayer) must keep this signature; it is what lets the lab dispatch on capabilities, not ids.
  */
 export function isScriptedBrowserActorDescriptor(
@@ -128,7 +128,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   // The ActorId names the actor slot (keeps the lane open for a future stagehand-cua provider);
   // the trace's `provider` string stays "openai-responses-cu" (the concrete model adapter).
   // The operator's own signed-in coding agent as the computer-use brain (Codex on a ChatGPT plan,
-  // Claude Code on a Max plan). Same lane, same loop, same evidence — the only difference is where
+  // Claude Code on a Max plan). Same lane, same loop, same evidence; the only difference is where
   // the next action comes from, which is exactly why it is a provider swap and not a new lane.
   // It exists so someone new can watch a persona drive a real desktop without first going to find
   // an API key; the machine they are on very often already has one of these signed in.

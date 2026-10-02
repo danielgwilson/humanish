@@ -58,7 +58,7 @@ function loadObserverArtifact(): string {
       for (;;) {
         try {
           mkdirSync(lockDir);
-          break; // lock acquired — this process builds
+          break; // lock acquired: this process builds
         } catch {
           if (Date.now() > deadline) break; // stale lock: build anyway, last writer wins
           Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
@@ -77,7 +77,7 @@ function loadObserverArtifact(): string {
           try {
             // NODE_ENV is forced: Vite respects a preset NODE_ENV (test, development),
             // and a dev-flavored artifact embeds jsxDEV plus the builder's absolute
-            // filesystem paths — which the run's public-safety scan then rightly rejects.
+            // filesystem paths, which the run's public-safety scan then rightly rejects.
             execSync("pnpm --filter humanish-observer build", {
               cwd: repoRoot,
               stdio: ["ignore", "pipe", "inherit"],

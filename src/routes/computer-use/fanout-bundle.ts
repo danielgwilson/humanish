@@ -69,7 +69,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
       ? tallyParticipantOutcomes(
           // A NO-ENGAGEMENT participant is not one who reached the goal. It said "done" having
           // taken zero actions and said nothing, and `passedParticipants` above already refuses to
-          // count it — but `reachedGoal` was reading the trace status directly, so one run could be both
+          // count it, but `reachedGoal` was reading the trace status directly, so one run could be both
           // "not a passed participant" and "1/1 reached the goal". The headline number a researcher reads
           // first was the dishonest one. Found by a provider bug that ended a study on turn one.
           terminalOutcomes.map((outcome) =>
@@ -289,11 +289,11 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       id: `cua-${plan.labId}`,
       title: plan.title ?? `Computer-use fan-out: ${plan.labId}`,
       // Redacted at write time, like every other raw-text surface in the bundle. Participant records are
-      // digest-only by design, but scenario.goal keeps one participant's composed instructions verbatim —
+      // digest-only by design, but scenario.goal keeps one participant's composed instructions verbatim,
       // and an adopter whose authored participant text must name a runtime world URL (an inbox on a route
       // where the harness does not inject one) put an *.e2b.app address in it. That landed raw here
       // and in observer-data.json, the sensitive-text scanner matched it, and verify failed a bundle
-      // this writer produced. The only adopter-side workaround was scanner evasion (#412).
+      // this writer produced. The only adopter-side workaround was scanner evasion.
       //
       // The instructions the model actually receives are untouched; only the persisted copy changes.
       goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
@@ -321,8 +321,8 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     },
     artifacts: bundleArtifacts(),
     review,
-    // What the participants reported, when any reported anything (#392). Dry-run and in-progress
-    // bundles carry none — there is no participant yet to quote.
+    // What the participants reported, when any reported anything. Dry-run and in-progress
+    // bundles carry none: there is no participant yet to quote.
     feedbackCandidates: fanoutFeedbackCandidates(args),
     // Selected hosted image, including the optional speech default; omitted on the stock desktop.
     ...(desktopTemplate === undefined ? {} : { desktopTemplate }),

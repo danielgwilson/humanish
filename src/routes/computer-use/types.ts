@@ -56,15 +56,15 @@ import type { ResolvedParticipant } from "../../run/participant.js";
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
 // The only fan-out topology this slice ships: N participants = N independent E2B desktop
-// sandboxes, each its own world (clone/serve + subject.state per participant). Shared-world is layer 7 (#164).
+// sandboxes, each its own world (clone/serve + subject.state per participant). Shared-world is layer 7.
 export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
 
 // Env override that may only lower the effective concurrency (never raise concurrent paid
-// desktops — invariant 3). Read names-only into a local; the value never persists.
+// desktops, per invariant 3). Read names-only into a local; the value never persists.
 export const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
 
 // The default session budget, sized so a study can finish (docs/principles/three-roles.md: a
-// session ends because the participant is done, not because a timer fired — the time-box is a
+// session ends because the participant is done, not because a timer fired; the time-box is a
 // session-level cap a researcher sets generously; spend protection is the dollar caps' job).
 // The old 300s default ended real signup studies mid-flow: observed studies run 16-40 turns at
 // ~5-6s per turn before any email wait, so five minutes was the biggest single source of
@@ -72,7 +72,7 @@ export const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
 //
 // App-url and in-process routes default to 30 minutes. Provisioned routes (clone/local-tree)
 // default to whatever the 1-hour sandbox cap leaves after provisioning, declared state seeding,
-// and the teardown buffer — 20 minutes on a stateless clone — floored at the old five minutes so
+// and the teardown buffer (20 minutes on a stateless clone), floored at the old five minutes so
 // a state-heavy lab still gets a session at all. An explicit execution.timeoutMs is never
 // adjusted: when it cannot be provisioned, the plan-time cap refusal shows the arithmetic.
 export const DEFAULT_APP_URL_SESSION_TIMEOUT_MS = 30 * 60_000;
@@ -82,10 +82,10 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 // Device/screen size comes from the named-preset registry (device-presets.ts), selectable per run
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
 // per-PERSONA device dimension (N personas × devices, as the bespoke sims author) lands with
-// fan-out. On this E2B-desktop route only width/height physically render — isMobile/DSF are
+// fan-out. On this E2B-desktop route only width/height physically render; isMobile/DSF are
 // honest metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
 // rendered width is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
-// screen the browser can't shrink to does not overflow + clip (see resolveLaneDevice / #221).
+// screen the browser can't shrink to does not overflow + clip (see resolveLaneDevice).
 
 /**
  * What a computer-use run takes besides its plan and config. The count override and rerun go to
@@ -115,7 +115,7 @@ export interface RunCuaActorLabOptions {
   open?: boolean;
   runId?: string;
   /** CLI `--count` override for the homogeneous fan-out participant count (ignored when a `lanes`
-   *  roster is declared — a roster's length is authoritative). */
+   *  roster is declared; a roster's length is authoritative). */
   countOverride?: number;
   /** Explicitly create a new run containing failed or selected participants from a prior fan-out run. */
   rerun?: {
@@ -141,13 +141,13 @@ export interface RunCuaActorLabOptions {
   deps?: LabDeps;
   /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
-  /** Present only when the scorer was CONFIG-DECLARED and loaded by the CLI (#316);
+  /** Present only when the scorer was config-declared and loaded by the CLI;
    *  core-stamped onto the bundle as evidence. Absent for library callers. */
   scorerProvenance?: RunScorerProvenance;
 }
 
 /** A participant's row in the pre-flight plan: identity + the device/persona it will drive. The prompt
- *  text never leaks — only a sha256-16 digest of the composed instructions. */
+ *  text never leaks: only a sha256-16 digest of the composed instructions. */
 export interface CuaParticipantPlanEntry {
   id: string;
   actorType?: string;
@@ -173,10 +173,10 @@ export interface CuaParticipantPlanEntry {
 export interface CuaParticipantPlan {
   strategy: typeof CUA_FANOUT_STRATEGY;
   laneCount: number;
-  /** Effective in-flight bound (defaults to laneCount — all seats live; a declared
+  /** Effective in-flight bound (defaults to laneCount, all seats live; a declared
    *  execution.concurrency is a cap; the env override may only lower it). */
   concurrency: number;
-  /** Present when the env override lowered the bound below the config's value — recorded so the
+  /** Present when the env override lowered the bound below the config's value, recorded so the
    *  plan never silently disagrees with the manifest. */
   envLoweredConcurrencyFrom?: number;
   /** ceil(laneCount / concurrency). */
@@ -265,11 +265,11 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_RUN_ID_IN_USE"
   // A fail-closed spend cap (execution.caps.maxUsd) was set but src/run/pricing.ts has no rate for the
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
-  // rather than run uncapped — an unenforceable cap is more dangerous than none.
+  // rather than run uncapped: an unenforceable cap is more dangerous than none.
   | "HUMANISH_CUA_LAB_UNPRICED_CAP"
   // comms.email.external was declared but its catch did not answer as a humanish comms catch.
   // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
-  // nothing while every participant still spends (#380).
+  // nothing while every participant still spends.
   | "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE"
   // comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
   // well-formed Unicode (src/comms/external-evidence.ts). Refused at preflight, before the catch is
@@ -353,7 +353,7 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
     sandboxId: string;
     killed: boolean;
     /** The stream URL itself (carries an auth key) is runtime-only and is deliberately not
-     * surfaced on the result — the sandbox is already dead by the time the result exists. */
+     * surfaced on the result; the sandbox is already dead by the time the result exists. */
     streamUrlPresent: boolean;
   };
   /** Subject provenance (invariant 5): what the actor actually drove. At N>1 this is the
@@ -403,8 +403,8 @@ export interface ParticipantRunsAndPlan {
 }
 
 /**
- * The study's shared spend ledger (#299): one counter across every participant. Each one notes its
- * own latest running MODEL-spend estimate (monotone per participant — an estimate can only grow)
+ * The study's shared spend ledger: one counter across every participant. Each one notes its
+ * own latest running MODEL-spend estimate (monotone per participant: an estimate can only grow)
  * and reads back the run total; the loop stops the participant the moment the total crosses the study budget.
  * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
  */
@@ -462,7 +462,7 @@ export interface E2BDesktopDeps {
   labCwd: string;
   scrubKnownValues: (text: string) => string;
   receiving?: CommsReceivingRun;
-  /** Adopter-hosted comms plane (#380): present on the app-url route when comms.email.external is
+  /** Adopter-hosted comms plane: present on the app-url route when comms.email.external is
    *  declared. Carries the parsed comms block (recipients drive the per-participant inbox instruction)
    *  and the inbox URL the persona opens. The drain runs once at run level, not per participant. */
   externalComms?: { email: LabCommsEmail; inboxUrl: string };
@@ -505,10 +505,10 @@ export interface ParticipantModelDeps {
   redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
   /** The study's shared spend ledger, present exactly when execution.caps.maxTotalUsd is set on a
-   *  live run (#299). Preflight already refused the cap on an unpriced model. */
+   *  live run. Preflight already refused the cap on an unpriced model. */
   runBudget?: CuaRunBudget;
   /**
-   * RUNTIME-ONLY observed-URL callback (#164 handoff crux): threaded into the participant's session so the
+   * RUNTIME-ONLY observed-URL callback (the shared-world handoff): threaded into the participant's session so the
    * orchestrator watches this seat's live location.href mid-run. Never persisted (see
    * CuaLoopOptions.onObservedUrl). The concurrent shared-world barrier passes a host-seat latch here
    * to extract a /lobby/CODE; on ordinary routes it is undefined (no-op).
@@ -520,7 +520,7 @@ export interface ParticipantModelDeps {
   /** RUNTIME-ONLY per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
    * shared-world barrier passes a host-seat vision reader here to latch the lobby code off-screen. */
   onScreenshot?: (frame: Buffer) => void;
-  /** Per-turn trace snapshot from a participant's loop (#441), keyed by participant. The live path
+  /** Per-turn trace snapshot from a participant's loop, keyed by participant. The live path
    * wires the incremental in-progress flush here so the attached Observer's timeline grows mid-run. */
   onTrace?: (
     participantId: string,
@@ -571,7 +571,7 @@ export interface ParticipantRunOutcome {
   providerPolicyError?: string;
   sandboxId?: string;
   /** Host-side E2B desktop create->teardown span (ms). An approximation of E2B's server-side
-   *  billed lifetime (server-side kill-on-timeout can extend it) — so the derived dollar figure is
+   *  billed lifetime (server-side kill-on-timeout can extend it), so the derived dollar figure is
    *  doubly an estimate. Absent on the in-process route (no sandbox) and on dry-run. */
   desktopDurationMs?: number;
   desktopResources?: DesktopResourceObservation;
@@ -595,7 +595,7 @@ export interface ParticipantRunOutcome {
   skippedReason?: string;
   noEngagement: boolean;
   selfReportedBlocker: boolean;
-  /** The inclusive friction read (#453): blocker-shaped narration incl. self-resolved arcs.
+  /** The inclusive friction read: blocker-shaped narration incl. self-resolved arcs.
    *  Feeds the participants tally and feedback candidates; never the participant verdict. Optional so
    *  external outcome constructors (shared-world, test fakes) stay valid; absent counts as false. */
   reportedFriction?: boolean;

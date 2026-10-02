@@ -36,7 +36,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
     // `humanish run <lab>` and `humanish lab run <lab>` are the same operation on the same
     // dispatcher, but this one used to forward four options while its sibling forwarded all of
-    // them — so `humanish run first-run --no-open` failed while `lab run` accepted it. A
+    // them, so `humanish run first-run --no-open` failed while `lab run` accepted it. A
     // participant hit exactly that and filed it as a documentation mismatch. Same command, same
     // flags (clig.dev: "be consistent across subcommands").
     .option("--open", "Open the observer in the default browser.")
@@ -141,7 +141,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           ...(options.runId === undefined ? {} : { runId: options.runId }),
           ...(participantCount === undefined ? {} : { participantCount }),
           // Rendered the way `watch` renders it, so a bundle is the same bundle whichever command
-          // produced it (#597). A render failure is a warning on the result.
+          // produced it. A render failure is a warning on the result.
           observer: { open: false },
         });
         writeResult(command, io, result, formatRunHuman);

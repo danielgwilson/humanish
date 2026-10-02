@@ -118,7 +118,7 @@ const HELD_KEYS_TIMEOUT_MS = 15_000;
 const CURSOR_READ_TIMEOUT_MS = 500;
 
 /**
- * The stock image's xdotool waits ~15s on a synchronized move to its current position (#681).
+ * The stock image's xdotool waits ~15s on a synchronized move to its current position.
  * Only an exact integer match can omit that move; fractional actions keep the SDK's own
  * coordinate conversion. Read every time: another action or sequential role may move it.
  * The SDK's getCursorPosition (2.3 through 2.4.0) takes no timeout or signal. Bound our wait, observe late

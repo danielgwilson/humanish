@@ -176,7 +176,7 @@ export async function finishE2BDesktop(
     state.sandboxTornDownAtMs = deps.now();
     // The participant's live stream is now a dead page whichever teardown path ran (released, kept, or
     // release-failed-awaiting-TTL); tell the watch overlay so the tile falls back to recorded
-    // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
+    // evidence instead of "sandbox not found". Guarded: a viewer callback must never
     // break teardown.
     if (state.streamUrl !== undefined) {
       try {

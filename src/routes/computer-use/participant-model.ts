@@ -84,7 +84,7 @@ export async function startParticipantModel(
     return { provider: codexParticipant.provider, codexParticipant };
   }
   if (localAgent === "claude") {
-    // One session for the whole run, like the codex thread above (#520). The one-shot
+    // One session for the whole run, like the codex thread above. The one-shot
     // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
     // started with no memory of the last. HUMANISH_LOCAL_AGENT_ONE_SHOT=1 keeps that path
     // reachable as a measurement switch: MemTrapBench (2026-08) reports memory frameworks
@@ -138,7 +138,7 @@ export function participantSessionOptions(
     persona: spec.persona,
     timeoutMs: deps.timeoutMs,
     // The brain is either a keyed API client or a CLI the operator is already signed in to.
-    // Everything below this line — loop, executor, trace, affordances — is identical either
+    // Everything below this line (loop, executor, trace, affordances) is identical either
     // way, which is what makes a local-agent run comparable to an API one.
     ...(provider === undefined ? {} : { provider: provider }),
     openai: {
@@ -177,7 +177,7 @@ export function participantSessionOptions(
       : { stopWhen: spec.planned.limits.stopWhen }),
     ...(spec.planned.limits.dwell === undefined ? {} : { dwell: spec.planned.limits.dwell }),
     ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
-    // The study budget (#299): this participant notes its own running estimate on the shared
+    // The study budget: this participant notes its own running estimate on the shared
     // ledger and stops when the run total crosses the cap, independent of the per-participant
     // maxUsd above.
     ...(deps.runBudget === undefined
@@ -202,7 +202,7 @@ export function participantSessionOptions(
       ? {}
       : {
           // Forwards the running usage as well: the participant runner is where both are known, and usage
-          // without it never reaches the flush — which is how the live cost stayed unknown.
+          // without it never reaches the flush, which is how the live cost stayed unknown.
           onTrace: (
             items: readonly ActorTraceItem[],
             usage: ActorTokenUsage,
@@ -270,7 +270,7 @@ export async function recordParticipantTrace(
   warnings: string[],
 ): Promise<void> {
   // Per-participant model-token cost estimate, attached to the trace before it is persisted (the model
-  // id is authoritative here — provider.version). Kept at the lab boundary so the pure loop
+  // id is authoritative here: provider.version). Kept at the lab boundary so the pure loop
   // never depends on the operator rate table. estimateActorCost declares absent (null) for an
   // unknown rate / missing usage rather than guessing.
   session.trace.estimatedCost = estimateActorCostForExecution(

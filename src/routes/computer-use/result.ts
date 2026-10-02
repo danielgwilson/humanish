@@ -178,7 +178,7 @@ function cuaLabResult(args: {
           (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
             : // The participant result (toParticipantResult) named this refusal; the N=1 envelope fell through to
-              // "did not produce a terminal session", which is false — it produced one and refused it.
+              // "did not produce a terminal session", which is false: it produced one and refused it.
               outcome?.selfReportedBlocker
               ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
               : observer.ok

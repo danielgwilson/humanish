@@ -82,7 +82,7 @@ export interface CuaObservation {
   url?: string;
   /**
    * The page's vertical scroll offset (window.scrollY), when the executor can read it. Scroll
-   * position is state (#393): inside a scroll-pinned section the viewport stays visually fixed
+   * position is state: inside a scroll-pinned section the viewport stays visually fixed
    * while the participant advances, so the frame hash alone reads "no change". Runtime-only like
    * url and text: it feeds the progress key, bucketed, and is never persisted.
    */
@@ -175,7 +175,7 @@ export interface CuaTurn {
   done: boolean;
   /** Explicit provider interruption, independent of actions or participant intent. */
   interruption?: "output_limit" | "token_limit" | "incomplete" | "unexpected_status";
-  /** The participant's own word for how it ended, when its reply format carries one (#570). */
+  /** The participant's own word for how it ended, when its reply format carries one. */
   outcome?: ParticipantDeclaredOutcome;
   /** Present only for an accepted structured closing account. */
   closingReport?: ParticipantClosingReport;
@@ -255,13 +255,13 @@ export interface CuaLoopOptions {
   /** Hard wall-clock runaway guard. The only count-free hard stop. */
   timeoutMs: number;
   /**
-   * Per-attempt bound on the provider call (#469), so a hung request is told apart from a
+   * Per-attempt bound on the provider call, so a hung request is told apart from a
    * participant still thinking. A stalled turn is retried once with a notice; a second stall ends
    * the participant as harness_error.
    */
   turnTimeoutMs?: number;
   /**
-   * Per-call bound on observation work (#480): executor.observe() and the idle actions (`wait`,
+   * Per-call bound on observation work: executor.observe() and the idle actions (`wait`,
    * `screenshot`), whose only job is to look. A `wait` adds its own ms to the bound. A stalled
    * observe is retried once; a stalled idle action is skipped with a notice.
    */
@@ -309,7 +309,7 @@ export interface CuaLoopOptions {
    */
   stopWhen?: StopWhen;
   /**
-   * A declared observation window (#510): once its condition matches (or after the first
+   * A declared observation window: once its condition matches (or after the first
    * observation when it has none) the loop holds the page for the window, captures a frame on the
    * cadence, takes no action and requests no model turn, then hands control back or ends. Runs at
    * most once per session and never past the session budget.
@@ -318,9 +318,9 @@ export interface CuaLoopOptions {
   /** Injected pause for the dwell window's cadence; tests advance their clock through it. */
   sleep?: (ms: number) => Promise<void>;
   /**
-   * The lab's declared protocol (#414): discrete tasks whose completion is corroborated by the
+   * The lab's declared protocol: discrete tasks whose completion is corroborated by the
    * same observations stopWhen reads, on the same cadence. The tracker never influences the loop's
-   * control flow — a completed task list does not stop a session (that is stopWhen's job); it only
+   * control flow: a completed task list does not stop a session (that is stopWhen's job); it only
    * records the funnel that lands on the trace. The participant-facing halves of these tasks are
    * already in `instructions` (composed upstream); the loop reads only the `success` criteria,
    * which never reach the prompt.
@@ -337,15 +337,15 @@ export interface CuaLoopOptions {
    * Injected pure per-turn cost estimator (keeps the loop free of the operator rate table and
    * makes the cap deterministic in tests). Given running (input, output) token totals, returns the
    * estimated USD, or null when unpriceable. Only consulted when `maxUsd` is set. A null estimate
-   * mid-run cannot trip the cap — preflight already guaranteed a rate exists, so a null here is a
+   * mid-run cannot trip the cap; preflight already guaranteed a rate exists, so a null here is a
    * vanished-rate harness condition, not a silent uncapped pass.
    */
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /**
-   * RUN-LEVEL spend guard (#299): called with this participant's running usage each turn, at the same
+   * RUN-LEVEL spend guard: called with this participant's running usage each turn, at the same
    * point the per-participant cap is checked. Returns a human-readable reason when the study's shared
    * budget is exhausted, else null. On a non-null return the loop stops with `budget_reached`
-   * regardless of material progress — a study-level stop is a recruiting decision hitting its
+   * regardless of material progress: a study-level stop is a recruiting decision hitting its
    * limit, not this participant's runaway, so it never reads as `gave_up`.
    */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
@@ -395,7 +395,7 @@ export interface CuaLoopOptions {
    */
   onScreenshot?: (frame: Buffer) => void;
   /**
-   * Trace snapshot for a watcher (#441): the redacted items recorded so far, with the running
+   * Trace snapshot for a watcher: the redacted items recorded so far, with the running
    * usage so a run can be priced in flight. Called after each checkpoint's screenshot (the initial
    * observation and every acted turn, so a flush never shows an action without the frame before
    * it), after each dwell frame, and after a closing request. The array is a fresh copy; its items

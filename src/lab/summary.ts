@@ -1,9 +1,9 @@
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
-// What a lab is, for the surface that has to describe it before you spend money (#455).
+// What a lab is, for the surface that has to describe it before you spend money.
 //
 // The run index and run detail answer questions about runs. This answers a question about the lab
-// itself — what it drives, who is in it, which model, and what it is allowed to spend — which is
+// itself (what it drives, who is in it, which model, and what it is allowed to spend), which is
 // what a stakeholder reads on the screen where they decide whether to press Start.
 //
 // Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
@@ -55,11 +55,11 @@ export interface LabSummary {
   /** The model that will actually run, override or default. */
   model?: string;
   /**
-   * The reasoning effort that will actually run, override or default — and `"per-lane"` when the
+   * The reasoning effort that will actually run, override or default, and `"per-lane"` when the
    * roster declares more than one, because a single value would be a lie about half the participants.
    *
    * Shown because it was a silent constant: unreachable from a lab, so every run took the provider
-   * default. A study variable you cannot see is one nobody chose (#497).
+   * default. A study variable you cannot see is one nobody chose.
    */
   reasoningEffort?: string;
   caps: LabCaps;
@@ -78,7 +78,7 @@ export interface LabSummary {
 
 /**
  * The effort every participant will run at, or `"per-lane"` when they differ. A participant that declares nothing
- * inherits the actor's, and an actor that declares nothing gets the provider default — which is
+ * inherits the actor's, and an actor that declares nothing gets the provider default, which is
  * reported as the resolved value, exactly as `model` reports its default rather than hiding it.
  */
 function reasoningEffortOf(config: Record<string, unknown>): string {
@@ -103,7 +103,7 @@ function subjectOf(config: Record<string, unknown>): string | undefined {
   return subject.source;
 }
 
-/** How many participants, and who — collapsed when they are all the same persona. */
+/** How many participants, and who; collapsed when they are all the same persona. */
 function participantsOf(config: Record<string, unknown>): string | undefined {
   const actors = config.actors as Pick<LabActor, "count" | "persona" | "lanes">[] | undefined;
   const actor = actors?.[0];
@@ -140,7 +140,7 @@ export interface ReadLabSummaryOptions {
 }
 
 /**
- * Describe one lab. Returns null when the manifest cannot be resolved — the caller already knows
+ * Describe one lab. Returns null when the manifest cannot be resolved: the caller already knows
  * the lab exists from the listing, so this failing means the file changed underneath them.
  */
 export async function readLabSummary(

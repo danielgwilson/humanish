@@ -9,7 +9,7 @@
 // no paths, no cwd, no repo names, no URLs, no lab titles or ids that are not our own starter labs,
 // no persona or mission text, no run ids, no evidence, no key values, no key names. A study's
 // subject is the adopter's product and often unannounced; leaking a lab id would leak a roadmap.
-// The allowlist below is the whole vocabulary — anything not on it cannot be sent by construction.
+// The allowlist below is the whole vocabulary: anything not on it cannot be sent by construction.
 
 import {
   isCuaDiagnosticCategory,
@@ -20,7 +20,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-/** Write-only PostHog project key. Public by design — it can ingest, and can read nothing. */
+/** Write-only PostHog project key. Public by design: it can ingest, and can read nothing. */
 const INGEST_KEY = "phc_oeMeBqxDZhZ9tCHMSnuDFimLqHpU5Myc847WD33hAh4C";
 const INGEST_HOST = "https://us.i.posthog.com";
 
@@ -38,13 +38,13 @@ export type TelemetryEvent = "cli_command" | "project_initialized" | "study_fini
 
 export interface TelemetryProperties {
   command?: string;
-  /** A starter lab id, or "custom" — never an adopter's own lab id. */
+  /** A starter lab id, or "custom"; never an adopter's own lab id. */
   lab?: string;
   mode?: "dry-run" | "live";
   outcome?: string;
   /** Bucketed, not exact: a duration is a fingerprint at full precision. */
   durationBucket?: string;
-  /** Which brain ran it, as a route name — never a model id the adopter configured. */
+  /** Which brain ran it, as a route name; never a model id the adopter configured. */
   brain?: "provider-key" | "local-agent" | "none";
   ok?: boolean;
   exitCode?: number;
@@ -204,7 +204,7 @@ export interface TelemetryPayload {
 
 /**
  * The exact document that would be sent. Built separately from sending so that
- * `HUMANISH_TELEMETRY_DEBUG=1` can show it and so tests can assert on it — "you can read exactly
+ * `HUMANISH_TELEMETRY_DEBUG=1` can show it and so tests can assert on it. "You can read exactly
  * what we collect" is the part of this convention that makes it honest rather than merely legal.
  */
 export function buildPayload(args: {
@@ -237,7 +237,7 @@ export function buildPayload(args: {
     // like any other new adopter and is indistinguishable from one. It is also the exact
     // population we are trying to count, so a busy self-study day reads as an adoption spike.
     // Stamped rather than suppressed, the same shape as `ci`: participant runs stay visible and
-    // stay separable, and we keep a genuine measurement of what a cold install does (#546).
+    // stay separable, and we keep a genuine measurement of what a cold install does.
     studyParticipant:
       env.HUMANISH_STUDY_PARTICIPANT !== undefined &&
       env.HUMANISH_STUDY_PARTICIPANT !== "" &&
@@ -266,7 +266,7 @@ const OWN_ERROR_CODE = /^HUMANISH_[A-Z0-9_]{1,80}$/;
 /**
  * The closed vocabulary an outcome may take. Actor statuses (src/actors/contract.ts), the two
  * shared-world extras, a fan-out roll-up, and the two shapes a non-study command has. Anything
- * else — a provider's reason string, a scorer's verdict text — is dropped, never forwarded.
+ * else (a provider's reason string, a scorer's verdict text) is dropped, never forwarded.
  */
 const OUTCOMES = new Set([
   "passed",
@@ -305,7 +305,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
  * backend added later cannot forget to report. Returns {} for results that carry no study.
  *
  * The first two days of 0.62.0 data had 1,359 `run`/`lab run` events and not one carried a mode
- * or an outcome — the vocabulary existed, nothing populated it — so the one question telemetry
+ * or an outcome (the vocabulary existed, nothing populated it), so the one question telemetry
  * was added to answer ("does anyone get to a working live first run") had no answer in the data.
  */
 export function deriveRunFacts(result: unknown): TelemetryProperties {

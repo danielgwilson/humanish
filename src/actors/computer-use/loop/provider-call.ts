@@ -26,7 +26,7 @@ export type TurnReply = { readonly turn: CuaTurn } | { readonly stop: Stop };
 
 /**
  * Ask the provider for one turn. A fail_closed provider gets one single dispatch; any other is
- * raced against turnTimeoutMs (#469) and retried once when it stalls.
+ * raced against turnTimeoutMs and retried once when it stalls.
  */
 export async function requestTurn(
   session: LoopSession,

@@ -206,11 +206,11 @@ export async function admitCuaRun(
     localVmSignal === undefined
       ? baseRunSession
       : (options) => baseRunSession({ ...options, signal: localVmSignal });
-  // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
+  // Adopter-hosted comms plane on the app-url route: humanish provisions no subject here,
   // so it cannot host a catch. The operator runs one, and humanish still does every other part
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
   // the participants, and writes the same digest-only evidence. Declaring `external` previously did
-  // nothing on this route (and, per #387, on every other) while its docs said otherwise.
+  // nothing on this route (or on any other) while its docs said otherwise.
   const comms = plan.residual.comms;
   const externalCommsConfig =
     subject.kind !== "clone" && subject.kind !== "local-tree" && !inProcess
@@ -351,7 +351,7 @@ export async function startCuaRun(
     packageName: "humanish",
   });
 
-  // Live-trace flush seam (#441): runLabParticipants fills it when a live run has an in-progress bundle
+  // Live-trace flush seam: runLabParticipants fills it when a live run has an in-progress bundle
   // to grow; participants call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};
@@ -471,7 +471,7 @@ function cuaParticipantDeps(
     redactScreenshots,
     scrubKnownValues,
     runSession,
-    // The study-level ledger exists once per run, shared by every participant (#299). Dry runs never
+    // The study-level ledger exists once per run, shared by every participant. Dry runs never
     // spend, so they carry none.
     ...(dryRun || plan.caps.maxTotalUsd === undefined
       ? {}

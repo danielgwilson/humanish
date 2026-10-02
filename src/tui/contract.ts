@@ -1,11 +1,11 @@
-// The boundary between the CLI and the terminal UI (#455).
+// The boundary between the CLI and the terminal UI.
 //
 // `humanish tui` loads a PRE-BUILT bundle (dist/tui-app.js) that contains Ink, React and the
 // screens, and nothing else. Everything the surface needs to know is passed across this interface
 // by the CLI, which imports it from the same modules every other command uses.
 //
 // The reason for the seam: a terminal UI that reads the filesystem itself would become a second
-// implementation of "what is a run, which lab does it belong to, is it alive" — one that ships
+// implementation of "what is a run, which lab does it belong to, is it alive", one that ships
 // minified, is invisible to the root test suite, and drifts from `humanish runs` the first time
 // either side changes. Injection keeps exactly one implementation, already unit-tested, and leaves
 // the bundle a view layer that can be reasoned about as one.
@@ -57,7 +57,7 @@ export interface TuiCapabilities {
   listLabs(cwd: string): Promise<LabListResult>;
   /**
    * Start a run and return once it is running. The run is detached: it outlives this surface, so
-   * quitting the TUI — or losing the connection it runs over — does not kill a study that costs
+   * quitting the TUI (or losing the connection it runs over) does not kill a study that costs
    * real money. The surface then follows it through `status.json` like any other reader.
    */
   startRun(options: Omit<LaunchRunOptions, "spawn" | "cliPath" | "now">): Promise<LaunchRunResult>;
@@ -65,7 +65,7 @@ export interface TuiCapabilities {
   readLaunchLog(logPath: string): Promise<string>;
   /**
    * Who is in one run and what they are thinking. Opens that run's bundle, which the index
-   * deliberately does not — affordable because it is asked only for the run being watched.
+   * deliberately does not. That is affordable because it is asked only for the run being watched.
    * `null` when the run has not written a bundle yet.
    */
   readRunDetail(cwd: string, runId: string): Promise<RunDetail | null>;
@@ -79,7 +79,7 @@ export interface TuiCapabilities {
     lab: string,
     options?: ReadLabSummaryOptions,
   ): Promise<LabSummary | null>;
-  /** Whether this directory is a humanish project — an empty project and a wrong directory are
+  /** Whether this directory is a humanish project: an empty project and a wrong directory are
    *  different problems and must not share a screen. */
   readProjectState(cwd: string): TuiProjectState;
   /** Open the selected run in the session-owned local evidence server; closes when the TUI exits. */
@@ -91,8 +91,8 @@ export interface TuiCapabilities {
   stopRun(cwd: string, runId: string, intent?: "run" | "analysis"): Promise<TuiActionResult>;
   /**
    * Set this directory up as a humanish project. The surface's only writing action outside of
-   * starting runs — offered because "cd somewhere else and run init" is a dead end shown to
-   * exactly the person who has just arrived (#505).
+   * starting runs, offered because "cd somewhere else and run init" is a dead end shown to
+   * exactly the person who has just arrived.
    */
   initProject(cwd: string): Promise<TuiActionResult>;
 }
@@ -117,7 +117,7 @@ export interface TuiOptions {
 }
 
 /**
- * Start the surface. Resolves with the process exit code when the operator quits — the TUI owns the
+ * Start the surface. Resolves with the process exit code when the operator quits; the TUI owns the
  * screen until then, so the CLI must not write to stdout while this is pending.
  */
 export type TuiHandoff = { action: "agentmail-key" };
@@ -148,7 +148,7 @@ export function nodeSupportsTui(versionString: string = process.version): boolea
 export const TUI_BUNDLE_URL = new URL("../tui-app.js", import.meta.url);
 
 /**
- * What `doctor` says about the stakeholder surface — a pure function of the machine's state and,
+ * What `doctor` says about the stakeholder surface: a pure function of the machine's state and,
  * crucially, of who is reading.
  *
  * A real first-contact study (labs/first-contact.yaml) is why the reader matters. An autonomous

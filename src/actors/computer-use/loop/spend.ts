@@ -18,7 +18,7 @@ export class LostRequestRefused extends Error {
 /**
  * The spend caps, checked before the next provider request so a model stuck retrying cannot keep
  * spending. The per-participant cap stops the session once the running estimate crosses maxUsd; a null
- * estimate cannot trip it, because preflight guaranteed a rate. The study budget (#299) is checked
+ * estimate cannot trip it, because preflight guaranteed a rate. The study budget is checked
  * next.
  */
 export function spendStop(session: LoopSession): Stop | undefined {

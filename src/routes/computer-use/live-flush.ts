@@ -20,7 +20,7 @@ export interface LiveTraceFlush {
 }
 
 /**
- * Incremental live flush (#441): as each participant's loop reports its recorded-so-far items,
+ * Incremental live flush: as each participant's loop reports its recorded-so-far items,
  * rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
  * Observer's 5s poll sees the timeline grow. Throttled (one write per interval, trailing
  * write guaranteed). `write` is the run's `writeSnapshot`, which serializes writes and refuses
@@ -73,8 +73,9 @@ export function startLiveTraceFlush(args: {
                   schema: "humanish.live-actor.v1" as const,
                   updatedAt,
                   // Who this participant is, carried while the run is live. Without it a
-                  // surface watching a live run can only name the participant id, and "CUA browser — observer-live-
-                  // check" is the harness talking about itself where the participant should be.
+                  // surface watching a live run can only name the participant id, and
+                  // `CUA browser — observer-live-check` is the harness talking about itself where
+                  // the participant should be.
                   ...(personaByStream.get(stream.id) === undefined
                     ? {}
                     : { persona: { id: personaByStream.get(stream.id)! } }),
@@ -158,7 +159,7 @@ export function trackRuntimeStreams(onStream: RunLabHomes["onStream"] | undefine
       await onStream?.(event);
       if (event.type === "ready") urls.push({ streamId: event.streamId, url: event.url });
       // Mark, never remove: the tile needs to know the live view ended (and say so) rather than
-      // have the stream silently vanish from the overlay (#357).
+      // have the stream silently vanish from the overlay.
       else for (const entry of urls) if (entry.streamId === event.streamId) entry.ended = true;
       if (liveObserver) attachObserverRuntimeStreamUrls(liveObserver, urls);
     },

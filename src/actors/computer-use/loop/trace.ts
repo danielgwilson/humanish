@@ -55,7 +55,7 @@ export class TraceRecorder {
 
   constructor(private readonly now: () => number) {}
 
-  // The single recording choke point (#441): every trace item is stamped `at` from the
+  // The single recording choke point: every trace item is stamped `at` from the
   // loop's injected clock as it is recorded, so timed playback reads recorded facts
   // (deterministic in tests via the injected `now`). The id is allocated before the body is
   // built, so a body that fails to build (a redaction error) still consumes its id.
@@ -77,7 +77,7 @@ export function statusForCompletionReason(reason: ActorCompletionReason): ActorS
     case "turn_completed": // turn_completed is a Codex reason; this loop emits goal_satisfied
       return "passed";
     // A session that ran out of time or budget did not reach its goal, whatever it achieved along
-    // the way. Calling that `passed` is how a truncated study came to be reported as a green one —
+    // the way. Calling that `passed` is how a truncated study came to be reported as a green one,
     // and why "raise the timeout" kept landing on the operator instead of on the tool. This switch
     // is exhaustive with no default, so a new completion reason forces a compile error here.
     case "budget_reached":
@@ -88,7 +88,7 @@ export function statusForCompletionReason(reason: ActorCompletionReason): ActorS
       return "blocked";
     // A participant who stopped trying is the single most valuable thing a usability study
     // produces. Recording it as `failed` said the instrument broke, which is a different claim and
-    // a false one — see docs/principles/three-roles.md.
+    // a false one; see docs/principles/three-roles.md.
     case "gave_up":
       return "abandoned";
     // Only the harness failing is a harness failure.
@@ -173,7 +173,7 @@ export function loopResult(
     ...(usage.interactionUsageIncomplete(session.capDeclared)
       ? { interactionUsageIncomplete: true as const }
       : {}),
-    // The funnel is present exactly when a protocol was declared — including a session that ended
+    // The funnel is present exactly when a protocol was declared, including a session that ended
     // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(session.taskTracker === undefined ? {} : { taskFunnel: session.taskTracker.funnel() }),
     ...(tokenUsage === undefined ? {} : { tokenUsage }),

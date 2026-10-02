@@ -31,7 +31,7 @@ export async function acquireParticipantDesktop(
   const { residual, env } = deps;
   const subjectEnvNames = participantSubjectEnv(deps.subject);
   const subjectEnvValues = residual.subject.envValues ?? {};
-  // Off-app comms (#297): the base-URL env is injected at sandbox create, so the app reads it at
+  // Off-app comms: the base-URL env is injected at sandbox create, so the app reads it at
   // boot; the catch starts right after create.
   const commsEnv = participantCommsEnv(ctx.comms);
   const desktopModule = await (deps.desktopModule ?? loadE2BDesktopModule)();

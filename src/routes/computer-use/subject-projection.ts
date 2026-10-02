@@ -54,7 +54,7 @@ export function projectParticipantSubjects(args: {
 
 /**
  * Resolve the bundle's state marker from the declaration and what actually ran.
- * Precedence: external declared → "unpinned" (seed records, if any, stay attached — a
+ * Precedence: external declared → "unpinned" (seed records, if any, stay attached; a
  * migrated external DB is still unpinned overall); else seed declared → "seeded" only when
  * every declared step executed ok on a live run, otherwise "declared-not-run" (dry-run
  * contract bundles and failed live provisioning); no declaration → "undeclared".

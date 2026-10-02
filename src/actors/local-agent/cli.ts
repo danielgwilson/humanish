@@ -12,14 +12,14 @@
 // returned a correct click on a real desktop screenshot and `claude -p` agreed within three pixels.
 //
 // What this is not: a way to avoid paying. Subscription usage consumes the operator's own plan,
-// which is why the cost line for these runs says "not priced" rather than $0 — $0 would be a lie.
+// which is why the cost line for these runs says "not priced": $0 would be a lie.
 // It is also not marketed as free API access, and it fails closed on a rate limit rather than
 // hammering a plan that was sold for interactive coding.
 //
 // Where it is safe, and this inverts the intuitive reading: the local agent only decides. humanish
 // executes the action inside the desktop sandbox, so nothing the persona chooses ever runs on the
 // operator's machine. The same trick on the terminal route would be the opposite: it would move
-// code execution out of the sandbox and onto a real disk — which is why this is a computer-use
+// code execution out of the sandbox and onto a real disk, which is why this is a computer-use
 // provider and nothing else. Even so, these are coding agents with their own shell and file tools,
 // so each one is spawned tool-restricted, in a scratch directory, with a per-turn timeout.
 
@@ -118,7 +118,7 @@ export function declaredOutcomeOf(value: unknown): ParticipantDeclaredOutcome | 
 /**
  * Pull the JSON object out of whatever the CLI printed: clean JSON, a Claude Code envelope, or an
  * answer wrapped in a ```json fence. A response with no object at all is a turn error, never an
- * empty turn — an empty turn would read to the loop as "the participant chose to do nothing".
+ * empty turn: an empty turn would read to the loop as "the participant chose to do nothing".
  */
 export function parseAgentJson(text: string): Record<string, unknown> {
   // Order matters, and a test caught it: Claude Code's envelope is valid JSON whose `result`
@@ -282,7 +282,7 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
           "-p",
           "--output-format",
           "json",
-          // Read is the only tool it needs — the screenshot — and the only one it gets.
+          // Read is the only tool it needs (the screenshot) and the only one it gets.
           "--allowedTools",
           "Read",
           ...(options.model === undefined ? [] : ["--model", options.model]),
@@ -465,7 +465,7 @@ export async function checkHostedCodexCompatibility(
  *
  * This is the whole point of the feature at the surface: someone new does not have to go and make
  * an API key if the thing that can drive the study is already on their laptop. `doctor` says so,
- * and says it as a capability rather than a gate — a machine with no local agent is not broken,
+ * and says it as a capability rather than a gate: a machine with no local agent is not broken,
  * it just needs a key.
  */
 export async function detectLocalAgents(
