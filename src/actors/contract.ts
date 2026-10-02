@@ -205,19 +205,24 @@ export interface ActorTokenUsage {
 }
 
 /**
- * Codex CLI releases a recorded account profile may name. Append-only: a release can leave the
- * launch lists in codex/qualified-versions.ts, but saved bundles naming it stay readable.
+ * The oldest Codex CLI release a recorded account profile may name. Readers accept every stable
+ * `MAJOR.MINOR.PATCH` release from it on, so a saved bundle stays readable whichever release
+ * recorded it; launch admission (codex/qualified-versions.ts) alone decides what runs.
  */
-export const RECORDED_CODEX_CLI_VERSIONS = [
-  "0.154.0",
-  "0.157.1",
-  "0.159.2",
-  "0.159.3",
-  "0.160.0",
-] as const;
-export type RecordedCodexCliVersion = (typeof RECORDED_CODEX_CLI_VERSIONS)[number];
-export function isRecordedCodexCliVersion(value: unknown): value is RecordedCodexCliVersion {
-  return RECORDED_CODEX_CLI_VERSIONS.some((version) => version === value);
+const RECORDED_CODEX_CLI_FLOOR = "0.154.0";
+/** A stable release at or above the floor. Parts compare as digit strings, exact at any length. */
+export function isRecordedCodexCliVersion(value: unknown): value is string {
+  if (typeof value !== "string" || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value))
+    return false;
+  const release = value.split("."),
+    floor = RECORDED_CODEX_CLI_FLOOR.split(".");
+  for (const [index, part] of release.entries()) {
+    const order =
+      part.length - floor[index]!.length ||
+      (part === floor[index] ? 0 : part > floor[index]! ? 1 : -1);
+    if (order !== 0) return order > 0;
+  }
+  return true;
 }
 
 /** Requested execution profile; per-request verification is recorded separately. */
@@ -228,7 +233,8 @@ export interface ActorExecutionProfile {
   billing: "account-unknown";
   requestedModel: string;
   reasoningEffort: import("./reasoning-effort.js").ReasoningEffort;
-  cliVersion: RecordedCodexCliVersion;
+  /** A stable release at or above RECORDED_CODEX_CLI_FLOOR. */
+  cliVersion: string;
   toolPolicy: "restricted-codex-v1" | "codex-ui-tools-v1";
   participantSchema: "humanish.restricted-participant-turn.v1" | "humanish.codex-ui-tool.v1";
   memoryPolicy: "recent-eight-16k-v1" | "continuing-thread-v1";

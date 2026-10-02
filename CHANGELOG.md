@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- Saved bundles and Codex-account analyses may name any stable Codex CLI release from 0.154.0 on
+  (#1414). `humanish verify`, analysis reads and the Observer accept a participant execution
+  profile or an analyst identity whose release no launch list names, such as 0.158.0 or 0.161.0.
+  Before, they accepted only 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0, and rejected a bundle
+  from any other release. Launch admission is unchanged. A participant now records the release
+  that launched; before, one outside that list was recorded as the host default, which only a
+  `codex:qualify` candidate could reach. Published humanish and Observer builds keep their closed
+  list, so they still reject a bundle that names a release they never listed.
+
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 
 humanish 0.107.0 removes the library surfaces 0.106.0 deprecated, so the entry point exports 44

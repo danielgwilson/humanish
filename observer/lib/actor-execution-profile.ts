@@ -1,11 +1,23 @@
-/** Codex CLI releases a saved account profile may name; append-only, like the server reader. */
-export const RECORDED_CODEX_CLI_VERSIONS = [
-  "0.154.0",
-  "0.157.1",
-  "0.159.2",
-  "0.159.3",
-  "0.160.0",
-] as const;
+/**
+ * The oldest Codex CLI release a recorded account profile may name. Readers accept every stable
+ * `MAJOR.MINOR.PATCH` release from it on, so a saved bundle stays readable whichever release
+ * recorded it; this copy of src/actors/contract.ts's reader imports no launch policy.
+ */
+const RECORDED_CODEX_CLI_FLOOR = "0.154.0";
+/** A stable release at or above the floor. Parts compare as digit strings, exact at any length. */
+export function isRecordedCodexCliVersion(value: unknown): value is string {
+  if (typeof value !== "string" || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value))
+    return false;
+  const release = value.split("."),
+    floor = RECORDED_CODEX_CLI_FLOOR.split(".");
+  for (const [index, part] of release.entries()) {
+    const order =
+      part.length - floor[index]!.length ||
+      (part === floor[index] ? 0 : part > floor[index]! ? 1 : -1);
+    if (order !== 0) return order > 0;
+  }
+  return true;
+}
 
 /** Durable artifact profile. This reader never selects or imports CLI execution policy. */
 export function validActorExecutionProfile(value: unknown): boolean {
@@ -32,7 +44,7 @@ export function validActorExecutionProfile(value: unknown): boolean {
     (record.memoryPolicy === "recent-eight-16k-v1" ||
       record.memoryPolicy === "continuing-thread-v1");
   const uiTools =
-    RECORDED_CODEX_CLI_VERSIONS.some((version) => version === record.cliVersion) &&
+    isRecordedCodexCliVersion(record.cliVersion) &&
     typeof record.requestedModel === "string" &&
     /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(record.requestedModel) &&
     typeof record.reasoningEffort === "string" &&
