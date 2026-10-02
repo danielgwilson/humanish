@@ -4,6 +4,7 @@
     "LAB_CONFIG_SCHEMA",
     "MAX_CUA_LANES",
     "actorResolvesToTerminal",
+    "browserScorer",
     "concurrentSharedWorldValidationReason",
     "createOpenAiResponsesProvider",
     "cuaLaneCount",
@@ -29,6 +30,7 @@
     "selectLabBackend",
     "sharedWorldValidationReason",
     "stableProgressKey",
+    "terminalScorer",
     "verifyRun"
   ],
   "types": [

@@ -43,6 +43,7 @@ export type { RedactionHooks } from "./evidence/redaction.js";
 export type { E2BDesktopSandbox } from "./substrates/e2b/sdk.js";
 
 // Score a run.
+export { browserScorer, terminalScorer } from "./lab/adapter-scorer-loader.js";
 export type { AdapterScorerModule, AdapterScoringContext } from "./lab/adapter-scorer-loader.js";
 export type { BrowserLabScoringContext } from "./lab/adapter-extension.js";
 export type { TerminalProductScoringContext } from "./routes/terminal/types.js";
