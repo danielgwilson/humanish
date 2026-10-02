@@ -1670,10 +1670,10 @@ bundlePath: .humanish/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/r
 checks:
   - name: run.json exists
     ok: true
-    message: run.json present
+    message: run.json is present
   - name: redaction passed
     ok: true
-    message: redaction status must be passed
+    message: redaction passed
 shareSafety:
   status: share_ready
   reasons: []

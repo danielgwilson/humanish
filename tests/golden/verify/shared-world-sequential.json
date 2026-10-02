@@ -57,7 +57,7 @@
     "failing": [
       {
         "name": "actor engagement",
-        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages"
       }
     ]
   },
@@ -138,7 +138,7 @@
     "failing": [
       {
         "name": "run bundle shape",
-        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+        "message": "one or more run.json sections have the wrong shape"
       }
     ]
   },
@@ -147,7 +147,7 @@
     "failing": [
       {
         "name": "run bundle shape",
-        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+        "message": "one or more run.json sections have the wrong shape"
       }
     ]
   },
@@ -183,7 +183,7 @@
     "failing": [
       {
         "name": "run bundle shape",
-        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+        "message": "one or more run.json sections have the wrong shape"
       }
     ]
   },
@@ -192,7 +192,7 @@
     "failing": [
       {
         "name": "run bundle shape",
-        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+        "message": "one or more run.json sections have the wrong shape"
       }
     ]
   },
@@ -312,7 +312,7 @@
     "failing": [
       {
         "name": "actor engagement",
-        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages"
       },
       {
         "name": "shared-world evidence",
