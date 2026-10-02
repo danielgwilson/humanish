@@ -4,7 +4,7 @@ import {
   type ActorTokenUsage,
   type ProviderRequestReceipt,
 } from "../contract.js";
-import { defaultCodexCliVersion } from "./qualified-versions.js";
+import { defaultCodexCliVersion, untestedOperatorReleaseWarning } from "./codex-admission.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
 import {
   CuaProviderError,
@@ -460,8 +460,14 @@ function closeParticipantSession(state: ParticipantState): Promise<boolean> {
 /** What the closed native session reports beside cleanup: its run warnings and a late refusal. */
 function sessionReport(
   session: RestrictedCodexSession,
+  operator: boolean,
 ): Pick<ParticipantProviderCloseResult, "warnings" | "refusal"> {
   const warnings = [
+    // A resolved model means thread/start was admitted: the release actually launched.
+    untestedOperatorReleaseWarning(
+      session.resolvedModel === undefined ? undefined : session.cliVersion,
+      operator,
+    ),
     session.protocolIncompatibilities === undefined
       ? undefined
       : protocolIncompatibilityMessage(session.cliVersion, session.protocolIncompatibilities),
@@ -679,7 +685,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
         if (!(await withinCleanupBudget(work, state.abortAt!))) state.failedCleanup = true;
         return {
           status: state.failedCleanup ? "unconfirmed" : "confirmed",
-          ...sessionReport(state.session),
+          ...sessionReport(state.session, settings.operator),
         };
       })();
       return closing;

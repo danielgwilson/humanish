@@ -31,7 +31,7 @@ import path from "node:path";
 import type { ActorCapabilities, ParticipantDeclaredOutcome } from "../contract.js";
 import type { CuaAction, CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
-import { admittedCodexCliVersions, parseCodexCliVersion } from "../codex/qualified-versions.js";
+import { admitsCodexCliVersion, parseCodexCliVersion } from "../codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../codex/restricted-executable.js";
 
 export type LocalAgentId = "codex" | "claude";
@@ -455,9 +455,7 @@ export async function checkHostedCodexCompatibility(
     options.env ?? process.env,
   ).catch(() => ({ code: null, stdout: "", stderr: "" }));
   const version = parseCodexCliVersion(result.stdout);
-  return result.code === 0 &&
-    version !== undefined &&
-    admittedCodexCliVersions(platform, arch).some((admitted) => admitted === version)
+  return result.code === 0 && version !== undefined && admitsCodexCliVersion(version)
     ? "supported"
     : "unsupported_version";
 }

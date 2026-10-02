@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../../src/actors/codex/restricted-executable.js";
 import { localCodexParticipantCheck } from "../../src/lab/doctor.js";
 
@@ -36,7 +36,7 @@ async function projectWithLocalCodex(): Promise<{ project: string; bin: string }
   await mkdir(path.join(nativeRoot, "vendor", target.triple, "bin"), { recursive: true });
   await writeFile(
     path.join(nativeRoot, "package.json"),
-    JSON.stringify({ name: `@openai/${target.packageName}`, version: "0.158.0" }),
+    JSON.stringify({ name: `@openai/${target.packageName}`, version: "0.150.0" }),
   );
   await symlink(process.execPath, path.join(nativeRoot, "vendor", target.triple, "bin", "codex"));
   return { project, bin };

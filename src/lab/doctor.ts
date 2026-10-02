@@ -20,7 +20,7 @@ import {
   codexInstallAdvice,
   codexVersionRecovery,
   type CodexInstallation,
-} from "../actors/codex/qualified-versions.js";
+} from "../actors/codex/codex-admission.js";
 import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
 
 type Check = DoctorResult["checks"][number];
@@ -181,7 +181,7 @@ export async function localCodexParticipantCheck(args: {
     ok: readiness.ready,
     message: readiness.ready
       ? readyMessage(
-          "Qualified Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; inference is remote, and model access and account quota remain untested.",
+          "Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; inference is remote, and model access and account quota remain untested.",
           readiness,
         )
       : `Local Codex participant setup is unavailable (${readiness.errorCode}). ${codexRecovery(readiness, "Install the supported Codex CLI version and sign in with a ChatGPT account.")} No API fallback is used.`,
@@ -435,16 +435,13 @@ async function analysisCheck(
         ? "Use Linux x64 or the Apple Silicon Mac with a supported Codex CLI, or explicitly select provider: openai with an API key."
         : readiness.errorCode === "codex_busy"
           ? "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then retry."
-          : codexRecovery(
-              readiness,
-              "Install the qualified CLI and sign in with a ChatGPT account.",
-            );
+          : codexRecovery(readiness, "Install the Codex CLI and sign in with a ChatGPT account.");
     return {
       name: "post-run analysis",
       ok: readiness.ready,
       message: readiness.ready
         ? readyMessage(
-            "Qualified Codex CLI and ChatGPT account login are ready for a separate restricted analyst. Analysis sends selected evidence to remote inference; model access and account allowance remain untested. Dollar cost and output-token ceilings are unavailable.",
+            "Codex CLI and ChatGPT account login are ready for a separate restricted analyst. Analysis sends selected evidence to remote inference; model access and account allowance remain untested. Dollar cost and output-token ceilings are unavailable.",
             readiness,
           )
         : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). ${recovery} No API fallback is used; participant readiness is independent.`,

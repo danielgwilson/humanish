@@ -10,14 +10,34 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
+  those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
+  each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
+  macOS arm64 took 0.154.0; hosted participants on Linux arm64 and macOS x64 took 0.154.0. The
+  per-launch schema check from #1401 still refuses a release that changed a field humanish uses.
+  - Prereleases (`0.162.0-alpha.4`) and releases below 0.154.0 are refused as
+    `codex_unsupported_version`. doctor says which and why: "it is a prerelease, and humanish runs
+    stable releases", "it is older than 0.154.0, the oldest release humanish supports", "it is not
+    a plain MAJOR.MINOR.PATCH release", or the refused entry's reason and issue.
+  - A hosted participant (operator mode) on a release outside `TESTED_CODEX_CLI_VERSIONS` records
+    the run warning "Codex CLI <release> has not been tested with humanish; this hosted
+    participant's evidence rests on the checks each launch makes."
+  - The default release a declaration names before detection, and the release doctor's install
+    command pins, is the newest tested one, 0.160.0, on every host. On macOS arm64 both move from
+    0.154.0 to 0.160.0.
+  - Isolated launches, the Codex-account analyst and local-browser participants, still run only
+    on Linux x64 and macOS arm64. On Linux arm64 and macOS x64, analysis is still refused as
+    `codex_unsupported_platform`.
+  - Messages that said "qualified" Codex CLI describe the rule and name the last tested release.
+    `src/actors/codex/qualified-versions.ts` is now `codex-admission.ts`.
 - Saved bundles and Codex-account analyses may name any stable Codex CLI release from 0.154.0 on
-  (#1414). `humanish verify`, analysis reads and the Observer accept a participant execution
-  profile or an analyst identity whose release no launch list names, such as 0.158.0 or 0.161.0.
-  Before, they accepted only 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0, and rejected a bundle
-  from any other release. Launch admission is unchanged. A participant now records the release
-  that launched; before, one outside that list was recorded as the host default, which only a
-  `codex:qualify` candidate could reach. Published humanish and Observer builds keep their closed
-  list, so they still reject a bundle that names a release they never listed.
+  (#1414). `humanish verify`, analysis reads and the Observer accept a participant execution profile
+  or an analyst identity whose release no launch list names, such as 0.158.0 or 0.161.0. Before,
+  they accepted only 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0, and rejected a bundle from any
+  other release. A participant now records the release that launched; before, one outside that list
+  was recorded as the host default, which only a `codex:qualify` candidate could reach. Published
+  humanish and Observer builds keep their closed list, so they still reject a bundle that names a
+  release they never listed.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

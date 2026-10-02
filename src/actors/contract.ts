@@ -207,9 +207,9 @@ export interface ActorTokenUsage {
 /**
  * The oldest Codex CLI release a recorded account profile may name. Readers accept every stable
  * `MAJOR.MINOR.PATCH` release from it on, so a saved bundle stays readable whichever release
- * recorded it; launch admission (codex/qualified-versions.ts) alone decides what runs.
+ * recorded it; launch admission (codex/codex-admission.ts) alone decides what runs.
  */
-const RECORDED_CODEX_CLI_FLOOR = "0.154.0";
+export const RECORDED_CODEX_CLI_FLOOR = "0.154.0";
 /** A stable release at or above the floor. Parts compare as digit strings, exact at any length. */
 export function isRecordedCodexCliVersion(value: unknown): value is string {
   if (typeof value !== "string" || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value))

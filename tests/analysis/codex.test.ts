@@ -1,4 +1,4 @@
-import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,

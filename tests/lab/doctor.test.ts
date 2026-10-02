@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { labSetupChecks } from "../../src/lab/doctor.js";
-import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
+import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -212,7 +212,7 @@ describe("selected lab setup without paid dispatch", () => {
         const check = result.checks.find((item) => item.name === name)!;
         expect(check.ok, name).toBe(false);
         expect(check.message, name).toContain(
-          `Codex CLI 0.160.0 changed the app-server protocol humanish uses: turn/start response turn.id is no longer in the schema. Install the newest with \`npm install -g @openai/codex@${defaultCodexCliVersion()}\`. Then sign in with a ChatGPT account (\`codex login\`).`,
+          `Codex CLI 0.160.0 changed the app-server protocol humanish uses: turn/start response turn.id is no longer in the schema. Install the last tested release with \`npm install -g @openai/codex@${defaultCodexCliVersion()}\`. Then sign in with a ChatGPT account (\`codex login\`).`,
         );
       }
     });
