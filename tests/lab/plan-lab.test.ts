@@ -150,8 +150,12 @@ describe("planLab", () => {
     const provider = async () => {
       throw new Error("not called");
     };
-    const gap = (config: LabConfig, options: Parameters<typeof planLab>[1]) => {
-      const result = planLab(config, options);
+    const gap = (
+      config: LabConfig,
+      options: Parameters<typeof planLab>[1],
+      deps?: Parameters<typeof planLab>[2],
+    ) => {
+      const result = planLab(config, options, deps);
       if (result.ok) return "planned";
       const { refusal } = result;
       return `${refusal.route} ${refusal.code}`;
@@ -210,13 +214,9 @@ describe("planLab", () => {
     expect(gap(pricedTerminal, { cwd: ROOT, dryRun: false })).toBe(
       "terminal HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
     );
-    expect(
-      gap(pricedTerminal, {
-        cwd: ROOT,
-        dryRun: false,
-        terminalHooks: { costProbe: () => ({}) },
-      }),
-    ).toBe("planned");
+    expect(gap(pricedTerminal, { cwd: ROOT, dryRun: false }, { costProbe: () => ({}) })).toBe(
+      "planned",
+    );
     const publicScripted = {
       ...parsed(scriptedApp),
       subject: { source: "app-url", appUrl: "https://example.com/" },

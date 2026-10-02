@@ -15,6 +15,7 @@ import {
 } from "./lab/route-inputs.js";
 import { planLab, resolveLabDryRun, routeOf, type LabBackend, type LabRoute } from "./lab/plan.js";
 import type { LabPlan, PlanRefusal } from "./lab/plan-types.js";
+import type { LabDeps } from "./lab/lab-deps.js";
 import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
@@ -39,10 +40,7 @@ import {
   type SharedWorldLabHooks,
 } from "./routes/shared-world/types.js";
 import { admitTerminalPlan, terminalLabRefusal } from "./routes/terminal/route.js";
-import {
-  type TerminalProductLabHooks,
-  type TerminalProductLabResult,
-} from "./routes/terminal/types.js";
+import { type TerminalProductLabResult } from "./routes/terminal/types.js";
 import { type RunScorerProvenance } from "./run/bundle.js";
 import { type RunResult } from "./run/results.js";
 import { type RunLabProvenance } from "./run/status.js";
@@ -56,8 +54,9 @@ import { isLocalBrowserLab, localBrowserDefaults } from "./substrates/local/runt
 export async function runLab(
   config: LabConfig,
   options: InternalRunLabOptions,
+  deps: LabDeps = {},
 ): Promise<LabOutcome> {
-  const prepared = await prepareLab(config, options);
+  const prepared = await prepareLab(config, options, deps);
   return prepared.ok ? prepared.run() : prepared.outcome;
 }
 
@@ -94,6 +93,7 @@ export type PreparedLab =
 export async function prepareLab(
   config: LabConfig,
   options: InternalRunLabOptions,
+  deps: LabDeps = {},
 ): Promise<PreparedLab> {
   const lab = localBrowserDefaults(config);
   const route = routeOf(lab);
@@ -109,14 +109,14 @@ export async function prepareLab(
       : undefined;
   const study = localVm?.({ ...normalized.options, config: lab });
   const planning = study?.options ?? normalized.options;
-  const planned = planLab(lab, planning);
+  const planned = planLab(lab, planning, deps);
   if (!planned.ok) {
     await study?.close();
-    const outcome = await refusalOutcome(lab, planning, planned.refusal);
+    const outcome = await refusalOutcome(lab, planning, planned.refusal, deps);
     outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome };
   }
-  const admitted = await admitPlan(lab, planning, planned.planned.plan);
+  const admitted = await admitPlan(lab, planning, planned.planned.plan, deps);
   if (!admitted.ok) {
     await study?.close();
     admitted.outcome.result.warnings.push(...normalized.warnings);
@@ -156,6 +156,7 @@ async function admitPlan(
   config: LabConfig,
   options: InternalRunLabOptions,
   plan: LabPlan,
+  deps: LabDeps,
 ): Promise<AdmittedPlan> {
   switch (plan.route) {
     case "preview":
@@ -165,7 +166,7 @@ async function admitPlan(
     case "scripted":
       return admitScriptedPlan(plan, scriptedInput(options));
     case "terminal":
-      return admitTerminalPlan(plan, terminalInput(options));
+      return admitTerminalPlan(plan, terminalInput(options, deps));
     case "shared-world":
       return admitSharedWorldPlan(plan, sharedWorldInput(options), config);
   }
@@ -176,6 +177,7 @@ async function refusalOutcome(
   config: LabConfig,
   options: InternalRunLabOptions,
   refusal: PlanRefusal,
+  deps: LabDeps,
 ): Promise<LabOutcome> {
   // Spend-safe default: a lab goes live only when the config (or CLI) says so.
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
@@ -210,7 +212,7 @@ async function refusalOutcome(
         route: "terminal",
         backend: "terminal",
         result: await terminalLabRefusal(
-          { ...terminalInput(options), ...lab, config, dryRun },
+          { ...terminalInput(options, deps), ...lab, config, dryRun },
           refusal,
         ),
       };
@@ -270,8 +272,6 @@ interface RunLabInternals {
   cuaHooks?: CuaActorLabHooks;
   /** Scripted-browser route hooks: browser injection + test DI seams (mirror of cuaHooks). */
   scriptedHooks?: ScriptedBrowserLabHooks;
-  /** Terminal-product route hooks: sandbox/runtime-auth DI seams (mirror of cuaHooks). */
-  terminalHooks?: TerminalProductLabHooks;
   /** Shared-world route hooks: sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
   sharedWorldHooks?: SharedWorldLabHooks;
 }

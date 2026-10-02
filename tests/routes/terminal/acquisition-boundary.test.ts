@@ -128,7 +128,8 @@ async function killRouteAfterReceipt(
       dryRun: false,
       open: false,
       runId: process.env.BOUNDARY_RUN_ID,
-      hooks: { loadModule: async () => module, env: ${JSON.stringify(env)} },
+      env: ${JSON.stringify(env)},
+      deps: { desktopModule: async () => module },
     });
   `;
   const child = spawn(
@@ -199,7 +200,8 @@ describe("terminal sandbox acquisition boundary", () => {
       dryRun: false,
       open: false,
       runId: RUN_ID,
-      hooks: { loadModule: async () => provider.module, env },
+      env,
+      deps: { desktopModule: async () => provider.module },
     });
 
     expect(result.runId).toBe(RUN_ID);
@@ -223,7 +225,8 @@ describe("terminal sandbox acquisition boundary", () => {
       dryRun: false,
       open: false,
       runId: RUN_ID,
-      hooks: { loadModule: async () => provider.module, env },
+      env,
+      deps: { desktopModule: async () => provider.module },
     });
 
     expect(provider.killed).toEqual(["sb-boundary-1"]);
@@ -258,7 +261,8 @@ describe("terminal sandbox acquisition boundary", () => {
       dryRun: false,
       open: false,
       runId: RUN_ID,
-      hooks: { loadModule: async () => provider.module, env },
+      env,
+      deps: { desktopModule: async () => provider.module },
     });
 
     expect(result.ok).toBe(false);

@@ -89,8 +89,9 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
   return {
     cuaHooks,
     scriptedHooks: { env, loadDesktopModule },
-    terminalHooks: { env, loadModule: loadDesktopModule },
     sharedWorldHooks: { env, loadDesktopModule },
+    // The terminal route reads env and its seams directly.
+    terminal: { env, deps: { desktopModule: loadDesktopModule } },
   };
 }
 
@@ -105,7 +106,7 @@ async function runEntry(
     vi.stubEnv("HUMANISH_BROWSER_COMMAND", "");
   }
   const calls: Calls = { desktop: 0, executor: 0, provider: 0, subprocess: 0 };
-  const hooks = hooksFor(options, calls);
+  const { terminal, ...hooks } = hooksFor(options, calls);
   const backend: LabBackend | "none" =
     options.runner ?? (entry === "runner" ? selectLabBackend(config) : "none");
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
@@ -114,13 +115,18 @@ async function runEntry(
   let result: Json;
   try {
     if (entry === "runLab") {
-      const outcome = await runLab(config, {
-        cwd,
-        ...hooks,
-        ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-        ...(options.count === undefined ? {} : { count: options.count }),
-        ...rerun,
-      });
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          ...hooks,
+          env: terminal.env,
+          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+          ...(options.count === undefined ? {} : { count: options.count }),
+          ...rerun,
+        },
+        terminal.deps,
+      );
       result = { backend: outcome.backend, ...outcome.result };
     } else if (backend === "cua") {
       result = await runCuaActorLab({
@@ -134,7 +140,7 @@ async function runEntry(
     } else if (backend === "scripted") {
       result = await runScriptedBrowserLab({ cwd, config, dryRun, hooks: hooks.scriptedHooks });
     } else if (backend === "terminal") {
-      result = await runTerminalProductLab({ cwd, config, dryRun, hooks: hooks.terminalHooks });
+      result = await runTerminalProductLab({ cwd, config, dryRun, ...terminal });
     } else if (backend === "concurrent-shared-world") {
       result = await runConcurrentSharedWorld({
         cwd,

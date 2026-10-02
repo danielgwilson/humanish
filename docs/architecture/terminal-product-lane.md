@@ -238,11 +238,10 @@ At SLICE 1, a non-dry-run call returned a structured
 SLICE 2 implemented the real session.
 
 SLICE 1 declared the DI seams SLICE 2 needed (`loadModule`, `buildSandbox`,
-`runtimeAuthEnv`, `detachedTimers`) on `TerminalProductLabHooks`; only the dry-run
-path was implemented in that slice. The hook bag now carries `loadModule`, `env`,
-`renderObserverFn`, `now`, `costProbe`, `score` and `deriveFeedback`
-(`src/routes/terminal/types.ts`). `TerminalProductLabHooks` is internal: the package's
-`RunLabOptions` no longer takes it.
+`runtimeAuthEnv`, `detachedTimers`) on a terminal hook bag; only the dry-run path was
+implemented in that slice. The bag is gone. The route reads `env` and `scorer` from its
+options (`src/routes/terminal/types.ts`), and a test passes its seams (`desktopModule`,
+`renderObserver`, `now`, `costProbe`) as `LabDeps` (`src/lab/lab-deps.ts`).
 
 ## SLICE 4: the product-adapter extension seam (layer 6)
 

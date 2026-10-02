@@ -75,7 +75,7 @@ export async function runTerminalProductLab(
   const planned = planTerminalLab(config, {
     dryRun,
     ...(lab === undefined ? {} : { lab }),
-    ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
+    hasCostProbe: input.deps?.costProbe !== undefined,
   });
   if (planned.ok) return runTerminalPlan(planned.plan, input);
   return terminalLabRefusal(options, planned.refusal);

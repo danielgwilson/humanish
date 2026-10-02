@@ -10,10 +10,7 @@ import { CUA_ACTOR_LAB_SCHEMA, type CuaActorLabHooks } from "../routes/computer-
 import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted/types.js";
 import type { SharedWorldLabHooks } from "../routes/shared-world/types.js";
 import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types.js";
-import {
-  TERMINAL_PRODUCT_LAB_SCHEMA,
-  type TerminalProductLabHooks,
-} from "../routes/terminal/types.js";
+import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { defaultSharedWorldPhaseSink, defaultSubjectPhaseSink } from "../subject/steps.js";
@@ -89,7 +86,8 @@ type Refusal = {
 
 type Normalized = {
   ok: true;
-  /** The options with every typed home mapped into the route's bag and removed. */
+  /** The options with each typed home mapped into the route's bag and removed, except on a route
+   *  that reads its homes directly (terminal). */
   options: InternalRunLabOptions;
   /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
   warnings: string[];
@@ -284,15 +282,11 @@ export function normalizeRunLabOptions(
       if (hooks !== undefined) normalized.sharedWorldHooks = hooks;
       break;
     }
-    case "terminal": {
-      const hooks = withMapped<TerminalProductLabHooks>(legacy.terminalHooks, {
-        ...envHome,
-        ...(scorer?.score === undefined ? {} : { score: scorer.score }),
-        ...(scorer?.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
-      });
-      if (hooks !== undefined) normalized.terminalHooks = hooks;
+    case "terminal":
+      // The terminal route reads its typed options directly.
+      if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
+      if (scorer !== undefined) normalized.scorer = scorer;
       break;
-    }
     case "scripted": {
       const hooks = withMapped(legacy.scriptedHooks, {
         ...envHome,

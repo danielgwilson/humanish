@@ -44,7 +44,6 @@ import type {
   RunLiveTerminalSessionArgs,
   TerminalEventRecord,
   TerminalLedgers,
-  TerminalProductLabHooks,
   TerminalProductLabResult,
 } from "./types.js";
 
@@ -55,7 +54,6 @@ export interface LiveFinishInputs {
   plan: RunLiveTerminalSessionArgs["plan"];
   input: RunLiveTerminalSessionArgs["input"];
   cwd: string;
-  hooks: TerminalProductLabHooks;
   sanitize: (text: string) => string;
   nowIso: () => string;
   knownSecretValues: string[];
@@ -125,7 +123,8 @@ async function settleLiveLedgers(
   capFailure: string | undefined;
   ledgers: TerminalLedgers;
 }> {
-  const { hooks, runtime, session } = inputs;
+  const { runtime, session } = inputs;
+  const costProbe = inputs.input.deps?.costProbe;
   const { caps } = inputs.plan;
   const { maxUsd } = caps;
   const runPaths = inputs.run.paths;
@@ -135,10 +134,10 @@ async function settleLiveLedgers(
   // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null by
   // default (core has no signal). The costProbe hook lets tests or adapters inject KNOWN
   // spend to exercise the fail-closed cap without a real billable run.
-  const injectedLines = hooks.costProbe?.(
+  const injectedLines = costProbe?.(
     trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd },
   );
-  if (hooks.costProbe) await validatePreparedRunArtifactPaths(runPaths);
+  if (costProbe) await validatePreparedRunArtifactPaths(runPaths);
   const cost = buildCostLedger({
     ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
     ...(trace.tokenUsage === undefined ? {} : { tokenUsage: trace.tokenUsage }),
@@ -192,7 +191,7 @@ export async function finishLiveTerminalSession(
     trace,
     normalizedTranscript,
   );
-  const { plan, input, cwd, hooks, sanitize } = inputs;
+  const { plan, input, cwd, sanitize } = inputs;
   const { product, caps } = plan;
   const policies = plan.residual.policies;
   const { runtimeEnv, persona, mission, run, source, warnings, session } = inputs;
@@ -247,7 +246,7 @@ export async function finishLiveTerminalSession(
   // through foldScorerFailures below. Adapter payloads pass the same scrub and redaction as the
   // rest of the bundle, and the bundle verifier checks them downstream.
   const scorer = await applyAdapterExtensionSeam({
-    hooks,
+    scorer: input.scorer,
     bundle,
     trace,
     ledgers,

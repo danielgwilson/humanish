@@ -18,7 +18,7 @@ import {
 } from "../../../src/routes/terminal/bundle.js";
 import { composePrompt } from "../../../src/routes/terminal/dry-run.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
-import { passingHooks, terminalConfig } from "../../helpers/terminal-live-fake.js";
+import { passingRun, terminalConfig } from "../../helpers/terminal-live-fake.js";
 
 vi.mock("../../../src/routes/terminal/bundle.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../src/routes/terminal/bundle.js")>();
@@ -89,7 +89,7 @@ async function expectSamePersona(lab: LabConfig) {
     config: lab,
     dryRun: false,
     open: false,
-    hooks: passingHooks({}, commands),
+    ...passingRun({}, commands),
   });
   expect(dry.ok).toBe(true);
   expect(live.ok).toBe(true);

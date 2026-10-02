@@ -47,9 +47,9 @@ import {
   UPLOAD_MAX_BYTES,
   type LiveTerminalPlan,
   type TerminalLedgers,
-  type TerminalProductLabHooks,
 } from "./types.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
@@ -57,7 +57,7 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface LiveSandboxInputs {
   plan: LiveTerminalPlan;
   cwd: string;
-  hooks: TerminalProductLabHooks;
+  deps: LabDeps;
   now: () => number;
   nowIso: () => string;
   sanitize: (text: string) => string;
@@ -111,13 +111,13 @@ export class LiveTerminalSandbox {
   }
 
   async acquire(): Promise<void> {
-    const { plan, hooks, now, sanitize, runtimeEnv, e2bApiKey, runPaths, metadata } = this.inputs;
+    const { plan, deps, now, sanitize, runtimeEnv, e2bApiKey, runPaths, metadata } = this.inputs;
     const { warnings } = this.inputs;
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs, sandboxTimeoutMs } = this;
     // Declared egress allowlist, or undefined for the historical unrestricted default (#538).
     const egressAllow = plan.egressAllow;
-    const sandboxModule = await (hooks.loadModule ?? loadE2BDesktopModule)();
+    const sandboxModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
     this.module = sandboxModule;
     await validatePreparedRunArtifactPaths(runPaths);
     // No sandbox-global env in either mode. In openai-egress, only this host-side SDK request

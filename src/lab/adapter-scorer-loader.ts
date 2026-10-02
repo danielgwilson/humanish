@@ -49,7 +49,7 @@ export interface AdapterScorerModule {
   deriveFeedback?: (
     ctx: AdapterScoringContext,
   ) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
-  /** Browser-route only; inert on the terminal route (TerminalProductLabHooks carries no artifacts seam). */
+  /** Browser-route only; inert on the terminal route, whose TerminalScorer has no artifacts seam. */
   deriveArtifacts?: (
     ctx: BrowserLabScoringContext,
   ) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;

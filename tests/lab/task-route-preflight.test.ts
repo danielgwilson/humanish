@@ -80,14 +80,17 @@ describe("declared task protocol admission", () => {
         buildProvider: forbidden,
         renderObserverFn: forbidden,
       };
-      const outcome = await runLab(parsed, {
-        cwd: output,
-        dryRun: false,
-        cuaHooks: hooks,
-        sharedWorldHooks: hooks,
-        terminalHooks: hooks,
-        scriptedHooks: hooks,
-      });
+      const outcome = await runLab(
+        parsed,
+        {
+          cwd: output,
+          dryRun: false,
+          cuaHooks: hooks,
+          sharedWorldHooks: hooks,
+          scriptedHooks: hooks,
+        },
+        { renderObserver: forbidden },
+      );
       expect(outcome.backend).toBe(backend);
       expect(outcome.result.ok).toBe(false);
       expect(outcome.result.error).toMatchObject({ code: "HUMANISH_LAB_TASKS_UNSUPPORTED" });

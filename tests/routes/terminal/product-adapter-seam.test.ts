@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // SLICE 4 conformance proof (deterministic, $0, NO live E2B): the layer-6 product-adapter EXTENSION
 // SEAM (issue #154 acceptance #8 — "product-adapter hooks WITHOUT forking core"). A THIN in-repo
 // EXAMPLE adapter (below, ~40 lines, simulating what a real adopter would write in ITS own repo)
-// registers a terminal-product scorer + feedback strategy via the TerminalProductLabHooks DI seam,
+// registers a terminal-product scorer + feedback strategy as the run's `scorer`,
 // attaches ADAPTER-NAMESPACED product nouns to a feedback candidate, and the produced bundle
 // VERIFIES — proving the seam closes the fork-forcing gap WITHOUT a fork.
 //
@@ -33,7 +33,9 @@ type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
-import type { TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
+import type { TerminalScorer } from "../../../src/routes/terminal/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -220,20 +222,28 @@ function baseEnv(): Record<string, string | undefined> {
   };
 }
 
-function passingHooks(extra: Partial<TerminalProductLabHooks>): TerminalProductLabHooks {
+/** A passing run's inputs. `extra` sets the scorer's functions, or swaps the E2B module. */
+function passingRun(
+  extra: TerminalScorer & { desktopModule?: LabDeps["desktopModule"] },
+): TerminalTestInputs {
   const killed: string[] = [];
+  const { desktopModule, ...scorer } = extra;
   return {
     env: baseEnv(),
-    now: () => 4_000,
-    loadModule: async () =>
-      makeFakeModule({
-        killed,
-        codexBehavior: (cmd) => ({
-          exitCode: 0,
-          stdout: `created a durable image\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
-        }),
-      }),
-    ...extra,
+    scorer,
+    deps: {
+      now: () => 4_000,
+      desktopModule:
+        desktopModule ??
+        (async () =>
+          makeFakeModule({
+            killed,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `created a durable image\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
+          })),
+    },
   };
 }
 
@@ -247,7 +257,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
   });
 
   it("runs the adapter scorer + feedback strategy, attaches NAMESPACED nouns, and the bundle VERIFIES", async () => {
-    const hooks = passingHooks({
+    const inputs = passingRun({
       score: exampleAdapterScore,
       deriveFeedback: exampleAdapterFeedback,
     });
@@ -256,7 +266,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -310,8 +320,8 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
       (_, i) => `narration line ${i} ${"x".repeat(70)}`,
     ).join("\n");
     let capturedTranscript: string | undefined;
-    const hooks = passingHooks({
-      loadModule: async () =>
+    const inputs = passingRun({
+      desktopModule: async () =>
         makeFakeModule({
           killed: [],
           codexBehavior: (cmd) => ({
@@ -338,7 +348,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -368,13 +378,13 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
   });
 
   it("DEFAULT behavior is UNCHANGED when no scorer/feedback hook is given", async () => {
-    const hooks = passingHooks({}); // no score, no deriveFeedback
+    const inputs = passingRun({}); // no score, no deriveFeedback
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     const bundle = JSON.parse(
@@ -390,7 +400,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
   });
 
   it("fails CLOSED on a malformed adapter score/candidate — a bad extension never poisons a verifiable bundle", async () => {
-    const hooks = passingHooks({
+    const inputs = passingRun({
       // A malformed score (missing namespace) and a malformed candidate (empty summary) — both dropped.
       score: () =>
         ({
@@ -416,7 +426,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
 
     const bundle = JSON.parse(
@@ -435,7 +445,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
   });
 
   it("drops an adapter candidate whose idempotency_key is blank", async () => {
-    const hooks = passingHooks({
+    const inputs = passingRun({
       deriveFeedback: (ctx) => {
         const [candidate] = exampleAdapterFeedback(ctx);
         return candidate ? [{ ...candidate, idempotency_key: "  " }] : [];
@@ -446,7 +456,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -461,7 +471,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     const outsideSentinel = path.join(cwd, "outside-sentinel.txt");
     const original = "outside must stay unchanged\n";
     await writeFile(outsideSentinel, original, "utf8");
-    const hooks = passingHooks({
+    const inputs = passingRun({
       deriveFeedback: (ctx) => {
         const [candidate] = exampleAdapterFeedback(ctx);
         if (!candidate) return [];
@@ -481,7 +491,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
       config: liveConfig(),
       dryRun: false,
       open: false,
-      hooks,
+      ...inputs,
     });
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -508,7 +518,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     await mkdir(outsideRoot);
     await writeFile(outsideSentinel, original, "utf8");
     let hookRan = false;
-    const hooks = passingHooks({
+    const inputs = passingRun({
       score: async (ctx) => {
         hookRan = true;
         await rename(runRoot, capturedRunRoot);
@@ -522,7 +532,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
         cwd,
         config: liveConfig(),
         dryRun: false,
-        hooks,
+        ...inputs,
         open: false,
         runId,
       }),
