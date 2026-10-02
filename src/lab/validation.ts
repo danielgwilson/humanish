@@ -72,7 +72,7 @@ export function computerUseValidationReason(config: LabConfig): string | null {
   // ambiguous shared-world-ish shape, not a per-participant target swarm. Permit N>1 public runs only
   // when every roster entry declares its own target, making the adapter-owned topology explicit. But when
   // `subject.topology: shared-world` is also declared, N participants against one public target is the
-  // external-public shared-world topology (#164 phase 2), so route it there (a real public deployment
+  // external-public shared-world topology, so route it there (a real public deployment
   // as the shared plane) instead of refusing; externalPublicSharedWorldValidationReason then applies.
   if (
     participantCount > 1 &&
@@ -121,10 +121,10 @@ function rosterStructuralValidationReason(config: LabConfig): string | null {
 }
 
 /**
- * Cross-validate a `topology: shared-world` declaration (#164). Returns the failure message, or
+ * Cross-validate a `topology: shared-world` declaration. Returns the failure message, or
  * null when the one shared-world route can run it: the external-public checks for an app-url
  * subject, the provisioned checks otherwise. Enforced at parse and again by the route, since
- * runConcurrentSharedWorld is exported.
+ * runLab takes a config that skipped the parser.
  */
 export function sharedWorldValidationReason(config: LabConfig): string | null {
   return config.subject.source === "app-url"
@@ -239,7 +239,7 @@ export function receivingEmailValidationReason(config: LabConfig): string | unde
   return undefined;
 }
 
-/** Refuse task declarations that the selected execution path would discard (#737).
+/** Refuse task declarations that the selected execution path would discard.
  * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
 export function taskProtocolValidationReason(
   config: LabConfig,
@@ -320,12 +320,12 @@ function sharedWorldConcurrencyReason(config: LabConfig): string | null {
 }
 
 /**
- * Cross-validate a concurrent shared-world declaration (#164 phase 2). Returns the failure message,
+ * Cross-validate a concurrent shared-world declaration. Returns the failure message,
  * or null when valid. Includes the base shared-world checks plus the concurrent extras: a synthetic
  * subject attestation, a 0.0.0.0 serve bind (getHost only routes to a port bound on
  * all interfaces), and no `subject.clone.keep`/`subject.localTree.keep` (either would
- * orphan actor sandboxes). Enforced at parse and re-enforced in the engine (runConcurrentSharedWorld
- * is exported npm surface).
+ * orphan actor sandboxes). Enforced at parse and re-enforced in the engine (runLab
+ * takes a config that skipped the parser).
  */
 export function concurrentSharedWorldValidationReason(config: LabConfig): string | null {
   const base = provisionedSharedWorldStructureReason(config);
@@ -350,7 +350,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
 }
 
 /**
- * Cross-validate the external-public shared-world declaration (#164 phase 2): a real public
+ * Cross-validate the external-public shared-world declaration: a real public
  * deployment used directly as the shared plane (no getHost, no clone, no subject sandbox, no seed).
  * The counterpart of concurrentSharedWorldValidationReason for a plane the harness does not own:
  * it rejects every provisioned-subject field (serve/state.seed/state.checkpoint/exposure/clone/repos
@@ -358,7 +358,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
  * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
  * concurrency >= 2 + an actors[0].lanes roster of ≥2 with exactly one host participant. The getHost synthetic
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
- * Enforced at parse and re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
+ * Enforced at parse and re-enforced in the engine (runLab takes a config that skipped the parser).
  */
 export function externalPublicSharedWorldValidationReason(config: LabConfig): string | null {
   const structuralReason = rosterStructuralValidationReason(config);
@@ -387,7 +387,7 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (!isHttpUrl(appUrl) || isLoopbackUrl(appUrl)) {
     return "the external-public shared-world route requires a non-loopback http(s) `subject.appUrl` — a loopback URL is not a shared public plane (use the getHost provisioned route for a local subject).";
   }
-  // The operator-ownership attestation (the honest analog of exposure: synthetic — you cannot claim
+  // The operator-ownership attestation (the honest analog of exposure: synthetic; you cannot claim
   // synthetic on a real site, but you must attest you own/operate it). Author-trust; unverifiable.
   if (config.subject.publicTarget?.authorized !== true) {
     return "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).";

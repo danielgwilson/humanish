@@ -53,7 +53,7 @@ export function compositionReason(config: LabConfig): string | null {
 export const THIS_REPO_DRY_RUN_ONLY =
   "this-repo labs are dry-run only; use a clone or app-url subject for a live run.";
 
-// this-repo subjects run locally and dry-run only — there is no live execution target for the
+// this-repo subjects run locally and dry-run only: there is no live execution target for the
 // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
 function thisRepoValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "this-repo") {
@@ -103,7 +103,7 @@ function appUrlValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "app-url") {
     const type = config.actors[0]?.type ?? "";
     if (actorResolvesToScriptedBrowser(type)) {
-      // Scripted-browser route (all fail-closed: invariant 6 — a field that cannot act on
+      // Scripted-browser route (all fail-closed per invariant 6: a field that cannot act on
       // this route is rejected, never silently ignored).
       if (config.execution?.target !== undefined && config.execution.target !== "local") {
         return "scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice.";
@@ -250,7 +250,7 @@ function localTreeValidationReason(config: LabConfig): string | null {
   return null;
 }
 
-// desktop-cli route: a computer-use participant studies a CLI/TUI the way a person does — at a
+// desktop-cli route: a computer-use participant studies a CLI/TUI the way a person does: at a
 // desktop, in a terminal window, by looking at it. The sibling of terminal-product, and the
 // distinction is the population: terminal-product sends an autonomous agent
 // through a pipe with stdin disabled, which is the honest way to study what an agent meets and
@@ -284,9 +284,9 @@ function desktopCliValidationReason(config: LabConfig): string | null {
 }
 
 // terminal-product route: a real autonomous agent studies a CLI/product from public surfaces
-// inside an E2B shell. Fail-closed (invariant 6 — a field that cannot act on this route is an
+// inside an E2B shell. Fail-closed (invariant 6: a field that cannot act on this route is an
 // honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
-// (absent defaults to e2b-terminal — the only honest target for an in-sandbox agent), one
+// (absent defaults to e2b-terminal, the only honest target for an in-sandbox agent), one
 // participant until fan-out lands.
 function terminalValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "terminal-product") {
@@ -302,7 +302,7 @@ function terminalValidationReason(config: LabConfig): string | null {
     }
   } else if (config.execution?.target === "e2b-terminal") {
     // e2b-terminal is the terminal-product substrate only. Any other source declaring it is a
-    // mis-config — reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
+    // mis-config: reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
     return "`execution.target: e2b-terminal` requires `subject.source: terminal-product` with a registered terminal actor.";
   } else if (actorResolvesToTerminal(config.actors[0]?.type)) {
     // A registered terminal actor on a non-terminal-product subject: rejected, never ignored (the

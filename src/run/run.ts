@@ -43,7 +43,7 @@ interface Run {
   readonly runId: string;
   readonly createdAt: string;
   readonly mode: "dry-run" | "live";
-  /** The manifest the run came from (#455); bundleHead copies it into the bundle. */
+  /** The manifest the run came from; bundleHead copies it into the bundle. */
   readonly lab?: RunLabProvenance;
   /** Routes write their evidence files through these and hand them to participants. */
   readonly paths: PreparedRunArtifactPaths;

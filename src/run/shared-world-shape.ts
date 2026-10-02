@@ -11,7 +11,7 @@ export const COMMAND_DIGEST_PATTERN = /^[0-9a-f]{16}$/;
 export const SUBJECT_ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 // Sequential: the three disclosures a sequential shared-world bundle must pin (verify fails closed
-// if any is absent — omission overclaims): sequential turns only, no concurrency/races handled, and
+// if any is absent, because omission overclaims): sequential turns only, no concurrency/races handled, and
 // a checkpoint delta is attributed to the turn it followed, never a specific action (correlation).
 export const MANDATORY_ATTRIBUTION_LIMITS = [
   "sequential-only",
@@ -89,7 +89,7 @@ export function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvid
 }
 
 /**
- * Tolerant shape guard for the shared-world evidence block (#164). Validates required fields +
+ * Tolerant shape guard for the shared-world evidence block. Validates required fields +
  * types and tolerates extra keys (additive): the strict value-shape/timeline checks are
  * sharedWorldEvidenceFindings' job (an injected value-shaped checkpoint field must pass the shape
  * guard so verify can catch it fail-closed, not silently bounce off isRunBundle).
@@ -125,7 +125,7 @@ export function isSharedWorldEvidence(value: unknown): value is SharedWorldEvide
   )
     return false;
   // Tolerant: validate the type of each present field only (the coherence + topologyMode dispatch
-  // are the job of sharedWorldEvidenceFindings — an injected value-shaped field must pass this
+  // are the job of sharedWorldEvidenceFindings; an injected value-shaped field must pass this
   // guard so verify catches it fail-closed). A bundle must carry at least one of the two shapes.
   if (
     value.sequence !== undefined &&

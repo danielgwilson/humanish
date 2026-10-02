@@ -1,4 +1,4 @@
-// `humanish export`: one file a coworker can open (#471).
+// `humanish export`: one file a coworker can open.
 //
 // A run is a directory. Sharing it meant a tunnel (`serve --expose`) or a hand-zipped bundle,
 // neither of which is "send one thing". The Observer is already a single-file artifact with the
@@ -304,9 +304,8 @@ async function readObserverSlot(
   try {
     html = await readFile(observerPath, "utf8");
   } catch {
-    // `run` writes observer-data.json and no index.html; `watch` writes both (#597). The
-    // 0.72.0 dogfood participant hit this on its first export. Render it here, from the same
-    // artifact watch uses, so what produced the run never decides whether it can be sent.
+    // `run` writes observer-data.json and no index.html; `watch` writes both. Render it here, from
+    // the same artifact watch uses, so what produced the run never decides whether it can be sent.
     const rendered = await (deps.render ?? ((c, r) => renderObserver(c, r, { open: false })))(
       cwd,
       runInput,
@@ -484,7 +483,7 @@ function makePortable(inlined: Record<string, unknown>, verified: VerifyResult):
       }
     }
   }
-  // What verify said, in the file, so the chrome can agree with the result envelope (#584).
+  // What verify said, in the file, so the chrome can agree with the result envelope.
   const publicSafety = (inlined.publicSafety ?? {}) as Record<string, unknown>;
   inlined.publicSafety = {
     ...publicSafety,

@@ -115,7 +115,7 @@ export interface RunDesktopGeometry {
      * the floored number with itself and reports a match, so a reader of the bundle sees
      * requested 500 / verified 500 and reasonably concludes a 500-wide preset was asked for. A
      * `mobile` (414) and a `small-mobile` (360) seat both render at 500 and look identical here.
-     * When this field is set, the preset width did not render; see #221.
+     * When this field is set, the preset width did not render.
      */
     declared?: { width: number; height: number; preset: string };
   };
@@ -136,7 +136,7 @@ export interface RunDesktopGeometry {
     source: "cdp";
   };
   /**
-   * Mobile fidelity beyond viewport size (#221), present only when the lab asked for it. `requested`
+   * Mobile fidelity beyond viewport size, present only when the lab asked for it. `requested`
    * is what was applied through CDP; `resolved` is what the page reported about itself afterwards
    * and is the proof, never copied from the request. A run without this block is a
    * responsive-viewport study, whatever its preset is named.
@@ -162,7 +162,7 @@ export interface RunDesktopGeometry {
     };
     /**
      * Page targets the participant drove after the launch page (a link that opened in a new tab)
-     * whose own read-back reported the requested viewport width (#623). Absent when the
+     * whose own read-back reported the requested viewport width. Absent when the
      * participant never left the launch tab; a later tab that did not report the width is a
      * participant warning instead.
      */
@@ -283,7 +283,7 @@ export interface RunStream {
   // Populated alongside the raw `codex` evidence; carries persona.traitsApplied.
   actor?: ActorTrace;
   /**
-   * Mid-run partial actor evidence (#441): the redacted trace items recorded so far,
+   * Mid-run partial actor evidence: the redacted trace items recorded so far,
    * flushed while a live participant is still running so the attached Observer's timeline can
    * grow. It is deliberately not an ActorTrace: a running participant has no honest status,
    * completionReason, or completedAt, and this shape cannot claim them. Present only on

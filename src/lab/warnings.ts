@@ -131,7 +131,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     field: "subject.state",
     applies: (config, routes) => Boolean(config.subject.state) && !routes.cua && !routes.scripted,
   },
-  // topology + checkpoint act only on the shared-world route (#164); a set-but-unconsumed value
+  // topology + checkpoint act only on the shared-world route; a set-but-unconsumed value
   // (incl. an explicit per-lane-worlds, which the cua route already is by mechanism) warns inert.
   {
     field: "subject.topology",
@@ -167,7 +167,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   // comms.email drives the in-sandbox email/SMS catch, which needs a subject sandbox that humanish
   // provisions (clone or local-tree) so it holds a handle to host the catch. On an app-url /
   // operator-provided subject there is no such handle, so a declared comms block would silently
-  // collect nothing — a false green. Warn at parse time (fires on inspect + dry-run too).
+  // collect nothing, a false green. Warn at parse time (fires on inspect + dry-run too).
   {
     field: "comms.email",
     reason:
@@ -288,7 +288,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
       !routes.cua && config.execution?.desktop?.sandboxTimeoutMs !== undefined,
   },
   // execution.desktop.template (the custom E2B desktop image) is consumed only where a desktop is
-  // actually created via Sandbox.create — the e2b-desktop computer-use routes (cua/shared-world/
+  // actually created via Sandbox.create: the e2b-desktop computer-use routes (cua/shared-world/
   // concurrent). It is inert on every other route (incl. the in-process local-app cua route, which
   // creates no desktop): warn so an unconsumed template is never silently ignored (invariant 6).
   {
@@ -312,8 +312,8 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     applies: (config, routes) => Boolean(config.scenario?.ref) && !routes.scripted,
   },
   { field: "scenario.inline", applies: (config) => Boolean(config.scenario?.inline) },
-  // review.{scoring,milestones,vocabulary} stay forward-declared (reserved for #319) on every route.
-  // review.scorer (#316) is consumed (loaded + wired, or fail-closed at load) on every scorer-capable
+  // review.{scoring,milestones,vocabulary} stay forward-declared on every route.
+  // review.scorer is consumed (loaded + wired, or fail-closed at load) on every scorer-capable
   // route, so it does not warn there; on the scripted-browser route the actor carries no scorer seam,
   // so a declared scorer is flagged inert (the run also fails closed at load).
   {
@@ -380,8 +380,8 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
           `Forward-declared fields are set but not yet consumed by the engine (planned for a later slice): ${inert.join(", ")}.`,
         ];
   // A declared cap below the seat count is legal but loud: the roster promises N live actors and
-  // the cap delivers waves of M. Say so up front (inspect + dry-run + run) — a green run in waves
-  // is otherwise indistinguishable from the all-live run the author meant (#350).
+  // the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in waves
+  // is otherwise indistinguishable from the all-live run the author meant.
   {
     const participantCount = rosterOf(config.actors[0])?.length ?? config.actors[0]?.count ?? 1;
     const cap = config.execution?.concurrency;
@@ -391,7 +391,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
       );
     }
   }
-  // Partial email coverage is legal but loud (#351): a participant without an addressed recipient never
+  // Partial email coverage is legal but loud: a participant without an addressed recipient never
   // hears an inbox exists, so an email-gated flow on that seat dead-ends by construction.
   if (routes.cua && config.comms?.email?.recipients) {
     const participantIds = declaredParticipantIds(config);

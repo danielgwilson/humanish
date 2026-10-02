@@ -93,9 +93,9 @@ export function participantIdAt(
 /**
  * True when this config routes to the computer-use backend: an app-url subject whose first
  * actor resolves to a registered computer-use actor, or a clone subject on a hosted desktop
- * whose first actor does. Single source of truth — routeOf and the warning logic
+ * whose first actor does. Single source of truth: routeOf and the warning logic
  * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
- * scripted-browser route arrived. Behavior-preserving for every parse-valid config —
+ * scripted-browser route arrived. Behavior-preserving for every parse-valid config:
  * routeOf keeps a bare app-url fallback to the cua backend so library-API configs
  * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
@@ -105,7 +105,7 @@ export function isComputerUseComposition(config: LabConfig): boolean {
   if (config.subject.source === "app-url" || config.subject.source === "local-app") {
     return actorResolvesToComputerUse(config.actors[0]?.type);
   }
-  // desktop-cli hands the participant a terminal instead of a served page (#495), but it is the
+  // desktop-cli hands the participant a terminal instead of a served page, but it is the
   // same route: same desktop, same actor, same prompt fields. Leaving it out of this predicate told
   // adopters their mission and persona were inert on the one route whose whole point is that a
   // person reads a screen.
@@ -125,13 +125,13 @@ export function isComputerUseComposition(config: LabConfig): boolean {
 }
 
 /**
- * True when this config routes to the SHARED-WORLD backend (#164): a clone or local-tree subject
+ * True when this config routes to the shared-world route: a clone or local-tree subject
  * on a hosted desktop whose first actor resolves to a computer-use actor and that declares the
  * `shared-world` topology. Mirror of isComputerUseComposition; the single source of truth shared by
  * routeOf (which checks it before the cua route) and the warning logic. Every
  * shared-world study runs its participants at once (`execution.concurrency` >= 2). The same
  * clone/local-tree × e2b-desktop × computer-use composition without `topology: shared-world` stays per-lane-worlds
- * (the cua route) — the topology declaration is the override switch.
+ * (the cua route); the topology declaration is the override switch.
  */
 export function isSharedWorldComposition(config: LabConfig): boolean {
   return (
@@ -150,11 +150,11 @@ export function isProvisionedSharedWorldComposition(config: LabConfig): boolean 
 }
 
 /**
- * The external-public shared-world shape (#164 phase 2): a real public deployment used directly as
- * the shared plane — `source: app-url` + `topology: shared-world` + a computer-use actor on
+ * The external-public shared-world shape: a real public deployment used directly as
+ * the shared plane: `source: app-url` + `topology: shared-world` + a computer-use actor on
  * e2b-desktop + `policies.allowPublicTargets: true`. No getHost, no clone, no subject sandbox, no
  * seed. The operator-ownership attestation `subject.publicTarget` is required (validated in
- * externalPublicSharedWorldValidationReason, not here — this predicate is the router only, so a
+ * externalPublicSharedWorldValidationReason, not here; this predicate is the router only, so a
  * half-declared external-public config still routes here to get its precise fail-closed reason
  * rather than silently downgrading to the per-participant cua route).
  */
@@ -195,7 +195,7 @@ export function resolveEntryUrl(serveUrl: string, entry: string | undefined): st
 /**
  * True when this config routes to the scripted-browser backend: an app-url subject whose
  * first actor resolves to a registered scripted-browser actor (execution.target local or
- * absent — the parse layer enforces that pairing). Mirror of isComputerUseComposition; the single
+ * absent; the parse layer enforces that pairing). Mirror of isComputerUseComposition; the single
  * source of truth for routeOf and the warning logic.
  */
 export function isScriptedBrowserComposition(config: LabConfig): boolean {
@@ -220,7 +220,7 @@ export function isProvisionedScriptedBrowserComposition(config: LabConfig): bool
 
 /**
  * True when this config routes to the terminal-product backend: a terminal-product subject whose
- * first actor resolves to a registered terminal actor (execution.target e2b-terminal or absent —
+ * first actor resolves to a registered terminal actor (execution.target e2b-terminal or absent;
  * the parse layer enforces that pairing). Mirror of isComputerUseComposition/isScriptedBrowserComposition;
  * the single source of truth for routeOf and the warning logic.
  */
