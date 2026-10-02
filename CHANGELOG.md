@@ -73,9 +73,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   `runtime` names the model with `modelStatus` `declared` or `humanish-default`, where it was
   `runtime_default_unobserved`. `run.json`'s `cost` and the trace's `estimatedCost` now price the
   agent's tokens from that model. Codex reports usage per turn, summed over the turn's requests, so
-  the estimate uses base rates (cached input at the cached rate) and carries `basis:
-  aggregated_turns_base_rate`. Before, that line was `null` with `no_rate_for_model` for model
-  `codex`.
+  the estimate uses base rates (cached input at the cached rate) and carries
+  `basis: aggregated_turns_base_rate`. Before, that line was `null` with `no_rate_for_model` for
+  model `codex`.
 
 - An analysis response that fails validation is kept locally for diagnosis (#1403) at
   `.humanish/analysis-diagnostics/<run>/<analysis>.json`. Known secret values are removed from every
