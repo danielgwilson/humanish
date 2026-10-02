@@ -1,4 +1,4 @@
-import { deriveStudyFacts } from "../../../src/cli/telemetry.js";
+import { deriveRunFacts } from "../../../src/cli/telemetry.js";
 import type { LabEvent } from "../../../src/lab/run-lab-events.js";
 import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
@@ -425,7 +425,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(result.ok).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.diagnostics).toEqual({ category: "preview" });
-    expect(deriveStudyFacts(result).outcome).toBe("contract_proof_only");
+    expect(deriveRunFacts(result).outcome).toBe("contract_proof_only");
     expect(result.lanes).toHaveLength(4);
     expect(result.laneSummary?.total).toBe(4);
 
@@ -1926,7 +1926,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     ]);
     expect(result.session?.stopCause).toBe(result.lanes?.[0]?.session?.stopCause);
     expect(result.diagnostics).toEqual({ category: "mixed", stopCause: "mixed" });
-    expect(deriveStudyFacts(result)).toMatchObject({
+    expect(deriveRunFacts(result)).toMatchObject({
       outcome: "none_passed",
       diagnosticCategory: "mixed",
       stopCause: "mixed",

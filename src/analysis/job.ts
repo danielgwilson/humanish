@@ -16,7 +16,7 @@ import {
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
-import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
+import { pathMissing, readBoundedFile } from "../run/evidence-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { readAnalysisVersion } from "./store.js";
 import { readAnalysisExecution } from "./store-executions.js";
@@ -190,7 +190,7 @@ export async function readAutomaticAnalysisAccounting(prepared: PreparedRunArtif
   try {
     const root = await bindJob(prepared);
     if (!root) return undefined;
-    const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
+    const bytes = await readBoundedFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) return "unknown";
     const record = parseJob(bytes, runIdOf(prepared));
     return {
@@ -218,7 +218,7 @@ export async function readAutomaticAnalysisPrepared(
       );
       return missing ? undefined : unknown();
     }
-    const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
+    const bytes = await readBoundedFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) return unknown();
     const record = parseJob(bytes, runIdOf(prepared));
     const view: AutomaticAnalysisView = {
@@ -370,7 +370,7 @@ export async function claimAutomaticAnalysis(
     touch: () => update({}),
     async cancellationRequested() {
       await assertPreparedSelectedOutputDirectory(root);
-      const bytes = await readBoundedStudyFile(root, CANCEL_FILE, MAX_CANCEL_BYTES);
+      const bytes = await readBoundedFile(root, CANCEL_FILE, MAX_CANCEL_BYTES);
       if (!bytes) {
         if (!(await pathMissing(path.join(root.physicalPath, CANCEL_FILE))))
           throw new Error("AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE");
@@ -393,7 +393,7 @@ export async function requestAutomaticAnalysisCancellationPrepared(
   try {
     const root = await bindJob(prepared);
     if (!root) return { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
-    const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
+    const bytes = await readBoundedFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) throw new Error("Unavailable job.");
     const record = parseJob(bytes, runIdOf(prepared));
     if (!pending(record.state)) return { requested: false, reason: null };

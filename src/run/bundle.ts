@@ -525,7 +525,7 @@ export interface ReviewSummary {
    * and at least one session produced a funnel. Absent means no protocol was measured, never that
    * everyone finished.
    */
-  tasks?: StudyTaskFunnel;
+  tasks?: RunTaskFunnel;
 }
 
 /**
@@ -537,7 +537,7 @@ export interface ReviewSummary {
  * ids line up across participants; a funnel missing a task id (a future mixed-protocol route)
  * simply does not count toward that task's denominator.
  */
-export interface StudyTaskFunnel {
+export interface RunTaskFunnel {
   /** Sessions that produced a funnel — the denominator for every count below. */
   sessions: number;
   tasks: Array<{

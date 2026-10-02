@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readBoundedStudyFileResult } from "../../src/run/study-files.js";
+import { readBoundedFileResult } from "../../src/run/evidence-files.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
@@ -52,7 +52,7 @@ describe("bounded study file reads", () => {
 
   it("reads an unchanged file", async () => {
     lstatHook.target = file;
-    const result = await readBoundedStudyFileResult(root, "evidence/note.txt", 1024);
+    const result = await readBoundedFileResult(root, "evidence/note.txt", 1024);
     expect(result.state).toBe("read");
     expect(lstatCalls).toBe(2);
   });
@@ -60,13 +60,13 @@ describe("bounded study file reads", () => {
   it("refuses a file whose mode changed after it was read", async () => {
     // The second lstat of the file is the final recheck, after the read and its fstat.
     Object.assign(lstatHook, { target: file, call: 2, run: () => fs.chmod(file, 0o600) });
-    const result = await readBoundedStudyFileResult(root, "evidence/note.txt", 1024);
+    const result = await readBoundedFileResult(root, "evidence/note.txt", 1024);
     expect(result.state).toBe("unavailable");
   });
 
   it("refuses an over-limit file whose mode changed before the limit recheck", async () => {
     Object.assign(lstatHook, { target: file, call: 2, run: () => fs.chmod(file, 0o600) });
-    const result = await readBoundedStudyFileResult(root, "evidence/note.txt", 4);
+    const result = await readBoundedFileResult(root, "evidence/note.txt", 4);
     expect(result.state).toBe("unavailable");
   });
 });

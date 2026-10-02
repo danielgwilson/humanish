@@ -16,7 +16,7 @@ import type { RunStream } from "../../run/streams.js";
 import {
   aggregateTaskFunnels,
   formatParticipantOutcomes,
-  formatStudyTaskFunnel,
+  formatRunTaskFunnel,
   tallyParticipantOutcomes,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
@@ -88,8 +88,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
   const participantFunnels = (outcomes ?? [])
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
-  const studyTasks =
-    args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
+  const runTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
   const participantEndings = terminalOutcomes.map((outcome) => {
     const ending = actorEnding(outcome.session.trace);
     return {
@@ -102,13 +101,13 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
       schema: REVIEW_SCHEMA,
       verdict,
       ...(participants === undefined ? {} : { participants }),
-      ...(studyTasks === undefined ? {} : { tasks: studyTasks }),
+      ...(runTasks === undefined ? {} : { tasks: runTasks }),
       summary:
         args.inProgress === true
           ? `Live computer-use fan-out is running (${specs.length} participants, one world each); terminal participant evidence has not been written yet.`
           : args.dryRun
             ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} participants composed for ${args.descriptor.id} against ${args.appUrl}, one world each; no desktops launched, $0 spend.`
-            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${specs.length} participant(s) reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
+            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${specs.length} participant(s) reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${runTasks ? `; tasks: ${formatRunTaskFunnel(runTasks)}` : ""}.`,
       gaps:
         args.inProgress === true
           ? ["Live fan-out session is still running."]

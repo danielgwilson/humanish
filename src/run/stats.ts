@@ -6,11 +6,11 @@ import path from "node:path";
 
 import { readRunIndex, type RunIndexEntry } from "./run-index.js";
 import {
-  addStudyCosts,
-  emptyStudyCosts,
-  readStudyCosts,
-  type StudyCosts,
-  type StudyCostRow,
+  addCostTotals,
+  emptyCostTotals,
+  readCostTotals,
+  type CostTotals,
+  type CostRow,
 } from "./costs.js";
 import { round6 } from "./pricing.js";
 
@@ -41,7 +41,7 @@ interface StatsLabRow {
   /** Runs with no estimate: a subscription brain, an interrupted run, an old bundle. Never zero. */
   unpricedRuns: number;
   participants: StatsParticipants;
-  costs: StudyCosts;
+  costs: CostTotals;
 }
 
 interface StatsDayRow {
@@ -51,7 +51,7 @@ interface StatsDayRow {
   /** Participant and desktop subtotal; `costs` also includes retained analysis. */
   estimatedSpendUsd: number;
   unpricedRuns: number;
-  costs: StudyCosts;
+  costs: CostTotals;
 }
 
 export interface StatsResult {
@@ -70,12 +70,12 @@ export interface StatsResult {
     unpricedRuns: number;
     participants: StatsParticipants;
     verdicts: Record<string, number>;
-    costs: StudyCosts;
+    costs: CostTotals;
   };
   labs: StatsLabRow[];
   days: StatsDayRow[];
   /** Same selected runs; individual accounting gaps are inspectable without reading private evidence. */
-  costsByRun: StudyCostRow[];
+  costsByRun: CostRow[];
   /** Directories that could not be read, by name — surfaced, never silently dropped. */
   unreadable: string[];
   note: string;
@@ -131,7 +131,7 @@ function addToLabRow(
   labs: Map<string, LabAccumulator>,
   entry: RunIndexEntry,
   priced: boolean,
-  costs: StudyCosts,
+  costs: CostTotals,
 ): void {
   const labId = entry.lab?.id ?? "(no lab)";
   let row = labs.get(labId);
@@ -148,7 +148,7 @@ function addToLabRow(
       unpricedRuns: 0,
       participants: emptyParticipants(),
       durations: [],
-      costs: emptyStudyCosts(),
+      costs: emptyCostTotals(),
       runCosts: [],
     };
     labs.set(labId, row);
@@ -164,14 +164,14 @@ function addToLabRow(
   if (priced) row.runCosts.push(entry.estimatedCostUsd as number);
   else row.unpricedRuns += 1;
   addParticipants(row.participants, entry);
-  addStudyCosts(row.costs, costs);
+  addCostTotals(row.costs, costs);
 }
 
 function addToDayRow(
   days: Map<string, StatsDayRow>,
   entry: RunIndexEntry,
   priced: boolean,
-  costs: StudyCosts,
+  costs: CostTotals,
 ): void {
   const at = entryTime(entry);
   const day = at === undefined ? "(undated)" : at.slice(0, 10);
@@ -183,7 +183,7 @@ function addToDayRow(
       live: 0,
       estimatedSpendUsd: 0,
       unpricedRuns: 0,
-      costs: emptyStudyCosts(),
+      costs: emptyCostTotals(),
     };
     days.set(day, dayRow);
   }
@@ -191,7 +191,7 @@ function addToDayRow(
   if (entry.mode === "live") dayRow.live += 1;
   if (priced) dayRow.estimatedSpendUsd += entry.estimatedCostUsd as number;
   else dayRow.unpricedRuns += 1;
-  addStudyCosts(dayRow.costs, costs);
+  addCostTotals(dayRow.costs, costs);
 }
 
 export async function computeStats(
@@ -252,16 +252,16 @@ export async function computeStats(
     unpricedRuns: 0,
     participants: emptyParticipants(),
     verdicts: {},
-    costs: emptyStudyCosts(),
+    costs: emptyCostTotals(),
   };
   const labs = new Map<string, LabAccumulator>();
   const days = new Map<string, StatsDayRow>();
-  const costsByRun: StudyCostRow[] = [];
+  const costsByRun: CostRow[] = [];
 
   for (const entry of selected) {
-    const accounting = await readStudyCosts(cwd, entry);
+    const accounting = await readCostTotals(cwd, entry);
     costsByRun.push(accounting);
-    addStudyCosts(totals.costs, accounting.costs);
+    addCostTotals(totals.costs, accounting.costs);
     totals.runs += 1;
     if (entry.mode === "live") totals.live += 1;
     if (entry.mode === "dry-run") totals.dryRun += 1;

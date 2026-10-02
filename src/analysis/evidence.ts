@@ -26,7 +26,7 @@ import {
   sourceOrder,
   type SourceEntry,
 } from "./evidence-sources.js";
-import { readBoundedStudyFile, readBoundedStudyFileResult } from "../run/study-files.js";
+import { readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
 
 export const EVIDENCE_LIMITS = Object.freeze({
   participants: 16,
@@ -134,7 +134,7 @@ export async function captureEvidence(
     }
   }
   if (bundleBytes.length > limits.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
-  const current = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
+  const current = await readBoundedFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   const bundle = parseSource(prepared, bundleBytes);
   const captureVersion = ACTION_CAPTURE_VERSION;
@@ -206,7 +206,7 @@ export async function captureEvidence(
   };
   result.inputDigest = digestAnalysisInput(result);
   validateAnalysisInputMetadata(result);
-  const after = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
+  const after = await readBoundedFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   return result;
 }
@@ -333,7 +333,7 @@ async function selectCaptures(
       packing.attempts++;
       sel.attemptedReads++;
       const source = sel.captureOrders[index]![packing.captureCursor]!;
-      const result = await readBoundedStudyFileResult(prepared, source.capturePath!, allowance);
+      const result = await readBoundedFileResult(prepared, source.capturePath!, allowance);
       if (
         result.state === "limit" &&
         result.size <= BigInt(limits.imageBytes) &&
@@ -632,7 +632,7 @@ export async function validateAnalysisEvidence(
         throw new Error("ANALYSIS_CAPTURE_REFERENCE_INVALID");
       let hash = checkedCaptures.get(source.capturePath);
       if (hash === undefined) {
-        const bytes = await readBoundedStudyFile(
+        const bytes = await readBoundedFile(
           prepared,
           source.capturePath,
           EVIDENCE_LIMITS.imageBytes,
@@ -656,10 +656,6 @@ export async function validateAnalysisEvidence(
     throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
   }
 
-  const current = await readBoundedStudyFile(
-    prepared,
-    RUN_BUNDLE_FILE,
-    EVIDENCE_LIMITS.sourceBytes,
-  );
+  const current = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
   if (!current?.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
 }

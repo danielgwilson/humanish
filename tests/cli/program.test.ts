@@ -21,7 +21,7 @@ import { createProgram, normalizeCliArgv } from "../../src/cli/program.js";
 import { formatCuaLabHuman } from "../../src/cli/commands/lab-format.js";
 import { resolveRouteShouldOpen } from "../../src/cli/commands/lab-route-open.js";
 import { followObserver } from "../../src/cli/observer-follow.js";
-import { studyFactsFor, writeResult } from "../../src/cli/io.js";
+import { runFactsFor, writeResult } from "../../src/cli/io.js";
 import * as humanishIndex from "../../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
@@ -1837,7 +1837,7 @@ describe("study facts ride the result seam", () => {
       },
       () => "",
     );
-    expect(studyFactsFor(command)).toEqual({
+    expect(runFactsFor(command)).toEqual({
       mode: "live",
       lab: "try-live",
       outcome: "abandoned",
@@ -1851,7 +1851,7 @@ describe("study facts ride the result seam", () => {
       { schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] },
       () => "",
     );
-    expect(studyFactsFor(other)).toEqual({});
+    expect(runFactsFor(other)).toEqual({});
   });
 });
 

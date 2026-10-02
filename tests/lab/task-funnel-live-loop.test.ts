@@ -22,7 +22,7 @@ import {
 import { composeParticipantInstructions } from "../../src/routes/computer-use/participant-prompt.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
-import { aggregateTaskFunnels, formatStudyTaskFunnel } from "../../src/run/outcomes.js";
+import { aggregateTaskFunnels, formatRunTaskFunnel } from "../../src/run/outcomes.js";
 import type { LabTask, TaskFunnel } from "../../src/lab/tasks.js";
 
 const FAKE_CAPS: ActorCapabilities = {
@@ -301,7 +301,7 @@ describe("the study roll-up keeps its denominators", () => {
         { id: "reach-dashboard", completed: 1, sessions: 2, observable: true, unmeasured: 0 },
       ],
     });
-    expect(formatStudyTaskFunnel(study!)).toBe(
+    expect(formatRunTaskFunnel(study!)).toBe(
       "reach-signup 2/2 · see-verify-notice 1/2 · reach-dashboard 1/2",
     );
   });
@@ -316,9 +316,7 @@ describe("the study roll-up keeps its denominators", () => {
       tasks: [{ id: "tell-us-what-confused-you", completed: false, observable: false }],
     };
     const study = aggregateTaskFunnels([unmeasured]);
-    expect(formatStudyTaskFunnel(study!)).toBe(
-      "tell-us-what-confused-you (no completion criterion)",
-    );
+    expect(formatRunTaskFunnel(study!)).toBe("tell-us-what-confused-you (no completion criterion)");
   });
 
   it("returns undefined when no session measured a funnel — absence, never zeros", () => {

@@ -6,7 +6,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { isStudyEvidencePath, readBoundedStudyFile } from "../../src/run/study-files.js";
+import { isEvidencePath, readBoundedFile } from "../../src/run/evidence-files.js";
 
 describe("bounded study evidence reads", () => {
   let cwd: string;
@@ -25,11 +25,11 @@ describe("bounded study evidence reads", () => {
   });
 
   it("reads a contained single-link file within its exact byte budget", async () => {
-    expect((await readBoundedStudyFile(root, "evidence/sample.txt", 18))?.toString()).toBe(
+    expect((await readBoundedFile(root, "evidence/sample.txt", 18))?.toString()).toBe(
       "synthetic evidence",
     );
-    expect(await readBoundedStudyFile(root, "evidence/sample.txt", 17)).toBeNull();
-    expect(await readBoundedStudyFile(root, "missing.txt", 100)).toBeNull();
+    expect(await readBoundedFile(root, "evidence/sample.txt", 17)).toBeNull();
+    expect(await readBoundedFile(root, "missing.txt", 100)).toBeNull();
   });
 
   it.each([
@@ -49,8 +49,8 @@ describe("bounded study evidence reads", () => {
     "captures/a%2fb.png",
     "captures/%252e%252e/frame.png",
   ])("rejects path-shaped or nonlocal evidence %j", async (input) => {
-    expect(isStudyEvidencePath(input)).toBe(false);
-    expect(await readBoundedStudyFile(root, input, 100)).toBeNull();
+    expect(isEvidencePath(input)).toBe(false);
+    expect(await readBoundedFile(root, input, 100)).toBeNull();
   });
 
   it.each(["symlink", "hardlink"] as const)(
@@ -61,7 +61,7 @@ describe("bounded study evidence reads", () => {
       const target = path.join(root.physicalRunRoot, "evidence", "linked.txt");
       if (kind === "symlink") await symlink(outside, target);
       else await link(outside, target);
-      expect(await readBoundedStudyFile(root, "evidence/linked.txt", 100)).toBeNull();
+      expect(await readBoundedFile(root, "evidence/linked.txt", 100)).toBeNull();
       expect(await readFile(outside, "utf8")).toBe("OUTSIDE-SENTINEL");
     },
   );
@@ -71,22 +71,22 @@ describe("bounded study evidence reads", () => {
     await mkdir(outside);
     await writeFile(path.join(outside, "sample.txt"), "OUTSIDE-SENTINEL");
     await symlink(outside, path.join(root.physicalRunRoot, "alias"));
-    expect(await readBoundedStudyFile(root, "alias/sample.txt", 100)).toBeNull();
+    expect(await readBoundedFile(root, "alias/sample.txt", 100)).toBeNull();
     await rename(root.physicalRunRoot, `${root.physicalRunRoot}-retained`);
     await mkdir(root.physicalRunRoot);
     await writeFile(path.join(root.physicalRunRoot, "sample.txt"), "replacement");
-    expect(await readBoundedStudyFile(root, "sample.txt", 100)).toBeNull();
+    expect(await readBoundedFile(root, "sample.txt", 100)).toBeNull();
   });
 
   it("rejects invalid budgets without reading", async () => {
     for (const limit of [0, -1, 1.2, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(await readBoundedStudyFile(root, "evidence/sample.txt", limit)).toBeNull();
+      expect(await readBoundedFile(root, "evidence/sample.txt", limit)).toBeNull();
     }
   });
 
   it("refuses a FIFO without opening a blocking read", async () => {
     if (process.platform === "win32") return;
     await promisify(execFile)("mkfifo", [path.join(root.physicalRunRoot, "evidence", "pipe")]);
-    expect(await readBoundedStudyFile(root, "evidence/pipe", 100)).toBeNull();
+    expect(await readBoundedFile(root, "evidence/pipe", 100)).toBeNull();
   });
 });

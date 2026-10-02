@@ -321,7 +321,7 @@ function singleReview(
   const { reason } = view;
   // A funnel with a denominator of one is still the funnel — and its absence stays honest: no
   // declared protocol (or a dry run) means no `tasks` field, never an empty one.
-  const singleStudyTasks =
+  const singleRunTasks =
     args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
       ? aggregateTaskFunnels([args.session.trace.taskFunnel])
       : undefined;
@@ -355,7 +355,7 @@ function singleReview(
             ),
           }
         : {}),
-      ...(singleStudyTasks === undefined ? {} : { tasks: singleStudyTasks }),
+      ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
       summary: credibilityNote === undefined ? reason : `${credibilityNote} ${reason}`,
       gaps:
         args.session || args.sessionError !== undefined

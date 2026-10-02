@@ -23,7 +23,7 @@ import { exportRedactedBundle } from "./export-bundle.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
-import { readBoundedStudyFile } from "../run/study-files.js";
+import { readBoundedFile } from "../run/evidence-files.js";
 import { shellQuote } from "../substrates/shell.js";
 
 const EXPORT_SCHEMA = "humanish.export-result.v1";
@@ -352,7 +352,7 @@ async function currentObserverData(
 ): Promise<{ value: unknown } | undefined> {
   const saved: unknown = JSON.parse(slot);
   if (analysis.state !== "ready" || !analysis.analysis) return { value: saved };
-  const source = await readBoundedStudyFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
+  const source = await readBoundedFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
   if (
     !source ||
     createHash("sha256").update(source).digest("hex") !== analysis.analysis.sourceRunSha256
@@ -414,7 +414,7 @@ async function inlineImages(
     const candidates = [path.resolve(runRoot, value), path.resolve(runRoot, "observer", value)];
     for (const candidate of candidates) {
       if (!(await isInside(runRoot, candidate))) continue;
-      const bytes = await readBoundedStudyFile(
+      const bytes = await readBoundedFile(
         runPaths,
         path.relative(runRoot, candidate),
         options.maxBytes ?? DEFAULT_EXPORT_MAX_BYTES,
@@ -512,7 +512,7 @@ async function recheckAnalysis(
   // Revalidate the independent interpretation against source evidence. Never trust a
   // saved HTML slot or traverse model-provided strings as image paths.
   if (analysis.state === "ready" && analysis.analysis) {
-    const source = await readBoundedStudyFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
+    const source = await readBoundedFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
     try {
       if (!source) throw new Error("source unavailable");
       await validateAnalysisEvidence(runPaths, analysis.analysis, source);

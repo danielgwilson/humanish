@@ -46,7 +46,7 @@ import {
   type CliIo,
   defaultIo,
   invocationEnvelopeAlreadyWritten,
-  studyFactsFor,
+  runFactsFor,
   wantsJson,
 } from "./io.js";
 
@@ -128,7 +128,7 @@ async function recordCommandTelemetry(
       // result document when it was written; see writeResult. Without them every `run` event
       // looked the same whether it was a dry run or the first live study that ever worked.
       properties: {
-        ...studyFactsFor(command),
+        ...runFactsFor(command),
         command: name,
         ok: ok && exitCode === 0,
         exitCode,
