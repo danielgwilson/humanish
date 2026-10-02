@@ -30,6 +30,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   npm package. The README no longer shows either: it opens with the tagline, the demo poster and
   the keyless quick start. An earlier version's README loads its image from that version on
   unpkg, which keeps it.
+- `AGENTS.md`, `CONTRIBUTING.md`, `docs/status.md`, `docs/ramp/`, `docs/release/` and
+  `docs/history/roadmap/` from the npm package. These are contributor and maintainer pages; read
+  them on GitHub. The package now ships `docs/README.md`, the index of the docs it ships, and a
+  shipped doc that linked one of the removed pages links it on GitHub.
 
 ### Deprecated
 
