@@ -125,6 +125,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- Automatic analysis of a terminal run quotes the agent's own words (#1402). The terminal trace now
+  has one `message` item per Codex `agent_message` and one `reasoning` item per `reasoning` item.
+  They are read from the raw exec JSON stream in memory, without the agent's verdict marker lines,
+  and the decoded text is scrubbed and redacted. The trace keeps the last 200 such items within 128
+  KiB, with a `notice` item when it leaves older ones out. Before, its only `message` item was the
+  last 2000 characters of the stored stream: JSON-escaped command output, the `HUMANISH_ACTOR_NONCE`
+  line and token usage. Analysis could quote that text, and a quote that decoded a `\n` escape
+  failed with `analysis_validation_failed_quote_invalid`. The stream tail stays in the `command`
+  item's `outputTail`, which analysis does not quote. `counts.messages` now counts the stream's
+  `agent_message` items, where it was 1 for any output, and `counts.runtimeParticipantItems` is read
+  from the raw stream too. Bundles written before this change keep their old `message-001` item, and
+  re-analysis still quotes it.
+
 - `humanish serve --safe` says which runs it left out and why (#1373). After `runs:` it prints a
   `hidden:` count and one line per grade and reasons, such as `3 runs local_only (RAW_SCREENSHOTS)`.
   When a run is held back only for raw screenshots, it names the redacted-copy step:
