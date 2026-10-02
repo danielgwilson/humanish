@@ -1,4 +1,3 @@
-import type { RunLabProvenance } from "../../run/status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "../../lab/adapter-scorer-loader.js";
 import type { LabRoute } from "../../lab/plan.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
@@ -20,7 +19,6 @@ export interface LoadedAdapterScorer {
 export async function maybeLoadAdapterScorer(args: {
   cwd: string;
   config: LabConfig;
-  labProvenance?: RunLabProvenance;
   route: LabRoute;
   flag: string | undefined;
 }): Promise<

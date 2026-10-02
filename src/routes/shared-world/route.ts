@@ -82,11 +82,10 @@ const LOCAL_AGENT_REFUSAL_CODES = {
 export async function runConcurrentSharedWorld(
   options: RunConcurrentSharedWorldLabOptions,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const { config, dryRun, lab, ...input } = options;
+  const { config, dryRun, ...input } = options;
   // planSharedWorldLab makes every configuration refusal, in the order this route always has.
   const planned = planSharedWorldLab(config, {
     dryRun,
-    ...(lab === undefined ? {} : { lab }),
     hooks: input.hooks ?? {},
   });
   if (planned.ok) return runSharedWorldPlan(planned.plan, input, config);

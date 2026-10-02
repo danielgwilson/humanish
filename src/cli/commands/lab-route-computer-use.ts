@@ -2,7 +2,6 @@ import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.
 import { Command } from "commander";
 import { type InternalRunLabOptions } from "../../run-lab.js";
 import { resolveLabDryRun } from "../../lab/plan.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
 import type { LabConfig } from "../../lab/types.js";
@@ -40,7 +39,6 @@ interface ComputerUseRouteArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
-  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }
@@ -219,7 +217,6 @@ function cuaRunOptions(
   return {
     ...cliAnalysisOptions(args.io),
     cwd: args.options.cwd,
-    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     // A followed watch opens the served Observer (or prints the phone target under --expose), so
     // its static render never opens. A non-follow watch opens what its plan says, once. Run mode
     // keeps the static open.

@@ -8,7 +8,6 @@ import type {
 import type { LabConfig } from "../../lab/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import type { LabDeps } from "../../lab/lab-deps.js";
 import type { RunLabHomes } from "../../lab/run-lab-options.js";
 
@@ -19,8 +18,6 @@ export type ScriptedRunInput = Omit<RunScriptedBrowserLabOptions, "config" | "dr
 
 export interface RunScriptedBrowserLabOptions {
   automaticAnalysis?: AutomaticAnalysisHooks;
-  /** Which manifest produced this run (#455); threaded into the status record + bundle. */
-  lab?: RunLabProvenance;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */

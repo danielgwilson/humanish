@@ -1,7 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { resolveLabDryRun } from "../../lab/plan.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
 import type { LabConfig } from "../../lab/types.js";
 import { serveObserver } from "../../observer/render.js";
@@ -30,7 +29,6 @@ interface SharedWorldRouteArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
-  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }
@@ -90,7 +88,6 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
     options: {
       ...cliAnalysisOptions(args.io),
       cwd: args.options.cwd,
-      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       open: wantsFollow
         ? false
         : finishedPlan === undefined

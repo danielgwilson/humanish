@@ -48,11 +48,10 @@ import {
 export async function runScriptedBrowserLab(
   options: RunScriptedBrowserLabOptions,
 ): Promise<ScriptedBrowserLabResult> {
-  const { config, dryRun, lab, ...input } = options;
+  const { config, dryRun, ...input } = options;
   // planScriptedLab makes every configuration refusal, in the order this route always has.
   const planned = planScriptedLab(config, {
     dryRun,
-    ...(lab === undefined ? {} : { lab }),
     injectedBrowser: injectedBrowser(input.deps),
   });
   if (planned.ok) return runScriptedPlan(planned.plan, input);
