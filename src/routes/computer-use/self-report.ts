@@ -7,8 +7,8 @@ import { selfReportedBlocker, type BlockerFacts, type SessionEnding } from "../.
 // of five completed live runs on 2026-09-01 (two on drawDB, three on the planted benchmark app)
 // were refused as "not a credible pass" on exactly these sentences, every one a defect report
 // written after the participant reached the goal. The more precisely a participant describes a
-// display defect, the more likely the scan was to refuse the run — the incentive inversion #453
-// fixed for resolved arcs, back in a new shape. "could not complete", "could not connect",
+// display defect, the more likely the scan was to refuse the run: the incentive inversion the
+// resolved-arc rule fixed, back in a new shape. "could not complete", "could not connect",
 // "unable to get focus" still count: those name an inability to act.
 const PERCEPTION_AFTER_MODAL =
   /\b(can'?t|cannot|could ?not|couldn'?t|unable to|wasn'?t able to)\s+(even\s+|quite\s+|really\s+|fully\s+)?(read|see|tell|view|make out|verify|confirm|be sure|be certain|judge|know)\b/g;
@@ -35,7 +35,7 @@ function hasBlockerLanguage(text: string): boolean {
 const REPORTED_DEFECT_LANGUAGE =
   /\b(defects?|bugs?|accessibilit(y|ies)|inaccessible|not (keyboard|screen.?reader)[- ]?accessible|confus(ed|ing)|hesitat(ed|ion)|unexpected(ly)?|unclear|hard to (find|tell|see|read|reach)|no (visible )?focus|overlap(ped|ping|s)?|truncat(ed|es|ion)|cut off|did nothing|nothing happened|no effect)\b/;
 
-// The friction scan's own negations (#614). "Nothing was confusing", "no defects", "not unclear"
+// The friction scan's own negations. "Nothing was confusing", "no defects", "not unclear"
 // are what a participant writes when it has nothing to report, and until 2026-09-03 each of them
 // counted as reported friction and became a feedback candidate whose "actual" was a sentence
 // reporting no problem. Only the report-shaped adjectives are negatable here: "no visible focus",
@@ -125,8 +125,8 @@ function interimMessageReportsFriction(message: string): boolean {
 }
 
 /** The verdict scan (strict): like the friction scan, but resolved-arc segments are stripped
- *  first — failure narration the participant itself reports as overcome is friction on the
- *  road, not a blocker at the destination (#453). */
+ *  first: failure narration the participant itself reports as overcome counts as friction and
+ *  never as a blocker. */
 function completionReasonBlocksVerdict(reason: string): boolean {
   // Perception phrases are stripped for the verdict only: "I could not read the full description"
   // is friction worth a tally count and a feedback candidate (the friction scan above keeps it),
@@ -144,7 +144,7 @@ function completionReasonBlocksVerdict(reason: string): boolean {
 // with a parser error. A simpler SQL import succeeded."). The lookahead demands the retry flavor
 // on purpose: unrelated praise ("Separately, the search box worked") must never launder an
 // unresolved failure. "Login failed so I gave up" has no recovery anywhere and stays a blocker.
-// (#453 — the run-1 false negative: a defect report after demonstrated success failed the participant,
+// (Without this, a defect report after demonstrated success failed the participant:
 // an incentive inversion against exactly the participant behavior a study wants most.)
 const RESOLUTION_TERMS =
   /\b(succeed(?:ed|s)?|success(?:ful|fully)?|worked|works around|then worked|now works?|resolved|fixed|recovered|got it working|went through)\b/;
@@ -176,7 +176,7 @@ function stripNegatedNonBlockerPhrases(text: string): string {
       // behind: "I encountered no blockers or unclear error output." refused a clean passing run on
       // 2026-09-01. A verb of encounter followed by "no" negates the whole clause, so drop the clause.
       // ... unless the clause names a defect: "the delete control had no visible focus" is a
-      // finding, and the verb it happens to use must not decide whether it counts (#622).
+      // finding, and the verb it happens to use must not decide whether it counts.
       .replace(
         /\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g,
         (clause) => (DEFECT_SHAPED_NEGATION.test(clause) ? clause : " "),
@@ -206,7 +206,7 @@ function stripNegatedNonBlockerPhrases(text: string): string {
  * Remove double-quoted spans and markdown blockquote lines before the blocker scan, so a persona
  * that faithfully quotes the subject app's own copy (e.g. a banner reading "cannot be undone") is
  * not misread as the actor reporting its own blocker. Only double quotes (straight and smart) and
- * `>` blockquotes are stripped — never single quotes, which would mangle contractions like `can't`.
+ * `>` blockquotes are stripped, never single quotes, which would mangle contractions like `can't`.
  */
 function stripQuotedSpans(text: string): string {
   return text
@@ -221,7 +221,7 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
       item.kind === "notice" &&
       item.status === "matched" &&
       // A dwell window that ended the session (then: stop) is the same class of harness-owned,
-      // structured completion as a matched stopWhen (#510).
+      // structured completion as a matched stopWhen.
       (item.title.startsWith("stopWhen matched") || item.title === "dwell window complete"),
   );
 }
@@ -229,9 +229,9 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
 /**
  * A goal_satisfied participant counts as a self-reported blocker only when its final narrative contradicts
  * the goal and the run's own stop predicate did not fire. A matched stopWhen is independent,
- * structured completion evidence, so it overrides a text scan of the free-form narrative — which can
+ * structured completion evidence, so it overrides a text scan of the free-form narrative, which can
  * otherwise trip on the subject app's own quoted copy (e.g. a relayed "cannot be undone" banner).
- * Resolved-arc segments never block the verdict (#453). Returns the offending reason, or undefined
+ * Resolved-arc segments never block the verdict. Returns the offending reason, or undefined
  * when the participant is a clean pass. Exported for testing.
  */
 export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): string | undefined {
@@ -265,10 +265,10 @@ export function sessionEnding(session: CuaLoopResult): SessionEnding {
 }
 
 /**
- * Friction is independent of how a completed session ended (#657). Read the participant's
+ * Friction is independent of how a completed session ended. Read the participant's
  * redacted messages, including earlier reports, rather than the harness-owned reason that
  * stopWhen/dwell writes. Reasoning, observations, and notices are not participant reports.
- * Resolved arcs still count (#453); quoted copy and negated reports still do not. This read
+ * Resolved arcs still count; quoted copy and negated reports still do not. This read
  * never changes the verdict. Exported for testing.
  */
 export function resolveSelfReportedFriction(

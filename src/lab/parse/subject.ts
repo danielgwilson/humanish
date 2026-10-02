@@ -89,7 +89,7 @@ function misplacedFieldFailure(
     );
   }
   // appUrl is app-url/local-app-only; a terminal-product subject drives public surfaces instead of a
-  // single loopback app — reject appUrl on it.
+  // single loopback app, so reject appUrl on it.
   if (source === "terminal-product" && raw.appUrl !== undefined) {
     return invalid(
       "`subject.appUrl` does not apply to terminal-product subjects — declare `subject.product.publicSurfaces` (the agent works from public surfaces, not one loopback app).",
@@ -144,7 +144,7 @@ function misplacedFieldFailure(
     );
   }
   // publicTarget is app-url-ONLY (the external-public shared-world ownership attestation). It is
-  // meaningless without a real public deployment as the plane — reject it elsewhere (invariant 6).
+  // meaningless without a real public deployment as the plane, so reject it elsewhere (invariant 6).
   if (source !== "app-url" && raw.publicTarget !== undefined) {
     return invalid(
       "`subject.publicTarget` applies only to app-url subjects on the external-public shared-world route (the operator's ownership attestation for a real public deployment used directly as the shared plane).",
@@ -296,7 +296,7 @@ function parseProductSubject(
 export const PUBLIC_TARGET_OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_./-]*$/;
 
 /** Parse the external-public shared-world ownership attestation ({ owner, authorized: true }). The
- *  harness cannot verify ownership — this is author-trust, surfaced honestly in the evidence class. */
+ *  harness cannot verify ownership: this is author-trust, surfaced honestly in the evidence class. */
 function parsePublicTarget(
   raw: unknown,
 ): { ok: true; value: { owner: string; authorized: boolean } } | LabConfigParseFailure {

@@ -13,7 +13,7 @@ import { UsageLedger } from "./usage.js";
 // (screenshot, wait, screenshot, wait), and a short idle limit ends that session as gave_up before
 // the mail can arrive.
 const DEFAULT_IDLE_STEPS = 24;
-// A no-progress turn also needs a repeated action (#383), so this needs less headroom than the
+// A no-progress turn also needs a repeated action, so this needs less headroom than the
 // idle limit.
 const DEFAULT_NO_PROGRESS_STEPS = 20;
 const DEFAULT_TURN_TIMEOUT_MS = 180_000;
@@ -49,8 +49,8 @@ export interface ActionHistory {
   lastActionTitle: string | undefined;
   lastMaterialActionTitle: string | undefined;
   readonly recentActionTitles: string[];
-  // Affordance classification (#369): which route the actor took, recorded per dispatched action.
-  // Collected here because the typed text exists only at dispatch — describeCuaAction deliberately
+  // Affordance classification: which route the actor took, recorded per dispatched action.
+  // Collected here because the typed text exists only at dispatch; describeCuaAction deliberately
   // destroys it before it can reach the trace. Only the class (and a scheme-shaped signal) is kept.
   readonly affordances: AffordanceObservation[];
   /** The loop stopped waiting on an action before the executor acknowledged it. */
@@ -182,7 +182,7 @@ export class LoopSession {
 
   // Model-authored narration: literal-scrub known provisioned values, then pattern-redact.
   // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
-  // alone cannot catch it — the lab's scrubKnownValues, injected as scrubText, closes that.
+  // alone cannot catch it; the lab's scrubKnownValues, injected as scrubText, closes that.
   redactNarration(text: string): string {
     return this.settings.redaction.redactText(this.scrubText(text));
   }

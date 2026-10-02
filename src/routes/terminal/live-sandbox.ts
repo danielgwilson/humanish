@@ -115,7 +115,7 @@ export class LiveTerminalSandbox {
     const { warnings } = this.inputs;
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs, sandboxTimeoutMs } = this;
-    // Declared egress allowlist, or undefined for the historical unrestricted default (#538).
+    // Declared egress allowlist, or undefined for the historical unrestricted default.
     const egressAllow = plan.egressAllow;
     const sandboxModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
     this.module = sandboxModule;
@@ -219,7 +219,7 @@ export class LiveTerminalSandbox {
     const { requestTimeoutMs } = this;
     // --- Runtime bootstrap: no runtime env; openai-egress proxy capability is already available. ---
     // The stock desktop needs Node/npm on `PATH` before npx can run Codex. Reuse a working
-    // installation or install the pinned official binary after checksum verification (#674).
+    // installation or install the pinned official binary after checksum verification.
     // No raw runtime key touches this step; the egress proxy, when selected, is already available.
     const bootstrapStartedAt = now();
     let bootstrapError: string | undefined;
@@ -363,7 +363,7 @@ export class LiveTerminalSandbox {
         {
           // The install step may run the product itself (release:dogfood's does: `humanish init
           // --yes`); on the 0.67.0 dogfood that one command arrived unmarked while the participant's
-          // nine others carried the marker (#546).
+          // nine others carried the marker.
           envs: { HUMANISH_STUDY_PARTICIPANT: "1" },
           requestTimeoutMs,
           timeoutMs: PRODUCT_SETUP_TIMEOUT_MS,
@@ -401,7 +401,7 @@ export class LiveTerminalSandbox {
     const { requestTimeoutMs, wallClockMs } = this;
     // --- The keyed run: `codex exec --json` non-interactively (stdin disabled). ---
     // openai-env passes the real key here; openai-egress passes an inert placeholder. stdin is
-    // never wired (safety contract item 7) — commands.run takes no stdin channel. The command's
+    // never wired (safety contract item 7): commands.run takes no stdin channel. The command's
     // wall-clock is bounded by maxMinutes (safety contract item 2): commands.run timeoutMs +
     // an injected-clock guard so a mock/real run that exceeds it is killed and fails closed.
     const codexCommand = buildCodexExecCommand({
@@ -426,8 +426,7 @@ export class LiveTerminalSandbox {
         this.sandbox!.commands.run(codexCommand, {
           // The selected command env (raw key or inert placeholder). The participant
           // marker rides the same command: humanish telemetry from inside a study reads as a new
-          // adopter otherwise. #546 added the flag and nothing set it; the 0.66.0 dogfood
-          // participant's twelve commands arrived unmarked.
+          // adopter otherwise.
           envs: { ...runtimeEnv.envs, HUMANISH_STUDY_PARTICIPANT: "1" },
           requestTimeoutMs,
           timeoutMs: wallClockMs,
@@ -565,7 +564,7 @@ function buildCodexExecCommand(args: {
   // the prompt rides as the final positional arg, shell-quoted. codex exec --json runs once and
   // exits (no interactive loop). --skip-git-repo-check: the workdir is a fresh scratch dir.
   // Pinned via npx (never an ambient/preinstalled `codex` binary, which the stock @e2b/desktop
-  // image does not ship, per issue #159); npm_config_update_notifier=false silences npx's own
+  // image does not ship); npm_config_update_notifier=false silences npx's own
   // update check so it cannot leak into the captured stdout the scorer/redactor parse.
   const quotedPrompt = shellQuote(args.prompt);
   // --dangerously-bypass-approvals-and-sandbox: codex's own inner sandbox is

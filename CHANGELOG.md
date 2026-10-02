@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Deprecated
+
+- `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
+  carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
+  `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
+  `HUMANISH_STREAM_EVENT_FIELD_DEPRECATED`. The next minor removes it. A spread or
+  `JSON.stringify` of an event no longer includes `simId` (#1422).
+
 ### Changed
 
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
@@ -34,10 +42,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   (#1414). `humanish verify`, analysis reads and the Observer accept a participant execution
   profile or an analyst identity whose release no launch list names, such as 0.158.0 or 0.161.0.
   Before, they accepted only 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0, and rejected a bundle
-  from any other release. Launch admission is unchanged. A participant now records the release
-  that launched; before, one outside that list was recorded as the host default, which only a
-  `codex:qualify` candidate could reach. Published humanish and Observer builds keep their closed
-  list, so they still reject a bundle that names a release they never listed.
+  from any other release. A participant now records the release that launched; before, one outside
+  that list was recorded as the host default, which only a `codex:qualify` candidate could reach.
+  Published humanish and Observer builds keep their closed list, so they still reject a bundle that
+  names a release they never listed.
 - The metadata humanish sets on the E2B sandboxes it creates uses participant names. A
   computer-use participant's sandbox carries `participantId`, `participantIndex`,
   `participantCount` and `recordId` (the participant's `simulations[]` id in `run.json`) in place
@@ -46,13 +54,6 @@ The Unreleased section holds the full notes for the next version until it is tag
   `role: subject`, and the shared-world one `participantCount` in place of `roleCount`. Nothing in
   humanish reads these labels back; an E2B dashboard filter on the old keys needs the new ones
   (#1419).
-  (#1414). `humanish verify`, analysis reads and the Observer accept a participant execution profile
-  or an analyst identity whose release no launch list names, such as 0.158.0 or 0.161.0. Before,
-  they accepted only 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0, and rejected a bundle from any
-  other release. A participant now records the release that launched; before, one outside that list
-  was recorded as the host default, which only a `codex:qualify` candidate could reach. Published
-  humanish and Observer builds keep their closed list, so they still reject a bundle that names a
-  release they never listed.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

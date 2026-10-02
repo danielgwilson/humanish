@@ -33,7 +33,7 @@ export interface Stop {
 }
 
 /**
- * Read the fixed closing line the prompt asks for (#570): the first non-empty line of the
+ * Read the fixed closing line the prompt asks for: the first non-empty line of the
  * participant's last message, exactly one of three phrases, punctuation and case forgiven. Anything
  * else is absence, never a guess. Exported for tests.
  */
@@ -53,7 +53,7 @@ export function declaredOutcomeFromClosingLine(
   return undefined;
 }
 
-/** The participant's own word for how it ended: a schema field first, then the closing line (#570). */
+/** The participant's own word for how it ended: a schema field first, then the closing line. */
 export function declaredOutcomeOf(turn: CuaTurn): ParticipantDeclaredOutcome | undefined {
   return turn.outcome ?? declaredOutcomeFromClosingLine(turn.message);
 }

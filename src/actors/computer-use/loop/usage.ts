@@ -124,7 +124,7 @@ export class UsageLedger {
   private cachedInput = 0;
   private cacheWriteInput = 0;
   private output = 0;
-  // Per model-inference usage, in order (#334): the recorded fact long-context pricing tiers
+  // Per model-inference usage, in order: the recorded fact long-context pricing tiers
   // need. A continuing native tool interaction may contain several inference requests.
   private readonly turns: UsageTurns = [];
   /** An interaction turn arrived without complete usage, or its receipt said usage is incomplete. */
@@ -300,7 +300,7 @@ export class UsageLedger {
       input: this.input,
       output: this.output,
       // Recorded only when the provider actually reported it, so a reader can tell "no cache
-      // hits" from "this provider does not say" (#391); same for cache writes (#334).
+      // hits" from "this provider does not say"; same for cache writes.
       ...(this.cachedInput > 0 ? { cachedInput: this.cachedInput } : {}),
       ...(this.cacheWriteInput > 0 ? { cacheWriteInput: this.cacheWriteInput } : {}),
       ...(this.turns.length > 0 ? { turns: this.turns.map((turn) => ({ ...turn })) } : {}),

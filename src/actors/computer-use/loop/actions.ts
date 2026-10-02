@@ -64,7 +64,7 @@ function describeAction(action: CuaAction): string {
 
 /**
  * A public-safe fingerprint of one turn's actions, used only in memory to tell "trying the same
- * thing again" from "trying something new" (#383).
+ * thing again" from "trying something new".
  *
  * Never includes typed text or key contents: a `type` contributes its length, exactly as
  * describeCuaAction does, so this can never become a keylogger. Coordinates are bucketed so that
@@ -205,8 +205,8 @@ export async function runActionBatch(
       lifecycle: "completed",
       title,
       ...(action.kind === "speak" ? { text: session.redactNarration(action.text) } : {}),
-      // Structured pin coordinates (#441), exactly the click classes the Observer
-      // pins render — recorded fact instead of a title re-parse downstream.
+      // Structured pin coordinates, exactly the click classes the Observer
+      // pins render: recorded fact instead of a title re-parse downstream.
       ...(action.kind === "click" || action.kind === "double_click"
         ? { coord: { x: action.x, y: action.y } }
         : {}),
@@ -227,9 +227,9 @@ function countAttempt(
 }
 
 /**
- * Execute one action. Idle actions only look (#480): a `wait` that hangs inside the SDK has in
+ * Execute one action. Idle actions only look: a `wait` that hangs inside the SDK has in
  * effect waited, so a stalled one is skipped with a notice and loses nothing the participant
- * chose. An action is recorded as completed only after execute() resolves (#248).
+ * chose. An action is recorded as completed only after execute() resolves.
  */
 async function dispatchAction(
   session: LoopSession,

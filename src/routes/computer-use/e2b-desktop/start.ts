@@ -20,6 +20,7 @@ import { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-record
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
+import { streamEvent } from "../../../lab/run-lab-homes.js";
 
 /** Start the declared speech worker and screen recording. A recording that cannot start is a warning. */
 export async function startParticipantMedia(
@@ -71,13 +72,13 @@ export async function openParticipantSurface(
   if (subject.kind === "desktop-cli") {
     // A terminal window, opened the way the browser is opened on every other route: the
     // participant arrives at a desktop with the thing they were asked to use already in front
-    // of them. They can still open another from the dock — that is the point of a desktop.
+    // of them. They can still open another from the dock; that is the point of a desktop.
     await openDesktopTerminal(desktop, deps.requestTimeoutMs, subject.product.workdir);
     await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
     return;
   }
   const requestedMedia = residual.execution?.desktop?.media;
-  // A declared camera (#509) is in place before the browser starts: the feed is generated or
+  // A declared camera is in place before the browser starts: the feed is generated or
   // uploaded first, and a feed that cannot be produced fails the participant closed here.
   const mediaEvidence =
     requestedMedia === undefined
@@ -116,7 +117,7 @@ export async function openParticipantSurface(
   state.browserLaunched = true;
   noteDevToolsReadiness(ctx, browserLaunch.devTools, emulationFlags.length > 0);
   await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
-  // Mobile fidelity (#221) is applied outside startParticipantStream's best-effort catch, so a request
+  // Mobile fidelity is applied outside startParticipantStream's best-effort catch, so a request
   // that cannot be applied fails the participant closed.
   state.fidelity = await applyParticipantMobileFidelity({
     desktop,
@@ -224,14 +225,16 @@ export async function startParticipantStream(
     });
     if (typeof candidateStreamUrl === "string" && candidateStreamUrl.trim().length > 0) {
       state.streamUrl = candidateStreamUrl;
-      await deps.onStream({
-        type: "ready",
-        participantId: spec.planned.id,
-        sandboxId: desktop.sandboxId,
-        simId: spec.recordId,
-        streamId: spec.streamId,
-        url: candidateStreamUrl,
-      });
+      await deps.onStream(
+        streamEvent({
+          type: "ready",
+          participantId: spec.planned.id,
+          sandboxId: desktop.sandboxId,
+          recordId: spec.recordId,
+          streamId: spec.streamId,
+          url: candidateStreamUrl,
+        }),
+      );
     } else {
       warnings.push(
         "Live desktop stream started but did not return a usable watch URL; Observer will fall back to screenshots.",

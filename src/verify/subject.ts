@@ -24,7 +24,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
   const live = bundle.mode === "live";
 
   // Local-tree fail-closed pin: a live local-tree subject must carry a well-formed archive
-  // digest -- a dirty tree cannot be commit-pinned, so archiveSha256 is the only content pin
+  // digest: a dirty tree cannot be commit-pinned, so archiveSha256 is the only content pin
   // this route has. Mirrors the seeded-on-dry-run discriminator immediately below: judged by
   // bundle.mode, never by the presence/shape of other fields. Never echoes the malformed value
   // (it could itself be a leaked value, same discipline as the externalEnvNames check below).
@@ -42,7 +42,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
   }
 
   // Marker-independent rule: a passed live run can never ride on a seed step that did not
-  // complete ok (closes the hollow-seeded × unpinned hole — an unpinned bundle still carries
+  // complete ok (closes the hollow-seeded × unpinned hole: an unpinned bundle still carries
   // its seed records, and a failed migration must not hide behind the external marker).
   if (live && bundle.review.verdict === "pass" && seed.some((record) => record.ok !== true)) {
     findings.push(
@@ -129,7 +129,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
  * Advisory (never flips ok): a live clone bundle whose subject env is provisioned while its
  * state story is undeclared probably points at state the lab does not control. Emitted at
  * most once per bundle (the subject block is bundle-level, never per stream). GITHUB_TOKEN
- * is mechanically excluded: the harness consumes that name for clone auth — it carries no
+ * is mechanically excluded: the harness consumes that name for clone auth, and it carries no
  * state implication.
  */
 export function undeclaredSubjectStateWarnings(bundle: RunBundle): string[] {

@@ -1,4 +1,4 @@
-// Provider token accounting for the terminal route (#531).
+// Provider token accounting for the terminal route.
 //
 // The gap this closes: a live terminal run reported `cost.lines.provider = null` with source
 // "unmeasured", and the no-spend proof then read `satisfied: true` for `maxUsd: 0` on a run that

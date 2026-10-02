@@ -131,7 +131,7 @@ export function planLab(
   const input = { dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true };
   const result = planRoute(routeOf(config), lab, options, input, deps);
   if (!result.ok) return result;
-  // The manifest the CLI resolved (#455) enters the plan here and nowhere else; the routes read
+  // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
   // plan.lab for the run's status record and bundle.
   const plan = options.lab === undefined ? result.plan : { ...result.plan, lab: options.lab };
   return { ok: true, planned: { plan } };

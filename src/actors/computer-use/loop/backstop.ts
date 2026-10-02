@@ -7,9 +7,9 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // turns, never a turn budget.
 
 const IDLE_PROGRESS_FORGIVENESS_STEPS = 2;
-/** How many recent turns the repetition check looks back over (#383). */
+/** How many recent turns the repetition check looks back over. */
 const ACTION_REPEAT_WINDOW = 3;
-/** Pixels of vertical scroll per progress bucket (#393): a real scroll step (typically >=100px)
+/** Pixels of vertical scroll per progress bucket: a real scroll step (typically >=100px)
  *  crosses a bucket and counts as progress; sub-bucket jiggle does not, so an actor nudging the
  *  same dead panel cannot stay "progressing" forever. */
 const SCROLL_PROGRESS_BUCKET_PX = 200;
@@ -104,8 +104,8 @@ function progressKeyOf(observation: CuaObservation): string {
     observation.appState !== undefined
       ? stableProgressKey(observation.appState)
       : observation.stateSignature;
-  // Scroll position is state (#393): a scroll-pinned section keeps the frame hash constant while
-  // the participant genuinely advances, so the offset rides the key — bucketed, never raw.
+  // Scroll position is state: a scroll-pinned section keeps the frame hash constant while
+  // the participant genuinely advances, so the offset rides the key, bucketed, never raw.
   return observation.scrollY === undefined
     ? base
     : `${base}#s${Math.round(observation.scrollY / SCROLL_PROGRESS_BUCKET_PX)}`;
@@ -113,11 +113,11 @@ function progressKeyOf(observation: CuaObservation): string {
 
 export interface Backstop {
   readonly progressKey: string;
-  /** The last few turns' action fingerprints, in memory only, for the #383 corroboration rule. */
+  /** The last few turns' action fingerprints, in memory only, for the corroboration rule below. */
   readonly recentFingerprints: readonly string[];
   readonly consecutiveIdle: number;
   // One no-progress signal, idle turns included: turns that neither changed the progress key nor
-  // brought new speech, and repeated a recent action (#383). The nudge, the stop threshold and the
+  // brought new speech, and repeated a recent action. The nudge, the stop threshold and the
   // reason all read this counter, so alternating idle and no-progress turns cannot slip past both
   // backstops.
   readonly consecutiveNoProgress: number;
@@ -163,16 +163,16 @@ export function advanceBackstop(
   const progressKey = progressKeyOf(turn.observation);
   const frameChanged = progressKey !== previous.progressKey;
 
-  // Corroboration (#383). A stale frame alone is not evidence of a stuck agent. The frame hash is
+  // Corroboration. A stale frame alone is not evidence of a stuck agent. The frame hash is
   // a coarse whole-screen measure, and on a light-themed web app it can miss a renamed row, a new
-  // list item, or an opened panel — a measured run had 9 visibly different consecutive frames hash
+  // list item, or an opened panel: a measured run had 9 visibly different consecutive frames hash
   // identically while the agent was a foreign key away from finishing. Ending a participant on that
   // signal alone recorded working sessions as `gave_up`, capping every browser run at roughly
   // noProgressSteps turns and writing harness artifacts into evidence as actor behavior.
   //
   // So a no-progress turn now requires both a stale frame and the agent repeating something it
   // just tried. An agent doing varied work is never counted stuck, however blind the hash is;
-  // an agent re-clicking the same dead control trips it as fast as it did before — arguably
+  // an agent re-clicking the same dead control trips it as fast as it did before, arguably
   // faster, since that is the actual signature of being stuck.
   const fingerprint = actionFingerprint(turn.actions);
   const repeatingRecentAction =

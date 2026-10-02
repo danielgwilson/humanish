@@ -112,7 +112,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
 
   // The starter live lab is written for the brain this machine can actually use. Shipping it as
   // openai-computer-use on a machine with no provider key but a signed-in Codex would hand someone
-  // a file that asks for a credential they were just told they do not need (#505).
+  // a file that asks for a credential they were just told they do not need.
   const machine = await firstRunEnvironment(options.env ?? process.env, requestedCwd);
   const starterActor = starterActorFor(machine);
   await planStarterFiles(
@@ -170,7 +170,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
 }
 
 // Leave instructions for the next agent. `AGENTS.md` is the cross-vendor convention (agents.md);
-// Codex, Claude Code, Cursor, Aider and others read it — and increasingly the thing that runs
+// Codex, Claude Code, Cursor, Aider and others read it, and increasingly the thing that runs
 // `humanish init` is a coding agent doing setup on someone's behalf. Without this, the agent
 // that arrives tomorrow finds a humanish/ directory and no idea what to do with it.
 //

@@ -84,9 +84,9 @@ export function resolveParticipantSandboxMs(config: LabConfig): number {
 }
 
 /**
- * The in-flight participant bound a lab declares. Defaults to the participant count — every
+ * The in-flight participant bound a lab declares. Defaults to the participant count: every
  * declared participant runs at once, because a throttle nobody asked for silently turns "N actors
- * live" into waves (#350); total session count and spend are the same either way, only wall-clock
+ * live" into waves; total session count and spend are the same either way, only wall-clock
  * and simultaneity differ. A declared execution.concurrency is a cap, clamped to [1, participants].
  * The planner records it; the route may only lower it from the environment.
  */
@@ -99,7 +99,7 @@ export function boundedConcurrency(declared: number | undefined, participantCoun
 
 /**
  * The planned bound, lowered by the env override. The override may only lower it (never raise
- * concurrent paid desktops — invariant 3), and a lowering is reported via envLoweredFrom so the
+ * concurrent paid desktops, per invariant 3), and a lowering is reported via envLoweredFrom so the
  * plan never silently disagrees with the manifest.
  */
 function envLoweredConcurrency(
@@ -249,7 +249,7 @@ export function resolveCuaParticipantPlan(
 }
 
 /** Print the participant plan to stderr before any sandbox/provider call (public-safe: ids, devices,
- *  digests, and budgets only — no prompt text, no secrets). */
+ *  digests, and budgets only; no prompt text, no secrets). */
 export function emitPreflightPlan(participantPlan: CuaParticipantPlan, labId: string): void {
   const lines: string[] = [];
   lines.push(
@@ -313,7 +313,7 @@ export async function loadCuaParticipants(args: {
   const { plan } = args;
   const { participants } = plan.runner;
   // Compile any committed personas before planning, so the plan builder stays pure and each participant's
-  // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
+  // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label.
   const personas = await compileParticipantPersonas(
     args.projectRoot,
     participants.map((participant) => participant.personaId),

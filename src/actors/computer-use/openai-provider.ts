@@ -41,10 +41,10 @@ import { OPENAI_RESPONSES_URL } from "../openai-endpoint.js";
 // and the engine handles redaction of CuaTurn fields downstream. Error messages
 // carry the HTTP status only, never the response body (it can echo the input).
 //
-// Wire capture (fixture provenance). The 0.6.1 parser incident — the parser read
+// Wire capture (fixture provenance). In the 0.6.1 parser incident, the parser read
 // `computer_call.action` (singular) while the live API returns `actions` (array),
 // and the hand-written fixtures encoded the same wrong shape, so tests passed in
-// lockstep with the bug while every live action was silently dropped — taught us
+// lockstep with the bug while every live action was silently dropped. It taught us
 // that deterministic fixtures must derive from captured live wire shapes, never
 // from memory. Setting HUMANISH_CUA_WIRE_CAPTURE_DIR makes the live shim persist
 // each successful Responses response body into that directory as pretty-printed
@@ -58,7 +58,7 @@ import { OPENAI_RESPONSES_URL } from "../openai-endpoint.js";
 //    redactText (src/evidence/redaction.ts) before writing, so a secret-shaped echo in a
 //    response cannot persist to disk.
 // Point the env var at a gitignored path (e.g. under .humanish/): raw captures must
-// never be committed — fixtures derived from them must be minimal, hand-reviewed
+// never be committed; fixtures derived from them must be minimal, hand-reviewed
 // excerpts checked into tests deliberately.
 
 export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
@@ -74,13 +74,13 @@ export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
 
 // The flagship 5.6-generation tier ("gpt-5.6" is OpenAI's alias for this exact id; the
 // computer-use guide's own examples run on it). Explicit tier id so trace provenance and the
-// rate-table key stay stable if OpenAI repoints the alias (#334).
+// rate-table key stay stable if OpenAI repoints the alias.
 export const DEFAULT_OPENAI_CU_MODEL = "gpt-5.6-sol";
 
 /**
  * The effort a request carries when a lab declares none. Exported because a default that only
  * exists as a literal inside the provider is exactly how it stayed invisible: the lab surface has
- * to be able to say what will actually run (#497).
+ * to be able to say what will actually run.
  */
 export const DEFAULT_OPENAI_CU_REASONING_EFFORT: ReasoningEffort = "medium";
 
@@ -92,7 +92,7 @@ export const DEFAULT_OPENAI_CU_REASONING_EFFORT: ReasoningEffort = "medium";
 export const WIRE_CAPTURE_ENV = "HUMANISH_CUA_WIRE_CAPTURE_DIR";
 
 /**
- * Deep-copy a captured wire value with every string — object keys included —
+ * Deep-copy a captured wire value with every string (object keys included)
  * passed through the shared redactText, so a secret-shaped echo in a response
  * can never persist to disk. Pure; non-string primitives pass through unchanged.
  */
@@ -232,11 +232,11 @@ export interface OpenAiResponsesProviderOptions {
   /** Optional positive integer output limit per response, including reasoning. Not a spend cap. */
   maxOutputTokens?: number;
   /**
-   * Reasoning-summary capture (#427). Defaults to "auto" (the provider picks the best
+   * Reasoning-summary capture. Defaults to "auto" (the provider picks the best
    * summarizer the model supports); "off" never asks. If the account/model rejects the
    * request (e.g. an org not verified for reasoning summaries), the provider latches
-   * summaries off for the session and retries the same turn — the run degrades to
-   * exactly the pre-#427 behavior instead of failing after spend. Absence stays honest:
+   * summaries off for the session and retries the same turn; the run degrades to
+   * a run without summaries instead of failing after spend. Absence stays honest:
    * no summary means no `reasoning` trace items and `counts.reasonings` stays 0.
    */
   reasoningSummary?: OpenAiReasoningSummary | "off";
@@ -251,7 +251,7 @@ export interface OpenAiResponsesProviderOptions {
   delayFn?: (ms: number) => Promise<void>;
   zeroDataRetention?: boolean;
   /**
-   * Environment for the wire-capture gate (HUMANISH_CUA_WIRE_CAPTURE_DIR — see the
+   * Environment for the wire-capture gate (HUMANISH_CUA_WIRE_CAPTURE_DIR; see the
    * module header). Injectable so deterministic tests control the gate without
    * mutating process.env. Defaults to process.env.
    */
@@ -340,7 +340,7 @@ function createWireCapture(captureDir: string | undefined): WireCapture {
   };
   return {
     prepareNext,
-    // Fails loud: a silent capture failure would mean missing turns in a fixture refresh — the
+    // Fails loud: a silent capture failure would mean missing turns in a fixture refresh: the
     // exact "fixtures drift from the wire" pathology capture exists to prevent.
     record: async (raw) => {
       if (captureDir === undefined) return;
@@ -514,7 +514,7 @@ export function createOpenAiResponsesProvider(
     lastOutputItems: [],
     mode: options.zeroDataRetention ? "explicit_context" : "previous_response_id",
     // Latches to undefined (stop asking) for the rest of the session when the
-    // account/model rejects the summary request — see OpenAiResponsesProviderOptions.
+    // account/model rejects the summary request; see OpenAiResponsesProviderOptions.
     reasoningSummary:
       options.reasoningSummary === "off" ? undefined : (options.reasoningSummary ?? "auto"),
   };
@@ -595,8 +595,8 @@ export function createOpenAiResponsesProvider(
   return {
     id: "openai-responses-cu",
     version: model,
-    // The effort the wire actually carries, not the one the lab asked for — the provider defaults
-    // an absent request to "medium", and the trace has to say what produced it (#497).
+    // The effort the wire actually carries, not the one the lab asked for: the provider defaults
+    // an absent request to "medium", and the trace has to say what produced it.
     modelSettings: {
       reasoningEffort,
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),

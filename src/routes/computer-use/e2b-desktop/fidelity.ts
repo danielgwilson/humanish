@@ -1,5 +1,5 @@
-// Device fidelity for one E2B desktop participant: mobile emulation beyond viewport size (#221), the
-// browser-state observer that watches it for drift (#623), and the final browser geometry.
+// Device fidelity for one E2B desktop participant: mobile emulation beyond viewport size, the
+// browser-state observer that watches it for drift, and the final browser geometry.
 
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
 import type { ResidualConfig } from "../../../lab/plan-types.js";
@@ -124,7 +124,7 @@ export function participantBrowserStateObserver(args: {
     {
       targetId: args.targetId,
       // Once per participant: a dark observation channel is a gap in the instrument, and the
-      // funnel's "never measured" count needs this line to explain itself (#514).
+      // funnel's "never measured" count needs this line to explain itself.
       onUnavailable: (reason) => {
         warnings.push(
           `Browser-state observer unavailable for participant ${spec.planned.id} (${redactText(deps.scrubKnownValues(reason))}); ` +
@@ -145,7 +145,7 @@ export function participantBrowserStateObserver(args: {
               },
               onCovered: (coveredTargetId, read) => {
                 // A later tab the page itself reported at the phone width: evidence that
-                // the emulation followed the participant (#623), kept on the bundle.
+                // the emulation followed the participant, kept on the bundle.
                 if (fidelity.applied === undefined) return;
                 fidelity.applied = {
                   ...fidelity.applied,
@@ -211,7 +211,7 @@ export async function finalParticipantGeometry(args: {
   ];
   warnings.push(...geometryWarnings);
   // The emulation holder's own log, after its announce line: which later targets it
-  // attached to, what it sent, and any reply that came back as an error (#623). Read while
+  // attached to, what it sent, and any reply that came back as an error. Read while
   // the sandbox is alive; the first live proof had no way to say what the holder did.
   if (fidelity.applied !== undefined && fidelity.holderName !== undefined) {
     const holderLog = await readDetachedLog(

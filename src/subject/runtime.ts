@@ -1,9 +1,9 @@
-// Provide the runtime a subject's serve pipeline needs, instead of failing at exit 127 (#371).
+// Provide the runtime a subject's serve pipeline needs, instead of failing at exit 127.
 //
 // The stock E2B `desktop` template ships python3 and curl but no Node. That fact has now been
 // rediscovered three times: the in-sandbox comms catch was rewritten from node to python3 in 0.29.0
 // for exactly this reason, the terminal route bootstraps Node explicitly, and the computer-use
-// clone/local-tree route did neither — so any lab whose `serve.install` runs npm or pnpm died with
+// clone/local-tree route did neither, so any lab whose `serve.install` runs npm or pnpm died with
 // `pnpm: command not found` after a sandbox had been created and paid for.
 //
 // It failed invisibly up front: `lab inspect` was clean, the plan printed normally, the sandbox
@@ -11,7 +11,7 @@
 // Nobody can debug that from the outside.
 //
 // The harness provides the runtime instead of warning about it. An adopter writing a lab for a Node app should not have to
-// know which binaries the template happens to carry — that is the harness's job, and the terminal
+// know which binaries the template happens to carry. That is the harness's job, and the terminal
 // route already treats it that way. Detection is conservative and the bootstrap is skipped whenever
 // a runtime is already present, so a custom template that ships Node pays nothing.
 

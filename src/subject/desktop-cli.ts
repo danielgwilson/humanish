@@ -11,7 +11,7 @@ import {
 } from "./steps.js";
 
 /**
- * Prepare a CLI study's runtime and, only when declared, its product (#495, #515).
+ * Prepare a CLI study's runtime and, only when declared, its product.
  *
  * The install runs unkeyed and before the session starts, for the same reason the clone route
  * provisions its subject first: what is being studied begins when the participant looks at the
@@ -73,7 +73,7 @@ export async function provisionDesktopCli(
   if (!result.ok) {
     // Fail closed: a participant handed a desktop where the product is not installed would produce
     // a transcript about a missing command, and that finding belongs to the harness, not the tool.
-    // The tail rides along, scrubbed before truncation like every other provisioning failure — a
+    // The tail rides along, scrubbed before truncation like every other provisioning failure. A
     // bare "install failed" is unactionable to whoever wrote the command.
     throw new Error(
       args.scrub(

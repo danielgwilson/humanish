@@ -6,7 +6,7 @@
 // as a replacement glyph. Every ASCII character on the same screen was fine, which is exactly the
 // signature.
 //
-// The honest fix is not "stop using em dashes" — it is to ask what the terminal can render and mean
+// The honest fix is not "stop using em dashes". It is to ask what the terminal can render and mean
 // it. A surface that emits characters its own terminal cannot decode is not being expressive, it is
 // producing garbage that reads as a bug in the tool.
 
@@ -24,7 +24,7 @@ export function terminalRendersUnicode(env: NodeJS.ProcessEnv = process.env): bo
   const declared = env.LC_ALL ?? env.LC_CTYPE ?? env.LANG;
   if (declared === undefined || declared.trim().length === 0) {
     // Nothing declared at all. A bare login shell on a stock image lands here, and that is the
-    // case the participant hit — assume it cannot, because the failure is silent and ugly while
+    // case the participant hit. Assume it cannot, because the failure is silent and ugly while
     // the fallback is merely plainer.
     return false;
   }

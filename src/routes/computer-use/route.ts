@@ -1,6 +1,6 @@
 // The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
 // lab clones and serves in-sandbox) driven by a registry-resolved computer-use actor inside a
-// hosted E2B desktop. This is the path that makes `actors[].type` load-bearing — the
+// hosted E2B desktop. This is the path that makes `actors[].type` load-bearing: the
 // descriptor returned by the registry runs the session; the lab provisions the desktop and
 // subject, composes the prompt from config, persists the evidence bundle, and tears down.
 //
@@ -13,14 +13,14 @@
 //   the subject's declared env names are provisioned in on the clone route; values come from
 //   the caller's environment and are never logged or persisted.
 // - The live stream URL is runtime-only (carries an auth key) and is never persisted into run
-//   artifacts — only its presence is recorded.
+//   artifacts; only its presence is recorded.
 // - Evidence redaction is mode-aware (docs/principles/invariants-and-defaults.md, the
 //   capture-vs-publish rule): screenshots persist raw (full fidelity) by default into gitignored
 //   .humanish/; `policies.redactScreenshots: true` opts into blur-at-capture for a share-as-is
 //   bundle. Length-only typed text and text redaction of reasoning/messages are unconditional;
 //   harness errors are redacted at this boundary; the bundle's `stream.actor` carries the
 //   conformant humanish.actor-trace.v1 projection, whose `redaction.screenshots` records the
-//   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
+//   run's actual mode ("raw" | "blurred" | "n/a"), and every label downstream derives from it.
 
 import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
 import path from "node:path";

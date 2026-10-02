@@ -14,6 +14,7 @@ import { drainCommsEvidence } from "./comms.js";
 import { finalParticipantGeometry } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 import type { E2BDesktopDeps, DesktopParticipantRun, SandboxReleaseFact } from "../types.js";
+import { streamEvent } from "../../../lab/run-lab-homes.js";
 
 /**
  * Each route's own keep flag gates its own participants only: a clone.keep can never leak into a
@@ -175,16 +176,18 @@ export async function finishE2BDesktop(
     state.sandboxTornDownAtMs = deps.now();
     // The participant's live stream is now a dead page whichever teardown path ran (released, kept, or
     // release-failed-awaiting-TTL); tell the watch overlay so the tile falls back to recorded
-    // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
+    // evidence instead of "sandbox not found". Guarded: a viewer callback must never
     // break teardown.
     if (state.streamUrl !== undefined) {
       try {
-        await deps.onStream({
-          type: "ended",
-          participantId: spec.planned.id,
-          simId: spec.recordId,
-          streamId: spec.streamId,
-        });
+        await deps.onStream(
+          streamEvent({
+            type: "ended",
+            participantId: spec.planned.id,
+            recordId: spec.recordId,
+            streamId: spec.streamId,
+          }),
+        );
       } catch {
         // viewer-side only; nothing to record
       }

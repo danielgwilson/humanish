@@ -16,13 +16,13 @@ import {
 import type { TerminalLedgers, TerminalScorer, TerminalProductScoringContext } from "./types.js";
 
 /**
- * Run the layer-6 product-adapter extension seam (issue #154 acceptance #8) over the assembled
+ * Run the layer-6 product-adapter extension seam over the assembled
  * evidence and attach its results to the bundle in place, without core knowing any product noun.
  * The review is not touched here: the returned failures are folded into it by the caller.
  *
  *  - `score`: when present, the returned namespaced `RunAdapterScore` lands on `bundle.adapterScore`.
  *    For a library caller (no `scorerProvenance`), the adapter score is additive and never a
- *    failure. For a config-declared scorer (#316; `scorerProvenance` present), a status:"fail" is a
+ *    failure. For a config-declared scorer (`scorerProvenance` present), a status:"fail" is a
  *    failure (the keystone route is the product's own definition of pass/fail), and so is a scorer
  *    that throws or returns a malformed value, so a crashed declared gate is never a silent green.
  *  - `deriveFeedback`: when present, the returned candidates are appended to
@@ -44,7 +44,7 @@ export async function applyAdapterExtensionSeam(args: {
   runId: string;
   sanitize: (text: string) => string;
   warnings: string[];
-  /** Present only when the scorer was CONFIG-DECLARED (#316) — the "declared" marker that opts the
+  /** Present only when the scorer was config-declared. It is the "declared" marker that opts the
    *  terminal route into flip-on-fail. Absent for library callers (additive, back-compat). */
   scorerProvenance?: RunScorerProvenance;
 }): Promise<ScorerOutcome> {
@@ -70,7 +70,7 @@ export async function applyAdapterExtensionSeam(args: {
   // The scorer sees a READ-ONLY view of the bundle so it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws and is caught as a hook failure below). The seam stamps
   // the real bundle. The transcript is the same normalized, source-scrubbed text the run persists as
-  // terminal-transcript.txt — no new exposure beyond what disk already holds (#341).
+  // terminal-transcript.txt, so the scorer sees nothing beyond what disk already holds.
   const ctx: TerminalProductScoringContext = {
     bundle: frozenBundleView(bundle),
     trace,
