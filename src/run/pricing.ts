@@ -396,8 +396,8 @@ export function estimateActorCost(
   // and on a session that threads provider state it is the majority of input, and pricing it at the
   // full rate overstates real spend by up to ~10x. Cache writes bill at their own rate (1.25x on
   // OpenAI 5.6+) as the total rate for those tokens; a sheet without a write rate prices writes as
-  // plain input (pre-5.6: writes are free-of-extra-fee, i.e. plain input). Every piece is honestly
-  // absent: no reported split means no discount and no surcharge assumed.
+  // plain input (pre-5.6: writes are free-of-extra-fee, i.e. plain input). An unreported piece
+  // stays absent: no reported split means no discount and no surcharge assumed.
   const priceRequest = (
     usage: { input?: number; cachedInput?: number; cacheWriteInput?: number; output?: number },
     tierable: boolean,

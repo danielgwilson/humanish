@@ -1,10 +1,9 @@
 // Provider token accounting for the terminal route.
 //
-// The gap this closes: a live terminal run reported `cost.lines.provider = null` with source
-// "unmeasured", and the no-spend proof then read `satisfied: true` for `maxUsd: 0` on a run that
-// had demonstrably consumed hundreds of thousands of provider tokens. The statement was honest
-// (it listed provider as unmeasured) but it conflated two very different states: having no signal
-// at all, and knowing exactly how many tokens were spent while lacking a rate to price them.
+// Without these counts, a provider line of `null` with source "unmeasured" would let the no-spend
+// proof read `satisfied: true` for `maxUsd: 0` on a run that consumed hundreds of thousands of
+// provider tokens, conflating two different states: having no signal at all, and knowing exactly
+// how many tokens were spent while lacking a rate to price them.
 //
 // The counts were already in the bundle. `codex exec --json` emits one usage record per turn:
 //   {"type":"turn.completed","usage":{"input_tokens":201536,"cached_input_tokens":170558,
@@ -12,7 +11,7 @@
 //
 // So the route can record a measured token fact even when it cannot record a priced one. Rates stay
 // out of this module deliberately: pricing lives in src/run/pricing.ts, and the terminal route has no
-// real model id to price against (it records `model: "codex"`), so the honest output is
+// real model id to price against (it records `model: "codex"`), so the output is
 // tokens-known-rate-unknown rather than a guessed dollar figure.
 
 import type { ActorTokenUsage } from "../../actors/contract.js";
@@ -39,7 +38,7 @@ function num(value: unknown): number | undefined {
  * Accumulate runtime-turn usage from a captured `codex exec --json` stream. A Codex turn may
  * include multiple provider requests; these records cannot establish per-request pricing tiers.
  *
- * Returns undefined when the stream carried no usage record at all, which is the honest "no
+ * Returns undefined when the stream carried no usage record at all, which is the "no
  * signal" case and must stay distinguishable from a measured zero. Per-turn records are preserved
  * in `turns` because long-context pricing can only be computed from per-request sizes
  * (src/run/pricing.ts), and totals cannot say which requests crossed a threshold.

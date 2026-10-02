@@ -319,7 +319,7 @@ function singleReview(
   stream: RunStream,
 ): ReviewSummary {
   const { reason } = view;
-  // A funnel with a denominator of one is still the funnel, and its absence stays honest: no
+  // A funnel with a denominator of one is still the funnel, and its absence stays recorded: no
   // declared protocol (or a dry run) means no `tasks` field, never an empty one.
   const singleRunTasks =
     args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
@@ -408,7 +408,7 @@ export function buildSingleParticipantBundle(args: {
   /**
    * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").
    * When a session ran, its trace's `redaction.screenshots` is the evidence-of-record and
-   * wins; this fallback keeps labels honest for frames written before a mid-session failure
+   * wins; this fallback labels the frames written before a mid-session failure
    * (no trace exists to testify then). Defaults to "raw", the engine default.
    */
   captureRedaction?: "raw" | "blurred";
@@ -429,7 +429,7 @@ export function buildSingleParticipantBundle(args: {
   /**
    * Entry kind for the non-clone subject.declared event, which declares what the subject
    * was. "local-app": an already-running local dev server driven in-process, un-pinnable, and
-   * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
+   * declared as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
    */
   entryKind?: "local-app";
   /** The custom E2B desktop template (image) this participant launched on, when configured (provenance). */
@@ -533,8 +533,8 @@ export function buildSingleParticipantBundle(args: {
     ...(args.providerResources === undefined || args.providerResources.length === 0
       ? {}
       : { providerResources: args.providerResources }),
-    // Structured subject provenance: code pin + state story. Uniform and
-    // honest on app-url bundles too: the caller minted the URL, its state is the caller's.
+    // Structured subject provenance: code pin + state story. Uniform, and
+    // stated on app-url bundles too: the caller minted the URL, its state is the caller's.
     // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
     // shaped, so no reconstruction is needed beyond the app-url fallback.
     subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } },

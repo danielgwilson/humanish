@@ -130,7 +130,7 @@ describe("the closing observation feeds the funnel (first live study's miss)", (
   });
 });
 
-describe("the study budget stops a participant honestly", () => {
+describe("the study budget stops a participant with budget_reached", () => {
   it("ends with budget_reached (incomplete), never gave_up, when the run budget is exhausted", async () => {
     const provider = new ScriptedProvider(
       Array.from({ length: 10 }, () => ({

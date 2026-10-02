@@ -107,7 +107,7 @@ describe("scroll position is state", () => {
       executor,
       persona,
       redaction: defaultRedactionHooks,
-      // The wall clock is the honest stop for a long read; 40 fake seconds ≈ 38 turns, roughly
+      // The wall clock is the stop for a long read; 40 fake seconds ≈ 38 turns, roughly
       // double the no-progress backstop, so the old behavior would have tripped long before this.
       timeoutMs: 40_000,
       now: monotonicClock(),
@@ -119,7 +119,7 @@ describe("scroll position is state", () => {
   });
 
   it("still ends a participant nudging a dead panel: sub-bucket jiggle is not progress", async () => {
-    // scrollY wiggles within one 200px bucket forever: same key, same fingerprint, honest gave_up.
+    // scrollY wiggles within one 200px bucket forever: same key, same fingerprint, gave_up.
     const executor = scrollingExecutor((index) => (index % 2) * 40);
     const result = await runComputerUseLoop({
       instructions: "Read the whole page.",

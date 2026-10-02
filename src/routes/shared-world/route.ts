@@ -22,7 +22,7 @@
 // `state-change-not-isolated-to-actors`. laneWindows + stateSeries are independent series with no
 // per-delta→actor field, so causation under concurrency is structurally inexpressible.
 //
-// Capability and proof: the deterministic $0 gate proves the plumbing + the honesty
+// Capability and proof: the deterministic $0 gate proves the plumbing + the claims-match-mechanism
 // contract: the real mapWithConcurrency produces genuinely overlapping laneWindows (a rendezvous
 // latch in the fake session forces two participant fns in-flight while the real orchestrator clock
 // measures the windows). Every generated bundle describes only its own observations; no one run

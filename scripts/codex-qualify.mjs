@@ -5,7 +5,7 @@
 // --live adds readiness, one analyst turn and two cancellations with the existing ChatGPT login.
 // Linux only: process events come from strace, so on any other host qualification fails closed.
 //
-// Threat model. This is a drift detector. It catches an honest new vendor release that, in these
+// Threat model. This is a drift detector. It catches a new vendor release that, in these
 // scenarios, executes a program, connects to a destination or writes a file the baseline release
 // did not, and it fails closed when the harness itself cannot see (a failed trace, sampler read
 // or parse). A binary built to evade it is out of scope. Named limits, none of which it inspects:

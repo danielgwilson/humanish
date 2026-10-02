@@ -87,7 +87,7 @@ export const harnessAborted: Stop = {
 /**
  * The wall-clock deadline. A session that took at least one material (non-idle) action before the
  * cap reached its budget rather than stalling; a deadline hit with zero material actions is still
- * an honest failure (timed_out).
+ * recorded as a failure (timed_out).
  */
 export function timeLimit(session: LoopSession): Stop {
   const { timeoutMs } = session;

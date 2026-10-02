@@ -1,14 +1,11 @@
 // The in-sandbox Chrome DevTools probe behind every URL / page-text / viewport observation.
 //
-// It runs on python3, stdlib only. It used to run on node, and that blinded it: the
-// stock E2B desktop template ships python3 and curl but no Node, and Node only arrives when a
-// subject's serve pipeline needs it (src/subject/runtime.ts). So on the app-url route, and on any
-// subject served by something other than Node (the taskly benchmark is `python3 -m http.server`),
-// `node -e` exited 127 on every turn, the probe degraded to `{}`, and every urlIncludes /
-// textIncludes stop condition and task criterion went blind for the whole session. The only trace
-// was a geometry warning that the CSS viewport "could not be measured", which named the symptom
-// and not the cause. The tab-pinning fix that preceded this one (prefer "active") was diagnosed on
-// a Node subject, where the probe happened to work.
+// It runs on python3, stdlib only. The stock E2B desktop template ships python3 and curl but no
+// Node, and Node only arrives when a subject's serve pipeline needs it (src/subject/runtime.ts).
+// So on the app-url route, and on any subject served by something other than Node (the taskly
+// benchmark is `python3 -m http.server`), a `node -e` probe exits 127 on every turn, degrades to
+// `{}`, and blinds every urlIncludes / textIncludes stop condition and task criterion for the
+// whole session, with only a geometry warning that the CSS viewport "could not be measured".
 //
 // The same lesson was learned once already: the comms catch was rewritten from node to python3 in
 // 0.29.0 (comms/sandbox-catch.ts). This is the third in-sandbox runtime dependency to move.

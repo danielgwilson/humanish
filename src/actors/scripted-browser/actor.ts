@@ -433,7 +433,7 @@ async function runScriptedJourney(args: {
 }
 
 /** Race one step against the journey's remaining wall-clock budget. A hanging step rejects
- *  with the timeout error; the journey's catch path then records honest blocked steps. */
+ *  with the timeout error; the journey's catch path then records the remaining steps as blocked. */
 async function withJourneyDeadline<T>(
   promise: Promise<T>,
   deadline: number,
@@ -520,7 +520,7 @@ async function persistScriptedFailureCapture(args: {
 }
 
 /** Project one surface capture into humanish.actor-trace.v1. screenshotRefs are attached only
- *  for frames that actually exist on disk (honest counts; blocked-not-executed steps name a
+ *  for frames that actually exist on disk (so counts match disk; blocked-not-executed steps name a
  *  path that was never written). */
 async function projectScriptedActorTrace(args: {
   artifactRoot: PreparedOutputRoot;

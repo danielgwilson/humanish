@@ -1143,7 +1143,7 @@ describe("restricted Codex Code Mode participant session", () => {
   });
 
   // One case per toolPolicyViolation rule. Each offending event arrives after the turn/start
-  // reply, where the session used to repeat the check; onNotification is now the only one.
+  // reply, where onNotification is the only check.
   it.each([
     ["a raw item type the profile does not allow", "analyst-raw-exec", false],
     ["a custom tool other than exec", "participant-raw-wrong-custom-tool", true],
