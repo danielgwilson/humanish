@@ -29,9 +29,9 @@ type LabSubjectSource =
   | "local-tree";
 
 /**
- * How a subject's WORLD relates across actor lanes. `per-lane-worlds` (the default; absent ==
- * this) is the only fan-out topology the computer-use route ships — N lanes, N independent
- * worlds, isolation + per-lane attribution. `shared-world` (#164) is the DECLARED override: ONE
+ * How a subject's WORLD relates across participants. `per-lane-worlds` (the default; absent ==
+ * this) is the only fan-out topology the computer-use route ships — N participants, N independent
+ * worlds, isolation + per-participant attribution. `shared-world` (#164) is the DECLARED override: ONE
  * mutable service plane that N role SEATS use at the same time, so their actions interact through
  * shared state. Consumed ONLY on the shared-world routes (a provisioned clone plane, or an
  * external-public app-url plane) with a computer-use actor; inert/warned everywhere else
@@ -42,7 +42,7 @@ type LabSubjectTopology = "per-lane-worlds" | "shared-world";
 export interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
   depth?: number;
-  /** how many independent clone lanes to fan out (one sandbox/desktop each). */
+  /** how many participants to fan out, each with its own clone (one sandbox/desktop each). */
   fanout?: number;
   /** keep the disposable clone for debugging instead of discarding. */
   keep?: boolean;
@@ -166,7 +166,7 @@ export interface LabSubjectProduct {
   name: string;
   /**
    * How the product gets onto the machine, run UNKEYED before the participant starts, in the
-   * lane's working directory. Consumed on BOTH product routes: `desktop-cli` (a person at a
+   * participant's working directory. Consumed on BOTH product routes: `desktop-cli` (a person at a
    * desktop) and `terminal-product` (an agent in a shell).
    *
    * Absent means the participant installs it themselves from the public surfaces, which is a
@@ -179,7 +179,7 @@ export interface LabSubjectProduct {
   install?: string;
   /**
    * `desktop-cli` ONLY: the directory the participant's terminal opens in. Absent means the home
-   * directory. (The terminal-product lane has its own fixed study workdir.)
+   * directory. (The terminal-product route has its own fixed study workdir.)
    *
    * This exists because the first live study failed on it: the participant was asked what studies
    * the project contained, landed in an empty home directory, correctly reported that there was no
@@ -209,10 +209,10 @@ export interface LabSubjectProduct {
 export interface LabSubject {
   source: LabSubjectSource;
   /**
-   * WORLD topology across actor lanes. Absent == `per-lane-worlds` (the isolation default; every
+   * WORLD topology across participants. Absent == `per-lane-worlds` (the isolation default; every
    * existing lab is byte-stable). `shared-world` is the declared override (#164): one mutable
    * service plane, N role seats at once. Consumed ONLY on the shared-world routes (a provisioned
-   * clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2 lanes);
+   * clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2 participants);
    * inert/warned elsewhere.
    */
   topology?: LabSubjectTopology;
@@ -296,19 +296,19 @@ export interface LabSubject {
 export interface LabParticipantFocus {
   id?: string;
   label?: string;
-  /** Per-lane steer appended to the actor's mission. Consumed on the app-url route. */
+  /** Per-participant steer appended to the actor's mission. Consumed on the app-url route. */
   instruction?: string;
 }
 
 /**
- * One differentiated fan-out lane on the computer-use E2B route (per-lane worlds). Each lane
- * becomes an independent E2B desktop sandbox with its own persona/device/starting-steer. All
+ * One participant in a differentiated fan-out on the computer-use E2B route (`per-lane-worlds`).
+ * Each entry becomes an independent E2B desktop sandbox with its own persona/device/starting-steer. All
  * fields optional: an omitted persona/device/instruction inherits the actor-level default. `id`
- * defaults to `lane-01`..`lane-NN` and must be a public-safe token (it names per-lane evidence
+ * defaults to `lane-01`..`lane-NN` and must be a public-safe token (it names per-participant evidence
  * paths). Consumed ONLY on the computer-use E2B route (inert/warned elsewhere).
  */
 export interface LabParticipantEntry {
-  /** Public-safe lane label (interpolates into per-lane evidence paths). Default lane-NN. */
+  /** Public-safe participant id (interpolates into its evidence paths). Default lane-NN. */
   id?: string;
   /**
    * App-defined actor type label for grouping simulated users ("operator", "viewer",
@@ -316,33 +316,33 @@ export interface LabParticipantEntry {
    * it is adapter-owned taxonomy for roster/readback.
    */
   actorType?: string;
-  /** App-defined surface label for grouping lanes that start from different product areas. */
+  /** App-defined surface label for grouping participants that start from different product areas. */
   surface?: string;
-  /** App-defined correlation id tying lanes to one shared case/account/work item. */
+  /** App-defined correlation id tying participants to one shared case/account/work item. */
   caseGroup?: string;
-  /** Persona id/label threaded into this lane's actor prompt. Default: actors[0].persona. */
+  /** Persona id/label threaded into this participant's actor prompt. Default: actors[0].persona. */
   persona?: string;
-  /** Named hosted-screen preset for this lane. XOR raw execution.desktop.resolution. */
+  /** Named hosted-screen preset for this participant. XOR raw execution.desktop.resolution. */
   device?: string;
-  /** Per-lane steer appended to this lane's mission (the roster's per-lane focus). */
+  /** Steer appended to this participant's mission (the roster's per-participant focus). */
   instruction?: string;
   /**
-   * Deterministic lane completion guard. When set, this lane stops as soon as the runtime
+   * Deterministic participant completion guard. When set, this participant stops as soon as the runtime
    * observation matches any declared rule; actor-level stopWhen is used as the default.
    */
   stopWhen?: StopWhen;
-  /** A declared observation window for THIS lane (#510); actor-level dwell is the default. */
+  /** A declared observation window for THIS participant (#510); actor-level dwell is the default. */
   dwell?: DwellWindow;
   /**
-   * How hard the model is asked to think in THIS lane; actor-level reasoningEffort is the default.
+   * How hard the model is asked to think for THIS participant; actor-level reasoningEffort is the default.
    *
    * The single-run control: same persona, same mission, two efforts, one set of conditions.
    */
   reasoningEffort?: ReasoningEffort;
   /**
-   * App-url computer-use ONLY: absolute browser URL this lane opens instead of `subject.appUrl`.
+   * App-url computer-use ONLY: absolute browser URL this participant opens instead of `subject.appUrl`.
    * This is the generic setup-produced-target handoff for crawler/swarm labs: product adapters may
-   * start any topology they need, then hand humanish explicit lane targets. Public/non-loopback
+   * start any topology they need, then hand humanish explicit participant targets. Public/non-loopback
    * targets still require `policies.allowPublicTargets: true`. Inert/rejected on clone, local-app,
    * shared-world, scripted-browser, and terminal routes.
    */
@@ -351,13 +351,13 @@ export interface LabParticipantEntry {
    * Shared-world ONLY (#164): this role's per-seat loopback entry route, resolved against
    * `subject.serve.url` and REQUIRED to be same-origin (loopback) with it — the seat opens
    * `serve.url + entry`. Validated at parse AND re-enforced in the engine. Inert/warned on every
-   * non-shared-world route (the per-lane-worlds fan-out roster has no per-lane entry).
+   * non-shared-world route (the per-lane-worlds fan-out roster has no per-participant entry).
    */
   entry?: string;
   /**
-   * EXTERNAL-PUBLIC shared-world ONLY (#164 phase 2): marks this lane the DESIGNATED HOST seat — it
+   * EXTERNAL-PUBLIC shared-world ONLY (#164 phase 2): marks this participant the DESIGNATED HOST seat — it
    * creates the shared session (e.g. a multiplayer lobby) that the follower seats then join. Exactly
-   * ONE lane in the roster may carry `host: true` (validated in externalPublicSharedWorldValidationReason).
+   * ONE participant in the roster may carry `host: true` (validated in externalPublicSharedWorldValidationReason).
    * The orchestrator watches the host seat's observed URL for the shared-session code and threads it
    * into the follower missions at a host-first barrier. Inert/warned on every other route.
    */
@@ -365,14 +365,14 @@ export interface LabParticipantEntry {
 }
 
 /**
- * Compact authoring sugar for repeated lane groups. The parser expands each group into concrete
+ * Compact authoring sugar for repeated participant groups. The parser expands each group into concrete
  * `lanes[]` with deterministic ids (`<group.id>-01`, `<group.id>-02`, ...). The runtime never
  * consumes this shape directly; it always sees ordinary `LabActorLane` entries.
  */
 export interface LabActorRosterGroup extends Omit<LabParticipantEntry, "id"> {
-  /** Public-safe group id; prefixes generated lane ids. */
+  /** Public-safe group id; prefixes generated participant ids. */
   id: string;
-  /** Number of lanes to generate for this group. */
+  /** Number of participants to generate for this group. */
   count: number;
 }
 
@@ -385,12 +385,12 @@ export interface LabActor {
    * the descriptor for dispatch and capability enforcement.
    */
   type: string;
-  /** Lane count — route-specific (see HONEST SCOPE header): synthetic simCount; scripted
+  /** Participant count — route-specific (see HONEST SCOPE header): synthetic simCount; scripted
    *  surface roster {1 = desktop, 2 = desktop + mobile, default 1}; computer-use E2B route the
-   *  HOMOGENEOUS fan-out lane count (cap 16). XOR `lanes`. */
+   *  HOMOGENEOUS fan-out participant count (cap 16). XOR `lanes`. */
   count?: number;
-  /** Computer-use E2B route: a DIFFERENTIATED fan-out roster (per-lane worlds). XOR `count`,
-   *  `roster`, and `laneFocus`. Cap 16 lanes. Consumed only on the cua E2B route
+  /** Computer-use E2B route: a DIFFERENTIATED fan-out roster (`per-lane-worlds`). XOR `count`,
+   *  `roster`, and `laneFocus`. Cap 16 participants. Consumed only on the cua E2B route
    *  (inert/warned elsewhere). */
   lanes?: LabParticipantEntry[];
   /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
@@ -407,7 +407,7 @@ export interface LabActor {
    * The two halves belong to different people. `goal` reaches the participant's prompt; `success`
    * never does — a moderator does not read the success criterion aloud, because telling someone how
    * they will be judged changes what they do. See src/lab/tasks.ts.
-   * Supported only on the first actor of per-lane CUA routes; other routes fail preflight.
+   * Supported only on the first actor of per-participant CUA routes; other routes fail preflight.
    */
   tasks?: LabTask[];
   /** Provider model override. Consumed on the app-url route. */
@@ -423,27 +423,27 @@ export interface LabActor {
    */
   localAgent?: "codex" | "claude";
   /**
-   * How hard the model is asked to think, per turn. Lane-level `reasoningEffort` overrides this.
+   * How hard the model is asked to think, per turn. A `lanes[]` entry's `reasoningEffort` overrides this.
    *
    * Absent means the PROVIDER's default, and absence is recorded as absence: a run that did not
    * declare an effort does not claim one. Support is model-dependent (see src/actors/reasoning-effort.ts),
    * so a level a model does not accept fails on the first turn rather than being downgraded.
    *
    * This is a recruiting decision, not a tuning knob: it changes who the participant IS, the same
-   * way a persona prompt does. Two lanes running the same persona and mission at different efforts
-   * is therefore a CONTRAST between two participants, not a control for an instrument — a lane that
+   * way a persona prompt does. Two participants running the same persona and mission at different efforts
+   * is therefore a CONTRAST between two participants, not a control for an instrument — a participant that
    * abandons at one level and completes at another has reported on both of them. The obligation it
    * creates is to declare and record, never to hold it constant. See
    * docs/principles/actor-fidelity.md.
    */
   reasoningEffort?: ReasoningEffort;
   /**
-   * Deterministic completion guard used as the default for CUA lanes. Lane-level stopWhen
+   * Deterministic completion guard used as the default for CUA participants. A `lanes[]` entry's stopWhen
    * overrides this value.
    */
   stopWhen?: StopWhen;
   /**
-   * A declared observation window (#510), the default for every lane; lane-level dwell overrides
+   * A declared observation window (#510), the default for every participant; a `lanes[]` entry's dwell overrides
    * it. `when` is a stopWhen-shaped condition (absent: the window opens after the first
    * observation); `ms` is the hold, `everyMs` the frame cadence (default 10 s), `then` whether
    * the participant continues afterwards (default) or the session ends. The harness takes no
@@ -456,7 +456,7 @@ type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). NOT an
  *  interactive duplex PTY — labeling captured exec output "pty" would be a claim/mechanism
- *  mismatch (invariant 6 + the goal packet's PTY ruling), so this lane uses "exec-stream". */
+ *  mismatch (invariant 6 + the goal packet's PTY ruling), so this route uses "exec-stream". */
 type LabTerminalTransport = "exec-stream";
 
 /** Whether operator stdin reaches the in-sandbox agent. Disabled by default (the run is
@@ -493,7 +493,7 @@ export interface LabExecutionDesktop {
   /** Raw hosted screen resolution [width, height] — an escape hatch that overrides `device`. */
   resolution?: [number, number];
   /**
-   * Browser family to launch for hosted desktop actor lanes. Absent/default preserves the
+   * Browser family to launch for hosted desktop participants. Absent/default preserves the
    * historical desktop opener behavior. A concrete value means "launch this browser or fail"
    * instead of silently accepting the template's default URL opener.
    */
@@ -516,13 +516,13 @@ export interface LabExecutionDesktop {
   codexAppServer?: boolean;
   /**
    * Mobile fidelity beyond viewport size (#221). With `mobileEmulation: true`, every hosted
-   * Chromium computer-use lane ON A MOBILE PRESET (mobile / small-mobile / narrow-mobile) gets
+   * Chromium computer-use participant ON A MOBILE PRESET (mobile / small-mobile / narrow-mobile) gets
    * CDP device emulation applied to its launch page before the participant arrives; desktop,
-   * tablet and wide lanes in the same run are untouched and carry no fidelity block. Applied: the lane's device preset width/height as the CSS viewport, the preset's
+   * tablet and wide participants in the same run are untouched and carry no fidelity block. Applied: the participant's device preset width/height as the CSS viewport, the preset's
    * device pixel ratio (or `deviceScaleFactor`), touch events (`touch`, default true) and a mobile
    * user agent (`userAgent`, default an iPhone Safari string). The bundle records what the page
    * then reported about itself under `desktopGeometry.fidelity`; a browser that cannot be
-   * emulated (Firefox) fails the lane closed instead of shipping a desktop run labelled mobile.
+   * emulated (Firefox) fails the participant closed instead of shipping a desktop run labelled mobile.
    * A held CDP session also applies the overrides to later page targets. Their first observed
    * viewport and touch read-back is recorded separately; missing or different values warn.
    */
@@ -562,21 +562,21 @@ export interface LabExecution {
   /** FORWARD-DECLARED. */
   completionTimeoutMs?: number;
   /**
-   * Bounds in-flight fan-out lanes on the computer-use route. Shared-world needs at least 2 and
+   * Bounds in-flight fan-out participants on the computer-use route. Shared-world needs at least 2 and
    * defaults to the participant count. Inert (warned) elsewhere.
    */
   concurrency?: number;
   desktop?: LabExecutionDesktop;
   /**
-   * Blast-radius budget for the computer-use lane. CONSUMED on the CUA route: `caps.maxUsd`, when
+   * Blast-radius budget for each computer-use participant. CONSUMED on the CUA route: `caps.maxUsd`, when
    * set, is a FAIL-CLOSED abort — the session stops the moment its running ESTIMATED spend crosses
    * it (the runaway-retry guard), and a cap on a model src/run/pricing.ts cannot price is REFUSED at
-   * preflight rather than run uncapped. It is a PER-LANE cap: enforced inside each lane's loop, so
-   * an N-lane fan-out can spend up to N × maxUsd before any lane aborts (the run warns with the
+   * preflight rather than run uncapped. It is a PER-PARTICIPANT cap: enforced inside each participant's loop,
+   * so an N-participant fan-out can spend up to N × maxUsd before any participant aborts (the run warns with the
    * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared STUDY budget (#299): one ledger
-   * across every lane, the knob a researcher actually reasons with. Absent = UNCAPPED (the
+   * across every participant, the knob a researcher actually reasons with. Absent = UNCAPPED (the
    * historical CUA behavior); maxUsd: 0 still permits a request before reported usage trips it. Inert
-   * (warned) on non-CUA routes. Reuses the same LabScenarioCaps shape as the terminal lane's
+   * (warned) on non-CUA routes. Reuses the same LabScenarioCaps shape as the terminal route's
    * `scenario.caps` (not a fork).
    */
   caps?: LabScenarioCaps;
@@ -619,12 +619,12 @@ export interface LabScenarioCaps {
   /**
    * STUDY-LEVEL model-spend budget (#299), the number a researcher actually reasons with: "this
    * study is N participants, roughly $X" — decided once, up front, where recruiting decisions are
-   * made. The computer-use route reads it from `execution.caps.maxTotalUsd` only: every lane's
+   * made. The computer-use route reads it from `execution.caps.maxTotalUsd` only: every participant's
    * running ESTIMATED model spend feeds one shared ledger, and the moment the run total crosses
-   * this, each lane stops at its next turn with an honest `budget_reached` (status `incomplete` —
+   * this, each participant stops at its next turn with an honest `budget_reached` (status `incomplete` —
    * the participant ran out of budget; never `gave_up`, because a study-level stop is not the
    * participant's doing). Estimated MODEL spend only — desktop-minutes ride the cost summary but
-   * not this ledger. Independent of the per-lane `maxUsd` backstop; either, both, or neither may
+   * not this ledger. Independent of the per-participant `maxUsd` backstop; either, both, or neither may
    * be set. A positive `scenario.caps.maxTotalUsd` on a computer-use lab is a parse error; on the
    * terminal route it is inert (warned), since the single agent's maxUsd already caps the run.
    */
@@ -784,14 +784,14 @@ interface LabCommsCaptureEmail {
    *  prepended to the inbox link-origin rewrite so the persona's clicked link resolves to a reachable
    *  host. Omit when the app emits loopback links (the default derivation covers those). */
   linkOrigin?: string;
-  /** Each lane's inbox address: the actor is TOLD to sign up with it (the injected inbox
+  /** Each participant's inbox address: the actor is TOLD to sign up with it (the injected inbox
    *  instruction carries it) and the teardown drain matches captured mail against it. Omit the
-   *  whole list and the parser fills one deterministic address per lane (`<laneId>@example.test`)
-   *  so every seat can do email out of the box (#351). When declared: a `lane` naming a lane that
+   *  whole list and the parser fills one deterministic address per participant (`<laneId>@example.test`)
+   *  so every seat can do email out of the box (#351). When declared: a `lane` naming a participant that
    *  does not exist is a hard parse error (a mismatch silently disables the funnel for that seat),
-   *  zero covered lanes is a hard error, and partial coverage warns with the uncovered lanes. An
+   *  zero covered participants is a hard error, and partial coverage warns with the uncovered ones. An
    *  entry without `address` is legal but inert for the funnel — it is NOT matched by the drain
-   *  and its lane gets no inbox instruction; captured mail to an undeclared address is warned,
+   *  and its participant gets no inbox instruction; captured mail to an undeclared address is warned,
    *  never silently dropped. */
   recipients?: LabCommsRecipient[];
   /**
@@ -817,7 +817,7 @@ export interface LabCommsExternal {
 
 export interface LabCommsRecipient {
   lane: string;
-  /** The literal address the app sends to — what the evidence drain matches. Omit to reserve the lane
+  /** The literal address the app sends to — what the evidence drain matches. Omit to reserve the participant
    *  for the persona surface's default address (not drain-matched). */
   address?: string;
 }

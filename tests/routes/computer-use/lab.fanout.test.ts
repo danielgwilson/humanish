@@ -582,10 +582,9 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       aggregateSubject: subject,
       descriptor: getActor("openai-computer-use"),
       appUrl: "http://127.0.0.1:3000/",
-      createdAt: "2026-01-01T00:00:00.000Z",
+      run: { runId: "missing-outcomes-proof", mode: "live", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: false,
       plan: planOf(config),
-      runId: "missing-outcomes-proof",
       source,
       participantPlan,
     });
@@ -653,10 +652,13 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       aggregateSubject: subject,
       descriptor: getActor("openai-computer-use"),
       appUrl: "http://127.0.0.1:3000/",
-      createdAt: "2026-01-01T00:00:00.000Z",
+      run: {
+        runId: "browser-provenance-proof",
+        mode: "live",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
       dryRun: false,
       plan: planOf(config),
-      runId: "browser-provenance-proof",
       source: {
         packageName: "humanish",
         humanishSource: "present",

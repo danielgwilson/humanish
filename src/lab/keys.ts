@@ -119,7 +119,7 @@ const ACTOR = {
   type: true,
   count: true,
   lanes: PARTICIPANT_ENTRY,
-  // Roster groups are lanes with a count; the parser expands them into lanes.
+  // Roster groups are participants with a count; the parser expands them into `lanes[]`.
   roster: { ...PARTICIPANT_ENTRY, count: true } satisfies Keys<LabActorRosterGroup>,
   persona: true,
   mission: true,

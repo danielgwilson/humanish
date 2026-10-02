@@ -78,11 +78,10 @@ export async function runExternalPublicPlane(
   // provisioned path.
   const snapshotArgs: Omit<ConcurrentBundleArgs, "judgment"> = {
     plan,
+    run: ctx.run,
     descriptor: ctx.descriptor,
-    createdAt: ctx.createdAt,
     dryRun: false,
     inProgress: true,
-    runId: ctx.runId,
     source: ctx.source,
     actorSpecs,
     actorResults: [],

@@ -96,6 +96,8 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     mode: options.dryRun ? "dry-run" : "live",
     lab: options.lab,
     renderReview: renderReviewMarkdown,
+    // The run starts at the time its id and source were stamped with.
+    now: () => Date.parse(createdAt),
     ...(options.observer === undefined ? {} : { observer: { open: options.observer.open } }),
   });
   if (!started.ok) return refused(cwd, warnings, started);
@@ -119,16 +121,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
 
   const judgment = judgePreview();
   const bundle: RunBundle = {
-    ...bundleHead({
-      runId,
-      mode: "dry-run",
-      participants,
-      createdAt,
-      cwd,
-      artifactRoot,
-      ...(options.lab === undefined ? {} : { lab: options.lab }),
-      source,
-    }),
+    ...bundleHead(run, { participants, cwd, artifactRoot, source }),
     persona: inputs.persona,
     scenario: inputs.scenario,
     lifecycle: [

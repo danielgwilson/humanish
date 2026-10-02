@@ -141,7 +141,13 @@ function formatSharedWorldActorOutcomes(
 
 /** The run's first two events: its creation and the shared plane's provenance. */
 function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] {
-  const { plan, descriptor, createdAt, dryRun, actorSpecs } = args;
+  const {
+    plan,
+    descriptor,
+    run: { createdAt },
+    dryRun,
+    actorSpecs,
+  } = args;
   const events: RunEvent[] = [];
   events.push({
     id: "event-000-created",
@@ -331,7 +337,14 @@ function concurrencyReview(
   events: RunEvent[],
   nextEventId: (suffix: string) => string,
 ): ReviewSummary {
-  const { plan, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
+  const {
+    plan,
+    descriptor,
+    run: { createdAt },
+    dryRun,
+    actorSpecs,
+    actorResults,
+  } = args;
   const { sharedWorld, windows, stateSeries, outcomes } = evidence;
   const overlaps = args.judgment.world.overlap;
   const deltas = (stateSeries ?? []).filter(
@@ -391,7 +404,14 @@ function concurrencyReview(
 
 /** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
 export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): RunBundle {
-  const { plan, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
+  const {
+    plan,
+    descriptor,
+    run: { createdAt },
+    dryRun,
+    actorSpecs,
+    actorResults,
+  } = args;
   const inProgress = args.inProgress === true;
   const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
   const simulations: RunSimulation[] = [];
@@ -428,13 +448,9 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
 
   const cost = concurrentCostSummary(args, inProgress);
   return {
-    ...bundleHead({
+    ...bundleHead(args.run, {
       ...receivingPublication(plan.residual, args.dryRun),
-      runId: args.runId,
-      mode: dryRun ? "dry-run" : "live",
       participants: actorSpecs.length,
-      createdAt,
-      ...(args.lab === undefined ? {} : { lab: args.lab }),
       source: args.source,
     }),
     persona: {

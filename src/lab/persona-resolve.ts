@@ -13,7 +13,7 @@ import { realpath } from "node:fs/promises";
 import { rosterOf } from "./parse/actors.js";
 import type { LabActor } from "./types.js";
 
-/** Persona ids are file-name segments, never paths: the same grammar the terminal lane enforces. */
+/** Persona ids are file-name segments, never paths: the same grammar the terminal route enforces. */
 const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 /** Title-case an id for the fallback display name (`skeptical-power-user` -> `Skeptical Power User`). */
@@ -81,7 +81,7 @@ export async function resolveCommittedPersona(
 }
 
 /**
- * Resolve every distinct persona id a run will use, once, before lane specs are built. Returning a
+ * Resolve every distinct persona id a run will use, once, before participant specs are built. Returning a
  * map keeps the plan builder PURE (it is exported npm surface and asserted pure by tests): the
  * async file reads happen here, and the composer only does a lookup.
  */
@@ -102,8 +102,8 @@ export async function resolveCommittedPersonas(
 }
 
 /**
- * Every persona id a lab config could put on a browser lane: the per-lane roster when one is
- * declared, otherwise the actor-level persona that every fan-out lane inherits.
+ * Every persona id a lab config could put on a browser participant: the roster when one is
+ * declared, otherwise the actor-level persona that every fan-out participant inherits.
  */
 export function labPersonaIds(config: {
   actors?: readonly Pick<LabActor, "persona" | "lanes">[];

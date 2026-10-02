@@ -8,16 +8,13 @@ import {
 
 describe("bundleHead", () => {
   const source = { capturedAt: "2026-10-01T00:00:00.000Z" } as never;
+  const createdAt = "2026-10-01T00:00:00.000Z";
 
   it("starts every bundle with the same fields in the saved order, artifactRoot before lab", () => {
-    const head = bundleHead({
-      runId: "run-1",
-      mode: "live",
-      participants: 2,
-      createdAt: "2026-10-01T00:00:00.000Z",
-      lab: { id: "lab-1" } as never,
-      source,
-    });
+    const head = bundleHead(
+      { runId: "run-1", mode: "live", createdAt, lab: { id: "lab-1" } as never },
+      { participants: 2, source },
+    );
     expect(Object.keys(head)).toEqual([
       "schema",
       "runId",
@@ -38,33 +35,24 @@ describe("bundleHead", () => {
   });
 
   it("omits lab when the run has none and keeps a caller's cwd and artifact root", () => {
-    const head = bundleHead({
-      runId: "run-1",
-      mode: "dry-run",
-      participants: 1,
-      createdAt: "2026-10-01T00:00:00.000Z",
-      cwd: "/srv/project",
-      artifactRoot: ".humanish/runs/dryrun-1",
-      source,
-    });
+    const head = bundleHead(
+      { runId: "run-1", mode: "dry-run", createdAt },
+      { participants: 1, cwd: "/srv/project", artifactRoot: ".humanish/runs/dryrun-1", source },
+    );
     expect("lab" in head).toBe(false);
     expect(head).toMatchObject({ cwd: "/srv/project", artifactRoot: ".humanish/runs/dryrun-1" });
   });
 
   it("saves publication restrictions right after the schema, and omits them when absent", () => {
-    const head = bundleHead({
-      publication: { restrictions: ["real-communications"] },
-      runId: "run-1",
-      mode: "live",
-      participants: 1,
-      createdAt: "2026-10-01T00:00:00.000Z",
-      source,
-    });
+    const head = bundleHead(
+      { runId: "run-1", mode: "live", createdAt },
+      { publication: { restrictions: ["real-communications"] }, participants: 1, source },
+    );
     expect(Object.keys(head).slice(0, 3)).toEqual(["schema", "publication", "runId"]);
     expect(head.publication).toEqual({ restrictions: ["real-communications"] });
     expect(
       "publication" in
-        bundleHead({ runId: "run-1", mode: "live", participants: 1, createdAt: "x", source }),
+        bundleHead({ runId: "run-1", mode: "live", createdAt: "x" }, { participants: 1, source }),
     ).toBe(false);
   });
 

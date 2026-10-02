@@ -130,8 +130,8 @@ function sharedWorldSimulation(
         : inProgress
           ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
           : `Contract persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) for ${args.descriptor.id} against the shared plane at ${ctx.appUrl}.`,
-    startedAt: args.createdAt,
-    updatedAt: args.createdAt,
+    startedAt: args.run.createdAt,
+    updatedAt: args.run.createdAt,
   });
 }
 
@@ -151,7 +151,7 @@ function sharedWorldStream(
     label: `Concurrent persona ${spec.planned.id}${taxonomy} — ${args.plan.labId}`,
     status: view.status,
     transport: "snapshot",
-    updatedAt: args.createdAt,
+    updatedAt: args.run.createdAt,
     embed: lastScreenshot
       ? {
           kind: "screenshot",
@@ -212,7 +212,7 @@ function sharedWorldEvents(
   view: ParticipantView,
 ): RunEvent[] {
   const { args, inProgress, nextEventId } = ctx;
-  const createdAt = args.createdAt;
+  const createdAt = args.run.createdAt;
   const { outcome, session } = view;
   const events: RunEvent[] = [];
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>

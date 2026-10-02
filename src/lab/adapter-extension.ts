@@ -14,7 +14,7 @@ import { isRecord } from "../run/type-guards.js";
 type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 
 /**
- * Product-agnostic scoring context for browser/computer-use lanes. Product-specific
+ * Product-agnostic scoring context for browser/computer-use routes. Product-specific
  * evidence/rubrics stay in the adopter's repo; core provides the assembled bundle
  * plus stable run identifiers and never learns product nouns.
  */

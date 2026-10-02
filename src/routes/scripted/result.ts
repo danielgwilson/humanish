@@ -111,7 +111,7 @@ export async function finishScriptedRun(
   const { surfaces, sessionResults, sessionError, warnings, clone, redactRepoLabel } = inputs;
   const { subjectEnvNames, scriptedSubject } = inputs;
   const { actor, dryRun } = plan;
-  const { runId, createdAt, paths: runPaths } = run;
+  const { runId, paths: runPaths } = run;
   const subjectCommit = scriptedSubject?.commit;
   const subjectSandboxId = scriptedSubject?.sandboxId;
   const subjectKilled = scriptedSubject?.killed ?? false;
@@ -148,16 +148,14 @@ export async function finishScriptedRun(
     surfaces: sessionResults.map(scriptedSurfaceFacts),
   });
   const bundle = buildScriptedLabBundle({
-    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    run,
     actorId: actor,
     appUrl: evidenceAppUrl,
-    createdAt,
     dryRun,
     journey,
     labId: plan.labId,
     ...(plan.title ? { labTitle: plan.title } : {}),
     persona,
-    runId,
     scenarioSource: scenario.source,
     scenarioSourceDigest: scenario.sourceDigest,
     screenshotsBySurface,

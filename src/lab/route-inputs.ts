@@ -23,7 +23,7 @@ export function computerUseInput(
   return {
     ...analysisOf(options),
     cwd: options.cwd,
-    // CLI --count overrides the homogeneous fan-out lane count (a declared roster's length wins).
+    // CLI --count overrides the homogeneous fan-out participant count (a declared roster's length wins).
     ...(options.count === undefined ? {} : { countOverride: options.count }),
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),

@@ -28,9 +28,9 @@ import { rosterOf } from "./parse/actors.js";
 export const LAB_SUMMARY_SCHEMA = "humanish.lab-summary.v1";
 
 export interface LabCaps {
-  /** Per-lane blast-radius budget. */
+  /** Per-participant blast-radius budget. */
   laneUsd?: number;
-  /** Shared study budget across every lane. */
+  /** Shared study budget across every participant. */
   studyUsd?: number;
 }
 
@@ -55,8 +55,8 @@ export interface LabSummary {
   /** The model that will actually run, override or default. */
   model?: string;
   /**
-   * The reasoning effort that will actually run, override or default — and "per-lane" when the
-   * roster declares more than one, because a single value would be a lie about half the lanes.
+   * The reasoning effort that will actually run, override or default — and `"per-lane"` when the
+   * roster declares more than one, because a single value would be a lie about half the participants.
    *
    * Shown because it was a silent constant: unreachable from a lab, so every run took the provider
    * default. A study variable you cannot see is one nobody chose (#497).
@@ -77,7 +77,7 @@ export interface LabSummary {
 }
 
 /**
- * The effort every lane will run at, or "per-lane" when they differ. A lane that declares nothing
+ * The effort every participant will run at, or `"per-lane"` when they differ. A participant that declares nothing
  * inherits the actor's, and an actor that declares nothing gets the provider default — which is
  * reported as the resolved value, exactly as `model` reports its default rather than hiding it.
  */
@@ -116,7 +116,7 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
   const count = actor.count ?? rosterOf(actor)?.length ?? personas.length ?? 1;
   const unique = [...new Set(personas)];
   if (unique.length === 0) return `${count} participant${count === 1 ? "" : "s"}`;
-  // Several lanes of ONE persona reads as "3 × skeptical-power-user"; genuinely different people
+  // Several participants of ONE persona reads as "3 × skeptical-power-user"; genuinely different people
   // are named, because which personas are in a study is the study's design.
   return unique.length === 1 ? `${count} × ${unique[0]}` : unique.join(" · ");
 }
