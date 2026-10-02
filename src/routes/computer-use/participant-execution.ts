@@ -29,7 +29,7 @@ import type {
   ParticipantRunOutcome,
 } from "./types.js";
 
-/** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
+/** Build a participant's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
  *  at N>1). */
 export function makeParticipantWriteScreenshot(
@@ -56,7 +56,7 @@ export function makeParticipantWriteScreenshot(
   };
 }
 
-/** A blocked lane outcome (pipeline gate / fail-fast skipped it before it ran). */
+/** A blocked participant outcome (pipeline gate / fail-fast skipped it before it ran). */
 function skippedOutcome(spec: DesktopParticipantRun, reason: string): ParticipantRunOutcome {
   return {
     spec,
@@ -104,7 +104,7 @@ export async function runCuaParticipant(
     const ready = await desktop.openSession();
     model = await startParticipantModel(spec, deps, ready.executor);
 
-    // World is ready: release the pipeline gate so the remaining lanes may start.
+    // World is ready: release the pipeline gate so the remaining participants may start.
     provisioned = true;
     signal(true);
 
@@ -146,8 +146,8 @@ export async function runCuaParticipant(
     warnings,
   );
 
-  // A provider-cleanup or provider-policy failure still trips fail-fast and counts in the lane
-  // summary's harness errors.
+  // A provider-cleanup or provider-policy failure still trips fail-fast and counts in the
+  // participant summary's harness errors.
   const harnessError =
     sessionError !== undefined ||
     providerCleanupError !== undefined ||
@@ -173,12 +173,12 @@ export async function runCuaParticipant(
 }
 
 /**
- * Run N>1 E2B lanes with bounded concurrency, a pipeline gate (lane 1 provisions before the rest
- * start), and session fail-fast on HARNESS errors only (queued lanes become `blocked` with a
- * pinned reason + a fail-fast event; mission verdicts never trip it). Each lane tears down ITS
- * OWN sandbox by id; nothing here ever enumerates.
+ * Run N>1 E2B participants with bounded concurrency, a pipeline gate (the first provisions
+ * before the rest start), and session fail-fast on HARNESS errors only (queued participants
+ * become `blocked` with a pinned reason + a fail-fast event; mission verdicts never trip it).
+ * Each participant tears down ITS OWN sandbox by id; nothing here ever enumerates.
  *
- * Exported for the #342 total-runner tests: the injectable runner lets a test make one lane
+ * Exported for the #342 total-runner tests: the injectable runner lets a test make one participant
  * THROW (the exact class the guard exists for) without a live sandbox. Production always uses
  * the default.
  */
@@ -195,8 +195,9 @@ export async function runCuaParticipants(
     resolveGate = resolve;
     rejectGate = () => reject(new Error("gate"));
   });
-  // The gate is rejected on lane-0 provisioning failure; swallow the unhandled rejection if no
-  // later lane ever awaits it (concurrency could let lane 0 finish alone).
+  // The gate is rejected on the first participant's provisioning failure; swallow the unhandled
+  // rejection if no later participant ever awaits it (concurrency could let the first finish
+  // alone).
   gate.catch(() => undefined);
 
   const outcomes = await mapWithConcurrency(
@@ -216,8 +217,8 @@ export async function runCuaParticipants(
       if (failFast.tripped) {
         return skippedOutcome(spec, `skipped: ${failFast.reason}`);
       }
-      // The lane runner is TOTAL (#342): every exit path returns a recorded outcome. Without this
-      // guard, one lane's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
+      // The participant runner is TOTAL (#342): every exit path returns a recorded outcome. Without this
+      // guard, one participant's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
       // already torn down) rejected the whole map while sibling workers kept launching sandboxes
       // nobody would ever record — the run spent money and then reported nothing.
       let outcome: ParticipantRunOutcome;
@@ -237,7 +238,7 @@ export async function runCuaParticipants(
             : {}),
         });
       } catch (error) {
-        // Lane 0 may have thrown before signaling the provisioning gate — release the followers as
+        // The first participant may have thrown before signaling the provisioning gate — release the followers as
         // blocked rather than leaving them awaiting a gate that will never settle.
         if (index === 0) rejectGate?.();
         const detail = redactText(toErrorMessage(error));
@@ -267,7 +268,7 @@ export async function runCuaParticipants(
   return { outcomes, ...(failFast.tripped ? { failFastReason: failFast.reason } : {}) };
 }
 
-/** Project one lane outcome (or a dry-run contract spec) into the public CuaParticipantResult. */
+/** Project one participant outcome (or a dry-run contract spec) into the public CuaParticipantResult. */
 export function toParticipantResult(
   spec: DesktopParticipantRun,
   outcome: ParticipantRunOutcome | undefined,
@@ -374,8 +375,8 @@ export function toParticipantResult(
 }
 
 /**
- * Run every lane of a live run. The in-process route drives its single lane in this process; one
- * hosted lane runs alone; a fan-out runs at the plan's concurrency and may stop early.
+ * Run every participant of a live run. The in-process route drives its single participant in this
+ * process; one hosted participant runs alone; a fan-out runs at the plan's concurrency and may stop early.
  */
 export async function runAllCuaParticipants(
   runs: readonly DesktopParticipantRun[],

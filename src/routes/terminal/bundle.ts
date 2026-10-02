@@ -198,8 +198,8 @@ export function buildLiveTerminalProductBundle(args: {
         : args.trace.status === "timed_out"
           ? "timed_out"
           : "failed";
-  const messageItem = args.trace.items.find((item) => item.kind === "message");
-  const tail = (messageItem?.text ?? args.trace.reason).slice(0, 2000);
+  const commandItem = args.trace.items.find((item) => item.kind === "command");
+  const tail = (commandItem?.command?.outputTail || args.trace.reason).slice(0, 2000);
 
   // transport "snapshot": the persisted tail is a redacted snapshot of the captured exec output,
   // NOT an interactive PTY (stdin disabled). The actor trace seam carries the structured evidence.

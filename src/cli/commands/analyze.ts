@@ -214,6 +214,8 @@ async function handleAnalyze(
         );
       if (value.executionReceiptPath)
         lines.push(`Execution receipt: ${value.executionReceiptPath}`);
+      if (value.rejectedOutputPath)
+        lines.push(`Rejected output, kept locally for diagnosis: ${value.rejectedOutputPath}`);
       if (value.usage) {
         lines.push(
           `Recorded attempt usage${value.usage.usageComplete ? "" : " (incomplete)"}: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`,

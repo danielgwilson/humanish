@@ -61,8 +61,20 @@ The Unreleased section holds the full notes for the next version until it is tag
   `routesToProvisionedSharedWorld` adds `subject.source` `clone` or `local-tree`, and
   `routesToExternalPublicSharedWorld` adds `subject.source` `app-url`. `selectLabBackend`
   returned the old names, which map to routes as above.
+- The `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` value of `TerminalProductLabResult.error.code`.
+  No humanish release since 0.106.0 produces it; the terminal agent runs only inside the terminal
+  route. Migration: delete any branch that matches it.
 
 ### Changed
+
+- An analysis response that fails validation is kept locally for diagnosis (#1403) at
+  `.humanish/analysis-diagnostics/<run>/<analysis>.json`. Known secret values are removed from every
+  string, key and scalar, including their percent-encoded, escaped and base64 forms, then shape
+  redaction runs. Each write keeps only the newest 20 records across runs. `humanish analyze` and a
+  lab run's automatic analysis print the path, and the result carries it as `rejectedOutputPath`.
+  The file is outside the run directory, so export, verify and the Observer never read it. The run's
+  analysis record still keeps only the error code. Before, a failure such as
+  `analysis_validation_failed_quote_invalid` left nothing that showed which quote failed.
 
 - `humanish doctor --lab` checks a hosted Codex participant (a local-agent lab on an E2B desktop) by
   starting it as a run would, up to an ephemeral thread and without a turn (#1380): the release
@@ -121,6 +133,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   per-participant loopback entry" in place of "the per-role loopback entry" (#1397).
 
 ### Fixes
+
+- Automatic analysis of a terminal run quotes the agent's own words (#1402). The terminal trace now
+  has one `message` item per Codex `agent_message` and one `reasoning` item per `reasoning` item.
+  They are read from the raw exec JSON stream in memory, without the agent's verdict marker lines,
+  and the decoded text is scrubbed and redacted. The trace keeps the last 200 such items within 128
+  KiB, with a `notice` item when it leaves older ones out. Before, its only `message` item was the
+  last 2000 characters of the stored stream: JSON-escaped command output, the `HUMANISH_ACTOR_NONCE`
+  line and token usage. Analysis could quote that text, and a quote that decoded a `\n` escape
+  failed with `analysis_validation_failed_quote_invalid`. The stream tail stays in the `command`
+  item's `outputTail`, which analysis does not quote. `counts.messages` now counts the stream's
+  `agent_message` items, where it was 1 for any output, and `counts.runtimeParticipantItems` is read
+  from the raw stream too. Bundles written before this change keep their old `message-001` item, and
+  re-analysis still quotes it.
 
 - `humanish serve --safe` says which runs it left out and why (#1373). After `runs:` it prints a
   `hidden:` count and one line per grade and reasons, such as `3 runs local_only (RAW_SCREENSHOTS)`.

@@ -1,6 +1,6 @@
-// The computer-use run's setup: resolve the project and route, plan the lanes, make the live
-// checks that need no sandbox, pack a local tree, then start the run and build the lane deps and
-// bundle base that the lanes and the finish share.
+// The computer-use run's setup: resolve the project and route, plan the participants, make the
+// live checks that need no sandbox, pack a local tree, then start the run and build the
+// participant deps and bundle base that the participants and the finish share.
 
 import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
@@ -60,8 +60,8 @@ async function bindProject(cwd: string) {
 }
 
 /**
- * The envelope of a refusal the plan left for after the cwd checks. The lane cap and in-process
- * fan-out refusals come after the committed personas are read, so a persona-file error still wins.
+ * The envelope of a refusal the plan left for after the cwd checks. The participant cap and
+ * in-process fan-out refusals come after the committed personas are read, so a persona-file error still wins.
  */
 export async function refuseCuaLab(
   options: RunCuaActorLabOptions,
@@ -209,7 +209,7 @@ export async function admitCuaRun(
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
   // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
-  // the lanes, and writes the same digest-only evidence. Declaring `external` previously did
+  // the participants, and writes the same digest-only evidence. Declaring `external` previously did
   // nothing on this route (and, per #387, on every other) while its docs said otherwise.
   const comms = plan.residual.comms;
   const externalCommsConfig =
@@ -226,7 +226,7 @@ export async function admitCuaRun(
   const participantCount = participantRuns.length;
 
   // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). onEvent gets it for
-  // every N; the stderr table prints for fan-out (N>1) so single-lane runs stay as quiet as they
+  // every N; the stderr table prints for fan-out (N>1) so single-participant runs stay as quiet as they
   // always were.
   if (participantCount > 1) {
     emitPreflightPlan(participantPlan, plan.labId);
@@ -266,8 +266,8 @@ export async function admitCuaRun(
   }
 
   // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
-  // fan-out lane below uploads this SAME archive, so one archiveSha256 describes every lane's
-  // digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
+  // fan-out participant below uploads this SAME archive, so one archiveSha256 describes every
+  // participant's digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
   // archiveSha256). A packing failure fails the run closed here, before any sandbox is
   // created and before the run directory exists.
   let localTreeArchive: LocalTreeArchive | undefined;
@@ -352,7 +352,7 @@ export async function startCuaRun(
   });
 
   // Live-trace flush seam (#441): runLabParticipants fills it when a live run has an in-progress bundle
-  // to grow; lanes call it through deps.onTrace. It exists before deps so deps can reference it as
+  // to grow; participants call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};
   const deps = cuaParticipantDeps(plan, input, admitted, {
@@ -427,7 +427,7 @@ export async function startCuaRun(
   };
 }
 
-/** The lane deps every lane reads: the route, keys, timeouts, scrubber, budget and seams. */
+/** The participant deps every participant reads: the route, keys, timeouts, scrubber, budget and seams. */
 function cuaParticipantDeps(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
@@ -471,7 +471,7 @@ function cuaParticipantDeps(
     redactScreenshots,
     scrubKnownValues,
     runSession,
-    // The study-level ledger exists once per RUN, shared by every lane (#299). Dry runs never
+    // The study-level ledger exists once per RUN, shared by every participant (#299). Dry runs never
     // spend, so they carry none.
     ...(dryRun || plan.caps.maxTotalUsd === undefined
       ? {}

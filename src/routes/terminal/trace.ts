@@ -10,7 +10,7 @@ import type {
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "../../actors/contract.js";
 import type { LabRuntimeAuth } from "../../lab/types.js";
 import { redactedTail } from "../../evidence/redaction.js";
-import { normalizeLocalActorTranscript } from "../../run/terminal-contract.js";
+import type { TerminalParticipantText } from "./participant-text.js";
 import { type CommandLogRecord, TAIL_CHARS, type TerminalEventRecord } from "./types.js";
 
 /**
@@ -90,6 +90,8 @@ export function buildTerminalActorTrace(args: {
   /** Runtime-turn aggregate usage parsed from the exec stream (#531). Absent when the stream
    *  carried no usage record, which stays distinct from a measured zero. */
   tokenUsage?: ActorTokenUsage;
+  /** The agent's own text and activity, read from the raw stdout as it arrived. */
+  participant: TerminalParticipantText;
 }): ActorTrace {
   const items: ActorTraceItem[] = [
     ...args.commandLog.map((entry, index): ActorTraceItem => ({
@@ -103,19 +105,7 @@ export function buildTerminalActorTrace(args: {
         outputTail: args.transcriptTail,
       },
     })),
-    // One message item carrying the (already-redacted) transcript tail so the trace shows the agent
-    // narrated SOMETHING — the engagement signal the no-engagement guard reads.
-    ...(args.terminalEvents.length > 0
-      ? [
-          {
-            id: "message-001",
-            kind: "message",
-            lifecycle: "completed",
-            title: "agent terminal output",
-            text: args.transcriptTail,
-          } as ActorTraceItem,
-        ]
-      : []),
+    ...args.participant.items,
   ];
   return {
     schema: ACTOR_TRACE_SCHEMA,
@@ -143,21 +133,13 @@ export function buildTerminalActorTrace(args: {
     ...(args.tokenUsage ? { tokenUsage: args.tokenUsage } : {}),
     counts: {
       commands: args.commandLog.length,
-      // Unlike the legacy transcript message/actions counts, this establishes
-      // actual runtime item activity. Stderr and bootstrap commands never count.
-      // Read the full retained stdout: its early items may no longer be in the tail.
-      runtimeParticipantItems: countTerminalParticipantItems(
-        normalizeLocalActorTranscript(
-          args.terminalEvents
-            .filter((event) => event.stream === "stdout")
-            .map((event) => event.chunk)
-            .join(""),
-        ),
-      ),
-      // actions == executed commands; messages == 1 when the agent produced any output. The
-      // no-engagement guard (verify/actor.ts) reads these: a real run bumps them, a no-op is caught.
+      // Unlike the actions count, this establishes actual runtime item activity. Stderr and
+      // bootstrap commands never count.
+      runtimeParticipantItems: args.participant.participantItems,
+      // actions == executed commands, so the launcher command alone keeps the no-engagement guard
+      // (verify/actor.ts) satisfied; messages == the agent_message items in the stream.
       actions: args.commandLog.length,
-      messages: args.terminalEvents.length > 0 ? 1 : 0,
+      messages: args.participant.messages,
       terminalEvents: args.terminalEvents.length,
     },
     items,
@@ -166,48 +148,4 @@ export function buildTerminalActorTrace(args: {
         ? { ...TERMINAL_AGENT_CAPABILITIES, keyPlacement: "external" }
         : TERMINAL_AGENT_CAPABILITIES,
   };
-}
-
-const itemEvents = new Set(["item.started", "item.updated", "item.completed"]);
-const nonempty = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().length > 0;
-const object = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-/** Count distinct participant items in the retained Codex JSON stdout stream.
- * The caller supplies stdout only, after transport reconciliation and redaction.
- * Lifecycle, usage, launcher diagnostics, and nested command output are not activity.
- * Zero means no recognized item was retained, not that the participant succeeded.
- */
-export function countTerminalParticipantItems(stdout: string): number {
-  const ids = new Set<string>();
-  for (const line of stdout.split("\n")) {
-    let event: unknown;
-    try {
-      event = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (
-      !object(event) ||
-      typeof event.type !== "string" ||
-      !itemEvents.has(event.type) ||
-      !object(event.item)
-    )
-      continue;
-    const item = event.item;
-    if (!nonempty(item.id)) continue;
-    const active =
-      ((item.type === "agent_message" || item.type === "reasoning") && nonempty(item.text)) ||
-      (item.type === "command_execution" && nonempty(item.command)) ||
-      (item.type === "web_search" &&
-        (nonempty(item.query) || (object(item.action) && nonempty(item.action.type)))) ||
-      (item.type === "file_change" &&
-        Array.isArray(item.changes) &&
-        item.changes.some(
-          (change) => object(change) && nonempty(change.path) && nonempty(change.kind),
-        ));
-    if (active) ids.add(item.id);
-  }
-  return ids.size;
 }

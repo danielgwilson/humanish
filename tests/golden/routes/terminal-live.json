@@ -110,7 +110,7 @@
       "commands": 1,
       "runtimeParticipantItems": 0,
       "actions": 1,
-      "messages": 1,
+      "messages": 0,
       "terminalEvents": 1
     },
     "items": [
@@ -124,13 +124,6 @@
           "exitCode": 0,
           "outputTail": "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=[nonce]"
         }
-      },
-      {
-        "id": "message-001",
-        "kind": "message",
-        "lifecycle": "completed",
-        "title": "agent terminal output",
-        "text": "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=[nonce]"
       }
     ],
     "capabilities": {
@@ -509,7 +502,7 @@
             "commands": 1,
             "runtimeParticipantItems": 0,
             "actions": 1,
-            "messages": 1,
+            "messages": 0,
             "terminalEvents": 1
           },
           "items": [
@@ -523,13 +516,6 @@
                 "exitCode": 0,
                 "outputTail": "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=[nonce]"
               }
-            },
-            {
-              "id": "message-001",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "agent terminal output",
-              "text": "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=[nonce]"
             }
           ],
           "capabilities": {
