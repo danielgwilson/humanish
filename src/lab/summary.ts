@@ -25,7 +25,7 @@ import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.
 import { receivingRequiredKey } from "../comms/setup.js";
 import { rosterOf } from "./parse/actors.js";
 
-export const LAB_SUMMARY_SCHEMA = "humanish.lab-summary.v1";
+export const STUDY_SUMMARY_SCHEMA = "humanish.study-summary.v1";
 
 export interface LabCaps {
   /** Per-participant blast-radius budget. */
@@ -44,8 +44,9 @@ export interface LabSummary {
     model: string;
     maxCostUsd: number | null;
   };
-  schema: typeof LAB_SUMMARY_SCHEMA;
-  labId: string;
+  schema: typeof STUDY_SUMMARY_SCHEMA;
+  /** The study's `id`. */
+  studyId: string;
   title?: string;
   description?: string;
   /** "clone drawdb-io/drawdb", "app-url http://127.0.0.1:3000/", "this-repo". */
@@ -229,13 +230,13 @@ export async function readLabSummary(
           },
         }
       : {}),
-    schema: LAB_SUMMARY_SCHEMA,
+    schema: STUDY_SUMMARY_SCHEMA,
     ...(inspected.config.comms?.email?.kind === "real"
       ? {
           communications: `Real email · ${inspected.config.comms.email.connection} · fresh inbox per participant · hosted processing · local review only`,
         }
       : {}),
-    labId: String(config.id ?? lab),
+    studyId: String(config.id ?? lab),
     ...(typeof config.title === "string" ? { title: config.title } : {}),
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),
     ...(subject === undefined ? {} : { subject }),

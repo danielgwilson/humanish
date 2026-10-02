@@ -4,7 +4,7 @@
 {
   "ok": false,
   "cwd": "[cwd]",
-  "lab": "nope-lab",
+  "study": "nope-lab",
   "error": {
     "code": "HUMANISH_STUDY_NOT_FOUND",
     "message": "Lab not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path."

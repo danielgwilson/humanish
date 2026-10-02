@@ -2,7 +2,9 @@
   "exitCode": 0,
   "shape": {
     "cwd": "string",
-    "labs": [
+    "ok": "boolean",
+    "schema": "string",
+    "studies": [
       {
         "description": "string",
         "id": "string",
@@ -12,8 +14,6 @@
         "title": "string"
       }
     ],
-    "ok": "boolean",
-    "schema": "string",
     "warnings": []
   },
   "pinned": {

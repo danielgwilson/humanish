@@ -118,10 +118,10 @@ async function handleLabPreflight(
   const timeoutMs = parsePositiveInteger(options.timeoutMs);
   if (timeoutMs === null) {
     const result: LabPreflightResult = {
-      schema: "humanish.lab-preflight-result.v1",
+      schema: "humanish.study-check.v1",
       ok: false,
       cwd: resolve(options.cwd),
-      lab: labName,
+      study: labName,
       reachability: options.reachability,
       checks: [{ name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." }],
       targets: [],
@@ -149,7 +149,7 @@ async function handleLabPreflight(
 }
 
 function formatLabListHuman(result: LabListResult): string {
-  if (result.labs.length === 0) {
+  if (result.studies.length === 0) {
     return (
       [
         `No humanish labs found in ${result.cwd}`,
@@ -162,7 +162,7 @@ function formatLabListHuman(result: LabListResult): string {
   return (
     [
       "humanish labs",
-      ...result.labs.map(
+      ...result.studies.map(
         (lab) =>
           `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}${lab.error ? `\n  error: ${lab.error}` : ""}`,
       ),
@@ -203,7 +203,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): HumanOutput {
   const stdout =
     [
       `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
-      `lab: ${result.labId ?? result.lab}`,
+      `lab: ${result.studyId ?? result.study}`,
       ...(result.route ? [`route: ${result.route}`] : []),
       `reachability: ${result.reachability}`,
       `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
