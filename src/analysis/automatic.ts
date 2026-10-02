@@ -18,6 +18,7 @@ import {
   requestAutomaticStudyAnalysisCancellationPrepared,
   type AutomaticAnalysisView,
   type AutomaticAnalysisOutcome,
+  type AutomaticAnalysisRefusal,
   type AutomaticAnalysisCancellation,
   type AutomaticAnalysisJob,
 } from "./job.js";
@@ -34,6 +35,12 @@ export type {
 export type AutomaticAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch"> & {
   /** A missing default key records a skip before admission, preserving a successful recording. */
   defaultRequest?: boolean;
+  /**
+   * A route's reason not to analyze this run, such as a local study whose cleanup is unconfirmed.
+   * It is checked after the job is claimed, so the skip is recorded where the CLI, the TUI and the
+   * Observer read it.
+   */
+  refusal?: () => AutomaticAnalysisRefusal | undefined;
   /** Expand an omitted output limit only within the existing admission budget. */
   preferLargerOutput?: boolean;
 };
@@ -271,7 +278,10 @@ export async function runAutomaticStudyAnalysis(
   try {
     await poll();
     const missingKey = config.provider !== "codex" && !hasKey;
-    if (deps.defaultRequest === true && (missingKey || !participantEvidence)) {
+    const refused = deps.refusal?.();
+    if (refused !== undefined) {
+      outcome = skipped(refused);
+    } else if (deps.defaultRequest === true && (missingKey || !participantEvidence)) {
       outcome = signal.aborted
         ? { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED" }
         : skipped(

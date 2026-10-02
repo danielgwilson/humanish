@@ -171,17 +171,14 @@ function completeCuaAnalysis(
   result: CuaActorLabResult,
   finished: FinishedRun | undefined,
 ): Promise<CuaActorLabResult> {
-  // A local VM study whose cleanup is unconfirmed stops automatic analysis before it starts.
-  const gate = input.localVm?.analysisGate;
+  // A local VM study whose cleanup is unconfirmed records a skip instead of analyzing.
+  const refusal = input.localVm?.analysisRefusal;
   const analysisHooks =
-    gate === undefined
+    refusal === undefined
       ? input.automaticAnalysis
       : {
           ...input.automaticAnalysis,
-          onStart() {
-            gate();
-            return input.automaticAnalysis?.onStart?.();
-          },
+          deps: { ...input.automaticAnalysis?.deps, refusal },
         };
   return completeAutomaticAnalysis(result, finished, plan.analysis?.config, analysisHooks, {
     ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),

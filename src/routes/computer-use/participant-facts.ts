@@ -33,16 +33,26 @@ export function participantOutcomeOk(
 }
 
 /**
- * One sandbox-cleanup failure per participant sandbox not confirmed released. A participant that
- * never acquired a sandbox (skipped, in-process or a local VM) has no sandbox id and adds none.
+ * One sandbox-cleanup failure per participant desktop not confirmed released: an E2B sandbox that
+ * was not killed, or a desktop whose release says why (a local VM names its container). A
+ * participant that never acquired a desktop (skipped, in-process) adds none.
  */
 export function unreleasedSandboxFailures(
   outcomes: readonly ParticipantRunOutcome[] | undefined,
   runId: string,
 ): ExecutionFailure[] {
   return (outcomes ?? [])
-    .filter((outcome) => outcome.sandboxId !== undefined && !outcome.killed)
+    .filter(
+      (outcome) =>
+        outcome.sandboxRelease !== undefined ||
+        (outcome.sandboxId !== undefined && !outcome.killed),
+    )
     .map((outcome) =>
-      sandboxCleanupFailure(outcome.spec.planned.id, outcome.sandboxRelease?.warning, runId),
+      sandboxCleanupFailure(
+        outcome.spec.planned.id,
+        outcome.sandboxRelease?.warning,
+        runId,
+        outcome.sandboxRelease?.recovery,
+      ),
     );
 }

@@ -335,7 +335,7 @@ describe("requirements with a local study's desktop and a caller's provider", ()
         desktopReached = true;
         throw new Error("the local study's desktop was reached");
       },
-      analysisGate: () => undefined,
+      analysisRefusal: () => undefined,
     };
     const planned = planComputerUseLab(parsed.config, { dryRun: false, hooks });
     if (!planned.ok) throw new Error(planned.refusal.message);

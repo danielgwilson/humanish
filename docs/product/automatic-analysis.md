@@ -128,6 +128,7 @@ outcomes and the deterministic review verdict are never rewritten by analysis.
 | `AUTOMATIC_ANALYSIS_KEY_MISSING`              | `skipped`                 | No OpenAI API key                                                     |
 | `AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE`  | `skipped`                 | A default analysis found no participant evidence                      |
 | `AUTOMATIC_ANALYSIS_ACTOR_CANCELLED`          | `skipped`                 | The harness cancelled the participants                                |
+| `AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED`      | `skipped`                 | A local VM study could not confirm its cleanup; the command exits 2   |
 | `AUTOMATIC_ANALYSIS_ALREADY_REQUESTED`        | `skipped`                 | Another request already claimed this run's analysis                   |
 | `AUTOMATIC_ANALYSIS_BUSY`                     | `skipped`                 | Another analysis is running                                           |
 | `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED`        | `skipped`                 | The configuration or the cost estimate was refused before any request |

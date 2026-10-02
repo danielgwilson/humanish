@@ -59,6 +59,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- A local VM run whose desktop shutdown is unconfirmed records it in `status.json` (#1363).
+  `outcome.execution.warnings` gets a `sandbox-cleanup` entry naming the container and the
+  `docker rm --force --volumes <container>` command that removes it; `ok` is unchanged. Its
+  automatic analysis records `skipped` with `AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED`, which the CLI
+  line, the TUI and the Observer all show, and the command still exits 2. Before, status.json
+  showed nothing, and the analysis read `failed` (`AUTOMATIC_ANALYSIS_FAILED`) with no record.
 - An adopter-hosted email catch's warnings no longer carry a provisioned value or the catch's
   bearer token (#1343). Shared-world runs only pattern-redacted a failed drain's error, and
   neither route removed the catch token, its encoded forms (percent-encoded, JSON-escaped, hex, or

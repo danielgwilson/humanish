@@ -199,7 +199,7 @@ describe("computer-use run reads the plan's residual fields", () => {
       },
     };
     const plan = { ...planOf(config, hooks), caps: { maxUsd: 3 } };
-    const localVm = { desktop: () => fakeDesktop(), analysisGate: () => undefined };
+    const localVm = { desktop: () => fakeDesktop(), analysisRefusal: () => undefined };
     const result = await runComputerUsePlan(plan, { cwd, hooks, localVm }, config);
     expect(result.ok).toBe(true);
     expect(sessions[0]?.maxUsd).toBe(3);
