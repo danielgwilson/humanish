@@ -257,6 +257,13 @@ export function unknownNotificationsWarning(
   return `Codex CLI${cliVersion === undefined ? "" : ` ${cliVersion}`} sent notification methods humanish does not know: ${list}. They carried no item and were ignored.`;
 }
 
+/** The run warning for a last frame cut off by humanish's own stop, or undefined when none was. */
+export function truncatedFrameWarning(bytes: number | undefined): string | undefined {
+  return bytes === undefined
+    ? undefined
+    : `Codex output was cut off when humanish stopped the app-server: ${bytes} bytes of an unfinished last frame were not checked.`;
+}
+
 /** The session fields its handlers outside a turn read and write (restricted-session). */
 export interface NotificationSessionState {
   readonly unknownNotifications: Map<string, number>;
@@ -269,6 +276,8 @@ export interface NotificationSessionState {
    * not absorb it.
    */
   policyRefusal: RestrictedCodexAnalysisErrorCode | undefined;
+  /** Bytes of last frames cut off after humanish stopped the app-server: a warning only. */
+  truncatedFrameBytes: number | undefined;
 }
 type Participant = { readonly tool: { readonly name: string } } | undefined;
 
@@ -317,6 +326,9 @@ export function installSessionHandlers(
   );
   transport.onPolicyFailure = (code) => {
     state.policyRefusal ??= code;
+  };
+  transport.onTruncatedFrame = (bytes) => {
+    state.truncatedFrameBytes = (state.truncatedFrameBytes ?? 0) + bytes;
   };
 }
 

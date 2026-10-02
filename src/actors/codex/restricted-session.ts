@@ -119,7 +119,11 @@ export async function runRestrictedCodexSession(
   const result = await session.run(request, readinessOnly);
   const closed = await session.close();
   const unknownNotifications = session.unknownNotifications ?? {};
-  const noted = Object.keys(unknownNotifications).length === 0 ? {} : { unknownNotifications };
+  const truncatedFrameBytes = session.truncatedFrameBytes;
+  const noted = {
+    ...(Object.keys(unknownNotifications).length === 0 ? {} : { unknownNotifications }),
+    ...(truncatedFrameBytes === undefined ? {} : { truncatedFrameBytes }),
+  };
   if (!closed)
     return {
       ...restrictedCodexFailure("codex_cleanup_failed", result.dispatched, result.usage),
@@ -280,6 +284,8 @@ export interface RestrictedCodexSession {
    * it. A participant's close fails the run with it.
    */
   readonly policyRefusal?: RestrictedCodexAnalysisErrorCode | undefined;
+  /** Bytes of last frames cut off after humanish stopped the app-server; a run warning. */
+  readonly truncatedFrameBytes?: number | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -313,6 +319,8 @@ interface SessionState extends LaunchState {
   cleanupTrusted: boolean;
   /** The first policy refusal or unchecked output (restricted-notifications); never cleared. */
   policyRefusal: RestrictedCodexAnalysisErrorCode | undefined;
+  /** Bytes of last frames cut off after humanish stopped the app-server (a warning). */
+  truncatedFrameBytes: number | undefined;
 }
 
 /** Teardown: close the app-server, unlink the auth link and remove the task directory. */
@@ -551,6 +559,7 @@ export function createRestrictedCodexSession(
     closed: false,
     cleanupTrusted: true,
     policyRefusal: undefined,
+    truncatedFrameBytes: undefined,
   };
   let pending: Promise<RestrictedCodexResult> | undefined,
     closing: Promise<boolean> | undefined,
@@ -581,6 +590,9 @@ export function createRestrictedCodexSession(
     },
     get policyRefusal() {
       return state.policyRefusal;
+    },
+    get truncatedFrameBytes() {
+      return state.truncatedFrameBytes;
     },
     run(request, readinessOnly = false) {
       const refusal = refusedRun(settings, state, request, () => pending !== undefined);

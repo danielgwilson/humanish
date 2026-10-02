@@ -119,23 +119,24 @@ The Unreleased section holds the full notes for the next version until it is tag
   is dropped with a warning (#1366). Before, the terminal route attached it to `run.json` as
   `adapterScore`, and `humanish verify` then refused the bundle. A declared scorer that returns one
   now fails the run with the malformed-scorer gap, as on the browser routes.
-- Codex participants and Codex-account analysis check every item an app-server notification
-  carries (#1358). Before, a notification under a method humanish did not handle, one that arrived
-  before the turn was dispatched, and an item inside `turn.items` passed unchecked, so a native
-  command reported that way did not stop the run. Now every item, in `item`, `items`, `turn.items`
-  or `thread.turns[].items`, goes through the item allowlist and the participant's tool check
-  whatever its method, from the start of the launch until the app-server exits. A disallowed or
-  malformed item fails the launch or the request with `codex_tool_call`, and one that arrives
-  between requests fails the next request. A participant tool request before the turn starts or
-  after it completed is refused the same way; one that crosses an interrupt during shutdown is
-  declined and runs nothing. Every refusal in a participant's session, including one after its
-  last request, during shutdown or in a debrief whose failure the run tolerates, also fails the
-  run at close, and so does output that could not be checked (malformed, past a limit, or cut
-  off): `status.json` `outcome.execution.failures` gets a `provider-policy` entry naming the
+- Codex participants and Codex-account analysis check every item an app-server notification carries
+  (#1358). Before, a notification under a method humanish did not handle, one that arrived before
+  the turn was dispatched, and an item inside `turn.items` passed unchecked, so a native command
+  reported that way did not stop the run. Now every item, in `item`, `items`, `turn.items` or
+  `thread.turns[].items`, goes through the item allowlist and the participant's tool check whatever
+  its method, from the start of the launch until the app-server exits. A disallowed or malformed
+  item fails the launch or the request with `codex_tool_call`, and one that arrives between requests
+  fails the next request. A participant tool request before the turn starts or after it completed is
+  refused the same way; one that crosses an interrupt during shutdown is declined and runs nothing.
+  Every refusal in a participant's session, including one after its last request, during shutdown or
+  in a debrief whose failure the run tolerates, also fails the run at close, and so does output that
+  could not be checked (malformed, past a limit, or a last frame cut off by anything but humanish's
+  own stop): `status.json` `outcome.execution.failures` gets a `provider-policy` entry naming the
   participant, and the result's `ok` is false; a Codex-account analysis that had completed fails
-  with the refusal's code, `analysis_codex_tool_call` for a disallowed item. A method humanish
-  does not know that carries no item does not stop the run: participant runs and
-  `humanish analyze` list such methods with counts in their warnings.
+  with the refusal's code, `analysis_codex_tool_call` for a disallowed item. A last frame cut off
+  after humanish stopped the app-server is a run warning with its byte count. A method humanish does
+  not know that carries no item does not stop the run: participant runs and `humanish analyze` list
+  such methods with counts in their warnings.
 
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 

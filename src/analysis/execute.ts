@@ -28,7 +28,10 @@ import {
   validateAnalysisInputMetadata,
 } from "./validation.js";
 import { EVIDENCE_LIMITS } from "./evidence.js";
-import { unknownNotificationsWarning } from "../actors/codex/restricted-notifications.js";
+import {
+  truncatedFrameWarning,
+  unknownNotificationsWarning,
+} from "../actors/codex/restricted-notifications.js";
 
 export const ANALYSIS_PROMPT_VERSION = "study-evidence-6";
 const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
@@ -627,13 +630,12 @@ export async function runAnalysis(
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
   recordProviderUsage(artifact, config, response);
-  if (config.provider === "codex") {
-    const warning = unknownNotificationsWarning(
-      response.unknownNotifications,
-      config.identity.cliVersion,
-    );
-    if (warning !== undefined) options.warnings?.push(warning);
-  }
+  if (config.provider === "codex")
+    for (const warning of [
+      unknownNotificationsWarning(response.unknownNotifications, config.identity.cliVersion),
+      truncatedFrameWarning(response.truncatedFrameBytes),
+    ])
+      if (warning !== undefined) options.warnings?.push(warning);
   if (response.status !== "completed") {
     artifact.status = response.status === "cancelled" ? "cancelled" : "failed";
     artifact.error = `analysis_${response.errorCode ?? "provider_failed"}`;

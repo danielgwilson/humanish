@@ -108,10 +108,14 @@ export interface OwnedCodexProcess {
   closed: Promise<void>;
   isClosed(): boolean;
   hasExited(): boolean;
+  /** humanish began stopping the process (closeOwnedCodexProcess): its stdin ended, signals follow. */
+  stopRequested(): boolean;
+  requestStop(): void;
 }
 export function ownCodexProcess(child: ChildProcessWithoutNullStreams): OwnedCodexProcess {
   let closed = false,
-    exited = false;
+    exited = false,
+    stopping = false;
   child.once("exit", () => {
     exited = true;
   });
@@ -121,7 +125,16 @@ export function ownCodexProcess(child: ChildProcessWithoutNullStreams): OwnedCod
       resolve();
     });
   });
-  return { child, closed: completion, isClosed: () => closed, hasExited: () => exited };
+  return {
+    child,
+    closed: completion,
+    isClosed: () => closed,
+    hasExited: () => exited,
+    stopRequested: () => stopping,
+    requestStop: () => {
+      stopping = true;
+    },
+  };
 }
 
 async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
@@ -152,6 +165,7 @@ function signalOwnedChild(owned: OwnedCodexProcess, signal: NodeJS.Signals): voi
   }
 }
 export async function closeOwnedCodexProcess(owned: OwnedCodexProcess): Promise<boolean> {
+  owned.requestStop();
   owned.child.stdin.end();
   signalOwnedChild(owned, "SIGTERM");
   if (!owned.isClosed()) await settlesWithin(owned.closed, 1500);
@@ -162,6 +176,15 @@ export async function closeOwnedCodexProcess(owned: OwnedCodexProcess): Promise<
   owned.child.stdout.destroy();
   owned.child.stderr.destroy();
   return closed;
+}
+
+function isJson(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 type Pending = {
@@ -184,6 +207,8 @@ export class RestrictedCodexTransport {
     undefined;
   /** A server request with no handler, or output that could not be checked (failUninspected). */
   onPolicyFailure: (code: RestrictedCodexAnalysisErrorCode) => void = () => undefined;
+  /** The size of a last frame cut off after humanish stopped the process: a warning only. */
+  onTruncatedFrame: (bytes: number) => void = () => undefined;
   onRequest:
     | ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>)
     | undefined;
@@ -222,11 +247,19 @@ export class RestrictedCodexTransport {
         this.frame(line);
       }
     });
-    // A last frame without its newline is parsed when it is whole JSON, otherwise it went unchecked.
+    // A last frame without its newline is parsed when it is whole JSON. One cut off after humanish
+    // stopped the process was cut by that stop, so it is a warning with its size; any other cut-off
+    // frame went unchecked.
     child.stdout.on("end", () => {
       const rest = this.line + this.decoder.end();
       this.line = "";
-      for (const line of rest.split("\n")) if (line.length > 0) this.frame(line);
+      const lines = rest.split("\n").filter((line) => line.length > 0);
+      const last = lines.pop();
+      for (const line of lines) this.frame(line);
+      if (last === undefined) return;
+      if (this.owned.stopRequested() && !isJson(last))
+        this.onTruncatedFrame(Buffer.byteLength(last));
+      else this.frame(last);
     });
     child.stderr.on("data", (chunk: Buffer) => {
       this.stderrBytes += chunk.length;

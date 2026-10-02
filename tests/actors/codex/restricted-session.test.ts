@@ -1714,14 +1714,24 @@ describe("restricted Codex output it could not check", () => {
     expect(session.policyRefusal).toBe("codex_protocol_error");
   });
 
-  it("fails a completed one-shot request when its last frame is cut off at shutdown", async () => {
+  it("keeps a completed request when humanish's own stop cut the last frame, with its size", async () => {
     const f = await fixture("close-partial-after-answer");
     expect(await f.run(request)).toMatchObject({
-      status: "failed",
-      errorCode: "codex_protocol_error",
-      output: null,
+      status: "completed",
+      errorCode: null,
+      truncatedFrameBytes: 40,
     });
     expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("records a frame cut off when the process exits on its own", async () => {
+    const f = await fixture("continuing-exit-partial"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    await writeFile(`${f.trace}.exit-partial`, "");
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_protocol_error"), AFTER_SPAWN);
+    expect(session.truncatedFrameBytes).toBeUndefined();
+    await session.close();
   });
 });
 

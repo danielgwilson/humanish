@@ -32,7 +32,7 @@ import {
   parseParticipantTool,
   parseParticipantFinal,
 } from "./restricted-participant-policy.js";
-import { unknownNotificationsWarning } from "./restricted-notifications.js";
+import { truncatedFrameWarning, unknownNotificationsWarning } from "./restricted-notifications.js";
 
 export type ParticipantProviderCloseResult = {
   status: "confirmed" | "unconfirmed";
@@ -396,10 +396,13 @@ function closeParticipantSession(state: ParticipantState): Promise<boolean> {
 function sessionReport(
   session: RestrictedCodexSession,
 ): Pick<ParticipantProviderCloseResult, "warnings" | "refusal"> {
-  const warning = unknownNotificationsWarning(session.unknownNotifications, session.cliVersion);
+  const warnings = [
+    unknownNotificationsWarning(session.unknownNotifications, session.cliVersion),
+    truncatedFrameWarning(session.truncatedFrameBytes),
+  ].filter((warning) => warning !== undefined);
   const refusal = session.policyRefusal;
   return {
-    ...(warning === undefined ? {} : { warnings: [warning] }),
+    ...(warnings.length === 0 ? {} : { warnings }),
     ...(refusal === undefined ? {} : { refusal }),
   };
 }

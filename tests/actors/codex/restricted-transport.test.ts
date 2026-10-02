@@ -65,7 +65,7 @@ describe("native child cleanup authority", () => {
 });
 
 describe("native transport while closing", () => {
-  function closingTransport() {
+  function closingTransport(interrupt = true) {
     const child = Object.assign(new EventEmitter(), {
       stdin: new PassThrough(),
       stdout: new PassThrough(),
@@ -81,12 +81,17 @@ describe("native transport while closing", () => {
     const requests = vi.fn(async () => ({}));
     const notifications = vi.fn();
     const losses = vi.fn();
+    const truncated = vi.fn();
     transport.onRequest = requests;
     transport.onPolicyOnlyNotification = notifications;
     transport.onPolicyFailure = losses;
+    transport.onTruncatedFrame = truncated;
     const written: string[] = [];
     child.stdin.on("data", (chunk: Buffer) => written.push(chunk.toString()));
-    const closed = transport.close({ threadId: "thread-1", turnId: "turn-1" });
+    // With an interrupt, close waits for its reply before stopping the process.
+    const closed = transport.close(
+      interrupt ? { threadId: "thread-1", turnId: "turn-1" } : undefined,
+    );
     const send = (value: unknown) => child.stdout.write(`${JSON.stringify(value)}\n`);
     const finish = async () => {
       child.emit("exit", 0, null);
@@ -94,7 +99,7 @@ describe("native transport while closing", () => {
       expect(await closed).toBe(true);
       deadline.close();
     };
-    return { child, requests, notifications, losses, written, send, finish };
+    return { child, requests, notifications, losses, truncated, written, send, finish };
   }
 
   it("declines a server request unhandled and checks each notification", async () => {
@@ -111,7 +116,7 @@ describe("native transport while closing", () => {
     await t.finish();
   });
 
-  it("parses a last frame without its newline, and records one cut off", async () => {
+  it("parses a last frame without its newline, and records one cut off before humanish stopped it", async () => {
     const whole = closingTransport();
     whole.child.stdout.end(
       JSON.stringify({ method: "item/completed", params: { item: { type: "commandExecution" } } }),
@@ -119,11 +124,23 @@ describe("native transport while closing", () => {
     await vi.waitFor(() => expect(whole.notifications).toHaveBeenCalledOnce());
     expect(whole.losses).not.toHaveBeenCalled();
     await whole.finish();
+    // Still waiting for the interrupt reply: humanish has not stopped the process yet.
     const cut = closingTransport();
     cut.child.stdout.end('{"method":"item/completed","params":{"item":{"type":"commandExec');
     await vi.waitFor(() => expect(cut.losses).toHaveBeenCalledWith("codex_protocol_error"));
     expect(cut.notifications).not.toHaveBeenCalled();
+    expect(cut.truncated).not.toHaveBeenCalled();
     await cut.finish();
+  });
+
+  it("reports the size of a last frame cut off after humanish stopped the process", async () => {
+    const t = closingTransport(false);
+    await vi.waitFor(() => expect(t.child.kill).toHaveBeenCalledWith("SIGTERM"));
+    const partial = '{"method":"item/completed","params":{"item":{"type":"commandExec';
+    t.child.stdout.end(partial);
+    await vi.waitFor(() => expect(t.truncated).toHaveBeenCalledWith(Buffer.byteLength(partial)));
+    expect(t.losses).not.toHaveBeenCalled();
+    await t.finish();
   });
 
   it("records a line it could not check", async () => {

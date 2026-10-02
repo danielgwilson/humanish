@@ -239,6 +239,9 @@ if (operation === "--version") {
       emit(completion);
       if (scenario === "continuing-idle-item" && turnNumber === 1)
         afterGate("idle-item", () => emit({ method: "item/started", params: commandItem("turn-idle") }));
+      // Exits on its own mid-frame: humanish did not stop it, so the cut-off frame is unchecked.
+      if (scenario === "continuing-exit-partial" && turnNumber === 1)
+        afterGate("exit-partial", () => process.stdout.write('{"method":"item/completed","params":{"item"', () => process.exit(0)));
       if (scenario === "continuing-idle-malformed" && turnNumber === 1)
         afterGate("idle-malformed", () => process.stdout.write("{not-json}\n"));
       if (scenario === "continuing-idle-request" && turnNumber === 1)

@@ -1098,7 +1098,8 @@ reads both under the route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`).
 `provider-policy` names a computer-use or shared-world participant whose Codex
 app-server reported a disallowed item at any point in the session, or whose
 output could not be checked (a byte, frame or event limit, a malformed line, or
-a last frame cut off). It is recorded even when a request already failed for it,
+a last frame cut off by anything but humanish's own stop, which is a run warning
+with its byte count). It is recorded even when a request already failed for it,
 because a step that tolerates a failed request (the debrief) would otherwise
 absorb it, and it fails the run on every route.
 `warnings`, in the same shape, holds the failures the policy lets warn and is

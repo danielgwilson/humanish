@@ -24,6 +24,7 @@ const { run, sessionClose, metadata } = vi.hoisted(() => ({
     cliVersion: undefined as string | undefined,
     unknownNotifications: {} as Record<string, number>,
     policyRefusal: undefined as string | undefined,
+    truncatedFrameBytes: undefined as number | undefined,
   },
   run: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),
@@ -52,6 +53,9 @@ vi.mock("../../../src/actors/codex/restricted-session.js", () => ({
     },
     get policyRefusal() {
       return metadata.policyRefusal;
+    },
+    get truncatedFrameBytes() {
+      return metadata.truncatedFrameBytes;
     },
   })),
 }));
@@ -111,6 +115,7 @@ beforeEach(() => {
   metadata.cliVersion = undefined;
   metadata.unknownNotifications = {};
   metadata.policyRefusal = undefined;
+  metadata.truncatedFrameBytes = undefined;
   sessionClose.mockReset().mockResolvedValue(true);
   createSession.mockClear();
 });
@@ -800,11 +805,13 @@ describe("restricted participant guards and receipts", () => {
     metadata.cliVersion = "0.160.0";
     metadata.unknownNotifications = { "thread/futureProgress/updated": 3 };
     metadata.policyRefusal = "codex_tool_call";
+    metadata.truncatedFrameBytes = 40;
     const h = createRestrictedCodexParticipant();
     await expect(h.close()).resolves.toEqual({
       status: "confirmed",
       warnings: [
         "Codex CLI 0.160.0 sent notification methods humanish does not know: thread/futureProgress/updated ×3. They carried no item and were ignored.",
+        "Codex output was cut off when humanish stopped the app-server: 40 bytes of an unfinished last frame were not checked.",
       ],
       refusal: "codex_tool_call",
     });

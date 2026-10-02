@@ -60,6 +60,8 @@ export interface AnalysisProviderResult {
   httpStatus?: number;
   /** Codex only: notification methods humanish does not know that carried no item, by count. */
   unknownNotifications?: Readonly<Record<string, number>>;
+  /** Codex only: bytes of a last frame cut off when humanish stopped the app-server. */
+  truncatedFrameBytes?: number;
 }
 
 export type AnalysisProvider = (

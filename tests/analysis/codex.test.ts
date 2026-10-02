@@ -342,6 +342,7 @@ describe("explicit Codex account analysis", () => {
       run = vi.fn<AnalysisProvider>(async (request) => ({
         ...(await completed(request)),
         unknownNotifications: { "thread/futureProgress/updated": 2 },
+        truncatedFrameBytes: 40,
       }));
     const result = await analyzeRun(
       f.cwd,
@@ -352,6 +353,9 @@ describe("explicit Codex account analysis", () => {
     expect(result.ok).toBe(true);
     expect(result.warnings).toContain(
       `Codex CLI ${defaultCodexCliVersion()} sent notification methods humanish does not know: thread/futureProgress/updated ×2. They carried no item and were ignored.`,
+    );
+    expect(result.warnings).toContain(
+      "Codex output was cut off when humanish stopped the app-server: 40 bytes of an unfinished last frame were not checked.",
     );
     const saved = (await showAnalysis(f.cwd, "codex-analysis", result.analysisId!)).analysis;
     expect(JSON.stringify(saved)).not.toContain("futureProgress");
