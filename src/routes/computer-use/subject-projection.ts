@@ -1,5 +1,5 @@
-// Each lane's subject projection and the subject-state marker, from the declared subject and what
-// the lanes ran; the run-level subject aggregated from them; and the provenance argument the
+// Each participant's subject projection and the subject-state marker, from the declared subject
+// and what the participants ran; the run-level subject aggregated from them; and the provenance argument the
 // bundle builders take.
 
 import { commandDigestOf } from "../../subject/state.js";
@@ -17,7 +17,7 @@ import {
 } from "./types.js";
 
 /**
- * Each lane's subject projection. A lane's outcome adds the subject commit it resolved and the
+ * Each participant's subject projection. A participant's outcome adds the subject commit it resolved and the
  * state steps it executed; without outcomes (dry run, or a run still in progress) the declared
  * state is projected as not yet run.
  */
@@ -99,9 +99,9 @@ export function resolveSubjectState(args: {
   };
 }
 
-/** Build the per-lane subject projection (invariant 5). Local-tree lanes all share ONE
- *  host-packed archive, so every lane's projection carries the identical archiveSha256/
- *  commit/dirty (no per-lane divergence is possible, unlike the clone route's per-lane
+/** Build the per-participant subject projection (invariant 5). Local-tree participants all share
+ *  ONE host-packed archive, so every participant's projection carries the identical archiveSha256/
+ *  commit/dirty (no divergence is possible, unlike the clone route's per-participant
  *  in-sandbox commit). */
 function participantSubjectProjection(args: {
   kind: ComputerUsePlan["runner"]["subject"]["kind"];
@@ -166,10 +166,10 @@ export function subjectProvenanceArg(
 }
 
 /**
- * The run-level subject for the top level and the bundle. Local-tree lanes all pack from the same
- * once-per-run archive, so every lane already carries the identical archiveSha256/commit/dirty and
- * the first lane's projection is the aggregate. Clone lanes each resolve their own commit; the
- * aggregate carries it only when every lane agrees, and warns when they diverge.
+ * The run-level subject for the top level and the bundle. Local-tree participants all pack from the
+ * same once-per-run archive, so every participant already carries the identical archiveSha256/commit/dirty and
+ * the first participant's projection is the aggregate. Clone participants each resolve their own
+ * commit; the aggregate carries it only when every participant agrees, and warns when they diverge.
  */
 export function aggregateCuaSubject(args: {
   subjects: readonly CuaSubjectProjection[];
