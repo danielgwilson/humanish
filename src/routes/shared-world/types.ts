@@ -76,7 +76,7 @@ export interface RunConcurrentSharedWorldLabOptions {
   deps?: LabDeps;
   /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
-  /** Present only when the scorer was CONFIG-DECLARED and loaded by the CLI (#316);
+  /** Present only when the scorer was config-declared and loaded by the CLI;
    *  core-stamped onto the bundle as evidence. Absent for library callers. */
   scorerProvenance?: RunScorerProvenance;
 }
@@ -105,14 +105,14 @@ export type ConcurrentSharedWorldLabErrorCode =
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
   | "HUMANISH_RUN_ID_IN_USE"
-  /** A declared adopter-hosted comms catch (#328) did not answer as a humanish catch — fail closed
+  /** A declared adopter-hosted comms catch did not answer as a humanish catch. Fail closed
    *  before any actor spend, since the funnel would silently collect nothing. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE"
   /** comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
    *  well-formed Unicode (src/comms/external-evidence.ts). Refused before the catch is probed. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID";
 
-/** The two plane classes of the concurrent shared-world route (#164 phase 2). */
+/** The two plane classes of the concurrent shared-world route. */
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";
 
 // EXTERNAL-PUBLIC plane class: the honest-downgrade attribution ceiling. The concurrent family
@@ -163,8 +163,8 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   subjectSandbox?: { sandboxId: string; killed: boolean };
   /** Whether ≥2 actor windows overlapped in time (proven concurrency; live only). */
   overlapProven?: boolean;
-  /** Max participants observed live at the same instant (live only) — the honest simultaneity number; a
-   *  6-participant run capped at 3 reports 3 here, never 6 (#350). */
+  /** Max participants observed live at the same instant (live only): the honest simultaneity number; a
+   *  6-participant run capped at 3 reports 3 here, never 6. */
   maxSimultaneousLanes?: number;
   /** Subject provenance (invariant 5): the one shared plane. */
   subject?: RunSubjectProvenance;
@@ -239,7 +239,7 @@ export interface LiveParticipants {
   readonly streamUrls: ObserverRuntimeStreamUrl[];
 }
 
-/** An adopter-hosted comms catch (#328) and the inbox its personas open. */
+/** An adopter-hosted comms catch and the inbox its personas open. */
 export interface ExternalCommsWiring {
   external: LabCommsExternal;
   email: LabCommsEmail;
@@ -268,10 +268,10 @@ export interface ConcurrentBundleArgs {
    *  captured mail into the subject sandbox's catch. Registered on the first persona stream (it is a
    *  property of the one shared app, and belongs to no single persona). */
   commsArtifactPath?: string;
-  /** #164 phase 2: the plane-class discriminator (default provisioned-getHost, byte-stable). */
+  /** The plane-class discriminator (default provisioned-getHost, byte-stable). */
   planeClass?: ConcurrentSharedWorldPlaneClass;
   /** external-public only: sha256-16 of the observed origin the seats converged on (the convergence
-   *  proof — what the seats actually reached, tolerant of a declared->observed redirect). */
+   *  proof: what the seats actually reached, tolerant of a declared->observed redirect). */
   publicOriginDigest?: string;
   /** external-public only: sha256-16 of the operator-DECLARED plane origin (evidence/reference only;
    *  never asserted equal to the observed origin, since a cross-origin redirect is normal). */

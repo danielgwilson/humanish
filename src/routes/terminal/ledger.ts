@@ -6,7 +6,7 @@ import { COST_CATEGORIES, type CostCategory } from "../../run/terminal-contract.
 import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
 
 /**
- * Build the spend ledger from the captured session. The null discipline (issue #154):
+ * Build the spend ledger from the captured session. The null discipline:
  *   - The `provider` line is populated from the actor trace's tokenUsage.costUsd when the trace
  *     carries it (a measured value, incl. a measured 0). When the trace carries no costUsd, the
  *     provider line is `null` = not measured (never guessed to 0 just because no-spend was intended).
@@ -17,7 +17,7 @@ import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
  */
 export function buildCostLedger(args: {
   tokenCostUsd?: number;
-  /** Measured token counts, when the run produced them but no rate could price them (#531). */
+  /** Measured token counts, when the run produced them but no rate could price them. */
   tokenUsage?: ActorTokenUsage;
   injectedLines?: Partial<Record<CostCategory, CostLine>>;
 }): TerminalCostLedger {
@@ -32,7 +32,7 @@ export function buildCostLedger(args: {
         ? {
             // Tokens counted, no rate to price them. This stays `usd: null` because a guessed
             // dollar figure would be worse than none, but the note carries the measured fact so a
-            // reader never mistakes "no charge recorded" for "nothing was consumed" (#531).
+            // reader never mistakes "no charge recorded" for "nothing was consumed".
             usd: null,
             source: "unpriced-token-usage",
             note:
@@ -125,7 +125,7 @@ export function describeMeasuredSpend(
 }
 
 /** Derive the no-spend proof from the ledger. It vouches for known-zero lines and
- *  explicitly lists the unmeasured (null) lines it cannot vouch for — never claiming zero on null. */
+ *  explicitly lists the unmeasured (null) lines it cannot vouch for. It never claims zero on null. */
 export function buildNoSpendProof(
   ledger: TerminalCostLedger,
   maxUsd: number | null,

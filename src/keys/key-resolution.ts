@@ -1,21 +1,21 @@
-// Provider-key discovery (#436): resolve the keys a live run needs through each vendor's
+// Provider-key discovery: resolve the keys a live run needs through each vendor's
 // native chain instead of demanding a per-repo --env-file that operators hand-copy keys into.
 //
 // The chain, per key, FILL-ONLY (a rung never overrides anything already present):
-//   1. process env — including whatever --env-file just loaded (explicit always wins);
-//   2. `.humanish/local/provider.env` — the project-local overlay this CLI's own --help
+//   1. process env, including whatever --env-file just loaded (explicit always wins);
+//   2. `.humanish/local/provider.env`, the project-local overlay this CLI's own --help
 //      examples document;
 //   3. the owning vendor's native store, where one exists:
 //        E2B_API_KEY  <- ~/.e2b/config.json (written by `e2b auth login`);
 //        GH_TOKEN     <- `gh auth token` (the gh CLI's credential chain);
 //   4. the humanish user-level store `$XDG_CONFIG_HOME/humanish/keys.env`, written only by
-//      `humanish keys set` (0600, prompted or --stdin) — the fallback for vendors that ship
+//      `humanish keys set` (0600, prompted or --stdin), the fallback for vendors that ship
 //      no machine chain of their own (OpenAI, Anthropic).
 //
 // Every fill is announced by key name + source, never by value. The subject app's own
 // `.env`/`.env.local` are never read: those hold product credentials, a different class
-// (#11); this module only reads humanish-owned files and vendor-owned stores.
-// `HUMANISH_STRICT_KEYS=1` disables every rung below process env (the pre-#436 behavior).
+// of secret; this module only reads humanish-owned files and vendor-owned stores.
+// `HUMANISH_STRICT_KEYS=1` disables every rung below process env.
 
 import { spawn } from "node:child_process";
 import {
@@ -38,7 +38,7 @@ import { loadEnvFile } from "./env-file.js";
 /** The only names implicit discovery may fill (and `humanish keys set` may store). Everything
  *  else in an overlay/store file is ignored-and-named: a repo-planted NODE_OPTIONS/LD_PRELOAD
  *  must never enter process env off a file the operator did not explicitly pass (an explicit
- *  --env-file remains the operator's own full-file load). Red-team finding, #436. */
+ *  --env-file remains the operator's own full-file load). */
 const KNOWN_PROVIDER_KEYS = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
@@ -66,7 +66,7 @@ const KEY_VENDOR_ALIASES: Record<string, string> = {
 
 export interface ResolvedKeyFill {
   name: string;
-  /** Human-readable source label (a path or command name) — never a value. */
+  /** Human-readable source label (a path or command name), never a value. */
   source: string;
 }
 
@@ -88,7 +88,7 @@ export function userKeyStorePath(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps
   const home = deps.homeDir ?? homedir();
   const declared = env.XDG_CONFIG_HOME?.trim();
   // The XDG spec: a relative XDG_CONFIG_HOME must be ignored. Honoring one would make the
-  // key store cwd-relative — `humanish keys set` would write a secret into the current repo.
+  // key store cwd-relative: `humanish keys set` would write a secret into the current repo.
   const configHome =
     declared !== undefined && declared !== "" && path.isAbsolute(declared)
       ? declared
@@ -289,8 +289,8 @@ export interface KeySourceProbe {
   hint: string;
 }
 
-/** The nearest fill instruction for a missing key — used by doctor rows and appended to
- *  *_KEYS_MISSING errors so the failure names the fix, not just the absence (#436). */
+/** The nearest fill instruction for a missing key. Doctor rows use it, and it is appended to
+ *  *_KEYS_MISSING errors so the failure names the fix. */
 export function missingKeyHint(name: string): string {
   switch (name) {
     case "E2B_API_KEY":
@@ -361,7 +361,7 @@ export function resolveKeyName(vendorOrName: string): string | null {
 }
 
 /** Write one key into the user store (0700 dir, 0600 file). Only allowlisted provider names
- *  are storable (the store feeds implicit discovery — an arbitrary-name store would be an env
+ *  are storable (the store feeds implicit discovery, so an arbitrary-name store would be an env
  *  injection vector with extra steps). The value must be a single non-empty line that
  *  round-trips the store's own parser byte-identically, and the write refuses symlinks at the
  *  file and its parent directory (red-team findings). */

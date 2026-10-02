@@ -87,7 +87,7 @@ export function buildTerminalActorTrace(args: {
   transcriptTail: string;
   runtimeAuth: LabRuntimeAuth;
   runtime: ActorRuntimeProvenance;
-  /** Runtime-turn aggregate usage parsed from the exec stream (#531). Absent when the stream
+  /** Runtime-turn aggregate usage parsed from the exec stream. Absent when the stream
    *  carried no usage record, which stays distinct from a measured zero. */
   tokenUsage?: ActorTokenUsage;
   /** The agent's own text and activity, read from the raw stdout as it arrived. */
