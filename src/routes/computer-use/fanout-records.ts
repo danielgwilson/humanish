@@ -233,7 +233,7 @@ function fanoutSubjectEvents(
   const events: RunEvent[] = [];
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
     events.push(participantEvent(spec, event));
-  // Per-lane subject provenance (invariant 5).
+  // Per-participant subject provenance (invariant 5).
   if (args.plan.runner.subject.kind === "clone" && args.publicRepo) {
     record({
       id: nextEventId(`subject-${spec.planned.id}`),
@@ -288,7 +288,7 @@ function fanoutOutcomeEvents(
   const events: RunEvent[] = [];
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
     events.push(participantEvent(spec, event));
-  // Per-lane session event.
+  // Per-participant session event.
   if (session) {
     record({
       id: nextEventId(`session-${spec.planned.id}`),
@@ -341,8 +341,8 @@ function fanoutOutcomeEvents(
     });
   }
 
-  // Persisted per-lane phase trail (real boot timing): one RunEvent per COMPLETED phase
-  // boundary this lane recorded (started events never persist here; they carry no durationMs).
+  // Persisted per-participant phase trail (real boot timing): one RunEvent per COMPLETED phase
+  // boundary this participant recorded (started events never persist here; they carry no durationMs).
   for (const phase of outcome?.phaseRecords ?? []) {
     record({
       id: nextEventId(`phase-${spec.planned.id}-${phaseEventIdSuffix(phase.type)}`),

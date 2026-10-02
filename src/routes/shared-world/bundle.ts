@@ -47,7 +47,7 @@ import {
 } from "./types.js";
 
 /** Max windows live at the same instant (sweep over start/end points). The honest simultaneity
- *  count: lane COUNT says how many seats existed; this says how many ever ran at once. */
+ *  count: the participant COUNT says how many existed; this says how many ever ran at once. */
 export function maxSimultaneousWindows(
   windows: Array<{ startedAt: number; endedAt: number }>,
 ): number {
@@ -356,8 +356,8 @@ function concurrencyReview(
   const convergenceLabel = external
     ? `; lobby convergence ${args.lobbyConvergenceDigest ? "PROVEN (all participants reached one /lobby/CODE)" : "not observed"}`
     : "";
-  // The count that matters is how many lanes were LIVE AT ONCE, not how many lanes exist — a
-  // 6-lane run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
+  // The count that matters is how many participants were LIVE AT ONCE, not how many exist —
+  // a 6-participant run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
   const capForReport = plan.concurrency;
   const maxLive = maxSimultaneousWindows(windows);
   events.push({
@@ -505,7 +505,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
 }
 
 /**
- * Priced like per-lane worlds: each seat's model tokens and desktop, plus the provisioned plane's
+ * Priced like `per-lane-worlds`: each participant's model tokens and desktop, plus the provisioned plane's
  * desktop. Absent when nothing ran, so dry runs and in-progress snapshots stay byte-stable.
  */
 function concurrentCostSummary(

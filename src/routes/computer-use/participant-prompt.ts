@@ -34,8 +34,8 @@ export const CLOSING_LINE_DIRECTIVE =
 /** The persona id a computer-use participant gets when neither it nor its actor names one. */
 export const FALLBACK_PERSONA_ID = "cua-operator";
 
-/** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
- *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
+/** Compose one participant's actor prompt: persona line + device line + mission + per-participant
+ *  steer. At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
 export function composeParticipantInstructions(args: {
   mission: string;
   persona?: string;
@@ -68,7 +68,7 @@ export function composeParticipantInstructions(args: {
   // be measured optimizes for the measurement instead of using the product (src/lab/tasks.ts).
   const taskLines = renderTaskPrompt(args.tasks ?? []);
   // A resolved persona contributes its compiled directives (friction tolerance, skill bias,
-  // accessibility behavior, constraints) through the SAME persona.ts compiler the terminal lane
+  // accessibility behavior, constraints) through the SAME persona.ts compiler the terminal route
   // uses, so one persona file means one behavior across every route.
   const personaLine = args.resolvedPersona
     ? renderPersonaPromptSection(args.resolvedPersona)
@@ -103,7 +103,7 @@ export function composeParticipantInstructions(args: {
   };
 }
 
-/** Runtime-inject the persona inbox instruction into a lane's prompt (#297 slice B). The inbox URL is a
+/** Runtime-inject the persona inbox instruction into a participant's prompt (#297 slice B). The inbox URL is a
  *  runtime loopback/getHost address (not secret), so — mirroring the lobby-code runtime injection — this
  *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
  *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */

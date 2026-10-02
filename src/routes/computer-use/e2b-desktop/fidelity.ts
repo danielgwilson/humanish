@@ -1,4 +1,4 @@
-// Device fidelity for one E2B desktop lane: mobile emulation beyond viewport size (#221), the
+// Device fidelity for one E2B desktop participant: mobile emulation beyond viewport size (#221), the
 // browser-state observer that watches it for drift (#623), and the final browser geometry.
 
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
@@ -22,14 +22,14 @@ import type { E2BDesktopDeps, DesktopParticipantRun } from "../types.js";
 
 type BrowserGeometry = Awaited<ReturnType<typeof captureDesktopBrowserGeometry>>;
 
-/** The mobile emulation a lane applied, updated as later tabs are covered and at teardown. */
+/** The mobile emulation a participant applied, updated as later tabs are covered and at teardown. */
 export interface ParticipantFidelity {
   applied: RunDesktopGeometry["fidelity"] | undefined;
   emulatedTargetId: string | undefined;
   holderName: string | undefined;
 }
 
-/** Only lanes on a mobile preset are emulated; the flags go on the browser command line. */
+/** Only participants on a mobile preset are emulated; the flags go on the browser command line. */
 export function mobileLaunchFlags(
   residual: Readonly<ResidualConfig>,
   spec: DesktopParticipantRun,
@@ -56,10 +56,10 @@ function cdpEndpoint(
 
 /**
  * Apply mobile fidelity to the launch page before the geometry capture and the participant's first
- * observation. A request that cannot be applied fails the lane closed with the reason. Only lanes on
- * a mobile preset are emulated: a run-wide flag must not hand a desktop or tablet lane an iPhone
- * user agent (the first live proof did exactly that to the desktop newcomer beside the phone lane).
- * Those lanes carry no fidelity block, which is honest.
+ * observation. A request that cannot be applied fails the participant closed with the reason. Only
+ * participants on a mobile preset are emulated: a run-wide flag must not hand a desktop or tablet
+ * participant an iPhone user agent (the first live proof did exactly that to the desktop newcomer
+ * beside the phone participant). Those participants carry no fidelity block, which is honest.
  */
 export async function applyParticipantMobileFidelity(args: {
   desktop: E2BDesktopSandbox;
@@ -123,7 +123,7 @@ export function participantBrowserStateObserver(args: {
     cdpEndpoint(args.launchIdentity, args.targetUrl),
     {
       targetId: args.targetId,
-      // Once per lane: a dark observation channel is a gap in the instrument, and the
+      // Once per participant: a dark observation channel is a gap in the instrument, and the
       // funnel's NEVER MEASURED count needs this line to explain itself (#514).
       onUnavailable: (reason) => {
         warnings.push(
@@ -161,7 +161,7 @@ export function participantBrowserStateObserver(args: {
 }
 
 /**
- * The lane's final browser geometry, measured while the sandbox is alive. A final capture that
+ * The participant's final browser geometry, measured while the sandbox is alive. A final capture that
  * measured EITHER field wins whole, so a partial final capture omits fields the launch-time capture
  * had (honest omission); only a final capture that measured NOTHING falls back to the launch-time
  * capture. Also reads the emulation holder's log into the fidelity block.

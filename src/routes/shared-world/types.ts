@@ -164,8 +164,8 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   subjectSandbox?: { sandboxId: string; killed: boolean };
   /** Whether ≥2 actor windows overlapped in time (proven concurrency; live only). */
   overlapProven?: boolean;
-  /** Max lanes observed live at the same instant (live only) — the honest simultaneity number; a
-   *  6-lane run capped at 3 reports 3 here, never 6 (#350). */
+  /** Max participants observed live at the same instant (live only) — the honest simultaneity number; a
+   *  6-participant run capped at 3 reports 3 here, never 6 (#350). */
   maxSimultaneousLanes?: number;
   /** Subject provenance (invariant 5): the ONE shared plane. */
   subject?: RunSubjectProvenance;
