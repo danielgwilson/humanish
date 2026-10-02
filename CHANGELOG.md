@@ -49,6 +49,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   carried a deprecation. Read `route`, which the same result has carried beside it since 0.106.0,
   with the mapping above. The check named `backend` is now named `route`, and the human output
   prints `route:` where it printed `backend:`.
+- The `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` value of `TerminalProductLabResult.error.code`.
+  No humanish release since 0.106.0 produces it; the terminal agent runs only inside the terminal
+  route. Migration: delete any branch that matches it.
 
 ### Changed
 
