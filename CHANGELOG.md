@@ -55,6 +55,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   humanish reads these labels back; an E2B dashboard filter on the old keys needs the new ones
   (#1419).
 
+### Fixes
+
+- The Observer player sizes a fitted recording in CSS from the stage's current box. On a phone,
+  opening a recording whose declared viewport has a different shape from its screenshots showed the
+  frame at about half size for one frame (105.8×229 in place of 191.75×415 for a 390×844 capture
+  declared 1280×800). The frame box was sized from a stage measurement one frame behind the stage.
+  CI's `observer:reliability:proof` failed on that frame twice. Every settled stage and frame box
+  matches the previous release on desktop and phone, in both orientations and at every zoom level.
+  The live view still measures its stage.
+
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 
 humanish 0.107.0 removes the library surfaces 0.106.0 deprecated, so the entry point exports 44
