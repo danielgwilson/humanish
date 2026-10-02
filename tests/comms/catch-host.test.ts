@@ -225,7 +225,7 @@ describe("renderInboxSurfaceLocally (the adopter-hosted plane)", () => {
   });
 });
 
-describe("catch script: persona-facing routes (#380)", () => {
+describe("catch script: persona-facing routes", () => {
   let child: ChildProcess | undefined;
   let dir: string | undefined;
   afterEach(async () => {

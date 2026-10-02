@@ -49,7 +49,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("fresh cursor read avoids only redundant left/double-click movement (#681)", () => {
+describe("fresh cursor read avoids only redundant left/double-click movement", () => {
   it.each(["click", "double_click"] as const)(
     "omits coordinates for an exact current %s target",
     async (kind) => {
