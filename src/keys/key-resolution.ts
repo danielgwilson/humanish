@@ -182,14 +182,16 @@ function isRegularFile(filePath: string): boolean {
 /**
  * Fill missing provider keys into `env` from the discovery chain, announcing each fill as
  * `NAME from SOURCE`. Returns the fills. Opt-out: HUMANISH_STRICT_KEYS=1 returns [] untouched.
+ * With `announced`, every key is still filled, and only the fills it names are announced.
  */
 export async function discoverProviderKeys(args: {
   cwd: string;
   env: NodeJS.ProcessEnv;
   announce: (line: string) => void;
   deps?: KeyResolutionDeps;
+  announced?: ReadonlySet<string>;
 }): Promise<ResolvedKeyFill[]> {
-  const { cwd, env, announce } = args;
+  const { cwd, env, announce, announced } = args;
   const deps = args.deps ?? {};
   if (env.HUMANISH_STRICT_KEYS?.trim() === "1") return [];
   const fills: ResolvedKeyFill[] = [];
@@ -254,7 +256,9 @@ export async function discoverProviderKeys(args: {
     }
   }
 
-  for (const fill_ of fills) announce(`humanish keys: ${fill_.name} from ${fill_.source}`);
+  for (const fill_ of fills)
+    if (announced === undefined || announced.has(fill_.name))
+      announce(`humanish keys: ${fill_.name} from ${fill_.source}`);
   for (const name of ignored)
     announce(
       `humanish keys: ignored non-provider name ${name} — implicit discovery fills provider keys only; pass the file via --env-file to load everything in it`,

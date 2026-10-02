@@ -30,6 +30,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- A live `run`, `lab run` or `watch` prints a `humanish keys:` line only for the provider keys its
+  lab's plan reads (#1367): the model, desktop and runtime keys, the `subject.env` names, the
+  variable `comms.email.external.authTokenEnv` names, `ANTHROPIC_API_KEY` for a Claude Code
+  participant, and `OPENAI_API_KEY` when automatic analysis runs on OpenAI. A run with a declared
+  scorer prints every key, since the scorer's code may read any. Discovery still fills every key it
+  finds, from the same sources in the same order. Before, a `local-browser` run printed lines for
+  `GH_TOKEN` and `AGENTMAIL_API_KEY`, which it never uses.
 - The first SIGINT, SIGTERM or SIGHUP to `humanish run`, `lab run` or `watch` during a live run
   (outside post-run analysis) writes `status.json` `state: "interrupted"` with the signal (#1354).
   It then kills the E2B sandboxes the run's create-time receipts name, records them in
