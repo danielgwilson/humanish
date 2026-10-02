@@ -127,12 +127,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   whatever its method, from the start of the launch until the app-server exits. A disallowed or
   malformed item fails the launch or the request with `codex_tool_call`, and one that arrives
   between requests fails the next request. A participant tool request before the turn starts or
-  after it completed is refused the same way. A refusal no request reports, after a participant's
-  last request or while the app-server shuts down, fails the run: `status.json`
-  `outcome.execution.failures` gets a `provider-policy` entry naming the participant, and the
-  result's `ok` is false; a Codex-account analysis fails with `analysis_codex_tool_call`. A method
-  humanish does not know that carries no item does not stop the run: participant runs and
-  `humanish analyze` list such methods with counts in their warnings.
+  after it completed is refused the same way; one that crosses an interrupt during shutdown is
+  declined and runs nothing. A refusal no request reports, after a participant's last request or
+  while the app-server shuts down, fails the run, and so does shutdown output that could not be
+  checked: `status.json` `outcome.execution.failures` gets a `provider-policy` entry naming the
+  participant, and the result's `ok` is false; a Codex-account analysis fails with the refusal's
+  code, `analysis_codex_tool_call` for a disallowed item. A method humanish does not know that
+  carries no item does not stop the run: participant runs and `humanish analyze` list such methods
+  with counts in their warnings.
 
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 

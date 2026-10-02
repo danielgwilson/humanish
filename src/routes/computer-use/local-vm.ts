@@ -22,6 +22,7 @@ import { prepareLocalRuntime } from "../../substrates/local/runtime.js";
 import { dockerCommandLine } from "../../substrates/local/runtime-host.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
+import type { CodexReportingProvider } from "./participant-model.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
 import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.js";
 import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-types.js";
@@ -217,14 +218,17 @@ function accountProvider(state: LocalStudyState): ProviderFactory {
       speechEnabled: executor.speechEnabled === true,
     });
     state.participants.push(participant);
-    return Object.assign(participant.provider, {
+    const provider: CodexReportingProvider = Object.assign(participant.provider, {
       async close() {
         if ((await participant.close()).status !== "confirmed") {
           state.cleanupUnconfirmed = true;
           throw new Error("Local participant cleanup is unconfirmed.");
         }
       },
+      // The lane reads the session's warnings and late refusal from the same, idempotent close.
+      closeReport: () => participant.close(),
     });
+    return provider;
   };
 }
 

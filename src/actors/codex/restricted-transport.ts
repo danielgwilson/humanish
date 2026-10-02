@@ -182,6 +182,8 @@ export class RestrictedCodexTransport {
   /** Notifications that arrive after close() began: no turn handles them, only the policy. */
   onClosingNotification: (method: string, params: Record<string, unknown>) => void = () =>
     undefined;
+  /** A line read after close() began that could not be checked (failUninspected). */
+  onClosingLoss: (code: RestrictedCodexAnalysisErrorCode) => void = () => undefined;
   onRequest:
     | ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>)
     | undefined;
@@ -205,24 +207,30 @@ export class RestrictedCodexTransport {
         this.stdoutBytes >
         Math.max(CODEX_MAX_STDOUT_BYTES, this.frameLimit * 2 + CODEX_MAX_OUTPUT_BYTES * 2)
       ) {
-        this.fail("response_too_large");
+        this.failUninspected("response_too_large");
         return;
       }
       this.line += this.decoder.write(chunk);
       if (Buffer.byteLength(this.line) > this.frameLimit) {
-        this.fail("response_too_large");
+        this.failUninspected("response_too_large");
         return;
       }
       while (this.line.includes("\n")) {
         const split = this.line.indexOf("\n"),
           line = this.line.slice(0, split);
         this.line = this.line.slice(split + 1);
-        if (line.length === 0) {
-          this.fail("codex_protocol_error");
+        let parsed: unknown;
+        try {
+          parsed = line.length === 0 ? undefined : (JSON.parse(line) as unknown);
+        } catch {
+          parsed = undefined;
+        }
+        if (parsed === undefined) {
+          this.failUninspected("codex_protocol_error");
           return;
         }
         try {
-          this.message(JSON.parse(line) as unknown);
+          this.message(parsed);
         } catch {
           this.fail("codex_protocol_error");
         }
@@ -246,6 +254,14 @@ export class RestrictedCodexTransport {
     this.eventCount = 0;
   }
   /**
+   * A line that could not be checked: past a byte, frame or event limit, or malformed. While
+   * closing nothing stops, so onClosingLoss records that shutdown output went unchecked.
+   */
+  private failUninspected(code: RestrictedCodexAnalysisErrorCode): void {
+    if (this.closing) this.onClosingLoss(code);
+    this.fail(code);
+  }
+  /**
    * Refuses the session with `code`: stops the current deadline and rejects pending requests.
    * Between requests the stopped deadline makes the next beginRequest throw the code.
    */
@@ -260,10 +276,23 @@ export class RestrictedCodexTransport {
   private message(raw: unknown): void {
     const value = codexRecord(raw);
     if (Object.keys(value).length === 0) {
-      this.fail("codex_protocol_error");
+      this.failUninspected("codex_protocol_error");
       return;
     }
     if (value.id !== undefined && typeof value.method === "string") {
+      // While closing, a server request is declined unhandled: its turn is being interrupted, so a
+      // tool call that crossed the interrupt runs nothing and is not a policy refusal.
+      if (this.closing) {
+        try {
+          this.write({
+            id: value.id,
+            error: { code: -32601, message: "Host request is disabled" },
+          });
+        } catch {
+          /* The process is already closing. */
+        }
+        return;
+      }
       if (!this.onRequest || ++this.eventCount > CODEX_MAX_EVENTS) {
         this.write({ id: value.id, error: { code: -32601, message: "Host request is disabled" } });
         this.fail(this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_tool_call");
@@ -318,7 +347,9 @@ export class RestrictedCodexTransport {
       value.id !== undefined ||
       ++this.eventCount > CODEX_MAX_EVENTS
     ) {
-      this.fail(this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_protocol_error");
+      this.failUninspected(
+        this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_protocol_error",
+      );
       return;
     }
     if (!this.closing) this.onNotification(value.method, codexRecord(value.params));
@@ -366,6 +397,9 @@ export class RestrictedCodexTransport {
   }
   async close(interrupt?: { threadId: string; turnId: string }): Promise<boolean> {
     this.closing = true;
+    // Shutdown output gets its own byte and event budget.
+    this.stdoutBytes = 0;
+    this.eventCount = 0;
     if (interrupt && !this.owned.isClosed()) {
       const { id, result } = this.request("turn/interrupt", interrupt);
       await settlesWithin(result, 1000);

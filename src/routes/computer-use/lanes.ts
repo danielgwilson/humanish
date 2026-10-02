@@ -122,7 +122,9 @@ export async function runCuaParticipant(
     if (closed.refusal !== undefined)
       providerPolicyError = redactText(
         deps.scrubKnownValues(
-          `Codex reported a disallowed item after the participant's last request (${closed.refusal}).`,
+          closed.refusal === "codex_tool_call"
+            ? `Codex reported a disallowed item after the participant's last request (${closed.refusal}).`
+            : `Codex output after the participant's last request could not be checked against the item policy (${closed.refusal}).`,
         ),
       );
     try {

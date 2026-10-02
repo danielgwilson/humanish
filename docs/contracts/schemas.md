@@ -1096,8 +1096,10 @@ worked as an execution (`kind` is `harness`, `provider-cleanup`,
 `provider-policy`, `sandbox-cleanup`, `evidence`, `cap` or `run`), and `ok`
 reads both under the route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`).
 `provider-policy` names a computer-use or shared-world participant whose Codex
-app-server reported a disallowed item after the participant's last request; the
-session's evidence does not show it, so it fails the run on every route.
+app-server reported a disallowed item after the participant's last request, or
+whose output then could not be checked (a byte, frame or event limit, or a
+malformed line); the session's evidence does not show it, so it fails the run
+on every route.
 `warnings`, in the same shape, holds the failures the policy lets warn and is
 omitted when empty: on computer-use, shared-world and scripted runs, a
 `sandbox-cleanup` entry for each sandbox whose release was not confirmed, with

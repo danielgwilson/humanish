@@ -1639,6 +1639,27 @@ describe("restricted Codex notifications outside a turn", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
+  it("keeps a refusal between requests when the next request's cleanup fails", async () => {
+    const f = await fixture("continuing-idle-item");
+    const base = f.options.spawnFn!;
+    let home: string | undefined;
+    const session = createRestrictedCodexSession({
+      ...f.options,
+      spawnFn: (file, args, settings) => {
+        if (args[0] === "app-server") home = String(settings.env?.HOME);
+        return base(file, args, settings);
+      },
+    });
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    await writeFile(`${f.trace}.idle-item`, "");
+    await vi.waitFor(() => expect(session.unreportedRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
+    // An unexpected login rotation makes the teardown after the refused request fail.
+    rmSync(path.join(home!, "auth.json"));
+    writeFileSync(path.join(home!, "auth.json"), "synthetic-rotated-login", { mode: 0o600 });
+    expect(await session.run(request)).toMatchObject({ errorCode: "codex_cleanup_failed" });
+    expect(session.unreportedRefusal).toBe("codex_tool_call");
+  });
+
   it("records a server request between requests, and the next request reports it", async () => {
     const f = await fixture("continuing-idle-request"),
       session = createRestrictedCodexSession(f.options);

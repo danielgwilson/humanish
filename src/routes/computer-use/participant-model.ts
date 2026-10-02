@@ -15,7 +15,10 @@ import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
 import { pricedModel } from "../../lab/plan-base.js";
 import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
 import { redactText } from "../../evidence/redaction.js";
-import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
+import {
+  createRestrictedCodexParticipant,
+  type ParticipantProviderCloseResult,
+} from "../../actors/codex/restricted-participant.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import { withInboxMission } from "./participant-prompt.js";
 import {
@@ -26,6 +29,16 @@ import {
 import { hollowCompletion } from "../../run/judge.js";
 import type { CuaParticipantDeps, CuaRunBudget, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
+
+/**
+ * A caller's provider backed by a native Codex session (the local study's): besides close, it
+ * reports the session's run warnings and a refusal no request reported.
+ */
+export interface CodexReportingProvider extends CuaProvider {
+  closeReport(): Promise<ParticipantProviderCloseResult>;
+}
+const reportsClose = (provider: CuaProvider | undefined): provider is CodexReportingProvider =>
+  typeof (provider as Partial<CodexReportingProvider> | undefined)?.closeReport === "function";
 
 /** The model a lane brings besides the default API client, and the handles its cleanup needs. */
 export interface ParticipantModel {
@@ -219,6 +232,12 @@ export async function closeParticipantModel(
   } catch {
     warnings.push("Model provider cleanup is unconfirmed.");
     unconfirmed = true;
+  }
+  if (model.codexParticipant === undefined && reportsClose(model.provider)) {
+    // The provider's own close reported cleanup above; this reads what its session found.
+    const report = await model.provider.closeReport().catch(() => undefined);
+    warnings.push(...(report?.warnings ?? []));
+    refusal ??= report?.refusal;
   }
   try {
     await model.claudeSession?.close();

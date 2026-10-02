@@ -321,6 +321,9 @@ async function disposeSession(settings: SessionSettings, state: SessionState): P
   let cleaned = state.cleanupTrusted;
   if (state.transport) {
     state.transport.onClosingNotification = closingNotifications(settings.participant, state);
+    state.transport.onClosingLoss = (code) => {
+      state.unreportedRefusal ??= code;
+    };
     cleaned = (await state.transport.close(state.interrupt).catch(() => false)) && cleaned;
     if (!cleaned) retainUnclosedChild(state.transport!.owned.closed);
   }
@@ -470,9 +473,6 @@ async function runTurn(
     deadline.close();
     state.activeDeadline = undefined;
     detachTurn(participant, state);
-    // This request reported the refusal it failed with.
-    if (result.errorCode !== null && result.errorCode === state.unreportedRefusal)
-      state.unreportedRefusal = undefined;
     if (result.errorCode !== null) {
       if (result.errorCode === "codex_cleanup_failed") state.cleanupTrusted = false;
       if (!(await dispose()))
@@ -485,6 +485,9 @@ async function runTurn(
           failurePhase: "cleanup",
         };
     }
+    // This request reported the refusal it failed with; a cleanup failure replaced it, so not then.
+    if (result.errorCode !== null && result.errorCode === state.unreportedRefusal)
+      state.unreportedRefusal = undefined;
   }
   return withInferenceUsage(result, turn, participant !== undefined);
 }
