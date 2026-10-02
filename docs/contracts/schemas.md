@@ -1205,7 +1205,9 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
 - `humanish.actor-estimated-cost.v1` (`ActorTrace.estimatedCost`): one participant's
   token-derived model cost, with `estimatedCostUsd` (or `null` + `reason`
   `no_rate_for_model`/`no_token_usage`/`account_billing_unknown`), `ratesAsOf`, `source`, `modelId`,
-  optional `placeholder`, and a `breakdown`.
+  optional `placeholder`, and a `breakdown`. `basis: aggregated_turns_base_rate` marks usage that
+  arrived as turn totals, such as Codex `turn.completed`, priced at the base tier because no single
+  request's size is known; the run summary's `model-tokens` line carries the same `basis`.
 - `humanish.run-cost-summary.v1` (`RunBundle.cost`): the sum of every participant's
   `model-tokens` lines PLUS `desktop-minutes` lines. New independent CUA runs
   price each owned desktop separately; concurrent shared-world runs add one line per participant
@@ -1219,9 +1221,10 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   unconfirmed allocation adds `desktop_lifetime_incomplete` as a second null line.
   Live terminal-product runs emit the same summary: one `desktop-minutes` line for
   the E2B shell sandbox (its acquired-to-cleanup span and `e2b.getInfo` size) and
-  one `model-tokens` line for the Codex participant, which stays `null` with
-  `no_rate_for_model` (model `codex`) or `no_token_usage`. The terminal trace
-  records that same null `estimatedCost`. The sandbox line is not part of the
+  one `model-tokens` line for the Codex participant, priced from the model the route passed
+  to Codex (`gpt-5.6-sol` unless the lab declares one) with `basis:
+aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bundles record
+  `no_rate_for_model` (model `codex`). The terminal trace records the same `estimatedCost`. The sandbox line is not part of the
   terminal cost ledger, whose lines are checked against `scenario.caps.maxUsd`.
 
 The summary follows the SAME null discipline as the terminal cost ledger above.

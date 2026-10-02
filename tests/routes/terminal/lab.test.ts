@@ -794,7 +794,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         await readFile(path.join(cwd, ".humanish", "runs", result.runId, "actor.json"), "utf8"),
       );
       expect(actor.runtime.versionStatus).toBe("failed");
-      expect(actor.runtime.modelStatus).toBe("runtime_default_unobserved");
+      expect(actor.runtime).toMatchObject({
+        requestedModel: "gpt-5.6-sol",
+        modelStatus: "humanish_default",
+      });
       expect(actor.ids.model).toBeUndefined();
       expect(actor.providerVersion).toBeUndefined();
     },
@@ -1886,6 +1889,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(codexRun?.command).toContain(config.actors[0]!.mission);
     // Pinned via npx, never an ambient/preinstalled `codex` binary (issue #159).
     expect(codexRun?.command).toContain("npx -y @openai/codex@0.153.3 exec");
+    // The lab declares no model, so the route passes the participant default rather than leaving
+    // the choice to whichever default this Codex release ships.
+    expect(codexRun?.command).toContain("exec --model 'gpt-5.6-sol'");
     expect(codexRun?.command).not.toContain("codex exec"); // never the bare ambient-binary form
     // codex's inner sandbox is bypassed: the E2B sandbox is the trust boundary.
     expect(codexRun?.command).toContain("--dangerously-bypass-approvals-and-sandbox");
@@ -1916,7 +1922,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       requestedVersion: "latest",
       observedVersion: "0.153.3",
       versionStatus: "verified",
-      modelStatus: "runtime_default_unobserved",
+      requestedModel: "gpt-5.6-sol",
+      modelStatus: "humanish_default",
     });
     expect(bundle.streams[0].actor.ids.model).toBeUndefined();
     for (const file of [

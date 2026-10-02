@@ -86,7 +86,8 @@
       "package": "@openai/codex",
       "requestedVersion": "latest",
       "versionStatus": "unobserved",
-      "modelStatus": "runtime_default_unobserved",
+      "requestedModel": "gpt-5.6-sol",
+      "modelStatus": "humanish_default",
       "usageGranularity": "runtime_turn"
     },
     "protocol": "terminal-exec",
@@ -461,7 +462,8 @@
             "package": "@openai/codex",
             "requestedVersion": "latest",
             "versionStatus": "unobserved",
-            "modelStatus": "runtime_default_unobserved",
+            "requestedModel": "gpt-5.6-sol",
+            "modelStatus": "humanish_default",
             "usageGranularity": "runtime_turn"
           },
           "protocol": "terminal-exec",
@@ -730,7 +732,8 @@
       "package": "@openai/codex",
       "requestedVersion": "latest",
       "versionStatus": "unobserved",
-      "modelStatus": "runtime_default_unobserved",
+      "requestedModel": "gpt-5.6-sol",
+      "modelStatus": "humanish_default",
       "usageGranularity": "runtime_turn"
     },
     "lifecycle": [
