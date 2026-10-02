@@ -76,12 +76,17 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
         throw new Error("the refused lab must not load the E2B desktop module");
       };
       try {
-        const outcome = await runLab(computerUseLab({ [key]: 3 }) as unknown as LabConfig, {
-          cwd,
-          dryRun: false,
-          env: { OPENAI_API_KEY: "test-openai", E2B_API_KEY: "test-e2b" },
-          cuaHooks: { loadDesktopModule },
-        });
+        const outcome = await runLab(
+          computerUseLab({ [key]: 3 }) as unknown as LabConfig,
+          {
+            cwd,
+            dryRun: false,
+            env: { OPENAI_API_KEY: "test-openai", E2B_API_KEY: "test-e2b" },
+          },
+          {
+            desktopModule: loadDesktopModule,
+          },
+        );
         expect(outcome.backend).toBe("cua");
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");

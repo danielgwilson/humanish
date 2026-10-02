@@ -123,7 +123,7 @@ describe("real inbox wiring through the actual CUA lane", () => {
             throw new Error("Participant should not start after the injected attachment failure");
           },
           now: Date.now,
-          hooks: { loadDesktopModule: async () => module },
+          desktopModule: async () => module,
           onStream: async () => undefined,
           reportSubjectPhase: () => undefined,
         };

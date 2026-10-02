@@ -6,7 +6,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import { createProgram } from "../../../src/cli/program.js";
 import type { RunLabOptions } from "../../../src/run-lab.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
 
 // `RestrictedCodexSessionOptions.cliVersions` bypasses per-host qualification for
 // scripts/codex-qualify.mjs. These tests prove no public path can set it.
@@ -145,7 +145,7 @@ describe("the cliVersions qualification bypass", () => {
       expect(parseLabConfig(raw).ok).toBe(false);
   });
 
-  it("has no CLI flag and no RunLabOptions or cuaHooks field", () => {
+  it("has no CLI flag and no RunLabOptions or LabDeps field", () => {
     const flags: string[] = [];
     const visit = (command: ReturnType<typeof createProgram>): void => {
       for (const option of command.options) flags.push(option.flags);
@@ -155,6 +155,6 @@ describe("the cliVersions qualification bypass", () => {
     expect(flags.length).toBeGreaterThan(0);
     expect(flags.filter((flag) => /cli-?version/i.test(flag))).toEqual([]);
     expectTypeOf<RunLabOptions>().not.toHaveProperty("cliVersions");
-    expectTypeOf<CuaActorLabHooks>().not.toHaveProperty("cliVersions");
+    expectTypeOf<LabDeps>().not.toHaveProperty("cliVersions");
   });
 });

@@ -31,8 +31,8 @@ import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
 import { runCuaParticipants } from "../../../src/routes/computer-use/lanes.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import {
-  type CuaActorLabHooks,
   type DesktopParticipantRun,
   type ParticipantRunOutcome,
 } from "../../../src/routes/computer-use/types.js";
@@ -121,6 +121,12 @@ function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     },
   };
 }
+
+/** The seams, writable so a test can swap one. */
+type TestDeps = { -readonly [K in keyof LabDeps]: LabDeps[K] };
+
+/** The keys every fake fan-out run gets. */
+const FANOUT_ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
 const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => {
@@ -690,14 +696,13 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     await rm(cwd, { recursive: true, force: true });
   });
 
-  function passingHooks(
+  function passingSeams(
     handle: FanoutModuleHandle,
-    extra?: Partial<CuaActorLabHooks> & { active?: { count: number; max: number } },
-  ): CuaActorLabHooks {
-    const active = extra?.active ?? { count: 0, max: 0 };
+    extra?: TestDeps & { active?: { count: number; max: number } },
+  ): TestDeps {
+    const { active = { count: 0, max: 0 }, ...seams } = extra ?? {};
     return {
-      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-      loadDesktopModule: async () => handle.module,
+      desktopModule: async () => handle.module,
       runSession: async (options: CuaActorSessionOptions) => {
         active.count += 1;
         active.max = Math.max(active.max, active.count);
@@ -712,7 +717,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           active.count -= 1;
         }
       },
-      ...extra,
+      ...seams,
     };
   }
 
@@ -724,11 +729,15 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     // whatever order the scheduler gives them, which changed the snapshot once under full-suite
     // load. The concurrency behavior has its own tests in this file.
     const stderr = captureStderr();
-    const outcome = await runLab(fanoutConfig({ concurrency: 1 }), {
-      cwd,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
-      cuaHooks: passingHooks(handle, { now: () => 1_000_000 }),
-    }).finally(stderr.stop);
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 1 }),
+      {
+        cwd,
+        automaticAnalysis: { run: automaticAnalysisBoundary() },
+        env: FANOUT_ENV,
+      },
+      passingSeams(handle, { now: () => 1_000_000 }),
+    ).finally(stderr.stop);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
@@ -765,15 +774,19 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         done: true,
       }),
     };
-    await runLab(fanoutConfig({ concurrency: 1 }), {
-      cwd,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
-      cuaHooks: passingHooks(makeFanoutModule(), { now: () => 1_000_000 }),
-      createProvider: async ({ participant }) => {
-        seen.push(participant);
-        return provider;
+    await runLab(
+      fanoutConfig({ concurrency: 1 }),
+      {
+        cwd,
+        automaticAnalysis: { run: automaticAnalysisBoundary() },
+        env: FANOUT_ENV,
+        createProvider: async ({ participant }) => {
+          seen.push(participant);
+          return provider;
+        },
       },
-    });
+      passingSeams(makeFanoutModule(), { now: () => 1_000_000 }),
+    );
     const lanes = golden["<result>"].plan.lanes;
     expect(seen).toEqual(
       lanes.map((lane) => ({ id: lane.id, index: lane.index - 1, count: lanes.length })),
@@ -800,14 +813,18 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ],
     });
     const seen: (string | undefined)[] = [];
-    const hooks = passingHooks(handle);
-    const inner = hooks.runSession!;
-    hooks.runSession = async (options: CuaActorSessionOptions) => {
+    const seams = passingSeams(handle);
+    const inner = seams.runSession!;
+    seams.runSession = async (options: CuaActorSessionOptions) => {
       seen.push(options.openai?.reasoningEffort);
       return inner(options);
     };
 
-    const result = await runLab(config, { cwd, runId: "cua-fanout-effort", cuaHooks: hooks });
+    const result = await runLab(
+      config,
+      { cwd, runId: "cua-fanout-effort", env: FANOUT_ENV },
+      seams,
+    );
 
     expect(result.backend).toBe("cua");
     // Both lanes share a persona and a mission; the effort is the only thing that may differ.
@@ -838,8 +855,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     let readyObserver: (ObserverResult & { ok: true }) | undefined;
     let observerServer: ObserverServer | undefined;
 
-    const hooks = passingHooks(handle);
-    hooks.runSession = async (options: CuaActorSessionOptions) => {
+    const seams = passingSeams(handle);
+    seams.runSession = async (options: CuaActorSessionOptions) => {
       expect(options.instructions).toContain("Explore with test-openai-key.");
       actorSessionsStarted += 1;
       if (actorSessionsStarted >= 2) {
@@ -852,15 +869,19 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       });
     };
 
-    const runPromise = runLab(config, {
-      cwd,
-      runId,
-      onObserverReady: async (observer) => {
-        readyObserver = observer;
-        observerServer = await serveObserver(observer, { port: 0 });
+    const runPromise = runLab(
+      config,
+      {
+        cwd,
+        runId,
+        onObserverReady: async (observer) => {
+          readyObserver = observer;
+          observerServer = await serveObserver(observer, { port: 0 });
+        },
+        env: FANOUT_ENV,
       },
-      cuaHooks: hooks,
-    });
+      seams,
+    );
 
     try {
       await waitForCondition("observer server", () => observerServer !== undefined);
@@ -957,7 +978,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2, template: "acme-desktop-with-runtimes" }),
-      { cwd, cuaHooks: passingHooks(handle) },
+      { cwd, env: FANOUT_ENV },
+      passingSeams(handle),
     );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -978,10 +1000,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
   it("byte-stable default: NO template → every fan-out lane's create gets NO template arg, bundle omits desktopTemplate", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: passingHooks(handle),
-    });
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      passingSeams(handle),
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     expect(handle.created).toHaveLength(4);
@@ -999,10 +1025,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       await kill(sandboxId, options);
       throw new Error("synthetic kill failure");
     };
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: passingHooks(handle, { active: { count: 0, max: 0 } }),
-    });
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      passingSeams(handle, { active: { count: 0, max: 0 } }),
+    );
     if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
     expect(handle.createdIds).toHaveLength(4);
 
@@ -1024,10 +1054,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   it("runs the REAL orchestration at N=4, concurrency 2: 4 per-lane sandboxes, bounded concurrency, teardown kills ONLY each lane's own id, verifyRun ok", async () => {
     const handle = makeFanoutModule();
     const active = { count: 0, max: 0 };
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: passingHooks(handle, { active }),
-    });
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      passingSeams(handle, { active }),
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
@@ -1101,11 +1135,17 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   it("runs no more participants at once than the env override allows, below the lab's concurrency", async () => {
     const handle = makeFanoutModule();
     const active = { count: 0, max: 0 };
-    const hooks = passingHooks(handle, { active });
-    const outcome = await runLab(fanoutConfig({ concurrency: 4 }), {
-      cwd,
-      cuaHooks: { ...hooks, env: { ...hooks.env, HUMANISH_CUA_MAX_CONCURRENCY: "2" } },
-    });
+    const seams = passingSeams(handle, { active });
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 4 }),
+      {
+        cwd,
+        env: { ...FANOUT_ENV, HUMANISH_CUA_MAX_CONCURRENCY: "2" },
+      },
+      {
+        ...seams,
+      },
+    );
     if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
     const { result } = outcome;
     expect(result.ok).toBe(true);
@@ -1148,10 +1188,11 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       (made ??= (async (): Promise<RerunProof> => {
         const project = await mkdtemp(path.join(tmpdir(), "humanish-fanout-rerun-"));
         const sourceHandle = makeFanoutModule();
-        const sourceOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
-          cwd: project,
-          cuaHooks: {
-            ...passingHooks(sourceHandle),
+        const sourceOutcome = await runLab(
+          fanoutConfig({ concurrency: 4 }),
+          { cwd: project, env: FANOUT_ENV },
+          {
+            ...passingSeams(sourceHandle),
             runSession: async (options: CuaActorSessionOptions) => {
               if (options.persona.id === "power-user") {
                 throw new Error("transient actor transport failed");
@@ -1162,16 +1203,16 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
               });
             },
           },
-        });
+        );
         if (sourceOutcome.backend !== "cua") throw new Error("the source run is not a cua run");
-        const sourceBundle = await readBundle(project, sourceOutcome.result.runId);
+        const sourceRunId = sourceOutcome.result.runId;
+        const sourceBundle = await readBundle(project, sourceRunId);
         const rerunHandle = makeFanoutModule();
-        const rerunOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
-          cwd: project,
-          runId: "fanout-rerun-proof",
-          rerun: { sourceRunId: sourceOutcome.result.runId },
-          cuaHooks: passingHooks(rerunHandle),
-        });
+        const rerunOutcome = await runLab(
+          fanoutConfig({ concurrency: 4 }),
+          { cwd: project, runId: "fanout-rerun-proof", rerun: { sourceRunId }, env: FANOUT_ENV },
+          passingSeams(rerunHandle),
+        );
         if (rerunOutcome.backend !== "cua") throw new Error("the rerun is not a cua run");
         const rerunText = await readFile(
           path.join(project, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
@@ -1280,21 +1321,29 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   });
 
   it("reruns only the participants a rerun names and refuses an id the source run lacks", async () => {
-    const sourceOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
-      cwd,
-      cuaHooks: passingHooks(makeFanoutModule()),
-    });
+    const sourceOutcome = await runLab(
+      fanoutConfig({ concurrency: 4 }),
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      passingSeams(makeFanoutModule()),
+    );
     expect(sourceOutcome.backend).toBe("cua");
     if (sourceOutcome.backend !== "cua") return;
     expect(sourceOutcome.result.ok).toBe(true);
 
     const rerunHandle = makeFanoutModule();
-    const named = await runLab(fanoutConfig({ concurrency: 4 }), {
-      cwd,
-      runId: "fanout-named-rerun",
-      rerun: { sourceRunId: sourceOutcome.result.runId, participantIds: ["small-skimmer"] },
-      cuaHooks: passingHooks(rerunHandle),
-    });
+    const named = await runLab(
+      fanoutConfig({ concurrency: 4 }),
+      {
+        cwd,
+        runId: "fanout-named-rerun",
+        rerun: { sourceRunId: sourceOutcome.result.runId, participantIds: ["small-skimmer"] },
+        env: FANOUT_ENV,
+      },
+      passingSeams(rerunHandle),
+    );
     expect(named.backend).toBe("cua");
     if (named.backend !== "cua") return;
     expect(named.result.rerun).toMatchObject({
@@ -1305,11 +1354,15 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       "small-skimmer",
     ]);
 
-    const ghost = await runLab(fanoutConfig({ concurrency: 4 }), {
-      cwd,
-      rerun: { sourceRunId: sourceOutcome.result.runId, participantIds: ["ghost-lane"] },
-      cuaHooks: passingHooks(makeFanoutModule()),
-    });
+    const ghost = await runLab(
+      fanoutConfig({ concurrency: 4 }),
+      {
+        cwd,
+        rerun: { sourceRunId: sourceOutcome.result.runId, participantIds: ["ghost-lane"] },
+        env: FANOUT_ENV,
+      },
+      passingSeams(makeFanoutModule()),
+    );
     expect(ghost.backend).toBe("cua");
     if (ghost.backend !== "cua") return;
     expect(ghost.result.ok).toBe(false);
@@ -1342,10 +1395,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       ],
     });
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: passingHooks(handle),
-    });
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      passingSeams(handle),
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
 
@@ -1400,7 +1457,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       ],
     });
-    const outcome = await runLab(config, { cwd, cuaHooks: passingHooks(handle) });
+    const outcome = await runLab(config, { cwd, env: FANOUT_ENV }, passingSeams(handle));
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
 
@@ -1435,10 +1492,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         })),
       });
       config.policies = { ...config.policies, redactScreenshots: true };
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
-          ...passingHooks(handle),
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          env: FANOUT_ENV,
+        },
+        {
+          ...passingSeams(handle),
           runSession: async (options) => {
             let dispatched = 0;
             // Exercise the real actor loop and bundle writers with a provider contract fixture.
@@ -1467,7 +1528,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
             });
           },
         },
-      });
+      );
       expect(outcome.backend).toBe("cua");
       if (outcome.backend !== "cua") return;
       const result = outcome.result;
@@ -1567,14 +1628,18 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         })),
       });
       let lane = 0;
-      const outcome = await runLab(config, {
-        cwd,
-        cuaHooks: {
-          ...passingHooks(handle),
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
+          env: FANOUT_ENV,
+        },
+        {
+          ...passingSeams(handle),
           runSession: async (options) =>
             runCuaActorSession({ ...options, provider: scriptedEnding(endings[lane++]!) }),
         },
-      });
+      );
       if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1601,22 +1666,30 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     });
     const endings: Ending[] = ["pass", "blocker"];
     let lane = 0;
-    const source = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(makeFanoutModule()),
+    const source = await runLab(
+      config,
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      {
+        ...passingSeams(makeFanoutModule()),
         runSession: async (options) =>
           runCuaActorSession({ ...options, provider: scriptedEnding(endings[lane++]!) }),
       },
-    });
+    );
     if (source.backend !== "cua") throw new Error("expected the computer-use route");
     expect(source.result.ok).toBe(false);
 
-    const rerun = await runLab(config, {
-      cwd,
-      rerun: { sourceRunId: source.result.runId },
-      cuaHooks: passingHooks(makeFanoutModule()),
-    });
+    const rerun = await runLab(
+      config,
+      {
+        cwd,
+        rerun: { sourceRunId: source.result.runId },
+        env: FANOUT_ENV,
+      },
+      passingSeams(makeFanoutModule()),
+    );
     if (rerun.backend !== "cua") throw new Error("expected the computer-use route");
     expect(rerun.result.error).toBeUndefined();
     expect(rerun.result.rerun).toMatchObject({
@@ -1639,23 +1712,27 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       concurrency: 1,
       lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
     });
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(handle),
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        env: FANOUT_ENV,
+        scorer: {
+          score: () => ({
+            schema: "humanish.adapter-score.v1",
+            namespace: "fold-proof",
+            status: scoreStatus,
+            score: scoreStatus === "pass" ? 90 : 10,
+            summary: `rubric ${scoreStatus}`,
+          }),
+        },
+      },
+      {
+        ...passingSeams(handle),
         runSession: async (options) =>
           runCuaActorSession({ ...options, provider: scriptedEnding(ending) }),
       },
-      scorer: {
-        score: () => ({
-          schema: "humanish.adapter-score.v1",
-          namespace: "fold-proof",
-          status: scoreStatus,
-          score: scoreStatus === "pass" ? 90 : 10,
-          summary: `rubric ${scoreStatus}`,
-        }),
-      },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1677,15 +1754,19 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       concurrency: 1,
       lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
     });
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(handle),
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      {
+        ...passingSeams(handle),
         runSession: async () => {
           throw new Error("");
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1712,23 +1793,27 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ],
     });
     let built = 0;
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(handle),
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        env: FANOUT_ENV,
+        createProvider: async () => {
+          const cleanupFails = built++ === 1;
+          return {
+            ...scriptedEnding("pass"),
+            close: async () => {
+              if (cleanupFails) throw new Error("synthetic provider close failure");
+            },
+          };
+        },
+      },
+      {
+        ...passingSeams(handle),
         runSession: async (options) =>
           runCuaActorSession({ ...options, provider: scriptedEnding("pass") }),
       },
-      createProvider: async () => {
-        const cleanupFails = built++ === 1;
-        return {
-          ...scriptedEnding("pass"),
-          close: async () => {
-            if (cleanupFails) throw new Error("synthetic provider close failure");
-          },
-        };
-      },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1758,14 +1843,18 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       concurrency: 1,
       lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
     });
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(handle),
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      {
+        ...passingSeams(handle),
         runSession: async (options) =>
           runCuaActorSession({ ...options, provider: scriptedEnding("pass") }),
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1792,10 +1881,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ],
     });
     let sessions = 0;
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(handle),
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
+        env: FANOUT_ENV,
+      },
+      {
+        ...passingSeams(handle),
         runSession: async (options) => {
           const interruption =
             sessions++ === 0 ? ("output_limit" as const) : ("token_limit" as const);
@@ -1815,7 +1908,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           });
         },
       },
-    });
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
@@ -1848,11 +1941,15 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
   it("adapter fail score turns an otherwise green CUA fan-out run red while preserving the verified bundle", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: passingHooks(handle),
-      scorer: browserScorer({ score: fanoutFailScore }),
-    });
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
+        env: FANOUT_ENV,
+        scorer: browserScorer({ score: fanoutFailScore }),
+      },
+      passingSeams(handle),
+    );
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -1919,10 +2016,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
     it("gives each participant its own commit and omits a divergent top-level commit", async () => {
       const commits = ["1111111111111111aaaa", "2222222222222222bbbb"] as const;
-      const outcome = await runLab(cloneFanoutConfig(), {
-        cwd,
-        cuaHooks: passingHooks(cloneModule(commits)),
-      });
+      const outcome = await runLab(
+        cloneFanoutConfig(),
+        {
+          cwd,
+          env: FANOUT_ENV,
+        },
+        passingSeams(cloneModule(commits)),
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       const result = outcome.result;
       expect(result.lanes?.map((entry) => entry.subject?.commit)).toEqual(commits);
@@ -1934,10 +2035,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
     it("carries the commit at the top level when both participants resolved the same one", async () => {
       const commit = "3333333333333333cccc";
-      const outcome = await runLab(cloneFanoutConfig(), {
-        cwd,
-        cuaHooks: passingHooks(cloneModule([commit, commit])),
-      });
+      const outcome = await runLab(
+        cloneFanoutConfig(),
+        {
+          cwd,
+          env: FANOUT_ENV,
+        },
+        passingSeams(cloneModule([commit, commit])),
+      );
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       expect(outcome.result.subject?.commit).toBe(commit);
       expect(outcome.result.warnings.some((warning) => warning.includes("DIVERGENT"))).toBe(false);
@@ -1946,16 +2051,19 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
   it("pipeline gate: lane-1 provisioning failure ⇒ the remaining lanes never start a sandbox", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(handle),
-        // Fail provisioning for lane 0 (the gate owner) via the per-lane prepareDesktop context.
-        prepareDesktop: async (_desktop, lane) => {
-          if (lane.laneIndex === 0) throw new Error("lane-0 world failed to provision");
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
+        env: FANOUT_ENV,
+        // Fail provisioning for lane 0 (the gate owner) through prepareDesktop's target.
+        prepareDesktop: async (_desktop, target) => {
+          if (target.kind === "participant" && target.participant.index === 0)
+            throw new Error("lane-0 world failed to provision");
         },
       },
-    });
+      passingSeams(handle),
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -1977,11 +2085,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
   it("fail-fast on a HARNESS error: in-flight lanes finish, queued lanes are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => handle.module,
+      },
+      {
+        desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
           // Lane "small-skimmer" (index 1) hits a HARNESS error; lane 0 finishes in flight.
           if (options.persona.id === "impatient-skimmer") {
@@ -1995,7 +2106,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           });
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -2023,11 +2134,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
   it("a hollow lane (zero actions/messages) ⇒ run ok=false AND verifyRun fails the engagement check", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => handle.module,
+      },
+      {
+        desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
           const responses = options.persona.id === "power-user" ? HOLLOW_SESSION : TWO_TURN_SESSION;
           return runCuaActorSession({
@@ -2036,7 +2150,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           });
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -2062,7 +2176,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       scenario: { mode: "live" },
     });
     if (!config.ok) throw new Error(config.error.message);
-    const outcome = await runLab(config.config, { cwd, cuaHooks: passingHooks(handle) });
+    const outcome = await runLab(config.config, { cwd, env: FANOUT_ENV }, passingSeams(handle));
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -2075,11 +2189,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   it("per-lane secret scrub holds: a provisioned/actor key value never reaches any artifact", async () => {
     const handle = makeFanoutModule();
     const secret = "test-openai-key";
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2 }),
+      {
+        cwd,
         env: { OPENAI_API_KEY: secret, E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => handle.module,
+      },
+      {
+        desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
           // One lane's harness error echoes the actor key value — it must be scrubbed everywhere.
           if (options.persona.id === "comparison-shopper") {
@@ -2092,7 +2209,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           });
         },
       },
-    });
+    );
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -2127,8 +2244,8 @@ describe("cua fan-out — engine fail-closed guards", () => {
       cwd,
       config: fanoutConfig({ concurrency: 2 }),
       dryRun: false,
-      hooks: {
-        loadDesktopModule: async () => handle.module,
+      deps: {
+        desktopModule: async () => handle.module,
       },
       inProcess: {
         executor: async () => ({
@@ -2201,11 +2318,14 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
         { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." },
       ],
     });
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
+    const outcome = await runLab(
+      config,
+      {
+        cwd,
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        loadDesktopModule: async () => handle.module,
+      },
+      {
+        desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) =>
           runCuaActorSession({
             ...options,
@@ -2216,7 +2336,7 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
             },
           }),
       },
-    });
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;

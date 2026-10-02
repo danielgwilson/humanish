@@ -67,7 +67,6 @@ describe("local browser study selection", () => {
     const outcome = await runLab(config, {
       cwd,
       dryRun: false,
-      cuaHooks: {},
       scorer: {
         score,
       },

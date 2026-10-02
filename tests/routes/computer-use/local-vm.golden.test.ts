@@ -126,11 +126,14 @@ describe("local VM run directory golden", () => {
   it("live study with one participant on a fake VM", async () => {
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(localVmConfig(), {
-      cwd,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
-      env: { OPENAI_API_KEY: "test-openai-key" },
-      cuaHooks: {
+    const outcome = await runLab(
+      localVmConfig(),
+      {
+        cwd,
+        automaticAnalysis: { run: automaticAnalysisBoundary() },
+        env: { OPENAI_API_KEY: "test-openai-key" },
+      },
+      {
         now: () => (clock += 30_000),
         runSession: async (options) =>
           runCuaActorSession({
@@ -138,7 +141,7 @@ describe("local VM run directory golden", () => {
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    }).finally(stderr.stop);
+    ).finally(stderr.stop);
     expect(seams.actions).toEqual([{ kind: "click", x: 11, y: 22, button: "left" }]);
     expect(seams.released).toEqual(["fake-vm-001"]);
     const runId = outcome.result.runId;

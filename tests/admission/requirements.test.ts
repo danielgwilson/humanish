@@ -13,7 +13,6 @@ import type { Requirement } from "../../src/lab/plan-types.js";
 import type { LabDeps } from "../../src/lab/lab-deps.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
-import type { CuaActorLabHooks } from "../../src/routes/computer-use/types.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 
@@ -63,16 +62,8 @@ function keyNames(requirement: Requirement): readonly string[] {
   return [];
 }
 
-function options(cwd: string, env: Record<string, string>, loads: { count: number }) {
-  const load = async (): Promise<never> => {
-    loads.count += 1;
-    throw new Error("a key refusal must come before any desktop or sandbox module loads");
-  };
-  return {
-    cwd,
-    env,
-    cuaHooks: { loadDesktopModule: load },
-  } satisfies InternalRunLabOptions;
+function options(cwd: string, env: Record<string, string>) {
+  return { cwd, env } satisfies InternalRunLabOptions;
 }
 
 /** The terminal and scripted routes' seams: an E2B module load or a browser launch counts too. */
@@ -96,7 +87,7 @@ describe("plan.requirements keys", () => {
       const parsed = parseLabConfig(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
       const cwd = await projectDir();
-      const planned = planLab(parsed.config, options(cwd, ALL_KEYS, { count: 0 }));
+      const planned = planLab(parsed.config, options(cwd, ALL_KEYS));
       if (!planned.ok) throw new Error(planned.refusal.message);
       const required = planned.planned.plan.requirements
         .map(keyNames)
@@ -108,7 +99,7 @@ describe("plan.requirements keys", () => {
           Object.entries(ALL_KEYS).filter(([name]) => !names.includes(name)),
         );
         const loads = { count: 0 };
-        const outcome = await runLab(parsed.config, options(cwd, env, loads), deps(loads));
+        const outcome = await runLab(parsed.config, options(cwd, env), deps(loads));
         const runs = await readdir(path.join(cwd, ".humanish", "runs")).catch(() => []);
         expect({ without: names, ok: outcome.result.ok, runs, loads: loads.count }).toEqual({
           without: names,
@@ -128,7 +119,7 @@ describe("plan.requirements keys", () => {
       const parsed = parseLabConfig(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
       const cwd = await projectDir();
-      const planned = planLab(parsed.config, options(cwd, ALL_KEYS, { count: 0 }));
+      const planned = planLab(parsed.config, options(cwd, ALL_KEYS));
       if (!planned.ok) throw new Error(planned.refusal.message);
       const requirements = planned.planned.plan.requirements;
       // Only what the plan declares: its keys and its subject env names.
@@ -141,11 +132,7 @@ describe("plan.requirements keys", () => {
       const env = Object.fromEntries(
         Object.entries(ALL_KEYS).filter(([name]) => declared.has(name)),
       );
-      const outcome = await runLab(
-        parsed.config,
-        options(cwd, env, { count: 0 }),
-        deps({ count: 0 }),
-      );
+      const outcome = await runLab(parsed.config, options(cwd, env), deps({ count: 0 }));
       expect(outcome.result.error?.code ?? "").not.toMatch(/_(KEYS|RUNTIME_AUTH)_MISSING$/);
     },
     60_000,
@@ -233,7 +220,7 @@ async function liveRun(raw: RawLab, env: Record<string, string>) {
   if (!parsed.ok) throw new Error(parsed.error.message);
   const cwd = await projectDir();
   const loads = { count: 0 };
-  const outcome = await runLab(parsed.config, options(cwd, env, loads), deps(loads));
+  const outcome = await runLab(parsed.config, options(cwd, env), deps(loads));
   const runs = await readdir(path.join(cwd, ".humanish", "runs")).catch(() => []);
   return { code: outcome.result.error?.code ?? "", runs, loads: loads.count };
 }
@@ -299,7 +286,7 @@ describe("route obligations, independent of plan.requirements", () => {
     async (_name, { raw, keys, subjectEnv }) => {
       const parsed = parseLabConfig(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
-      const planned = planLab(parsed.config, options(await projectDir(), ALL_KEYS, { count: 0 }));
+      const planned = planLab(parsed.config, options(await projectDir(), ALL_KEYS));
       if (!planned.ok) throw new Error(planned.refusal.message);
       const { requirements } = planned.planned.plan;
       expect(requirements.map(keyNames).filter((names) => names.length > 0)).toEqual(
@@ -323,7 +310,6 @@ describe("requirements with a local study's desktop and a caller's provider", ()
     if (!parsed.ok) throw new Error(parsed.error.message);
     const cwd = await projectDir();
     let desktopReached = false;
-    const hooks: CuaActorLabHooks = { env: {} };
     const createProvider = async (): Promise<never> => {
       throw new Error("the provider is not reached in this test");
     };
@@ -336,7 +322,6 @@ describe("requirements with a local study's desktop and a caller's provider", ()
     };
     const planned = planComputerUseLab(parsed.config, {
       dryRun: false,
-      hooks,
       driving: { inProcess: false, createProvider: true },
     });
     if (!planned.ok) throw new Error(planned.refusal.message);
@@ -346,7 +331,7 @@ describe("requirements with a local study's desktop and a caller's provider", ()
       cwd,
       config: parsed.config,
       dryRun: false,
-      hooks,
+      env: {},
       createProvider,
       localVm,
     }).then(

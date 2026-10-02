@@ -53,11 +53,12 @@ describe("rerun.laneIds", () => {
     ]);
   });
 
-  it("is the only field that warns: a route's hook bag is internal and silent", () => {
+  it("is the only field that warns: the typed options are silent", () => {
     const labConfig = config();
     normalizeRunLabOptions(labConfig, routeOf(labConfig), {
       cwd: "/tmp/x",
-      cuaHooks: { loadDesktopModule: async () => ({}) as never, env: {} },
+      env: {},
+      prepareDesktop: async () => undefined,
     });
     expect(deprecations(emitWarning)).toEqual([]);
   });

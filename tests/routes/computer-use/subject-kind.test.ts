@@ -52,9 +52,9 @@ describe("computer-use route reads of the planned subject", () => {
         comms: { email: { external: { catchBaseUrl: "https://catch.example.test" } } },
       }),
       dryRun: false,
-      hooks: {
-        env: { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" },
-        loadDesktopModule: async () => {
+      env: { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" },
+      deps: {
+        desktopModule: async () => {
           throw new Error("the desktop is not needed past preflight in this test");
         },
       },

@@ -158,6 +158,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   humanish's own signal, delivered to the running app-server and ending it, is a run warning with
   its byte count. A method humanish does not know that carries no item does not stop the run:
   participant runs and `humanish analyze` list such methods with counts in their warnings.
+- `humanish doctor --lab` and the TUI name the Codex CLI they found on PATH when it is not admitted
+  or cannot run, and give the command that replaces that binary (#1376). A Codex installed in the
+  project (`node_modules/.bin/codex`, which `npx humanish` puts first on PATH) gets
+  `npm install -D @openai/codex@<release>` in that project, or `npm uninstall @openai/codex` there
+  to use the global one. One in npm's global prefix gets `npm install -g @openai/codex@<release>`,
+  and any other, such as a Homebrew install, is told to update it with the tool that installed it.
+  Before, doctor always said `npm install -g`; in the 0.106.1 live pass that left the project's
+  older Codex first on PATH, so the refusal stayed.
 
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 

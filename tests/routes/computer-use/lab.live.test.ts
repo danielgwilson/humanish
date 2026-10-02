@@ -70,21 +70,19 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
 
       const outcome = await runLab(parsed.config, {
         cwd,
-        cuaHooks: {
-          prepareDesktop: async (desktop) => {
-            await desktop.files.write("/home/user/www/proof.html", PROOF_HTML);
-            // setsid -f fully detaches the server from the command's process tree — a plain `&`
-            // leaves E2B's command runner waiting on the child until its own deadline fires.
-            await desktop.commands.run(
-              "setsid -f python3 -m http.server 8000 --directory /home/user/www >/dev/null 2>&1 < /dev/null",
-              { timeoutMs: 20_000 },
-            );
-            // Readiness probe: the subject must answer on loopback before the browser opens.
-            await desktop.commands.run(
-              "for i in $(seq 1 20); do curl -sf http://127.0.0.1:8000/proof.html >/dev/null && exit 0; sleep 0.5; done; exit 1",
-              { timeoutMs: 20_000 },
-            );
-          },
+        prepareDesktop: async (desktop) => {
+          await desktop.files.write("/home/user/www/proof.html", PROOF_HTML);
+          // setsid -f fully detaches the server from the command's process tree — a plain `&`
+          // leaves E2B's command runner waiting on the child until its own deadline fires.
+          await desktop.commands.run(
+            "setsid -f python3 -m http.server 8000 --directory /home/user/www >/dev/null 2>&1 < /dev/null",
+            { timeoutMs: 20_000 },
+          );
+          // Readiness probe: the subject must answer on loopback before the browser opens.
+          await desktop.commands.run(
+            "for i in $(seq 1 20); do curl -sf http://127.0.0.1:8000/proof.html >/dev/null && exit 0; sleep 0.5; done; exit 1",
+            { timeoutMs: 20_000 },
+          );
         },
       });
       expect(outcome.backend).toBe("cua");

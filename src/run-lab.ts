@@ -28,7 +28,7 @@ import {
 import { type LabConfig } from "./lab/types.js";
 import type { ObserverResult } from "./observer/render.js";
 import { admitComputerUsePlan, computerUseLabRefusal } from "./routes/computer-use/route.js";
-import { type CuaActorLabHooks, type CuaActorLabResult } from "./routes/computer-use/types.js";
+import { type CuaActorLabResult } from "./routes/computer-use/types.js";
 import { admitPreviewPlan, previewLabRefusal } from "./routes/preview.js";
 import { admitScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
 import { type ScriptedBrowserLabResult } from "./routes/scripted/types.js";
@@ -266,10 +266,8 @@ interface RunLabInternals {
   scorerProvenance?: RunScorerProvenance;
   /** The local VM study's desktop, analysis gate and signal, for a local browser lab. */
   localVm?: LocalVmInput;
-  // The route hook bags: test seams, and the bags each route still reads its typed homes from.
+  /** The automatic-analysis hooks: a test's analysis runner, and where onEvent and analysisSignal go. */
   automaticAnalysis?: AutomaticAnalysisHooks;
-  /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
-  cuaHooks?: CuaActorLabHooks;
 }
 
 /** A run's result and the route it ran on. */

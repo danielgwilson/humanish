@@ -154,9 +154,9 @@ export async function admitCuaRun(
   const { dryRun } = plan;
   const projectRoot = await bindProject(input.cwd);
   const cwd = projectRoot.physicalPath;
-  const hooks = input.hooks ?? {};
+  const seams = input.deps ?? {};
   const streams = trackRuntimeStreams(input.onStream);
-  const env = hooks.env ?? process.env;
+  const env: Record<string, string | undefined> = input.env ?? process.env;
 
   const { subject, desktop } = plan.runner;
   const inProcess = desktop === "in-process";
@@ -199,7 +199,7 @@ export async function admitCuaRun(
     );
 
   const descriptor = cuaDescriptorOf(plan.actor);
-  const baseRunSession = hooks.runSession ?? descriptor.runSession;
+  const baseRunSession = seams.runSession ?? descriptor.runSession;
   // A local VM study's sessions abort on its signal.
   const localVmSignal = input.localVm?.signal;
   const runSession: typeof baseRunSession =
@@ -274,7 +274,7 @@ export async function admitCuaRun(
   let localTreeArchiveBuffer: ArrayBuffer | undefined;
   if (subject.kind === "local-tree" && !dryRun) {
     try {
-      const packed = await packRunLocalTree(hooks, plan.residual, cwd);
+      const packed = await packRunLocalTree(seams, plan.residual, cwd);
       localTreeArchive = packed.archive;
       localTreeArchiveBuffer = packed.buffer;
     } catch (error) {
@@ -292,7 +292,7 @@ export async function admitCuaRun(
       config,
       dryRun,
       cwd,
-      hooks,
+      seams,
       streams,
       env,
       appUrl,
@@ -324,7 +324,7 @@ export async function startCuaRun(
   admitted: AdmittedCuaRun,
   scope: RunScope,
 ): Promise<PreparedCuaRun> {
-  const { dryRun, cwd, hooks, descriptor, participantRuns, participantPlan, publicRepo } = admitted;
+  const { dryRun, cwd, seams, descriptor, participantRuns, participantPlan, publicRepo } = admitted;
   const { appUrl } = admitted;
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
@@ -336,7 +336,7 @@ export async function startCuaRun(
     mode: dryRun ? "dry-run" : "live",
     lab: plan.lab,
     renderReview: renderCuaReviewMarkdown,
-    observer: { open: input.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: seams.renderObserver },
   });
   if (!started.ok) return admitted.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
@@ -429,7 +429,7 @@ export async function startCuaRun(
   };
 }
 
-/** The lane deps every lane reads: the route, keys, timeouts, scrubber, budget and hooks. */
+/** The lane deps every lane reads: the route, keys, timeouts, scrubber, budget and seams. */
 function cuaParticipantDeps(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
@@ -440,7 +440,7 @@ function cuaParticipantDeps(
     liveTrace: CuaParticipantsSetup["liveTrace"];
   },
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
-  const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } =
+  const { config, dryRun, seams, streams, env, descriptor, runSession, participantCount } =
     admitted;
   const { localTreeArchiveBuffer } = admitted;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = admitted;
@@ -488,8 +488,10 @@ function cuaParticipantDeps(
             inboxUrl: externalInboxUrl(externalCommsConfig),
           },
         }),
-    now: hooks.now ?? Date.now,
-    hooks,
+    now: seams.now ?? Date.now,
+    ...(seams.desktopModule === undefined ? {} : { desktopModule: seams.desktopModule }),
+    ...(input.prepareDesktop === undefined ? {} : { prepareDesktop: input.prepareDesktop }),
+    ...(seams.detachedTimers === undefined ? {} : { detachedTimers: seams.detachedTimers }),
     onStream: streams.onStream,
     reportSubjectPhase: subjectPhaseReporter(input),
   };

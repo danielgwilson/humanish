@@ -79,7 +79,7 @@ describe("participant assignment evidence", () => {
         cwd,
         config: parsed.config,
         dryRun: true,
-        hooks: { env: { OPENAI_API_KEY: secret } },
+        env: { OPENAI_API_KEY: secret },
       });
       expect(result.ok).toBe(true);
       const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -144,9 +144,7 @@ describe("participant assignment evidence", () => {
       cwd,
       config: parsed.config,
       dryRun: true,
-      hooks: {
-        env: { OPENAI_API_KEY: secret },
-      },
+      env: { OPENAI_API_KEY: secret },
     });
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),

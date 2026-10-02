@@ -92,7 +92,7 @@ success from satisfying a later observation. Reject ambiguous original rows. Inv
 continuity on a reload or a new page epoch; this version's todo storage is in memory.
 Do not read the edit input's value as proof that the change was saved.
 
-Use the public `runLab` → `cuaHooks.runSession` seam to wrap the default
+Use the internal `runLab(config, options, deps)` → `deps.runSession` seam to wrap the default
 `createE2BDesktopExecutor` observer and call `runCuaActorSession`. Preserve the original
 screenshots, browser probe, action executor, provider settings, budgets, and callbacks.
 Add only evaluator-side state, for example:

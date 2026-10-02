@@ -80,12 +80,17 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-target-"));
       const desktop = countingDesktopModule();
       try {
-        const outcome = await runLab(unparsedCloneLab("openai-computer-use", target), {
-          cwd,
-          dryRun: false,
-          env: liveKeys,
-          cuaHooks: { loadDesktopModule: desktop.load },
-        });
+        const outcome = await runLab(
+          unparsedCloneLab("openai-computer-use", target),
+          {
+            cwd,
+            dryRun: false,
+            env: liveKeys,
+          },
+          {
+            desktopModule: desktop.load,
+          },
+        );
         expect(outcome.backend).toBe("cua");
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");

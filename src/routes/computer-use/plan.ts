@@ -46,11 +46,7 @@ import {
   resolveParticipantSandboxMs,
 } from "./participant-runs.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
-import {
-  type CuaActorLabErrorCode,
-  type CuaActorLabHooks,
-  type RunCuaActorLabOptions,
-} from "./types.js";
+import { type CuaActorLabErrorCode, type RunCuaActorLabOptions } from "./types.js";
 
 /** The error a computer-use lab returns before a run starts. */
 export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorLabErrorCode> {
@@ -170,12 +166,12 @@ const invalid = (message: string): Rejection => ({
  */
 function cuaLabRejection(
   config: LabConfig,
-  hooks: CuaActorLabHooks,
+  hasRunSession: boolean,
   driving: CallerDriving,
   subjectRoute: DeclaredSubjectRoute,
 ): Rejection {
   return (
-    unsupportedDeclarationReason(config, hooks, driving, subjectRoute) ??
+    unsupportedDeclarationReason(config, hasRunSession, driving, subjectRoute) ??
     subjectStructureReason(config, subjectRoute) ??
     entryTargetReason(config, subjectRoute) ??
     driverReason(driving, subjectRoute) ??
@@ -186,7 +182,7 @@ function cuaLabRejection(
 /** A declaration this route cannot honor, for any subject or with the caller's own driver. */
 function unsupportedDeclarationReason(
   config: LabConfig,
-  hooks: CuaActorLabHooks,
+  hasRunSession: boolean,
   driving: CallerDriving,
   { inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
@@ -197,7 +193,7 @@ function unsupportedDeclarationReason(
   if (reason) return invalid(reason);
   if (
     config.actors[0]?.maxOutputTokens !== undefined &&
-    (hooks.runSession || driving.createProvider || driving.inProcess)
+    (hasRunSession || driving.createProvider || driving.inProcess)
   )
     return invalid(
       "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.",
@@ -324,14 +320,15 @@ export function planComputerUseLab(
   config: LabConfig,
   input: {
     readonly dryRun: boolean;
-    readonly hooks?: CuaActorLabHooks;
+    /** Whether deps.runSession is set: a caller's session runner cannot enforce maxOutputTokens. */
+    readonly hasRunSession?: boolean;
     /** Which of the caller's driving homes are set; neither when absent. */
     readonly driving?: CallerDriving;
     readonly countOverride?: number;
     readonly rerun?: RunCuaActorLabOptions["rerun"];
   },
 ): ComputerUsePlanResult {
-  const hooks = input.hooks ?? {};
+  const hasRunSession = input.hasRunSession === true;
   const driving = input.driving ?? { inProcess: false, createProvider: false };
   const refuse = (
     stage: ComputerUseRefusal["stage"],
@@ -365,7 +362,12 @@ export function planComputerUseLab(
       `actors[0].type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
-  const rejection = cuaLabRejection(config, hooks, driving, declaredSubjectRoute(config, driving));
+  const rejection = cuaLabRejection(
+    config,
+    hasRunSession,
+    driving,
+    declaredSubjectRoute(config, driving),
+  );
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
   // A shared world runs every seat against one app; this route would run them as separate lanes.
   // It comes after the rules above, so a shared-world config that breaks one of them, which runLab

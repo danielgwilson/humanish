@@ -75,7 +75,7 @@ async function fixture() {
     scrubKnownValues: (value) => value,
     runSession: runCuaActorSession,
     now: Date.now,
-    hooks: { loadDesktopModule },
+    desktopModule: loadDesktopModule,
     inProcessExecutor,
     onStream: async () => undefined,
     reportSubjectPhase: () => undefined,

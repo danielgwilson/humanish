@@ -8,7 +8,7 @@ import {
   type ParticipantDesktop,
   type ParticipantDesktopEvidence,
 } from "./participant-desktop.js";
-import type { CuaActorLabHooks, DesktopParticipantRun, LocalVmInput } from "./types.js";
+import type { DesktopParticipantRun, LocalVmInput } from "./types.js";
 import {
   createLocalFirecrackerDesktop,
   type LocalFirecrackerAssets,
@@ -27,22 +27,6 @@ import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media
 import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.js";
 import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
-
-// These hooks act on an E2B desktop or the local-tree upload to it. The study runs on a
-// Firecracker desktop and never calls them, so a caller relying on one gets an error up front.
-const e2bDesktopHooks = [
-  "prepareDesktop",
-  "loadDesktopModule",
-  "packLocalTree",
-] as const satisfies readonly (keyof CuaActorLabHooks)[];
-
-function refuseE2BDesktopHooks(hooks: CuaActorLabHooks | undefined): void {
-  const present = e2bDesktopHooks.filter((name) => hooks?.[name] !== undefined);
-  if (present.length === 0) return;
-  throw new Error(
-    `A local browser study runs on a Firecracker desktop and does not call ${present.map((name) => `cuaHooks.${name}`).join(", ")}. These hooks apply only to E2B desktops.`,
-  );
-}
 
 type LocalStudyOptions = InternalRunLabOptions & {
   config: LabConfig;
@@ -242,13 +226,12 @@ export interface LocalVmStudy {
 
 /**
  * Local desktop/provider composition: the options the lab is planned and run with. It throws before
- * anything starts on a lab the local study cannot run, or on a hook only an E2B desktop calls.
+ * anything starts on a lab the local study cannot run.
  */
 export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
   const config = localBrowserDefaults(options.config);
   const unsupported = localBrowserUnsupportedReason(config);
   if (unsupported) throw new Error(unsupported);
-  refuseE2BDesktopHooks(options.cuaHooks);
   const recording = config.execution?.desktop?.recording;
   const media = studyMedia(config);
   // A caller-supplied provider replaces the Codex account participant, so the account is

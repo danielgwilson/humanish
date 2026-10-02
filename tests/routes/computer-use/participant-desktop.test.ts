@@ -5,6 +5,7 @@ import { PNG } from "pngjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getActor } from "../../../src/actors/registry.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import type {
   CuaExecutor,
   CuaProvider,
@@ -101,7 +102,7 @@ async function fixture() {
       throw new Error("Unexpected participant dispatch");
     }),
     now: Date.now,
-    hooks: { loadDesktopModule },
+    desktopModule: loadDesktopModule,
     onStream: async () => undefined,
     reportSubjectPhase: () => undefined,
     signalProvisioned: (ready) => {
@@ -163,6 +164,17 @@ async function fixture() {
   return { cwd, config, spec, deps, order, port, backend, allocation, release, loadDesktopModule };
 }
 
+/** The route's seams: the fixture's desktop module, which a local run must never load. */
+const seamsOf = (f: Awaited<ReturnType<typeof fixture>>): LabDeps => ({
+  desktopModule: f.loadDesktopModule,
+});
+
+/** A route run's cwd, env and seams. Without an env, the run reads no operator keys. */
+const runOf = (f: Awaited<ReturnType<typeof fixture>>, env: Record<string, string> = {}) => ({
+  cwd: f.cwd,
+  env,
+  deps: seamsOf(f),
+});
 describe("ready desktop lane contract", () => {
   it.each([
     { speech: false, template: undefined, expected: undefined },
@@ -196,8 +208,7 @@ describe("ready desktop lane contract", () => {
       const create = vi.fn(async () => {
         throw new Error("synthetic allocation stop");
       });
-      f.deps.hooks.loadDesktopModule = async () =>
-        ({ Sandbox: { create } }) as unknown as E2BDesktopModule;
+      f.deps.desktopModule = async () => ({ Sandbox: { create } }) as unknown as E2BDesktopModule;
       const adapter = createE2BParticipantDesktop(f.spec, f.deps, []);
       await expect(adapter.prepare()).rejects.toThrow("synthetic allocation stop");
       expect(create).toHaveBeenCalledOnce();
@@ -237,10 +248,9 @@ describe("ready desktop lane contract", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     const result = await runCuaActorLab({
-      cwd: f.cwd,
+      ...runOf(f, { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" }),
       config: parsed.config,
       dryRun: false,
-      hooks: { ...f.deps.hooks, env: { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" } },
     });
 
     expect(result.ok).toBe(false);
@@ -274,10 +284,9 @@ describe("ready desktop lane contract", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     const result = await runCuaActorLab({
-      cwd: f.cwd,
+      ...runOf(f, { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" }),
       config: parsed.config,
       dryRun: false,
-      hooks: { ...f.deps.hooks, env: { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" } },
     });
 
     expect(result.ok).toBe(false);
@@ -442,7 +451,7 @@ describe("ready desktop lane contract", () => {
       execution: { ...f.config.execution, target: "local" as const },
     };
     expect(parseLabConfig(config).ok).toBe(true);
-    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, hooks: f.deps.hooks });
+    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, deps: seamsOf(f) });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
     expect(result.error?.message).toContain("needs a local desktop");
@@ -458,7 +467,7 @@ describe("ready desktop lane contract", () => {
       subject: { ...f.config.subject, source: "this-repo" },
       execution: { ...f.config.execution, target: "local" as const },
     } as unknown as LabConfig;
-    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: true, hooks: f.deps.hooks });
+    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: true, deps: seamsOf(f) });
     expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
     expect(result.ok, JSON.stringify(result.error)).toBe(true);
   });
@@ -483,12 +492,11 @@ describe("ready desktop lane contract", () => {
   it("records local desktop feedback without hosted credentials or resource claims", async () => {
     const f = await fixture();
     const result = await runCuaActorLab({
-      cwd: f.cwd,
+      ...runOf(f),
       config: localFeedbackLab(f),
       runId: "local-feedback",
       dryRun: false,
       localVm: { desktop: () => f.port, analysisRefusal: () => undefined },
-      hooks: { ...f.deps.hooks, env: {} },
       createProvider: reachedProvider,
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
@@ -518,12 +526,11 @@ describe("ready desktop lane contract", () => {
       }),
     };
     const result = await runCuaActorLab({
-      cwd: f.cwd,
+      ...runOf(f),
       config: localFeedbackLab(f),
       runId: "local-unconfirmed",
       dryRun: false,
       localVm: { desktop: () => unconfirmed, analysisRefusal: () => undefined },
-      hooks: { ...f.deps.hooks, env: {} },
       createProvider: reachedProvider,
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
@@ -553,7 +560,7 @@ describe("ready desktop lane contract", () => {
     const config: LabConfig = localFeedbackLab(f);
     delete config.review;
     const result = await runCuaActorLab({
-      cwd: f.cwd,
+      ...runOf(f),
       config,
       dryRun: false,
       localVm: {
@@ -561,7 +568,6 @@ describe("ready desktop lane contract", () => {
         analysisRefusal: () => "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
       },
       automaticAnalysis: { run },
-      hooks: { ...f.deps.hooks, env: {} },
       createProvider: reachedProvider,
     });
     expect(run).toHaveBeenCalledOnce();
@@ -578,11 +584,11 @@ describe("ready desktop lane contract", () => {
       runCuaActorSession(options),
     );
     const result = await runCuaActorLab({
-      cwd: f.cwd,
+      ...runOf(f),
       config: localFeedbackLab(f),
       dryRun: false,
       localVm: { desktop: () => f.port, analysisRefusal: () => undefined, signal },
-      hooks: { ...f.deps.hooks, env: {}, runSession },
+      deps: { ...seamsOf(f), runSession },
       createProvider: reachedProvider,
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
@@ -704,10 +710,10 @@ describe("ready desktop lane contract", () => {
       getInfo: async () => ({ cpuCount: 2, memoryMB: 2048 }),
     } as E2BDesktopSandbox;
     const kill = vi.fn(async () => true);
-    f.deps.hooks.loadDesktopModule = async () => ({
+    f.deps.desktopModule = async () => ({
       Sandbox: { create: async () => desktop, kill },
     });
-    f.deps.hooks.prepareDesktop = async () => {
+    f.deps.prepareDesktop = async () => {
       throw new Error("Synthetic setup interruption");
     };
     const adapter = createE2BParticipantDesktop(f.spec, f.deps, []);

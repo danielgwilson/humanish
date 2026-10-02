@@ -1,6 +1,5 @@
 // What each route's run takes from runLab's options: the shared run settings, the typed options
-// the route reads, the computer-use hook bag, the automatic-analysis hooks and the declared
-// scorer's provenance.
+// the route reads, the automatic-analysis hooks and the declared scorer's provenance.
 
 import type { InternalRunLabOptions } from "../run-lab.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
@@ -30,7 +29,8 @@ export function computerUseInput(
     ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
     ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
-    ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+    ...(options.env === undefined ? {} : { env: options.env }),
+    ...(options.prepareDesktop === undefined ? {} : { prepareDesktop: options.prepareDesktop }),
     ...(options.createProvider === undefined ? {} : { createProvider: options.createProvider }),
     ...(options.inProcess === undefined ? {} : { inProcess: options.inProcess }),
     ...(options.localVm === undefined ? {} : { localVm: options.localVm }),

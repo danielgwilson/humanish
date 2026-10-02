@@ -137,10 +137,8 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
           cwd,
           config: { ...config, scenario: { ...config.scenario, mode: "live" } },
           dryRun: false,
-          hooks: {
-            env: { ...env, E2B_API_KEY: "synthetic-starter-e2b-key" },
-            ...(local ? {} : { loadDesktopModule: async () => desktopReached() }),
-          },
+          env: { ...env, E2B_API_KEY: "synthetic-starter-e2b-key" },
+          ...(local ? {} : { deps: { desktopModule: async () => desktopReached() } }),
           ...(local
             ? { localVm: { desktop: () => desktopReached(), analysisRefusal: () => undefined } }
             : {}),
