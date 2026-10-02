@@ -108,7 +108,7 @@ export async function prepareExternalComms(
       message: tokenRefusal,
     };
   // Fail closed BEFORE any actor sandbox is created: a comms lab whose catch is unreachable
-  // collects nothing while every lane still spends. The probe asserts OUR service marker in
+  // collects nothing while every participant still spends. The probe asserts OUR service marker in
   // /health, so an adopter's proxy answering 200 for everything cannot pass for a catch.
   if (!dryRun && !(await externalCatchHealthy(externalComms))) {
     return {

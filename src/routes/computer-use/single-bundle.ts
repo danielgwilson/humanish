@@ -325,9 +325,9 @@ function singleReview(
     args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
       ? aggregateTaskFunnels([args.session.trace.taskFunnel])
       : undefined;
-  // What happened to the participant, as the LANE judged it — the same rule the fan-out roll-up
+  // What happened to the participant, as the route judged it — the same rule the fan-out roll-up
   // applies (participantStatusForOutcome). Before #476 this read the actor's own status, so a
-  // run the lane refused as "not a credible pass" was written up as verdict pass, 1/1 reached
+  // run the route refused as "not a credible pass" was written up as verdict pass, 1/1 reached
   // the goal, and every projection of the bundle (Observer tally, `runs`, the status index)
   // repeated it. Found on a real drawDB run whose participant wrote "Blocked after partial
   // completion".
@@ -345,8 +345,8 @@ function singleReview(
     {
       schema: REVIEW_SCHEMA,
       verdict: args.verdict,
-      // One lane is still a study with a denominator of one, and saying so keeps a single-lane
-      // result from being read as though it generalized.
+      // One participant is still a study with a denominator of one, and saying so keeps a
+      // single-participant result from being read as though it generalized.
       ...(participantStatus !== undefined && args.inProgress !== true
         ? {
             participants: tallyParticipantOutcomes(
@@ -417,10 +417,10 @@ export function buildSingleParticipantBundle(args: {
   session?: CuaLoopResult;
   sessionError?: string;
   /**
-   * The lane's own credibility read of a goal_satisfied session (#476). The actor's status is
-   * evidence of what it CLAIMED; whether the harness counts the claim is decided by the lane
+   * The route's own credibility read of a goal_satisfied session (#476). The actor's status is
+   * evidence of what it CLAIMED; whether the harness counts the claim is decided by the route
    * (zero engagement, a final message that describes a blocker). The review has to say the same
-   * thing the lane's exit code says, or the durable bundle reports a participant reaching the
+   * thing the participant's exit code says, or the durable bundle reports a participant reaching the
    * goal on a run the harness refused to count.
    */
   credibility?: { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean };
@@ -434,7 +434,7 @@ export function buildSingleParticipantBundle(args: {
    * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
    */
   entryKind?: "local-app";
-  /** The custom E2B desktop template (image) this lane launched on, when configured (provenance). */
+  /** The custom E2B desktop template (image) this participant launched on, when configured (provenance). */
   desktopTemplate?: string;
   /** The configured browser choice and the command that opened, when explicitly configured. */
   desktopBrowser?: DesktopBrowserEvidence;
@@ -444,7 +444,7 @@ export function buildSingleParticipantBundle(args: {
   /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups)
    *  to fold into bundle.events, so run.json carries real phase timing after the fact. */
   phaseEvents?: SubjectPhaseEvent[];
-  /** Host-side E2B desktop billed span for this lane, in minutes (from ParticipantRunOutcome
+  /** Host-side E2B desktop billed span for this participant, in minutes (from ParticipantRunOutcome
    *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
   desktopMinutes?: number;
   desktopUsage?: DesktopUsage;

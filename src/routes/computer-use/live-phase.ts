@@ -1,5 +1,5 @@
 // The computer-use run's live phase: the in-progress bundle and its live-trace flush, email
-// receiving, the lanes themselves, and the drain of an operator-hosted inbox.
+// receiving, the participants themselves, and the drain of an operator-hosted inbox.
 
 import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
@@ -51,7 +51,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
     streams.showIn(liveObserver);
     if (input.onObserverReady) await input.onObserverReady(liveObserver);
 
-    // Incremental live flush (#441): as each lane's loop reports its recorded-so-far items,
+    // Incremental live flush (#441): as each participant's loop reports its recorded-so-far items,
     // rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
     // Observer's 5s poll sees the timeline grow. The run refuses any snapshot once the final
     // write began; the route stops the flush timer on every exit below.
@@ -104,7 +104,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
       };
     }
   }
-  // Run lanes (dry-run runs none). In-process is always one lane.
+  // Run the participants (dry-run runs none). In-process is always one.
   let outcomes: ParticipantRunOutcome[] | undefined;
   let failFastReason: string | undefined;
   try {
@@ -123,7 +123,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
         "Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
       );
     }
-    // Stop the flush timer on every exit, including a throw from the lanes.
+    // Stop the flush timer on every exit, including a throw from the participants.
     await liveTrace.stop?.();
   }
 

@@ -320,7 +320,7 @@ export async function finishConcurrentRun(
         });
   const planeCommit = localTreeRoute ? localTreeArchive?.git?.commit : subjectCommit;
 
-  // Collect per-actor warnings (each lane's own teardown/raw-screenshot notes).
+  // Collect per-actor warnings (each participant's own teardown/raw-screenshot notes).
   for (const result of actorResults) {
     warnings.push(...result.outcome.warnings);
   }

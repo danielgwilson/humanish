@@ -1,5 +1,5 @@
-// What one E2B desktop lane records as it runs. The prepare, start and teardown steps fill one
-// record in order, and desktopEvidenceOf reads it for the lane's outcome.
+// What one E2B desktop participant records as it runs. The prepare, start and teardown steps fill one
+// record in order, and desktopEvidenceOf reads it for the participant's outcome.
 
 import type { RunDesktopRecording } from "../../../evidence/desktop-recording-types.js";
 import type { RunSubjectStateStepRecord } from "../../../run/bundle.js";
@@ -29,7 +29,7 @@ import type {
   SandboxReleaseFact,
 } from "../types.js";
 
-/** What every step of one lane reads: its spec, the run's dependencies and where it points. */
+/** What every step of one participant reads: its spec, the run's dependencies and where it points. */
 export interface E2BParticipantContext {
   readonly spec: DesktopParticipantRun;
   readonly deps: E2BDesktopDeps;
@@ -126,7 +126,7 @@ export function newParticipantState(spec: DesktopParticipantRun): E2BParticipant
   };
 }
 
-/** The lane's outcome evidence, read from its state. */
+/** The participant's outcome evidence, read from its state. */
 export function desktopEvidenceOf(state: E2BParticipantState): ParticipantDesktopEvidence {
   // Host-side approximation of the E2B desktop's billed lifetime; feeds the desktop-minute cost
   // estimate. Never negative.

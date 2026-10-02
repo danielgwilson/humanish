@@ -45,7 +45,8 @@ const otherRoute = (routes: Routes): boolean => !promptRoute(routes) && !routes.
 
 /** Rows for each actor, reported as `actors[<index>].<field>`, in this order per actor. */
 const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
-  // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
+  // Shared-world ONLY fields on the roster: a participant's `entry` is inert anywhere else
+  // (invariant 6).
   {
     field: "lanes[].entry",
     reason:

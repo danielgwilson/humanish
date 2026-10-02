@@ -1,11 +1,11 @@
-// The CONCURRENT shared-world lab backend (#164 phase 2): N persona lanes drive ONE shared,
+// The CONCURRENT shared-world lab backend (#164 phase 2): N persona participants drive ONE shared,
 // mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
 // pieces + the getHost wrapper:
 //
 //   - ONE SUBJECT sandbox: provisionCloneSubject ONCE (clone+install+build+seed) + serve on
 //     0.0.0.0, exposed via getHost(port) → a tokenless reachable URL (the headless service host;
 //     no GUI seat).
-//   - N ACTOR desktop sandboxes: fan-out's runCuaParticipant machinery (per-lane device/persona, by-id
+//   - N ACTOR desktop sandboxes: fan-out's runCuaParticipant machinery (per-participant device/persona, by-id
 //     teardown) bounded by execution.concurrency, each browser pointed at the getHost URL —
 //     driving the shared service AT THE SAME TIME. INDEPENDENT (FIX-11): no pipeline gate, no
 //     fail-fast — one actor's failure must not block the swarm or corrupt the "M of N" outcomes.
@@ -24,7 +24,7 @@
 //
 // CAPABILITY vs PROOF (FIX-1): the deterministic $0 gate proves the PLUMBING + the honesty
 // contract — the real mapWithConcurrency produces genuinely overlapping laneWindows (a rendezvous
-// latch in the fake session forces two lane fns in-flight while the REAL orchestrator clock
+// latch in the fake session forces two participant fns in-flight while the REAL orchestrator clock
 // measures the windows). Every generated bundle describes only its own observations; no one run
 // establishes scale, repeatability, or adopter-harness replacement.
 //

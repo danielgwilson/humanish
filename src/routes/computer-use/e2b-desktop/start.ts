@@ -1,6 +1,6 @@
-// The second half of an E2B desktop lane's preparation, and the start of its session: speech and
+// The second half of an E2B desktop participant's preparation, and the start of its session: speech and
 // recording, then the browser or terminal the participant sees, then the live stream. Each step
-// fills the lane's state.
+// fills the participant's state.
 
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
 import {
@@ -78,7 +78,7 @@ export async function openParticipantSurface(
   }
   const requestedMedia = residual.execution?.desktop?.media;
   // A declared camera (#509) is in place before the browser starts: the feed is generated or
-  // uploaded first, and a feed that cannot be produced fails the lane closed here.
+  // uploaded first, and a feed that cannot be produced fails the participant closed here.
   const mediaEvidence =
     requestedMedia === undefined
       ? undefined
@@ -117,7 +117,7 @@ export async function openParticipantSurface(
   noteDevToolsReadiness(ctx, browserLaunch.devTools, emulationFlags.length > 0);
   await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
   // Mobile fidelity (#221) is applied outside startParticipantStream's best-effort catch, so a request
-  // that cannot be applied fails the lane closed.
+  // that cannot be applied fails the participant closed.
   state.fidelity = await applyParticipantMobileFidelity({
     desktop,
     spec,
@@ -131,15 +131,15 @@ export async function openParticipantSurface(
 }
 
 /**
- * DevTools answering later than this after launch is recorded as a warning on the lane. Six live
+ * DevTools answering later than this after launch is recorded as a warning on the participant. Six live
  * launches answered in 4.8-7.7 s; the reads this wait now guards used to give up at about 11 s.
  */
 const SLOW_DEVTOOLS_MS = 10_000;
 
 /**
  * Records how Chrome's DevTools port answered after launch, as a timed phase in the bundle. A
- * device-emulated lane fails closed when the port never answered, because emulation is applied
- * over DevTools. Other lanes continue with a warning: their DevTools reads already degrade to
+ * device-emulated participant fails closed when the port never answered, because emulation is applied
+ * over DevTools. Other participants continue with a warning: their DevTools reads already degrade to
  * warnings of their own.
  */
 function noteDevToolsReadiness(
@@ -184,7 +184,7 @@ function noteDevToolsReadiness(
 
 /**
  * Measure the browser window and start the live stream. A stream that cannot start is a warning;
- * unusable browser geometry fails the lane before any participant action.
+ * unusable browser geometry fails the participant before any action.
  */
 export async function startParticipantStream(
   ctx: E2BParticipantContext,
@@ -212,8 +212,8 @@ export async function startParticipantStream(
       state.browserWindowId = browserGeometry.browserWindowId;
       state.browserTargetId = browserGeometry.browserTargetId;
     }
-    // A browser lane streams its browser window when one was found. A CLI lane has no window id
-    // and streams the whole desktop: a person studying a terminal app opens other windows, and
+    // A browser participant streams its browser window when one was found. A CLI participant has
+    // no window id and streams the whole desktop: a person studying a terminal app opens other windows, and
     // a stream bound to the first one would quietly stop being evidence.
     await startDesktopStream(desktop, state.browserWindowId);
     const candidateStreamUrl: unknown = desktop.stream.getUrl({
@@ -244,7 +244,7 @@ export async function startParticipantStream(
   }
 
   // This is outside the stream's best-effort catch: unusable geometry is a harness failure,
-  // never a participant finding about missing controls. Both per-lane and shared-world seats
+  // never a participant finding about missing controls. Both computer-use and shared-world participants
   // use this route.
   if (state.initialBrowserGeometry?.unusable !== undefined) {
     state.failureCode = "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";

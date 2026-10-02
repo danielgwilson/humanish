@@ -20,7 +20,7 @@ const GONE_STATES = new Set(["killed", "already-gone"]);
 
 /**
  * One warning when the run is not finished, by the run index's rule: its status record when it
- * has a usable one, else a simulation still `running` in its bundle. Empty for a finished run.
+ * has a usable one, else a participant still `running` in its bundle's `simulations[]`. Empty for a finished run.
  */
 export async function runNotFinishedWarnings(
   runPaths: PreparedRunArtifactPaths,

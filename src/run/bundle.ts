@@ -231,8 +231,8 @@ export interface RunSubjectProvenance {
 /**
  * How well a run attributed INTERACTION between actors — a new, ORTHOGONAL honesty axis to the
  * persona-sampling evidence classes (which answer "how representative is the actor?"). Absent ==
- * `isolated` (every existing bundle byte-stable). `shared-world` means N roles drove ONE mutable
- * plane and their per-role attribution is weaker (its ceiling is pinned in `sharedWorld.attributionLimits`).
+ * `isolated` (every existing bundle byte-stable). `shared-world` means N participants drove ONE
+ * mutable plane and their per-participant attribution is weaker (its ceiling is pinned in `sharedWorld.attributionLimits`).
  */
 type RunAttributionClass = "isolated" | "shared-world";
 

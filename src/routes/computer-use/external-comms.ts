@@ -5,12 +5,12 @@ import { participantHasInboxRecipient } from "./participant-desktop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
 
 /**
- * Adopter-hosted drain (#380): once per RUN, after every lane finished — the catch is one
+ * Adopter-hosted drain (#380): once per RUN, after every participant finished — the catch is one
  * shared external endpoint, not a per-sandbox file. Same routing and digest-only artifact as
- * the in-sandbox drain; the artifact is registered on every lane that declared a recipient
+ * the in-sandbox drain; the artifact is registered on every participant that declared a recipient
  * address, since the thread carries each inbox's mail. A drain failure never fails the run.
  *
- * Returns the warnings the drain produced; lanes that received mail get `commsArtifactPath`.
+ * Returns the warnings the drain produced; participants that received mail get `commsArtifactPath`.
  */
 export async function drainExternalComms(args: {
   externalCommsConfig: LabCommsExternal;
