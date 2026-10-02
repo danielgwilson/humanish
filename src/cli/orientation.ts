@@ -2,7 +2,7 @@
 //
 // It used to print commander's help: sixteen subcommands before any value, identical whether you
 // had never run the tool or had a finished study sitting on disk. That is a poor first contact for
-// a human, and it is worse for a coding agent, which needs to know WHERE IT IS before it can choose
+// a human, and it is worse for a coding agent, which needs to know where it is before it can choose
 // a command — help is a menu, not an orientation.
 //
 // So bare invocation answers three questions instead: what is this, what state is this project in,
@@ -29,7 +29,7 @@ export interface OrientationState {
   /** Runs already on disk, and the most recent one if there is one. */
   runCount: number;
   latestRunId?: string;
-  /** The commands that make sense from HERE, most useful first. */
+  /** The commands that make sense from here, most useful first. */
   nextCommands: OrientationCommand[];
 }
 

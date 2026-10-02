@@ -1,7 +1,7 @@
 // The boundary between the CLI and the terminal UI (#455).
 //
 // `humanish tui` loads a PRE-BUILT bundle (dist/tui-app.js) that contains Ink, React and the
-// screens — and nothing else. Everything the surface needs to KNOW is passed across this interface
+// screens, and nothing else. Everything the surface needs to know is passed across this interface
 // by the CLI, which imports it from the same modules every other command uses.
 //
 // The reason for the seam: a terminal UI that reads the filesystem itself would become a second
@@ -50,13 +50,13 @@ export interface TuiCapabilities {
   /** Read every run in the project, cheapest source first. */
   readRunIndex(cwd: string, options?: ReadRunIndexOptions): Promise<RunIndexResult>;
   /**
-   * The labs DECLARED in this project. Listed separately from run history because neither side is
+   * The labs declared in this project. Listed separately from run history because neither side is
    * the whole truth: a fresh project has manifests and no runs, and a long-lived one has runs from
    * manifests since renamed or deleted.
    */
   listLabs(cwd: string): Promise<LabListResult>;
   /**
-   * Start a run and return once it is running. The run is DETACHED: it outlives this surface, so
+   * Start a run and return once it is running. The run is detached: it outlives this surface, so
    * quitting the TUI — or losing the connection it runs over — does not kill a study that costs
    * real money. The surface then follows it through `status.json` like any other reader.
    */
@@ -64,13 +64,13 @@ export interface TuiCapabilities {
   /** The tail of a launch log: the only account of a run that died before writing evidence. */
   readLaunchLog(logPath: string): Promise<string>;
   /**
-   * Who is in ONE run and what they are thinking. Opens that run's bundle, which the index
+   * Who is in one run and what they are thinking. Opens that run's bundle, which the index
    * deliberately does not — affordable because it is asked only for the run being watched.
    * `null` when the run has not written a bundle yet.
    */
   readRunDetail(cwd: string, runId: string): Promise<RunDetail | null>;
   /**
-   * What a lab IS — subject, participants, model, spend caps, and whether the keys a live run needs
+   * What a lab is: subject, participants, model, spend caps, and whether the keys a live run needs
    * resolve right now. Read for the lab being looked at, because it is what someone reads before
    * deciding to spend money.
    */
@@ -87,10 +87,10 @@ export interface TuiCapabilities {
   /** Stop the sandboxes an interrupted run left behind, keeping its evidence. */
   reclaimRun(cwd: string, runId: string): Promise<ReclaimResult>;
   /** End a run that is still going. "analysis" is marker-only regardless of the current status;
-   * it MUST NOT probe or signal a process. The default "run" intent stops the participant process. */
+   * it must not probe or signal a process. The default "run" intent stops the participant process. */
   stopRun(cwd: string, runId: string, intent?: "run" | "analysis"): Promise<TuiActionResult>;
   /**
-   * Set this directory up as a humanish project. The surface's only WRITING action outside of
+   * Set this directory up as a humanish project. The surface's only writing action outside of
    * starting runs — offered because "cd somewhere else and run init" is a dead end shown to
    * exactly the person who has just arrived (#505).
    */
@@ -149,13 +149,13 @@ export const TUI_BUNDLE_URL = new URL("../tui-app.js", import.meta.url);
 
 /**
  * What `doctor` says about the stakeholder surface — a pure function of the machine's state and,
- * crucially, of WHO IS READING.
+ * crucially, of who is reading.
  *
  * A real first-contact study (labs/first-contact.yaml) is why the reader matters. An autonomous
  * agent evaluating humanish read "`humanish tui` is available in an interactive terminal",
- * correctly concluded it was not in one, and dropped it — then wrote a report FOR A HUMAN that
+ * correctly concluded it was not in one, and dropped it, then wrote a report for a human that
  * never mentioned the human surface at all. Discovery worked and handoff did not. A capability
- * described to a reader who cannot use it has to be phrased as something to PASS ON, or it reads
+ * described to a reader who cannot use it has to be phrased as something to pass on, or it reads
  * as "not for you" and dies in the transcript.
  */
 export function terminalSurfaceMessage(state: {

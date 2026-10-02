@@ -483,7 +483,7 @@ export async function serveObserver(
 export interface DesktopOpenerHost {
   platform: NodeJS.Platform;
   env: NodeJS.ProcessEnv;
-  /** Whether an executable with this name is on the host's PATH. */
+  /** Whether an executable with this name is on the host's `PATH`. */
   onPath(name: string): boolean;
 }
 
@@ -537,7 +537,7 @@ export function openTarget(
       detached: true,
       stdio: "ignore",
     });
-    // An opener that disappears after the PATH check still fails asynchronously (ENOENT). The
+    // An opener that disappears after the `PATH` check still fails asynchronously (ENOENT). The
     // served URL remains usable; an opener must never crash its server.
     child.on("error", () => {});
     child.unref();

@@ -1,6 +1,6 @@
 // Starting a run from the terminal surface (#455).
 //
-// THE RUN MUST OUTLIVE THE SURFACE. A study can take minutes and costs real money, so a run
+// The run must outlive the surface. A study can take minutes and costs real money, so a run
 // started from the TUI cannot be a child of the TUI's event loop: closing the surface, or losing
 // the SSH session it is running over, must not kill it. So this spawns the CLI the same way a
 // person would type it — detached, in its own process group, with its output going to a file
@@ -21,12 +21,12 @@ import { resolveLabManifest } from "../lab/discover.js";
 import { prepareManagedHumanishOutputDirectory } from "../run/contained-output.js";
 
 /**
- * A lab handle is the manifest FILENAME, which is what `humanish lab run` resolves. Restricted to
+ * A lab handle is the manifest filename, which is what `humanish lab run` resolves. Restricted to
  * characters a manifest name can actually contain, and — the part that matters — never allowed to
  * begin with `-`, because argv is positional: a lab called `--json` would otherwise be handed to
  * the CLI as a flag. There is no shell involved, so this is the whole injection surface.
  *
- * A leading underscore IS allowed: `_wip.yaml` is an ordinary way to name a work-in-progress
+ * A leading underscore is allowed: `_wip.yaml` is an ordinary way to name a work-in-progress
  * manifest, `humanish lab run _wip` resolves it, and refusing it here would leave the surface
  * listing a lab it will not start. A leading dot stays out — that names a hidden file, not a lab.
  */
@@ -56,7 +56,7 @@ export interface LaunchedRun {
   /** The spawned CLI's pid. The run's `status.json` stamps the same value. */
   pid: number;
   /**
-   * When the launch happened. A pid ALONE cannot identify a run: pids are recycled by the OS and a
+   * When the launch happened. A pid alone cannot identify a run: pids are recycled by the OS and a
    * finished run keeps its pid in `status.json` forever, so a week-old record can carry the pid the
    * kernel just handed this child. Anything matching on pid must also require the record to be
    * newer than this.
@@ -167,7 +167,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
 
   try {
     const child = spawnFn(process.execPath, args, spawnOptions);
-    // A spawn failure is delivered ASYNCHRONOUSLY as an 'error' event (EAGAIN, EMFILE, ENOMEM, a
+    // A spawn failure is delivered asynchronously as an 'error' event (EAGAIN, EMFILE, ENOMEM, a
     // vanished node binary). An 'error' event with no listener is re-thrown by EventEmitter as an
     // uncaught exception — which would tear down the whole surface, the one thing this module
     // promises never to do. The run is already unref'd and unobserved, so recording it is all that

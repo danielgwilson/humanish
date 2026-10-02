@@ -237,7 +237,7 @@ export function buildBlockedBrowserPersonaSteps(args: {
   urlPolicy?: ScriptedBrowserEvidenceUrlPolicy;
 }): BrowserPersonaStepCapture[] {
   // The journey never ran, so no screenshot was written for these steps. The
-  // failure IS the evidence: keep the blocked status + reason, but omit the
+  // failure is the evidence: keep the blocked status + reason, but omit the
   // screenshot reference so the bundle never claims an artifact that does not
   // exist (otherwise verify's missingLocalEvidenceArtifacts fails closed on
   // evidence that was never meant to exist).

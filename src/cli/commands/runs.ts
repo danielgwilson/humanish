@@ -34,11 +34,11 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
     .description("Run a lab (or a synthetic dry-run bundle). The everyday command.")
     .summary("Run a persona/scenario simulation or dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
-    // `humanish run <lab>` and `humanish lab run <lab>` are the SAME operation on the same
+    // `humanish run <lab>` and `humanish lab run <lab>` are the same operation on the same
     // dispatcher, but this one used to forward four options while its sibling forwarded all of
     // them — so `humanish run first-run --no-open` failed while `lab run` accepted it. A
     // participant hit exactly that and filed it as a documentation mismatch. Same command, same
-    // flags (CLIG: "be consistent across subcommands").
+    // flags (clig.dev: "be consistent across subcommands").
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without an attached watch server.")

@@ -143,7 +143,7 @@ export async function runGuestRuntime(
       isAuthorized: () => !authority.aborted,
       ...(desktop.finishRecording ? { finishRecording: desktop.finishRecording } : {}),
     });
-    // No await in this handoff: an immediate HELLO already has its sole receiver.
+    // No await in this handoff: an immediate hello already has its sole receiver.
     options.transport.write(encodeGuestBootstrap(identity, true), (error) => {
       if (error) terminal();
     });

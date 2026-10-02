@@ -165,7 +165,7 @@ export async function findVisibleBrowserWindowId(
   launchIdentity: DesktopBrowserLaunchIdentity | undefined,
 ): Promise<string | undefined> {
   if (browserFamily === "unknown") return undefined;
-  // The candidate loop keeps the LAST identity match: with a launch identity the match is
+  // The candidate loop keeps the last identity match: with a launch identity the match is
   // unique anyway, and without one every family candidate matches, so the newest visible
   // window of the launched family wins (the window this participant just opened).
   const finder =
@@ -318,7 +318,7 @@ export async function openDesktopBrowserTarget(
       "  fi",
       "  return 1",
       "}",
-      // Fixed CDP port (not :0/random): each seat has its OWN desktop sandbox, so a known port
+      // Fixed CDP port (not :0/random): each seat has its own desktop sandbox, so a known port
       // cannot conflict, and it makes the observer's port resolution deterministic. With :0 the
       // real port lives only in DevToolsActivePort; when the launch-time capture misses on a cold
       // start the observer falls back to 9222 and — being wrong — every CDP read fails for the
@@ -462,7 +462,7 @@ export async function openDesktopTerminal(
     command: [
       "for candidate in x-terminal-emulator xfce4-terminal gnome-terminal konsole xterm; do",
       '  if command -v "$candidate" >/dev/null 2>&1; then',
-      // LANG is set on the terminal we open, not globally: the stock image declares no locale, and
+      // `LANG` is set on the terminal we open, not globally: the stock image declares no locale, and
       // a study that measures our own mojibake against an unconfigured template would be measuring
       // the template. The PRODUCT-side fix (an ASCII fallback when the locale is not UTF-8) is in
       // src/routes/terminal/encoding.ts, and it is the one that matters for real users.

@@ -1,7 +1,7 @@
 // The in-sandbox Chrome DevTools probe behind every URL / page-text / viewport observation.
 //
 // It runs on python3, stdlib only. It used to run on node, and that was the #514 root cause: the
-// stock E2B desktop template ships python3 and curl but NO Node, and Node only arrives when a
+// stock E2B desktop template ships python3 and curl but no Node, and Node only arrives when a
 // subject's serve pipeline needs it (src/subject/runtime.ts). So on the app-url route, and on any
 // subject served by something other than Node (the taskly benchmark is `python3 -m http.server`),
 // `node -e` exited 127 on every turn, the probe degraded to `{}`, and every urlIncludes /
@@ -13,10 +13,10 @@
 // The same lesson was learned once already: the comms catch was rewritten from node to python3 in
 // 0.29.0 (comms/sandbox-catch.ts). This is the third in-sandbox runtime dependency to move.
 //
-// The script takes ONE JSON argument and prints ONE JSON line. Failures print
-// `{"unavailable": "<reason>"}` with exit 0 so the caller can say WHY the channel is dark instead
+// The script takes one JSON argument and prints one JSON line. Failures print
+// `{"unavailable": "<reason>"}` with exit 0 so the caller can say why the channel is dark instead
 // of swallowing an exit code; the TypeScript side turns that into a participant warning that names the
-// consequence ("url/text criteria will read as NEVER MEASURED").
+// consequence ("url/text criteria will read as never measured").
 
 import { shellQuote } from "../shell.js";
 
@@ -34,11 +34,11 @@ export interface ChromeCdpProbeArgs {
   targetId?: string;
   /**
    * "pinned" (default): the launch-time target, for launch geometry and emulation attribution.
-   * "active": the tab the participant is driving NOW — Chrome's /json lists page
+   * "active": the tab the participant is driving now; Chrome's /json lists page
    * targets most-recently-focused first. The state observer must follow the participant: a
-   * verification link that opens in a NEW tab left a pinned observer reading the old tab forever,
+   * verification link that opens in a new tab left a pinned observer reading the old tab forever,
    * so the observed URL never changed again and stopWhen/task criteria went blind (a live run's
-   * funnel read reach-dashboard 0/2 under a screenshot OF the dashboard). Final geometry follows
+   * funnel read reach-dashboard 0/2 under a screenshot of the dashboard). Final geometry follows
    * this target too: a closed launch tab is unavailable, and a background tab may report stale
    * layout dimensions or zero outer bounds after navigation.
    */
@@ -100,9 +100,9 @@ export interface ChromeCdpProbeResult {
  * headless Chrome).
  *
  * WebSocket is hand-rolled because python's stdlib has no client: one masked text frame out, frames
- * in until the reply with id 1 arrives, 1.5 s budget, and NO Origin header (Chrome refuses
+ * in until the reply with id 1 arrives, 1.5 s budget, and no Origin header (Chrome refuses
  * cross-origin DevTools sockets unless --remote-allow-origins is set; a header-less client is a
- * local one). urllib is opened WITHOUT proxy handlers so a sandbox-wide http_proxy cannot redirect
+ * local one). urllib is opened without proxy handlers so a sandbox-wide http_proxy cannot redirect
  * a loopback read.
  */
 export const CHROME_CDP_PROBE_PY = String.raw`

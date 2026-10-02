@@ -1,25 +1,25 @@
-// Affordance classification (#369): WHICH KIND of route an actor took to accomplish a step.
+// Affordance classification (#369): which kind of route an actor took to accomplish a step.
 //
 // Why this exists. A computer-use actor in a human-persona study typed a `javascript:` URL into
 // the address bar to get past a step, and the run finished green: the actor routed around the
 // friction the study existed to measure, and nothing in the evidence said so. Whether that is a
 // defect depends on a question the bundle never recorded — who is this study's user? For a human
-// population it invalidates the run; for an agent-facing product whose users ARE agents the same
+// population it invalidates the run; for an agent-facing product whose users are agents the same
 // act is faithful, and the fact the agent reached for it is itself a finding about how legible
-// the surface is. So the harness records the class and bakes NO verdict: the adopter's scorer
+// the surface is. So the harness records the class and bakes no verdict: the adopter's scorer
 // (review.scorer.ref) decides what it means, because that judgment is product semantics.
 //
 // Two design facts drive the shape:
 //
 //  1. The computer-use action space is mouse + keyboard only — there is no `goto` action. Typing a
-//     URL is a `type` action whose TEXT happens to be a URL, and typing script is a `type` action
+//     URL is a `type` action whose text happens to be a URL, and typing script is a `type` action
 //     whose text happens to start with `javascript:`. Classification therefore has to look at the
 //     typed text, which exists only at dispatch time.
 //  2. Raw typed text is never persisted (describeCuaAction deliberately renders `type [N chars]`),
-//     so this module returns a CLASS and at most a scheme-shaped signal — never the text. The
+//     so this module returns a class and at most a scheme-shaped signal, never the text. The
 //     class is public-safe by construction.
 //
-// Direct URL navigation is deliberately its own class and NOT lumped with script execution:
+// Direct URL navigation is deliberately its own class, separate from script execution:
 // `load(url)` appears in 99.4% of 2,337 real human web demonstrations (WebLINX), so address-bar
 // use is ordinary human behavior. The anomalous classes are script execution and developer
 // tooling. See docs/principles/actor-fidelity.md for the evidence and the scoping of the claim.
@@ -73,7 +73,7 @@ export const SHORTCUT_AFFORDANCE_CLASSES: readonly AffordanceClass[] = [
 export interface AffordanceObservation {
   affordance: AffordanceClass;
   /**
-   * A public-safe hint about WHY this class was assigned, when one exists — a URL scheme or the
+   * A public-safe hint about why this class was assigned, when one exists: a URL scheme or the
    * devtools chord. Never the typed text, never a full URL (which can carry a session token).
    */
   signal?: string;
@@ -114,7 +114,7 @@ const DEVTOOLS_CHORDS = new Set([
 ]);
 
 /**
- * Classify one computer-use action. PURE: same action in, same class out, no I/O, no clock. The
+ * Classify one computer-use action. Pure: same action in, same class out, no I/O, no clock. The
  * returned signal is public-safe (a scheme or a chord), never the action's text.
  */
 export function classifyCuaAction(action: CuaAction): AffordanceObservation {
@@ -167,7 +167,7 @@ export function classifyCuaAction(action: CuaAction): AffordanceObservation {
 
 /**
  * Normalize a key chord so the same physical shortcut matches however a provider spells it:
- * `Control`/`ctrl`, `Meta`/`Command`/`cmd`, `Option`/`alt` all collapse, and modifier ORDER is
+ * `Control`/`ctrl`, `Meta`/`Command`/`cmd`, `Option`/`alt` all collapse, and modifier order is
  * normalized so ["Shift","Control","J"] and ["Control","Shift","J"] are one chord.
  */
 function normalizeChord(keys: readonly string[]): string {

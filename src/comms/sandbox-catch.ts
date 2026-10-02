@@ -1,10 +1,10 @@
-// Deploy the vendor-neutral email catch INSIDE the subject E2B sandbox and bridge captured sends back
-// to the host bus (#297 config-block core). The host `startEmailCatchServer` binds the HOST's loopback,
-// which a sandboxed app cannot reach — `127.0.0.1:PORT` from the app is the SANDBOX's loopback. So the
+// Deploy the vendor-neutral email catch inside the subject E2B sandbox and bridge captured sends back
+// to the host bus (#297 config-block core). The host `startEmailCatchServer` binds the host's loopback,
+// which a sandboxed app cannot reach: `127.0.0.1:PORT` from the app is the sandbox's loopback. So the
 // listener must live in the sandbox: we write a tiny self-contained capture server (no deps, no host
 // import) into the sandbox, launch it detached (the same substrate that serves the subject app), and
 // each poll `cat` its append-only NDJSON of captured sends back to the host, where the real profiles
-// parse them and route into the CommsChannel. A FIXED loopback port is chosen up front so the app's
+// parse them and route into the CommsChannel. A fixed loopback port is chosen up front so the app's
 // injected base-URL env (`http://127.0.0.1:<port>`) is known before the sandbox is created.
 
 import type { CommsAddress, CommsChannel, CommsMessage } from "./types.js";
@@ -25,8 +25,8 @@ const DEFAULT_CATCH_DIR = "/tmp/humanish-comms";
 export interface DeployCommsCatchOptions {
   /** Fixed loopback port the catch listens on (default 8025). Must be free inside the sandbox. */
   port?: number;
-  /** Optional SECOND fixed port for a READ-ONLY inbox listener bound to 0.0.0.0, so a persona in a
-   *  DIFFERENT sandbox can reach the inbox surface via getHost (the shared-world route). Omit on the
+  /** Optional second fixed port for a read-only inbox listener bound to 0.0.0.0, so a persona in a
+   *  different sandbox can reach the inbox surface via getHost (the shared-world route). Omit on the
    *  CUA same-sandbox route (loopback is enough). Must differ from `port` and be free in the sandbox. */
   inboxPort?: number;
   /** In-sandbox working dir for the script + NDJSON (default /tmp/humanish-comms). */
@@ -45,25 +45,25 @@ export interface DeployCommsCatchOptions {
 
 export interface DeployedCommsCatch {
   port: number;
-  /** Inject THIS as the app's email-API base URL (e.g. RESEND_API_URL) — the sandbox's own loopback. */
+  /** Inject this as the app's email-API base URL (e.g. RESEND_API_URL): the sandbox's own loopback. */
   baseUrl: string;
   deliveriesPath: string;
-  /** In-sandbox dir the HOST renders the persona-facing inbox-surface files into (via writeInboxSurface);
+  /** In-sandbox dir the host renders the persona-facing inbox-surface files into (via writeInboxSurface);
    *  the catch serves them at /inbox and /api/inbox. */
   surfaceDir: string;
-  /** The 0.0.0.0 read-only inbox port, when one was requested — getHost-expose THIS to give a
+  /** The 0.0.0.0 read-only inbox port, when one was requested; getHost-expose this to give a
    *  different-sandbox persona a reachable inbox URL. Absent on the loopback-only (CUA) route. */
   inboxPort?: number;
   /** The loopback SMTP port, when one was requested. Point the app's SMTP host/port env at
-   *  127.0.0.1 and THIS. */
+   *  127.0.0.1 and this port. */
   smtpPort?: number;
-  /** Whether the catch's /health returned OUR service marker within the readiness budget. Callers MUST
+  /** Whether the catch's /health returned humanish's service marker within the readiness budget. Callers must
    *  treat `ready === false` as fatal (do not inject baseUrl into a dead catch — the app's sends would
    *  silently fail with nothing captured). */
   ready: boolean;
 }
 
-/** Readiness probe that asserts OUR service marker in the /health body (not merely any 2xx) — so a
+/** Readiness probe that asserts humanish's service marker in the /health body (a bare 2xx is not enough), so a
  *  process squatting on the fixed port cannot produce a false "ready" while the app's sends bypass us. */
 async function catchHealthy(
   shell: Shell,
@@ -94,8 +94,8 @@ export interface RawCapturedSend {
 }
 
 /**
- * Write + launch the in-sandbox catch (detached), then probe it ready. Call AFTER the subject sandbox
- * is created and BEFORE the subject app's serve.start, so the base URL resolves at the app's boot.
+ * Write + launch the in-sandbox catch (detached), then probe it ready. Call after the subject sandbox
+ * is created and before the subject app's serve.start, so the base URL resolves at the app's boot.
  */
 export async function deployCommsCatch(
   shell: Shell,
@@ -190,7 +190,7 @@ export async function drainCommsCatch(
   );
   const stdout = result.stdout;
   let lines = stdout.split("\n").filter((line) => line.trim().length > 0);
-  // If the file doesn't end in a newline, the last line may be a PARTIAL append (the host `cat` raced
+  // If the file doesn't end in a newline, the last line may be a partial append (the host `cat` raced
   // an in-sandbox append of a large body). Drop it and don't advance the cursor past it — it re-reads
   // complete on the next poll, so a captured send is never lost to the race (the script only ever emits
   // valid JSON, so an incomplete line is the only cause of a parse miss).
@@ -215,10 +215,10 @@ export async function drainCommsCatch(
 
 /**
  * Parse an append-only deliveries NDJSON blob into raw sends. Split out of drainCommsCatch (#380) so
- * the SAME parsing serves a sandbox we own (read over the E2B command channel) and a catch running on
+ * the same parsing serves a sandbox we own (read over the E2B command channel) and a catch running on
  * a plane we do not own (read from the local filesystem by `humanish comms catch`).
  *
- * A file that does not end in a newline may have a PARTIAL last line — a reader racing an append of a
+ * A file that does not end in a newline may have a partial last line when a reader races an append of a
  * large body. Dropping it is never lossy: the script only ever emits valid JSON lines, so an incomplete
  * line re-reads complete on the next pass.
  */
@@ -244,7 +244,7 @@ export function parseDeliveriesNdjson(text: string): RawCapturedSend[] {
 }
 
 /**
- * The distinct `to` addresses the captured mail was actually sent to, parsed with the SAME profiles
+ * The distinct `to` addresses the captured mail was actually sent to, parsed with the same profiles
  * that route it. A lab run knows its recipients from the declared roster; a standalone catch does not,
  * so it discovers them from the mail itself — otherwise an operator who forgot to name an address gets
  * a technically-healthy catch rendering an empty inbox forever, which is the false-green class #380 is
@@ -275,7 +275,7 @@ export function capturedRecipientAddresses(
 }
 
 /**
- * Route raw sends into a FRESH FakeInbox and return the deduped, delivery-ordered messages. Split out
+ * Route raw sends into a fresh FakeInbox and return the deduped, delivery-ordered messages. Split out
  * of refreshInboxSurface (#380) so the rendering pipeline is shared by every transport; the freshness
  * is what makes a full rebuild idempotent (a send is never routed twice, so no duplicate emails).
  */
@@ -351,7 +351,7 @@ export interface CommsThreadCollection {
 /**
  * End of a run's comms funnel: drain everything the in-sandbox catch captured, route it into the
  * host `channel`, poll the provisioned `inboxes`, and build the digest-only thread artifact. The
- * `artifact` is omitted when nothing was captured OR nothing matched a provisioned inbox (an empty
+ * `artifact` is omitted when nothing was captured or nothing matched a provisioned inbox (an empty
  * file would be a false claim of a delivered thread) — but `captured`/`matched` are always reported so
  * the caller can warn on captured-but-unevidenced mail rather than lose it silently. Composes the
  * tested drain/route/build pieces so the CUA and shared-world routes collect evidence identically. The
@@ -391,7 +391,7 @@ export async function collectCommsThread(args: {
 
 /** An adopter-hosted catch: humanish never provisioned it, so it is addressed over HTTP (#328). */
 export interface ExternalCommsCatch {
-  /** Base URL of the catch the ADOPTER runs (its POST capture endpoint and GET /deliveries). */
+  /** Base URL of the catch the adopter runs (its POST capture endpoint and GET /deliveries). */
   catchBaseUrl: string;
   /** Base URL the persona opens to read mail. Defaults to catchBaseUrl (same server serves /inbox). */
   inboxBaseUrl?: string;
@@ -410,7 +410,7 @@ export function externalInboxUrl(external: ExternalCommsCatch): string {
 }
 
 /**
- * Probe an adopter-hosted catch the way the in-sandbox one is probed: assert OUR service marker in
+ * Probe an adopter-hosted catch the way the in-sandbox one is probed: assert humanish's service marker in
  * /health, not merely any 2xx — an adopter's reverse proxy or a captive portal will happily return
  * 200 for anything, and a comms lab whose catch is not actually there collects nothing while
  * looking fine. Fail-closed callers treat `false` as a hard stop before spending on a run.
@@ -488,7 +488,7 @@ export async function drainExternalCommsCatch(
 
 /**
  * The adopter-hosted analogue of collectCommsThread: drain over HTTP, route into the host inbox bus,
- * and build the SAME digest-only humanish.comms-thread.v1 artifact. Evidence shape does not depend
+ * and build the same digest-only humanish.comms-thread.v1 artifact. Evidence shape does not depend
  * on who hosted the catch — only the transport does.
  */
 export async function collectExternalCommsThread(args: {
@@ -526,9 +526,9 @@ export async function collectExternalCommsThread(args: {
 
 /**
  * Render the persona-facing inbox surface (host-side, typed — see capture-surface.ts) and write the files
- * into the sandbox's served dir, so the catch serves a LIVE inbox the persona opens and clicks. Creates
+ * into the sandbox's served dir, so the catch serves a live inbox the persona opens and clicks. Creates
  * the nested route dirs first; overwrites idempotently, so call it whenever the message set changes
- * (e.g. after a mid-run drain). Returns the number of files written. Raw content is written INTO the
+ * (e.g. after a mid-run drain). Returns the number of files written. Raw content is written into the
  * sandbox only (runtime-only, served to the in-sandbox browser); nothing here persists to the bundle.
  */
 export async function writeInboxSurface(
@@ -561,13 +561,13 @@ export interface InboxSurfaceRecipient {
 }
 
 /**
- * One mid-run inbox-surface refresh cycle: FULL rebuild from the append-only NDJSON (drain from cursor 0)
- * into a FRESH FakeInbox each call, provisioning the declared `recipients`, then (re)render the surface
+ * One mid-run inbox-surface refresh cycle: full rebuild from the append-only NDJSON (drain from cursor 0)
+ * into a fresh FakeInbox each call, provisioning the declared `recipients`, then (re)render the surface
  * so the persona sees new mail while the session is live. Returns the total captured-send `count` + whether
  * it rendered.
  *
- * The full rebuild is deliberate — it is IDEMPOTENT and RETRY-SAFE: a transient writeInboxSurface failure
- * PROPAGATES (the caller retries next tick without advancing its `sinceCount`), and because each rebuild
+ * The full rebuild is deliberate because it is idempotent and retry-safe: a transient writeInboxSurface failure
+ * propagates (the caller retries next tick without advancing its `sinceCount`), and because each rebuild
  * starts from a clean channel, a send is never routed twice, so the persona never sees duplicate emails.
  * Pass `sinceCount` (the last SUCCESSFULLY-rendered send count) to skip the (N-file) render when nothing
  * new has arrived. This is independent of the teardown collectCommsThread drain (its own fresh channel,
