@@ -128,7 +128,7 @@ describe("declared camera capabilities must reach an implemented route", () => {
     const runSession = vi.fn(async () => {
       throw new Error("must not dispatch participant");
     });
-    const hooks = { env: {}, loadDesktopModule, runSession };
+    const seams = { desktopModule: loadDesktopModule, runSession };
     try {
       const firefox = structuredClone(base);
       firefox.execution!.desktop!.browser = "firefox";
@@ -139,12 +139,13 @@ describe("declared camera capabilities must reach an implemented route", () => {
       const terminal = structuredClone(base);
       terminal.subject.source = "terminal-product";
       const outcomes = await Promise.all([
-        runCuaActorLab({ cwd, config: firefox, dryRun: false, hooks }),
+        runCuaActorLab({ cwd, config: firefox, dryRun: false, env: {}, deps: seams }),
         runCuaActorLab({
           cwd,
           config: base,
           dryRun: false,
-          hooks,
+          env: {},
+          deps: seams,
           inProcess: {
             executor: async () => {
               throw new Error("must not build executor");

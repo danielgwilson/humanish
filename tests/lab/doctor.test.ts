@@ -515,16 +515,19 @@ describe("selected lab setup without paid dispatch", () => {
         );
         await chmod(command, 0o700);
         let desktopLoads = 0;
-        const outcome = await runLab(resolved.config, {
-          cwd,
-          env: { ...keyless, PATH: bin, E2B_API_KEY: "synthetic-desktop-marker" },
-          cuaHooks: {
-            loadDesktopModule: async () => {
+        const outcome = await runLab(
+          resolved.config,
+          {
+            cwd,
+            env: { ...keyless, PATH: bin, E2B_API_KEY: "synthetic-desktop-marker" },
+          },
+          {
+            desktopModule: async () => {
               desktopLoads++;
               throw new Error("Must not reach desktop provider");
             },
           },
-        });
+        );
         if (outcome.backend !== "cua") throw new Error("Expected CUA route");
         expect(outcome.result.error?.message).toContain(message);
         expect(outcome.result.runId).toBe("not-created");

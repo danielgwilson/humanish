@@ -53,7 +53,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // planComputerUseLab makes every configuration refusal, in the order this route always has.
   const planned = planComputerUseLab(config, {
     dryRun,
-    ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
+    hasRunSession: input.deps?.runSession !== undefined,
     driving: callerDrivingOf(input),
     ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),

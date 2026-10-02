@@ -9,10 +9,8 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type {
-  CuaActorLabHooks,
-  RunCuaActorLabOptions,
-} from "../../../src/routes/computer-use/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { RunCuaActorLabOptions } from "../../../src/routes/computer-use/types.js";
 import { lab } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];
@@ -193,7 +191,7 @@ const pairs: [string, string][] = [
 
 function caseOf(names: readonly string[]): {
   config: LabConfig;
-  hooks: CuaActorLabHooks;
+  deps: LabDeps;
   driving: Pick<RunCuaActorLabOptions, "inProcess" | "createProvider">;
   countOverride?: number;
 } {
@@ -204,7 +202,7 @@ function caseOf(names: readonly string[]): {
   const never = async (): Promise<never> => {
     throw new Error("admission cases must not reach a caller hook");
   };
-  const hooks: CuaActorLabHooks = { env: {}, loadDesktopModule: never };
+  const deps: LabDeps = { desktopModule: never };
   const driving = {
     ...(selected.some((rule) => rule.executor) ? { inProcess: { executor: never } } : {}),
     ...(selected.some((rule) => rule.provider) ? { createProvider: never } : {}),
@@ -212,7 +210,7 @@ function caseOf(names: readonly string[]): {
   const countOverride = selected.find((rule) => rule.countOverride !== undefined)?.countOverride;
   return {
     config: config as unknown as LabConfig,
-    hooks,
+    deps,
     driving,
     ...(countOverride === undefined ? {} : { countOverride }),
   };
@@ -231,13 +229,14 @@ describe("computer-use admission order", () => {
     for (const [name, names] of cases) {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cu-admission-"));
       dirs.push(cwd);
-      const { config, hooks, driving, countOverride } = caseOf(names);
+      const { config, deps, driving, countOverride } = caseOf(names);
       const dryRun = config.scenario?.mode !== "live";
       const result = await runCuaActorLab({
         cwd,
         config,
         dryRun,
-        hooks,
+        env: {},
+        deps,
         ...driving,
         ...(countOverride === undefined ? {} : { countOverride }),
       });
@@ -259,9 +258,9 @@ describe("computer-use admission order", () => {
       path.join(cwd, "humanish", "personas", "first-time-visitor.yaml"),
       "background: 5\n",
     );
-    const { config, hooks } = caseOf([]);
+    const { config, deps } = caseOf([]);
     await expect(
-      runCuaActorLab({ cwd, config, dryRun: true, hooks, countOverride: 17 }),
+      runCuaActorLab({ cwd, config, dryRun: true, env: {}, deps, countOverride: 17 }),
     ).rejects.toThrow("Persona background must be text.");
   });
 });

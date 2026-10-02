@@ -89,7 +89,6 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
       : {}),
   } as Pick<RunCuaActorLabOptions, "inProcess" | "createProvider">;
   return {
-    cuaHooks: { env, loadDesktopModule },
     driving,
     // The shared-world, terminal and scripted routes read env and their seams directly.
     typed: { env, deps: { desktopModule: loadDesktopModule } },
@@ -107,7 +106,7 @@ async function runEntry(
     vi.stubEnv("HUMANISH_BROWSER_COMMAND", "");
   }
   const calls: Calls = { desktop: 0, executor: 0, provider: 0, subprocess: 0 };
-  const { typed, driving, ...hooks } = hooksFor(options, calls);
+  const { typed, driving } = hooksFor(options, calls);
   const backend: LabBackend | "none" =
     options.runner ?? (entry === "runner" ? selectLabBackend(config) : "none");
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
@@ -120,7 +119,6 @@ async function runEntry(
         config,
         {
           cwd,
-          ...hooks,
           ...driving,
           env: typed.env,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
@@ -135,7 +133,7 @@ async function runEntry(
         cwd,
         config,
         dryRun,
-        hooks: hooks.cuaHooks,
+        ...typed,
         ...driving,
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...rerun,

@@ -29,7 +29,7 @@ import type { LabEvent, ParticipantRef } from "../../lab/run-lab-events.js";
 import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../lab/run-lab-options.js";
 import { type BrowserScorer } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
-import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
+import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/detached.js";
 import type {
@@ -39,7 +39,7 @@ import type {
   ResidualConfig,
 } from "../../lab/plan-types.js";
 import { type LabCommsEmail, type LabConfig } from "../../lab/types.js";
-import { renderObserver, type ObserverResult } from "../../observer/render.js";
+import { type ObserverResult } from "../../observer/render.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import {
   type RunBundle,
@@ -50,7 +50,6 @@ import {
 } from "../../run/bundle.js";
 import { type RunDesktopGeometry } from "../../run/streams.js";
 import { type PreparedOutputRoot } from "../../run/contained-output.js";
-import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import type {
   ComputerUseParticipant,
   SharedWorldParticipant,
@@ -92,46 +91,6 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 // screen the browser can't shrink to does not overflow + clip (see resolveLaneDevice / #221).
 
 /**
- * Library-level hooks. `prepareDesktop` runs after sandbox creation and before subject
- * provisioning / browser launch — library callers use it for extra in-sandbox setup beyond
- * what `subject.serve` declares (or to provision an app-url subject entirely). The rest are
- * DI seams so CI drives the full path with fakes at zero network/zero spend.
- */
-export interface CuaActorLabHooks {
-  /**
-   * Runs after sandbox creation and before subject provisioning / browser launch. Widened
-   * back-compatibly with per-lane context so a library caller can provision the right app-url
-   * subject per lane (a one-arg `(desktop) => …` still satisfies the type). Called once per lane.
-   */
-  prepareDesktop?: (
-    desktop: E2BDesktopSandbox,
-    lane: { laneId: string; laneIndex: number; laneCount: number },
-  ) => Promise<void>;
-  loadDesktopModule?: () => Promise<E2BDesktopModule>;
-  runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
-  env?: Record<string, string | undefined>;
-  renderObserverFn?: typeof renderObserver;
-  /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
-   *  feeds the desktop-minute cost estimate. Defaults to Date.now; tests inject a frozen/stepped
-   *  clock so the desktop-minute line is deterministic. */
-  now?: () => number;
-  /** Injected clock/sleep for the detached-step polling (tests only). */
-  detachedTimers?: DetachedTimers;
-  /**
-   * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
-   * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced
-   * archive file into an ArrayBuffer. Called ONCE per run, before lane fan-out, on the live
-   * local-tree route; the result (archive metadata + bytes) is shared byte-identically across
-   * every fan-out lane, so one archiveSha256 describes every lane's packed content.
-   */
-  packLocalTree?: (args: {
-    root: string;
-    extraExclude?: string[];
-    maxArchiveBytes?: number;
-  }) => Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }>;
-}
-
-/**
  * What a computer-use run takes besides its plan and config. The count override and rerun go to
  * participant building with the config.
  */
@@ -165,7 +124,10 @@ export interface RunCuaActorLabOptions {
     sourceRunId: string;
     laneIds?: string[];
   };
-  hooks?: CuaActorLabHooks;
+  /** Keys and subject env for the run. Defaults to process.env. */
+  env?: Readonly<Record<string, string | undefined>>;
+  /** E2B only. Runs on each participant's desktop after it exists and before provisioning. */
+  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
   /** runLab's local VM study, for an app-url lab on the local target. */
   localVm?: LocalVmInput;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
@@ -532,7 +494,12 @@ export interface CuaParticipantDeps {
   /** Injected clock (ms). Used to measure the host-side E2B desktop create->teardown span so the
    *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
   now: () => number;
-  hooks: CuaActorLabHooks;
+  /** Loads the E2B SDK for the participant's desktop. Defaults to loadE2BDesktopModule. */
+  desktopModule?: () => Promise<E2BDesktopModule>;
+  /** The caller's prepareDesktop, called with the participant as its target. */
+  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
+  /** Clock and sleep for detached provisioning steps. */
+  detachedTimers?: DetachedTimers;
   /** Receives each live stream's ready and ended: the Observer's tracker, then the caller's onStream. */
   onStream: NonNullable<RunLabHomes["onStream"]>;
   /** Reports a subject phase to the phase sink (stderr by default) and to onEvent. */

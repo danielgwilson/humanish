@@ -75,19 +75,17 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (LIVE, spend-gated)", () => {
 
       const outcome = await runLab(parsed.config, {
         cwd,
-        cuaHooks: {
-          // Per-lane prepareDesktop: serve the neutral page inside EACH lane's own sandbox.
-          prepareDesktop: async (desktop) => {
-            await desktop.files.write("/home/user/www/proof.html", PROOF_HTML);
-            await desktop.commands.run(
-              "setsid -f python3 -m http.server 8000 --directory /home/user/www >/dev/null 2>&1 < /dev/null",
-              { timeoutMs: 20_000 },
-            );
-            await desktop.commands.run(
-              "for i in $(seq 1 20); do curl -sf http://127.0.0.1:8000/proof.html >/dev/null && exit 0; sleep 0.5; done; exit 1",
-              { timeoutMs: 20_000 },
-            );
-          },
+        // Per-lane prepareDesktop: serve the neutral page inside EACH lane's own sandbox.
+        prepareDesktop: async (desktop) => {
+          await desktop.files.write("/home/user/www/proof.html", PROOF_HTML);
+          await desktop.commands.run(
+            "setsid -f python3 -m http.server 8000 --directory /home/user/www >/dev/null 2>&1 < /dev/null",
+            { timeoutMs: 20_000 },
+          );
+          await desktop.commands.run(
+            "for i in $(seq 1 20); do curl -sf http://127.0.0.1:8000/proof.html >/dev/null && exit 0; sleep 0.5; done; exit 1",
+            { timeoutMs: 20_000 },
+          );
         },
       });
       expect(outcome.backend).toBe("cua");

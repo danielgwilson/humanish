@@ -18,7 +18,7 @@ import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan } from "../../../src/routes/computer-use/route.js";
-import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { provisionParticipantSubject } from "../../../src/routes/computer-use/e2b-desktop/prepare.js";
 import {
@@ -55,8 +55,11 @@ function appUrlLab(): LabConfig {
   return parsed.config;
 }
 
-function planOf(config: LabConfig, hooks: CuaActorLabHooks): ComputerUsePlan {
-  const planned = planComputerUseLab(config, { dryRun: false, hooks });
+function planOf(config: LabConfig, deps: LabDeps): ComputerUsePlan {
+  const planned = planComputerUseLab(config, {
+    dryRun: false,
+    hasRunSession: deps.runSession !== undefined,
+  });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return planned.plan;
 }
@@ -80,17 +83,17 @@ function recordingModule() {
 const optionsOf = (args: unknown[]) =>
   args[args.length - 1] as { metadata?: Record<string, string>; envs?: Record<string, string> };
 
-async function runAndCapture(plan: ComputerUsePlan, config: LabConfig, hooks: CuaActorLabHooks) {
-  await runComputerUsePlan(plan, { cwd, hooks }, config).catch(() => undefined);
+async function runAndCapture(plan: ComputerUsePlan, config: LabConfig, deps: LabDeps) {
+  await runComputerUsePlan(plan, { cwd, env: KEYS, deps }, config).catch(() => undefined);
 }
 
 describe("computer-use run reads the plan's residual fields", () => {
   it("names the plan's lab id in the sandbox metadata", async () => {
     const config = appUrlLab();
     const { module, creates } = recordingModule();
-    const hooks: CuaActorLabHooks = { env: KEYS, loadDesktopModule: async () => module };
-    const plan = { ...planOf(config, hooks), labId: "plan-lab" };
-    await runAndCapture(plan, config, hooks);
+    const deps: LabDeps = { desktopModule: async () => module };
+    const plan = { ...planOf(config, deps), labId: "plan-lab" };
+    await runAndCapture(plan, config, deps);
     expect(creates).toHaveLength(1);
     expect(optionsOf(creates[0]!).metadata?.labId).toBe("plan-lab");
   });
@@ -98,8 +101,8 @@ describe("computer-use run reads the plan's residual fields", () => {
   it("creates the desktop from the plan's template and with its subject env values", async () => {
     const config = appUrlLab();
     const { module, creates } = recordingModule();
-    const hooks: CuaActorLabHooks = { env: KEYS, loadDesktopModule: async () => module };
-    const planned = planOf(config, hooks);
+    const deps: LabDeps = { desktopModule: async () => module };
+    const planned = planOf(config, deps);
     const plan: ComputerUsePlan = {
       ...planned,
       residual: {
@@ -108,7 +111,7 @@ describe("computer-use run reads the plan's residual fields", () => {
         subject: { ...planned.residual.subject, envValues: { PLAN_ONLY: "plan-value" } },
       },
     };
-    await runAndCapture(plan, config, hooks);
+    await runAndCapture(plan, config, deps);
     expect(creates).toHaveLength(1);
     expect(creates[0]![0]).toBe("plan-template");
     expect(optionsOf(creates[0]!).envs).toEqual({ PLAN_ONLY: "plan-value" });
@@ -132,8 +135,8 @@ describe("computer-use run reads the plan's residual fields", () => {
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const { module, creates } = recordingModule();
-    const hooks: CuaActorLabHooks = { env: KEYS, loadDesktopModule: async () => module };
-    const planned = planOf(parsed.config, hooks);
+    const deps: LabDeps = { desktopModule: async () => module };
+    const planned = planOf(parsed.config, deps);
     const plan: ComputerUsePlan = {
       ...planned,
       residual: {
@@ -141,7 +144,7 @@ describe("computer-use run reads the plan's residual fields", () => {
         comms: { email: { kind: "fake", injectEnv: "PLAN_CATCH_URL" } },
       } as ComputerUsePlan["residual"],
     };
-    await runAndCapture(plan, parsed.config, hooks);
+    await runAndCapture(plan, parsed.config, deps);
     expect(creates).toHaveLength(1);
     expect(Object.keys(optionsOf(creates[0]!).envs ?? {})).toContain("PLAN_CATCH_URL");
   });
@@ -191,16 +194,15 @@ describe("computer-use run reads the plan's residual fields", () => {
         done: true,
       }),
     };
-    const hooks: CuaActorLabHooks = {
-      env: KEYS,
+    const deps: LabDeps = {
       runSession: async (options) => {
         sessions.push(options);
         return runCuaActorSession({ ...options, provider });
       },
     };
-    const plan = { ...planOf(config, hooks), caps: { maxUsd: 3 } };
+    const plan = { ...planOf(config, deps), caps: { maxUsd: 3 } };
     const localVm = { desktop: () => fakeDesktop(), analysisRefusal: () => undefined };
-    const result = await runComputerUsePlan(plan, { cwd, hooks, localVm }, config);
+    const result = await runComputerUsePlan(plan, { cwd, env: KEYS, deps, localVm }, config);
     expect(result.ok).toBe(true);
     expect(sessions[0]?.maxUsd).toBe(3);
   });
@@ -239,7 +241,6 @@ describe("a participant's subject provisioning reads the plan", () => {
       deps: {
         requestTimeoutMs: 1_000,
         scrubKnownValues: (text: string) => text,
-        hooks: {},
         ...deps,
       } as unknown as CuaParticipantDeps,
       warnings: [],

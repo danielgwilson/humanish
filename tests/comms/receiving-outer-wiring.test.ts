@@ -6,7 +6,6 @@ import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
-import { type CuaActorLabHooks } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import type { LabDeps } from "../../src/lab/lab-deps.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
@@ -372,13 +371,15 @@ describe("configured receiving through exported study runners", () => {
         },
       };
     };
-    const hooks: CuaActorLabHooks = {
-      env: {
-        OPENAI_API_KEY: "synthetic-openai",
-        E2B_API_KEY: "synthetic-e2b",
-        AGENTMAIL_API_KEY: "synthetic-management-key-canary",
-      },
-      loadDesktopModule: async () => sandbox.module,
+    const env = {
+      OPENAI_API_KEY: "synthetic-openai",
+      E2B_API_KEY: "synthetic-e2b",
+      AGENTMAIL_API_KEY: "synthetic-management-key-canary",
+    };
+    // Both routes take the same fakes; the shared-world plane reads its own three as well.
+    const deps: LabDeps = {
+      ...quietPhases,
+      desktopModule: async () => sandbox.module,
       runSession,
       detachedTimers: { now: () => 0, sleep: async () => undefined },
       packLocalTree: async () => ({
@@ -391,35 +392,20 @@ describe("configured receiving through exported study runners", () => {
         },
         buffer: new TextEncoder().encode("test").buffer,
       }),
-      renderObserverFn: async (project, run) => ({
+      renderObserver: async (project, run) => ({
         schema: "humanish.observer-result.v1",
         ok: true,
         cwd: project,
         run,
         warnings: [],
       }),
-    };
-    // Shared world takes the same fakes as seams, plus its own.
-    const sharedDeps: LabDeps = {
-      ...quietPhases,
-      desktopModule: hooks.loadDesktopModule!,
-      runSession,
-      detachedTimers: hooks.detachedTimers!,
-      packLocalTree: hooks.packLocalTree!,
-      renderObserver: hooks.renderObserverFn!,
       proberCadenceMs: 100_000,
       handoffDeadlineMs: 1500,
       readLobbyCodeFromFrame: async () => undefined,
     };
     const result = route.startsWith("cua-")
-      ? await runCuaActorLab({ cwd, config, dryRun: false, hooks, deps: quietPhases })
-      : await runConcurrentSharedWorld({
-          cwd,
-          config,
-          dryRun: false,
-          env: hooks.env!,
-          deps: sharedDeps,
-        });
+      ? await runCuaActorLab({ cwd, config, dryRun: false, env, deps })
+      : await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(events.indexOf("receiving-acquire")).toBeGreaterThanOrEqual(0);
     expect(events.indexOf("receiving-acquire")).toBeLessThan(events.indexOf("desktop-create"));
     expect(finish).toHaveBeenCalledOnce();

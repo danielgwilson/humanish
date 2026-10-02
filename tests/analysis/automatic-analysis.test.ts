@@ -238,11 +238,11 @@ describe("automatic analysis admission and producer boundary", () => {
         cwd: path.join(cwd, "absent"),
         config: { ...base, review: { analysis: { maxCostUsd: 0 } } },
         dryRun: false,
-        hooks: {
-          env: {},
-          loadDesktopModule: forbidden,
+        env: {},
+        deps: {
+          desktopModule: forbidden,
           runSession: forbidden,
-          renderObserverFn: forbidden,
+          renderObserver: forbidden,
         },
         inProcess: { executor: forbidden },
         createProvider: forbidden,
@@ -737,8 +737,8 @@ describe("automatic analysis admission and producer boundary", () => {
       const analysis = cliAnalysisOptions({ writeErr: text => process.stderr.write(text) });
       const automaticAnalysis = { run: async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; } };
       await runLab(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, ...analysis, automaticAnalysis,
-        cuaHooks: { env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
-          loadDesktopModule: async () => { process.stdout.write("ACTOR_READY\\n"); await new Promise(() => {}); } } });
+        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" } },
+        { desktopModule: async () => { process.stdout.write("ACTOR_READY\\n"); await new Promise(() => {}); } });
       clearInterval(timer);
     `;
       const child = spawn(

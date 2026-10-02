@@ -1,12 +1,12 @@
-// The typed homes on RunLabOptions and the one place they meet the route hook bags. runLab calls
-// normalizeRunLabOptions first: it refuses an option the route cannot honor and otherwise maps each
-// typed option into the bag the route reads today. The bags themselves are internal: only tests
-// set them, and the package's runLab refuses them (removedOptionRefusal).
+// The typed homes on RunLabOptions. runLab calls normalizeRunLabOptions first: it refuses an option
+// the route cannot honor, keeps the typed options the route reads, and maps analysisSignal and
+// onEvent into the automatic-analysis hooks, the one internal bag left. The package's runLab
+// refuses every bag (removedOptionRefusal).
 
 import path from "node:path";
 
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
-import { CUA_ACTOR_LAB_SCHEMA, type CuaActorLabHooks } from "../routes/computer-use/types.js";
+import { CUA_ACTOR_LAB_SCHEMA } from "../routes/computer-use/types.js";
 import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted/types.js";
 import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types.js";
 import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
@@ -19,7 +19,6 @@ import type { LabConfig } from "./types.js";
 import {
   knownSecretValues,
   labEventEmitter,
-  participantOf,
   type LabEvent,
   type ParticipantRef,
   type SetupTarget,
@@ -243,33 +242,14 @@ export function normalizeRunLabOptions(
         }),
   });
   if (analysis !== undefined) normalized.automaticAnalysis = analysis;
-  const envHome = forwardedEnv === undefined ? {} : { env: forwardedEnv };
-  // Every scoring route reads scorer itself, and computer use and shared world read onStream.
-  // createProvider and inProcess stay in `legacy`: only computer use accepts them, and reads them.
+  // Every route reads its typed options directly. Every scoring route reads scorer, and computer
+  // use and shared world read onStream. createProvider and inProcess stay in `legacy`: only
+  // computer use accepts them. unsupportedOption already refused prepareDesktop where no route
+  // reads it.
   if (scorer !== undefined) normalized.scorer = scorer;
   if (onStream !== undefined) normalized.onStream = onStream;
-  switch (route) {
-    case "computer-use": {
-      const hooks = withMapped(legacy.cuaHooks, {
-        ...envHome,
-        ...computerUseHooks(prepareDesktop),
-      });
-      if (hooks !== undefined) normalized.cuaHooks = hooks;
-      break;
-    }
-    case "terminal":
-      // The terminal route reads its typed options directly.
-      if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
-      break;
-    case "shared-world":
-    case "scripted":
-      // The shared-world and scripted routes read their typed options directly.
-      if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
-      if (prepareDesktop !== undefined) normalized.prepareDesktop = prepareDesktop;
-      break;
-    case "preview":
-      break;
-  }
+  if (route !== "preview" && forwardedEnv !== undefined) normalized.env = forwardedEnv;
+  if (prepareDesktop !== undefined) normalized.prepareDesktop = prepareDesktop;
   return { ok: true, options: normalized, warnings, emit };
 }
 
@@ -277,14 +257,6 @@ export function normalizeRunLabOptions(
 function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
   if (Object.keys(mapped).length === 0) return bag;
   return { ...bag, ...mapped } as T;
-}
-
-function computerUseHooks(prepareDesktop: RunLabHomes["prepareDesktop"]): CuaActorLabHooks {
-  if (prepareDesktop === undefined) return {};
-  return {
-    prepareDesktop: (desktop, participant) =>
-      prepareDesktop(desktop, { kind: "participant", participant: participantOf(participant) }),
-  };
 }
 
 /** A refusal in the route's own result envelope, before any run exists. */

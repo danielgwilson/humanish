@@ -53,7 +53,7 @@ export type LabEvent =
 
 /**
  * The literal values to scrub from an onEvent warning: the provider keys and the declared subject
- * env from every env the run could read (the `env` option, each bag's env, process.env), and the
+ * env from every env the run could read (the `env` option and process.env), and the
  * analysis API key. A callback can hold any of them, and its warning is appended after the route
  * sanitized its own.
  */
@@ -62,7 +62,7 @@ export function knownSecretValues(
   options: InternalRunLabOptions,
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
 ): string[] {
-  const sources = [forwardedEnv, options.env, options.cuaHooks?.env, process.env];
+  const sources = [forwardedEnv, options.env, process.env];
   const names = ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY", ...(config.subject.env ?? [])];
   const values = new Set<string>();
   const add = (value: string | undefined): void => {

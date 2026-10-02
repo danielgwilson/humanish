@@ -19,7 +19,6 @@ import { normalizeRunLabOptions, type StreamEvent } from "../../src/lab/run-lab-
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
-import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 
 function config(base: BaseName, patch?: Patch): LabConfig {
@@ -45,7 +44,6 @@ const scorer: AdapterScorerModule = {
 const prepareDesktop = async (): Promise<void> => undefined;
 /** A fresh plan event with no participants: a poisoning test redefines its fields. */
 const emptyPlan = (): LabEvent => ({ type: "plan", route: "computer-use", participants: [] });
-const desktop = {} as E2BDesktopSandbox;
 
 function normalize(labConfig: LabConfig, options: Partial<InternalRunLabOptions>) {
   return normalizeRunLabOptions(labConfig, routeOf(labConfig), {
@@ -189,18 +187,16 @@ describe("runLab returns an option refusal in the route's own envelope and write
     ],
   ] as const)("%s", async (base, backend, schema, options) => {
     let desktopLoads = 0;
-    const outcome = await runLab(config(base), {
-      cwd,
-      dryRun: false,
-      runId: "refused",
-      ...options,
-      cuaHooks: {
-        loadDesktopModule: async () => {
+    const outcome = await runLab(
+      config(base),
+      { cwd, dryRun: false, runId: "refused", ...options } as InternalRunLabOptions,
+      {
+        desktopModule: async () => {
           desktopLoads += 1;
           throw new Error("no desktop in this test");
         },
       },
-    } as InternalRunLabOptions);
+    );
 
     expect(outcome.backend).toBe(backend);
     expect(outcome.result).toMatchObject({
@@ -214,20 +210,23 @@ describe("runLab returns an option refusal in the route's own envelope and write
 
   it("typed inProcess on two participants gets the planner's fan-out refusal, naming inProcess", async () => {
     let desktopLoads = 0;
-    const outcome = await runLab(config("cuAppUrl"), {
-      cwd,
-      dryRun: false,
-      runId: "refused",
-      inProcess,
-      createProvider,
-      count: 2,
-      cuaHooks: {
-        loadDesktopModule: async () => {
+    const outcome = await runLab(
+      config("cuAppUrl"),
+      {
+        cwd,
+        dryRun: false,
+        runId: "refused",
+        inProcess,
+        createProvider,
+        count: 2,
+      },
+      {
+        desktopModule: async () => {
           desktopLoads += 1;
           throw new Error("no desktop in this test");
         },
       },
-    });
+    );
     expect(outcome.result).toMatchObject({
       ok: false,
       error: { code: "HUMANISH_CUA_LAB_FANOUT_INVALID" },
@@ -247,9 +246,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
   });
 });
 
-describe("each new option lands in the bag the route reads", () => {
-  const lane = { laneId: "lane-02", laneIndex: 1, laneCount: 3 };
-
+describe("each typed option stays on the options the route reads", () => {
   it("scorer stays on the options for every scoring route", () => {
     const module: AdapterScorerModule = {
       score: scorer.score!,
@@ -258,23 +255,9 @@ describe("each new option lands in the bag the route reads", () => {
     };
     for (const base of ["cuAppUrl", "sharedProvisioned", "terminal"] as const)
       expect(normalized(config(base), { scorer: module }).scorer).toBe(module);
-    // The bags no longer carry scoring functions.
-    expect(normalized(config("cuAppUrl"), { scorer: module }).cuaHooks).toBeUndefined();
   });
 
-  it("env goes to the computer-use bag, beside the bag's other fields", async () => {
-    const loadDesktopModule = async () => {
-      throw new Error("unused");
-    };
-    const options = normalized(config("cuAppUrl"), {
-      env: { OPENAI_API_KEY: "k" },
-      cuaHooks: { loadDesktopModule },
-    });
-    expect(options.cuaHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
-    await expect(options.cuaHooks!.loadDesktopModule!()).rejects.toThrow("unused");
-  });
-
-  it.each(["sharedProvisioned", "terminal", "scriptedAppUrl"] as const)(
+  it.each(["cuAppUrl", "sharedProvisioned", "terminal", "scriptedAppUrl"] as const)(
     "env stays on the options for %s, as a copy",
     (base) => {
       const env = { OPENAI_API_KEY: "k" };
@@ -284,28 +267,17 @@ describe("each new option lands in the bag the route reads", () => {
     },
   );
 
-  it("prepareDesktop gets a participant target on computer use and stays on the options for scripted", async () => {
-    const targets: unknown[] = [];
-    const record = async (_desktop: E2BDesktopSandbox, target: unknown): Promise<void> => {
-      targets.push(target);
-    };
-    await normalized(config("cuAppUrl"), { prepareDesktop: record }).cuaHooks!.prepareDesktop!(
-      desktop,
-      lane,
-    );
-    expect(normalized(config("scriptedClone"), { prepareDesktop: record }).prepareDesktop).toBe(
-      record,
-    );
-    expect(targets).toEqual([
-      { kind: "participant", participant: { id: "lane-02", index: 1, count: 3 } },
-    ]);
-  });
+  it.each(["cuAppUrl", "sharedProvisioned", "scriptedClone"] as const)(
+    "prepareDesktop stays on the options for %s",
+    (base) => {
+      expect(normalized(config(base), { prepareDesktop }).prepareDesktop).toBe(prepareDesktop);
+    },
+  );
 
   it("createProvider and inProcess stay on the options for computer use", () => {
     const options = normalized(config("cuLocalApp"), { inProcess, createProvider });
     expect(options.createProvider).toBe(createProvider);
     expect(options.inProcess).toBe(inProcess);
-    expect(options.cuaHooks).toBeUndefined();
   });
 });
 
@@ -363,10 +335,11 @@ describe("stream, rerun and analysis options land where the route reads them", (
     );
   });
 
-  it("the fields still mapped into the bag are gone from what the computer-use route receives", () => {
+  it("computer use reads its typed options directly; onEvent and analysisSignal go to analysis", () => {
     const onStream = (): void => undefined;
+    const env = {};
     const options = normalized(config("cuAppUrl"), {
-      env: {},
+      env,
       scorer,
       prepareDesktop,
       onEvent: () => undefined,
@@ -374,12 +347,12 @@ describe("stream, rerun and analysis options land where the route reads them", (
       analysisSignal: AbortSignal.abort(),
       createProvider,
     });
-    // scorer, onStream and createProvider stay: the routes read them directly.
     expect(options.scorer).toBe(scorer);
     expect(options.onStream).toBe(onStream);
     expect(options.createProvider).toBe(createProvider);
-    for (const key of ["env", "prepareDesktop", "onEvent", "analysisSignal"])
-      expect(options).not.toHaveProperty(key);
+    expect(options.prepareDesktop).toBe(prepareDesktop);
+    expect(options.env).toEqual(env);
+    for (const key of ["onEvent", "analysisSignal"]) expect(options).not.toHaveProperty(key);
   });
 });
 
@@ -528,20 +501,6 @@ describe("an onEvent warning carries no known secret", () => {
     expect(result.warnings[0]).not.toContain(openaiKey);
     expect(result.warnings[0]).toContain("[REDACTED_SECRET]");
   });
-
-  it("reads the values from the route's bag when env is not set", () => {
-    const password = "synthetic-app-password-bag-11";
-    const labConfig = config("cuClone", { subject: { env: ["APP_PASSWORD"] } });
-    const result = normalize(labConfig, {
-      cuaHooks: { env: { APP_PASSWORD: password } },
-      onEvent: () => {
-        throw new Error(`login as ${password} failed`);
-      },
-    });
-    if (!result.ok) throw new Error(result.message);
-    result.emit!(emptyPlan());
-    expect(result.warnings[0]).not.toContain(password);
-  });
 });
 
 describe("an onEvent failure never escapes", () => {
@@ -627,39 +586,6 @@ describe("an onEvent callback that rewrites its event", () => {
     }
   });
 });
-
-describe("secret values are read only when a warning needs them", () => {
-  const throwingEnv = (): Record<string, string | undefined> =>
-    Object.defineProperty({}, "CODEX_API_KEY", {
-      enumerable: true,
-      get() {
-        throw new Error("env getter read");
-      },
-    }) as Record<string, string | undefined>;
-
-  it("normalizes a legacy bag whose env has a throwing getter when no onEvent is set", () => {
-    const result = normalize(config("cuAppUrl"), {
-      cuaHooks: { env: throwingEnv() },
-      scorer,
-    });
-    expect(result.ok).toBe(true);
-  });
-
-  it("falls back to a fixed warning when reading the values throws", () => {
-    const result = normalize(config("cuAppUrl"), {
-      cuaHooks: { env: throwingEnv() },
-      onEvent: () => {
-        throw new Error("handler failed");
-      },
-    });
-    if (!result.ok) throw new Error(result.message);
-    result.emit!(emptyPlan());
-    expect(result.warnings).toEqual([
-      "RunLabOptions.onEvent failed on plan: the thrown value has no message",
-    ]);
-  });
-});
-
 describe("the scrub covers every env the run could read", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -705,7 +631,7 @@ describe("the scrub covers the env the route received", () => {
     });
     if (!result.ok) throw new Error(result.message);
     env.APP_PASSWORD = "synthetic-replaced-password-17";
-    expect(result.options.cuaHooks!.env!.APP_PASSWORD).toBe(initial);
+    expect(result.options.env!.APP_PASSWORD).toBe(initial);
     result.emit!(emptyPlan());
     expect(result.warnings[0]).not.toContain(initial);
   });

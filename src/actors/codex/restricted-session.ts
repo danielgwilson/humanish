@@ -62,7 +62,7 @@ export interface RestrictedCodexSessionOptions {
   /**
    * Bypasses qualification: replaces this host's admitted releases with any list. It exists only
    * so scripts/codex-qualify.mjs can launch an unqualified candidate. No library export, lab
-   * manifest, CLI flag, RunLabOptions field or cuaHooks entry reaches it
+   * manifest, CLI flag, RunLabOptions field or LabDeps seam reaches it
    * (tests/actors/codex/cli-versions-seam.test.ts).
    */
   cliVersions?: readonly string[];
