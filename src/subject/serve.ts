@@ -199,7 +199,7 @@ export async function runSubjectServePipeline(
   await startSubject(step);
   await waitForSubjectReady(step);
 
-  // after-ready: fixture loading through the RUNNING app (loopback curl from in-sandbox:
+  // after-ready: fixture loading through the running app (loopback curl from in-sandbox:
   // steps are author-trusted provisioning, not actors, so no new URL policy surface). These
   // complete before the caller opens the browser and the session timer starts.
   await runState("after-ready");

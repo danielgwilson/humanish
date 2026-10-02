@@ -28,20 +28,20 @@ export function buildRuntimeAuth(args: {
         | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED";
       message: string;
     } {
-  // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key SOURCE
+  // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key source
   // name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
-  // (developers.openai.com/codex/noninteractive) document it as the channel for a SINGLE codex exec
+  // (developers.openai.com/codex/noninteractive) document it as the channel for a single codex exec
   // invocation, which is exactly this route's shape (no persisted auth.json/CODEX_HOME, per-command
   // envs only). A dated in-repo receipt
   // (docs/goals/humanish-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
   // job-wide OPENAI_API_KEY alone failing bearer auth for this same pinned-exec pattern. When the
-  // operator only exported OPENAI_API_KEY, its value is ALSO injected under CODEX_API_KEY below, so
+  // operator only exported OPENAI_API_KEY, its value is also injected under CODEX_API_KEY below, so
   // the documented exec auth channel is always populated regardless of which name the operator
-  // used. The ALLOWLIST is exactly these two names; everything else is denied by construction.
+  // used. The allowlist is exactly these two names; everything else is denied by construction.
   const ALLOWED_RUNTIME_KEY_NAMES = ["CODEX_API_KEY", "OPENAI_API_KEY"] as const;
-  // Tripwire (safety contract item 4): if a FUTURE widening of ALLOWED_RUNTIME_KEY_NAMES ever
+  // Tripwire (safety contract item 4): if a future widening of ALLOWED_RUNTIME_KEY_NAMES ever
   // added a clearly-non-runtime credential (a GitHub/payment/deploy/db secret), fail closed. The
-  // generic `*_KEY` shape is deliberately NOT a tripwire here, since a runtime key legitimately
+  // generic `*_KEY` shape is deliberately left out of the tripwire, since a runtime key legitimately
   // ends in _KEY (CODEX_API_KEY/OPENAI_API_KEY), so testing it against the generic shape would
   // false-positive on the very key this route exists to inject. The positive allowlist itself is
   // the real boundary: the command env is built from exactly these names and nothing else (so
@@ -66,9 +66,9 @@ export function buildRuntimeAuth(args: {
     };
   }
   const keyValue = args.env[keyName] as string;
-  // The command-scoped env is the ALLOWLIST: exactly the runtime key name(s), nothing else. No
+  // The command-scoped env is the allowlist: exactly the runtime key name(s). No
   // GITHUB_TOKEN/GH_TOKEN, no payment/deploy/db/media key, excluded by construction. When the
-  // SOURCE was OPENAI_API_KEY, the SAME value is also injected as CODEX_API_KEY so codex exec's
+  // source was OPENAI_API_KEY, the same value is also injected as CODEX_API_KEY so codex exec's
   // documented single-invocation auth channel is populated either way (see the comment above).
   const mode = args.runtimeAuth ?? "openai-env";
   const envs: Record<string, string> =
@@ -88,11 +88,11 @@ export function buildRuntimeAuth(args: {
   };
 }
 
-// Clearly-non-runtime credential NAME shapes. Used as the runtime-key allowlist tripwire (a
-// runtime key must never be one of these). Deliberately EXCLUDES the generic `*_KEY` shape: the
+// Clearly-non-runtime credential name shapes. Used as the runtime-key allowlist tripwire (a
+// runtime key must never be one of these). Deliberately excludes the generic `*_KEY` shape: the
 // runtime key this route injects (CODEX_API_KEY/OPENAI_API_KEY) legitimately ends in _KEY, so the
 // generic shape would false-positive on it. The positive allowlist, not a denylist, is what
-// keeps every OTHER operator-env credential (GitHub/payment/deploy/db/media keys) out of the
+// keeps every other operator-env credential (GitHub/payment/deploy/db/media keys) out of the
 // sandbox: the command env is built from exactly the allowlisted runtime key and nothing else.
 const NON_RUNTIME_CREDENTIAL_NAME_PATTERNS: RegExp[] = [
   /^GITHUB_TOKEN$/i,
@@ -112,7 +112,7 @@ function isNonRuntimeCredentialName(name: string): boolean {
 }
 
 /**
- * Build the sandbox metadata from a POSITIVE ALLOWLIST (safety contract item 6). This is the ONLY
+ * Build the sandbox metadata from a positive allowlist (safety contract item 6). This is the only
  * way metadata is set on the terminal route — it carries solely non-secret labels and rejects any
  * value that is not a plain short label. A verifier check asserts the persisted metadata has no
  * prompt/token/secret shapes; this builder makes that true by construction.

@@ -38,11 +38,11 @@ export interface SubjectComms {
   env: Record<string, string>;
 }
 
-// Off-app comms (#297): on the provisioned-getHost plane the harness owns the ONE subject sandbox, so
-// it can redirect the app's email-API sends into an in-sandbox catch and evidence them. Gated ENTIRELY
+// Off-app comms (#297): on the provisioned-getHost plane the harness owns the one subject sandbox, so
+// it can redirect the app's email-API sends into an in-sandbox catch and evidence them. Gated entirely
 // on config.comms — no comms declared → zero change. The base-URL env is injected into the subject
 // sandbox at create (fixed port known up front); the catch is deployed before serve; the drain + digest
-// evidence run at subject teardown, then register run-level in the bundle. NOT available on the
+// evidence run at subject teardown, then register run-level in the bundle. Unavailable on the
 // external-public plane (the app is an operator-owned deployment the harness never provisions).
 export function subjectCommsOf(
   config: Pick<LabConfig, "comms">,
@@ -63,8 +63,8 @@ export function subjectCommsOf(
 }
 
 /**
- * ADOPTER-HOSTED ingress (#328): on the external-public plane the harness provisions nothing, so
- * it cannot host a catch — but the OPERATOR can, and then humanish still does every other part of
+ * Adopter-hosted ingress (#328): on the external-public plane the harness provisions nothing, so
+ * it cannot host a catch. The operator can, and then humanish still does every other part of
  * the funnel: it tells each persona its address and inbox URL, drains the declared catch over
  * HTTP at teardown, and writes the same digest-only evidence. Declaring `external` is what turns
  * the previously-inert block into a working one. Returns an error message when the declared catch
@@ -107,8 +107,8 @@ export async function prepareExternalComms(
       code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID",
       message: tokenRefusal,
     };
-  // Fail closed BEFORE any actor sandbox is created: a comms lab whose catch is unreachable
-  // collects nothing while every participant still spends. The probe asserts OUR service marker in
+  // Fail closed before any actor sandbox is created: a comms lab whose catch is unreachable
+  // collects nothing while every participant still spends. The probe asserts our service marker in
   // /health, so an adopter's proxy answering 200 for everything cannot pass for a catch.
   if (!dryRun && !(await externalCatchHealthy(externalComms))) {
     return {
@@ -123,7 +123,7 @@ export async function prepareExternalComms(
 /**
  * Off-app comms evidence (#297): drain everything the in-sandbox catch captured, route it into a
  * host fake inbox addressed to the declared recipients, and write the run-level digest-only thread
- * artifact — while the subject is STILL alive, before it is killed. Wrapped so a drain error
+ * artifact while the subject is still alive, before it is killed. Wrapped so a drain error
  * never blocks teardown (invariant: all sandboxes torn down by id in the plane's finally). Returns
  * the thread's path when one was written.
  */

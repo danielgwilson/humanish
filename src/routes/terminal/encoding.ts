@@ -1,6 +1,6 @@
 // Whether this terminal can render the characters we write to it.
 //
-// FOUND BY A PARTICIPANT, not by us (labs/tui-self-study.yaml): a computer-use participant sitting
+// A participant found this (labs/tui-self-study.yaml): a computer-use participant sitting
 // at a stock desktop ran `humanish` and read back `humanish ��� run realistic synthetic personas`.
 // The em dash is three bytes of UTF-8, and a terminal whose locale is not UTF-8 renders each byte
 // as a replacement glyph. Every ASCII character on the same screen was fine, which is exactly the
@@ -14,7 +14,7 @@ const UTF8 = /utf-?8/i;
 
 /**
  * Does this environment declare a UTF-8 locale? The POSIX variables are checked in the order the C
- * library resolves them (LC_ALL overrides LC_CTYPE overrides LANG).
+ * library resolves them (`LC_ALL` overrides `LC_CTYPE` overrides `LANG`).
  *
  * Windows terminals declare none of these and are handled as UTF-8: modern Windows Terminal and
  * PowerShell render it, and the failure this guards against is a Unix locale that says C/POSIX.

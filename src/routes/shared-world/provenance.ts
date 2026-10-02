@@ -12,7 +12,7 @@ export function servePort(serveUrl: string): number {
   return url.protocol === "https:" ? 443 : 80;
 }
 
-/** A getHost URL must be TOKENLESS (no userinfo, no query — no authKey; invariant 1). */
+/** A getHost URL must be tokenless (no userinfo and no query, so no authKey; invariant 1). */
 export function isTokenlessHost(value: string): boolean {
   try {
     const url = new URL(value);
@@ -22,7 +22,7 @@ export function isTokenlessHost(value: string): boolean {
   }
 }
 
-/** sha256-16 of a URL's ORIGIN — the publish-safe host identity persisted in the bundle (the raw
+/** sha256-16 of a URL's origin: the publish-safe host identity persisted in the bundle (the raw
  *  getHost URL embeds the live sandbox id + matches the e2b-URL redaction, so it never lands raw). */
 export function hostOriginDigest(url: string): string {
   try {
@@ -39,9 +39,9 @@ export function publicSafeRouteLabel(entry: string | undefined): string {
 }
 
 /**
- * Build the ONE subject sandbox's provenance (invariant 5): clone (repo + optional commit) or
+ * Build the one subject sandbox's provenance (invariant 5): clone (repo + optional commit) or
  * local-tree (archiveSha256 + optional commit/dirty from the once-per-run host-packed archive -
- * archiveSha256 IS the pin; there is only ONE archive, so no per-participant unanimity math applies,
+ * archiveSha256 is the pin; there is only one archive, so no per-participant unanimity math applies,
  * unlike the cua fan-out route). Used for both the in-progress and final bundle: the archive
  * never changes mid-run (packed before any sandbox exists).
  */

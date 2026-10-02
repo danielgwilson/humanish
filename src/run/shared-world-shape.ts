@@ -6,13 +6,13 @@ import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 // digest cannot pin "same recipe" across bundles, so verify treats it as a hollow claim.
 export const COMMAND_DIGEST_PATTERN = /^[0-9a-f]{16}$/;
 
-// Env var NAME shape (mirrors ENV_NAME_PATTERN in src/lab/parse/values.ts). externalEnvNames
-// must hold NAMES only — a value sneaking into the list trips this check (a free secret tripwire).
+// Env var name shape (mirrors ENV_NAME_PATTERN in src/lab/parse/values.ts). externalEnvNames
+// must hold names only: a value sneaking into the list trips this check (a free secret tripwire).
 export const SUBJECT_ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
-// SEQUENTIAL: the three disclosures a sequential shared-world bundle MUST pin (verify fails closed
+// Sequential: the three disclosures a sequential shared-world bundle must pin (verify fails closed
 // if any is absent — omission overclaims): sequential turns only, no concurrency/races handled, and
-// a checkpoint delta is attributed to the TURN it followed, not a specific action (correlation).
+// a checkpoint delta is attributed to the turn it followed, never a specific action (correlation).
 export const MANDATORY_ATTRIBUTION_LIMITS = [
   "sequential-only",
   "no-concurrent-races",
@@ -22,12 +22,12 @@ export const MANDATORY_ATTRIBUTION_LIMITS = [
 // A shared-world checkpoint record persists DIGEST-ONLY: exactly these keys, nothing value-shaped.
 export const SHARED_WORLD_CHECKPOINT_KEYS = new Set(["kind", "name", "digest", "deltaFromPrev"]);
 
-// CONCURRENT stateSeries record is DIGEST-ONLY too (FIX-7): permit ONLY a numeric timestamp + the
+// A concurrent stateSeries record is digest-only too: it permits a numeric timestamp + the
 // sha256-16 digest; any other key is a value-shaped leak / a smuggled per-delta→actor field.
 export const SHARED_WORLD_STATESERIES_KEYS = new Set(["timestamp", "digest"]);
 
 /**
- * Single-plane provenance: every item shares ONE (commit, seedDigest), and that pair matches
+ * Single-plane provenance: every item shares one (commit, seedDigest), and that pair matches
  * sharedWorld.plane. Only the first item that diverges from the plane is reported. The shape guard
  * has already typed both fields as strings (commit may be absent).
  */
@@ -78,7 +78,7 @@ export function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvid
   if (isRecord(plane) && Array.isArray(plane.envNames)) {
     for (const name of plane.envNames) {
       if (typeof name !== "string" || !SUBJECT_ENV_NAME_PATTERN.test(name)) {
-        // Does NOT echo the entry: a malformed entry may BE a value.
+        // Never echoes the entry: a malformed entry may be a value.
         findings.push(
           "sharedWorld.plane.envNames carries an entry that is not an env var NAME shape (values must never appear in evidence)",
         );
@@ -89,8 +89,8 @@ export function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvid
 }
 
 /**
- * Tolerant SHAPE guard for the shared-world evidence block (#164). Validates required fields +
- * types but TOLERATES extra keys (additive): the strict value-shape/timeline checks are
+ * Tolerant shape guard for the shared-world evidence block (#164). Validates required fields +
+ * types and tolerates extra keys (additive): the strict value-shape/timeline checks are
  * sharedWorldEvidenceFindings' job (an injected value-shaped checkpoint field must pass the shape
  * guard so verify can catch it fail-closed, not silently bounce off isRunBundle).
  */
@@ -124,7 +124,7 @@ export function isSharedWorldEvidence(value: unknown): value is SharedWorldEvide
     )
   )
     return false;
-  // Tolerant: validate the TYPE of each present field only (the coherence + topologyMode dispatch
+  // Tolerant: validate the type of each present field only (the coherence + topologyMode dispatch
   // are the job of sharedWorldEvidenceFindings — an injected value-shaped field must pass this
   // guard so verify catches it fail-closed). A bundle must carry at least one of the two shapes.
   if (
@@ -177,7 +177,7 @@ function isSharedWorldTimelineEntry(value: unknown): boolean {
   return false;
 }
 
-// Tolerant shape guards for the CONCURRENT series (extra keys tolerated — the digest-only /
+// Tolerant shape guards for the concurrent series (extra keys tolerated; the digest-only /
 // allowed-keys tripwires are the strict job of sharedWorldEvidenceFindings).
 function isSharedWorldLaneWindow(value: unknown): boolean {
   return (

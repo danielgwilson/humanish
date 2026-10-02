@@ -8,39 +8,39 @@
 //      live-sandbox.ts and live-finish.ts); a dry plan publishes its contract bundle (dry-run.ts);
 //   4. automatic analysis of a run that published its final bundle.
 //
-// THE SAFETY CONTRACT (`docs/goals/terminal-product-lane/goal.md`) is enforced BY CONSTRUCTION in
-// the files each item names, and CHECKED by the verifier (verify/actor.ts
+// The safety contract (`docs/goals/terminal-product-lane/goal.md`) is enforced by construction in
+// the files each item names, and checked by the verifier (verify/actor.ts
 // validateTerminalProductEvidence):
-//   1. EXPLICIT KEY PLACEMENT. openai-env (default) injects the raw runtime key command-scoped,
-//      NEVER Sandbox.create({envs}). Opt-in openai-egress sends it only in the host-side E2B
+//   1. Explicit key placement. openai-env (default) injects the raw runtime key command-scoped,
+//      never through Sandbox.create({envs}). Opt-in openai-egress sends it only in the host-side E2B
 //      header transform and passes an inert command placeholder. The proxy is spendable by every
 //      sandbox process from creation; this protects the raw key, not provider spending.
 //      Enforced in credentials.ts and runtime-auth.ts.
-//   2. FAIL-CLOSED CAP. The live key is never exercised without scenario.caps in force: maxUsd
+//   2. Fail-closed cap. The live key is never exercised without scenario.caps in force: maxUsd
 //      (default/require 0 = no-spend) + maxMinutes (wall-clock kill of the codex command).
 //      Enforced in plan.ts (caps required), live-sandbox.ts and lifetime.ts (the wall clock).
-//   3. PUBLIC SURFACES ONLY. The mission references only subject.product.publicSurfaces + the
+//   3. Public surfaces only. The mission references only subject.product.publicSurfaces + the
 //      author mission. No clone, no private-source access — nothing is git-cloned on this route.
 //      Enforced in session.ts, which composes the prompt.
-//   4. DENY-BY-DEFAULT CREDENTIALS. The command envs are built from an ALLOWLIST of ONLY the
+//   4. Deny-by-default credentials. The command envs are built from an allowlist holding only the
 //      declared runtime key; GITHUB_TOKEN/GH_TOKEN/payment/deploy/db/media keys are excluded by
 //      construction (a banned-name guard also fails closed if one is ever requested).
 //      Enforced in credentials.ts.
-//   5. NO SECRET VALUES IN EVIDENCE. Every captured byte (event stream, transcript, command logs,
+//   5. No secret values in evidence. Every captured byte (event stream, transcript, command logs,
 //      agent report, metadata) passes scrubKnownValues (literal scrub of the runtime key + any
-//      provisioned values, >=4 chars, PRE-truncation) THEN redactText (shape patterns) BEFORE
-//      persisting. The transport is labeled HONESTLY (exec-stream/snapshot, NOT an interactive pty).
+//      provisioned values, >=4 chars, before truncation), then redactText (shape patterns), before
+//      persisting. The transport is labeled exec-stream/snapshot; there is no interactive pty.
 //      Enforced in recorder.ts, with the scrubber session.ts builds.
-//   6. METADATA POSITIVE ALLOWLIST. buildSandboxMetadata(allowlist) is the ONLY way metadata is
+//   6. Metadata positive allowlist. buildSandboxMetadata(allowlist) is the only way metadata is
 //      set; it carries solely non-secret labels (mode/tool/labId/simId/provider/runId).
 //      Enforced in credentials.ts.
-//   7. STDIN DISABLED + INTERVENTIONS LEDGER. stdin is never wired to the codex command; the
-//      bundle ALWAYS carries an interventions ledger (empty array is valid + required-present).
+//   7. Stdin disabled + interventions ledger. stdin is never wired to the codex command; the
+//      bundle always carries an interventions ledger (empty array is valid + required-present).
 //      Enforced in live-sandbox.ts (stdin) and recorder.ts (the ledger).
-//   8. PROVEN CLEANUP, BY ID, NEVER ACCOUNT-WIDE. Sandbox.kill(id) in a finally; the cleanup
-//      proof is BY EXACT ID: kill(id)'s own found-and-killed boolean, confirmed further by
+//   8. Proven cleanup, by id, never account-wide. Sandbox.kill(id) in a finally; the cleanup
+//      proof is by exact id: kill(id)'s own found-and-killed boolean, confirmed further by
 //      Sandbox.getInfo(id) when the SDK exposes it (a thrown SandboxNotFoundError means gone).
-//      humanish NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
+//      humanish never calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 //      Enforced in sandbox.ts.
 
@@ -233,7 +233,7 @@ async function runTerminalPlanInScope(
   const { warnings } = admitted;
   const failed = terminalFailure(admitted.plan, input, warnings);
 
-  // LIVE path: the real in-sandbox agent session. A separate orchestrator owns the
+  // Live path: the real in-sandbox agent session. A separate orchestrator owns the
   // create -> inject (command-scoped) -> run -> capture -> teardown lifecycle so the dry-run path
   // below stays a pure contract builder. It enforces the safety contract by construction (the
   // keyPlacement-routed command-scoped key, the deny-by-default allowlist, the fail-closed cap,

@@ -5,15 +5,15 @@
 //   1. process env — including whatever --env-file just loaded (explicit always wins);
 //   2. `.humanish/local/provider.env` — the project-local overlay this CLI's own --help
 //      examples document;
-//   3. the OWNING vendor's native store, where one exists:
+//   3. the owning vendor's native store, where one exists:
 //        E2B_API_KEY  <- ~/.e2b/config.json (written by `e2b auth login`);
 //        GH_TOKEN     <- `gh auth token` (the gh CLI's credential chain);
 //   4. the humanish user-level store `$XDG_CONFIG_HOME/humanish/keys.env`, written only by
 //      `humanish keys set` (0600, prompted or --stdin) — the fallback for vendors that ship
 //      no machine chain of their own (OpenAI, Anthropic).
 //
-// Every fill is ANNOUNCED by key name + source, never by value. The subject app's own
-// `.env`/`.env.local` are NEVER read — those hold product credentials, a different class
+// Every fill is announced by key name + source, never by value. The subject app's own
+// `.env`/`.env.local` are never read: those hold product credentials, a different class
 // (#11); this module only reads humanish-owned files and vendor-owned stores.
 // `HUMANISH_STRICT_KEYS=1` disables every rung below process env (the pre-#436 behavior).
 
@@ -35,7 +35,7 @@ import path from "node:path";
 
 import { loadEnvFile } from "./env-file.js";
 
-/** The ONLY names implicit discovery may fill (and `humanish keys set` may store). Everything
+/** The only names implicit discovery may fill (and `humanish keys set` may store). Everything
  *  else in an overlay/store file is ignored-and-named: a repo-planted NODE_OPTIONS/LD_PRELOAD
  *  must never enter process env off a file the operator did not explicitly pass (an explicit
  *  --env-file remains the operator's own full-file load). Red-team finding, #436. */
@@ -87,7 +87,7 @@ const PROJECT_OVERLAY_RELATIVE = path.join(".humanish", "local", "provider.env")
 export function userKeyStorePath(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps = {}): string {
   const home = deps.homeDir ?? homedir();
   const declared = env.XDG_CONFIG_HOME?.trim();
-  // The XDG spec: a relative XDG_CONFIG_HOME MUST be ignored. Honoring one would make the
+  // The XDG spec: a relative XDG_CONFIG_HOME must be ignored. Honoring one would make the
   // key store cwd-relative — `humanish keys set` would write a secret into the current repo.
   const configHome =
     declared !== undefined && declared !== "" && path.isAbsolute(declared)
@@ -100,7 +100,7 @@ function e2bConfigPath(deps: KeyResolutionDeps): string {
   return path.join(deps.homeDir ?? homedir(), ".e2b", "config.json");
 }
 
-/** Default exec: bounded, quiet, stdin closed; null on ANY failure. Never throws. */
+/** Default exec: bounded, quiet, stdin closed; null on any failure. Never throws. */
 function defaultExecText(
   command: string,
   args: string[],
@@ -169,7 +169,7 @@ function readE2bConfigKey(deps: KeyResolutionDeps): string | null {
   }
 }
 
-/** Refuse to READ a store through a symlink: a repo-local overlay that is secretly a link to
+/** Refuse to read a store through a symlink: a repo-local overlay that is secretly a link to
  *  an unrelated file is exactly the retargeting shape the artifact paths refuse elsewhere. */
 function isRegularFile(filePath: string): boolean {
   try {
@@ -196,7 +196,7 @@ export async function discoverProviderKeys(args: {
   if (env.HUMANISH_STRICT_KEYS?.trim() === "1") return [];
   const fills: ResolvedKeyFill[] = [];
   const ignored: string[] = [];
-  // Fill-only means PRESENCE wins, including an explicitly-set empty value: an operator who
+  // Fill-only means presence wins, including an explicitly-set empty value: an operator who
   // exported OPENAI_API_KEY="" said "off", and a rung that "fixes" that has overridden them
   // (red-team finding). Only a truly-unset name is fillable.
   const fillable = (name: string): boolean => env[name] === undefined;
@@ -205,7 +205,7 @@ export async function discoverProviderKeys(args: {
     fills.push({ name, source });
   };
 
-  // Rung 2: the documented project-local overlay. Parsed ATOMICALLY against a scratch env so a
+  // Rung 2: the documented project-local overlay. Parsed atomically against a scratch env so a
   // file loadEnvFile rejects can never half-apply (red-team finding: earlier lines used to land
   // in env unannounced before the parse error aborted). Only allowlisted provider names cross
   // from the file into the real env.
@@ -232,7 +232,7 @@ export async function discoverProviderKeys(args: {
     if (teamKey !== null) fill("E2B_API_KEY", teamKey, "~/.e2b/config.json (e2b auth login)");
   }
 
-  // Rung 3b: the gh CLI's credential chain. Only consulted when NEITHER GitHub env name is
+  // Rung 3b: the gh CLI's credential chain. Only consulted when neither GitHub env name is
   // present; fills GH_TOKEN (the name humanish reads first). gh runs without any provider key in
   // its environment, so the keys the rungs above just filled stay in this process.
   if (fillable("GH_TOKEN") && fillable("GITHUB_TOKEN")) {
@@ -241,7 +241,7 @@ export async function discoverProviderKeys(args: {
     if (token !== null) fill("GH_TOKEN", token, "gh auth token");
   }
 
-  // Rung 4: the humanish user-level store — read with the SAME lenient parser `keys set`/`list`
+  // Rung 4: the humanish user-level store, read with the same lenient parser `keys set`/`list`
   // use, so one hand-mangled line degrades to that line alone instead of silently voiding the
   // whole store (red-team finding: the strict parser disagreed with the store's own reader).
   const storePath = userKeyStorePath(env, deps);
@@ -266,7 +266,7 @@ export async function discoverProviderKeys(args: {
   return fills;
 }
 
-/** True when the file's PARENT directory is (or traverses) a symlink at its last component —
+/** True when the file's parent directory is (or traverses) a symlink at its last component:
  *  the dir-level retarget that defeats a file-level lstat check (red-team finding). */
 function dirIsSymlink(filePath: string): boolean {
   try {
@@ -364,7 +364,7 @@ export function resolveKeyName(vendorOrName: string): string | null {
  *  are storable (the store feeds implicit discovery — an arbitrary-name store would be an env
  *  injection vector with extra steps). The value must be a single non-empty line that
  *  round-trips the store's own parser byte-identically, and the write refuses symlinks at the
- *  file AND its parent directory (red-team findings). */
+ *  file and its parent directory (red-team findings). */
 export function setUserKey(
   name: string,
   value: string,
@@ -396,7 +396,7 @@ export function setUserKey(
   entries.set(name, trimmed);
   // The written line must read back byte-identically through the store's own parser: a value
   // that parses differently (an embedded '#', a leading quote the env parser would strip)
-  // would silently resolve to a DIFFERENT secret on the next run.
+  // would silently resolve to a different secret on the next run.
   const roundTrip = parseStoreLine(`${name}=${trimmed}`);
   if (roundTrip === null || roundTrip[0] !== name || roundTrip[1] !== trimmed) {
     throw new Error(
