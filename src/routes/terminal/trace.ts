@@ -10,13 +10,8 @@ import type {
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "../../actors/contract.js";
 import type { LabRuntimeAuth } from "../../lab/types.js";
 import { redactedTail } from "../../evidence/redaction.js";
-import { normalizeLocalActorTranscript } from "../../run/terminal-contract.js";
-import {
-  type CommandLogRecord,
-  MESSAGE_CHARS,
-  TAIL_CHARS,
-  type TerminalEventRecord,
-} from "./types.js";
+import type { TerminalParticipantText } from "./participant-text.js";
+import { type CommandLogRecord, TAIL_CHARS, type TerminalEventRecord } from "./types.js";
 
 /**
  * Per-chunk sanitization cannot recognize a value split across deliveries. Redact those complete
@@ -95,17 +90,9 @@ export function buildTerminalActorTrace(args: {
   /** Runtime-turn aggregate usage parsed from the exec stream (#531). Absent when the stream
    *  carried no usage record, which stays distinct from a measured zero. */
   tokenUsage?: ActorTokenUsage;
-  /** The route's scrub and redaction, re-applied to text decoded out of the JSON stream. */
-  sanitize: (text: string) => string;
+  /** The agent's own text and activity, read from the raw stdout as it arrived. */
+  participant: TerminalParticipantText;
 }): ActorTrace {
-  // Read the full retained stdout: its early items may no longer be in the tail.
-  const stdout = normalizeLocalActorTranscript(
-    args.terminalEvents
-      .filter((event) => event.stream === "stdout")
-      .map((event) => event.chunk)
-      .join(""),
-  );
-  const textItems = terminalParticipantTextItems(stdout, args.sanitize);
   const items: ActorTraceItem[] = [
     ...args.commandLog.map((entry, index): ActorTraceItem => ({
       id: `command-${String(index + 1).padStart(3, "0")}`,
@@ -118,7 +105,7 @@ export function buildTerminalActorTrace(args: {
         outputTail: args.transcriptTail,
       },
     })),
-    ...textItems,
+    ...args.participant.items,
   ];
   return {
     schema: ACTOR_TRACE_SCHEMA,
@@ -148,11 +135,11 @@ export function buildTerminalActorTrace(args: {
       commands: args.commandLog.length,
       // Unlike the actions count, this establishes actual runtime item activity. Stderr and
       // bootstrap commands never count.
-      runtimeParticipantItems: countTerminalParticipantItems(stdout),
+      runtimeParticipantItems: args.participant.participantItems,
       // actions == executed commands, so the launcher command alone keeps the no-engagement guard
-      // (verify/actor.ts) satisfied; messages == the agent's own message items.
+      // (verify/actor.ts) satisfied; messages == the agent_message items in the stream.
       actions: args.commandLog.length,
-      messages: textItems.filter((item) => item.kind === "message").length,
+      messages: args.participant.messages,
       terminalEvents: args.terminalEvents.length,
     },
     items,
@@ -161,88 +148,4 @@ export function buildTerminalActorTrace(args: {
         ? { ...TERMINAL_AGENT_CAPABILITIES, keyPlacement: "external" }
         : TERMINAL_AGENT_CAPABILITIES,
   };
-}
-
-const itemEvents = new Set(["item.started", "item.updated", "item.completed"]);
-const nonempty = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().length > 0;
-const object = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-/** Each Codex item event in the retained JSON stdout stream, in stream order. */
-function* codexStreamItems(
-  stdout: string,
-): Generator<{ event: string; id: string; item: Record<string, unknown> }> {
-  for (const line of stdout.split("\n")) {
-    let event: unknown;
-    try {
-      event = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (
-      !object(event) ||
-      typeof event.type !== "string" ||
-      !itemEvents.has(event.type) ||
-      !object(event.item) ||
-      !nonempty(event.item.id)
-    )
-      continue;
-    yield { event: event.type, id: event.item.id, item: event.item };
-  }
-}
-
-/**
- * The participant's own words: one trace item per Codex agent_message or reasoning item, decoded
- * from the JSON stream. Analysis may quote message and reasoning items, so these carry only the
- * agent's text. Command output, usage records and harness lines stay in the command's outputTail.
- */
-export function terminalParticipantTextItems(
-  stdout: string,
-  sanitize: (text: string) => string,
-): ActorTraceItem[] {
-  const latest = new Map<string, { kind: "message" | "reasoning"; text: string; done: boolean }>();
-  for (const { event, id, item } of codexStreamItems(stdout)) {
-    const kind =
-      item.type === "agent_message" ? "message" : item.type === "reasoning" ? "reasoning" : null;
-    const previous = latest.get(id);
-    if (kind === null || !nonempty(item.text) || previous?.done) continue;
-    latest.set(id, { kind, text: item.text, done: event === "item.completed" });
-  }
-  const numbers = { message: 0, reasoning: 0 };
-  return [...latest.values()].map(({ kind, text, done }) => {
-    numbers[kind] += 1;
-    // Redact the decoded text before cutting it, so a cut cannot split a value past the patterns.
-    const clean = [...sanitize(text)];
-    return {
-      id: `${kind}-${String(numbers[kind]).padStart(3, "0")}`,
-      kind,
-      lifecycle: done ? "completed" : "started",
-      title: kind === "message" ? "agent message" : "agent reasoning",
-      text: clean.length > MESSAGE_CHARS ? clean.slice(0, MESSAGE_CHARS).join("") : clean.join(""),
-    };
-  });
-}
-
-/** Count distinct participant items in the retained Codex JSON stdout stream.
- * The caller supplies stdout only, after transport reconciliation and redaction.
- * Lifecycle, usage, launcher diagnostics, and nested command output are not activity.
- * Zero means no recognized item was retained, not that the participant succeeded.
- */
-export function countTerminalParticipantItems(stdout: string): number {
-  const ids = new Set<string>();
-  for (const { id, item } of codexStreamItems(stdout)) {
-    const active =
-      ((item.type === "agent_message" || item.type === "reasoning") && nonempty(item.text)) ||
-      (item.type === "command_execution" && nonempty(item.command)) ||
-      (item.type === "web_search" &&
-        (nonempty(item.query) || (object(item.action) && nonempty(item.action.type)))) ||
-      (item.type === "file_change" &&
-        Array.isArray(item.changes) &&
-        item.changes.some(
-          (change) => object(change) && nonempty(change.path) && nonempty(change.kind),
-        ));
-    if (active) ids.add(id);
-  }
-  return ids.size;
 }

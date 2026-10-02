@@ -103,7 +103,7 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
     terminalEvents,
     commandLog,
     transcriptTail: tailOf(normalizedTranscript),
-    sanitize,
+    participant: inputs.recorder.participantText.finish(),
     runtimeAuth: runtimeEnv.mode,
     runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
