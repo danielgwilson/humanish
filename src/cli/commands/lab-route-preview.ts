@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import type { LabConfig } from "../../lab/types.js";
-import type { RunResult } from "../../run/results.js";
+import type { PreviewStudyResult } from "../../routes/preview.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 import {
   type CliIo,
   formatRunHuman,
@@ -27,8 +28,8 @@ interface PreviewRouteArgs {
 export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
   const participantCount = parseLabCount(args.options.count, args.config.actors[0]?.count ?? 4);
   if (participantCount === null) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
+    const result: PreviewStudyResult = {
+      ...studyResultIdentity("preview", args.config.id),
       ok: false,
       cwd: args.options.cwd,
       warnings: [],

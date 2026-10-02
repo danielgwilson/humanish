@@ -19,7 +19,8 @@ import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import { buildScriptedLabBundle } from "./bundle.js";
 import { existingScreenshots } from "./session-result.js";
 import type { ScriptedSubject } from "./subject.js";
-import { SCRIPTED_BROWSER_LAB_SCHEMA, type ScriptedBrowserLabResult } from "./types.js";
+import { type ScriptedBrowserLabResult } from "./types.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 // Finishing a scripted-browser run: the subject's provenance, the bundle, the Observer and the
 // lab result.
 
@@ -205,10 +206,9 @@ export async function finishScriptedRun(
   );
 
   return {
-    schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+    ...studyResultIdentity("scripted", plan.labId),
     ok,
     cwd,
-    labId: plan.labId,
     actor,
     appUrl: evidenceAppUrl,
     dryRun,

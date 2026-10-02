@@ -24,6 +24,7 @@ import { formatConcurrentSharedWorldLabHuman } from "./lab-format.js";
 import { resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
 import type { RouteRun } from "./lab-route-run.js";
 import { rosterOf } from "../../lab/parse/actors.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 interface SharedWorldRouteArgs {
   command: Command;
@@ -52,10 +53,9 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
   const port = parseObserverPort(args.options.port ?? "0");
   const failConcurrent = (message: string, runId?: string): void => {
     const result: ConcurrentSharedWorldLabResult = {
-      schema: "humanish.concurrent-shared-world-lab-result.v1",
+      ...studyResultIdentity("shared-world", args.config.id),
       ok: false,
       cwd: args.options.cwd,
-      labId: args.config.id,
       actor: args.config.actors[0]?.type ?? "",
       topology: "shared-world",
       topologyMode: "concurrent",

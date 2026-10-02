@@ -1,9 +1,11 @@
 {
   "invalid analysis": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "dryRun": true,
     "runId": "not-created",
@@ -16,10 +18,12 @@
     }
   },
   "tasks on a second actor": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "dryRun": true,
     "runId": "not-created",
@@ -32,10 +36,12 @@
     }
   },
   "unregistered actor": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "not-an-actor",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -53,10 +59,12 @@
     }
   },
   "media with firefox": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -74,10 +82,12 @@
     }
   },
   "invalid output limit": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -95,10 +105,12 @@
     }
   },
   "scenario dollar cap": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -116,10 +128,12 @@
     }
   },
   "output limit with a caller provider": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -137,10 +151,12 @@
     }
   },
   "real receiving with local-agent": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "local-agent",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -158,10 +174,12 @@
     }
   },
   "in-process real receiving": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -179,10 +197,12 @@
     }
   },
   "in-process media": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -200,10 +220,12 @@
     }
   },
   "in-process recording": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -221,10 +243,12 @@
     }
   },
   "clone on the local target": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -242,10 +266,12 @@
     }
   },
   "clone without serve": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -263,10 +289,12 @@
     }
   },
   "local-tree without serve": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -284,10 +312,12 @@
     }
   },
   "state on app-url": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -305,10 +335,12 @@
     }
   },
   "public app url": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "https://example.com/",
     "dryRun": true,
@@ -326,10 +358,12 @@
     }
   },
   "executor without provider": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -347,10 +381,12 @@
     }
   },
   "local-app without executor": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -368,10 +404,12 @@
     }
   },
   "local browser without a runtime": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -389,10 +427,12 @@
     }
   },
   "lanes and count": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -410,10 +450,12 @@
     }
   },
   "sandbox deadline": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -431,10 +473,12 @@
     }
   },
   "shared-world topology": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -452,10 +496,12 @@
     }
   },
   "in-process clone subject": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -473,10 +519,12 @@
     }
   },
   "in-process desktop-cli without a product": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -494,10 +542,12 @@
     }
   },
   "desktop-cli without a product": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -515,10 +565,12 @@
     }
   },
   "count override above the cap": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -536,10 +588,12 @@
     }
   },
   "in-process fan-out": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -557,10 +611,12 @@
     }
   },
   "live without keys": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": false,
@@ -578,10 +634,12 @@
     }
   },
   "invalid analysis and tasks on a second actor": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "dryRun": true,
     "runId": "not-created",
@@ -594,10 +652,12 @@
     }
   },
   "tasks on a second actor and unregistered actor": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "not-an-actor",
     "dryRun": true,
     "runId": "not-created",
@@ -610,10 +670,12 @@
     }
   },
   "unregistered actor and media with firefox": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "not-an-actor",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -631,10 +693,12 @@
     }
   },
   "media with firefox and invalid output limit": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -652,10 +716,12 @@
     }
   },
   "invalid output limit and scenario dollar cap": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -673,10 +739,12 @@
     }
   },
   "scenario dollar cap and output limit with a caller provider": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -694,10 +762,12 @@
     }
   },
   "output limit with a caller provider and in-process real receiving": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -715,10 +785,12 @@
     }
   },
   "real receiving with local-agent and in-process real receiving": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "local-agent",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -736,10 +808,12 @@
     }
   },
   "in-process real receiving and in-process media": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -757,10 +831,12 @@
     }
   },
   "in-process media and in-process recording": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -778,10 +854,12 @@
     }
   },
   "in-process recording and clone on the local target": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -799,10 +877,12 @@
     }
   },
   "clone on the local target and clone without serve": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -820,10 +900,12 @@
     }
   },
   "clone without serve and public app url": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -841,10 +923,12 @@
     }
   },
   "local-tree without serve and public app url": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -862,10 +946,12 @@
     }
   },
   "state on app-url and public app url": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "https://example.com/",
     "dryRun": true,
@@ -883,10 +969,12 @@
     }
   },
   "public app url and executor without provider": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "https://example.com/",
     "dryRun": true,
@@ -904,10 +992,12 @@
     }
   },
   "executor without provider and local-app without executor": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -925,10 +1015,12 @@
     }
   },
   "local-app without executor and lanes and count": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -946,10 +1038,12 @@
     }
   },
   "lanes and count and local browser without a runtime": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -967,10 +1061,12 @@
     }
   },
   "shared-world topology and local browser without a runtime": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -988,10 +1084,12 @@
     }
   },
   "count override above the cap and local browser without a runtime": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1009,10 +1107,12 @@
     }
   },
   "in-process fan-out and local browser without a runtime": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1030,10 +1130,12 @@
     }
   },
   "local browser without a runtime and live without keys": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": false,
@@ -1051,10 +1153,12 @@
     }
   },
   "lanes and count and sandbox deadline": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1072,10 +1176,12 @@
     }
   },
   "sandbox deadline and count override above the cap": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1093,10 +1199,12 @@
     }
   },
   "sandbox deadline and shared-world topology": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1114,10 +1222,12 @@
     }
   },
   "shared-world topology and count override above the cap": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1135,10 +1245,12 @@
     }
   },
   "shared-world topology and in-process clone subject": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1156,10 +1268,12 @@
     }
   },
   "in-process clone subject and count override above the cap": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1177,10 +1291,12 @@
     }
   },
   "desktop-cli without a product and count override above the cap": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "",
     "dryRun": true,
@@ -1198,10 +1314,12 @@
     }
   },
   "count override above the cap and in-process fan-out": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -1219,10 +1337,12 @@
     }
   },
   "in-process fan-out and live without keys": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "labId": "adm-cuappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-cuappurl",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": false,

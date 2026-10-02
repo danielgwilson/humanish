@@ -29,7 +29,6 @@ import {
 import { planeStateOf } from "./plan.js";
 import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
 import {
-  CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
   type ActorRunResult,
   type ConcurrentBundleArgs,
   type ConcurrentSharedWorldLabErrorCode,
@@ -41,6 +40,7 @@ import {
   type PlaneResults,
 } from "./types.js";
 import type { DesktopParticipantRun } from "../computer-use/types.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /** The results of a run whose plane did not run (a dry run) or has not reported yet. */
 export function emptyPlaneResults(): PlaneResults {
@@ -206,10 +206,9 @@ export function concurrentLabFailure(envelope: {
   actorLabel?: string,
 ) => ConcurrentSharedWorldLabResult {
   return (code, message, actorLabel) => ({
-    schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+    ...studyResultIdentity("shared-world", envelope.labId),
     ok: false,
     cwd: envelope.cwd,
-    labId: envelope.labId,
     actor: actorLabel ?? envelope.actor,
     topology: "shared-world",
     topologyMode: "concurrent",
@@ -409,10 +408,9 @@ export async function finishConcurrentRun(
   });
 
   const result: ConcurrentSharedWorldLabResult = {
-    schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+    ...studyResultIdentity("shared-world", plan.labId),
     ok,
     cwd,
-    labId: plan.labId,
     actor: descriptor.id,
     topology: "shared-world",
     topologyMode: "concurrent",

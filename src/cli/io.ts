@@ -235,7 +235,8 @@ export function runFactsFor(command: Command): TelemetryProperties {
   return { ...runFactsByCommand.get(command) };
 }
 
-export function formatRunHuman(result: RunResult): string {
+/** A run result, or the preview route's study result: they differ only in `schema`. */
+export function formatRunHuman(result: Omit<RunResult, "schema">): string {
   if (!result.ok) {
     return `${result.error?.code}: ${result.error?.message}\n`;
   }
