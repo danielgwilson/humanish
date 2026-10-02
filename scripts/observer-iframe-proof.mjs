@@ -115,14 +115,18 @@ try {
     }
     throw new Error("Synthetic provider iframe did not attach");
   };
+  // Wait for the provider document's load event rather than polling the frame: a module script
+  // runs before load, and the frame sits below the fold, where Chromium stops requestAnimationFrame
+  // in a cross-origin frame, so waitForFunction's default polling may never check again.
+  const loaded = (target) => target.waitForURL(`${providerOrigin}/desktop`, { waitUntil: "load" });
   const compatible = await frame(`${providerOrigin}/desktop`, "allow-scripts allow-same-origin");
-  await compatible.waitForFunction(() => document.body?.dataset.moduleLoaded === "true");
+  await loaded(compatible);
+  assert.equal(await compatible.evaluate(() => document.body?.dataset.moduleLoaded), "true");
   assert.equal(await compatible.evaluate(() => document.body.dataset.parentIsolated), "true");
   checks.crossOriginModuleLoadsWithoutParentAccess = true;
 
   const strict = await frame(`${providerOrigin}/desktop`, "allow-scripts");
-  await strict.waitForLoadState("load");
-  await page.waitForTimeout(100);
+  await loaded(strict);
   assert.notEqual(await strict.evaluate(() => document.body?.dataset.moduleLoaded), "true");
   assert.ok(requestedModule >= 2, "Both policies must attempt the module request");
   checks.strictSandboxRetainsOpaqueOrigin = true;
