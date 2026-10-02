@@ -46,7 +46,7 @@ All twelve bundles passed verification as `share_ready`, and all nine candidates
 
 ## Repeat the comparison
 
-Use the [public fixtures and recipe](https://github.com/danielgwilson/humanish/blob/main/bench/feedback-ending-study.md). For the runtime before the separate parser correction, start from [commit `1699665`](https://github.com/danielgwilson/humanish/tree/169966525703d188b01edace72867e6bd54da988). Current main includes that correction, so the working/natural candidate counts should differ from the frozen table. Make four local lab configurations: each Save variant with the shown `stopWhen`, and each with that condition removed for a natural ending.
+Use the [public fixtures and recipe](repo:bench/feedback-ending-study.md). For the runtime before the separate parser correction, start from [commit `1699665`](https://github.com/danielgwilson/humanish/tree/169966525703d188b01edace72867e6bd54da988). Current main includes that correction, so the working/natural candidate counts should differ from the frozen table. Make four local lab configurations: each Save variant with the shown `stopWhen`, and each with that condition removed for a natural ending.
 
 Keep the model and mission fixed. Use fresh sandboxes, alternate condition order between repetitions, and retain failed attempts. Score task completion separately from participant reports and candidate correctness. Both fixtures retain a 120-character add-field limit; this short mission does not exercise it.
 
