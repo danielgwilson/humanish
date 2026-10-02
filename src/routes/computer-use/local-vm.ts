@@ -2,7 +2,7 @@ import { collectDesktopRecording } from "../../evidence/desktop-recording-artifa
 import path from "node:path";
 import type { InternalRunLabOptions } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
-import type { ProviderFactory } from "../../lab/run-lab-options.js";
+import type { ProviderFactory } from "../../lab/run-lab-homes.js";
 import {
   inboxRecipientFor,
   type ParticipantDesktop,

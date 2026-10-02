@@ -638,9 +638,8 @@ describe("runScriptedBrowserLab", () => {
           {
             cwd,
             ...scriptedOptions(hooks),
-            automaticAnalysis: { run: analyze },
           },
-          hooks.deps,
+          { ...hooks.deps, analysis: { run: analyze } },
         );
         expect(analyze).toHaveBeenCalledTimes(analysisMode === "disabled" ? 0 : 1);
         if (analysisMode === "disabled")
@@ -1535,9 +1534,11 @@ describe("scripted-browser run directory goldens", () => {
         scriptedConfig({ appUrl, count: 1, mode: "live" }),
         {
           cwd,
-          automaticAnalysis: { run: automaticAnalysisBoundary() },
         },
-        { launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }) },
+        {
+          analysis: { run: automaticAnalysisBoundary() },
+          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+        },
       ).finally(stderr.stop);
       const runId = outcome.result.runId;
       if (!runId) throw new Error("the run wrote no bundle");
@@ -1577,10 +1578,13 @@ describe("scripted-browser run directory goldens", () => {
       {
         cwd,
         runId,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
         ...scriptedOptions(inputs),
       },
-      { ...inputs.deps, now: () => (clock += 60_000) },
+      {
+        analysis: { run: automaticAnalysisBoundary() },
+        ...inputs.deps,
+        now: () => (clock += 60_000),
+      },
     ).finally(stderr.stop);
     expect(outcome.result.ok).toBe(true);
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
@@ -1659,9 +1663,8 @@ describe("scripted run lifetime on the provisioned clone route", () => {
           cwd,
           runId,
           ...scriptedOptions(hooks),
-          automaticAnalysis: { run: analysis },
         },
-        hooks.deps,
+        { ...hooks.deps, analysis: { run: analysis } },
       ),
     ).rejects.toThrow(/unsafe artifact path/i);
 

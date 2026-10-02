@@ -1354,8 +1354,7 @@ describe("external-public run directory goldens", () => {
       config: parseExternal(),
       dryRun,
       env,
-      deps,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      deps: { ...deps, analysis: { run: automaticAnalysisBoundary() } },
     }).finally(stderr.stop);
     // Seats tear down in parallel, so their sandbox receipts append in completion order.
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
@@ -1415,8 +1414,7 @@ describe("the live Observer gate on the external-public plane", () => {
         config: parseExternal(),
         dryRun: false,
         env,
-        deps,
-        automaticAnalysis: { run: analysis },
+        deps: { ...deps, analysis: { run: analysis } },
         onObserverReady: async () => {
           throw failure;
         },

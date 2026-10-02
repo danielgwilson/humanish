@@ -20,7 +20,7 @@ import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/s
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { LabDeps } from "../../lab/lab-deps.js";
-import type { RunLabHomes } from "../../lab/run-lab-options.js";
+import type { RunLabHomes } from "../../lab/run-lab-homes.js";
 import {
   e2bRequestTimeoutMs,
   SANDBOX_TIMEOUT_BUFFER_MS,

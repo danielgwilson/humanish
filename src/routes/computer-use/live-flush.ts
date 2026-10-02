@@ -3,7 +3,7 @@ import type { CuaLiveMetadata } from "../../actors/computer-use/loop.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import { type ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type { RunBundle } from "../../run/bundle.js";
-import type { RunLabHomes } from "../../lab/run-lab-options.js";
+import type { RunLabHomes } from "../../lab/run-lab-homes.js";
 import type { DesktopParticipantRun } from "./types.js";
 
 export interface LiveTraceFlush {

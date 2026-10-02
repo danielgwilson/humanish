@@ -115,8 +115,8 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
   const strictSpend =
     options.requireReportedUsageForSpendCap === true &&
     (options.maxUsd !== undefined || options.overRunBudget !== undefined);
-  const provider = options.provider ?? buildProvider(options.openai, strictSpend);
-  const executor = options.executor ?? buildExecutor(options.desktop, options.executorOptions);
+  const provider = options.provider ?? defaultProvider(options.openai, strictSpend);
+  const executor = options.executor ?? defaultExecutor(options.desktop, options.executorOptions);
 
   const loopOptions: CuaLoopOptions = {
     instructions: options.instructions,
@@ -165,7 +165,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
   return result;
 }
 
-function buildProvider(
+function defaultProvider(
   openai: OpenAiResponsesProviderOptions | undefined,
   strictSpend = false,
 ): CuaProvider {
@@ -180,7 +180,7 @@ function buildProvider(
   });
 }
 
-function buildExecutor(
+function defaultExecutor(
   desktop: E2BDesktopLike | undefined,
   executorOptions: E2BDesktopExecutorOptions | undefined,
 ): CuaExecutor {
