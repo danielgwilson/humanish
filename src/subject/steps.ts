@@ -68,7 +68,8 @@ export function defaultSubjectPhaseSink(
   ctx: { laneId: string; laneCount: number },
 ): void {
   const durationSuffix = event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`;
-  const prefix = ctx.laneCount > 1 ? `humanish cua [${ctx.laneId}]` : "humanish cua";
+  const prefix =
+    ctx.laneCount > 1 ? `humanish computer-use [${ctx.laneId}]` : "humanish computer-use";
   process.stderr.write(`${prefix}: ${event.message}${durationSuffix}\n`);
 }
 

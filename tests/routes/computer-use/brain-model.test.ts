@@ -3,7 +3,7 @@
 // estimator and the live-flush label fall back to the default model only when no model was
 // declared. These run through the route, so they hold while the route moves its model reads from
 // the config to the plan's brain.
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
@@ -428,6 +428,41 @@ describe("computer-use participant model, the plan's brain, over the config", ()
     expect(vi.mocked(createRestrictedCodexParticipant).mock.calls[0]![0]?.model).toBe(
       "synthetic-codex-model",
     );
+  });
+
+  it("fails the run and keeps the warnings when hosted Codex reports a late disallowed item", async () => {
+    vi.mocked(createRestrictedCodexParticipant).mockReturnValue({
+      provider: doneProvider("restricted-codex-participant"),
+      close: async () => ({
+        status: "confirmed" as const,
+        warnings: ["Codex CLI 0.160.0 sent notification methods humanish does not know: a/b ×1."],
+        refusal: "codex_tool_call" as const,
+      }),
+    } as unknown as ReturnType<typeof createRestrictedCodexParticipant>);
+    const result = await runWithBrain(
+      labConfig({ actor: CODEX_ACTOR, model: undefined }),
+      { kind: "local-agent", agent: "codex", declaredModel: "synthetic-codex-model" },
+      {
+        env: {},
+        runSession: async (options) => runCuaActorSession(options),
+      },
+    );
+    const message =
+      "Codex reported a disallowed item after the participant's last request (codex_tool_call).";
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain(message);
+    expect(result.warnings).toContain(
+      "Codex CLI 0.160.0 sent notification methods humanish does not know: a/b ×1.",
+    );
+    const status = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"),
+    ) as {
+      outcome?: { ok?: boolean; execution?: { failures: { kind: string; message: string }[] } };
+    };
+    expect(status.outcome?.ok).toBe(false);
+    expect(status.outcome?.execution?.failures).toEqual([
+      { kind: "provider-policy", message: expect.stringContaining(message) },
+    ]);
   });
 
   it("gives the one-shot Claude provider the plan's declared model", async () => {

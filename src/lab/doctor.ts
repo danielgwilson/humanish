@@ -292,7 +292,7 @@ function subjectEnvChecks(names: readonly string[], args: LabSetupCheckArgs): Ch
   }));
 }
 
-/** The post-run analysis: the Codex account, or the OpenAI key and the admission estimate limit. */
+/** The post-run analysis: the Codex account, or the OpenAI key and the analysis cost limit. */
 async function analysisCheck(
   analysis: AnalysisBudget,
   args: LabSetupCheckArgs,
@@ -321,7 +321,7 @@ async function analysisCheck(
     name: "post-run analysis",
     ok: true,
     message: args.keyPresent("OPENAI_API_KEY")
-      ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. Its $${analysis.maxCostUsd} admission estimate limit may decline larger studies before dispatch; it is not a provider billing cap. Participant readiness is independent.`
+      ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. The analysis is refused before it starts if its estimate is over $${analysis.maxCostUsd}; this is not a billing cap. Participant readiness is independent.`
       : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately.",
   };
 }

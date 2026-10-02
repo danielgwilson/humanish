@@ -36,7 +36,6 @@ import {
 import {
   RestrictedCodexDeadline,
   RestrictedCodexStop,
-  RestrictedCodexTransport,
   hasUnclosedChildren,
   retainUnclosedChild,
   type RestrictedCodexSpawn,
@@ -48,6 +47,14 @@ import {
   restrictedCodexNpmTarget,
 } from "./restricted-executable.js";
 import { RestrictedCodexTurn } from "./restricted-turn.js";
+import {
+  countUnknownNotification,
+  detachTurn,
+  idleNotifications,
+  installSessionHandlers,
+  notificationPolicyOf,
+  refuseSession,
+} from "./restricted-notifications.js";
 
 /** Internal host dependencies. None of these options is accepted from a study artifact. */
 export interface RestrictedCodexSessionOptions {
@@ -110,12 +117,24 @@ export async function runRestrictedCodexSession(
 ): Promise<RestrictedCodexResult> {
   const session = createRestrictedCodexSession(options);
   const result = await session.run(request, readinessOnly);
-  return (await session.close())
-    ? result
-    : {
-        ...restrictedCodexFailure("codex_cleanup_failed", result.dispatched, result.usage),
-        failurePhase: "cleanup",
-      };
+  const closed = await session.close();
+  const unknownNotifications = session.unknownNotifications ?? {};
+  const truncatedFrameBytes = session.truncatedFrameBytes;
+  const noted = {
+    ...(Object.keys(unknownNotifications).length === 0 ? {} : { unknownNotifications }),
+    ...(truncatedFrameBytes === undefined ? {} : { truncatedFrameBytes }),
+  };
+  if (!closed)
+    return {
+      ...restrictedCodexFailure("codex_cleanup_failed", result.dispatched, result.usage),
+      failurePhase: "cleanup",
+      ...noted,
+    };
+  // A disallowed item while the app-server shut down fails a request that had completed.
+  const refusal = session.policyRefusal;
+  return refusal !== undefined && result.errorCode === null
+    ? { ...restrictedCodexFailure(refusal, result.dispatched, result.usage), ...noted }
+    : { ...result, ...noted };
 }
 
 async function writeRecoveryMarker(
@@ -258,6 +277,15 @@ export interface RestrictedCodexSession {
   readonly authentication?: "chatgpt-account" | "api-key" | undefined;
   /** The admitted release this session launched, once its version check has passed. */
   readonly cliVersion?: string | undefined;
+  /** Notification methods this humanish does not know that carried no item, by count. */
+  readonly unknownNotifications?: Readonly<Record<string, number>>;
+  /**
+   * The first policy refusal or unchecked output in the session, whether or not a request reported
+   * it. A participant's close fails the run with it.
+   */
+  readonly policyRefusal?: RestrictedCodexAnalysisErrorCode | undefined;
+  /** Bytes of last frames cut off after humanish stopped the app-server; a run warning. */
+  readonly truncatedFrameBytes?: number | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -289,6 +317,10 @@ interface SessionState extends LaunchState {
   closed: boolean;
   /** False once a request reported codex_cleanup_failed (each request; teardown). */
   cleanupTrusted: boolean;
+  /** The first policy refusal or unchecked output (restricted-notifications); never cleared. */
+  policyRefusal: RestrictedCodexAnalysisErrorCode | undefined;
+  /** Bytes of last frames cut off after humanish stopped the app-server (a warning). */
+  truncatedFrameBytes: number | undefined;
 }
 
 /** Teardown: close the app-server, unlink the auth link and remove the task directory. */
@@ -368,14 +400,11 @@ function newTurn(
     turnStarted: (turnId) => {
       state.interrupt = { threadId: state.threadId!, turnId };
     },
+    policy: notificationPolicyOf(participant),
+    idle: (method, params) => idleNotifications(participant, state)(method, params),
+    recordUnknown: (method) => countUnknownNotification(state.unknownNotifications, method),
+    refuse: (code) => refuseSession(state, code),
   });
-}
-
-/** After a request: the turn's handlers come off the transport. */
-function detachTurn(transport: RestrictedCodexTransport | undefined): void {
-  if (transport) transport.onNotification = () => undefined;
-  if (transport) transport.onRequest = undefined;
-  if (transport) transport.onRequestComplete = undefined;
 }
 
 /** Request dispatch: launch on the first request, then one turn; a failed request tears down. */
@@ -408,11 +437,12 @@ async function runTurn(
         (next) => {
           phase = next;
         },
+        (transport) => installSessionHandlers(participant, state, transport),
       );
       selectedModel = state.identity!.model;
     } else state.transport.beginRequest(deadline, frameLimit);
-    // onNotification ignores events before dispatch and onRequestComplete follows only a host
-    // callback, so wiring both after the first launch's handshake loses nothing.
+    // Before dispatch the turn passes notifications to the idle handler the launch installed,
+    // and onRequestComplete follows only a host callback, so wiring both here loses nothing.
     state.transport!.onNotification = turn.onNotification;
     state.transport!.onRequestComplete = turn.onRequestComplete;
     if (readinessOnly) result = readinessResult();
@@ -446,7 +476,7 @@ async function runTurn(
     state.pendingInferenceUsage = undefined;
     deadline.close();
     state.activeDeadline = undefined;
-    detachTurn(state.transport);
+    detachTurn(participant, state);
     if (result.errorCode !== null) {
       if (result.errorCode === "codex_cleanup_failed") state.cleanupTrusted = false;
       if (!(await dispose()))
@@ -523,10 +553,13 @@ export function createRestrictedCodexSession(
     resolvedModel: undefined,
     authentication: undefined,
     cliVersion: undefined,
+    unknownNotifications: new Map<string, number>(),
     activeDeadline: undefined,
     interrupt: undefined,
     closed: false,
     cleanupTrusted: true,
+    policyRefusal: undefined,
+    truncatedFrameBytes: undefined,
   };
   let pending: Promise<RestrictedCodexResult> | undefined,
     closing: Promise<boolean> | undefined,
@@ -551,6 +584,15 @@ export function createRestrictedCodexSession(
     },
     get cliVersion() {
       return state.cliVersion;
+    },
+    get unknownNotifications() {
+      return Object.fromEntries(state.unknownNotifications);
+    },
+    get policyRefusal() {
+      return state.policyRefusal;
+    },
+    get truncatedFrameBytes() {
+      return state.truncatedFrameBytes;
     },
     run(request, readinessOnly = false) {
       const refusal = refusedRun(settings, state, request, () => pending !== undefined);

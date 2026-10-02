@@ -205,9 +205,8 @@ describe("automatic analysis admission and producer boundary", () => {
       if (setting === false) expect(stdout).not.toContain("After live runs:");
       else {
         expect(stdout).toContain(
-          `separate $${typeof setting === "object" ? setting.maxCostUsd : 3} admission estimate limit`,
+          `refused before it starts if its estimate is over $${typeof setting === "object" ? setting.maxCostUsd : 3}; this is not a billing cap`,
         );
-        expect(stdout).toContain("not a provider billing cap");
       }
     },
   );
@@ -599,9 +598,8 @@ describe("automatic analysis admission and producer boundary", () => {
         "taken-run",
       ]);
       expect(stderr).toContain(
-        "default analysis · gpt-6-astra · separate $3 admission estimate limit",
+        "default analysis · gpt-6-astra · refused before it starts if its estimate is over $3; this is not a billing cap",
       );
-      expect(stderr).toContain("not a provider billing cap");
       expect(stderr).not.toContain("preparing analysis");
       expect(JSON.parse(stdout)).toMatchObject({
         ok: false,

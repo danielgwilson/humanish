@@ -15,7 +15,10 @@ import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
 import { pricedModel } from "../../lab/plan-base.js";
 import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
 import { redactText } from "../../evidence/redaction.js";
-import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
+import {
+  createRestrictedCodexParticipant,
+  type ParticipantProviderCloseResult,
+} from "../../actors/codex/restricted-participant.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import { withInboxMission } from "./participant-prompt.js";
 import {
@@ -26,6 +29,21 @@ import {
 import { hollowCompletion } from "../../run/judge.js";
 import type { CuaParticipantDeps, CuaRunBudget, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
+
+// Caller providers backed by a native Codex session (the local study's), with their close report.
+const closeReports = new WeakMap<CuaProvider, () => Promise<ParticipantProviderCloseResult>>();
+
+/**
+ * Registers a caller's provider as backed by a native Codex session: the lane reads the session's
+ * run warnings and a refusal no request reported from `report` when it closes the provider.
+ */
+export function withCloseReport<T extends CuaProvider>(
+  provider: T,
+  report: () => Promise<ParticipantProviderCloseResult>,
+): T {
+  closeReports.set(provider, report);
+  return provider;
+}
 
 /** The model a lane brings besides the default API client, and the handles its cleanup needs. */
 export interface ParticipantModel {
@@ -199,8 +217,9 @@ export function participantSessionOptions(
 export async function closeParticipantModel(
   model: ParticipantModel,
   warnings: string[],
-): Promise<boolean> {
+): Promise<{ unconfirmed: boolean; refusal: string | undefined }> {
   let unconfirmed = false;
+  let refusal: string | undefined;
   try {
     if (model.codexParticipant === undefined) await model.provider?.close?.();
   } catch {
@@ -209,6 +228,8 @@ export async function closeParticipantModel(
   }
   try {
     const cleanup = await model.codexParticipant?.close();
+    warnings.push(...(cleanup?.warnings ?? []));
+    refusal = cleanup?.refusal;
     if (cleanup?.status === "unconfirmed") {
       warnings.push("Model provider cleanup is unconfirmed.");
       unconfirmed = true;
@@ -217,12 +238,26 @@ export async function closeParticipantModel(
     warnings.push("Model provider cleanup is unconfirmed.");
     unconfirmed = true;
   }
+  const report =
+    model.codexParticipant === undefined && model.provider !== undefined
+      ? closeReports.get(model.provider)
+      : undefined;
+  if (report) {
+    // The provider's own close reported cleanup above; this reads what its session found.
+    try {
+      const found = await report();
+      warnings.push(...(found.warnings ?? []));
+      refusal ??= found.refusal;
+    } catch {
+      /* Cleanup was already reported through the provider's close. */
+    }
+  }
   try {
     await model.claudeSession?.close();
   } catch {
     warnings.push("Claude session cleanup failed; desktop cleanup will still run.");
   }
-  return unconfirmed;
+  return { unconfirmed, refusal };
 }
 
 /** Prices the finished session's tokens onto its trace, writes the trace, and warns on raw screenshots. */

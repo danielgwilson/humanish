@@ -164,10 +164,7 @@ function cuaLabResult(args: {
   const errorResult = ((): CuaActorLabResult["error"] | undefined => {
     if (ok) return undefined;
     if (adapterFailure !== undefined) {
-      return {
-        code: "HUMANISH_CUA_LAB_FAILED",
-        message: adapterFailure,
-      };
+      return { code: "HUMANISH_CUA_LAB_FAILED", message: adapterFailure };
     }
     if (participantCount === 1) {
       const outcome = firstOutcome;
@@ -176,6 +173,7 @@ function cuaLabResult(args: {
         message:
           outcome?.sessionError ??
           outcome?.providerCleanupError ??
+          outcome?.providerPolicyError ??
           (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
             : // The lane result (toParticipantResult) named this refusal; the N=1 envelope fell through to
@@ -252,8 +250,9 @@ function cuaLabResult(args: {
 }
 
 /**
- * The run's execution failures: each lane whose session failed in the harness, each sandbox whose
- * release is unconfirmed, and an Observer that failed.
+ * The run's execution failures: each lane whose session failed in the harness, each provider whose
+ * cleanup is unconfirmed or that reported a disallowed item after its last request, each sandbox
+ * whose release is unconfirmed, and an Observer that failed.
  */
 function computerUseExecutionFailures(
   outcomes: readonly ParticipantRunOutcome[] | undefined,
@@ -274,6 +273,16 @@ function computerUseExecutionFailures(
             {
               kind: "provider-cleanup" as const,
               message: `${outcome.spec.planned.id}: ${outcome.providerCleanupError}`,
+            },
+          ],
+    ),
+    ...(outcomes ?? []).flatMap((outcome) =>
+      outcome.providerPolicyError === undefined
+        ? []
+        : [
+            {
+              kind: "provider-policy" as const,
+              message: `${outcome.spec.planned.id}: ${outcome.providerPolicyError}`,
             },
           ],
     ),

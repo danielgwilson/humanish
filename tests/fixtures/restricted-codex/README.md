@@ -49,6 +49,12 @@ normalization; see the 0.157.1 section below. The synthetic image contained a bl
   result shape. It also retains the separately captured `wait` function call and
   output shape from a 15-second host callback. The screenshot is replaced with
   a tiny synthetic data URL; reasoning and private identifiers are omitted.
+- The notification-policy scenarios in `fake-process.mjs` (`unknown-item-notification`,
+  `nested-turn-item`, `handshake-item`, `continuing-idle-item`, `continuing-idle-request`,
+  `close-item`, `close-item-after-answer`, `close-partial-after-answer`,
+  `continuing-exit-partial`, `continuing-idle-malformed`, `unknown-progress`) send synthetic envelopes: a
+  `commandExecution` item, an approval request, a malformed or cut-off frame and invented method
+  names. No captured release sent them; they test humanish's policy for a release that might.
 
 ## CLI 0.157.1 recapture (2026-09-30)
 

@@ -243,7 +243,7 @@ export function formatRunHuman(result: RunResult): string {
     [
       `humanish run ${result.mode}`,
       `run: ${result.runId}`,
-      ...(result.simCount === undefined ? [] : [`sims: ${result.simCount}`]),
+      ...(result.simCount === undefined ? [] : [`participants: ${result.simCount}`]),
       `bundle: ${result.bundlePath}`,
       `review: ${result.reviewPath}`,
       ...result.warnings.map((warning) => `warning: ${warning}`),
