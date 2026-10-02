@@ -39,7 +39,7 @@ export function buildRuntimeAuth(args: {
   // the documented exec auth channel is always populated regardless of which name the operator
   // used. The allowlist is exactly these two names; everything else is denied by construction.
   const ALLOWED_RUNTIME_KEY_NAMES = ["CODEX_API_KEY", "OPENAI_API_KEY"] as const;
-  // Tripwire (safety contract item 4): if a future widening of ALLOWED_RUNTIME_KEY_NAMES ever
+  // Tripwire (deny-by-default credentials): if a future widening of ALLOWED_RUNTIME_KEY_NAMES ever
   // added a clearly-non-runtime credential (a GitHub/payment/deploy/db secret), fail closed. The
   // generic `*_KEY` shape is deliberately left out of the tripwire, since a runtime key legitimately
   // ends in _KEY (CODEX_API_KEY/OPENAI_API_KEY), so testing it against the generic shape would
@@ -112,7 +112,7 @@ function isNonRuntimeCredentialName(name: string): boolean {
 }
 
 /**
- * Build the sandbox metadata from a positive allowlist (safety contract item 6). This is the only
+ * Build the sandbox metadata from a positive allowlist. This is the only
  * way metadata is set on the terminal route. It carries solely non-secret labels and rejects any
  * value that is not a plain short label. A verifier check asserts the persisted metadata has no
  * prompt/token/secret shapes; this builder makes that true by construction.

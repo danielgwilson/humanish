@@ -113,7 +113,7 @@ const SCORER_CAPABLE_ROUTES: ReadonlySet<LabRoute> = new Set<LabRoute>([
   "shared-world",
 ]);
 
-/** `.mjs` is required-canonical; `.js`/`.cjs` accepted but the module system is the adopter repo's
+/** `.mjs` is the recommended extension; `.js`/`.cjs` accepted but the module system is the adopter repo's
  *  package.json `type`. `.ts` is rejected: the compiled `dist/` CLI ships no TypeScript loader. */
 const SCORER_EXTENSIONS: ReadonlySet<string> = new Set([".mjs", ".js", ".cjs"]);
 

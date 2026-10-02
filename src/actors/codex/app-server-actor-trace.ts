@@ -186,7 +186,7 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
 /**
  * Map a Codex app-server run result into the provider-neutral ActorTrace. Pure
  * and side-effect-free. The persona reference is supplied by the harness; until
- * personas are load-bearing it is a minimal stub ({ id, traitsApplied: [],
+ * the Codex route uses personas it is a minimal stub ({ id, traitsApplied: [],
  * promptDigest }).
  */
 export function codexResultToActorTrace(

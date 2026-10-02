@@ -149,7 +149,7 @@ export async function teardownSandbox(args: {
 }
 
 /**
- * Race a commands.run promise against the maxMinutes wall-clock (safety contract item 2). The E2B
+ * Race a commands.run promise against the maxMinutes wall-clock. The E2B
  * commands.run timeoutMs is the primary kill; this injected-clock guard is the belt-and-suspenders
  * backstop so a mock CLI (which ignores timeoutMs) is still bounded and fails closed in CI.
  */

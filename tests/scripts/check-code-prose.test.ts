@@ -6,7 +6,20 @@ import { describe, expect, it } from "vitest";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 const SCRIPT = path.resolve("scripts/check-code-prose.mjs");
-const KINDS = ["issue-refs", "fix-tags", "caps", "lane-comments", "em-dashes"] as const;
+const KINDS = [
+  "issue-refs",
+  "fix-tags",
+  "caps",
+  "lane-comments",
+  "em-dashes",
+  "invariant-refs",
+  "authority",
+  "archaeology",
+  "seat-comments",
+  "cua-route",
+  "honest",
+  "history",
+] as const;
 
 /** Runs the checker over one fixture file in src/ and returns its exit status and stdout. */
 async function run(args: string[], source: string): Promise<{ status: number; stdout: string }> {
@@ -170,6 +183,50 @@ describe("prose:check counts all-caps runs and issue references", () => {
 
     expect(hits.words).toEqual([]);
     expect(refs.count).toBe(0);
+  });
+});
+
+describe("prose:check counts invariant numbers, authority words and review labels", () => {
+  it("counts each kind once per match, in any case", async () => {
+    const source = [
+      "// Fails closed (invariant 6); see Invariant 5 too.",
+      "// The load-bearing check follows the doctrine and the canonical form.",
+      "// A red-team finding, blocker 2, the goal packet and safety contract item 4.",
+      "// Shipped in this slice as layer 6.",
+      "",
+    ].join("\n");
+
+    // `--list` prints each hit's last word, so "invariant 6" reads back as "6".
+    expect((await hitsOf("invariant-refs", source)).words).toEqual(["6", "5"]);
+    expect((await hitsOf("authority", source)).count).toBe(3);
+    expect((await hitsOf("archaeology", source)).words).toEqual([
+      "red-team",
+      "2",
+      "packet",
+      "4",
+      "slice",
+      "6",
+    ]);
+  });
+
+  it("does not count code spans or words that only contain the pattern", async () => {
+    const source = [
+      "// Code spans: `invariant 6`, `load-bearing`, `this slice`.",
+      "// The invariants hold; a canonicalized path; a blocker; layered output.",
+      "",
+    ].join("\n");
+
+    for (const kind of ["invariant-refs", "authority", "archaeology"] as const) {
+      expect((await hitsOf(kind, source)).count).toBe(0);
+    }
+  });
+
+  it("holds the word kinds to their caps from both sides", async () => {
+    const source = "// The seat is honest, as it used to be on the cua route.\n";
+    const caps = { "seat-comments": 1, honest: 1, history: 1, "cua-route": 1 };
+    expect(await exitWith(caps, source)).toBe(0);
+    expect(await exitWith({ ...caps, honest: 0 }, source)).toBe(1);
+    expect(await exitWith({ ...caps, history: 2 }, source)).toBe(1);
   });
 });
 

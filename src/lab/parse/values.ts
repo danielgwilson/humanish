@@ -1,6 +1,6 @@
 import type { LabConfigParseFailure } from "../types.js";
 
-// The slug interpolates into an in-sandbox shell command; the strict shape is load-bearing.
+// The slug interpolates into an in-sandbox shell command, so its shape is strict.
 export const REPO_SLUG_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 export const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;

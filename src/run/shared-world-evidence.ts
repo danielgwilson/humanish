@@ -17,12 +17,12 @@ export interface SharedWorldPlane {
   envNames: string[];
   /**
    * Concurrent route only: sha256-16 of the harness-minted `getHost` URL's origin
-   * (the first-class provisioned-subject target every actor drove, per invariant 2). A digest replaces the
+   * (the first-class provisioned-subject target every actor drove). A digest replaces the
    * raw URL: a getHost URL embeds the (live) sandbox id and matches the publish-safety e2b-URL
    * redaction, so, like the stream URL and sandbox ids, it never lands raw in a published
    * bundle (the raw tokenless URL is surfaced only on the ephemeral lab result). The orchestrator
-   * confirms the URL is tokenless (no authKey, per invariant 1) before digesting. verify proves every
-   * actor drove this host by digest equality. Absent on the sequential route.
+   * confirms the URL is tokenless (no authKey, so no secret reaches the bundle) before digesting.
+   * verify proves every actor drove this host by digest equality. Absent on the sequential route.
    */
   hostDigest?: string;
   /**
@@ -75,7 +75,7 @@ export interface SharedWorldParticipantWindow {
   /** The actor's terminal session verdict (per-persona). */
   verdict: string;
   /** sha256-16 of the origin of the getHost seat URL this actor drove. verify confirms it equals
-   *  plane.hostDigest, so the actor drove exactly the harness-minted host (invariant 2).
+   *  plane.hostDigest, so the actor drove exactly the harness-minted host.
    *  A digest, not the raw URL (a getHost URL is not publish-safe; see SharedWorldPlane.hostDigest). */
   routeHostDigest: string;
   /** The shared plane's commit this actor observed (omitted when unresolved). */
