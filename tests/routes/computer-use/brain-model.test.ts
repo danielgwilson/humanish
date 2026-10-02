@@ -428,7 +428,6 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       { kind: "local-agent", agent: "codex", declaredModel: "synthetic-codex-model" },
       {
         env: {},
-        createDesktopLane: () => fakeDesktop(),
         runSession: async (options) => runCuaActorSession(options),
       },
     );
