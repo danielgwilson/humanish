@@ -4,16 +4,16 @@ import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executor.js";
 
-// The single LIVE rung for the computer-use actor: a real E2B desktop driven by the real OpenAI
-// Computer Use loop. Spend-gated three ways — it never runs in CI or by accident:
+// The single live rung for the computer-use actor: a real E2B desktop driven by the real OpenAI
+// Computer Use loop. Spend-gated three ways, so it never runs in CI or by accident:
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is imported lazily inside the gated body (never loaded when skipped).
-// The target is a local file:// page written INTO the sandbox (network-free, public-safe).
-// Deliberately asserts only "a conformant, redacted trace with a terminal status came back" —
+// The target is a local file:// page written into the sandbox (network-free, public-safe).
+// Deliberately asserts only "a conformant, redacted trace with a terminal status came back":
 // never task success, which would be flaky against a live model.
 // Fixture refreshes: additionally set HUMANISH_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
-// under .humanish/) to capture redacted RESPONSE wire bodies — see src/actors/computer-use/openai-provider.ts.
+// under .humanish/) to capture redacted response wire bodies: see src/actors/computer-use/openai-provider.ts.
 const LIVE =
   process.env.HUMANISH_LIVE_CUA === "1" &&
   Boolean(process.env.OPENAI_API_KEY) &&
@@ -27,7 +27,7 @@ const PROOF_HTML = [
   "</body></html>",
 ].join("");
 
-describe.skipIf(!LIVE)("openai-computer-use actor (LIVE, spend-gated)", () => {
+describe.skipIf(!LIVE)("openai-computer-use actor (live, spend-gated)", () => {
   it(
     "drives a real E2B desktop and returns a conformant redacted trace",
     { timeout: 300_000 },

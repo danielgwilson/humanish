@@ -11,15 +11,15 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
-// The LIVE rung for subject.state: a seed step that PROVES itself through the readiness
-// probe. The probe target (serve.url) is a file that exists ONLY because the before-start
-// seed step wrote it — readiness cannot pass unless the seed ran, and the real actor then
+// The live rung for subject.state: a seed step that proves itself through the readiness
+// probe. The probe target (serve.url) is a file that exists only because the before-start
+// seed step wrote it: readiness cannot pass unless the seed ran, and the real actor then
 // reads the seeded sentinel on screen. Spend-gated exactly like the other live rungs:
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
 // Asserts a verified bundle with state.provenance "seeded", the step's commandDigest, and a
-// terminal session — never task success.
+// terminal session, never task success.
 const LIVE =
   process.env.HUMANISH_LIVE_CUA === "1" &&
   Boolean(process.env.OPENAI_API_KEY) &&
@@ -27,7 +27,7 @@ const LIVE =
 
 const SEED_COMMAND = "printf '<h1>SEEDED-7f3a</h1>' > seeded.html";
 
-describe.skipIf(!LIVE)("cua-actor-lab subject.state (LIVE, spend-gated)", () => {
+describe.skipIf(!LIVE)("cua-actor-lab subject.state (live, spend-gated)", () => {
   let cwd: string;
 
   beforeEach(async () => {
@@ -51,7 +51,7 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (LIVE, spend-gated)", () => 
           repos: ["mdn/beginner-html-site-styled"],
           serve: {
             start: "python3 -m http.server 8000",
-            // The served file EXISTS only because the seed step ran: probe == seed proof.
+            // The served file exists only because the seed step ran: probe == seed proof.
             url: "http://127.0.0.1:8000/seeded.html",
             readyTimeoutMs: 60_000,
           },
@@ -77,8 +77,8 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (LIVE, spend-gated)", () => 
       if (outcome.route !== "computer-use") return;
       const result = outcome.result;
 
-      // Terminal session without a harness error; sandbox reclaimed. We do NOT assert task
-      // success — the lab's evidence claim is "seeded state served and driven", not "passed".
+      // Terminal session without a harness error; sandbox reclaimed. We do not assert task
+      // success: the run's evidence claim is "seeded state served and driven", not "passed".
       expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.session?.status);
       expect(result.session?.completionReason).not.toBe("harness_error");
       expect(result.observer?.ok).toBe(true);
@@ -100,7 +100,7 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (LIVE, spend-gated)", () => 
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
       expect(bundle.subject.state.provenance).toBe("seeded");
       expect(bundle.subject.state.seed[0].commandDigest).toBe(expectedDigest);
-      // Digest only — the command text never persists in evidence (the sentinel itself may
+      // Digest only: the command text never persists in evidence (the sentinel itself may
       // legitimately appear in actor narration; the printf invocation must not).
       expect(JSON.stringify(bundle)).not.toContain("printf '<h1>");
       const verified = await verifyRun(cwd, result.runId);

@@ -1,22 +1,17 @@
 schema: humanish.lab.v2
 id: signup-email-verify
 title: Can a persona complete an email-gated signup end to end?
-description: >
-  The flow humanish exists to study and had never once been observed: a persona creates an
-  account, the app emails a verification link, the persona opens its inbox, clicks the link,
-  and reaches the signed-in product. Every step is real — a real public app, a real signup
-  form, real mail over SMTP — except that the mail is captured in-sandbox and never leaves
-  the machine.
-  SUBJECT: documenso, an open-source document-signing app (AGPL-3.0). Chosen because its
-  signup is HARD-GATED on the emailed link: registration returns no session, and sign-in
-  refuses an unverified account, so reaching the product proves the persona actually read
-  the mail. It sends through nodemailer over SMTP, which the in-sandbox catch speaks.
-  READ THE RESULT CAREFULLY. A persona that stops before the dashboard has not failed the
-  harness — it has produced the finding. The interesting outcomes are where it got stuck and
-  what it did next, not a pass mark.
-  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0. A
-  live run needs OPENAI_API_KEY + E2B_API_KEY and a gitignored .humanish/labs/ copy with
-  mode: live.
+description: >-
+  A persona creates an account, the app emails a verification link, and the persona opens its inbox,
+  clicks the link and reaches the signed-in product. Every step is real (a public open-source app,
+  its own signup form, mail over SMTP) except that the mail is caught in the sandbox and never
+  leaves the machine. The subject is documenso, an open-source document-signing app, chosen because
+  its signup depends on the emailed link: registration returns no session and sign-in refuses an
+  unverified account, so reaching the product shows the persona read the mail. It sends through
+  nodemailer over SMTP, which the in-sandbox catch accepts. A persona that stops before the
+  dashboard has produced the finding: where it got stuck and what it did next. Committed as a dry
+  run, which builds a dry-run bundle at no cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and a
+  gitignored .humanish/labs/ copy with mode: live.
 subject:
   source: clone
   repos:

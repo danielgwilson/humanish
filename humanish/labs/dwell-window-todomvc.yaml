@@ -1,13 +1,12 @@
 schema: humanish.lab.v2
 id: dwell-window-todomvc
-title: "A declared observation window on TodoMVC (#510): hold for a minute after the first task lands, then continue"
-description: >
-  One participant adds a task; when the list says "1 item left" the harness holds the page for 60 s,
-  capturing a frame every 10 s and requesting no model turn; then the participant continues and adds
-  a second task. The bundle's trace carries the window (started/complete notices, six dwell frames),
-  and no model turn is requested during it. Receipt:
-  docs/evidence/computer-use/dwell-window-2026-09-04.md.
-  Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.05.
+title: "A declared observation window on TodoMVC: hold for a minute after the first task, then continue"
+description: >-
+  One participant adds a task. When the list says "1 item left", the harness holds the page for 60
+  seconds, capturing a frame every 10 seconds and requesting no model turn, and then the participant
+  adds a second task. The bundle's trace records the window: its start and end notices and six dwell
+  frames. Study record: docs/evidence/computer-use/dwell-window-2026-09-04.md. Committed as a dry
+  run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.05.
 subject:
   source: clone
   repos:

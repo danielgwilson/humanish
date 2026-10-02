@@ -10,7 +10,7 @@ describe("what a terminal can actually render", () => {
   it("trusts a declared UTF-8 locale, in the order the C library resolves them", () => {
     expect(terminalRendersUnicode({ LANG: "en_US.UTF-8" })).toBe(true);
     expect(terminalRendersUnicode({ LANG: "C", LC_CTYPE: "en_US.utf8" })).toBe(true);
-    // LC_ALL overrides everything below it — including a UTF-8 LANG.
+    // LC_ALL overrides everything below it, including a UTF-8 `LANG`.
     expect(terminalRendersUnicode({ LC_ALL: "C", LANG: "en_US.UTF-8" })).toBe(false);
   });
 
@@ -38,7 +38,7 @@ describe("what a terminal can actually render", () => {
   it("substitutes a question mark for a character with no declared fallback", () => {
     // Passing it through is exactly what produced the garbage; one `?` at least reads as
     // "something did not survive" rather than as a corrupted glyph.
-    // One `?` per CODE POINT, not per UTF-16 unit: an astral character is one thing the reader
+    // One `?` per code point, not per UTF-16 unit: an astral character is one thing the reader
     // did not get, not two.
     expect(forTerminal("emoji 🎉 here", { LANG: "C" })).toBe("emoji ? here");
   });

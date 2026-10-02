@@ -23,7 +23,7 @@ import {
   type FetchLike,
 } from "../../../src/actors/computer-use/openai-provider.js";
 
-// Deterministic coverage for the opt-in response wire-capture seam — the fixture-
+// Deterministic coverage for the opt-in response wire-capture seam: the fixture-
 // provenance lesson from the 0.6.1 parser incident (see src/actors/computer-use/openai-provider.ts
 // module header). Fake fetch + temp dir + injected env: no network, no key, no
 // spend, and no process.env mutation. Asserts the gate is off by default, capture
@@ -129,7 +129,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
       env: { [WIRE_CAPTURE_ENV]: captureDir },
     });
 
-    // Behavior with capture ON is identical to capture OFF: same parsed turns.
+    // Behavior with capture on is identical to capture off: same parsed turns.
     const turn1 = await provider.nextTurn(request(), neverAbort);
     expect(turn1.actions).toEqual([{ kind: "click", x: 11, y: 22, button: "left" }]);
     const turn2 = await provider.nextTurn(request(), neverAbort);
@@ -139,7 +139,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     const files = (await readdir(captureDir)).sort();
     expect(files).toEqual(["wire-001.json", "wire-002.json"]);
 
-    // Exact bytes: redacted (no-op here — nothing secret-shaped), 2-space pretty-
+    // Exact bytes: redacted (no-op here; nothing secret-shaped), 2-space pretty-
     // printed, trailing newline. Byte-stable output is what makes diffs reviewable.
     const first = await readFile(path.join(captureDir, "wire-001.json"), "utf8");
     expect(first).toBe(`${JSON.stringify(RESPONSE_ONE, null, 2)}\n`);
@@ -264,7 +264,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
       fetchFn: scriptedFetch([RESPONSE_ONE, RESPONSE_TWO]),
       env: { [WIRE_CAPTURE_ENV]: captureDir },
     });
-    // Two turns so the second REQUEST carries the base64 screenshot call output.
+    // Two turns so the second request carries the base64 screenshot call output.
     await provider.nextTurn(request(), neverAbort);
     await provider.nextTurn(request(), neverAbort);
 
@@ -279,7 +279,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
 });
 
 describe("redactWireJson", () => {
-  it("redacts strings deeply — keys and values, in objects and arrays", () => {
+  it("redacts strings deeply: keys and values, in objects and arrays", () => {
     const input = {
       note: `leaked ${FAKE_SECRET}`,
       [FAKE_SECRET]: "value under a secret-shaped key",

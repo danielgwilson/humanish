@@ -10,21 +10,21 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
-// The LIVE rung for the terminal-product lane (#154 SLICE 2): a REAL E2B shell sandbox + a REAL
+// The live rung for the terminal-product route: a real E2B shell sandbox + a real
 // `codex exec` agent studying a neutral public surface, command-scoped runtime auth, capped at
 // no-spend. It exercises the credential-placement inversion against a real provider, so it is
-// gated EXACTLY like the other live rungs (never run in CI) and kept as a receipt by the
+// gated exactly like the other live rungs (never run in CI) and kept as a receipt by the
 // orchestrator post-merge:
 //   1. HUMANISH_LIVE_CODEX=1 must be set explicitly (the live opt-in);
 //   2. CODEX_API_KEY or OPENAI_API_KEY, plus E2B_API_KEY, must be present (operator-side; the
-//      runtime key is injected ONLY into the command-scoped codex invocation, never
+//      runtime key is injected only into the command-scoped codex invocation, never
 //      sandbox-global). CODEX_API_KEY is preferred (it is the documented single-invocation
 //      `codex exec` auth channel); when only OPENAI_API_KEY is set, the lane injects its value
-//      under BOTH names, so either is sufficient here too.
+//      under both names, so either is sufficient here too.
 //   3. @e2b/desktop is the lazily-loaded substrate.
 // Asserts the safety contract holds against a real agent: real sandbox created + reclaimed,
 // runtime auth command-scoped (never in metadata), no banned creds in artifacts, the bundle
-// verifies (incl. the terminal-product evidence check). NEVER asserts task success.
+// verifies (incl. the terminal-product evidence check). Never asserts task success.
 const LIVE =
   process.env.HUMANISH_LIVE_CODEX === "1" &&
   (Boolean(process.env.CODEX_API_KEY) || Boolean(process.env.OPENAI_API_KEY)) &&
@@ -69,7 +69,7 @@ function liveConfig(): LabConfig {
   return parsed.config;
 }
 
-describe.skipIf(!LIVE)("terminal-product lane (LIVE, key-gated, E2B + Codex)", () => {
+describe.skipIf(!LIVE)("terminal-product lane (live, key-gated, E2B + Codex)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-livereal-"));
@@ -89,7 +89,7 @@ describe.skipIf(!LIVE)("terminal-product lane (LIVE, key-gated, E2B + Codex)", (
         open: false,
       });
 
-      // Real sandbox created + reclaimed BY EXACT ID (cleanup proven; never a Sandbox.list call).
+      // Real sandbox created + reclaimed by exact ID (cleanup proven; never a Sandbox.list call).
       expect(result.sandbox?.sandboxId).toBeTruthy();
       expect(result.sandbox?.killed).toBe(true);
       expect(result.sandbox?.remaining).toBe(0);
@@ -100,7 +100,7 @@ describe.skipIf(!LIVE)("terminal-product lane (LIVE, key-gated, E2B + Codex)", (
       expect(verified.ok).toBe(true);
       expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(true);
 
-      // No credential VALUE in evidence: neither real key (whichever the operator exported, or both
+      // No credential value in evidence: neither real key (whichever the operator exported, or both
       // if the lane dual-injected OPENAI_API_KEY under CODEX_API_KEY too) ever appears in any artifact.
       const runDir = path.join(cwd, ".humanish", "runs", result.runId);
       const realKeys = [process.env.CODEX_API_KEY, process.env.OPENAI_API_KEY]

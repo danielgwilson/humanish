@@ -4,7 +4,7 @@
 // the wrong shape for the research question: a run where two of three participants finished is not
 // usefully "fail", and a run where the harness broke is a different thing from one where a persona
 // gave up. A stakeholder watching through the glass forms conclusions from vivid moments, so every
-// number shown to one travels with its count — otherwise it is a machine for manufacturing
+// number shown to one travels with its count: otherwise it is a machine for manufacturing
 // certainty from n=1.
 import { describe, expect, it } from "vitest";
 
@@ -60,7 +60,7 @@ describe("tallyParticipantOutcomes", () => {
     });
   });
 
-  it("counts friction ACROSS outcomes, because reaching the goal and finding it broken both happened", () => {
+  it("counts friction across outcomes, because reaching the goal and finding it broken both happened", () => {
     // From a live two-persona run: both participants signed in, and the keyboard-first one also
     // reported that the signature step could not be completed without a mouse. "2/2 reached the
     // goal" was true and would have buried the single most useful thing that run produced.

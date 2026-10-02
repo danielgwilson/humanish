@@ -60,11 +60,11 @@ async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promis
     return await callback(tempApp);
   } finally {
     // CI hit "ENOTEMPTY: rmdir .../.humanish/runs/codex-unsafe-admin-gitdir-*" here. It was read
-    // as a write landing AFTER runDryRun resolved (#553). It was not: the trust-preflight test
+    // as a write landing after runDryRun resolved. It was not: the trust-preflight test
     // raced runDryRun against a timer, and when the timer won on a loaded runner, this rm ran
     // while the run was still writing its bundle. The ENOTEMPTY, thrown from a finally, replaced
     // the "preflight hung" error that was the actual failure. That test now awaits the run before
-    // returning here. The retries stay as belt-and-braces; they are no longer load-bearing.
+    // returning here. The retries stay as belt-and-braces; nothing depends on them now.
     await rm(tempRoot, { force: true, recursive: true, maxRetries: 5, retryDelay: 50 });
   }
 }
@@ -187,9 +187,9 @@ describe("dry-run bundles", () => {
     await withFixtureCopy(async (cwd) => {
       await execFileAsync("mkfifo", [path.join(cwd, ".git")]);
 
-      // The hang under test is INDEFINITE (a FIFO read blocks forever), so the bound only needs
+      // The hang under test is indefinite (a FIFO read blocks forever), so the bound only needs
       // to be an order of magnitude above a slow legitimate dry-run, not a stopwatch. This raced
-      // at a fixed 1s and flaked in the PUBLISH gate on a busy runner (#416): the tag was live
+      // at a fixed 1s and flaked in the publish gate on a busy runner: the tag was live
       // while npm served the old version, and the failure signal meant "the runner was busy",
       // not "the behavior regressed". 10s cannot be reached by a working dry-run and is still
       // reached instantly-in-CI-terms by the actual regression.
@@ -997,7 +997,7 @@ describe("dry-run bundles", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Verify hardening: the independent verifier upholds invariant 4 on its own.
+// Verify hardening: the independent verifier fails closed on its own.
 // It re-derives the producer-side no-engagement judgment from bundle data
 // alone (bundle.mode + the provider-neutral actor trace) instead of trusting
 // the producer's self-attested verdict, and it surfaces the raw-screenshot
@@ -1088,7 +1088,7 @@ async function writeCuaRunFixture(
     source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" }),
   });
   // The verify matrix forges subject blocks the producer would never emit (e.g. a "seeded"
-  // claim over a failed step) — verify must reject them from the persisted evidence alone.
+  // claim over a failed step): verify must reject them from the persisted evidence alone.
   if (args.subject) {
     bundle.subject = args.subject;
   }
@@ -1160,7 +1160,7 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
     });
   });
 
-  it("FAILS a live goal_satisfied bundle whose actor trace has zero actions and zero messages (hollow run)", async () => {
+  it("fails a live goal_satisfied bundle whose actor trace has zero actions and zero messages (hollow run)", async () => {
     await withFixtureCopy(async (cwd) => {
       // Shape mirrors the preserved pre-0.6.1 hollow-run bundles: mode live, status passed,
       // completionReason goal_satisfied, counts and items empty of actions and messages.
@@ -1231,7 +1231,7 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
     });
   });
 
-  it("FAILS a live pass review whose actor trace status is failed", async () => {
+  it("fails a live pass review whose actor trace status is failed", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "failed-actor-pass-review-regression", {
         dryRun: false,
@@ -1315,7 +1315,7 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
         verify.shareSafety.reasons.find((reason) => reason.code === "RAW_SCREENSHOTS")?.message,
       ).toContain("Full-fidelity screenshots, or frames with no redaction claim, are present");
 
-      // The CLI must show the posture in BOTH output modes.
+      // The CLI must show the posture in both output modes.
       const json = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd, "--json"]);
       expect(json.exitCode).toBe(0);
       const jsonBody = JSON.parse(json.stdout) as {
@@ -1379,7 +1379,7 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
 });
 
 describe("verify: subject state provenance", () => {
-  // An ENGAGED live trace (status passed → review verdict pass) so the matrix isolates the
+  // An engaged live trace (status passed → review verdict pass) so the matrix isolates the
   // state check: the actor-engagement check must not be the thing failing these bundles.
   const engagedTrace = (): ActorTrace =>
     cuaActorTrace({
@@ -1441,7 +1441,7 @@ describe("verify: subject state provenance", () => {
     });
   });
 
-  it("FAILS a hollow seeded claim: live pass verdict over a seed step that did not run ok", async () => {
+  it("fails a hollow seeded claim: live pass verdict over a seed step that did not run ok", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-seeded-hollow", {
         dryRun: false,
@@ -1459,7 +1459,7 @@ describe("verify: subject state provenance", () => {
     });
   });
 
-  it("FAILS seeded with zero records, and seeded records without a real digest", async () => {
+  it("fails seeded with zero records, and seeded records without a real digest", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-seeded-empty", {
         dryRun: false,
@@ -1484,7 +1484,7 @@ describe("verify: subject state provenance", () => {
     });
   });
 
-  it("REJECTS marker seeded on a dry-run bundle — a contract bundle cannot claim executed state", async () => {
+  it("rejects marker seeded on a dry-run bundle: a contract bundle cannot claim executed state", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-seeded-dryrun", {
         dryRun: true,
@@ -1497,7 +1497,7 @@ describe("verify: subject state provenance", () => {
     });
   });
 
-  it("FAILS unpinned without externalEnvNames, and value-shaped entries without echoing them", async () => {
+  it("fails unpinned without externalEnvNames, and value-shaped entries without echoing them", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-unpinned-empty", {
         dryRun: false,
@@ -1508,7 +1508,7 @@ describe("verify: subject state provenance", () => {
       expect(stateCheck(empty)?.ok).toBe(false);
       expect(stateCheck(empty)?.message).toContain("externalEnvNames");
 
-      // A VALUE smuggled into the names list trips the shape check (a free secret tripwire) —
+      // A value smuggled into the names list trips the shape check (a free secret tripwire):
       // and the finding must not echo the entry, which may itself be the secret.
       const leakedValue = "db-pass-" + "value-123456";
       await writeCuaRunFixture(cwd, "state-unpinned-value", {
@@ -1523,7 +1523,7 @@ describe("verify: subject state provenance", () => {
     });
   });
 
-  it("FAILS a live PASS verdict claiming declared-not-run", async () => {
+  it("fails a live pass verdict claiming declared-not-run", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-dnr-live-pass", {
         dryRun: false,
@@ -1539,7 +1539,7 @@ describe("verify: subject state provenance", () => {
     });
   });
 
-  it("FAILS a live PASS verdict carrying a failed seed record even under the unpinned marker (the hollow-seeded × unpinned hole)", async () => {
+  it("fails a live pass verdict carrying a failed seed record even under the unpinned marker (the hollow-seeded × unpinned hole)", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-unpinned-failed-seed", {
         dryRun: false,
@@ -1560,7 +1560,7 @@ describe("verify: subject state provenance", () => {
     });
   });
 
-  it("warns ONCE (never fails) on a live clone bundle with provisioned env but an undeclared state story — GITHUB_TOKEN excluded", async () => {
+  it("warns once (never fails) on a live clone bundle with provisioned env but an undeclared state story: GITHUB_TOKEN excluded", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-undeclared-env", {
         dryRun: false,
@@ -1575,7 +1575,7 @@ describe("verify: subject state provenance", () => {
       expect(stateWarnings[0]).toContain("DATABASE_URL");
       expect(stateWarnings[0]).not.toContain("GITHUB_TOKEN");
 
-      // GITHUB_TOKEN alone is the harness's clone-auth channel — no state implication, no nudge.
+      // GITHUB_TOKEN alone is the harness's clone-auth channel: no state implication, no nudge.
       await writeCuaRunFixture(cwd, "state-undeclared-token-only", {
         dryRun: false,
         trace: engagedTrace(),
@@ -1681,7 +1681,7 @@ describe("verify: subject provenance (local-tree)", () => {
     });
   });
 
-  it("FAILS a live local-tree bundle missing archiveSha256, and PASSES once it carries a well-formed one", async () => {
+  it("fails a live local-tree bundle missing archiveSha256, and passes once it carries a well-formed one", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "local-tree-missing-pin", {
         dryRun: false,
@@ -1716,7 +1716,7 @@ describe("verify: subject provenance (local-tree)", () => {
     });
   });
 
-  it("a dry-run local-tree bundle with NO archiveSha256 passes (nothing was packed, so nothing to pin)", async () => {
+  it("a dry-run local-tree bundle with no archiveSha256 passes (nothing was packed, so nothing to pin)", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "local-tree-dryrun", {
         dryRun: true,
@@ -1734,8 +1734,8 @@ describe("verify: subject provenance (local-tree)", () => {
 });
 
 describe("verify: cost estimate labeling", () => {
-  // An ENGAGED live trace so the review verdict is a genuine pass; that isolates the cost check
-  // from the actor-engagement gate. Cost is ADVISORY on magnitude, FAIL-CLOSED on provenance.
+  // An engaged live trace so the review verdict is a genuine pass; that isolates the cost check
+  // from the actor-engagement gate. Cost is advisory on magnitude, fail-closed on provenance.
   const engagedTrace = (estimatedCost?: ActorTrace["estimatedCost"]): ActorTrace => {
     const trace = cuaActorTrace({
       counts: {
@@ -1787,7 +1787,7 @@ describe("verify: cost estimate labeling", () => {
     ...overrides,
   });
 
-  it("passes when the bundle carries NO cost at all (fail-open on absence)", async () => {
+  it("passes when the bundle carries no cost at all (fail-open on absence)", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "cost-absent", { dryRun: false, trace: engagedTrace() });
       const verify = await verifyRun(cwd, "cost-absent");
@@ -1796,7 +1796,7 @@ describe("verify: cost estimate labeling", () => {
     });
   });
 
-  it("passes a properly-labeled estimate and a HUGE but correctly-labeled estimate (magnitude never fails)", async () => {
+  it("passes a properly-labeled estimate and a huge but correctly-labeled estimate (magnitude never fails)", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "cost-labeled", {
         dryRun: false,
@@ -1830,7 +1830,7 @@ describe("verify: cost estimate labeling", () => {
     });
   });
 
-  it("FAILS a number total that lacks its ratesAsOf date (a token-derived charge without provenance)", async () => {
+  it("fails a number total that lacks its ratesAsOf date (a token-derived charge without provenance)", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "cost-no-rates", {
         dryRun: false,
@@ -1843,7 +1843,7 @@ describe("verify: cost estimate labeling", () => {
     });
   });
 
-  it("FAILS a total that does not equal the sum of its known breakdown lines", async () => {
+  it("fails a total that does not equal the sum of its known breakdown lines", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "cost-mismatch", {
         dryRun: false,
@@ -1855,7 +1855,7 @@ describe("verify: cost estimate labeling", () => {
     });
   });
 
-  it("FAILS a null total sitting beside a known (non-null) breakdown line", async () => {
+  it("fails a null total sitting beside a known (non-null) breakdown line", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "cost-null-hides", {
         dryRun: false,
