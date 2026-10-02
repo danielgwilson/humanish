@@ -135,8 +135,8 @@ function concurrentLabError(args: {
   const { participantResults, participantCount } = args;
   if (ok) return undefined;
   if (handoffTimedOut) {
-    // Checked BEFORE the observer failure: the host never yielded a /lobby/CODE within the
-    // deadline (followers failed closed without opening), which is the ROOT CAUSE — and it can
+    // Checked before the observer failure: the host never yielded a /lobby/CODE within the
+    // deadline (followers failed closed without opening), which is the root cause, and it can
     // itself make the Observer unable to render a coherent run. Report the distinct, honest
     // handoff-timeout code rather than a generic observer/run failure.
     return {
@@ -378,7 +378,7 @@ export async function finishConcurrentRun(
     attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, live.streamUrls);
   }
 
-  // Concurrent "ok": every actor must produce a terminal, engaged PASSED session, and the seats
+  // Concurrent "ok": every actor must produce a terminal, engaged, passed session, and the seats
   // must show the concurrency verify requires of a pass (judgeSharedWorld). This is a
   // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
   // make the route green just because the harness got a terminal.

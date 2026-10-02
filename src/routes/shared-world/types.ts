@@ -40,7 +40,7 @@ export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {
   tool: "humanish",
 } as const;
 
-// The verify-enforced CONCURRENT attribution ceiling (FIX-5). Mirrored in
+// The verify-enforced concurrent attribution ceiling. Mirrored in
 // verify/shared-world-concurrent.ts CONCURRENT_REQUIRED_LIMITS.
 export const CONCURRENT_ATTRIBUTION_LIMITS = [
   "concurrent",
@@ -95,7 +95,7 @@ export type ConcurrentSharedWorldLabErrorCode =
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
-  /** A local-agent brain's CLI is not on PATH. */
+  /** A local-agent brain's CLI is not on `PATH`. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING"
   /** A local-agent brain's CLI is signed out, or could not report its sign-in status. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
@@ -106,7 +106,7 @@ export type ConcurrentSharedWorldLabErrorCode =
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
   | "HUMANISH_RUN_ID_IN_USE"
   /** A declared adopter-hosted comms catch (#328) did not answer as a humanish catch — fail closed
-   *  BEFORE any actor spend, since the funnel would silently collect nothing. */
+   *  before any actor spend, since the funnel would silently collect nothing. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE"
   /** comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
    *  well-formed Unicode (src/comms/external-evidence.ts). Refused before the catch is probed. */
@@ -116,7 +116,7 @@ export type ConcurrentSharedWorldLabErrorCode =
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";
 
 // EXTERNAL-PUBLIC plane class: the honest-downgrade attribution ceiling. The concurrent family
-// (an honest ceiling) PLUS the mandatory external-public disclosures — mirrored in the required
+// (an honest ceiling) plus the mandatory external-public disclosures, mirrored in the required
 // set in verify/shared-world-concurrent.ts (CONCURRENT_ATTRIBUTION_LIMITS +
 // EXTERNAL_PUBLIC_EXTRA_LIMITS). Verify fails closed on a missing one.
 export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
@@ -128,7 +128,7 @@ export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
   "concurrency-by-temporal-co-occupancy-only",
 ] as const;
 
-/** One persona's OUTCOME against the contended world (the "M of N" headline). */
+/** One persona's outcome against the contended world (the "M of N" headline). */
 export interface ConcurrentSharedWorldParticipantResult {
   id: string;
   index: number;
@@ -151,7 +151,7 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   actor: string;
   topology: "shared-world";
   topologyMode: "concurrent";
-  /** The DECLARED number of persona seats. */
+  /** The declared number of personas. */
   roleCount: number;
   /** Effective in-flight bound (execution.concurrency). */
   concurrency: number;
@@ -159,14 +159,14 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   runId: string;
   /** The harness-minted getHost URL the actors drove (tokenless; live only). */
   host?: string;
-  /** The ONE subject sandbox lifecycle proof. */
+  /** The one subject sandbox lifecycle proof. */
   subjectSandbox?: { sandboxId: string; killed: boolean };
   /** Whether ≥2 actor windows overlapped in time (proven concurrency; live only). */
   overlapProven?: boolean;
   /** Max participants observed live at the same instant (live only) — the honest simultaneity number; a
    *  6-participant run capped at 3 reports 3 here, never 6 (#350). */
   maxSimultaneousLanes?: number;
-  /** Subject provenance (invariant 5): the ONE shared plane. */
+  /** Subject provenance (invariant 5): the one shared plane. */
   subject?: RunSubjectProvenance;
   roles: ConcurrentSharedWorldParticipantResult[];
   observer?: ObserverResult;
@@ -266,15 +266,15 @@ export interface ConcurrentBundleArgs {
   hostDigest?: string;
   /** Run-level digest-only comms-thread evidence path (humanish.comms-thread.v1), when a comms lab
    *  captured mail into the subject sandbox's catch. Registered on the first persona stream (it is a
-   *  property of the ONE shared app, not of any single persona). */
+   *  property of the one shared app, and belongs to no single persona). */
   commsArtifactPath?: string;
   /** #164 phase 2: the plane-class discriminator (default provisioned-getHost, byte-stable). */
   planeClass?: ConcurrentSharedWorldPlaneClass;
-  /** external-public only: sha256-16 of the OBSERVED origin the seats converged on (the convergence
+  /** external-public only: sha256-16 of the observed origin the seats converged on (the convergence
    *  proof — what the seats actually reached, tolerant of a declared->observed redirect). */
   publicOriginDigest?: string;
   /** external-public only: sha256-16 of the operator-DECLARED plane origin (evidence/reference only;
-   *  NOT asserted equal to the observed origin — a cross-origin redirect is normal and expected). */
+   *  never asserted equal to the observed origin, since a cross-origin redirect is normal). */
   declaredOriginDigest?: string;
   /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
   lobbyConvergenceDigest?: string;
@@ -294,9 +294,9 @@ export interface PlaneResults {
   subjectReleaseWarning: string | undefined;
   subjectDesktop: SubjectDesktopUsage | undefined;
   getHostUrl: string | undefined;
-  // The OBSERVED convergence origin — computed AFTER fan-out from what the seats ACTUALLY reached (the
-  // convergence proof is what the seats OBSERVED, not what was declared). Set iff every observing seat
-  // agrees on ONE origin; that agreement IS the convergence proof and becomes plane.publicOriginDigest.
+  // The observed convergence origin, computed after fan-out from what the seats reached (the
+  // convergence proof is what the seats observed). Set iff every observing seat
+  // agrees on one origin; that agreement is the convergence proof and becomes plane.publicOriginDigest.
   publicOriginDigest: string | undefined;
   lobbyConvergenceDigest: string | undefined;
   handoffTimedOut: boolean;

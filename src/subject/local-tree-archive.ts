@@ -1,6 +1,6 @@
 // Local working-tree packaging for `subject.source: local-tree`.
 //
-// Enumeration produces ONE file list that drives BOTH the tar archive and the
+// Enumeration produces one file list that drives both the tar archive and the
 // content digest (archiveSha256), so the digest can never diverge from what
 // actually gets packed. A prior in-house harness reimplemented exclusion in a
 // second, independent digest walker that could drift from what its tar
@@ -177,7 +177,7 @@ export function createLocalTreeArchive(
     );
   }
 
-  // Check the cap from enumerated sizes BEFORE reading/hashing file bytes, so
+  // Check the cap from enumerated sizes before reading/hashing file bytes, so
   // an oversized tree fails closed without the cost of hashing all of it.
   const enumeratedBytes = entries.reduce(
     (sum, entry) => (entry.kind === "file" ? sum + entry.size : sum),
@@ -280,7 +280,7 @@ function captureGitInfo(root: string): LocalTreeGitInfo | undefined {
     return undefined;
   }
   // Pathspec-scoped to the packed root: `git status --porcelain` without a
-  // pathspec reports the WHOLE enclosing repository, which would report a
+  // pathspec reports the whole enclosing repository, which would report a
   // clean packed subtree as dirty whenever an unrelated sibling package in a
   // monorepo has in-progress changes.
   const status = execFileSync("git", ["status", "--porcelain", "--", "."], {
@@ -385,7 +385,7 @@ function isDenylistedSegment(relPath: string): boolean {
 /**
  * Normalize an author-supplied exclude entry to the relPath shape enumeration
  * produces (no leading "./", no trailing "/"). Absolute paths and glob syntax
- * are REJECTED, not silently no-op'd: an exclude the author believed in but
+ * are rejected instead of silently ignored: an exclude the author believed in but
  * that never matches anything is a leak vector, so unusable shapes fail
  * closed at the packing boundary (and, for lab manifests, already at parse
  * time in src/lab/parse/subject.ts).

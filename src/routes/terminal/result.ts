@@ -119,14 +119,14 @@ export function terminalLabResult(args: {
     observer,
     warnings,
   } = args;
-  // The lab's exit code: verified evidence AND no harness error AND proven cleanup. A blocked/
-  // timed-out agent run is STILL ok-as-evidence at the bundle level (the failure is the evidence),
-  // but the LAB result surfaces ok:false on a harness error or unproven teardown (fail-closed).
+  // The lab's exit code: verified evidence, no harness error and proven cleanup. A blocked/
+  // timed-out agent run is still ok-as-evidence at the bundle level (the failure is the evidence),
+  // but the lab result surfaces ok:false on a harness error or unproven teardown (fail-closed).
   // remaining===0 is the by-id-confirmed-reclaimed state; remaining===1 (still present) and
   // remaining===-1 (kill(id) itself failed) are both unproven by design.
   const cleanupProven = cleanup.killed && cleanup.remaining === 0;
   // A CONFIG-DECLARED scorer that failed to render a pass (status:"fail" / malformed / throw) fails the
-  // run RESULT too, not just the persisted verdict — the keystone route's declared rubric is a gate, so
+  // run result as well as the persisted verdict: the keystone route's declared rubric is a gate, so
   // its fail must drive exit code. Library callers never set this (additive, back-compat).
   const ok = resultOk({
     judgment,
