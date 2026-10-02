@@ -49,6 +49,9 @@ export const PRODUCT_SETUP_TIMEOUT_MS = 300_000;
 // How much of a captured stream / log tail rides a (redacted) message field.
 export const TAIL_CHARS = 2000;
 
+// How much of one decoded agent message or reasoning item the actor trace keeps.
+export const MESSAGE_CHARS = 8000;
+
 // Hard cap on the retained event-stream + transcript size, so a runaway agent cannot balloon the
 // bundle. Redaction runs PRE-truncation so a cut can never split a secret past the scrubber.
 export const MAX_TRANSCRIPT_BYTES = 512 * 1024;

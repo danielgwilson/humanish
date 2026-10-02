@@ -260,7 +260,10 @@ export interface Actor {
   run-bundle wiring is provider-agnostic. The artifact names differ by route: the Codex
   app-server adapter writes `events.ndjson`, `summary.json` and `transcript.txt`; a
   computer-use participant writes its trace to `actor.json` or `actors/<streamId>.json`; the
-  terminal route writes `terminal-events.ndjson` and `terminal-transcript.txt`.
+  terminal route writes `terminal-events.ndjson` and `terminal-transcript.txt`. Analysis quotes
+  only `message` and `reasoning` items, so they carry the participant's own words. The terminal
+  route decodes them from the Codex `agent_message` and `reasoning` items in the exec JSON stream
+  and keeps the stream's last 2000 characters in the `command` item's `outputTail`.
 - **Approvals.** Call `approval.onRequest`; never embed adapter-local decline
   strings. Every call is recorded as an `items[kind=approval]`.
 - **Redaction.** Use the injected `RedactionHooks`. Never re-implement redaction

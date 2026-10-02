@@ -1129,9 +1129,13 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const actor = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
     expect(actor.counts.runtimeParticipantItems).toBe(eligible ? 1 : 0);
-    // Preserve the old transcript projection and verdict interpretation.
-    expect(actor.counts.messages).toBe(1);
-    expect(actor.items.some((item: { kind: string }) => item.kind === "message")).toBe(true);
+    // Only a retained agent_message becomes a message item. The launcher command still counts as
+    // an action, so verify's no-engagement guard accepts every mode.
+    const said = ["message-only", "early-item"].includes(mode);
+    expect(actor.counts.messages).toBe(said ? 1 : 0);
+    expect(actor.items.filter((item: { kind: string }) => item.kind === "message")).toEqual(
+      said ? [expect.objectContaining({ text: "I will inspect the local draft." })] : [],
+    );
     expect(result.session?.status).toBe("blocked");
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
     expect(fetch).toHaveBeenCalledTimes(eligible ? 1 : 0);

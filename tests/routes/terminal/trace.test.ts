@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { countTerminalParticipantItems } from "../../../src/routes/terminal/trace.js";
+import {
+  countTerminalParticipantItems,
+  terminalParticipantTextItems,
+} from "../../../src/routes/terminal/trace.js";
+import { MESSAGE_CHARS } from "../../../src/routes/terminal/types.js";
 
 const wire = readFileSync(
   new URL("../../fixtures/terminal-runtime/participant-items.ndjson", import.meta.url),
@@ -52,5 +56,79 @@ describe("terminal participant activity", () => {
     expect(
       countTerminalParticipantItems(`${records[1]}\n${"synthetic diagnostic\n".repeat(5000)}`),
     ).toBe(1);
+  });
+});
+
+describe("terminal participant text items", () => {
+  const message = JSON.parse(records[0]!);
+  const command = JSON.parse(records[2]!);
+  const line = (event: unknown): string => JSON.stringify(event);
+  const keep = (text: string): string => text;
+
+  it("decodes the agent's own text and leaves command output and usage out", () => {
+    const said = 'Ran the CLI.\nIt printed "ok" twice.';
+    const output = '{\n  "status": "share_ready"\n}\n';
+    const stdout = [
+      line({ ...command, item: { ...command.item, aggregated_output: output } }),
+      line({ ...message, item: { ...message.item, text: said } }),
+      '{"type":"turn.completed","usage":{"input_tokens":0,"output_tokens":0}}',
+      "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=synthetic",
+    ].join("\n");
+    expect(terminalParticipantTextItems(stdout, keep)).toEqual([
+      {
+        id: "message-001",
+        kind: "message",
+        lifecycle: "completed",
+        title: "agent message",
+        text: said,
+      },
+    ]);
+  });
+
+  it("keeps one item per id in stream order, with its completed text", () => {
+    const item = (event: string, id: string, type: string, text: string): string =>
+      line({ type: event, item: { id, type, text } });
+    const stdout = [
+      item("item.started", "a", "agent_message", "draft"),
+      item("item.completed", "r", "reasoning", "Checking the help output."),
+      item("item.completed", "a", "agent_message", "final"),
+      item("item.updated", "a", "agent_message", "late"),
+      item("item.started", "b", "agent_message", "cut off"),
+    ].join("\n");
+    expect(
+      terminalParticipantTextItems(stdout, keep).map(({ id, lifecycle, text }) => ({
+        id,
+        lifecycle,
+        text,
+      })),
+    ).toEqual([
+      { id: "message-001", lifecycle: "completed", text: "final" },
+      { id: "reasoning-001", lifecycle: "completed", text: "Checking the help output." },
+      { id: "message-002", lifecycle: "started", text: "cut off" },
+    ]);
+  });
+
+  it("re-applies the route sanitizer to decoded text, then bounds it", () => {
+    // The stream escapes the quote, so a scrub of the raw stream cannot match this value.
+    const value = 'synthetic"value';
+    const sanitize = (text: string): string => text.replaceAll(value, "[REDACTED_SECRET]");
+    const long = `${value} ${"x".repeat(MESSAGE_CHARS)}`;
+    const [item] = terminalParticipantTextItems(
+      line({ ...message, item: { ...message.item, text: long } }),
+      sanitize,
+    );
+    expect(item?.text?.startsWith("[REDACTED_SECRET] x")).toBe(true);
+    expect(item?.text).toHaveLength(MESSAGE_CHARS);
+  });
+
+  it("ignores blank, malformed and nested records", () => {
+    const stdout = [
+      line({ ...message, item: { ...message.item, text: "  " } }),
+      line({ ...message, item: { ...message.item, id: "" } }),
+      line({ diagnostic: message }),
+      line(records[0]),
+      records[0]!.slice(0, -2),
+    ].join("\n");
+    expect(terminalParticipantTextItems(stdout, keep)).toEqual([]);
   });
 });
