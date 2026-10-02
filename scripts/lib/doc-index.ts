@@ -1,6 +1,8 @@
 // Every checked page under docs/ is reachable from an index: docs/README.md, or the README.md of
 // the page's own folder. A page no index links is one a reader cannot find from the docs front
-// door, which is how six contract pages went unlisted.
+// door. A checked page also carries no `Date:` or
+// `Status:` preamble: git log holds the dates, and a status line goes stale while the page around
+// it is kept current.
 import { posix } from "node:path";
 import { isCheckedDoc } from "./doc-paths.js";
 
@@ -43,4 +45,13 @@ export function findUnindexedDocs(
     const folderIndex = posix.join(posix.dirname(path), "README.md");
     return folderIndex === path || !linksOf(folderIndex).has(path);
   });
+}
+
+/** The 1-based lines of a page that open with `Date:` or `Status:`. */
+export function findPreambleLines(text: string): number[] {
+  const lines: number[] = [];
+  text.split("\n").forEach((line, index) => {
+    if (/^(Date|Status):/.test(line)) lines.push(index + 1);
+  });
+  return lines;
 }

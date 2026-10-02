@@ -1,7 +1,5 @@
 # Public Readiness Standard
 
-Status: researched working standard for public repository and npm release hygiene.
-
 This document separates real public-release risk from preference cleanup. The
 goal is to keep `humanish` safe, useful, and professional without deleting the
 durable context future contributors and agents need.

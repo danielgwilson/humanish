@@ -20,8 +20,7 @@ than one kind is split file by file.
   `.humanish/` folders `init` creates.
 - [product/lobby-trivia-3player-external-public.md](product/lobby-trivia-3player-external-public.md):
   a worked example of the external-public shared-world lab.
-- [release/open-source-readiness.md](release/open-source-readiness.md): the release gates and the
-  publish procedure. Its opening audit is a dated snapshot.
+- [release/publish.md](release/publish.md): check a release candidate, tag it and publish it.
 
 ## Look up what the code does now
 

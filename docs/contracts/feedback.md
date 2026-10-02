@@ -1,10 +1,7 @@
 # Feedback Contract
 
-Date: 2026-06-01 (current-state note updated 2026-07-14)
-
-Status: local feedback candidate, draft, verification, Markdown, and issue-URL
-generation are shipped. These commands do not mutate GitHub, and public output
-fails closed unless the run verifies as `share_ready`.
+Feedback candidates, drafts, verification, Markdown and issue URLs ship. These commands never
+mutate GitHub, and public output fails closed unless the run verifies as `share_ready`.
 
 ## Purpose
 

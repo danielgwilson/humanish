@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findUnindexedDocs } from "../../../scripts/lib/doc-index.js";
+import { findPreambleLines, findUnindexedDocs } from "../../../scripts/lib/doc-index.js";
 
 function unindexed(files: Record<string, string>): string[] {
   return findUnindexedDocs(Object.keys(files), (path) => files[path]);
@@ -60,5 +60,24 @@ describe("findUnindexedDocs", () => {
         "site/content/docs/index.mdx": "# Docs\n",
       }),
     ).toEqual(["docs/goals/current.md"]);
+  });
+});
+
+describe("findPreambleLines", () => {
+  it("names each line that opens with Date: or Status:", () => {
+    const page = [
+      "# Policy",
+      "",
+      "Date: 2026-06-02",
+      "",
+      "Status: shipped policy reference.",
+      "The status of a run is in `status.json`.",
+      "- Status: a list item is not a preamble",
+    ].join("\n");
+    expect(findPreambleLines(page)).toEqual([3, 5]);
+  });
+
+  it("finds nothing on a page that opens with its scope", () => {
+    expect(findPreambleLines("# Policy\n\nThis page is the policy reference.\n")).toEqual([]);
   });
 });

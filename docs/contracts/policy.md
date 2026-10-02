@@ -1,14 +1,9 @@
 # Policy Contract
 
-Date: 2026-06-02 (current-state note updated 2026-07-14)
-
-Status: shipped policy reference for credential, network, spend, redaction,
-sharing, and assisted-run boundaries. Support remains route-specific; the
-parser, route validation, and verifier determine whether a declared field is
-consumed, rejected, or reported as a warning.
-
-Safety amendment (2026-07-14): beginning with `0.15.1`, stored provider IDs are
-evidence and never authorize core provider mutation.
+This page is the policy reference for credential, network, spend, redaction, sharing and
+assisted-run boundaries. Support is route-specific: the parser, route validation and the verifier
+decide whether a declared field is consumed, rejected or reported as a warning. Stored provider
+ids are evidence and never authorize core provider mutation.
 
 ## Purpose
 

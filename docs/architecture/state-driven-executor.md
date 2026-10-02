@@ -1,11 +1,8 @@
 # State-driven executor (the `CuaExecutor` port)
 
-Date: 2026-06-15
-
-Status: shipped (PR1 of issue #148). The library path (a custom executor + a
-non-vision provider, driven through the lab with NO E2B and NO vision) is
-implemented and proven. A config-only deterministic route and a
-`subject.contract.ref` JS-module loader are deferred (see "Deferred", below).
+The library path ships: a custom executor and a non-vision provider, driven through a study with
+no E2B desktop and no vision model. A config-only deterministic route and a `subject.contract.ref`
+module loader are not built (see Deferred, below).
 
 ## What this is
 

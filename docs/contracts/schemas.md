@@ -1,12 +1,9 @@
 # Contract Schema Index
 
-Date: 2026-06-02 (current-state note updated 2026-07-14)
-
-Status: reference map for the major contracts shipped through source version
-`0.107.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
-schema constants, parsers, and validators in `src/` are authoritative. Rows
-marked "reserved" name layering intent only; no code emits or validates them
-yet. Do not emit a reserved schema.
+This page maps the shipped contracts; it does not list every command or result envelope. The
+exported types, schema constants, parsers and validators in `src/` are the source of truth. A row
+marked "reserved" names layering intent only: no code emits or validates it yet, so do not emit a
+reserved schema.
 
 ## Purpose
 

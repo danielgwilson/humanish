@@ -1,9 +1,6 @@
 # Public GitHub Feedback Loop Architecture
 
-Date: 2026-06-01
-
-Status: design note. The v0 dry-run issue draft path is implemented locally;
-live GitHub mutation remains out of scope.
+This is a design note. The dry-run issue draft path ships; live GitHub mutation is out of scope.
 
 ## Goal
 
