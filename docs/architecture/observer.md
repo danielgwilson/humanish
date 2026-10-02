@@ -1,13 +1,8 @@
 # Observer Architecture
 
-Date: 2026-06-01 (current-state note updated 2026-07-14)
-
-Status: implemented for synthetic streams and persisted live browser,
-terminal-product, fan-out, and shared-world evidence.
-Plain computer-use and shared-world runs can publish an in-progress bundle to
-an attached loopback Observer without persisting runtime stream-auth URLs. The
-version-pinned README image is a synthetic technical sample, not real-application
-proof.
+The Observer renders synthetic streams and saved live browser, terminal-product, fan-out and
+shared-world evidence. A computer-use or shared-world run can publish its in-progress bundle to an
+attached loopback Observer without saving runtime stream-auth URLs.
 
 ## Decision
 

@@ -472,7 +472,7 @@ Maintainers draft this repository's feedback issues with
 - [Architecture: the run path, code map and invariants](ARCHITECTURE.md)
 - [Project layout: the `humanish/` and `.humanish/` folders](docs/architecture/project-layout.md)
 - [Feedback contract](docs/contracts/feedback.md)
-- [Release readiness and gates](docs/release/open-source-readiness.md)
+- [Publish a release](docs/release/publish.md)
 
 Dated design documents may preserve historical mechanisms. Start with the
 current goals and the executable CLI when checking what is supported.
@@ -480,4 +480,4 @@ current goals and the executable CLI when checking what is supported.
 ## Release Status
 
 The package is published on npm. Publishing a new version requires explicit
-maintainer authorization; see the [release procedure](docs/release/open-source-readiness.md#publish-procedure).
+maintainer authorization; see the [release procedure](docs/release/publish.md).

@@ -1,34 +1,24 @@
-# Security Policy
+# Security policy
 
-## Public-Safety Boundary
+## Report a vulnerability privately
 
-humanish must not contain or emit PII, PHI, secrets, keys, tokens, raw private
-transcripts, private screenshots, private customer data, private patient data,
-or private source snippets.
-
-Do not file public issues that contain sensitive data. Redact the data and
-describe the class of problem instead.
-
-## Reporting A Vulnerability
-
-If you find a security issue, open a minimal public issue only when the report
-does not disclose exploitable details or sensitive data. Otherwise, contact the
-maintainer privately through the repository owner profile.
+Report a vulnerability through GitHub private vulnerability reporting:
+<https://github.com/danielgwilson/humanish/security/advisories/new>. Only you and the maintainer
+see the report until a fix ships. If you cannot use GitHub, email the maintainer at the address in
+`package.json`'s `author` field.
 
 Include:
 
-- affected version or commit;
-- command run;
-- safe reproduction steps;
-- redacted evidence path or synthetic fixture;
-- whether any generated `.humanish/` artifact may contain sensitive data.
+- the affected version or commit;
+- the command you ran;
+- safe steps to reproduce it;
+- a redacted evidence path or a synthetic fixture;
+- whether a generated `.humanish/` artifact may contain sensitive data.
 
-## Maintainer Release Checks
+## Keep sensitive data out of public issues
 
-Before any public release, run:
+humanish must not contain or emit PII, PHI, secrets, keys, tokens, raw private transcripts,
+private screenshots, private customer data, private patient data or private source snippets.
 
-```bash
-pnpm check
-pnpm public-surface:scan
-pnpm pack:dry-run
-```
+Do not file a public issue that contains sensitive data. Redact it and describe the kind of
+problem.

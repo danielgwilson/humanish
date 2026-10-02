@@ -1,10 +1,7 @@
 # Adapter Fixture Parity Contract
 
-Date: 2026-06-02 (current-state note updated 2026-07-14)
-
-Status: committed contract fixtures with passing parity checks. A fixture
-proves that core can carry an adapter-owned evidence shape; it does not prove a
-live adopter integration or satisfy a deletion-branch depth phase.
+The committed fixtures pass their parity checks. A fixture proves that core can carry an
+adapter-owned evidence shape; it does not prove a live adopter integration.
 
 ## Purpose
 
