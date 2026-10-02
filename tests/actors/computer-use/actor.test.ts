@@ -87,14 +87,14 @@ const baseOpts = {
 };
 
 describe("openai-computer-use actor (deterministic, no spend)", () => {
-  it("T1: is registered with the OpenAI computer-use capabilities", () => {
+  it("is registered with the OpenAI computer-use capabilities", () => {
     const descriptor = getActor("openai-computer-use");
     expect(descriptor.id).toBe("openai-computer-use");
     expect(descriptor.capabilities).toBe(OPENAI_RESPONSES_CU_CAPABILITIES);
     expect(descriptor.capabilities.lanes).toContain("computer-use");
   });
 
-  it("T2: config → real provider → loop → real executor → trace actually flows (anti-theater)", async () => {
+  it("config flows through the real provider, the loop and the real executor into the trace", async () => {
     const fetchFn = scriptedFetch([
       {
         id: "resp_1",
@@ -125,7 +125,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(desktop.calls).toContainEqual(["leftClick", 11, 22]);
   });
 
-  it("T3: emits a conformant humanish.actor-trace.v1", async () => {
+  it("emits a conformant humanish.actor-trace.v1", async () => {
     const fetchFn = scriptedFetch([
       { id: "r1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] },
     ]);
@@ -143,7 +143,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(trace.ids?.model).toBe(DEFAULT_OPENAI_CU_MODEL);
   });
 
-  it("T3b: threads stopWhen and runtime browser state through the E2B executor wrapper", async () => {
+  it("threads stopWhen and runtime browser state through the E2B executor wrapper", async () => {
     const fetchFn = scriptedFetch([
       {
         id: "should-not-be-called",
@@ -174,7 +174,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ).toBe(true);
   });
 
-  it("T4: typed secrets never reach the trace; screenshots default to RAW (full fidelity, local)", async () => {
+  it("typed secrets never reach the trace; screenshots default to raw (full fidelity, local)", async () => {
     const secret = "hunter2@example.test";
     const fetchFn = scriptedFetch([
       {
@@ -203,7 +203,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(result.trace.redaction.screenshots).toBe("raw");
   });
 
-  it("T4b: redactScreenshots: true blurs the persisted frames (publish-safe posture)", async () => {
+  it("redactScreenshots: true blurs the persisted frames (publish-safe posture)", async () => {
     const fetchFn = scriptedFetch([
       {
         id: "r1",
@@ -225,7 +225,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(result.trace.redaction.screenshots).toBe("blurred");
   });
 
-  it("T5: fail-closed on safety checks by default (no auto-ack passed)", async () => {
+  it("fail-closed on safety checks by default (no auto-ack passed)", async () => {
     const fetchFn = scriptedFetch([
       {
         id: "r1",
@@ -254,7 +254,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(desktop.calls).toHaveLength(0);
   });
 
-  it("T5b: granted acks ride the next wire request verbatim (the exported seam works end-to-end)", async () => {
+  it("granted acks ride the next wire request verbatim (the exported seam works end-to-end)", async () => {
     const bodies: Array<Record<string, unknown>> = [];
     const fetchFn = scriptedFetch(
       [
@@ -300,7 +300,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
   });
 
-  it("T6: the API key never escapes into the trace", async () => {
+  it("the API key never escapes into the trace", async () => {
     const apiKey = "sk-proj-do-not-leak-me";
     const fetchFn = scriptedFetch([
       { id: "r1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] },

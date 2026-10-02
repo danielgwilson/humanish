@@ -54,6 +54,136 @@ Starting a run is a separate action. `npx humanish lab run first-run --json --no
 creates a keyless preview; replacing `first-run` with a live lab can launch providers
 and incur spend. See the [CLI reference](/docs/cli) for all flags.
 
+## Watch and review in the Observer
+
+Observer shows a study's participants, their recorded screens, and the events
+that explain those screens. The grid, player and exported HTML use the same
+current renderer. Screens fit their actual aspect ratio; a portrait capture is
+never cropped to fill a wide tile.
+
+### Choose an entry point
+
+`humanish watch <lab>` starts a study and keeps its viewer attached. The process
+that owns a hosted desktop can offer its live stream while it runs. `--no-open`
+keeps that attachment without launching a browser. `--json` is the machine-result
+path and does not keep an interactive stream server attached.
+
+`humanish observe --run <id>` opens an existing study without starting another. The
+TUI's **Open in Observer** action does the same through its session-owned loopback
+library. These entry points follow saved captures; they cannot recover live desktop
+credentials owned by another process. Keep the owning CLI or TUI open while using its
+viewer. Exported HTML is an independent offline recording.
+
+### Read the status band
+
+The top band separates the run's current status from evidence freshness. A
+finished study never uses its execution mode (`live`, as opposed to `dry-run`)
+as a claim that it is still running. When updates fail, the last usable evidence
+stays visible, the band reports the failure, and **Retry** requests another
+snapshot. A stale process heartbeat does not prove that the process died.
+
+A player's **Live desktop** label identifies what it displays. An iframe loading
+is not a connection-health signal: the provider owns that connection. **Reload
+stream** reloads the desktop viewer without restarting a participant. **Latest capture**
+follows the latest saved screenshot without a desktop stream. **Replay** means
+the researcher has chosen a recorded moment. Offline exports say so explicitly.
+
+Freshness uses recorded activity and capture timestamps, not the time the server
+reserialized the same data. Browser tabs poll less frequently while hidden and
+refresh when visible again. Requests are serialized, bounded by a timeout and
+cancelled when the viewer closes.
+
+### Work through a study
+
+Previews share a height and wrap into rows; desktop cards are wider and portrait
+cards narrower. Complete screens remain contained when the available width is
+smaller than a preview. Sparse rows keep their chosen size. Open **View and filter
+participants** in the top right to search, change **Preview size**, or enter
+**Monitor** for a larger evidence area. **Exit monitor** stays beside the run status.
+Open a card's **Participant details** to **Pin** it at the beginning. Ordering changes only
+when the researcher changes it. Large studies have reachable participant pages.
+At most four desktop previews attach in the grid; allocation prioritizes screens
+that are actually visible, with the hovered or keyboard-focused participant taking
+priority. Other cards show their latest saved capture.
+
+Each card follows its screen's aspect ratio without a minimum width that adds
+portrait gutters. Its 44px caption holds the participant name, a short preview
+source (**Live**, **Capture**, or **Snapshot**) or finished outcome, and a stable
+**Participant details** button. Labels and controls never cover captured pixels.
+Details contains labeled **Pin** and **Compare** toggles, the full source and
+freshness, final messages, recorded notices, duration and dimensions. Historical
+notices do not turn the details control into a warning; exceptional outcomes
+remain in the caption. Comparison permits three participants and explains the
+limit while keeping selected participants removable.
+
+Icon buttons use Lucide glyphs, accessible names, hover/focus hints and visible
+keyboard focus. Touch targets expand to 44px. Popovers have explicit close buttons;
+Escape dismisses a hint without moving the player. These conventions follow
+[Carbon icon usage](https://carbondesignsystem.com/elements/icons/usage/),
+[ARIA toggle-button semantics](https://www.w3.org/WAI/ARIA/apg/patterns/button/),
+and [WCAG target sizing](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).
+The bookmark icon in the top bar opens **Saved moments**; recalling an available
+moment closes the popover, while an unavailable moment leaves the error visible.
+
+Opening a participant provides elapsed-time seeking, the original frame number,
+playback speed, **Fit**, **Actual size**, zoom/pan and fullscreen. The inspector can
+be hidden or resized. Click markers use the recorded desktop coordinate system
+and the image's rendered rectangle, including at zoomed sizes.
+
+Arrow keys, mouse controls, same-participant links, browser navigation and reload
+agree about the selected moment. Seeking leaves live mode. Pausing on the newest
+frame stays paused when new evidence arrives; **Go live** explicitly resumes
+following. A missing addressed moment is reported instead of silently replaced.
+
+Screenshot playback is sparse evidence, not a video recording. Capture gaps stay
+visible. **Skip waits** compresses intervals associated with recorded waits and
+reports the skipped duration. **Next action**, **Next flagged frame**, activity
+filters and grouped waits make long traces easier to inspect without deleting events.
+Older unstamped recordings use labeled estimated pacing. Long feeds, filmstrips,
+terminal output and event lists stay bounded while earlier/later content remains
+reachable.
+
+**Copy moment link** creates a frame address; denied clipboard access exposes a
+selectable link. **Original frame** opens/downloads the captured raster. **Saved
+moments** keeps bounded run/participant/frame identifiers in this browser. It does
+not save credentials, publish annotations or change the evidence bundle. Storage
+failure leaves the controls usable for the current visit.
+
+### Move between review views
+
+The library button opens a drawer while reviewing a participant or comparison,
+including on desktop. Comparison panels use the same participant names as the
+grid. **Open frame** opens the displayed capture in the player, where it can be
+saved; **Back to comparison** restores that comparison's selection, alignment and
+cursor. Browser Back also returns to the addressed comparison. Comparing another
+run needs a free slot within the three-participant limit.
+
+**Reported thinking** is an explicit filter; the Thinking checkbox controls only
+All evidence. **Warnings & findings** includes a separate Run and setup notices
+section. These recorded operational notices retain their source timestamps and
+are not assigned invented screenshot positions or counted as participant findings.
+
+### Compare recorded evidence
+
+Select participants and open **Compare selected**. Capture-time alignment chooses
+the latest frame at or before the cursor, never a future frame. Before/after
+coverage and each frame's age are explicit. Clock differences between desktops
+remain an uncertainty; matching timestamps alone do not establish causality.
+
+Elapsed-time alignment starts each participant at its first capture and compares
+progress rather than simultaneous events. Missing or descending timestamps cannot
+be used as a shared clock. Another run can be loaded from the available library
+as recorded evidence. The address retains the chosen runs, participants, clock
+and cursor so reopening it restores the comparison.
+
+### What the viewer keeps out
+
+Only the attached process can grant a desktop iframe its own origin for provider
+module loading. Stored grants are removed, exports contain no runtime grants,
+and every local viewer response refuses to be framed. Generic imported embeds
+retain an opaque sandbox. Artifact and history links cannot introduce arbitrary
+URL schemes or traverse outside their evidence roots.
+
 ## Review study findings
 
 Participants and Findings share one Observer workspace. The participant grid,

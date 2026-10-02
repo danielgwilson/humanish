@@ -251,7 +251,7 @@ describe("durations are buckets", () => {
   });
 });
 
-describe("study-participant marking (#546)", () => {
+describe("study-participant marking", () => {
   it("is false by default, so an ordinary run is not mislabelled", () => {
     const payload = buildPayload({
       event: "cli_command",

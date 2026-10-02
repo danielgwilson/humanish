@@ -307,7 +307,7 @@ describe("terminal-product parse matrix", () => {
 // REGRESSION: the other routes' warnings + routing still work
 // ---------------------------------------------------------------------------
 
-describe("REGRESSION: cua/scripted/local-app/synthetic/meta routing + warnings untouched", () => {
+describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", () => {
   it("routes the four prior backends as before, and the route predicates stay disjoint for terminal", () => {
     const cua = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -341,7 +341,7 @@ describe("REGRESSION: cua/scripted/local-app/synthetic/meta routing + warnings u
     expect(isScriptedBrowserComposition(terminal)).toBe(false);
   });
 
-  it("scripted-browser mission inert warning still fires (regression on the warning branch)", () => {
+  it("scripted-browser mission inert warning still fires", () => {
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "scripted-warn",

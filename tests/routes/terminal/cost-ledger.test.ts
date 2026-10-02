@@ -190,7 +190,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(true);
   });
 
-  it("(a2) counted-but-unpriced provider tokens are reported as such, never as no signal (#531)", async () => {
+  it("(a2) counted-but-unpriced provider tokens are reported as such, never as no signal", async () => {
     const killed: string[] = [];
     // A codex stream that emits real turn.completed usage records, the shape a live run produces.
     const codexWithUsage = (cmd: string) => ({

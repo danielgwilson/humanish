@@ -33,7 +33,7 @@ export function buildRuntimeAuth(args: {
   // (developers.openai.com/codex/noninteractive) document it as the channel for a single codex exec
   // invocation, which is exactly this route's shape (no persisted auth.json/CODEX_HOME, per-command
   // envs only). A dated in-repo receipt
-  // (docs/goals/humanish-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
+  // (docs/history/goals/humanish-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
   // job-wide OPENAI_API_KEY alone failing bearer auth for this same pinned-exec pattern. When the
   // operator only exported OPENAI_API_KEY, its value is also injected under CODEX_API_KEY below, so
   // the documented exec auth channel is always populated regardless of which name the operator

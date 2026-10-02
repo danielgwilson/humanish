@@ -89,7 +89,7 @@ function workingRuntime(
   };
 }
 
-describe("humanish tui: the one command that refuses instead of degrading (#455)", () => {
+describe("humanish tui: the one command that refuses instead of degrading", () => {
   it("refuses a non-interactive stdout, and names the commands that DO answer the question", async () => {
     // The agent path. Every other humanish command is built to be driven by a program; this one
     // cannot be, and a TUI that rendered frames into a pipe would poison a transcript with escape

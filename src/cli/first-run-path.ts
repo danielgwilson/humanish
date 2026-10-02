@@ -77,6 +77,14 @@ export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | u
  */
 const HUMANISH = "npx humanish";
 
+/** Hosts the local browser lab runs on: Linux x64 and Apple Silicon Macs. */
+export function supportsLocalBrowser(
+  platform: NodeJS.Platform | undefined,
+  arch: string | undefined,
+): boolean {
+  return (platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64");
+}
+
 export interface FirstRunStep {
   /** The exact command to run. */
   command: string;
@@ -96,10 +104,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
     },
   ];
 
-  const localPlatform =
-    (env.platform === "linux" && env.arch === "x64") ||
-    (env.platform === "darwin" && env.arch === "arm64");
-  if (localPlatform) {
+  if (supportsLocalBrowser(env.platform, env.arch)) {
     const prerequisites =
       env.platform === "darwin"
         ? "M3-or-newer Mac, native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"
@@ -197,8 +202,8 @@ export function agentsSection(): string {
     "- Configure the local lab without editing YAML: `humanish init --yes --local-browser",
     '  http://127.0.0.1:3000 --local-mission "Complete the primary flow"` on first setup.',
     "- Evidence lands in gitignored `.humanish/runs/`. Never commit it, and never paste raw run",
-    "  bundles into an issue — `humanish feedback issue` produces a redacted, share-safe draft.",
-    "- `humanish tui` is a HUMAN surface and refuses to run in an agent session. Use the `--json`",
+    "  bundles into an issue; `humanish feedback issue` writes a redacted, share-safe draft.",
+    "- `humanish tui` is for people and refuses to run in an agent session. Use the `--json`",
     "  commands above instead, and tell the person you are working for that `humanish tui` exists.",
     "- A live run spends money. `execution.caps.maxUsd` in each lab caps estimated model spend: the run",
     "  stops before its next request once the estimate passes it, so the last request can go over, and",

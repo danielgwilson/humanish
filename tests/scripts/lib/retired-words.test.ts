@@ -26,15 +26,13 @@ describe("retired vocabulary count", () => {
     expect(words("sims")).toEqual(["sim"]);
   });
 
-  it("reads -ies as the plural of study", () => {
-    expect(retiredWordOf("studies")).toBe("study");
-    expect(retiredWordOf("Studies")).toBe("study");
-    expect(words("studyUsd")).toEqual(["study"]);
-    expect(words("readStudiesIndex")).toEqual(["study"]);
-    expect(words("STUDY_COST_ACCOUNTING_UNAVAILABLE")).toEqual(["study"]);
-    // Another -ies word maps to its own -y singular, which is not retired.
-    expect(retiredWordOf("entries")).toBeUndefined();
-    expect(words("studied")).toEqual([]);
+  it("counts lab and labs, and no longer counts study", () => {
+    expect(words("LabConfig")).toEqual(["lab"]);
+    expect(words("runLab")).toEqual(["lab"]);
+    expect(words("listLabs")).toEqual(["lab"]);
+    expect(words("HUMANISH_CUA_LAB_UNPRICED_CAP")).toEqual(["lab"]);
+    expect(words("studyUsd")).toEqual([]);
+    expect(words("readStudiesIndex")).toEqual([]);
   });
 
   it("leaves words that only contain a retired word alone", () => {
@@ -45,6 +43,10 @@ describe("retired vocabulary count", () => {
       "similar",
       "roleplay",
       "seatbelt",
+      "label",
+      "labelText",
+      "Labels",
+      "collaborate",
     ])
       expect(words(name), name).toEqual([]);
   });
@@ -77,11 +79,11 @@ describe("retired vocabulary count", () => {
     expect(findRetiredPathWords("src/routes/shared-world/seat-records.ts")).toEqual([
       { line: 0, word: "seat", identifier: "seat-records" },
     ]);
-    expect(findRetiredPathWords("src/run/study-files.ts")).toEqual([
-      { line: 0, word: "study", identifier: "study-files" },
+    expect(findRetiredPathWords("src/cli/commands/lab-run.ts")).toEqual([
+      { line: 0, word: "lab", identifier: "lab-run" },
     ]);
-    expect(findRetiredPathWords("src/studies/runLaneIndex.ts")).toEqual([
-      { line: 0, word: "study", identifier: "studies" },
+    expect(findRetiredPathWords("src/lab/runLaneIndex.ts")).toEqual([
+      { line: 0, word: "lab", identifier: "lab" },
       { line: 0, word: "lane", identifier: "runLaneIndex" },
     ]);
     for (const path of [
@@ -89,6 +91,7 @@ describe("retired vocabulary count", () => {
       "src/routes/shared-world/bundle-records.ts",
       "src/routes/shared-world/plane.ts",
       "src/run/simulation-ids.ts",
+      "src/study/files.ts",
     ])
       expect(findRetiredPathWords(path), path).toEqual([]);
   });

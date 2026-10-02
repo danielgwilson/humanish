@@ -143,7 +143,7 @@ probe timeouts.
 
 ## Read next
 
-- [docs/architecture/project-layout.md](docs/architecture/project-layout.md): the `humanish/`
+- [Project layout](https://humanish.dev/docs/project-layout): the `humanish/`
   and `.humanish/` folders in a project that runs studies.
 - [docs/ramp/README.md](docs/ramp/README.md#check-which-compositions-a-lab-can-declare): the
   support matrix, which compositions a lab can declare and which tests pin each row.

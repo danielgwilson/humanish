@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Removed
+
+- `docs/assets/humanish-drawdb-hero.png` and `docs/assets/humanish-observer-hero.png` from the
+  npm package. The README no longer shows either: it opens with the tagline, the demo poster and
+  the keyless quick start. An earlier version's README loads its image from that version on
+  unpkg, which keeps it.
+
 ### Deprecated
 
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
@@ -18,6 +25,28 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- The first commands a newcomer runs say the right thing.
+  - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
+    init --yes" and ".gitignore does not list .humanish/; run humanish init --yes". Before, these
+    failed rows printed the sentence for a pass, such as "committed humanish/ source directory is
+    present and safe to read".
+  - A mistyped command prints one line, for example "error: unknown command 'verfy'. Did you mean
+    'verify'?", and exits 1. Before, it printed "too many arguments" and the whole help.
+  - `humanish --help` lists examples that pass on a freshly initialized project: `init --yes`,
+    `run first-run`, `observe --run latest --open`, `doctor --lab try-live`, `run try-live` and
+    `verify --json`. The `watch --lab .humanish/labs/local.yaml` example, which failed with
+    `HUMANISH_LAB_NOT_FOUND`, is gone from the root, `watch` and `lab run` help.
+  - Bare `humanish` suggests `init --yes` in a new project, then `run first-run` and
+    `doctor --lab local-browser` (or `try-live` where local browsers do not run) until there is a
+    run. Before, it suggested watching the first lab alphabetically, a template whose subject is a
+    placeholder.
+- The starter files `humanish init` writes use plain language. Each starter lab's description says
+  what the lab does, what it needs and what it costs, with no issue numbers, all-caps emphasis or
+  em dashes, and the try-live title reads "Your first live study: one participant on a demo app".
+  The `cua-browser` starter names `synthetic-new-user`, a persona init writes, so its first run no
+  longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
+  em dash and its all-caps word. A test now runs init and holds these files to zero of each
+  (#1440).
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
@@ -54,6 +83,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `role: subject`, and the shared-world one `participantCount` in place of `roleCount`. Nothing in
   humanish reads these labels back; an E2B dashboard filter on the old keys needs the new ones
   (#1419).
+
+### Fixes
+
+- The Observer player sizes a fitted recording in CSS from the stage's current box (#1447). On a
+  phone, opening a recording whose declared viewport has a different shape from its screenshots
+  showed the frame at about half size for one frame (105.8×229 in place of 191.75×415 for a 390×844
+  capture declared 1280×800). The frame box was sized from a stage measurement one frame behind the
+  stage. CI's `observer:reliability:proof` failed on that frame twice. Every settled stage and frame
+  box matches the previous release on desktop and phone, in both orientations and at every zoom
+  level. The live view still measures its stage.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

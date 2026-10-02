@@ -340,7 +340,7 @@ describe("parseOpenAiResponse", () => {
     expect(parsed.turn.done).toBe(true);
   });
 
-  it("parses cache_write_tokens into usage.cacheWriteInput (#334, GPT-5.6+ write billing)", () => {
+  it("parses cache_write_tokens into usage.cacheWriteInput", () => {
     const parsed = parseOpenAiResponse({
       id: "resp_w",
       output: [],
@@ -419,7 +419,7 @@ describe("request builders", () => {
     expect(body.safety_identifier).toBe("persona-dana");
   });
 
-  it("buildInitialRequest asks for reasoning summaries only when the context sets it (#427)", () => {
+  it("buildInitialRequest asks for reasoning summaries only when the context sets it", () => {
     const body = buildInitialRequest({ ...ctx, reasoningSummary: "auto" });
     expect(body.reasoning).toEqual({ effort: "medium", summary: "auto" });
     // The bare ctx (no reasoningSummary) keeps the pre-#427 wire shape.
@@ -646,7 +646,7 @@ describe("createOpenAiResponsesProvider", () => {
     expect(firstItem.type).toBe("computer_call");
   });
 
-  it("asks for reasoning summaries by default and honors 'off' (#427)", async () => {
+  it("asks for reasoning summaries by default and honors 'off'", async () => {
     const done = {
       id: "resp_1",
       output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
@@ -672,7 +672,7 @@ describe("createOpenAiResponsesProvider", () => {
     });
   });
 
-  it("latches summaries off for the session when the account rejects reasoning.summary (#427)", async () => {
+  it("latches summaries off for the session when the account rejects reasoning.summary", async () => {
     let call = 0;
     const bodies: string[] = [];
     const fetchFn: FetchLike = async (_url, init) => {
