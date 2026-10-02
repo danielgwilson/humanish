@@ -63,10 +63,10 @@ function describeAction(action: CuaAction): string {
 }
 
 /**
- * A public-safe fingerprint of ONE turn's actions, used only in memory to tell "trying the same
+ * A public-safe fingerprint of one turn's actions, used only in memory to tell "trying the same
  * thing again" from "trying something new" (#383).
  *
- * Never includes typed text or key contents — a `type` contributes its LENGTH, exactly as
+ * Never includes typed text or key contents: a `type` contributes its length, exactly as
  * describeCuaAction does, so this can never become a keylogger. Coordinates are bucketed so that
  * re-clicking the same control counts as a repeat while moving to a different control does not.
  */
@@ -155,8 +155,8 @@ export async function runActionBatch(
     if (actionHistory.recentActionTitles.length > RECENT_ACTION_TITLES)
       actionHistory.recentActionTitles.shift();
     trace.bump("actions");
-    // Classify BEFORE execute, mirroring counts.actions: the record is of what the actor
-    // CHOSE, so an action that then fails to actuate is still an honest record of the route
+    // Classify before execute, mirroring counts.actions: the record is of what the actor
+    // chose, so an action that then fails to actuate is still an honest record of the route
     // it reached for.
     actionHistory.affordances.push(classifyCuaAction(action));
     session.phase = `executing ${title}`;

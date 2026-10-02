@@ -27,10 +27,10 @@ const STABLE_KEY_MAX_TOTAL = 8192;
 /**
  * A deterministic, bounded, sorted-key projection of an appState object, used as the friction
  * loop's progress key. Two structurally-equal states (regardless of key insertion order) map
- * to the SAME string, so key reordering can never fabricate a progress delta; two different
+ * to the same string, so key reordering can never fabricate a progress delta; two different
  * states map to different strings (within the caps).
  *
- * Correctness-load-bearing: it MUST NOT throw on a cyclic or huge input. Cycles are detected
+ * Correctness-load-bearing: it must not throw on a cyclic or huge input. Cycles are detected
  * with a seen-set (a back-edge degrades to the marker "[Circular]"); depth, key count, array
  * length, string length, and total output length are all capped so an adversarial or merely
  * large appState degrades to a bounded value rather than crashing the loop. Pure: it never
@@ -163,14 +163,14 @@ export function advanceBackstop(
   const progressKey = progressKeyOf(turn.observation);
   const frameChanged = progressKey !== previous.progressKey;
 
-  // CORROBORATION (#383). A stale frame alone is NOT evidence of a stuck agent. The frame hash is
+  // Corroboration (#383). A stale frame alone is not evidence of a stuck agent. The frame hash is
   // a coarse whole-screen measure, and on a light-themed web app it can miss a renamed row, a new
   // list item, or an opened panel — a measured run had 9 visibly different consecutive frames hash
   // identically while the agent was a foreign key away from finishing. Ending a participant on that
   // signal alone recorded working sessions as `gave_up`, capping every browser run at roughly
   // noProgressSteps turns and writing harness artifacts into evidence as actor behavior.
   //
-  // So a no-progress turn now requires BOTH a stale frame AND the agent repeating something it
+  // So a no-progress turn now requires both a stale frame and the agent repeating something it
   // just tried. An agent doing varied work is never counted stuck, however blind the hash is;
   // an agent re-clicking the same dead control trips it as fast as it did before — arguably
   // faster, since that is the actual signature of being stuck.
@@ -182,7 +182,7 @@ export function advanceBackstop(
   );
   // Corroboration governs the FRAME-STALENESS backstop only. The idle backstop below is a direct
   // behavioral signal already (the agent took nothing but screenshots and waits), so it keeps
-  // reading the frame on its own — a repeated screenshot is exactly what an idle streak IS, and
+  // reading the frame on its own: a repeated screenshot is exactly what an idle streak is, and
   // feeding repetition into it would grant an extra forgiveness step for being idle.
   const observedProgress = frameChanged || turn.heardNewSpeech;
   const progressed = observedProgress || !repeatingRecentAction;

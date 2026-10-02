@@ -341,7 +341,7 @@ function fanoutOutcomeEvents(
     });
   }
 
-  // Persisted per-participant phase trail (real boot timing): one RunEvent per COMPLETED phase
+  // Persisted per-participant phase trail (real boot timing): one RunEvent per completed phase
   // boundary this participant recorded (started events never persist here; they carry no durationMs).
   for (const phase of outcome?.phaseRecords ?? []) {
     record({

@@ -35,11 +35,11 @@ export function contradictsAccountBilling(
 }
 
 /**
- * Verify the LABELING/provenance of any cost figure a bundle CLAIMS — never its magnitude. Returns
+ * Verify the labeling/provenance of any cost figure a bundle claims, and never its magnitude. Returns
  * [] (pass) unless a dollar claim lacks its provenance (invariant 6) or a total misreports its
- * known lines. ABSENCE always passes (fail-open on display, discipline #3): a bundle with no cost,
+ * known lines. Absence always passes (fail-open on display, discipline #3): a bundle with no cost,
  * a null estimate, or a participant without estimatedCost is fine. A NON-NULL figure must carry its
- * ratesAsOf date + source; a NUMBER total must equal round6(sum of ONLY the non-null lines) and a
+ * ratesAsOf date + source; a number total must equal round6(sum of only the non-null lines) and a
  * null line may never be coerced to 0. A null estimate must be declared honestly (a reason + null
  * ratesAsOf), mirroring the terminal no-spend proof's null-discipline. Account-billed participants
  * also have their execution profile and provider request receipts checked here.
@@ -148,7 +148,7 @@ function participantEstimateFindings(stream: RunStream): string[] {
       );
     }
   } else {
-    // Declared-absent honesty (invariant 5): a null estimate must say WHY and carry null ratesAsOf.
+    // Declared-absent honesty (invariant 5): a null estimate must say why and carry null ratesAsOf.
     if (estimate.reason === undefined) {
       findings.push(
         `participant ${participantLabel} records a null cost estimate without a reason`,

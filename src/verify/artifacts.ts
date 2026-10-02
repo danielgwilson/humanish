@@ -269,7 +269,7 @@ export function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
 }
 
 /**
- * redaction.screenshots: "raw" is the SUPPORTED local default (full-fidelity frames in
+ * redaction.screenshots: "raw" is the supported local default (full-fidelity frames in
  * gitignored .humanish), not a verify failure — but ok: true must never read as "share-ready",
  * so verify surfaces the posture as a warning in both human and JSON output. Read defensively
  * for the same reason as noEngagementActorFindings.

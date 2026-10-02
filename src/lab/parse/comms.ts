@@ -48,7 +48,7 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
   if (raw.kind !== undefined && raw.kind !== "fake") {
     return invalid("`comms.email.kind` must be `fake`.");
   }
-  // external ingress (#328): the ADOPTER runs the catch, so there is no subject env for humanish to
+  // external ingress (#328): the adopter runs the catch, so there is no subject env for humanish to
   // inject and `injectEnv` becomes meaningless rather than merely unused — the operator points their
   // own app at their own catch. Parse it first so the injectEnv requirement can key off it.
   const external = parseExternalCatch(raw.external);

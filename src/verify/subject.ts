@@ -6,7 +6,7 @@ import { COMMAND_DIGEST_PATTERN, SUBJECT_ENV_NAME_PATTERN } from "../run/shared-
 import { ARCHIVE_SHA256_PATTERN } from "../run/bundle-shape.js";
 
 /**
- * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's subject CLAIM
+ * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's subject claim
  * must match its recorded evidence. A bundle without a subject block passes untouched.
  * Live-vs-dry-run is judged from bundle.mode, exactly like
  * noEngagementActorFindings. Covers both the state story (seed/external) and, for the
@@ -23,7 +23,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
   const seed = state.seed ?? [];
   const live = bundle.mode === "live";
 
-  // Local-tree fail-closed pin: a LIVE local-tree subject must carry a well-formed archive
+  // Local-tree fail-closed pin: a live local-tree subject must carry a well-formed archive
   // digest -- a dirty tree cannot be commit-pinned, so archiveSha256 is the only content pin
   // this route has. Mirrors the seeded-on-dry-run discriminator immediately below: judged by
   // bundle.mode, never by the presence/shape of other fields. Never echoes the malformed value
@@ -31,7 +31,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
   if (live && subject.source === "local-tree") {
     // Note: a malformed-but-present string is already rejected upstream by the
     // isRunSubjectProvenance shape gate, so in practice this branch fires for the
-    // MISSING case; the pattern re-check stays as defense in depth for callers
+    // missing case; the pattern re-check stays as defense in depth for callers
     // that bypass the schema gate.
     const pin = (subject as { archiveSha256?: unknown }).archiveSha256;
     if (typeof pin !== "string" || !ARCHIVE_SHA256_PATTERN.test(pin)) {
@@ -41,7 +41,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
     }
   }
 
-  // Marker-independent rule: a passed LIVE run can never ride on a seed step that did not
+  // Marker-independent rule: a passed live run can never ride on a seed step that did not
   // complete ok (closes the hollow-seeded × unpinned hole — an unpinned bundle still carries
   // its seed records, and a failed migration must not hide behind the external marker).
   if (live && bundle.review.verdict === "pass" && seed.some((record) => record.ok !== true)) {
@@ -79,7 +79,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
       }
       for (const name of externalEnvNames) {
         if (!SUBJECT_ENV_NAME_PATTERN.test(name)) {
-          // Deliberately does NOT echo the entry: a malformed entry may BE a value.
+          // Deliberately does not echo the entry: a malformed entry may be a value.
           findings.push(
             "externalEnvNames carries an entry that is not an env var NAME shape (values must never appear in evidence)",
           );
@@ -126,9 +126,9 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
 }
 
 /**
- * Advisory (never flips ok): a LIVE clone bundle whose subject env is provisioned while its
+ * Advisory (never flips ok): a live clone bundle whose subject env is provisioned while its
  * state story is undeclared probably points at state the lab does not control. Emitted at
- * most ONCE per bundle (the subject block is bundle-level, never per stream). GITHUB_TOKEN
+ * most once per bundle (the subject block is bundle-level, never per stream). GITHUB_TOKEN
  * is mechanically excluded: the harness consumes that name for clone auth — it carries no
  * state implication.
  */

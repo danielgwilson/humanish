@@ -87,7 +87,7 @@ export function resolveParticipantSandboxMs(config: LabConfig): number {
  * The in-flight participant bound a lab declares. Defaults to the participant count — every
  * declared participant runs at once, because a throttle nobody asked for silently turns "N actors
  * live" into waves (#350); total session count and spend are the same either way, only wall-clock
- * and simultaneity differ. A declared execution.concurrency is a CAP, clamped to [1, participants].
+ * and simultaneity differ. A declared execution.concurrency is a cap, clamped to [1, participants].
  * The planner records it; the route may only lower it from the environment.
  */
 export function boundedConcurrency(declared: number | undefined, participantCount: number): number {
@@ -98,7 +98,7 @@ export function boundedConcurrency(declared: number | undefined, participantCoun
 }
 
 /**
- * The planned bound, lowered by the env override. The override may only LOWER it (never raise
+ * The planned bound, lowered by the env override. The override may only lower it (never raise
  * concurrent paid desktops — invariant 3), and a lowering is reported via envLoweredFrom so the
  * plan never silently disagrees with the manifest.
  */
@@ -139,7 +139,7 @@ function plannedParticipantsOf(config: LabConfig, countOverride?: number): Plann
   };
 }
 
-/** Build the participant runs AND the public plan from the planned participants (pure). */
+/** Build the participant runs and the public plan from the planned participants (pure). */
 function participantRunsAndPlan(
   planned: PlannedParticipants,
   opts: {
@@ -230,9 +230,9 @@ function participantRunsAndPlan(
 }
 
 /**
- * Pure pre-flight plan resolver (runs in dry-run AND live). Returns the participant table, the
+ * Pure pre-flight plan resolver (runs in dry-run and live). Returns the participant table, the
  * effective concurrency, the wave count, the per-participant session budget, and the worst-case total
- * sandbox-minutes — BEFORE any sandbox or provider call. The same plan appears in dry-run,
+ * sandbox-minutes, before any sandbox or provider call. The same plan appears in dry-run,
  * marked $0 (dryRun: true).
  */
 export function resolveCuaParticipantPlan(
@@ -248,7 +248,7 @@ export function resolveCuaParticipantPlan(
   return participantRunsAndPlan(plannedParticipantsOf(config, countOverride), rest).participantPlan;
 }
 
-/** Print the participant plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
+/** Print the participant plan to stderr before any sandbox/provider call (public-safe: ids, devices,
  *  digests, and budgets only — no prompt text, no secrets). */
 export function emitPreflightPlan(participantPlan: CuaParticipantPlan, labId: string): void {
   const lines: string[] = [];
@@ -312,7 +312,7 @@ export async function loadCuaParticipants(args: {
 > {
   const { plan } = args;
   const { participants } = plan.runner;
-  // Compile any committed personas BEFORE planning, so the plan builder stays pure and each participant's
+  // Compile any committed personas before planning, so the plan builder stays pure and each participant's
   // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
   const personas = await compileParticipantPersonas(
     args.projectRoot,

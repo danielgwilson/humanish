@@ -58,7 +58,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
   const passedParticipants = (outcomes ?? []).filter((outcome) =>
     participantPassed(participantFactsOf(outcome)),
   ).length;
-  // What happened to the PARTICIPANTS, with the denominator attached. The verdict above has to
+  // What happened to the participants, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
   const terminalOutcomes = (outcomes ?? []).filter(
     (outcome): outcome is NonNullable<typeof outcome> & { session: { status: ActorStatus } } =>
@@ -70,7 +70,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
           // A NO-ENGAGEMENT participant is not one who reached the goal. It said "done" having
           // taken zero actions and said nothing, and `passedParticipants` above already refuses to
           // count it — but `reachedGoal` was reading the trace status directly, so one run could be both
-          // "not a passed participant" AND "1/1 reached the goal". The headline number a researcher reads
+          // "not a passed participant" and "1/1 reached the goal". The headline number a researcher reads
           // first was the dishonest one. Found by a provider bug that ended a study on turn one.
           terminalOutcomes.map((outcome) =>
             participantStatus(outcome.session.status, {
@@ -78,13 +78,13 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
               selfReportedBlocker: outcome.selfReportedBlocker === true,
             }),
           ),
-          // A participant who reached the goal AND told you the road there was broken is the most
+          // A participant who reached the goal and told you the road there was broken is the most
           // useful result a study produces; reporting only the outcome would bury it.
           terminalOutcomes.map((outcome) => outcome.reportedFriction === true),
         )
       : undefined;
   // The study funnel: per-task completion rates across every session that measured one. This is
-  // "where did people get stuck" as data, next to WHO got stuck (participants) above.
+  // "where did people get stuck" as data, next to who got stuck (participants) above.
   const participantFunnels = (outcomes ?? [])
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
@@ -156,7 +156,7 @@ function fanoutDesktopBrowser(args: CuaFanoutBundleArgs) {
 
 function fanoutCost(args: CuaFanoutBundleArgs) {
   const { specs, outcomes } = args;
-  // Run-level cost ESTIMATE: one model-token line per participant that ran a session (from its persisted
+  // Run-level cost estimate: one model-token line per participant that ran a session (from its persisted
   // trace.estimatedCost) + a desktop line per owned allocation, priced at its observed resources.
   // `per-lane-worlds` participants have no shared provisioning to double-count. Omitted on a pure dry-run.
   const costTraces = specs
@@ -288,7 +288,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     scenario: {
       id: `cua-${plan.labId}`,
       title: plan.title ?? `Computer-use fan-out: ${plan.labId}`,
-      // Redacted at WRITE time, like every other raw-text surface in the bundle. Participant records are
+      // Redacted at write time, like every other raw-text surface in the bundle. Participant records are
       // digest-only by design, but scenario.goal keeps one participant's composed instructions verbatim —
       // and an adopter whose authored participant text must name a runtime world URL (an inbox on a route
       // where the harness does not inject one) put an *.e2b.app address in it. That landed raw here

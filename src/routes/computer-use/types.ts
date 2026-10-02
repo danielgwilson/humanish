@@ -59,21 +59,21 @@ export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 // sandboxes, each its own world (clone/serve + subject.state per participant). Shared-world is layer 7 (#164).
 export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
 
-// Env override that may only LOWER the effective concurrency (never raise concurrent paid
+// Env override that may only lower the effective concurrency (never raise concurrent paid
 // desktops — invariant 3). Read names-only into a local; the value never persists.
 export const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
 
-// The DEFAULT session budget, sized so a study can FINISH (docs/principles/three-roles.md: a
+// The default session budget, sized so a study can finish (docs/principles/three-roles.md: a
 // session ends because the participant is done, not because a timer fired — the time-box is a
 // session-level cap a researcher sets generously; spend protection is the dollar caps' job).
 // The old 300s default ended real signup studies mid-flow: observed studies run 16-40 turns at
-// ~5-6s per turn BEFORE any email wait, so five minutes was the biggest single source of
+// ~5-6s per turn before any email wait, so five minutes was the biggest single source of
 // budget_reached endings that read as participant failures.
 //
 // App-url and in-process routes default to 30 minutes. Provisioned routes (clone/local-tree)
 // default to whatever the 1-hour sandbox cap leaves after provisioning, declared state seeding,
 // and the teardown buffer — 20 minutes on a stateless clone — floored at the old five minutes so
-// a state-heavy lab still gets a session at all. An EXPLICIT execution.timeoutMs is never
+// a state-heavy lab still gets a session at all. An explicit execution.timeoutMs is never
 // adjusted: when it cannot be provisioned, the plan-time cap refusal shows the arithmetic.
 export const DEFAULT_APP_URL_SESSION_TIMEOUT_MS = 30 * 60_000;
 
@@ -83,8 +83,8 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
 // per-PERSONA device dimension (N personas × devices, as the bespoke sims author) lands with
 // fan-out. On this E2B-desktop route only width/height physically render — isMobile/DSF are
-// honest metadata + a prompt signal, not rendered (device-presets.ts FIDELITY NOTE) — and the
-// rendered WIDTH is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
+// honest metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
+// rendered width is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
 // screen the browser can't shrink to does not overflow + clip (see resolveLaneDevice / #221).
 
 /**
@@ -161,7 +161,7 @@ export interface CuaParticipantPlanEntry {
   resolution: [number, number];
   instructionDigest: string;
   /** The declared reasoning effort for this participant, when the lab declared one. The plan line is what
-   *  you read BEFORE spending money, so a declared per-participant difference has to be visible there. */
+   *  you read before spending money, so a declared per-participant difference has to be visible there. */
   reasoningEffort?: string;
   maxOutputTokens?: number;
   /** Present only when a participant overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
@@ -174,7 +174,7 @@ export interface CuaParticipantPlan {
   strategy: typeof CUA_FANOUT_STRATEGY;
   laneCount: number;
   /** Effective in-flight bound (defaults to laneCount — all seats live; a declared
-   *  execution.concurrency is a cap; the env override may only LOWER it). */
+   *  execution.concurrency is a cap; the env override may only lower it). */
   concurrency: number;
   /** Present when the env override lowered the bound below the config's value — recorded so the
    *  plan never silently disagrees with the manifest. */
@@ -183,14 +183,14 @@ export interface CuaParticipantPlan {
   waves: number;
   /** Per-participant session wall-clock budget (execution.timeoutMs); there is no run-level wall clock. */
   perLaneSessionBudgetMs: number;
-  /** Worst-case TOTAL sandbox-minutes across all participants (each one's full sandbox deadline). */
+  /** Worst-case total sandbox-minutes across all participants (each one's full sandbox deadline). */
   worstCaseSandboxMinutes: number;
   /** True for a dry-run plan (no spend); the same table appears live. */
   dryRun: boolean;
   lanes: CuaParticipantPlanEntry[];
 }
 
-/** One participant's outcome in the result projection. ALWAYS present in `result.lanes` (length
+/** One participant's outcome in the result projection. Always present in `result.lanes` (length
  *  1 at N=1). A `blocked` participant is one the pipeline-gate / fail-fast skipped before it ran. */
 export interface CuaParticipantResult {
   id: string;
@@ -247,7 +247,7 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_LAB_OPTION_UNSUPPORTED"
   | "HUMANISH_CUA_LAB_FAILED"
   | "HUMANISH_CUA_LAB_KEYS_MISSING"
-  // A local-agent participant's CLI is not on PATH. Refused at preflight (before any sandbox).
+  // A local-agent participant's CLI is not on `PATH`. Refused at preflight (before any sandbox).
   | "HUMANISH_CUA_LAB_AGENT_MISSING"
   // A local-agent participant's CLI reports not signed in, or could not report its sign-in status.
   // Refused at preflight (before any sandbox); the message names the fix.
@@ -302,9 +302,9 @@ export interface CuaSubjectProjection {
   /** Local-tree-route only: host-side porcelain status at pack time (true when the working
    *  tree had uncommitted changes). Absent when the packed root was not a git work tree. */
   dirty?: boolean;
-  /** Declared env NAMES provisioned for the subject (values never surface anywhere). */
+  /** Declared env names provisioned for the subject (values never surface anywhere). */
   envNames?: string[];
-  /** The subject's state story (seeded digests / UNPINNED external / declared-not-run /
+  /** The subject's state story (seeded digests / unpinned external / declared-not-run /
    *  undeclared): the same block the run bundle records. */
   state: RunSubjectProvenance["state"];
 }
@@ -352,7 +352,7 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
   sandbox?: {
     sandboxId: string;
     killed: boolean;
-    /** The stream URL itself (carries an auth key) is runtime-only and is deliberately NOT
+    /** The stream URL itself (carries an auth key) is runtime-only and is deliberately not
      * surfaced on the result — the sandbox is already dead by the time the result exists. */
     streamUrlPresent: boolean;
   };
@@ -361,7 +361,7 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
   subject?: CuaSubjectProjection;
   /** The pre-flight participant plan (present once participants resolve; absent on early validation errors). */
   plan?: CuaParticipantPlan;
-  /** Per-participant results — ALWAYS present once participants resolve (length 1 at N=1). */
+  /** Per-participant results, always present once participants resolve (length 1 at N=1). */
   lanes?: CuaParticipantResult[];
   /** Aggregate participant counts. */
   laneSummary?: CuaParticipantSummary;
@@ -403,7 +403,7 @@ export interface ParticipantRunsAndPlan {
 }
 
 /**
- * The STUDY's shared spend ledger (#299): one counter across every participant. Each one notes its
+ * The study's shared spend ledger (#299): one counter across every participant. Each one notes its
  * own latest running MODEL-spend estimate (monotone per participant — an estimate can only grow)
  * and reads back the run total; the loop stops the participant the moment the total crosses the study budget.
  * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
@@ -480,7 +480,7 @@ export interface E2BDesktopDeps {
   /** Reports a subject phase to the phase sink (stderr by default) and to onEvent. */
   reportSubjectPhase: (event: SubjectPhaseEvent, participant: PhaseParticipant) => void;
   /**
-   * How a PARSEABLE requested-vs-verified screen mismatch is treated. Default ("fail-closed"):
+   * How a parseable requested-vs-verified screen mismatch is treated. Default ("fail-closed"):
    * the participant's device claim is falsified, so it fails with DEVICE_GEOMETRY (the
    * single-participant/fan-out contract). "record-evidence" (the concurrent shared-world route):
    * requested and verified stay recorded as separate facts plus an explicit warning, and the
@@ -570,7 +570,7 @@ export interface ParticipantRunOutcome {
    *  the session's evidence does not show. An execution failure, scrubbed, like the cleanup one. */
   providerPolicyError?: string;
   sandboxId?: string;
-  /** Host-side E2B desktop create->teardown span (ms). An APPROXIMATION of E2B's server-side
+  /** Host-side E2B desktop create->teardown span (ms). An approximation of E2B's server-side
    *  billed lifetime (server-side kill-on-timeout can extend it) — so the derived dollar figure is
    *  doubly an estimate. Absent on the in-process route (no sandbox) and on dry-run. */
   desktopDurationMs?: number;

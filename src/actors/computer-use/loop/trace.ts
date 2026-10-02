@@ -55,7 +55,7 @@ export class TraceRecorder {
 
   constructor(private readonly now: () => number) {}
 
-  // The ONE recording choke point (#441): every trace item is stamped `at` from the
+  // The single recording choke point (#441): every trace item is stamped `at` from the
   // loop's injected clock as it is recorded, so timed playback reads recorded facts
   // (deterministic in tests via the injected `now`). The id is allocated before the body is
   // built, so a body that fails to build (a redaction error) still consumes its id.

@@ -1,7 +1,7 @@
 const admissionLimits = new WeakSet<object>();
 
 /**
- * A caller's adapter refused this request BEFORE provider dispatch because a configured
+ * A caller's adapter refused this request before provider dispatch because a configured
  * local control limit was reached. This is an adapter declaration, not a provider response
  * or independent transport/billing attestation. Never use it for a dispatched request whose
  * outcome or usage is unknown. Import this class from the same humanish installation as the
