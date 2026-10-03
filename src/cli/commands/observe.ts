@@ -75,7 +75,7 @@ function addLibraryOptions(command: Command): Command {
   return command
     .option(
       "--safe",
-      "Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed).",
+      "Serve only runs whose verify shareSafety is share_ready; other runs are not served at all.",
     )
     .option(
       "--expose",

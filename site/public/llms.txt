@@ -102,7 +102,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish keys`: Manage the humanish user-level key store used by provider-key discovery.
 - `humanish keys set`: Store one provider key in the user store (0600), prompted with hidden input.
 - `humanish keys unset`: Remove one key from the user store.
-- `humanish keys list`: List the NAMES stored in the user store. Values are never printed.
+- `humanish keys list`: List the key names in the user store. Values are never printed.
 - `humanish telemetry`: Show or change anonymous usage collection.
 - `humanish telemetry status`: What is collected, and whether it is on.
 - `humanish telemetry enable`: Turn anonymous usage collection on.
