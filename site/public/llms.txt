@@ -98,7 +98,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish runtime`: Prepare or inspect the local browser runtime.
 - `humanish runtime status`: Check local Docker, virtualization and the cached browser image without downloads.
 - `humanish runtime setup`: Download and install the local browser image. Does not start a study or use model quota.
-- `humanish reclaim`: Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.
+- `humanish reclaim`: Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --env-file.
 - `humanish cleanup`: Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.
 - `humanish keys`: Manage the humanish user-level key store used by provider-key discovery.
 - `humanish keys set`: Store one provider key in the user store (0600), prompted with hidden input.
