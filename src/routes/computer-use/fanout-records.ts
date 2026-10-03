@@ -69,7 +69,7 @@ function fanoutParticipantView(
       : (outcome?.skippedReason ??
         session?.reason ??
         outcome?.sessionError ??
-        "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
+        "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.");
 
   const traceScreenshotMode = session?.trace.redaction.screenshots;
   const screenshotMode: "raw" | "blurred" =
@@ -118,7 +118,7 @@ function fanoutParticipantRecord(
           ? `Participant ${spec.planned.id} ${outcome.skippedReason}.`
           : outcome?.sessionError !== undefined
             ? `Participant ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Contract participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicTargetUrl}.`,
+            : `Participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicTargetUrl}; no session ran.`,
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });
@@ -241,7 +241,7 @@ function fanoutSubjectEvents(
       type: "cua-lab.subject.provenance",
       message: `Participant ${spec.planned.id}: ${
         args.dryRun
-          ? `subject declared: clone of ${args.publicRepo}, served at ${publicTargetUrl} in-sandbox (dry-run contract; nothing cloned)`
+          ? `subject declared: clone of ${args.publicRepo}, served at ${publicTargetUrl} in-sandbox (dry run; nothing cloned)`
           : subject.commit
             ? session
               ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicTargetUrl} in-sandbox`
@@ -257,7 +257,7 @@ function fanoutSubjectEvents(
       type: "cua-lab.subject.provenance",
       message: `Participant ${spec.planned.id}: ${
         args.dryRun
-          ? `subject declared: local working tree, to be packed and served at ${publicTargetUrl} in-sandbox (dry-run contract; nothing packed)`
+          ? `subject declared: local working tree, to be packed and served at ${publicTargetUrl} in-sandbox (dry run; nothing packed)`
           : subject.archiveSha256
             ? session
               ? `subject packed (archiveSha256 ${subject.archiveSha256}${subject.dirty === true ? ", dirty working tree" : subject.dirty === false ? ", clean working tree" : ""}) and served at ${publicTargetUrl} in-sandbox`
@@ -326,7 +326,7 @@ function fanoutOutcomeEvents(
       at: args.run.createdAt,
       level: "info",
       type: "cua-lab.contract.ready",
-      message: `Participant ${spec.planned.id}: dry-run contract participant ready; switch scenario.mode to live for a real desktop session.`,
+      message: `Participant ${spec.planned.id}: dry-run participant ready; switch scenario.mode to live for a real desktop session.`,
     });
   }
 

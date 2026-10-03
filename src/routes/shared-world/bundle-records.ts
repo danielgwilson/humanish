@@ -69,7 +69,7 @@ function participantView(
     outcome?.sessionError ??
     (inProgress
       ? "Actor desktop is running; the attached Observer hydrates the runtime stream URL without persisting it."
-      : "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
+      : "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.");
   const traceScreenshotMode = session?.trace.redaction.screenshots;
   // Include `declared` on the no-outcome fallback too (dry-run, skipped participant): otherwise an
   // absent `declared` means either "the preset rendered faithfully" or "there was no live
@@ -130,7 +130,7 @@ function sharedWorldSimulation(
         ? `Persona ${spec.planned.id}${taxonomy} failed before a terminal session verdict: ${outcome.sessionError}`
         : inProgress
           ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
-          : `Contract persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) for ${args.descriptor.id} against the shared plane at ${ctx.appUrl}.`,
+          : `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) for ${args.descriptor.id} against the shared plane at ${ctx.appUrl}; no session ran.`,
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });
@@ -258,7 +258,7 @@ function sharedWorldEvents(
       at: createdAt,
       level: "info",
       type: "concurrent-shared-world.contract.ready",
-      message: `Persona ${spec.planned.id}: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.`,
+      message: `Persona ${spec.planned.id}: dry-run actor ready; switch scenario.mode to live for a real concurrent session.`,
     });
   }
   return events;

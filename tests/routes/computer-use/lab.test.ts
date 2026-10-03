@@ -4723,7 +4723,7 @@ describe("runCuaActorLab", () => {
     const dryProvenance = dryBundle.events.find(
       (event: { type: string }) => event.type === "cua-lab.subject.provenance",
     );
-    expect(dryProvenance?.message).toContain("dry-run contract; nothing cloned");
+    expect(dryProvenance?.message).toContain("dry run; nothing cloned");
     expect(dryProvenance?.message).not.toContain("Subject cloned from");
 
     // Probe failure: cloned at a real commit, but serving never completed; say exactly that.
@@ -5402,7 +5402,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const provenance = bundle.events.find(
       (event: { type: string }) => event.type === "cua-lab.subject.provenance",
     );
-    expect(provenance?.message).toContain("state: declared, not run (dry-run contract)");
+    expect(provenance?.message).toContain("state: declared, not run (dry run)");
 
     // The contract bundle verifies: declared-not-run is the dry-run marker.
     const verified = await verifyRun(cwd, result.runId);

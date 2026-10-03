@@ -49,7 +49,7 @@ export function scriptedSurfaceRecords(
   const reason =
     result?.reason ??
     context.sessionError ??
-    "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.";
+    "Dry run: the scenario was pinned without launching a browser or touching the subject app.";
 
   const simulation = participantRecord(ids, index + 1, {
     personaId: context.persona.id,
@@ -63,7 +63,7 @@ export function scriptedSurfaceRecords(
       ? `Scripted-browser actor (${context.actorId}) replayed ${context.journey.scenarioId} on the ${surface.id} surface; ${result.completionReason}.`
       : context.sessionError !== undefined
         ? `Scripted lab failed before a terminal session verdict: ${context.sessionError}`
-        : `Contract participant for the scripted-browser actor (${context.actorId}) against ${context.appUrl}.`,
+        : `Scripted-browser actor (${context.actorId}) against ${context.appUrl}; no session ran.`,
     startedAt: context.createdAt,
     updatedAt: result?.capture.capturedAt ?? context.createdAt,
   });

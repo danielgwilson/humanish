@@ -79,7 +79,7 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs."
+        "notes": "Dry-run bundle: no browser ran and no screenshots were captured. The scenario is digest-pinned; live step text passes text redaction when a session runs."
       },
       "lifecycle": [
         {
@@ -89,7 +89,7 @@
         }
       ],
       "knownGaps": [
-        "Live scripted session not yet run (dry-run contract only)."
+        "Live scripted session not yet run (dry run only)."
       ]
     },
     "summary": {
@@ -179,12 +179,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Dry-run contract for scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario contract proven at $0; no browser ran.",
+    "summary": "Dry run of scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario checked at $0; no browser ran.",
     "gaps": [
-      "Live scripted session not yet run (dry-run contract only)."
+      "Live scripted session not yet run (dry run only)."
     ]
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- summary: Dry-run contract for scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario contract proven at $0; no browser ran.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.\n\n## Gaps\n- Live scripted session not yet run (dry-run contract only).\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- summary: Dry run of scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario checked at $0; no browser ran.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.\n\n## Gaps\n- Live scripted session not yet run (dry run only).\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -243,8 +243,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-        "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+        "currentStep": "Dry run: the scenario was pinned without launching a browser or touching the subject app.",
+        "summary": "Scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/; no session ran.",
         "streamIds": [
           "scripted-desktop-stream"
         ],
@@ -260,8 +260,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-        "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+        "currentStep": "Dry run: the scenario was pinned without launching a browser or touching the subject app.",
+        "summary": "Scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/; no session ran.",
         "streamIds": [
           "scripted-mobile-stream"
         ],
@@ -291,7 +291,7 @@
         "ui": {
           "route": "http://127.0.0.1:5173/",
           "intent": "Load the app, submit the primary form, and confirm the success state renders.",
-          "state": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app."
+          "state": "Dry run: the scenario was pinned without launching a browser or touching the subject app."
         },
         "artifacts": [
           {
@@ -332,7 +332,7 @@
         "ui": {
           "route": "http://127.0.0.1:5173/",
           "intent": "Load the app, submit the primary form, and confirm the success state renders.",
-          "state": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app."
+          "state": "Dry run: the scenario was pinned without launching a browser or touching the subject app."
         },
         "artifacts": [
           {
@@ -380,12 +380,12 @@
         "at": "[ts]",
         "level": "info",
         "type": "scripted-lab.contract.ready",
-        "message": "Dry-run contract bundle ready: scenario scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml, 4 steps) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser."
+        "message": "Dry-run bundle ready: scenario scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml, 4 steps) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser."
       }
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs."
+      "notes": "Dry-run bundle: no browser ran and no screenshots were captured. The scenario is digest-pinned; live step text passes text redaction when a session runs."
     },
     "artifacts": {
       "run": "run.json",
@@ -397,9 +397,9 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Dry-run contract for scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario contract proven at $0; no browser ran.",
+      "summary": "Dry run of scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario checked at $0; no browser ran.",
       "gaps": [
-        "Live scripted session not yet run (dry-run contract only)."
+        "Live scripted session not yet run (dry run only)."
       ]
     },
     "feedbackCandidates": []

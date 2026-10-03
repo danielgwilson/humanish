@@ -243,7 +243,7 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+        "notes": "Dry-run fan-out bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
       },
       "lifecycle": [
         {
@@ -253,7 +253,7 @@
         }
       ],
       "knownGaps": [
-        "Live fan-out session not yet run (dry-run contract only)."
+        "Live fan-out session not yet run (dry run only)."
       ]
     },
     "summary": {
@@ -361,12 +361,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Dry-run fan-out contract: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.",
+    "summary": "Dry-run fan-out: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.",
     "gaps": [
-      "Live fan-out session not yet run (dry-run contract only)."
+      "Live fan-out session not yet run (dry run only)."
     ]
   },
-  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: dry-run\n- run gate: dry run\n- summary: Dry-run fan-out contract: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.\n\n## Gaps\n- Live fan-out session not yet run (dry-run contract only).\n",
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: dry-run\n- run gate: dry run\n- summary: Dry-run fan-out: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.\n\n## Gaps\n- Live fan-out session not yet run (dry run only).\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -425,8 +425,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract participant mobile-newcomer (first-time-visitor/mobile) for openai-computer-use against http://127.0.0.1:3000/.",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Participant mobile-newcomer (first-time-visitor/mobile) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-001"
         ],
@@ -442,8 +442,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract participant small-skimmer (impatient-skimmer/small-mobile) for openai-computer-use against http://127.0.0.1:3000/.",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Participant small-skimmer (impatient-skimmer/small-mobile) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-002"
         ],
@@ -459,8 +459,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract participant desktop-power (power-user/desktop) for openai-computer-use against http://127.0.0.1:3000/.",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Participant desktop-power (power-user/desktop) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-003"
         ],
@@ -476,8 +476,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract participant wide-researcher (comparison-shopper/wide) for openai-computer-use against http://127.0.0.1:3000/.",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Participant wide-researcher (comparison-shopper/wide) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-004"
         ],
@@ -519,7 +519,7 @@
         "ui": {
           "route": "http://127.0.0.1:3000/",
           "intent": "Watch participant mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
-          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -572,7 +572,7 @@
         "ui": {
           "route": "http://127.0.0.1:3000/",
           "intent": "Watch participant small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
-          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -620,7 +620,7 @@
         "ui": {
           "route": "http://127.0.0.1:3000/",
           "intent": "Watch participant desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
-          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -668,7 +668,7 @@
         "ui": {
           "route": "http://127.0.0.1:3000/",
           "intent": "Watch participant wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
-          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -718,7 +718,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant mobile-newcomer: dry-run contract participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant mobile-newcomer: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -736,7 +736,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant small-skimmer: dry-run contract participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant small-skimmer: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -754,7 +754,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant desktop-power: dry-run contract participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant desktop-power: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -772,14 +772,14 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant wide-researcher: dry-run contract participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant wide-researcher: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
         "simId": "sim-004",
         "streamId": "stream-004"
       }
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+      "notes": "Dry-run fan-out bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
     },
     "artifacts": {
       "run": "run.json",
@@ -791,9 +791,9 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Dry-run fan-out contract: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.",
+      "summary": "Dry-run fan-out: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.",
       "gaps": [
-        "Live fan-out session not yet run (dry-run contract only)."
+        "Live fan-out session not yet run (dry run only)."
       ]
     },
     "feedbackCandidates": [],
