@@ -96,9 +96,11 @@ describe("doc symbol check", () => {
   });
 
   it("fails when a re-export is dropped from an existing file", () => {
-    const index = real("src/index.ts").replace(/\bLabOutcome, /, "");
-    expect(issues("`LabOutcome.backend` in `src/index.ts`", { "src/index.ts": index })).toEqual([
-      "1 LabOutcome.backend src/index.ts",
+    const index = real("src/index.ts").replace(/^\s*LabOutcome as StudyOutcome,\n/m, "");
+    expect(index).not.toBe(real("src/index.ts"));
+    expect(issues("`StudyOutcome.backend` in `src/index.ts`")).toEqual([]);
+    expect(issues("`StudyOutcome.backend` in `src/index.ts`", { "src/index.ts": index })).toEqual([
+      "1 StudyOutcome.backend src/index.ts",
     ]);
   });
 });
