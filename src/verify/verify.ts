@@ -25,6 +25,7 @@ import {
   scanRunPublicSafetyArtifacts,
   streamScreenshotPaths,
 } from "./artifacts.js";
+import { flatContextWarnings } from "./context-growth.js";
 import { runNotFinishedWarnings } from "./liveness.js";
 import { costAndReceiptFindings } from "./costs.js";
 import { rerunLineageFindings } from "./rerun.js";
@@ -210,6 +211,7 @@ export async function verifyResolvedRun(
         ...rawScreenshotPostureWarnings(bundle, redactedShapeFrames),
         ...undeclaredSubjectStateWarnings(bundle),
         ...desktopGeometryWarnings(bundle),
+        ...flatContextWarnings(bundle),
         ...(await runNotFinishedWarnings(runPaths, bundle)),
       ]
     : [];
