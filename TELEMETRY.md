@@ -26,7 +26,8 @@ telemetry, humanish cannot tell whether new users reach a working first run.
   set of words such as `passed`, `abandoned`, `all_passed`), which brain route
   ran it (`provider-key`, `local-agent`, or `none` for a dry run), and which study
   ran, **only if it is one of the starter studies `humanish init` writes**. That id is sent as
-  `study`. 0.108 also sent it as `lab`, the property's earlier name
+  `study`. 0.108 and earlier also sent it as `lab`, the property's earlier name; 0.109 sends
+  `study` only
 - when a command fails: humanish's own error code (`HUMANISH_…`), never the
   message. Which failure ends a first run is the question this exists to answer.
 - for CUA results with diagnostics: `diagnostic_category` is exactly one of

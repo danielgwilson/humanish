@@ -35,7 +35,7 @@ release.
 
 | Family                 | Codes | Emitted by                                                                 | Appears in                                                              |
 | ---------------------- | ----- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `HUMANISH_*`           | 137   | every CLI command and route result                                         | JSON `error.code`, library `error.code`, human `code:` line             |
+| `HUMANISH_*`           | 138   | every CLI command and route result                                         | JSON `error.code`, library `error.code`, human `code:` line             |
 | `ANALYSIS_*`           | 86    | `humanish analyze` and the analysis service (`src/analysis/`)              | JSON `error.code` of analysis results                                   |
 | `AUTOMATIC_ANALYSIS_*` | 21    | the post-run analysis job                                                  | `automaticAnalysis.reason` on a run result and the job record           |
 | `analysis_*` lowercase | 29    | analysis execution                                                         | `error` fields in analysis artifacts and execution receipts             |

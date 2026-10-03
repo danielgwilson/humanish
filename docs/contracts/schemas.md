@@ -59,8 +59,9 @@ workflow without leaking private upstream truth into core.
 ## Study File
 
 Schema: `humanish.study.v3`. `src/study/parse/study-v3.ts` rewrites a v3 document into the
-normalized config in `src/study/types.ts`, which `src/study/config.ts` parses. A `humanish.lab.v2`
-file still parses in 0.108 with one warning that names `humanish migrate`; 0.109 removes it.
+normalized config in `src/study/types.ts`, which `src/study/config.ts` parses. humanish refuses a
+`humanish.lab.v2` file with `HUMANISH_STUDY_V2_UNSUPPORTED`, whose message names
+`humanish migrate <path>`; migrate converts the file to v3.
 
 A study declares its route and composes code primitives; it is not a hardcoded kind. The
 top-level keys:
@@ -95,7 +96,7 @@ unknown key is an error that lists the known ones; both are `HUMANISH_STUDY_INVA
 `computer-use` and `shared-world` read `maxUsd` and `maxTotalUsd`; `terminal` reads `maxUsd`,
 `maxJobs` and `maxMinutes`; `preview` and `scripted` take no `caps`.
 
-A v2 file maps as follows: `actors[0]` is `actor`; `lanes` is the `participants` list; a
+`humanish migrate` maps a v2 file as follows: `actors[0]` is `actor`; `lanes` is the `participants` list; a
 `roster` group is an entry with `count`; `count` is the count; `count` with `laneFocus` is the
 homogeneous object; `execution.caps` (computer-use, shared-world) or `scenario.caps`
 (terminal) is `caps`; `scenario.mode` is `mode`; `scenario.ref` is `scenario`; and
@@ -449,7 +450,10 @@ Study files are human-authored `.yaml` source under `humanish/studies/*.yaml` fo
 committed public-safe studies, or ignored `.humanish/studies/*.yaml` /
 `.humanish/local/studies/*.yaml` for private local dogfood. A v3 key the declared route
 does not read is an error, so a study file never silently claims behavior that did not run.
-A v2 file keeps its inert-field warnings until 0.109 (`humanish study show` shows them).
+A name found only in one of the three `labs/` directories is refused: a v2 file with
+`HUMANISH_STUDY_V2_UNSUPPORTED`, and a v3 file with `HUMANISH_STUDY_RETIRED_DIRECTORY` ("Move it
+to humanish/studies/."). A path to a v3 file runs wherever the file is. `study list --json`
+lists the refused files in `retired`, each `{ path, code, message }`.
 
 Committed fixture (`humanish/studies/first-run.yaml`):
 
@@ -496,14 +500,13 @@ Core-owned fields:
 - `review`
 - `feedbackCandidates`
 - `study` (optional, additive): which study file produced the run,
-  `{ id, path?, origin? }`, where `origin` is `committed` (`humanish/studies/`, or
-  `humanish/labs/` for a v2 file),
-  `ignored` (a local overlay), or `explicit` (a path the operator passed).
-  `lab` holds the same value until 0.109 removes it, so a 0.107 reader keeps working.
-  Both are absent on bundles written before this contract and on library callers who
-  hand a `StudyConfig` directly; such a run has no study. Readers go through
-  `studyProvenanceOf` (`src/run/study-provenance.ts`): a valid `study`, else a valid `lab`,
-  else `inferLegacyStudyId`, which reads the `persona.source` or `scenario.source`
+  `{ id, path?, origin? }`, where `origin` is `committed` (`humanish/studies/`; a run saved by
+  0.108 or earlier can name `humanish/labs/`), `ignored` (a local overlay), or `explicit` (a path
+  the operator passed). Runs saved by 0.108 and earlier also have `lab` with the same value;
+  0.109 writes `study` only. `study` is absent on bundles written before this contract and on
+  library callers who hand a `StudyConfig` directly; such a run has no study. Readers go through
+  `studyProvenanceOf` (`src/run/study-provenance.ts`): a valid `study`, else a valid `lab` from
+  an older run, else `inferLegacyStudyId`, which reads the `persona.source` or `scenario.source`
   convention `study:<id>`, or `lab:<id>` from runs written before 0.108, and nothing else.
 - `subject` (optional, additive): structured subject provenance,
   `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
@@ -1141,8 +1144,9 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 `humanish.run-status.v1` is `status.json`, written inside each run directory by
 every route at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
-finished | interrupted, mode, study?, lab?, pid, startedAt, updatedAt, completedAt?,
-signal?, outcome? }`. `lab` repeats `study` until 0.109.
+finished | interrupted, mode, study?, pid, startedAt, updatedAt, completedAt?,
+signal?, outcome? }`. A record written by 0.108 or earlier also has `lab`, with the same value as
+`study`, and readers accept it.
 `outcome` carries the bundle's `verdict`, `participants`, `estimatedCostUsd` and
 `estimatedCostComplete` when the run finishes, then the result's `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` once the Observer has rendered. The

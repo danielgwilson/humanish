@@ -59,7 +59,7 @@ unreliable on E2B desktops, so the host's code can also come from its narration 
 (step 2).
 
 `onObservedUrl`, `onMessage` and `onScreenshot` are internal `LoopTaps`
-(`src/actors/computer-use/loop/types.ts`): 0.109.0 removed them from `CuaLoopOptions`, and the
+(`src/actors/computer-use/loop/types.ts`): 0.109.0 removed them from `ComputerUseLoopOptions`, and the
 public `runComputerUseLoop` refuses them. The actor passes them through
 `runComputerUseLoopWithTaps`. A library caller wraps the executor's `observe` (for `url` and
 `screenshot`) or the provider's `nextTurn` (for `reasoning` and `message`).
