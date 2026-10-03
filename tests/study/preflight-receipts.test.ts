@@ -15,7 +15,6 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 // The lab preflight probe journals its sandbox under .humanish/preflight/<probe-id>/ before any
 // work, removes the journal after a confirmed kill, and `humanish reclaim --preflight` kills
@@ -26,56 +25,52 @@ const PROBE_TIMEOUT_MS = 30_000;
 const LEASE_BUFFER_MS = 5 * 60_000;
 
 function previewLab(extra: string[] = []): string {
-  return studyFileText(
-    [
-      "schema: humanish.lab.v2",
-      "id: preview",
-      "subject:",
-      "  source: app-url",
-      "  appUrl: https://preview.example.test/start",
-      "execution:",
-      "  target: e2b-desktop",
-      ...extra,
-      "actors:",
-      "  - type: openai-computer-use",
-      "scenario:",
-      "  mode: live",
-      "policies:",
-      "  allowPublicTargets: true",
-    ].join("\n"),
-  );
+  return [
+    "schema: humanish.study.v3",
+    "id: preview",
+    "route: computer-use",
+    "mode: live",
+    "subject:",
+    "  source: app-url",
+    "  appUrl: https://preview.example.test/start",
+    "execution:",
+    "  target: e2b-desktop",
+    ...extra,
+    "actor:",
+    "  type: openai-computer-use",
+    "policies:",
+    "  allowPublicTargets: true",
+  ].join("\n");
 }
 
 function cloneLab(options: { serve?: string[]; seed?: boolean; desktop?: string[] } = {}): string {
-  return studyFileText(
-    [
-      "schema: humanish.lab.v2",
-      "id: clone-probe",
-      "subject:",
-      "  source: clone",
-      "  repos:",
-      "    - example/notes",
-      "  serve:",
-      ...(options.serve ?? ["    install: npm ci", "    start: npm start"]),
-      "    url: http://127.0.0.1:3000/",
-      ...(options.seed === false
-        ? []
-        : [
-            "  state:",
-            "    seed:",
-            "      - name: seed-notes",
-            "        command: npm run seed",
-            "        timeoutMs: 120000",
-          ]),
-      "execution:",
-      "  target: e2b-desktop",
-      ...(options.desktop ?? []),
-      "actors:",
-      "  - type: openai-computer-use",
-      "scenario:",
-      "  mode: live",
-    ].join("\n"),
-  );
+  return [
+    "schema: humanish.study.v3",
+    "id: clone-probe",
+    "route: computer-use",
+    "mode: live",
+    "subject:",
+    "  source: clone",
+    "  repos:",
+    "    - example/notes",
+    "  serve:",
+    ...(options.serve ?? ["    install: npm ci", "    start: npm start"]),
+    "    url: http://127.0.0.1:3000/",
+    ...(options.seed === false
+      ? []
+      : [
+          "  state:",
+          "    seed:",
+          "      - name: seed-notes",
+          "        command: npm run seed",
+          "        timeoutMs: 120000",
+        ]),
+    "execution:",
+    "  target: e2b-desktop",
+    ...(options.desktop ?? []),
+    "actor:",
+    "  type: openai-computer-use",
+  ].join("\n");
 }
 
 interface FakeProvider {

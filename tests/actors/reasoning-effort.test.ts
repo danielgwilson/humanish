@@ -22,7 +22,6 @@ import {
   isReasoningEffort,
   type ReasoningEffort,
 } from "../../src/actors/reasoning-effort.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 function lab(actor: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -169,16 +168,17 @@ describe("the trace records how the model was asked to run", () => {
 
 // --- the surface side: a knob nobody can see is how this one stayed pinned for every run ---
 
-async function summaryFor(actorYaml: string): Promise<{ reasoningEffort?: string } | null> {
+/** `actor` is the actor mapping's indented lines; `participants` is a top-level block. */
+async function summaryFor(
+  actor: string,
+  participants = "",
+): Promise<{ reasoningEffort?: string } | null> {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-effort-"));
   try {
     await mkdir(path.join(cwd, ".humanish", "studies"), { recursive: true });
     await writeFile(
       path.join(cwd, ".humanish", "studies", "effort.yaml"),
-      studyFileText(
-        `schema: humanish.lab.v2\nid: effort\nsubject:\n  source: app-url\n  appUrl: http://127.0.0.1:3000/\nactors:\n${actorYaml}execution:\n  target: e2b-desktop\nscenario:\n  mode: dry-run\n`,
-        cwd,
-      ),
+      `schema: humanish.study.v3\nid: effort\nroute: computer-use\nmode: dry-run\nsubject:\n  source: app-url\n  appUrl: http://127.0.0.1:3000/\nactor:\n${actor}${participants}execution:\n  target: e2b-desktop\n`,
       "utf8",
     );
     return await readStudySummary(cwd, "effort");
@@ -189,20 +189,21 @@ async function summaryFor(actorYaml: string): Promise<{ reasoningEffort?: string
 
 describe("the lab surface says what effort will actually run", () => {
   it("reports the provider default when the lab declares none", async () => {
-    const summary = await summaryFor("  - type: openai-computer-use\n    mission: m\n");
+    const summary = await summaryFor("  type: openai-computer-use\n  mission: m\n");
     expect(summary?.reasoningEffort).toBe(DEFAULT_OPENAI_CU_REASONING_EFFORT);
   });
 
   it("reports a declared effort", async () => {
     const summary = await summaryFor(
-      "  - type: openai-computer-use\n    mission: m\n    reasoningEffort: xhigh\n",
+      "  type: openai-computer-use\n  mission: m\n  reasoningEffort: xhigh\n",
     );
     expect(summary?.reasoningEffort).toBe("xhigh");
   });
 
   it("says per-participant rather than picking one participant's answer for all of them", async () => {
     const summary = await summaryFor(
-      "  - type: openai-computer-use\n    mission: m\n    reasoningEffort: low\n    lanes:\n      - id: steady\n      - id: harder\n        reasoningEffort: high\n",
+      "  type: openai-computer-use\n  mission: m\n  reasoningEffort: low\n",
+      "participants:\n  - id: steady\n  - id: harder\n    reasoningEffort: high\n",
     );
     expect(summary?.reasoningEffort).toBe("per-lane");
   });

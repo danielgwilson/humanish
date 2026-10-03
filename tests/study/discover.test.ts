@@ -11,7 +11,6 @@ import {
 } from "../../src/study/discover.js";
 
 import { makeTestTempDir } from "../helpers/temp-dir.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -22,22 +21,25 @@ describe("lab manifest resolution", () => {
       cwd,
       "humanish/studies/first-run.yaml",
       [
-        "schema: humanish.lab.v2",
+        "schema: humanish.study.v3",
         "id: first-run",
         "title: First run",
+        "route: preview",
         "subject:",
         "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona",
-        "    count: 3",
+        "actor:",
+        "  type: synthetic-persona",
+        "participants: 3",
       ].join("\n"),
     );
     await writeLab(
       cwd,
       ".humanish/local/studies/private.yaml",
       [
-        "schema: humanish.lab.v2",
+        "schema: humanish.study.v3",
         "id: private",
+        "route: computer-use",
+        "mode: dry-run",
         "subject:",
         "  source: clone",
         "  repos:",
@@ -47,12 +49,10 @@ describe("lab manifest resolution", () => {
         "    url: http://127.0.0.1:3000/",
         "execution:",
         "  target: e2b-desktop",
-        "actors:",
-        "  - type: openai-computer-use",
+        "actor:",
+        "  type: openai-computer-use",
         "policies:",
         "  redactRepos: true",
-        "scenario:",
-        "  mode: dry-run",
       ].join("\n"),
     );
 
@@ -78,12 +78,13 @@ describe("lab manifest resolution", () => {
       cwd,
       "humanish/studies/compat.yml",
       [
-        "schema: humanish.lab.v2",
+        "schema: humanish.study.v3",
         "id: compat",
+        "route: preview",
         "subject:",
         "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona",
+        "actor:",
+        "  type: synthetic-persona",
       ].join("\n"),
     );
     await writeLab(
@@ -248,22 +249,22 @@ describe("lab manifest resolution", () => {
   });
 });
 
-/** Writes a study file; one given in the humanish.lab.v2 shape is written as its v3 conversion. */
+/** Writes a study file. */
 async function writeLab(cwd: string, relativePath: string, contents: string): Promise<void> {
   const filePath = path.join(cwd, relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
-  const v2 = contents.startsWith("schema: humanish.lab.v2");
-  await writeFile(filePath, v2 ? studyFileText(contents, cwd) : `${contents}\n`, "utf8");
+  await writeFile(filePath, `${contents}\n`, "utf8");
 }
 
 function labYaml(id: string): string {
   return [
-    "schema: humanish.lab.v2",
+    "schema: humanish.study.v3",
     `id: ${id}`,
+    "route: preview",
     "subject:",
     "  source: this-repo",
-    "actors:",
-    "  - type: synthetic-persona",
+    "actor:",
+    "  type: synthetic-persona",
     "",
   ].join("\n");
 }

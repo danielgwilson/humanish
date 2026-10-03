@@ -39,7 +39,7 @@ describe("real receiving admission on non-receiving backends", () => {
   });
 
   it.each(unsupported)(
-    "refuses runLab $name before runtime hooks or filesystem allocation",
+    "refuses runStudy $name before runtime hooks or filesystem allocation",
     async ({ config, route }) => {
       const resolved = receiving(baseline(config));
       expect(routeOf(resolved)).toBe(route);
