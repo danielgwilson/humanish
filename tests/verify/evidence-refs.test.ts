@@ -152,7 +152,7 @@ describe("verify declared evidence references", () => {
         expect(result.shareSafety.reasons.some((reason) => reason.code === "RAW_SCREENSHOTS")).toBe(
           raw,
         );
-        expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(raw);
+        expect(result.warnings.some((warning) => warning.includes("are unblurred"))).toBe(raw);
         if (raw) expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
       },
     );

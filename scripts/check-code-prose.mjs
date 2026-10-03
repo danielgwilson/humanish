@@ -35,6 +35,8 @@
 //   command output. Model prompts and the terminal's transcoding table are not counted
 //   (`STRING_EXCLUDED`), nor is the statement after a `prose-check: model prompt` comment, nor a
 //   string literal type.
+// - `prompt-markers`: each `prose-check: model prompt` comment in src. The marker exempts the
+//   statement after it, so a new one raises this cap where a reviewer sees it.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -109,7 +111,7 @@ const STRING_KINDS = {
     /\b(?:fails? closed|fail-closed|by construction|hollow|honest(?:ly|y)?|safety lie)\b/gi,
   "string-plural-s": /[a-z](?<!\bhttp)\(s\)/g,
 };
-const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps"];
+const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps", "prompt-markers"];
 
 // The title and description of each committed lab, which `lab list`, `lab inspect` and the TUI
 // show. They are held to the comment rules; the test-name kinds do not apply.
@@ -246,6 +248,15 @@ for (const root of ROOTS) {
       // comment.value starts after the opening `//` or `/*`.
       const at = (match) => `${file}:${lineOf(comment.start + 2 + match.index)} ${match[0]}`;
       scan(comment.value, root, at, { testName: false });
+    }
+    if (root === "src") {
+      for (const comment of parsed.comments) {
+        if (PROMPT_MARK.test(comment.value)) {
+          hits
+            .get("prose.src.prompt-markers")
+            .push(`${file}:${lineOf(comment.start)} model prompt`);
+        }
+      }
     }
     if (root === "src" && !STRING_EXCLUDED.has(file)) {
       const prompts = promptRanges(parsed, text);

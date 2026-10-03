@@ -563,7 +563,7 @@
         "total": 0
       },
       "desktopMinutes": null,
-      "note": "No model request and no hosted desktop: this run spent $0 by construction."
+      "note": "This run made no model request and used no hosted desktop, so it cost $0."
     }
   },
   "status.json": {

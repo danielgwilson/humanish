@@ -326,7 +326,7 @@ describe("humanish export", () => {
     const html = await readFile(path.join(cwd, result.path), "utf8");
     expect(html).toContain(localOnlyBanner(["RAW_SCREENSHOTS"]));
     expect(html.indexOf("humanish-local-only")).toBeLessThan(html.indexOf('<div id="root">'));
-    expect(formatExportHuman(result)).toContain("WATERMARKED LOCAL ONLY");
+    expect(formatExportHuman(result)).toContain("(watermarked: local only)");
     expect(html).toMatch(
       /"share":\{"status":"local_only","verifiedAt":"[^"]+","reasons":\["RAW_SCREENSHOTS"\]\}/,
     );

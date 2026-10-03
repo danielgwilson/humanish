@@ -541,7 +541,7 @@ describe("external-public config validation + routing", () => {
     const parsed = parseLabConfig(externalPublicConfig({ appUrl: "http://127.0.0.1:3000/" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
-    expect(parsed.error.message).toContain("non-loopback");
+    expect(parsed.error.message).toContain("not a loopback URL");
   });
 
   it("rejects declaring subject.serve / state / exposure / clone / repos on the external-public branch", () => {
@@ -563,10 +563,10 @@ describe("external-public config validation + routing", () => {
   it("rejects zero or >1 host lanes", () => {
     const zero = parseLabConfig(externalPublicConfig({ hostCount: 0 }));
     expect(zero.ok).toBe(false);
-    if (!zero.ok) expect(zero.error.message).toContain("EXACTLY ONE");
+    if (!zero.ok) expect(zero.error.message).toContain("exactly one `host: true` participant");
     const two = parseLabConfig(externalPublicConfig({ hostCount: 2 }));
     expect(two.ok).toBe(false);
-    if (!two.ok) expect(two.error.message).toContain("EXACTLY ONE");
+    if (!two.ok) expect(two.error.message).toContain("exactly one `host: true` participant");
   });
 
   it("rejects N=1 (a single-participant shared world proves nothing)", () => {
@@ -905,7 +905,7 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     expect(verify.ok).toBe(false);
     const check = verify.checks.find((c) => c.name === "shared-world evidence");
     expect(check?.ok).toBe(false);
-    expect(check?.message).toContain("did not converge on ONE OBSERVED origin");
+    expect(check?.message).toContain("were observed on more than one origin");
   });
 });
 
@@ -1121,14 +1121,14 @@ const externalPublicInversions: ReadonlyArray<readonly [string, ExternalMutation
     (b) => {
       (b.sharedWorld!.plane as { exposure?: string }).exposure = "synthetic";
     },
-    "exposure must be ABSENT",
+    "exposure must be absent",
   ],
   [
     "fails closed when a routeHostDigest diverges (seats did not converge on ONE observed origin)",
     (b) => {
       b.sharedWorld!.laneWindows![1]!.routeHostDigest = "0000000000000000";
     },
-    "did not converge on ONE OBSERVED origin",
+    "were observed on more than one origin",
   ],
   [
     "fails closed when a required external-public attributionLimit is missing",

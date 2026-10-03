@@ -93,7 +93,7 @@ function provisionedGetHostConcurrentFindings(
   // Shape coherence: concurrent carries laneWindows/stateSeries/outcomes and no timeline.
   if (Array.isArray((sw as { timeline?: unknown }).timeline)) {
     findings.push(
-      "a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)",
+      "a concurrent shared-world bundle must not carry a sequential timeline (topologyMode mismatch)",
     );
   }
   const windows = recordsOf(sw.laneWindows);
@@ -111,9 +111,9 @@ function provisionedGetHostConcurrentFindings(
   findings.push(
     ...attributionLimitFindings(sw, CONCURRENT_REQUIRED_LIMITS, CONCURRENT_FORBIDDEN_LIMITS, {
       missing: (limit) =>
-        `attributionLimits is missing the mandatory concurrent disclosure "${limit}" — an absent ceiling overclaims`,
+        `attributionLimits is missing the required concurrent disclosure "${limit}"; without it the bundle claims more than the run can show`,
       forbidden: (limit) =>
-        `attributionLimits carries the forbidden disclosure "${limit}" — a concurrent run cannot claim a sequential guarantee`,
+        `attributionLimits carries the disclosure "${limit}", which a concurrent run cannot claim: it describes a sequential guarantee`,
     }),
     ...participantCoverageFindings(sw, windows, outcomes),
     ...windowFindings(bundle, windows, "the host it drove"),
@@ -231,12 +231,12 @@ function getHostPlaneFindings(
   // behind it is the hazard). Author attestation + a seeded provenance check.
   if (plane.exposure !== "synthetic") {
     findings.push(
-      'sharedWorld.plane.exposure must be "synthetic" — the getHost route requires the author attestation that the subject is synthetic seeded data (author-trust + provenance gate, not a no-real-data guarantee)',
+      'sharedWorld.plane.exposure must be "synthetic": the study must declare that a subject at a public sandbox URL holds synthetic seeded data. humanish records that declaration and cannot check it',
     );
   }
   if (bundle.subject?.state.provenance !== "seeded") {
     findings.push(
-      `the concurrent getHost route requires subject.state.provenance == "seeded" (got "${bundle.subject?.state.provenance ?? "absent"}") — external/unpinned/undeclared data behind an internet-reachable URL is rejected`,
+      `a provisioned shared-world run needs subject.state.provenance == "seeded" (got "${bundle.subject?.state.provenance ?? "absent"}"): external, unpinned or undeclared data at a public sandbox URL is not allowed`,
     );
   }
 
@@ -266,7 +266,7 @@ function stateSeriesFindings(stateSeries: Row[]): string[] {
     for (const key of Object.keys(snapshot)) {
       if (!SHARED_WORLD_STATESERIES_KEYS.has(key)) {
         findings.push(
-          `a stateSeries snapshot carries an unexpected field "${key}" — the series is digest-only (no per-delta attribution)`,
+          `a stateSeries snapshot carries an unexpected field "${key}": the series holds digests only, with no attribution per change`,
         );
       }
     }
@@ -306,12 +306,12 @@ function concurrencyOnPassFindings(
   );
   if (!facts.overlap) {
     return [
-      "review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent",
+      "the review verdict is pass, but no two laneWindows overlap in time, so the participants did not run at once",
     ];
   }
   if (facts.stateChangedUnderOverlap === true) return [];
   return [
-    "review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)",
+    "the review verdict is pass, but no stateSeries change happens at or after the start of an overlap, so the shared app did not change while the participants ran together",
   ];
 }
 
@@ -333,7 +333,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   // deliberately omitted on this class (no in-sandbox filesystem to authoritatively digest).
   if (Array.isArray((sw as { timeline?: unknown }).timeline)) {
     findings.push(
-      "an external-public concurrent bundle must NOT carry a sequential timeline (topologyMode mismatch)",
+      "an external-public concurrent bundle must not carry a sequential timeline (topologyMode mismatch)",
     );
   }
   const windows = recordsOf(sw.laneWindows);
@@ -346,7 +346,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   const stateSeries = (sw as { stateSeries?: unknown }).stateSeries;
   if (Array.isArray(stateSeries) && stateSeries.length > 0) {
     findings.push(
-      "an external-public concurrent bundle must NOT carry a stateSeries — the harness cannot authoritatively digest a real public plane's backend state (no in-sandbox filesystem); concurrency is proven by temporal co-occupancy, not a state series",
+      "an external-public concurrent bundle must not carry a stateSeries: humanish cannot read the state of a public deployment it does not run, so this route shows concurrency by overlapping sessions instead",
     );
   }
   if (windows === null || outcomes === null) {
@@ -362,9 +362,9 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
       EXTERNAL_PUBLIC_FORBIDDEN_LIMITS,
       {
         missing: (limit) =>
-          `attributionLimits is missing the mandatory external-public disclosure "${limit}" — an absent honest-downgrade ceiling overclaims`,
+          `attributionLimits is missing the required external-public disclosure "${limit}"; without it the bundle claims more than the run can show`,
         forbidden: (limit) =>
-          `attributionLimits carries the forbidden disclosure "${limit}" — the external-public plane cannot claim a sequential guarantee or a seeded/synthetic attestation on a real site`,
+          `attributionLimits carries the disclosure "${limit}", which an external-public run cannot claim: it describes a sequential guarantee or seeded synthetic data, and the app is a real deployment`,
       },
     ),
     ...participantCoverageFindings(sw, windows, outcomes),
@@ -381,7 +381,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
     !concurrencyFacts(participantWindows(windows), undefined).overlap
   ) {
     findings.push(
-      "review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)",
+      "the review verdict is pass, but no two laneWindows overlap in time, so the participants of this external-public run did not run at once",
     );
   }
   return findings;
@@ -412,7 +412,7 @@ function externalPublicPlaneFindings(
     typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
   if (!publicOriginDigest || !COMMAND_DIGEST_PATTERN.test(publicOriginDigest)) {
     findings.push(
-      "sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the participants converged on) is required on the external-public plane class",
+      "sharedWorld.plane.publicOriginDigest (the sha256-16 of the origin the participants were observed to reach) is required on an external-public run",
     );
   }
   // The observed origins across participants must agree on exactly one (that agreement is the
@@ -425,7 +425,7 @@ function externalPublicPlaneFindings(
   const distinctObserved = [...new Set(observedOrigins)];
   if (distinctObserved.length > 1) {
     findings.push(
-      `the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: ${distinctObserved.join(", ")}`,
+      `the participants were observed on more than one origin; observed origin digests: ${distinctObserved.join(", ")}`,
     );
   } else if (
     publicOriginDigest &&
@@ -433,7 +433,7 @@ function externalPublicPlaneFindings(
     distinctObserved[0] !== publicOriginDigest
   ) {
     findings.push(
-      `sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the single OBSERVED origin the participants converged on (${distinctObserved[0]})`,
+      `sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the one origin the participants were observed to reach (${distinctObserved[0]})`,
     );
   }
   // declaredOriginDigest is recorded for evidence only. Validate its shape when present, but never
@@ -452,23 +452,23 @@ function externalPublicPlaneFindings(
   // the harness-minted hostDigest must be absent (the harness minted no host here).
   if (plane.exposure !== undefined) {
     findings.push(
-      'sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest "synthetic" on a real site',
+      'sharedWorld.plane.exposure must be absent on an external-public run: humanish did not provision the app, so it cannot declare a real deployment "synthetic"',
     );
   }
   if (plane.hostDigest !== undefined) {
     findings.push(
-      "sharedWorld.plane.hostDigest must be ABSENT on the external-public plane class — a harness-minted host identity is a getHost claim; this plane is operator-attested, not harness-minted",
+      "sharedWorld.plane.hostDigest must be absent on an external-public run: it records a sandbox URL humanish created, and this app is a deployment the operator declared",
     );
   }
   // Provenance is the external-public marker, which is neither seeded (nothing was seeded) nor unpinned.
   if (bundle.subject?.state.provenance !== "external-public") {
     findings.push(
-      `the external-public plane class requires subject.state.provenance == "external-public" (got "${bundle.subject?.state.provenance ?? "absent"}") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest`,
+      `an external-public run needs subject.state.provenance == "external-public" (got "${bundle.subject?.state.provenance ?? "absent"}"): seeded, unpinned or undeclared does not describe a public deployment the operator runs`,
     );
   }
   if (bundle.subject?.source !== "app-url") {
     findings.push(
-      'the external-public plane class requires subject.source == "app-url" — the plane is a real public deployment, not a provisioned subject',
+      'an external-public run needs subject.source == "app-url": the app is a public deployment, not a subject humanish provisions',
     );
   }
 
