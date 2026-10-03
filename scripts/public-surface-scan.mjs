@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { sandboxIdFindings } from "./lib/sandbox-id-keys.mjs";
 
 const skippedPaths = new Set(["pnpm-lock.yaml", "scripts/public-surface-scan.mjs"]);
 
@@ -435,6 +436,16 @@ for (const file of files) {
         value: match[0].slice(0, 80),
       });
     }
+  }
+
+  // By key, not by shape: any value at a sandbox-id key except the redaction marker.
+  for (const { key, value, index } of sandboxIdFindings(file, text)) {
+    findings.push({
+      file,
+      line: lineNumberFor(text, index),
+      name: "sandbox_id_value",
+      value: `${key}: ${value.slice(0, 60)}`,
+    });
   }
 
   emailAddress.lastIndex = 0;

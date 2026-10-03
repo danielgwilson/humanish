@@ -4046,7 +4046,7 @@ describe("runCuaActorLab", () => {
         cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         prepareDesktop: async (desktop) => {
-          desktop.sandboxId = "unrelated-sandbox";
+          desktop.sandboxId = "fake-unrelated-sandbox";
           throw new Error("synthetic provisioning failure");
         },
       },

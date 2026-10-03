@@ -633,6 +633,11 @@ The receipt describes the transformation; it does not attest that a participant'
 finding is true. Its own bytes are not included in its hash inventory. Feedback
 commands can subsequently generate new derivative-local artifacts.
 
+The derivative names no sandbox. In every JSON and NDJSON file it copies, the
+values at `sandboxId`, `subjectSandboxId` and each `providerResources[].id` read
+`[redacted-sandbox-id]`; `sandbox-receipts.ndjson` is omitted. The source keeps
+its raw ids, which cleanup and reclaim read.
+
 PNG files that actor traces reference as stream screenshots are re-encoded as
 blurred thumbnails. A PNG that nothing in `run.json` cites is omitted and
 inventoried. Export refuses a run whose feedback candidates, adapter artifacts or

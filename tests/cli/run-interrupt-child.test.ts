@@ -27,7 +27,7 @@ const CHILD = `
   const frame = Buffer.from(process.env.PROBE_PNG, "base64");
   const noop = async () => undefined;
   const sandbox = {
-    sandboxId: "sb-interrupted",
+    sandboxId: "fake-sb-interrupted",
     getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
     commands: { run: async () => ({ exitCode: 0, stdout: "" }) },
     files: { write: noop },
@@ -113,7 +113,7 @@ describe("a live run with the run command's handler, signalled mid-session", () 
     } finally {
       child.kill("SIGKILL");
     }
-    expect(stdout.match(/killed sb-interrupted/g)).toHaveLength(1);
+    expect(stdout.match(/killed fake-sb-interrupted/g)).toHaveLength(1);
     const [runId] = (await readdir(path.join(cwd, ".humanish", "runs"))).filter((name) =>
       name.startsWith("cua-"),
     );
@@ -125,7 +125,7 @@ describe("a live run with the run command's handler, signalled mid-session", () 
     });
     expect(
       JSON.parse(await readFile(path.join(runDir, "reclaim-receipt.json"), "utf8")),
-    ).toMatchObject({ outcomes: [{ sandboxId: "sb-interrupted", state: "killed" }] });
+    ).toMatchObject({ outcomes: [{ sandboxId: "fake-sb-interrupted", state: "killed" }] });
     expect(stderr).toContain(
       `humanish: SIGTERM: run ${runId} marked interrupted; sandboxes: 1 killed.`,
     );

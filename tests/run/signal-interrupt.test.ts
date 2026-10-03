@@ -31,7 +31,7 @@ const CHILD = `
   const frame = Buffer.from(process.env.PROBE_PNG, "base64");
   const noop = async () => undefined;
   const sandbox = {
-    sandboxId: "sb-signalled",
+    sandboxId: "fake-sb-signalled",
     getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
     commands: { run: async () => ({ exitCode: 0, stdout: "" }) },
     files: { write: noop },
@@ -144,9 +144,9 @@ describe("a live run signalled mid-session", () => {
       });
       expect(reclaimed.ok).toBe(true);
       expect(reclaimed.outcomes).toEqual([
-        { sandboxId: "sb-signalled", laneId: "lane-01", state: "killed" },
+        { sandboxId: "fake-sb-signalled", laneId: "lane-01", state: "killed" },
       ]);
-      expect(killed).toEqual(["sb-signalled"]);
+      expect(killed).toEqual(["fake-sb-signalled"]);
     },
   );
 });

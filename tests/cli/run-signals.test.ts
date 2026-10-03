@@ -33,7 +33,7 @@ beforeEach(async () => {
   expect((await runDryRun({ cwd, dryRun: true, runId: RUN })).ok).toBe(true);
   const runPaths = await resolveRunPath(cwd, RUN);
   if (!runPaths) throw new Error("dry run left no run");
-  await appendSandboxReceipt(runPaths, { at: "t1", laneId: "lane-01", sandboxId: "sb-1" });
+  await appendSandboxReceipt(runPaths, { at: "t1", laneId: "lane-01", sandboxId: "fake-sb-1" });
 });
 afterEach(async () => {
   for (const cleanup of cleanups) cleanup();
@@ -87,11 +87,13 @@ describe("the run command's signal handler", () => {
     target.emit("SIGTERM");
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
     expect(run.interrupt).toHaveBeenCalledExactlyOnceWith("SIGTERM");
-    expect(run.killed).toEqual(["sb-1"]);
+    expect(run.killed).toEqual(["fake-sb-1"]);
     const receipt = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", RUN, RECLAIM_RECEIPT_ARTIFACT), "utf8"),
     ) as { outcomes: unknown[] };
-    expect(receipt.outcomes).toEqual([{ sandboxId: "sb-1", laneId: "lane-01", state: "killed" }]);
+    expect(receipt.outcomes).toEqual([
+      { sandboxId: "fake-sb-1", laneId: "lane-01", state: "killed" },
+    ]);
     expect(run.stderr()).toBe(
       `humanish: SIGTERM: run ${RUN} marked interrupted; sandboxes: 1 killed.\n`,
     );
@@ -103,7 +105,7 @@ describe("the run command's signal handler", () => {
       deadlineMs: 2_000,
     });
     target.emit("SIGINT");
-    await vi.waitFor(() => expect(run.killed).toEqual(["sb-1"]));
+    await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
     expect(run.exit).not.toHaveBeenCalled();
     target.emit("SIGINT");
     expect(run.exit).toHaveBeenCalledExactlyOnceWith(130);
@@ -139,17 +141,21 @@ describe("the run command's signal handler at shutdown edges", () => {
     // A run named `latest`, then another run that moves the latest pointer to itself.
     expect((await runDryRun({ cwd, dryRun: true, runId: "latest" })).ok).toBe(true);
     const named = await prepareRunArtifactPaths(cwd, "latest");
-    await appendSandboxReceipt(named, { at: "t1", laneId: "lane-01", sandboxId: "sb-named" });
+    await appendSandboxReceipt(named, { at: "t1", laneId: "lane-01", sandboxId: "fake-sb-named" });
     const other = "cua-2026-10-01T00-00-01-000Z-0be70a1d";
     expect((await runDryRun({ cwd, dryRun: true, runId: other })).ok).toBe(true);
     const otherPaths = await resolveRunPath(cwd, "latest");
     expect(otherPaths?.absoluteRunRoot.endsWith(other)).toBe(true);
-    await appendSandboxReceipt(otherPaths!, { at: "t2", laneId: "lane-01", sandboxId: "sb-other" });
+    await appendSandboxReceipt(otherPaths!, {
+      at: "t2",
+      laneId: "lane-01",
+      sandboxId: "fake-sb-other",
+    });
 
     const run = await setup({ runId: "latest" });
     target.emit("SIGTERM");
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
-    expect(run.killed).toEqual(["sb-named"]);
+    expect(run.killed).toEqual(["fake-sb-named"]);
   });
 
   it("keeps second-signal exit when analysis starts after shutdown began", async () => {
@@ -158,7 +164,7 @@ describe("the run command's signal handler at shutdown edges", () => {
       deadlineMs: 2_000,
     });
     target.emit("SIGTERM");
-    await vi.waitFor(() => expect(run.killed).toEqual(["sb-1"]));
+    await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
     // The route published its bundle meanwhile and analysis starts.
     handOverRunSignals();
     target.emit("SIGTERM");
@@ -168,7 +174,7 @@ describe("the run command's signal handler at shutdown edges", () => {
   it("never prints a reclaim command that would resolve another run", async () => {
     expect((await runDryRun({ cwd, dryRun: true, runId: "latest" })).ok).toBe(true);
     const named = await prepareRunArtifactPaths(cwd, "latest");
-    await appendSandboxReceipt(named, { at: "t1", laneId: "lane-01", sandboxId: "sb-named" });
+    await appendSandboxReceipt(named, { at: "t1", laneId: "lane-01", sandboxId: "fake-sb-named" });
     const run = await setup({
       runId: "latest",
       kill: () => new Promise<boolean>(() => undefined),
@@ -199,7 +205,7 @@ describe("the run command's signal handler at shutdown edges", () => {
       deadlineMs: 2_000,
     });
     target.emit("SIGTERM");
-    await vi.waitFor(() => expect(run.killed).toEqual(["sb-1"]));
+    await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
     // The run returned; the run command releases its handling before presentation.
     run.phase.release();
     target.emit("SIGTERM");

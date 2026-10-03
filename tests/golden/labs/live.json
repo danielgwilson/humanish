@@ -2176,7 +2176,7 @@
       "schema": "humanish.provider-resource.v1",
       "provider": "e2b-desktop",
       "kind": "sandbox",
-      "id": "live-golden-sandbox-0001",
+      "id": "fake-live-golden-sandbox-0001",
       "owner": "humanish",
       "status": "killed",
       "simId": "sim-001",

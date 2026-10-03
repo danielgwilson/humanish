@@ -41,7 +41,7 @@ vi.mock("../../../src/run/sandbox-receipts.js", async (importOriginal) => {
 // Allocation tests need only the SDK's identity and existing create/kill contract.
 // No HTTP fixture or new provider wire protocol is modeled here.
 function fixture(result: boolean = true) {
-  const desktop = { sandboxId: "owned-desktop" } as E2BDesktopSandbox;
+  const desktop = { sandboxId: "fake-owned-desktop" } as E2BDesktopSandbox;
   const create = vi.fn(async (..._args: unknown[]) => desktop);
   const kill = vi.fn(async (_id: string, _options?: { requestTimeoutMs?: number }) => result);
   const list = vi.fn(() => {
@@ -60,7 +60,7 @@ function moduleFailingOnce(message: string): { module: E2BDesktopModule; created
         created.push(args);
         calls += 1;
         if (calls === 1) throw new Error(message);
-        return { sandboxId: `sbx-${calls}` } as unknown as E2BDesktopSandbox;
+        return { sandboxId: `fake-sbx-${calls}` } as unknown as E2BDesktopSandbox;
       },
     },
   } as unknown as E2BDesktopModule;
@@ -78,8 +78,8 @@ const THROWN_KILL_MESSAGES = [
   "sandbox does not exist yet",
   "404",
   "500: internal error (trace 7c404ab1)",
-  "sandbox sbx-404abc unreachable",
-  "SandboxNotFoundError: sandbox sb-1 does not exist",
+  "sandbox fake-sbx-404abc unreachable",
+  "SandboxNotFoundError: sandbox fake-sb-1 does not exist",
 ];
 /** The SDK's own not-found error, recognized by type (its name), not by its message. */
 const sandboxNotFound = (): Error =>
@@ -107,11 +107,11 @@ describe("E2B sandbox acquisition", () => {
     const f = fixture();
     const replacement = vi.fn(async () => true);
     const acquired = await acquire(f.module, { apiKey: "synthetic" });
-    f.desktop.sandboxId = "unrelated-desktop";
+    f.desktop.sandboxId = "fake-unrelated-desktop";
     f.module.Sandbox.kill = replacement;
-    expect(acquired.allocation.resourceId).toBe("owned-desktop");
+    expect(acquired.allocation.resourceId).toBe("fake-owned-desktop");
     expect(await acquired.allocation.close()).toEqual({ status: "released", reason: "terminated" });
-    expect(f.kill).toHaveBeenCalledWith("owned-desktop", { requestTimeoutMs: 60_000 });
+    expect(f.kill).toHaveBeenCalledWith("fake-owned-desktop", { requestTimeoutMs: 60_000 });
     expect(replacement).not.toHaveBeenCalled();
     expect(f.list).not.toHaveBeenCalled();
   });
@@ -154,7 +154,7 @@ describe("E2B sandbox acquisition", () => {
       E2BDesktopModule["Sandbox"]["kill"]
     >;
     const acquired = await acquire(malformed.module, { apiKey: "synthetic" });
-    expect(acquired.allocation.resourceId).toBe("owned-desktop");
+    expect(acquired.allocation.resourceId).toBe("fake-owned-desktop");
     expect(await acquired.allocation.close()).toEqual({
       status: "unconfirmed",
       reason: "release_unavailable",
@@ -191,7 +191,7 @@ describe("E2B sandbox acquisition", () => {
       retry: { onRetry: (reason) => reasons.push(reason), sleep: async () => undefined },
       receipt: null,
     });
-    expect(sandbox.sandboxId).toBe("sbx-2");
+    expect(sandbox.sandboxId).toBe("fake-sbx-2");
     expect(created).toEqual([
       ["custom-image", options],
       ["custom-image", options],
@@ -270,7 +270,7 @@ describe("E2B sandbox receipts", () => {
       at: "2026-09-30T00:00:00.000Z",
       laneId: "lane-01",
       provider: "e2b",
-      sandboxId: "owned-desktop",
+      sandboxId: "fake-owned-desktop",
       timeoutMs: 90_000,
     });
   });
@@ -282,10 +282,14 @@ describe("E2B sandbox receipts", () => {
       options: { apiKey: "synthetic" },
       receipt: { root, participantId: "terminal" },
     });
-    f.desktop.sandboxId = "unrelated-desktop";
-    expect(acquired.allocation.resourceId).toBe("owned-desktop");
+    f.desktop.sandboxId = "fake-unrelated-desktop";
+    expect(acquired.allocation.resourceId).toBe("fake-owned-desktop");
     expect(await receipts()).toEqual([
-      expect.objectContaining({ laneId: "terminal", provider: "e2b", sandboxId: "owned-desktop" }),
+      expect.objectContaining({
+        laneId: "terminal",
+        provider: "e2b",
+        sandboxId: "fake-owned-desktop",
+      }),
     ]);
   });
 
@@ -310,7 +314,9 @@ describe("E2B sandbox receipts", () => {
       }).catch((value: unknown) => value);
       expect(error).toBeInstanceOf(Error);
       expect(f.create).toHaveBeenCalledOnce();
-      expect(f.kill).toHaveBeenCalledExactlyOnceWith("owned-desktop", { requestTimeoutMs: 60_000 });
+      expect(f.kill).toHaveBeenCalledExactlyOnceWith("fake-owned-desktop", {
+        requestTimeoutMs: 60_000,
+      });
       expect(f.list).not.toHaveBeenCalled();
     },
   );
@@ -324,7 +330,7 @@ describe("E2B sandbox receipts", () => {
       receipt: { root, participantId: "lane-01" },
     });
     expect(acquired.sandbox).toBe(f.desktop);
-    expect(acquired.allocation.resourceId).toBe("owned-desktop");
+    expect(acquired.allocation.resourceId).toBe("fake-owned-desktop");
   });
 });
 
@@ -339,7 +345,7 @@ describe("destroyE2BSandbox", () => {
         },
       },
     } as unknown as E2BDesktopModule;
-    return destroyE2BSandbox(module, "sb-1", { requestTimeoutMs: 5_000 });
+    return destroyE2BSandbox(module, "fake-sb-1", { requestTimeoutMs: 5_000 });
   };
 
   it.each(THROWN_KILL_MESSAGES)(
@@ -356,7 +362,7 @@ describe("destroyE2BSandbox", () => {
   it("maps each kill result to the reclaim outcome", async () => {
     const kill = vi.fn(async () => true);
     expect(await destroy(kill)).toEqual({ state: "killed" });
-    expect(kill).toHaveBeenCalledWith("sb-1", { requestTimeoutMs: 5_000 });
+    expect(kill).toHaveBeenCalledWith("fake-sb-1", { requestTimeoutMs: 5_000 });
     expect(await destroy(async () => false)).toEqual({ state: "already-gone" });
     expect(
       await destroy(async () => {
@@ -478,7 +484,7 @@ describe("E2B debug mode", () => {
     vi.stubEnv("E2B_DEBUG", "true");
     const module = { Sandbox: { create: vi.fn(), kill: async () => true } };
     expect(
-      await destroyE2BSandbox(module as unknown as E2BDesktopModule, "sb-1", {
+      await destroyE2BSandbox(module as unknown as E2BDesktopModule, "fake-sb-1", {
         requestTimeoutMs: 5_000,
       }),
     ).toEqual({ state: "kill-failed", detail: expect.stringContaining("E2B_DEBUG=true") });

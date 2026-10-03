@@ -91,7 +91,7 @@ function fakeProvider(behavior: {
   const killed: string[] = [];
   let firstCommand = true;
   const sandbox = {
-    sandboxId: "sb-preflight-1",
+    sandboxId: "fake-sb-preflight-1",
     commands: {
       run: async (command: string) => {
         if (firstCommand) {
@@ -175,7 +175,7 @@ async function writeJournal(
   );
   await writeFile(
     path.join(dir, SANDBOX_RECEIPTS_ARTIFACT),
-    `${JSON.stringify({ at: createdAt, laneId: id, provider: "e2b", sandboxId: "sb-journaled", timeoutMs: leaseMs })}\n`,
+    `${JSON.stringify({ at: createdAt, laneId: id, provider: "e2b", sandboxId: "fake-sb-journaled", timeoutMs: leaseMs })}\n`,
   );
   return id;
 }
@@ -215,10 +215,10 @@ describe("lab preflight receipts", () => {
     expect(result.ok).toBe(true);
     expect(JSON.parse(journalAtFirstCommand)).toMatchObject({
       provider: "e2b",
-      sandboxId: "sb-preflight-1",
+      sandboxId: "fake-sb-preflight-1",
       timeoutMs: PROBE_TIMEOUT_MS + LEASE_BUFFER_MS,
     });
-    expect(provider.killed).toEqual(["sb-preflight-1"]);
+    expect(provider.killed).toEqual(["fake-sb-preflight-1"]);
     expect(await journals(cwd)).toEqual([]);
   });
 
@@ -370,9 +370,9 @@ describe("lab preflight receipts", () => {
     });
     expect(reclaim.ok).toBe(true);
     expect(reclaim.outcomes).toEqual([
-      { sandboxId: "sb-preflight-1", laneId: id, state: "killed" },
+      { sandboxId: "fake-sb-preflight-1", laneId: id, state: "killed" },
     ]);
-    expect(reclaimer.killed).toEqual(["sb-preflight-1"]);
+    expect(reclaimer.killed).toEqual(["fake-sb-preflight-1"]);
     expect(await journals(cwd)).toEqual([]);
   });
 
@@ -419,7 +419,7 @@ describe("lab preflight receipts", () => {
       loadModule: async () => provider.module,
     });
 
-    expect(provider.killed).toEqual(["sb-journaled"]);
+    expect(provider.killed).toEqual(["fake-sb-journaled"]);
     expect(reclaim.ok).toBe(true);
     expect(await journals(cwd)).toEqual([]);
   });
@@ -456,7 +456,7 @@ describe("lab preflight receipts", () => {
           loadModule: async () => provider.module,
         });
 
-        expect(provider.killed).toEqual(["sb-journaled"]);
+        expect(provider.killed).toEqual(["fake-sb-journaled"]);
         expect(reclaim.ok).toBe(true);
       } finally {
         other.kill("SIGKILL");
@@ -485,7 +485,7 @@ describe("lab preflight receipts", () => {
     expect(reclaim.warnings.join("\n")).toContain("could not be read safely");
     expect(provider.killed).toEqual([]);
     expect(await journals(cwd)).toEqual([id]);
-    expect(await readFile(receipts, "utf8")).toContain("sb-journaled");
+    expect(await readFile(receipts, "utf8")).toContain("fake-sb-journaled");
   });
 
   it("refuses --preflight together with --run", async () => {
@@ -509,7 +509,7 @@ describe("lab preflight receipts", () => {
     const script = `
       const { runStudyPreflight } = await import(${JSON.stringify(path.join(root, "src/study/preflight.ts"))});
       const sandbox = {
-        sandboxId: "sb-preflight-orphan",
+        sandboxId: "fake-sb-preflight-orphan",
         // Every command hangs on an open handle, as a stuck provider socket would.
         commands: { run: () => new Promise(() => setInterval(() => {}, 60_000)) },
         files: { write: async () => undefined },
@@ -549,7 +549,7 @@ describe("lab preflight receipts", () => {
                 "utf8",
               ).catch(() => "")
             : "";
-          expect(text, stderr).toContain('"sandboxId":"sb-preflight-orphan"');
+          expect(text, stderr).toContain('"sandboxId":"fake-sb-preflight-orphan"');
         },
         { timeout: 15_000, interval: 50 },
       );
@@ -562,7 +562,7 @@ describe("lab preflight receipts", () => {
     const reclaim = await reclaimPreflightSandboxes(cwd, {
       loadModule: async () => reclaimer.module,
     });
-    expect(reclaimer.killed).toEqual(["sb-preflight-orphan"]);
+    expect(reclaimer.killed).toEqual(["fake-sb-preflight-orphan"]);
     expect(reclaim.ok).toBe(true);
     expect(await journals(cwd)).toEqual([]);
   }, 30_000);
