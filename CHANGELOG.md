@@ -8,38 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.109.1: Current option names in messages, reclaim --env-file (2026-10-03)
 
-- `humanish reclaim --env-file <path>`, with the same option and loader as `run`: it loads the
-  file's unset variables, so the `E2B_API_KEY` in it reaches the calls that kill the run's
-  sandboxes, and prints no value. Without the option, reclaim fills a missing key from the stores
-  `humanish keys` and the other commands read. A missing file stops the command with exit 2.
+humanish 0.109.1 is a patch. Library refusals and warnings name `RunStudyOptions`, which 0.109.0
+exports, where they named the removed `RunLabOptions`. `humanish export --format bundle` no longer
+copies sandbox ids into its redacted workspace. `humanish reclaim` takes `--env-file`, and
+`humanish migrate` removes a `labs/` directory that its moves emptied.
 
-### Changed
-
-- `humanish migrate` removes a `labs/` directory that its moves emptied. It checks that every entry
-  in the directory, a dotfile or a subdirectory included, was a file it moved, and then calls a
-  non-recursive `rmdir`, so anything else in the directory keeps it. `--dry-run` prints the
-  removal as a planned step (`humanish/labs/: removed after the move, since nothing else is in
-it`), the summary line names each removed directory, and `--json` lists them in
-  `removedDirectories`.
-
-### Fixes
-
-- Library refusals and warnings name `RunStudyOptions`, the type 0.109.0 exports, where they named
-  `RunLabOptions`, which 0.109.0 removed. This covers the in-process refusals, such as
-  `RunStudyOptions.inProcess needs RunStudyOptions.createProvider`, the route option refusal
-  `RunStudyOptions.<option> is not supported on the <route> route`, and the run warning
-  `RunStudyOptions.onEvent failed on <event>`. A script that matches the old text needs the new
-  one. The refusals for options removed in earlier releases name the option alone: "`rerun.laneIds`
-  was removed in 0.107.0. Use `rerun.participantIds`." and "`cuaHooks` was removed." with the
-  field's replacement.
-
-- `humanish export --format bundle` no longer copies sandbox ids into the redacted workspace. The
-  copy omitted `sandbox-receipts.ndjson` but kept each `providerResources[].id` in `run.json`. Every
-  JSON and NDJSON file it copies now reads `[redacted-sandbox-id]` at `sandboxId`,
-  `subjectSandboxId` and `providerResources[].id`; the source run keeps its ids for cleanup and
-  reclaim. `pnpm public-surface:scan` fails on any other value at those keys.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.109.1)
 
 ## 0.109.0: Lab names removed, v2 study files refused (2026-10-03)
 
