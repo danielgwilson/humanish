@@ -1298,6 +1298,7 @@
     "outcome": {
       "verdict": "pass",
       "estimatedCostUsd": null,
+      "estimatedCostComplete": false,
       "ok": true,
       "execution": {
         "succeeded": true,

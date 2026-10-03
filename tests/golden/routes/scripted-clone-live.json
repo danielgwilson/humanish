@@ -589,6 +589,7 @@
     "outcome": {
       "verdict": "pass",
       "estimatedCostUsd": 0.00888,
+      "estimatedCostComplete": true,
       "ok": true,
       "execution": {
         "succeeded": true,

@@ -9,7 +9,14 @@ import { isAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/s
 import { loadAnalysis } from "../analysis/load.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
 import { listRuns } from "../run/stored-runs.js";
-import { bindExistingRunArtifactPaths, isPathInside, isSafeRunIdSegment } from "../run/paths.js";
+import { readAnalysisAccounting } from "../run/costs.js";
+import {
+  bindExistingRunArtifactPaths,
+  isPathInside,
+  isSafeRunIdSegment,
+  type PreparedRunArtifactPaths,
+} from "../run/paths.js";
+import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
 import { RUN_STATUS_FILE, RUN_STATUS_STALE_MS, isRunStatusRecord } from "../run/status.js";
 import { renderObserverHtml } from "./artifact.js";
 import {
@@ -38,28 +45,50 @@ export interface ObserverRuntimeStreamUrl {
   ended?: boolean;
 }
 
+/** The run's artifact paths, only when they are still the pinned directory being served. */
+async function servedRunPaths(runRoot: PinnedDirectory): Promise<PreparedRunArtifactPaths> {
+  const runId = path.basename(runRoot.physicalPath);
+  const cwd = path.dirname(path.dirname(path.dirname(runRoot.physicalPath)));
+  const prepared = await bindExistingRunArtifactPaths(cwd, runId);
+  if (
+    prepared.physicalRunRoot !== runRoot.physicalPath ||
+    prepared.runRootIdentity.birthtimeNs !== runRoot.birthtimeNs ||
+    prepared.runRootIdentity.dev !== runRoot.dev ||
+    prepared.runRootIdentity.ino !== runRoot.ino
+  ) {
+    throw new Error("ANALYSIS_STORAGE_CHANGED");
+  }
+  return prepared;
+}
+
 /** Analysis cannot grant filesystem authority or make an otherwise readable recording disappear. */
 async function readObserverAnalysis(runRoot: PinnedDirectory): Promise<LoadedAnalysis> {
+  let loaded: LoadedAnalysis;
   try {
-    const runId = path.basename(runRoot.physicalPath);
-    const cwd = path.dirname(path.dirname(path.dirname(runRoot.physicalPath)));
-    const prepared = await bindExistingRunArtifactPaths(cwd, runId);
-    if (
-      prepared.physicalRunRoot !== runRoot.physicalPath ||
-      prepared.runRootIdentity.birthtimeNs !== runRoot.birthtimeNs ||
-      prepared.runRootIdentity.dev !== runRoot.dev ||
-      prepared.runRootIdentity.ino !== runRoot.ino
-    ) {
-      throw new Error("ANALYSIS_STORAGE_CHANGED");
-    }
-    return projectShareCheckedAnalysis(await loadAnalysis(prepared));
+    loaded = projectShareCheckedAnalysis(await loadAnalysis(await servedRunPaths(runRoot)));
   } catch {
-    return {
+    loaded = {
       state: "invalid",
       analysis: null,
       corrections: [],
       warnings: ["Analysis could not be validated against this recording."],
     };
+  }
+  const spend = await readServedAnalysisSpend(runRoot);
+  return spend === undefined ? loaded : { ...loaded, spend };
+}
+
+/**
+ * The run's analysis spend, read by the same reader as stats, so a request whose report could not
+ * be validated still counts. Undefined when the run sent none or its history cannot be bound.
+ */
+async function readServedAnalysisSpend(
+  runRoot: PinnedDirectory,
+): Promise<RunAnalysisCost | undefined> {
+  try {
+    return analysisCostOf(await readAnalysisAccounting(await servedRunPaths(runRoot))) ?? undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -309,6 +338,7 @@ export async function buildHistoryIndex(
     estimatedCostUsd: number | null;
     costRatesAsOf: string | null;
     costPlaceholder: boolean;
+    costLabel: string | null;
   }>;
 }> {
   await assertPinnedDirectory(proofRoot);
@@ -320,6 +350,7 @@ export async function buildHistoryIndex(
       const root = pinned && admitRun ? await admitRun(run.runId, pinned) : pinned;
       if (admitRun && !root) return null;
       const data = root ? await readObserverData(root) : null;
+      const spend = root && data ? await readServedAnalysisSpend(root) : undefined;
       // listRuns read run.json before admission, so an admitted run's fields come from its
       // guarded read instead.
       return {
@@ -334,6 +365,9 @@ export async function buildHistoryIndex(
         estimatedCostUsd: data?.cost?.estimatedTotalUsd ?? null,
         costRatesAsOf: data?.cost?.ratesAsOf ?? null,
         costPlaceholder: data?.cost?.placeholder ?? false,
+        // What the row shows: participants and desktops plus the run's analyses, as every
+        // surface that shows one run's cost reads it.
+        costLabel: data ? (runCostLabel(runCost(data.cost, spend)) ?? null) : null,
       };
     }),
   );

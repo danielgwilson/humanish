@@ -659,6 +659,7 @@
         "reportedFriction": 0
       },
       "estimatedCostUsd": null,
+      "estimatedCostComplete": false,
       "ok": true,
       "execution": {
         "succeeded": true,
