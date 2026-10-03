@@ -1,6 +1,6 @@
 ---
 name: humanish
-description: Install and configure humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, capture the email an app sends so a persona can complete an email-gated flow (e.g. a signup verification link or one-time code), run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
+description: Synthetic user research for apps, CLIs, and agent-facing product flows. Install and configure the humanish CLI in a JavaScript app. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, capture the email an app sends so a persona can complete an email-gated flow (e.g. a signup verification link or one-time code), run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
 ---
 
 # humanish CLI

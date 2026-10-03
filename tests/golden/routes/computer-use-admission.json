@@ -401,7 +401,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
+      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -506,7 +506,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+      "message": "A desktop-cli subject needs `subject.product.name`: the CLI the participant is asked to use."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -958,7 +958,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
+      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1063,7 +1063,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
+      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1189,7 +1189,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+      "message": "A desktop-cli subject needs `subject.product.name`: the CLI the participant is asked to use."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

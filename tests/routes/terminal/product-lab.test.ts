@@ -245,7 +245,9 @@ describe("terminal-product parse matrix", () => {
     const parsed = parseLabConfig(raw);
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
-    expect(parsed.error.message).toContain("subject.appUrl` does not apply to terminal-product");
+    expect(parsed.error.message).toContain(
+      "subject.appUrl` does not apply to a terminal-product subject",
+    );
   });
 
   it("validates publicSurfaces are http(s) URLs and product.name is a public-safe token", () => {
