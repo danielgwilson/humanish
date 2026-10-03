@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `humanish doctor --json` and `humanish study check --json` name their checks for the study:
+  check `lab` is `study`, `lab route` is `study route`, and `lab manifest` is `study file`. A
+  script that matches a check by name needs the new value. Messages, run events and Observer text
+  that said "lab" for a study file say "study", and a run is "a computer-use run" where it was "a
+  computer-use lab run". Run bundles written earlier keep their text.
+
 ### Fixes
 
 - The Observer's cost line left out the analysis after a run, which bills the OpenAI key

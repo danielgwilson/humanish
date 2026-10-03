@@ -108,7 +108,7 @@
         {
           "at": "[ts]",
           "event": "scripted-lab.run.created",
-          "message": "Created scripted-browser lab run with 1 surface (actor scripted-browser)."
+          "message": "Created a scripted-browser run with 1 surface (actor scripted-browser)."
         }
       ],
       "knownGaps": []
@@ -198,10 +198,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "Scripted lab failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
+    "summary": "The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
     "gaps": []
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- summary: Scripted lab failed before a terminal session verdict: session exploded with [REDACTED_SECRET]\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- summary: The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -247,7 +247,7 @@
       {
         "at": "[ts]",
         "event": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run with 1 surface (actor scripted-browser)."
+        "message": "Created a scripted-browser run with 1 surface (actor scripted-browser)."
       }
     ],
     "simulations": [
@@ -261,7 +261,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "session exploded with [REDACTED_SECRET]",
-        "summary": "Scripted lab failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
+        "summary": "The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
         "streamIds": [
           "scripted-desktop-stream"
         ],
@@ -318,7 +318,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
+        "message": "Created a scripted-browser run for scripted-routing-proof (actor scripted-browser, 1 surface)."
       },
       {
         "id": "event-001-subject",
@@ -356,7 +356,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "Scripted lab failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
+      "summary": "The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
       "gaps": []
     },
     "feedbackCandidates": [],

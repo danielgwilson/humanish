@@ -387,7 +387,7 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
 /** The notice, shown once, before anything is sent. */
 export const TELEMETRY_NOTICE = [
   "humanish collects anonymous usage data (which command ran, whether it worked, how long it took).",
-  "It never sends your labs, subjects, personas, paths, or evidence. Opt out any time:",
+  "It never sends your studies, subjects, personas, paths, or evidence. Opt out any time:",
   "  humanish telemetry disable        (or set DO_NOT_TRACK=1)",
   "  humanish telemetry status         shows exactly what is collected",
 ].join("\n");

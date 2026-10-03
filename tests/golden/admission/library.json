@@ -2,7 +2,7 @@
   "smtp on shared world": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "SMTP capture is not yet wired for shared-world labs. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world labs."
+      "message": "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies."
     },
     "runLab": {
       "runs": true,
@@ -190,7 +190,7 @@
   "real receiving on scripted": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "Real email receiving requires a hosted computer-use browser lab with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported."
+      "message": "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported."
     },
     "runLab": {
       "runs": false,
@@ -215,7 +215,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
+          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
         }
       }
     },
@@ -269,7 +269,7 @@
   "recipient names unknown lane": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "comms.email.recipients name participant(s) that do not exist: \"nobody\". This lab's participant ids are: lane-01. A recipient's `lane` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant."
+      "message": "comms.email.recipients name participant(s) that do not exist: \"nobody\". This study's participant ids are: lane-01. A recipient's `lane` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant."
     },
     "runLab": {
       "runs": true,
@@ -319,7 +319,7 @@
   "this-repo with target": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally."
+      "message": "`execution.target` applies only to clone/app-url/local-app subjects; this-repo studies run locally."
     },
     "runLab": {
       "runs": true,
@@ -335,7 +335,7 @@
   "this-repo live": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "this-repo labs are dry-run only; use a clone or app-url subject for a live run."
+      "message": "this-repo studies are dry-run only; use a clone or app-url subject for a live run."
     },
     "runLab": {
       "runs": false,
@@ -355,7 +355,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-          "message": "this-repo labs are dry-run only; use a clone or app-url subject for a live run."
+          "message": "this-repo studies are dry-run only; use a clone or app-url subject for a live run."
         }
       }
     },
@@ -783,7 +783,7 @@
   "cu app-url unknown actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
+      "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
     },
     "runLab": {
       "runs": false,
@@ -825,7 +825,7 @@
   "cu app-url codex-app-server": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
+      "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
     },
     "runLab": {
       "runs": false,
@@ -1018,7 +1018,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
-          "message": "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config."
+          "message": "clone scripted-browser studies require one subject repo plus subject.serve; parseStudy should have rejected this config."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1035,7 +1035,7 @@
   "scripted clone two repos": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone scripted-browser labs require exactly one repo in subject.repos."
+      "message": "clone scripted-browser studies require exactly one repo in subject.repos."
     },
     "runLab": {
       "runs": true,
@@ -1247,7 +1247,7 @@
   "cu clone on local": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "runLab": {
       "runs": false,
@@ -1272,7 +1272,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+          "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1331,7 +1331,7 @@
   "cu clone two repos": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "computer-use clone labs serve one repo; declare exactly one repo in subject.repos."
+      "message": "computer-use clone studies serve one repo; declare exactly one repo in subject.repos."
     },
     "runLab": {
       "runs": true,
@@ -1482,7 +1482,7 @@
   "codex-app-server on clone": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); the lab clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+      "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
     },
     "runLab": {
       "runs": false,
@@ -1944,7 +1944,7 @@
   "shared world on local": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "runLab": {
       "runs": false,
@@ -1969,7 +1969,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+          "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2166,7 +2166,7 @@
   "shared world concurrency 1": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+      "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
     "runLab": {
       "runs": false,
@@ -2194,7 +2194,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+          "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2941,7 +2941,7 @@
   "analysis on preview": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording."
+      "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this study's route does not produce an eligible live recording."
     },
     "runLab": {
       "runs": false,
@@ -2961,7 +2961,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_STUDY_ANALYSIS_UNSUPPORTED",
-          "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording."
+          "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this study's route does not produce an eligible live recording."
         }
       }
     },
@@ -3494,7 +3494,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-          "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+          "message": "Live computer-use studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3576,7 +3576,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-          "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+          "message": "Live computer-use studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3740,7 +3740,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_KEYS_MISSING",
-          "message": "Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+          "message": "Live clone scripted-browser studies require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3781,7 +3781,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
-          "message": "Subject env values missing for live clone scripted-browser lab: GITHUB_TOKEN."
+          "message": "Subject env values missing for a live clone scripted-browser study: GITHUB_TOKEN."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3821,7 +3821,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
-          "message": "Live terminal-product labs declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
+          "message": "Live terminal-product studies declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3861,7 +3861,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_KEYS_MISSING",
-          "message": "Live terminal-product labs need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+          "message": "Live terminal-product studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3945,7 +3945,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-          "message": "Live concurrent shared-world labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+          "message": "Live concurrent shared-world studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3987,7 +3987,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
+          "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -4235,7 +4235,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
+          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
         }
       }
     },
@@ -4271,7 +4271,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
-          "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab."
+          "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser study."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

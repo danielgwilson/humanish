@@ -488,7 +488,7 @@ describe("selected lab setup without paid dispatch", () => {
   });
 
   it.each([
-    ["without a scorer", "", "present (process env), not used by this lab"],
+    ["without a scorer", "", "present (process env), not used by this study"],
     [
       "with a declared scorer, whose code may read any key",
       "\nreview:\n  scorer:\n    ref: humanish/scorers/judge.mjs\n",

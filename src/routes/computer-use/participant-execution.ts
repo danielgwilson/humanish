@@ -368,7 +368,7 @@ export function toParticipantResult(
                     ? `Computer-use session ended with a harness error: ${session.reason}`
                     : session?.status !== "passed"
                       ? `Computer-use session ended with ${session?.status ?? "unknown"}: ${session?.reason ?? "no terminal reason"}`
-                      : "Computer-use lab did not produce a terminal session."),
+                      : "The computer-use run did not produce a terminal session."),
           },
         }),
   };

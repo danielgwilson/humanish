@@ -55,7 +55,7 @@ export async function liveCuaRejection(args: {
       : "";
     return {
       code: "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-      message: `Live computer-use labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}${suggestion}`,
+      message: `Live computer-use studies need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}${suggestion}`,
     };
   }
   // A caller's createProvider makes the brain `caller`, so only the lab's own local agent is checked.

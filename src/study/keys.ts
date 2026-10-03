@@ -267,7 +267,7 @@ const STUDY_KEYS: KeyShape = {
 
 /** The first key in `raw` that V2_KEYS does not list, as an error message; undefined if none. */
 export function findUnknownV2Key(raw: unknown): string | undefined {
-  return walk(raw, V2_KEYS, "", "lab");
+  return walk(raw, V2_KEYS, "", "study");
 }
 
 /** The first key in a humanish.study.v3 document that the format does not have; undefined if none. */

@@ -31,7 +31,7 @@ describe("doctor without --lab", () => {
     expect(row(result, "key E2B_API_KEY")).toMatchObject({ ok: true, status: "note" });
     expect(row(result, "key E2B_API_KEY")?.message).toMatch(/^missing; used by try-live; /);
     expect(row(result, "key GH_TOKEN")).toMatchObject({ ok: true, status: "ok" });
-    expect(row(result, "key GH_TOKEN")?.message).toContain("not used by any lab in this project");
+    expect(row(result, "key GH_TOKEN")?.message).toContain("not used by any study in this project");
   });
 
   it("names the labs on a present key's row too", async () => {

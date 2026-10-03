@@ -142,7 +142,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -168,7 +168,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+      "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -350,7 +350,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      "message": "Live concurrent shared-world labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -522,7 +522,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -548,7 +548,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+      "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

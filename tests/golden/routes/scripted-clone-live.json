@@ -181,7 +181,7 @@
         {
           "at": "[ts]",
           "event": "scripted-lab.run.created",
-          "message": "Created scripted-browser lab run with 1 surface (actor scripted-browser)."
+          "message": "Created a scripted-browser run with 1 surface (actor scripted-browser)."
         }
       ],
       "knownGaps": []
@@ -316,7 +316,7 @@
       {
         "at": "[ts]",
         "event": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run with 1 surface (actor scripted-browser)."
+        "message": "Created a scripted-browser run with 1 surface (actor scripted-browser)."
       }
     ],
     "simulations": [
@@ -466,7 +466,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
+        "message": "Created a scripted-browser run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
       },
       {
         "id": "event-001-subject",

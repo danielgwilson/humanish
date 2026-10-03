@@ -193,7 +193,7 @@ export async function admitCuaRun(
   )
     return refuse(
       "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING",
-      "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not.",
+      "An app-url study with execution.target: local needs a local desktop. runStudy starts one; a direct route call or an in-process executor does not.",
     );
 
   const descriptor = cuaDescriptorOf(plan.actor);

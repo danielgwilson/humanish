@@ -96,7 +96,7 @@ export async function runDryTerminalStudy(args: {
       : [
           {
             kind: "evidence",
-            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
+            message: observer.error?.message ?? "Observer failed for the terminal-product run.",
           },
         ],
     policy,
@@ -119,7 +119,7 @@ export async function runDryTerminalStudy(args: {
       : {
           error: {
             code: "HUMANISH_TERMINAL_FAILED" as const,
-            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
+            message: observer.error?.message ?? "Observer failed for the terminal-product run.",
           },
         }),
   };

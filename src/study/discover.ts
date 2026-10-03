@@ -201,7 +201,7 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
       names = await readdir(directory.binding.physicalPath);
       await assertManagedDirectoryBinding(projectRoot, entry.relativeDir, directory.binding);
     } catch {
-      warnings.push(`${entry.relativeDir}: unsafe managed lab directory; skipped.`);
+      warnings.push(`${entry.relativeDir}: unsafe managed study directory; skipped.`);
       continue;
     }
 
@@ -354,9 +354,7 @@ function parseResolvedStudy(args: {
   const legacy = legacyStudyWarning(relativeToCwd(args.cwd, args.path), parsed.config.schema);
   if (legacy !== undefined) warnings.push(legacy);
   if (args.path.endsWith(".yml")) {
-    warnings.push(
-      "Prefer .yaml for humanish-authored lab source; .yml is accepted for compatibility only.",
-    );
+    warnings.push("Prefer .yaml for study files; .yml is accepted for compatibility only.");
   }
 
   return {
@@ -580,7 +578,7 @@ async function assertManagedDirectoryBinding(
     current.dev !== binding.dev ||
     current.ino !== binding.ino
   ) {
-    throw new Error("Managed lab directory identity changed after it was bound.");
+    throw new Error("Managed study directory identity changed after it was bound.");
   }
 }
 

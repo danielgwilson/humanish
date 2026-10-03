@@ -67,7 +67,7 @@ export function terminalExecutionFailures(args: {
       : [
           {
             kind: "evidence" as const,
-            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
+            message: observer.error?.message ?? "Observer failed for the terminal-product run.",
           },
         ]),
   ];

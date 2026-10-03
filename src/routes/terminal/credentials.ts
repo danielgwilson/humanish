@@ -60,7 +60,7 @@ export function buildRuntimeAuth(args: {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
-      message: `Live terminal-product labs declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted).`,
+      message: `Live terminal-product studies declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted).`,
     };
   }
   const keyValue = args.env[keyName] as string;

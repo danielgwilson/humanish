@@ -233,12 +233,12 @@ function subjectStructureReason(
   if (localTreeRoute && (!serve || config.execution?.target !== "e2b-desktop"))
     return invalid(
       !serve
-        ? "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
+        ? "local-tree subjects on the computer-use route require `subject.serve` (start + url): humanish packs and serves the working tree in the sandbox."
         : "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox.",
     );
   if (config.subject.state) {
     const stateReason = !provisionedRoute
-      ? "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
+      ? "`subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves)."
       : subjectStateInvalidReason(config.subject.state, config.subject.env);
     if (stateReason) return invalid(stateReason);
   }
@@ -390,7 +390,7 @@ export function planComputerUseStudy(
     return refuse(
       "in-scope",
       "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld.",
+      "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld.",
       actor,
     );
   // The in-process route drives subject.appUrl on this machine and creates no desktop, so it would

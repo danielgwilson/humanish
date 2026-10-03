@@ -243,7 +243,7 @@
         {
           "at": "[ts]",
           "event": "cua-lab.run.created",
-          "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
+          "message": "Created a computer-use run with one participant in a desktop browser (actor openai-computer-use)."
         }
       ],
       "knownGaps": [
@@ -399,7 +399,7 @@
       {
         "at": "[ts]",
         "event": "cua-lab.run.created",
-        "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
+        "message": "Created a computer-use run with one participant in a desktop browser (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -561,7 +561,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.run.created",
-        "message": "Created computer-use lab run for downstream-local-app-state (actor openai-computer-use)."
+        "message": "Created a computer-use run for downstream-local-app-state (actor openai-computer-use)."
       },
       {
         "id": "event-001-subject",

@@ -171,7 +171,7 @@
         {
           "at": "[ts]",
           "event": "cua-lab.run.created",
-          "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
+          "message": "Created a computer-use run with one participant in a desktop browser (actor openai-computer-use)."
         }
       ],
       "knownGaps": []
@@ -309,7 +309,7 @@
       {
         "at": "[ts]",
         "event": "cua-lab.run.created",
-        "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
+        "message": "Created a computer-use run with one participant in a desktop browser (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -323,7 +323,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
-        "summary": "Computer-use lab failed before a terminal session verdict: Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
+        "summary": "The computer-use run failed before a terminal session verdict: Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
         "streamIds": [
           "stream-001"
         ],
@@ -387,7 +387,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.run.created",
-        "message": "Created computer-use lab run for cua-routing-proof (actor openai-computer-use)."
+        "message": "Created a computer-use run for cua-routing-proof (actor openai-computer-use)."
       },
       {
         "id": "event-001-subject",

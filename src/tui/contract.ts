@@ -171,6 +171,6 @@ export function terminalSurfaceMessage(state: {
     return "`humanish tui` is not built in this checkout; run `pnpm build` (installed packages ship it prebuilt)";
   }
   return state.interactive
-    ? "`humanish tui` opens the interactive surface for browsing labs and runs"
+    ? "`humanish tui` opens the interactive surface for browsing studies and runs"
     : "`humanish tui` is the interactive screen a person uses to watch and start runs here. This shell is not a terminal, so pass it on to a person at one";
 }

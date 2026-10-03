@@ -182,7 +182,7 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
       level: "info",
       type: "concurrent-shared-world.plane.provenance",
       message: external
-        ? `Shared app: a public deployment the operator declares they own (${externalPlaneOwner}, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the lab's declaration, and the data is not claimed to be synthetic.`
+        ? `Shared app: a public deployment the operator declares they own (${externalPlaneOwner}, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the study's declaration, and the data is not claimed to be synthetic.`
         : dryRun
           ? `Shared app declared: ${dryRunPlaneLabel}, to be served in the sandbox at a public sandbox URL (dry run: nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; synthetic subject, as the study declares; env names: ${args.subject.envNames?.join(", ") || "none"} (values never stored).`
           : `Shared app: ${livePlaneLabel}, served at a public sandbox URL humanish created; seed recipe ${args.seedDigest}; synthetic subject, as the study declares; env names: ${args.subject.envNames?.join(", ") || "none"} (values never stored).`,

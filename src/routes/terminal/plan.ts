@@ -57,7 +57,7 @@ export function planTerminalStudy(
   if (String(config.comms?.email?.kind) === "real")
     return refuse(
       "HUMANISH_TERMINAL_SUBJECT_INVALID",
-      "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab.",
+      "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser study.",
     );
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return refuse("HUMANISH_TERMINAL_SUBJECT_INVALID", mediaReason);

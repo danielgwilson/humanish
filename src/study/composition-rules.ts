@@ -51,14 +51,14 @@ export function compositionReason(config: StudyConfig): string | null {
 
 /** Why a this-repo lab cannot run live. The parser and the preview planner both refuse with it. */
 export const THIS_REPO_DRY_RUN_ONLY =
-  "this-repo labs are dry-run only; use a clone or app-url subject for a live run.";
+  "this-repo studies are dry-run only; use a clone or app-url subject for a live run.";
 
 // this-repo subjects run locally and dry-run only: there is no live execution target for the
 // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
 function thisRepoValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "this-repo") {
     if (config.execution?.target) {
-      return "`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally.";
+      return "`execution.target` applies only to clone/app-url/local-app subjects; this-repo studies run locally.";
     }
     if (config.scenario?.mode === "live") {
       return THIS_REPO_DRY_RUN_ONLY;
@@ -128,7 +128,7 @@ function appUrlValidationReason(config: StudyConfig): string | null {
         return "app-url computer-use subjects require `execution.target: local` or `e2b-desktop`.";
       }
       if (!actorResolvesToComputerUse(type)) {
-        return `actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
+        return `actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
       }
       // Multi-participant fan-out is consumed on this route (`per-lane-worlds`; the shared cua
       // cross-validation below enforces `lanes`/`count` XOR rules, the 16 cap, and the
@@ -163,7 +163,7 @@ function scriptedBrowserValidationReason(config: StudyConfig): string | null {
       return "A clone subject with a scripted-browser actor needs `subject.serve` (start and url): humanish starts the app in the sandbox before the browser steps run.";
     }
     if ((config.subject.repos?.length ?? 0) !== 1) {
-      return "clone scripted-browser labs require exactly one repo in subject.repos.";
+      return "clone scripted-browser studies require exactly one repo in subject.repos.";
     }
     const repo = config.subject.repos?.[0] ?? "";
     if (!REPO_SLUG_PATTERN.test(repo)) {
@@ -220,7 +220,7 @@ function cloneComputerUseValidationReason(config: StudyConfig): string | null {
       return "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it.";
     }
     if ((config.subject.repos?.length ?? 0) !== 1) {
-      return "computer-use clone labs serve one repo; declare exactly one repo in subject.repos.";
+      return "computer-use clone studies serve one repo; declare exactly one repo in subject.repos.";
     }
     const repo = config.subject.repos?.[0] ?? "";
     if (!REPO_SLUG_PATTERN.test(repo)) {
@@ -319,7 +319,7 @@ function cloneActorValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "clone") {
     const type = config.actors[0]?.type ?? "";
     if (!actorResolvesToComputerUse(type) && !actorResolvesToScriptedBrowser(type)) {
-      return `clone subjects need a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) or scripted-browser actor (one of: ${registeredScriptedBrowserActors().join(", ")}); the lab clones and serves the app for that participant to drive. Got "${type}".`;
+      return `clone subjects need a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) or scripted-browser actor (one of: ${registeredScriptedBrowserActors().join(", ")}); humanish clones and serves the app for that participant to drive. Got "${type}".`;
     }
   }
   return null;

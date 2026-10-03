@@ -199,7 +199,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
       error: {
         code: "HUMANISH_TUI_REQUIRES_TTY",
         message:
-          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish run <lab> --json` starts one.",
+          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish run <study> --json` starts one.",
       },
     };
   }

@@ -87,7 +87,7 @@ export function scriptedExecutionFailures(args: {
       ? [
           {
             kind: "harness" as const,
-            message: "Scripted lab did not produce terminal sessions for every surface.",
+            message: "The scripted run did not produce terminal sessions for every surface.",
           },
         ]
       : []),
@@ -99,7 +99,7 @@ export function scriptedExecutionFailures(args: {
       : [
           {
             kind: "evidence" as const,
-            message: observer.error?.message ?? "Observer failed for the scripted lab run.",
+            message: observer.error?.message ?? "Observer failed for the scripted run.",
           },
         ]),
   ];
@@ -243,8 +243,8 @@ export async function finishScriptedRun(
               (observer.ok
                 ? harnessErrorSession
                   ? `Scripted session ended with a harness error: ${harnessErrorSession.reason}`
-                  : "Scripted lab did not produce terminal sessions for every surface."
-                : (observer.error?.message ?? "Observer failed for the scripted lab run.")),
+                  : "The scripted run did not produce terminal sessions for every surface."
+                : (observer.error?.message ?? "Observer failed for the scripted run.")),
           },
         }),
   };

@@ -62,7 +62,7 @@ export function scriptedSurfaceRecords(
     summary: result
       ? `Scripted-browser actor (${context.actorId}) replayed ${context.journey.scenarioId} on the ${surface.id} surface; ${result.completionReason}.`
       : context.sessionError !== undefined
-        ? `Scripted lab failed before a terminal session verdict: ${context.sessionError}`
+        ? `The scripted run failed before a terminal session verdict: ${context.sessionError}`
         : `Scripted-browser actor (${context.actorId}) against ${context.appUrl}; no session ran.`,
     startedAt: context.createdAt,
     updatedAt: result?.capture.capturedAt ?? context.createdAt,

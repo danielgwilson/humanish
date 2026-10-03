@@ -935,7 +935,7 @@
       "refusal": {
         "route": "preview",
         "code": "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-        "message": "this-repo labs are dry-run only; use a clone or app-url subject for a live run."
+        "message": "this-repo studies are dry-run only; use a clone or app-url subject for a live run."
       }
     }
   },

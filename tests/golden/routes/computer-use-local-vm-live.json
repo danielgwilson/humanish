@@ -252,7 +252,7 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
-      "title": "Computer-use lab: local-vm-golden - Computer-use operator (cua-operator)",
+      "title": "Computer-use run: local-vm-golden - Computer-use operator (cua-operator)",
       "createdAt": "[ts]",
       "simCount": 1,
       "persona": {
@@ -263,7 +263,7 @@
       },
       "scenario": {
         "id": "cua-local-vm-golden",
-        "title": "Computer-use lab: local-vm-golden",
+        "title": "Computer-use run: local-vm-golden",
         "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:local-vm-golden",
         "sourceDigest": "9cd5cf5309bc5e74"
@@ -277,7 +277,7 @@
         {
           "at": "[ts]",
           "event": "cua-lab.run.created",
-          "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
+          "message": "Created a computer-use run with one participant in a desktop browser (actor openai-computer-use)."
         }
       ],
       "knownGaps": [
@@ -389,7 +389,7 @@
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# Computer-use lab: local-vm-golden\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# Computer-use run: local-vm-golden\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -426,7 +426,7 @@
     },
     "scenario": {
       "id": "cua-local-vm-golden",
-      "title": "Computer-use lab: local-vm-golden",
+      "title": "Computer-use run: local-vm-golden",
       "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:local-vm-golden",
       "sourceDigest": "9cd5cf5309bc5e74"
@@ -435,7 +435,7 @@
       {
         "at": "[ts]",
         "event": "cua-lab.run.created",
-        "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
+        "message": "Created a computer-use run with one participant in a desktop browser (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -651,7 +651,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.run.created",
-        "message": "Created computer-use lab run for local-vm-golden (actor openai-computer-use)."
+        "message": "Created a computer-use run for local-vm-golden (actor openai-computer-use)."
       },
       {
         "id": "event-001-subject",

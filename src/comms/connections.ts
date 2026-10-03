@@ -132,7 +132,7 @@ export async function saveCommsConnection(
       return {
         ok: true,
         message:
-          "Connection saved for this project. Select it in a supported lab to use fresh real inboxes.",
+          "Connection saved for this project. Select it in a supported study to use fresh real inboxes.",
       };
     } finally {
       await lock.close();

@@ -133,7 +133,7 @@ describe("formatOrientationHuman", () => {
       latestRunId: "cua-123",
       nextCommands: [{ command: "humanish watch only-lab", why: "run it" }],
     });
-    expect(text).toContain("1 lab and 1 run");
+    expect(text).toContain("1 study and 1 run");
     expect(text).toContain("cua-123");
   });
 });

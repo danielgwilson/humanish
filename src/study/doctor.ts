@@ -237,14 +237,14 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
     return {
       desktop: false,
       keys: [],
-      checks: [{ name: "lab", ok: false, message: resolved.error.message }],
+      checks: [{ name: "study", ok: false, message: resolved.error.message }],
     };
   const config = resolved.config,
     route = routeOf(config);
   const dryRun = resolveDryRun(config, undefined, true) === true;
   const checks: Check[] = [
     {
-      name: "lab route",
+      name: "study route",
       ok: true,
       message: `${config.id}: ${config.actors[0]?.type ?? "synthetic"} / ${route} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
     },
@@ -523,6 +523,6 @@ function unsupportedCliRoute(config: StudyConfig, route: StudyRoute): string | u
   if (config.subject.source === "local-app")
     return "local-app needs a caller-supplied executor and provider through the library API; the plain CLI cannot run it.";
   if (route === "preview")
-    return "This route only creates synthetic evidence. Use first-run in dry-run mode or a supported live lab.";
+    return "This route only creates synthetic evidence. Use first-run in dry-run mode or a supported live study.";
   return undefined;
 }

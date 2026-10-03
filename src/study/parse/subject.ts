@@ -13,7 +13,7 @@ import { isRecord } from "../../run/type-guards.js";
 
 export function parseSubject(raw: unknown): { ok: true; value: StudySubject } | StudyParseFailure {
   if (!isRecord(raw)) {
-    return invalid("Lab `subject` is required and must be an object.");
+    return invalid("`subject` is required and must be an object.");
   }
   const source = str(raw.source);
   if (
@@ -99,7 +99,7 @@ function misplacedFieldFailure(
   // env-name + seed/external/checkpoint shapes.
   if (source !== "clone" && source !== "local-tree" && raw.serve !== undefined) {
     return invalid(
-      "`subject.serve` applies only to clone subjects or local-tree subjects (the lab serves the cloned/packed app in-sandbox).",
+      "`subject.serve` applies only to clone subjects or local-tree subjects (humanish serves the cloned or packed app in the sandbox).",
     );
   }
   if (source !== "clone" && source !== "local-tree" && raw.env !== undefined) {
@@ -109,7 +109,7 @@ function misplacedFieldFailure(
   }
   if (source !== "clone" && source !== "local-tree" && raw.state !== undefined) {
     return invalid(
-      "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves).",
+      "`subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves).",
     );
   }
   // repos/clone are clone-only (a fresh-clone subject's git inputs). local-tree packs the
@@ -117,7 +117,7 @@ function misplacedFieldFailure(
   // rather than falling through to the generic clone-only message below.
   if (source === "local-tree" && raw.repos !== undefined) {
     return invalid(
-      "`subject.repos` does not apply to local-tree subjects. The local-tree route packs the lab resolution cwd itself; there is no owner/repo slug to clone.",
+      "`subject.repos` does not apply to local-tree subjects. The local-tree route packs the study's working directory itself; there is no owner/repo slug to clone.",
     );
   }
   if (source === "local-tree" && raw.clone !== undefined) {

@@ -196,25 +196,25 @@ export async function configureCommsStudy(args: {
     const connection = (await readCommsConnections(args.cwd)).connections[args.connection];
     if (!connection) return { ...base, message: "Save the selected connection first." };
     const source = await resolveStudyManifest(args.cwd, args.lab);
-    if (!source.ok) return { ...base, message: "The selected lab could not be read safely." };
+    if (!source.ok) return { ...base, message: "The selected study could not be read safely." };
     const root = await prepareSelectedOutputDirectory(args.cwd, args.cwd);
     const rel = path
       .relative(root.requestedPath, path.resolve(args.cwd, source.path))
       .replace(/\\/g, "/");
     const bytes = await readContainedRegularFile(root, rel);
     if (!bytes || bytes.length > 1024 * 1024)
-      return { ...base, message: "The lab is missing or too large." };
+      return { ...base, message: "The study file is missing or too large." };
     const text = bytes.toString("utf8");
     const raw: unknown = parse(text);
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
-      return { ...base, message: "The lab must be a mapping." };
+      return { ...base, message: "The study file must be a mapping." };
     const lab = raw as Record<string, unknown>;
     const existing = lab.comms as { email?: { connection?: string } } | undefined;
     if (existing?.email && existing.email.connection === undefined)
       return {
         ...base,
         message:
-          "This lab uses local capture. Preserve it or make a separate lab before selecting real email.",
+          "This study uses local capture. Preserve it or make a separate study before selecting real email.",
       };
     // The copy is a v3 study. A v2 source is converted first, so the copy keeps its comments.
     let studyText = text;
@@ -223,7 +223,7 @@ export async function configureCommsStudy(args: {
       if (!converted.ok)
         return {
           ...base,
-          message: `This lab could not be converted to a v3 study: ${converted.reason}`,
+          message: `This study file could not be converted to v3: ${converted.reason}`,
         };
       studyText = converted.conversion.text;
     }
@@ -234,7 +234,7 @@ export async function configureCommsStudy(args: {
       return {
         ...base,
         message:
-          "This lab does not support real email receiving. Use a hosted computer-use app-url, clone or local-tree route; shared-world must be concurrent.",
+          "This study does not support real email receiving. Use a hosted computer-use app-url, clone or local-tree route; shared-world must be concurrent.",
       };
     const filename =
       path
@@ -242,13 +242,13 @@ export async function configureCommsStudy(args: {
         .replace(/\.ya?ml$/, "")
         .replace(/-receiving$/, "") + "-receiving.yaml";
     if (!/^[A-Za-z0-9_][A-Za-z0-9._-]{0,110}\.yaml$/.test(filename))
-      return { ...base, message: "Use a simple lab filename before configuring email." };
+      return { ...base, message: "Use a simple study filename before configuring email." };
     const destination = `.humanish/local/studies/${filename}`;
     if (path.basename(rel) === filename)
       return {
         ...base,
         message:
-          "This is already the local receiving copy. Select its original lab to configure a separate copy, or edit this manifest directly.",
+          "This is already the local receiving copy. Select its original study to configure a separate copy, or edit this manifest directly.",
       };
     // A second file with this name in another study directory would make discovery refuse both.
     const stem = filename.replace(/\.yaml$/, "");
@@ -298,7 +298,7 @@ export async function configureCommsStudy(args: {
     if (args.planToken !== undefined && args.planToken !== token)
       return {
         ...base,
-        message: "The lab or destination changed since preview. Preview again before saving.",
+        message: "The study or destination changed since preview. Preview again before saving.",
       };
     const directory = await prepareManagedHumanishOutputDirectory(args.cwd, "local", "studies");
     const lockPath = path.join(directory.physicalPath, ".comms-configure.lock");
@@ -326,13 +326,13 @@ export async function configureCommsStudy(args: {
     return {
       ...plan,
       applied: true,
-      message: `Saved ${destination}. Start that exact lab path; the original manifest was preserved.`,
+      message: `Saved ${destination}. Start that exact study path; the original file was preserved.`,
     };
   } catch {
     return {
       ...base,
       message:
-        "Could not configure this lab safely. Check configuration, paths and permissions; no provider resources were created.",
+        "Could not configure this study safely. Check configuration, paths and permissions; no provider resources were created.",
     };
   }
 }

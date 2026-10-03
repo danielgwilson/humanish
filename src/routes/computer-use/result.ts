@@ -186,8 +186,8 @@ function cuaStudyResult(args: {
                   ? `Computer-use session ended with a harness error: ${outcome.session.reason}`
                   : outcome?.session?.status !== "passed"
                     ? `Computer-use session ended with ${outcome?.session?.status ?? "unknown"}: ${outcome?.session?.reason ?? "no terminal reason"}`
-                    : "Computer-use lab did not produce a terminal session."
-                : (observer.error?.message ?? "Observer failed for the computer-use lab run.")),
+                    : "The computer-use run did not produce a terminal session."
+                : (observer.error?.message ?? "Observer failed for the computer-use run.")),
       };
     }
     const failing = (outcomes ?? []).find((outcome) => !participantOk(outcome));
@@ -293,7 +293,7 @@ function computerUseExecutionFailures(
       : [
           {
             kind: "evidence" as const,
-            message: observer.error?.message ?? "Observer failed for the computer-use lab run.",
+            message: observer.error?.message ?? "Observer failed for the computer-use run.",
           },
         ]),
   ];

@@ -142,7 +142,7 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
       : args.inProgress === true
         ? `Computer-use actor (${args.actorId}) is driving the subject app ${browserPlace(args)}.`
         : args.sessionError !== undefined
-          ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
+          ? `The computer-use run failed before a terminal session verdict: ${args.sessionError}`
           : `Computer-use actor (${args.actorId}) against ${publicAppUrl}; no session ran.`,
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
@@ -221,7 +221,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
       at: args.run.createdAt,
       level: "info",
       type: "cua-lab.run.created",
-      message: `Created computer-use lab run for ${args.labId} (actor ${args.actorId}).`,
+      message: `Created a computer-use run for ${args.labId} (actor ${args.actorId}).`,
     },
     args.subjectProvenance
       ? participantEvent(SINGLE, {
@@ -472,7 +472,7 @@ export function buildSingleParticipantBundle(args: {
     },
     scenario: {
       id: `cua-${args.labId}`,
-      title: args.labTitle ?? `Computer-use lab: ${args.labId}`,
+      title: args.labTitle ?? `Computer-use run: ${args.labId}`,
       goal: redactText(args.mission),
       source: `study:${args.labId}`,
       sourceDigest: args.persona.promptDigest,
@@ -481,7 +481,7 @@ export function buildSingleParticipantBundle(args: {
       {
         at: args.run.createdAt,
         event: "cua-lab.run.created",
-        message: `Created computer-use lab run with one participant in a desktop browser (actor ${args.actorId}).`,
+        message: `Created a computer-use run with one participant in a desktop browser (actor ${args.actorId}).`,
       },
     ],
     simulations: [simulation],

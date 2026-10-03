@@ -385,7 +385,7 @@ function publicPreviewRouteError(config: StudyConfig, route: StudyRoute): string
     config.subject.source !== "app-url" ||
     config.execution?.target !== "e2b-desktop"
   ) {
-    return "public-preview preflight supports app-url × e2b-desktop computer-use labs.";
+    return "public-preview preflight supports app-url × e2b-desktop computer-use studies.";
   }
   if (config.policies?.allowPublicTargets !== true) {
     return "public-preview preflight requires policies.allowPublicTargets: true so the owner explicitly declares the public/preview target.";
@@ -399,7 +399,7 @@ function sandboxLoopbackRouteError(config: StudyConfig, route: StudyRoute): stri
     config.subject.source !== "clone" ||
     config.execution?.target !== "e2b-desktop"
   ) {
-    return "sandbox-loopback preflight supports clone × e2b-desktop computer-use labs. (local-tree labs are not preflightable yet: see the local-tree goal doc's out-of-scope list; a dry run of the lab is the current no-spend check.)";
+    return "sandbox-loopback preflight supports clone × e2b-desktop computer-use studies. Local-tree studies cannot be preflighted yet; a dry run of the study is the current no-spend check.";
   }
   if (!config.subject.serve) {
     return "sandbox-loopback preflight requires subject.serve.";

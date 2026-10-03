@@ -103,7 +103,7 @@ export function buildScriptedStudyBundle(args: ScriptedBundleArgs): RunBundle {
       {
         at: args.run.createdAt,
         event: "scripted-lab.run.created",
-        message: `Created scripted-browser lab run with ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
+        message: `Created a scripted-browser run with ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
       },
     ],
     simulations: records.map((record) => record.simulation),
@@ -132,7 +132,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.run.created",
-      message: `Created scripted-browser lab run for ${args.labId} (actor ${args.actorId}, ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"}).`,
+      message: `Created a scripted-browser run for ${args.labId} (actor ${args.actorId}, ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"}).`,
     },
     {
       id: "event-001-subject",
@@ -225,7 +225,7 @@ function buildScriptedReview(args: {
     return {
       schema: REVIEW_SCHEMA,
       verdict: args.verdict,
-      summary: `Scripted lab failed before a terminal session verdict: ${args.sessionError}`,
+      summary: `The scripted run failed before a terminal session verdict: ${args.sessionError}`,
       gaps: [],
     };
   }

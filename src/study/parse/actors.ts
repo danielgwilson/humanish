@@ -62,7 +62,7 @@ function routableActorTypes(): string[] {
 
 export function parseActors(raw: unknown): { ok: true; value: StudyActor[] } | StudyParseFailure {
   if (!Array.isArray(raw) || raw.length === 0) {
-    return invalid("Lab `actors` must be a non-empty array.");
+    return invalid("`actors` must be a non-empty array.");
   }
   // Multi-actor fan-out is not wired yet (only actors[0] is consumed). Fail closed rather than
   // silently ignore actors[1..]; multi-actor support lands in a later slice.
@@ -82,7 +82,7 @@ export function parseActors(raw: unknown): { ok: true; value: StudyActor[] } | S
     }
     if (REMOVED_ACTOR_TYPES.has(type)) {
       return invalid(
-        `actors[${index}].type "${type}" is no longer a humanish actor. Use an actor a lab route runs (one of: ${routableActorTypes().join(", ")}). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude.`,
+        `actors[${index}].type "${type}" is no longer a humanish actor. Use an actor a study route runs (one of: ${routableActorTypes().join(", ")}). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude.`,
       );
     }
     const actor: StudyActor = { type };

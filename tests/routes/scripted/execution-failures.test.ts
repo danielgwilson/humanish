@@ -30,7 +30,7 @@ describe("scriptedExecutionFailures", () => {
     expect(scriptedExecutionFailures({ ...base, sessionResults: [passed] })).toEqual([
       {
         kind: "harness",
-        message: "Scripted lab did not produce terminal sessions for every surface.",
+        message: "The scripted run did not produce terminal sessions for every surface.",
       },
     ]);
     // A dry run returns no surfaces by design.
