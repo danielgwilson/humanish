@@ -128,7 +128,8 @@ function concurrentLabError(args: {
   participantResults: ConcurrentSharedWorldParticipantResult[];
   participantCount: number;
   shortfall: string | undefined;
-  /** The first execution failure, named when every seat passed and the world had no shortfall. */
+  /** The first execution failure, named when every participant passed and the world had no
+   *  shortfall. */
   executionFailure: string | undefined;
 }): ConcurrentSharedWorldLabResult["error"] | undefined {
   const { ok, handoffTimedOut, hostHandoffFailure, observer, runError, adapterFailure } = args;
@@ -223,10 +224,10 @@ export function concurrentLabFailure(envelope: {
 }
 
 /**
- * The run's execution failures: a run error (the handoff, the plane), each seat whose session
- * failed in the harness, each provider whose cleanup is unconfirmed or that reported a disallowed
- * item after its last request, each sandbox whose release is unconfirmed, and an Observer that
- * failed.
+ * The run's execution failures: a run error (the handoff, the plane), each participant whose
+ * session failed in the harness, each provider whose cleanup is unconfirmed or that reported a
+ * disallowed item after its last request, each sandbox whose release is unconfirmed, and an
+ * Observer that failed.
  */
 function sharedWorldExecutionFailures(args: {
   runId: string;
@@ -378,8 +379,8 @@ export async function finishConcurrentRun(
     attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, live.streamUrls);
   }
 
-  // Concurrent "ok": every actor must produce a terminal, engaged, passed session, and the seats
-  // must show the concurrency verify requires of a pass (judgeSharedWorld). This is a
+  // Concurrent "ok": every actor must produce a terminal, engaged, passed session, and the
+  // participants must show the concurrency verify requires of a pass (judgeSharedWorld). This is a
   // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
   // make the route green just because the harness got a terminal.
   const adapterFailure = adapterScoreFailureMessage(bundle);

@@ -27,13 +27,14 @@ import {
 } from "../../substrates/e2b/lifetime.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 
-// The default per-seat session budget is derived from the route. On a provisioned route the binding
-// constraint is the subject sandbox (it must outlive every seat: timeoutMs + provisioning +
-// seeding + teardown buffer, and E2B refuses a sandbox over one hour), so the derivation hands
-// each seat the most that cap allows, capped at 15 minutes, floored at the historical 300s so a
-// seed-heavy lab never gets less room than it always had. App-url seats have no subject sandbox
-// and default to 30 minutes (seat sandbox: 30m + 10m buffer stays well under the hour). An
-// explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
+// The default per-participant session budget is derived from the route. On a provisioned route the
+// binding constraint is the subject sandbox (it must outlive every participant: timeoutMs +
+// provisioning + seeding + teardown buffer, and E2B refuses a sandbox over one hour), so the
+// derivation hands each participant the most that cap allows, capped at 15 minutes, floored at the
+// historical 300s so a seed-heavy study never gets less room than it always had. App-url
+// participants have no subject sandbox and default to 30 minutes (participant sandbox: 30m + 10m
+// buffer stays well under the hour). An explicit execution.timeoutMs is never adjusted. The handoff
+// latch scales off this (40%).
 const MAX_DERIVED_SESSION_MS = 15 * 60_000;
 
 const MIN_DERIVED_SESSION_MS = 300_000;
@@ -54,8 +55,8 @@ export function defaultSessionTimeoutMs(plan: SharedWorldPlan): number {
 const DEFAULT_MISSION =
   "You are one of MANY users hitting a shared web application at the same time. The browser is already open at the app. Accomplish your role's task, then stop.";
 
-/** Resolve an actor's seat URL against the harness-minted getHost base (entry is a same-origin
- *  relative path, validated at parse against serve.url). */
+/** Resolve an actor's participant URL against the harness-minted getHost base (entry is a
+ *  same-origin relative path, validated at parse against serve.url). */
 export function resolveActorEntryUrl(baseUrl: string, entry: string | undefined): string {
   if (!entry) return baseUrl;
   try {
@@ -147,9 +148,10 @@ export type ParticipantRunDeps = Omit<
 >;
 
 /**
- * A live run publishes an in-progress bundle before its seats start, whether or not an Observer
- * is attached, and the seats' live traces rewrite it as they go, as on the computer-use route. A
- * run killed mid-way leaves that evidence on disk. The flush starts with the first snapshot.
+ * A live run publishes an in-progress bundle before its participants start, whether or not an
+ * Observer is attached, and the participants' live traces rewrite it as they go, as on the
+ * computer-use route. A run killed mid-way leaves that evidence on disk. The flush starts with the
+ * first snapshot.
  */
 export function startParticipantFlush(
   ctx: PlaneContext,
@@ -165,8 +167,8 @@ export function startParticipantFlush(
 }
 
 /**
- * The runtime stream URLs each seat reports to the live Observer. The Observer learns of a stream
- * before the caller's onStream runs.
+ * The runtime stream URLs each participant reports to the live Observer. The Observer learns of a
+ * stream before the caller's onStream runs.
  */
 function participantStreams(
   onStream: SharedWorldRunInput["onStream"],
@@ -218,21 +220,24 @@ export function participantRunDeps(
     redactScreenshots: ctx.redactScreenshots,
     scrubKnownValues,
     runSession: ctx.runSession,
-    // A local-agent brain runs each seat on the operator's signed-in agent, as on computer use.
+    // A local-agent brain runs each participant on the operator's signed-in agent, as on computer
+    // use.
     brain: ctx.plan.brain,
     ...(receiving ? { receiving } : {}),
     now: ctx.now,
-    // The seat's desktop seams, and the caller's prepareDesktop with the seat as its target.
+    // The participant's desktop seams, and the caller's prepareDesktop with the participant as its
+    // target.
     ...(ctx.deps.desktopModule === undefined ? {} : { desktopModule: ctx.deps.desktopModule }),
     ...(ctx.deps.detachedTimers === undefined ? {} : { detachedTimers: ctx.deps.detachedTimers }),
     ...(ctx.input.prepareDesktop === undefined ? {} : { prepareDesktop: ctx.input.prepareDesktop }),
     onStream: participantStreams(ctx.input.onStream, live),
-    // A seat visits the shared app and provisions no subject, so it reports no phase of its own.
+    // A participant visits the shared app and provisions no subject, so it reports no phase of its
+    // own.
     reportSubjectPhase: defaultSubjectPhaseSink,
     ...(runBudget === undefined ? {} : { runBudget }),
-    // Concurrent participants are independent evidence seats: a requested-vs-verified screen
+    // Concurrent participants are independent evidence: a requested-vs-verified screen
     // mismatch is recorded as separate facts + a warning instead of failing the participant's
-    // device claim closed, so one seat's window-manager drift cannot abort the whole
+    // device claim closed, so one participant's window-manager drift cannot abort the whole
     // live multi-actor world (the single-participant/fan-out routes keep fail-closed).
     screenMismatchPolicy: "record-evidence",
   };
@@ -248,8 +253,8 @@ export async function buildParticipantSpecs(
   cwd: string,
   scrubKnownValues: (text: string) => string,
 ): Promise<DesktopParticipantRun[]> {
-  // Only the personas the participants use: an actors[0].persona that every seat overrides is
-  // never applied, so it is not read.
+  // Only the personas the participants use: an actors[0].persona that every participant overrides
+  // is never applied, so it is not read.
   const personaResolution = await resolveCommittedPersonasForCwd(
     cwd,
     participants.map((participant) => participant.personaId),

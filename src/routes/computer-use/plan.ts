@@ -380,9 +380,9 @@ export function planComputerUseLab(
     declaredSubjectRoute(config, driving),
   );
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
-  // A shared world runs every seat against one app; this route would run them as separate participants.
-  // It comes after the rules above, so a shared-world config that breaks one of them, which runLab
-  // sends here, still gets that rule's message.
+  // A shared world runs every participant against one app; this route would run them as separate
+  // participants. It comes after the rules above, so a shared-world config that breaks one of them,
+  // which runLab sends here, still gets that rule's message.
   if (config.subject.topology === "shared-world")
     return refuse(
       "in-scope",

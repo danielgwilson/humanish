@@ -332,7 +332,7 @@ describe("judgeSharedWorld", () => {
   const judge = (participants: ParticipantFacts[], expected = participants.length) =>
     judgeSharedWorld({ dryRun: false, inProgress: false, expected, participants, world });
 
-  it("passes only when every expected seat passed, and has no timed_out verdict", () => {
+  it("passes only when every expected participant passed, and has no timed_out verdict", () => {
     expect(judge([passed(), passed()])).toEqual({ verdict: "pass", passed: true, world });
     for (const other of [
       passed({ status: "timed_out", completionReason: "timed_out" }),
@@ -677,7 +677,7 @@ describe("a judgment's verdict and passed come from one value", () => {
     const skipped = { skipped: true, noEngagement: false, selfReportedBlocker: false };
     // computer-use's fail-fast skip: the fan-out stream and the result's participant say blocked.
     expect(judgedStatus(skipped)).toBe("blocked");
-    // shared-world's handoff skip also carries a session error: its seat records say failed.
+    // shared-world's handoff skip also carries a session error: its participant records say failed.
     expect(judgedStatus({ ...skipped, sessionError: "handoff barrier: timed out" })).toBe("failed");
   });
 });
