@@ -16,7 +16,7 @@ import { declaredParticipantIds } from "../../src/study/plan-participants.js";
 import { parseStudyDocument } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 
-describe("parseLabConfig (humanish.lab.v2)", () => {
+describe("parseStudyDocument (humanish.lab.v2)", () => {
   it("refuses a clone lab whose actor can neither drive nor script the served app", () => {
     // The removed OSS meta-lab used this shape. It parsed, then failed at run start.
     for (const type of ["codex-app-server", "humanish-setup"]) {
@@ -2033,7 +2033,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
 // Rung 1: the local-app subject.source; an already-running local dev server driven
 // in-process via a custom CuaExecutor (no clone, no E2B desktop). Parse-validated fail-closed.
-describe("parseLabConfig (local-app subject)", () => {
+describe("parseStudyDocument (local-app subject)", () => {
   const validLocalApp = {
     schema: V2_SCHEMA,
     id: "local-app-state",
@@ -2811,7 +2811,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
 // Rung 1: the local-tree subject.source - packs the operator's own working tree
 // (the lab resolution cwd) and provisions it in-sandbox in place of a clone. Routing requires
 // execution.target: e2b-desktop and a computer-use actor; everything else fails closed at parse.
-describe("parseLabConfig (local-tree subject)", () => {
+describe("parseStudyDocument (local-tree subject)", () => {
   const validLocalTree = {
     schema: V2_SCHEMA,
     id: "local-tree-lab",

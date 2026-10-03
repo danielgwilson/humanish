@@ -45,7 +45,7 @@ describe("the typed options", () => {
   });
 });
 
-describe("the package's runLab", () => {
+describe("the package's runStudy", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-lab-removed-"));

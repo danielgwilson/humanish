@@ -7,9 +7,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { V2_SCHEMA } from "../../src/study/types.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -17,14 +16,15 @@ afterAll(async () => {
 });
 
 function lab(id: string, title: string): string {
-  return studyFileText(`schema: ${V2_SCHEMA}
+  return `schema: ${STUDY_SCHEMA}
 id: ${id}
 title: ${title}
+route: preview
 subject:
   source: this-repo
-actors:
-  - type: synthetic-persona
-`);
+actor:
+  type: synthetic-persona
+`;
 }
 
 async function plant(root: string, file: string, contents: string): Promise<void> {

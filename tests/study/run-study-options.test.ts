@@ -165,7 +165,7 @@ describe("an option the route cannot honor is refused before anything runs", () 
   });
 });
 
-describe("runLab returns an option refusal in the route's own envelope and writes nothing", () => {
+describe("runStudy returns an option refusal in the route's own envelope and writes nothing", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-lab-options-"));
@@ -436,7 +436,7 @@ describe("onEvent is passive", () => {
   });
 });
 
-describe("a computer-use dry run through runLab", () => {
+describe("a computer-use dry run through runStudy", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-lab-events-"));

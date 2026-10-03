@@ -6,13 +6,13 @@ import { stringify } from "yaml";
 import { saveCommsConnection } from "../../src/comms/connections.js";
 import { checkCommsConnection, configureCommsStudy } from "../../src/comms/setup.js";
 import { AGENTMAIL_RECEIVING_CODES, AgentMailReceivingError } from "../../src/comms/agentmail.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
 import { launchRun } from "../../src/tui/launch.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
 import type { ReceivingAdapter } from "../../src/comms/receiving-types.js";
-import { studyFileText } from "../helpers/study-file.js";
+/** The source study as humanish.lab.v2, for the refusal case. */
 const lab = {
   schema: V2_SCHEMA,
   id: "signup",
@@ -20,6 +20,16 @@ const lab = {
   actors: [{ type: "openai-computer-use", mission: "Create an account." }],
   execution: { target: "e2b-desktop" },
   scenario: { mode: "live" },
+};
+/** The same study as humanish.study.v3. */
+const study = {
+  schema: STUDY_SCHEMA,
+  id: "signup",
+  route: "computer-use",
+  mode: "live",
+  subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
+  actor: { type: "openai-computer-use", mission: "Create an account." },
+  execution: { target: "e2b-desktop" },
 };
 let cwd: string, env: NodeJS.ProcessEnv;
 beforeEach(async () => {
@@ -140,7 +150,7 @@ describe("receiving lab selection", () => {
     await mkdir(path.join(cwd, dir), { recursive: true });
     await writeFile(
       path.join(cwd, dir, "signup.yaml"),
-      options.v2 ? stringify(lab) : studyFileText(lab, cwd),
+      options.v2 ? stringify(lab) : stringify(study),
     );
   }
   it("refuses a v2 source, naming the command that converts it", async () => {
@@ -185,7 +195,7 @@ describe("receiving lab selection", () => {
     const plan = await configureCommsStudy({ cwd, study: "signup", connection: "agentmail" });
     await writeFile(
       path.join(cwd, "humanish/studies/signup.yaml"),
-      studyFileText({ ...lab, title: "Changed" }, cwd),
+      stringify({ ...study, title: "Changed" }),
     );
     expect(
       await configureCommsStudy({
@@ -205,7 +215,7 @@ describe("receiving lab selection", () => {
       allowedOrigins: ["https://accounts.example.test"],
       linkOrigin: "http://127.0.0.1:3000",
     };
-    const original = studyFileText({ ...lab, comms: { email } }, cwd);
+    const original = stringify({ ...study, comms: { email } });
     await writeFile(path.join(cwd, "humanish/studies/signup.yaml"), original);
     const result = await configureCommsStudy({
       cwd,
@@ -244,7 +254,7 @@ describe("receiving lab selection", () => {
     await mkdir(path.join(cwd, ".humanish/local/studies"), { recursive: true });
     await writeFile(
       path.join(cwd, ".humanish/local/studies/signup.yaml"),
-      studyFileText({ ...lab, comms: { email: { connection: "agentmail" } } }, cwd),
+      stringify({ ...study, comms: { email: { connection: "agentmail" } } }),
     );
     const spawn = vi.fn(() => ({ pid: 4242, unref() {}, on() {} }));
     const launched = await launchRun({
@@ -264,17 +274,18 @@ describe("receiving lab selection", () => {
       { connection: "agentmail", recipients: [] },
       { connection: "agentmail", allowedOrigins: ["https://target.test/path"] },
     ])
-      expect(parseStudyDocument({ ...lab, comms: { email } }).ok).toBe(false);
+      expect(parseStudy({ ...study, comms: { email } }).ok).toBe(false);
     expect(
-      parseStudyDocument({
-        ...lab,
-        actors: [{ type: "local-agent", mission: "Sign up" }],
+      parseStudy({
+        ...study,
+        actor: { type: "local-agent", mission: "Sign up" },
         comms: { email: { connection: "agentmail" } },
       }).ok,
     ).toBe(false);
-    const real = parseStudyDocument({
-      ...lab,
-      actors: [{ type: "openai-computer-use", count: 2, mission: "Sign up" }],
+    const real = parseStudy({
+      ...study,
+      actor: { type: "openai-computer-use", mission: "Sign up" },
+      participants: 2,
       comms: { email: { connection: "agentmail" } },
     });
     expect(real.ok).toBe(true);
