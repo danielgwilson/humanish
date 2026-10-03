@@ -183,8 +183,8 @@ export async function admitCuaRun(
     result: fail(...args),
   });
 
-  // runStudyWith's local VM study supplies a local-target app-url lab's desktop; a direct route call or
-  // an in-process executor on the same lab has none. It reads the declared source, as the planner
+  // runStudyWith's local VM study supplies a local-target app-url study's desktop; a direct route call or
+  // an in-process executor on the same study has none. It reads the declared source, as the planner
   // did: a library config the parser never saw can plan to an app-url subject from another source.
   if (
     config.subject.source === "app-url" &&
@@ -325,7 +325,7 @@ export async function startCuaRun(
   const { dryRun, cwd, seams, descriptor, participantRuns, participantPlan, publicRepo } = admitted;
   const { appUrl } = admitted;
   // The run's status record exists from here on, so anything watching the runs directory can
-  // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
+  // tell which study this is and that it is alive. The fail-closed returns below leave it finished
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
   const started = await scope.startRun({
     cwd,

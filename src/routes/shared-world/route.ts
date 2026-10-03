@@ -1,4 +1,4 @@
-// The concurrent shared-world lab route: N persona participants drive one shared,
+// The concurrent shared-world route: N persona participants drive one shared,
 // mutable service plane at the same time. A recomposition of shipped
 // pieces + the getHost wrapper:
 //
@@ -75,7 +75,7 @@ const LOCAL_AGENT_REFUSAL_CODES = {
 } as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldStudyErrorCode>;
 
 /**
- * The library entry for a shared-world lab. It plans the config with planSharedWorldStudy and runs
+ * The library entry for a shared-world study. It plans the config with planSharedWorldStudy and runs
  * the plan with runSharedWorldPlan, whose run scope and withTransientCommsSecrets wrapper cover the
  * run and its analysis.
  */
@@ -92,7 +92,7 @@ export async function runConcurrentSharedWorld(
   return sharedWorldStudyRefusal(options, planned.refusal);
 }
 
-/** A refused shared-world lab's result: the route's envelope, and a refusal's analysis record. */
+/** A refused shared-world study's result: the route's envelope, and a refusal's analysis record. */
 export function sharedWorldStudyRefusal(
   options: RunConcurrentSharedWorldStudyOptions,
   refusal: SharedWorldRefusal,

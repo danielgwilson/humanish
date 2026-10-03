@@ -40,7 +40,7 @@ export function composeParticipantInstructions(args: {
   mission: string;
   persona?: string;
   instruction?: string;
-  /** The lab's declared protocol. Only the participant-facing `goal` halves are rendered
+  /** The study's declared protocol. Only the participant-facing `goal` halves are rendered
    *  into the prompt; the `success` criteria never appear here. */
   tasks?: readonly StudyTask[];
   device: { name: string; preset: DevicePreset };

@@ -20,7 +20,7 @@ export interface SharedWorldPlane {
    * (the first-class provisioned-subject target every actor drove). A digest replaces the
    * raw URL: a getHost URL embeds the (live) sandbox id and matches the publish-safety e2b-URL
    * redaction, so, like the stream URL and sandbox ids, it never lands raw in a published
-   * bundle (the raw tokenless URL is surfaced only on the ephemeral lab result). The orchestrator
+   * bundle (the raw tokenless URL is surfaced only on the ephemeral study result). The orchestrator
    * confirms the URL is tokenless (no authKey, so no secret reaches the bundle) before digesting.
    * verify proves every actor drove this host by digest equality. Absent on the sequential route.
    */

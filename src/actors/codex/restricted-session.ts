@@ -68,7 +68,7 @@ export interface RestrictedCodexSessionOptions {
   cliVersion?: string;
   /**
    * Bypasses launch admission: admits exactly this list. It exists only so
-   * scripts/codex-qualify.mjs can launch a candidate admission would refuse. No library export, lab
+   * scripts/codex-qualify.mjs can launch a candidate admission would refuse. No library export, study
    * manifest, CLI flag, RunStudyOptions field or StudyDeps seam reaches it
    * (tests/actors/codex/cli-versions-seam.test.ts).
    */

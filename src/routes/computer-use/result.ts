@@ -89,7 +89,7 @@ function buildParticipantSummary(
 }
 
 /**
- * The computer-use lab result for a finished run. The run passes only when the Observer rendered,
+ * The computer-use study result for a finished run. The run passes only when the Observer rendered,
  * every participant passed (dry-run participants pass as contracts), and no adapter score or declared scorer
  * verdict failed; otherwise the error names the first reason.
  */

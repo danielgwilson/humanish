@@ -24,7 +24,7 @@
 // - `series-codes`, `name-refs`: a test name that opens with a code such as `L14:` or `W5:`, or
 //   that cites an issue (`#123`). Test names only; the name says the behavior.
 // - The `labs` root reads the `title` and `description` of each `humanish/studies/*.yaml`, which
-//   `lab list`, `lab inspect` and the TUI show, and counts every kind above except the two test-name
+//   `study list`, `study show` and the TUI show, and counts every kind above except the two test-name
 //   kinds, at `prose.labs.<kind>`.
 // - `title-case-headers`: a Title Case header (`## How It Works`) in a root `*.md` file, outside
 //   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
@@ -138,7 +138,7 @@ const STRING_KIND_NAMES = [
   "script-markers",
 ];
 
-// The title and description of each committed study, which `lab list`, `lab inspect` and the TUI
+// The title and description of each committed study, which `study list`, `study show` and the TUI
 // show. They are held to the comment rules; the test-name kinds do not apply. The caps keep the
 // `labs` root name until the rename's prose PR.
 const STUDIES_DIR = "humanish/studies";

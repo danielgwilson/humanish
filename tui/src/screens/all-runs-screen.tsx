@@ -13,9 +13,9 @@ import { color } from "../text-props.js";
 export interface AllRunsScreenProps {
   runs: RunIndexEntry[];
   details: Map<string, RunDetail>;
-  /** runId -> the lab it belongs to, for the middle column. */
+  /** runId -> the study it belongs to, for the middle column. */
   labels: Map<string, string>;
-  /** Per-lab median duration, so a row can say how far through it is. */
+  /** Per-study median duration, so a row can say how far through it is. */
   expected: Map<string, number>;
   selected: number;
   columns: number;
@@ -25,7 +25,7 @@ export interface AllRunsScreenProps {
 }
 
 /**
- * Everyone who is working, across every lab.
+ * Everyone who is working, across every study.
  *
  * Participants lead the rows and the studies follow, because when three studies are running at once
  * the question is who is doing what: the study is how you find them again, not what you are watching.

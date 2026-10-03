@@ -5,7 +5,7 @@
 // satisfied no-spend proof, so it stays library-only.
 //
 // Trust model: the party who writes `review.scorer.ref` is the party
-// who runs `humanish lab run` in their own checkout: identical trust to humanish.lab.yml or a
+// who runs `humanish run` in their own checkout: identical trust to humanish.lab.yml or a
 // package.json script. The loader adds no new execution capability; it relocates where the reference is
 // declared. Containment is entry-file-only: `readContainedRegularFile` blocks abs/`..`/symlink/
 // hardlink/realpath-escape/TOCTOU on the entry module, but `import()` then executes the transitive

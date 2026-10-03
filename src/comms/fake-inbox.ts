@@ -88,11 +88,11 @@ export class FakeInbox implements CommsChannel {
   }
 
   /**
-   * Provision an inbox for `participantId` at an explicit address (a lab-declared recipient), so
+   * Provision an inbox for `participantId` at an explicit address (a study-declared recipient), so
    * the app-under-test's send to that literal address resolves in `deliverRaw` (which drops
    * recipients with no provisioned inbox). Declaring the same address intentionally shares its
    * inbox; if `participantId` already held a different auto-generated address, the declared
-   * address supersedes it (the lab's declaration wins). Idempotent: re-declaring the same address
+   * address supersedes it (the study's declaration wins). Idempotent: re-declaring the same address
    * returns the existing inbox without clearing it.
    */
   async provisionAddress(participantId: string, value: string): Promise<CommsAddress> {

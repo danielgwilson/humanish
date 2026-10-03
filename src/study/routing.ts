@@ -229,7 +229,7 @@ export function isTerminalProductComposition(config: StudyConfig): boolean {
   );
 }
 
-/** The five execution paths a lab can take. */
+/** The five execution paths a study can take. */
 export type StudyRoute = "preview" | "computer-use" | "shared-world" | "terminal" | "scripted";
 
 /**

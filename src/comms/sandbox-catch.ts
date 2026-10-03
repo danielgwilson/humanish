@@ -245,7 +245,7 @@ export function parseDeliveriesNdjson(text: string): RawCapturedSend[] {
 
 /**
  * The distinct `to` addresses the captured mail was actually sent to, parsed with the same profiles
- * that route it. A lab run knows its recipients from the declared roster; a standalone catch does not,
+ * that route it. A run knows its recipients from the declared roster; a standalone catch does not,
  * so it discovers them from the mail itself. Otherwise an operator who forgot to name an address gets
  * a technically-healthy catch rendering an empty inbox forever: a false green.
  */
@@ -411,7 +411,7 @@ export function externalInboxUrl(external: ExternalCommsCatch): string {
 /**
  * Probe an adopter-hosted catch the way the in-sandbox one is probed: assert humanish's service marker in
  * /health, not merely any 2xx: an adopter's reverse proxy or a captive portal will happily return
- * 200 for anything, and a comms lab whose catch is not actually there collects nothing while
+ * 200 for anything, and a comms study whose catch is not actually there collects nothing while
  * looking fine. Fail-closed callers treat `false` as a hard stop before spending on a run.
  */
 export async function externalCatchHealthy(

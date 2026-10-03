@@ -18,7 +18,7 @@ let cachedObserverArtifact: string | null = null;
 
 /**
  * Resolve (and in a repo checkout, build) the Observer artifact before any run or
- * lab work starts. A missing artifact must cost seconds at startup, never a completed
+ * study work starts. A missing artifact must cost seconds at startup, never a completed
  * session (a live participant spends real money before the render step would have noticed).
  * Unconditional on purpose: the artifact is the only renderer now, so the fail-before-
  * spend property this preflight bought under the flag matters more, not less.

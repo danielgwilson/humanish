@@ -1,4 +1,4 @@
-// Every mapping key parseStudy reads, by path. A key that is not listed fails the lab as
+// Every mapping key parseStudy reads, by path. A key that is not listed fails the study as
 // unknown, so a typo stops the run instead of being dropped. `true` marks a leaf: its parser
 // checks the value (scalars, lists, and mappings that check their own keys). Each level satisfies
 // the parsed type's keys, so a field added to a Lab* interface must be added here too.

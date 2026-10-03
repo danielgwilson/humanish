@@ -239,7 +239,7 @@ function composeLivePrompt(args: {
   ].join("\n");
 }
 
-/** The default mission when the lab omits one. Public-safe, product-neutral author text. */
+/** The default mission when the study omits one. Public-safe, product-neutral author text. */
 export function defaultMission(productName: string): string {
   return `You are an autonomous agent. Discover ${productName} from its public surfaces and determine whether it can help with a durable real task. Stay within the declared no-spend caps. Leave feedback if the workflow is confusing.`;
 }

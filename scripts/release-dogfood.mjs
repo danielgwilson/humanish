@@ -11,7 +11,7 @@
 // release, which is the one artifact we already know about.
 //
 // This spends money and needs keys, so it is not part of release:check and never runs in CI. It is
-// a deliberate act by a maintainer with a terminal. The lab's own caps hold product spend to $0;
+// a deliberate act by a maintainer with a terminal. The study's own caps hold product spend to $0;
 // what it costs is the agent's tokens (about a dollar) plus a few sandbox-minutes.
 
 import { execFileSync } from "node:child_process";
@@ -115,7 +115,7 @@ try {
   raw = error.stdout ?? "";
 } finally {
   await rm(path.join(cwd, tarball), { force: true });
-  // The run bundle keeps the lab it ran. Left in place, the copy is a live lab in this checkout.
+  // The run bundle keeps the study it ran. Left in place, the copy is a live study in this checkout.
   await rm(studyPath, { force: true });
 }
 

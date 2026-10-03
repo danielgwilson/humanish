@@ -5,7 +5,7 @@ import type { ScriptedBrowserStudyResult } from "../../routes/scripted/types.js"
 import type { TerminalProductStudyResult } from "../../routes/terminal/types.js";
 import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
 
-/** A lab run's first lines: the command that ran, whether it was a dry run, how it ended, and its route. */
+/** A run's first lines: the command that ran, whether it was a dry run, how it ended, and its route. */
 function runHeader(
   result: { ok: boolean; dryRun?: boolean; studyId: string },
   route: "computer-use" | "terminal" | "scripted" | "shared-world",

@@ -55,7 +55,7 @@ export interface RunIndexEntry {
   estimatedCostComplete?: boolean;
   /** The run's analysis requests, every attempt counted once; absent when it sent none. */
   analysisCost?: RunAnalysisCost;
-  /** Wall-clock span when both ends are known; used for per-lab medians. */
+  /** Wall-clock span when both ends are known; used for per-study medians. */
   durationMs?: number;
 }
 

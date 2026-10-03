@@ -1,6 +1,6 @@
 // What a person, or the coding agent setting humanish up for them, should do next.
 //
-// Why: `humanish init` wrote twenty files and stopped. The only lab that could actually run was a
+// Why: `humanish init` wrote twenty files and stopped. The only study that could actually run was a
 // $0 dry run; the two live ones were templates with `your-org/your-app` in them, so the first live
 // run a newcomer tried could not succeed no matter what credentials they had. Three independent
 // sources reached the same place: a participant in our own TUI study walked to the Start row and
@@ -49,8 +49,8 @@ export interface FirstRunEnvironment {
 export type FirstRunActor = "openai-computer-use" | "local-agent";
 
 /**
- * Which brain the starter live lab should be written for. A machine with a signed-in coding agent
- * and no provider key can still do a real live run; writing the lab for the credential the
+ * Which brain the starter live study should be written for. A machine with a signed-in coding agent
+ * and no provider key can still do a real live run; writing the study for the credential the
  * operator doesn't have is how a starter file becomes homework.
  */
 export function starterActorFor(env: FirstRunEnvironment): FirstRunActor {
@@ -64,7 +64,7 @@ function preferredAgent(env: FirstRunEnvironment): SignedInAgent | undefined {
 }
 
 /**
- * The `localAgent` a local-agent starter lab names. Left out, the lab would default to Codex and
+ * The `localAgent` a local-agent starter study names. Left out, the study would default to Codex and
  * refuse to run on a machine where only Claude Code is signed in.
  */
 export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | undefined {
@@ -77,7 +77,7 @@ export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | u
  */
 const HUMANISH = "npx humanish";
 
-/** Hosts the local browser lab runs on: Linux x64 and Apple Silicon Macs. */
+/** Hosts that run local browser studies: Linux x64 and Apple Silicon Macs. */
 export function supportsLocalBrowser(
   platform: NodeJS.Platform | undefined,
   arch: string | undefined,

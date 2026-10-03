@@ -49,7 +49,7 @@ const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
 ]);
 const SUPPORTED_MODELS = new Set(SUPPORTED_ANALYSIS_MODELS);
 export const isSupportedAnalysisModel = (model: string): boolean => SUPPORTED_MODELS.has(model);
-/** The OpenAI output limit when a lab omits maxOutputTokens, and the most it may ask for. */
+/** The OpenAI output limit when a study omits maxOutputTokens, and the most it may ask for. */
 export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
 export const MAX_ANALYSIS_OUTPUT_TOKENS = 32_768;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;

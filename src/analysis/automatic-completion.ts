@@ -42,9 +42,9 @@ export async function completeAutomaticAnalysis<
     preferLargerOutput = false,
     refusal,
   }: {
-    /** "default" when the lab declared no analysis; its missing-key skip is not a failure. */
+    /** "default" when the study declared no analysis; its missing-key skip is not a failure. */
     trigger?: "default" | "explicit";
-    /** The lab omitted an output limit, so a larger one may be used within the admission budget. */
+    /** The study omitted an output limit, so a larger one may be used within the admission budget. */
     preferLargerOutput?: boolean;
     /** The route's reason not to analyze this run; see AutomaticAnalysisDeps.refusal. */
     refusal?: AutomaticAnalysisDeps["refusal"];
@@ -115,7 +115,7 @@ export async function completeAutomaticAnalysis<
 }
 
 /**
- * True when an analysis the lab never declared was refused because its conservative estimate is
+ * True when an analysis the study never declared was refused because its conservative estimate is
  * over the default cap. The author did not ask for it, so the refusal does not fail the run;
  * `humanish analyze --max-cost` can still run it.
  */

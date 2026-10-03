@@ -76,7 +76,7 @@ export const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
 // App-url and in-process routes default to 30 minutes. Provisioned routes (clone/local-tree)
 // default to whatever the 1-hour sandbox cap leaves after provisioning, declared state seeding,
 // and the teardown buffer (20 minutes on a stateless clone), floored at the old five minutes so
-// a state-heavy lab still gets a session at all. An explicit execution.timeoutMs is never
+// a state-heavy study still gets a session at all. An explicit execution.timeoutMs is never
 // adjusted: when it cannot be provisioned, the plan-time cap refusal shows the arithmetic.
 export const DEFAULT_APP_URL_SESSION_TIMEOUT_MS = 30 * 60_000;
 
@@ -129,12 +129,12 @@ export interface RunCuaActorStudyOptions {
   env?: Readonly<Record<string, string | undefined>>;
   /** E2B only. Runs on each participant's desktop after it exists and before provisioning. */
   prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
-  /** runStudyWith's local VM study, for an app-url lab on the local target. */
+  /** runStudyWith's local VM study, for an app-url study on the local target. */
   localVm?: LocalVmInput;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
   onStream?: NonNullable<RunStudyHomes["onStream"]>;
-  /** The caller's brain for each participant, in place of the lab's own. */
+  /** The caller's brain for each participant, in place of the study's own. */
   createProvider?: ProviderFactory;
   /** Drives an app-url or local-app subject in this process, with no desktop. Needs createProvider. */
   inProcess?: InProcessDriver;
@@ -163,7 +163,7 @@ export interface CuaParticipantPlanEntry {
   /** Requested E2B/X screen resolution. This is not the measured browser CSS viewport. */
   resolution: [number, number];
   instructionDigest: string;
-  /** The declared reasoning effort for this participant, when the lab declared one. The plan line is what
+  /** The declared reasoning effort for this participant, when the study declared one. The plan line is what
    *  you read before spending money, so a declared per-participant difference has to be visible there. */
   reasoningEffort?: string;
   maxOutputTokens?: number;
@@ -272,7 +272,7 @@ export type CuaActorStudyErrorCode =
   // rather than run uncapped: an unenforceable cap is more dangerous than none.
   | "HUMANISH_COMPUTER_USE_UNPRICED_CAP"
   // comms.email.external was declared but its catch did not answer as a humanish comms catch.
-  // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
+  // Refused at preflight (before any sandbox): a comms study whose catch is unreachable collects
   // nothing while every participant still spends.
   | "HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE"
   // comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
@@ -281,7 +281,7 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID"
   // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by prepareCuaWatch
   // before or around the run. Carried on the computer-use route's envelope so
-  // `watch <cua-lab> --expose` refusals render through the same formatter as any other computer-use
+  // `watch <computer-use study> --expose` refusals render through the same formatter as any other computer-use
   // study failure.
   | "HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH"
   | "HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL"
@@ -462,7 +462,7 @@ export interface E2BDesktopDeps {
   sandboxMs: number;
   participantCount: number;
   artifactRoot: PreparedOutputRoot;
-  /** The lab's resolution directory: relative paths in the config (a camera .y4m) resolve here. */
+  /** The study's resolution directory: relative paths in the config (a camera .y4m) resolve here. */
   studyCwd: string;
   scrubKnownValues: (text: string) => string;
   receiving?: CommsReceivingRun;
@@ -606,8 +606,8 @@ export interface ParticipantRunOutcome {
   harnessError: boolean;
   failureCode?: CuaActorStudyErrorCode;
   /** Relative run-dir path of the digest-only comms-thread evidence artifact this participant wrote
-   *  (humanish.comms-thread.v1), when a comms lab captured mail into its in-sandbox catch. Registered
-   *  in the participant's stream artifacts. Absent when no comms lab ran or nothing was captured. */
+   *  (humanish.comms-thread.v1), when a comms study captured mail into its in-sandbox catch. Registered
+   *  in the participant's stream artifacts. Absent when no comms study ran or nothing was captured. */
   commsArtifactPath?: string;
 }
 
@@ -615,7 +615,7 @@ export interface ParticipantRunOutcome {
 export interface CuaFanoutBundleArgs {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
-  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and study. */
   run: BundleRun;
   specs: DesktopParticipantRun[];
   outcomes?: ParticipantRunOutcome[];

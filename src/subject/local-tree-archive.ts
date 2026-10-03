@@ -387,7 +387,7 @@ function isDenylistedSegment(relPath: string): boolean {
  * produces (no leading "./", no trailing "/"). Absolute paths and glob syntax
  * are rejected instead of silently ignored: an exclude the author believed in but
  * that never matches anything is a leak vector, so unusable shapes fail
- * closed at the packing boundary (and, for lab manifests, already at parse
+ * closed at the packing boundary (and, for study manifests, already at parse
  * time in src/study/parse/subject.ts).
  */
 export function normalizeExtraExcludeEntry(entry: string): string {

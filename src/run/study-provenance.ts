@@ -1,5 +1,5 @@
-// Which study a saved run came from. run.json and status.json write it as `study`, and as `lab`
-// with the same value until 0.109 drops `lab`. Every reader goes through
+// Which study a saved run came from. run.json and status.json write it as `study`; runs saved by
+// 0.108 and earlier also carry `lab` with the same value. Every reader goes through
 // studyProvenanceOf, which also reads a run older than both fields by the `study:<id>` or
 // `lab:<id>` convention on its persona and scenario sources.
 

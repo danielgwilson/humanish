@@ -1,5 +1,5 @@
 // Finishing a concurrent shared-world run: publishing its bundle, rendering the Observer, and the
-// lab result with each role's outcome and the one error a run that did not pass reports.
+// study result with each role's outcome and the one error a run that did not pass reports.
 
 import { redactText } from "../../evidence/redaction.js";
 import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adapter-extension.js";
@@ -284,7 +284,7 @@ function sharedWorldExecutionFailures(args: {
   ];
 }
 
-/** Builds and publishes the bundle, renders the Observer and returns the lab result. */
+/** Builds and publishes the bundle, renders the Observer and returns the study result. */
 export async function finishConcurrentRun(
   ctx: PlaneContext,
   live: LiveParticipants,

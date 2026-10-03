@@ -85,7 +85,7 @@ export async function applyAdapterExtensionSeam(args: {
   // local paths, and misses encoded/split/custom secrets, DB passwords, PII, or abs paths outside
   // the denylist. A
   // payload from config-declared code is acceptable only because the trust boundary (the party who
-  // declares the scorer runs the lab) already permits direct exfiltration; the re-scrub is
+  // declares the scorer runs the study) already permits direct exfiltration; the re-scrub is
   // defense-in-depth, not a wall.
   const scrubValue = <T>(value: T): T => JSON.parse(sanitize(JSON.stringify(value))) as T;
 

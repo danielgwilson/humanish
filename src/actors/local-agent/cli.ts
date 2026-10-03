@@ -196,7 +196,7 @@ export interface LocalAgentProviderOptions {
   timeoutMs?: number;
   /**
    * Recorded in the trace's model settings. Low by default: a computer-use run is sixty turns, and
-   * a high-effort answer per turn costs minutes. The lab can raise it.
+   * a high-effort answer per turn costs minutes. The study can raise it.
    */
   reasoningEffort?: ReasoningEffort;
   /** Model override passed to the CLI (`--model`). Absent = the CLI's own default. */

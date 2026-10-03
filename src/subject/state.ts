@@ -68,7 +68,7 @@ export async function runStateSteps(
     args.onStateStep?.({
       name: step.name,
       when,
-      // Digest only (sha256-16): the command text never persists: the lab YAML in the
+      // Digest only (sha256-16): the command text never persists: the study YAML in the
       // consumer's repo is the plaintext source of truth.
       commandDigest: commandDigestOf(step.command),
       ok: result.ok,

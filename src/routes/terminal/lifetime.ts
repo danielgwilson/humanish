@@ -9,7 +9,7 @@ import { PRODUCT_SETUP_TIMEOUT_MS, TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS } from "./
 
 /**
  * The most the sandbox runs before the codex command starts: the Node bootstrap, the runtime
- * version check and, when the lab declares `subject.product.install`, the product setup.
+ * version check and, when the study declares `subject.product.install`, the product setup.
  */
 export function terminalPreExecBudgetMs(productInstall: boolean): number {
   return (

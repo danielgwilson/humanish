@@ -190,7 +190,7 @@ function stripNegatedNonBlockerPhrases(text: string): string {
         "",
       )
       .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "")
-      // "No functional failures blocked me" downgraded a clean passing run to a lab failure on
+      // "No functional failures blocked me" downgraded a clean passing run to a run failure on
       // 2026-09-01. The adjective list above is closed (real|remaining|actual), so an ordinary
       // qualifier like "functional" slipped through and the trailing verb "blocked" tripped the
       // scan. Allow up to two intervening words, and cover the verb form directly.

@@ -167,7 +167,7 @@ export interface TerminalProductStudyResult
   extends AutomaticAnalysisResult, StudyResultIdentity<"terminal"> {
   /** True when the bundle verified and (dry-run, or the live session reached a terminal verdict
    *  without a harness error + cleanup was proven). The agent's pass/fail is evidence, not the
-   *  lab's exit code. */
+   *  run's exit code. */
   ok: boolean;
   cwd: string;
   /** The registry-resolved actor id that ran (or would run) the session. */
@@ -380,7 +380,7 @@ export interface TerminalLedgers {
   noSpendProof: NoSpendProof;
 }
 
-/** What a terminal run takes besides its plan. The plan carries the config, dry run and lab. */
+/** What a terminal run takes besides its plan. The plan carries the config, dry run and study. */
 export type TerminalRunInput = Omit<RunTerminalProductStudyOptions, "config" | "dryRun">;
 
 /** A live terminal plan: its caps are the fail-closed ones planTerminalStudy required. */
@@ -399,7 +399,7 @@ export interface RunLiveTerminalSessionArgs {
   cwd: string;
   warnings: string[];
   failed: (code: TerminalProductStudyErrorCode, message: string) => TerminalProductStudyResult;
-  /** The lab's run scope; the live session starts its run in it. */
+  /** The study's run scope; the live session starts its run in it. */
   scope: RunScope;
   runtimeEnv: LiveTerminalAuth;
 }

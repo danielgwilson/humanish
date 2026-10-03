@@ -1,5 +1,5 @@
-// runStudyWith runs one lab. It normalizes the caller's options, binds a local browser study's desktop
-// and provider, and plans the lab once with planStudy. A refused plan returns the route's own result
+// runStudyWith runs one study. It normalizes the caller's options, binds a local browser study's desktop
+// and provider, and plans the study once with planStudy. A refused plan returns the route's own result
 // envelope before anything starts. One switch on plan.route then calls the route's admit function,
 // which runs the route's local checks that need no scorer (keys, subject env, the local agent) and
 // returns the route's run. prepareStudy is the same path in two steps, so the CLI can present either
@@ -44,7 +44,7 @@ import type { RunStudyProvenance } from "./run/study-provenance.js";
 import { isLocalBrowserStudy, localBrowserDefaults } from "./substrates/local/runtime-config.js";
 
 /**
- * Runs a lab on its route. The options are checked against the route and mapped into the route's
+ * Runs a study on its route. The options are checked against the route and mapped into the route's
  * hook bags before anything runs. Each route closes the run it started on every exit through its
  * own run scope (`src/run/run.ts`).
  */
@@ -79,7 +79,7 @@ export async function runStudy(
   return optionRefusalOutcome(study, routeOf(study), options, refusal);
 }
 
-/** A lab planned once: the route's refusal, or the run of its plan. */
+/** A study planned once: the route's refusal, or the run of its plan. */
 export type PreparedStudy =
   | { readonly ok: false; readonly outcome: StudyOutcome }
   | {
@@ -89,7 +89,7 @@ export type PreparedStudy =
     };
 
 /**
- * Normalizes the options and plans the lab once, so a caller can present a refusal before it loads
+ * Normalizes the options and plans the study once, so a caller can present a refusal before it loads
  * anything the run needs. A local browser study's provider is bound first, so the plan is made with
  * it, and its desktop goes to the computer-use run as `localVm`; with inProcess the caller drives
  * the app in process and needs no desktop.
@@ -185,7 +185,7 @@ async function refusalOutcome(
   deps: StudyDeps,
   emit: ((event: StudyEvent) => void) | undefined,
 ): Promise<StudyOutcome> {
-  // Spend-safe default: a lab goes live only when the config (or CLI) says so.
+  // Spend-safe default: a study goes live only when the config (or CLI) says so.
   const dryRun = resolveStudyDryRun(config, options.dryRun, true) ?? true;
   switch (refusal.route) {
     case "preview":
@@ -255,8 +255,8 @@ export type InternalRunStudyOptions = RunStudyOptions & RunStudyInternals;
 interface RunStudyInternals {
   /**
    * Which manifest this run came from. planStudy puts it on the plan, and the route reads
-   * plan.lab for the run's status record and bundle. Absent for a library caller that passes a
-   * StudyConfig directly; that run records no lab.
+   * plan.study for the run's status record and bundle. Absent for a library caller that passes a
+   * StudyConfig directly; that run records no study.
    */
   study?: RunStudyProvenance;
   /**
@@ -266,7 +266,7 @@ interface RunStudyInternals {
    * (path + digest), never adopter-supplied; absent for library callers.
    */
   scorerProvenance?: RunScorerProvenance;
-  /** The local VM study's desktop, analysis gate and signal, for a local browser lab. */
+  /** The local VM study's desktop, analysis gate and signal, for a local browser study. */
   localVm?: LocalVmInput;
 }
 

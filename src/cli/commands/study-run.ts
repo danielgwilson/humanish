@@ -56,7 +56,7 @@ export async function runStudyCommand(args: {
   const config = resolved.config;
   // The run's identity: which manifest, where it lives, and whether it is committed, a
   // local overlay, or an explicit path. Resolved once here (the only place that knows all three)
-  // and carried into the run's status record and bundle so the filesystem can answer "which lab
+  // and carried into the run's status record and bundle so the filesystem can answer "which study
   // produced this run" without the old `persona.source = "lab:<id>"` string convention.
   const study: RunStudyProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
   // Named here, once, for every route, so the starter study `first-run` is named in telemetry
@@ -121,7 +121,7 @@ export async function runStudyCommand(args: {
   // run-id claim still come after it; the scripted route takes no scorer.
   const routeRun = routeRunFor(route, { ...args, config });
   if (routeRun === undefined) return;
-  // Every route's runStudyWith options carry the lab's provenance, from here only.
+  // Every route's runStudyWith options carry the study's provenance, from here only.
   const run = { ...routeRun, options: { ...routeRun.options, study } };
 
   // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
@@ -154,7 +154,7 @@ export async function runStudyCommand(args: {
         }
         const scorer = scorerLoad.scorer;
         if (scorer) {
-          // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest.
+          // Cross-repo guardrail: `humanish run` import()s host JS named in the manifest.
           // Surface it so the invoker (who may not be the manifest author) knows executable code ran.
           args.io.writeErr(
             `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is code that humanish loaded and ran in this process. Review it as you would any code you run.\n`,
@@ -178,7 +178,7 @@ export async function runStudyCommand(args: {
 /**
  * The filled keys a live run prints a line for: the ones its plan reads. Count and rerun options
  * change who runs, not which keys. Undefined, so every fill is printed, when a scorer is declared,
- * since its host code may read any key, and when the lab does not plan.
+ * since its host code may read any key, and when the study does not plan.
  */
 function announcedKeyNames(
   config: StudyConfig,

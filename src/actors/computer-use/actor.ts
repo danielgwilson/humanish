@@ -80,7 +80,7 @@ export interface CuaActorSessionOptions {
   stopWhen?: StopWhen;
   /** A declared observation window, forwarded to the loop. */
   dwell?: DwellWindow;
-  /** The lab's declared protocol; the loop records a corroborated task funnel on the trace.
+  /** The study's declared protocol; the loop records a corroborated task funnel on the trace.
    *  Only the `success` criteria are read here; the participant-facing goals are already composed
    *  into `instructions` upstream, and the criteria never reach the prompt. */
   tasks?: readonly StudyTask[];

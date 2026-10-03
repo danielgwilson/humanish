@@ -1,4 +1,4 @@
-// Sandbox receipts for `humanish lab preflight`. A probe has no run directory, so it journals its
+// Sandbox receipts for `humanish study check`. A probe has no run directory, so it journals its
 // sandbox under .humanish/preflight/<probe-id>/ before any work runs in it. A confirmed kill
 // removes the journal. A journal that stays means the probe's sandbox may still be running, and
 // `humanish reclaim --preflight` kills it by the recorded id once it is safe to.

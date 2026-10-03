@@ -1,6 +1,6 @@
 // Tasks: the researcher's protocol, expressed as config (docs/principles/three-roles.md).
 //
-// A lab could declare a prose `mission` and nothing else. That is a brief, not a protocol, and it
+// A study could declare a prose `mission` and nothing else. That is a brief, not a protocol, and it
 // left "where did people get stuck" answerable only from an actor's own narration, which is the one
 // source a study should not have to take on faith.
 //

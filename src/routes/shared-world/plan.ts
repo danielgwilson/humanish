@@ -39,7 +39,7 @@ import {
 import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
 
-/** The error a shared-world lab returns before a run starts. */
+/** The error a shared-world study returns before a run starts. */
 export interface SharedWorldRefusal extends RouteRefusal<
   "shared-world",
   ConcurrentSharedWorldStudyErrorCode
@@ -59,7 +59,7 @@ export function sharedWorldDescriptorOf(actorType: string): CuaActorDescriptor {
 }
 
 /**
- * Plan a shared-world lab. It is called for any config handed to the shared-world runner, not only
+ * Plan a shared-world study. It is called for any config handed to the shared-world runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planSharedWorldStudy(

@@ -126,7 +126,7 @@ async function recordCommandTelemetry(
       event: "cli_command",
       anonymousId: state.anonymousId,
       version: CLI_VERSION,
-      // The study facts (mode, outcome, starter lab, brain, our own error code) were read off the
+      // The study facts (mode, outcome, starter study, brain, our own error code) were read off the
       // result document when it was written; see writeResult. Without them every `run` event
       // looked the same whether it was a dry run or the first live study that ever worked.
       properties: {
@@ -173,7 +173,7 @@ function reportActiveHandles(command: Command, io: CliIo): void {
   }).unref?.();
 }
 
-/** `lab run`, not `run`, so the two are distinguishable, and nothing else from the invocation. */
+/** `study show`, not `show`, so subcommands are distinguishable, and nothing else from the invocation. */
 function commandPath(command: Command): string {
   const parts: string[] = [];
   let current: Command | null = command;

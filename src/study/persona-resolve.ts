@@ -102,7 +102,7 @@ export async function resolveCommittedPersonas(
 }
 
 /**
- * Every persona id a lab config could put on a browser participant: the roster when one is
+ * Every persona id a study config could put on a browser participant: the roster when one is
  * declared, otherwise the actor-level persona that every fan-out participant inherits.
  */
 export function studyPersonaIds(config: {

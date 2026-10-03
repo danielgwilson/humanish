@@ -32,7 +32,7 @@ export type NavEvent =
   | { type: "select"; index: number; total: number }
   | { type: "quit" };
 
-/** A stable key per screen instance, so selection is remembered per lab and per run. */
+/** A stable key per screen instance, so selection is remembered per study and per run. */
 function screenKey(screen: Screen): string {
   switch (screen.name) {
     case "studies":

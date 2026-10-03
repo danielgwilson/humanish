@@ -5,7 +5,7 @@ import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { digestText } from "../evidence/redaction.js";
 import type { StudyPreflightCheck, StudyPreflightResult, PreflightContext } from "./preflight.js";
 
-/** The schema of `lab preflight` results: whether a study is ready to run on this machine. */
+/** The schema of `study check` results: whether a study is ready to run on this machine. */
 export const STUDY_CHECK_SCHEMA = "humanish.study-check.v1";
 
 export function finalize(

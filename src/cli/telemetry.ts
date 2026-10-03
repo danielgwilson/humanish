@@ -5,9 +5,9 @@
 // working first run". A tool that cannot see its own activation is guessing.
 //
 // What it will never send, and this is stricter than the convention because of what humanish is:
-// no paths, no cwd, no repo names, no URLs, no lab titles or ids that are not our own starter labs,
+// no paths, no cwd, no repo names, no URLs, no study titles or ids that are not our own starter studies,
 // no persona or mission text, no run ids, no evidence, no key values, no key names. A study's
-// subject is the adopter's product and often unannounced; leaking a lab id would leak a roadmap.
+// subject is the adopter's product and often unannounced; leaking a study id would leak a roadmap.
 // The allowlist below is the whole vocabulary: anything not on it cannot be sent by construction.
 
 import {
@@ -299,7 +299,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 }
 
 /**
- * Read the study facts off a command's result document: mode, outcome, starter lab, brain route,
+ * Read the study facts off a command's result document: mode, outcome, starter study, brain route,
  * and our own error code. Duck-typed over every result shape the CLI writes, because the point is
  * one derivation at the one seam every command already passes through (writeResult), so that a
  * backend added later cannot forget to report. Returns {} for results that carry no study.

@@ -1,5 +1,5 @@
 // The one runner. `run` and `watch` register a run's flags through addRunOptions, so the two
-// commands cannot drift apart, and the hidden `lab run` alias calls handleRun.
+// commands cannot drift apart.
 import type { Command } from "commander";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
@@ -17,7 +17,7 @@ import {
   writeResult,
 } from "../io.js";
 
-/** The parsed flags of `run`, `watch` and the `lab run` alias. */
+/** The parsed flags of `run` and `watch`. */
 export type { RunOptions };
 
 /** The flags a run takes, whichever command starts it. */
@@ -96,7 +96,7 @@ export async function handleRun(
     cwd: options.cwd,
     envFile: options.envFile,
     io,
-    // runStudyCommand discovers keys for a live lab; the lab-less preview needs none.
+    // runStudyCommand discovers keys for a live study; a preview without a study needs none.
     discoverKeys: false,
   });
   if (!loaded) return;

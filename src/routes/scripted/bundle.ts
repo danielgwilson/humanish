@@ -1,4 +1,4 @@
-// Assemble the scripted-browser lab's run bundle from its sessions, and the review summary and
+// Assemble the scripted-browser study's run bundle from its sessions, and the review summary and
 // markdown that ship with it.
 
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
@@ -27,9 +27,9 @@ import { participantEvent, recordIdOf } from "../../run/participant-records.js";
 import { scriptedSurfaceIds, scriptedSurfaceRecords } from "./surface-records.js";
 import { plural } from "../../run/text.js";
 
-/** What the scripted lab's bundle is built from. */
+/** What the scripted study's bundle is built from. */
 interface ScriptedBundleArgs {
-  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and study. */
   run: BundleRun;
   actorId: string;
   appUrl: string;
@@ -59,7 +59,7 @@ interface ScriptedBundleArgs {
 }
 
 /**
- * Project the scripted lab run into a humanish.run-bundle.v1 (no schema change: a new
+ * Project the scripted run into a humanish.run-bundle.v1 (no schema change: a new
  * producer only). The key line is `stream.actor = result.trace`: the provider-neutral
  * ActorTrace seam the Observer renders and verifyRun's engagement check reads. Exported for
  * the bundle-builder tests.
@@ -140,7 +140,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.subject.declared",
-      // Provenance is recorded or its absence declared. The lab did not provision
+      // Provenance is recorded or its absence declared. humanish did not provision
       // this subject on app-url routes; clone routes carry structured subject provenance below.
       message: args.subject
         ? `Provisioned synthetic subject: clone of ${args.subject.repo}${args.subject.commit ? `@${args.subject.commit}` : ""}, served + getHost-exposed in-sandbox; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted); state provenance: ${args.subject.state.provenance}; evidence host digest: ${args.hostDigest ?? "dry-run"}.`

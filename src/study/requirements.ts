@@ -1,6 +1,6 @@
 // The keys and subject env a live plan's requirements list. Each route's preflight asks
 // missingKeys and missingSubjectEnv which names to refuse on, doctor and the TUI ask requiredKeys
-// and requiredSubjectEnv which names to report, and `lab run` asks keyNamesOf which key-source
+// and requiredSubjectEnv which names to report, and `run` asks keyNamesOf which key-source
 // lines to print, so the planner alone decides what a run needs. A route keeps its own error
 // codes, messages and check order. The terminal runtime key (`key-one-of`) stays with
 // buildRuntimeAuth at run time, which also picks its placement.
@@ -57,7 +57,7 @@ export function requiredSubjectEnv(requirements: readonly Requirement[]): string
 /**
  * The provider keys a live run of `plan` is known to read: its `key` and `key-one-of` names, its
  * subject env, the external catch's token variable, ANTHROPIC_API_KEY for a Claude Code
- * participant, and OPENAI_API_KEY when automatic analysis runs on OpenAI. `lab run` prints a
+ * participant, and OPENAI_API_KEY when automatic analysis runs on OpenAI. `run` prints a
  * key-source line for these only. Discovery still fills every key it finds: other readers, such as
  * a declared scorer's host code, are not in the plan.
  */

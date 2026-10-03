@@ -148,7 +148,7 @@ export interface DesktopBrowserLaunchIdentity {
 
 /**
  * Runtime-only launch result. `evidence` is what the bundle records: the requested browser and the
- * one that launched, and only when the lab declared a browser.
+ * one that launched, and only when the study declared a browser.
  */
 export interface DesktopBrowserLaunchResult {
   family: DesktopBrowserFamily;

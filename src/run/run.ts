@@ -171,7 +171,7 @@ export async function runScope<T>(
         const runId = options.runId ?? options.mintRunId();
         const created = await createRunArtifactPaths(options.cwd, runId);
         if (!created.ok) return created;
-        // beginRunStatus reads only the mode and the lab provenance from the run's options.
+        // beginRunStatus reads only the mode and the study provenance from the run's options.
         status = beginRunStatus(created.paths, { ...options, runId });
         // Registered before the first write lands: a signal while it is still settling reaches
         // the handle, whose interrupt queues behind that write.

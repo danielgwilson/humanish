@@ -22,7 +22,7 @@ import type { ScriptedSubject } from "./subject.js";
 import { type ScriptedBrowserStudyResult } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 // Finishing a scripted-browser run: the subject's provenance, the bundle, the Observer and the
-// lab result.
+// study result.
 
 /** What the finish reads from the run. */
 export interface ScriptedFinishInputs {

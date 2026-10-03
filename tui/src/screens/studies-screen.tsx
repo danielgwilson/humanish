@@ -20,7 +20,7 @@ export interface StudiesScreenProps {
   tick: number;
   /**
    * runId -> participant label, for live runs only. The index cannot carry this (it never opens a
-   * bundle, which is the point of it), and a live lab that says "1 running" instead of who is in
+   * bundle, which is the point of it), and a live study that says "1 running" instead of who is in
    * there answers the less interesting half of the question. Live runs are few, so reading detail
    * for just those is affordable where reading it for the whole list would not be.
    */
@@ -90,7 +90,7 @@ export function StudiesScreen({
 }: StudiesScreenProps): React.ReactElement {
   if (rows.length === 0) {
     // Two different problems. "This is not a project" has to be said first, because otherwise the
-    // advice is unfollowable: someone in their home directory reading "write a lab" has no idea
+    // advice is unfollowable: someone in their home directory reading "write a study" has no idea
     // they are in the wrong place, and `npx humanish tui` is easy to type anywhere.
     return initialized ? (
       <Box flexDirection="column">
@@ -205,7 +205,7 @@ export function StudiesScreen({
 }
 
 /**
- * What the cursor is pointing at, in the manifest's own words. A lab that declares no description
+ * What the cursor is pointing at, in the manifest's own words. A study that declares no description
  * says so plainly rather than borrowing its title back: an echo of the row above it would read
  * like an answer while adding nothing.
  */
@@ -266,7 +266,7 @@ function StudyRowView({
 }
 
 /**
- * What a live lab says about itself: the participant, and how long they have been at it. A person
+ * What a live study says about itself: the participant, and how long they have been at it. A person
  * scanning this list wants to know who is in there: not a count, and not a running total.
  */
 function liveStatus(
@@ -278,7 +278,7 @@ function liveStatus(
   const started = live.startedAt === undefined ? Number.NaN : Date.parse(live.startedAt);
   const elapsed = Number.isFinite(started) ? clockOf(now - started) : undefined;
   // Until the run has written a participant record there is nobody to name, and "starting…" is the
-  // true thing to say rather than borrowing the lab's own id and passing it off as a person.
+  // true thing to say rather than borrowing the study's own id and passing it off as a person.
   const label = who ?? "starting…";
   const extra = row.live > 1 ? ` +${row.live - 1}` : "";
   return elapsed === undefined ? `${label}${extra}` : `${label} · ${elapsed}${extra}`;

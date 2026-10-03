@@ -1,7 +1,7 @@
-// The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
-// lab clones and serves in-sandbox) driven by a registry-resolved computer-use actor inside a
+// The computer-use route: a subject (an app-url the caller provisioned, or a repo the
+// humanish clones and serves in the sandbox) driven by a registry-resolved computer-use actor inside a
 // hosted E2B desktop. On this path `actors[].type` selects the actor: the
-// descriptor returned by the registry runs the session; the lab provisions the desktop and
+// descriptor returned by the registry runs the session; the route provisions the desktop and
 // subject, composes the prompt from config, persists the evidence bundle, and tears down.
 //
 // Substrate notes:
@@ -44,7 +44,7 @@ import {
 import { studyResultIdentity } from "../../run/study-result.js";
 
 /**
- * Plans and runs a computer-use lab in one call. It is not exported from src/index.ts; tests call
+ * Plans and runs a computer-use study in one call. It is not exported from src/index.ts; tests call
  * it. It plans the config with planComputerUseStudy and runs
  * the plan with runComputerUsePlan, whose run scope and withTransientCommsSecrets wrapper cover the
  * run and its analysis.
@@ -66,7 +66,7 @@ export async function runCuaActorStudy(
 }
 
 /**
- * A refused computer-use lab's result, at the refusal's stage: a before-scope refusal has its own
+ * A refused computer-use study's result, at the refusal's stage: a before-scope refusal has its own
  * envelope and no analysis record; the others come after the cwd checks, and the participant cap after
  * the personas are read.
  */

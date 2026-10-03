@@ -182,7 +182,7 @@ export class LoopSession {
 
   // Model-authored narration: literal-scrub known provisioned values, then pattern-redact.
   // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
-  // alone cannot catch it; the lab's scrubKnownValues, injected as scrubText, closes that.
+  // alone cannot catch it; the run's scrubKnownValues, injected as scrubText, closes that.
   redactNarration(text: string): string {
     return this.settings.redaction.redactText(this.scrubText(text));
   }

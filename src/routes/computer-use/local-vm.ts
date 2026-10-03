@@ -225,8 +225,8 @@ export interface LocalVmRun {
 }
 
 /**
- * Local desktop/provider composition: the options the lab is planned and run with. It throws before
- * anything starts on a lab the local study cannot run.
+ * Local desktop/provider composition: the options the study is planned and run with. It throws before
+ * anything starts on a study the local VM cannot run.
  */
 export function prepareLocalVmRun(options: LocalVmRunOptions): LocalVmRun {
   const config = localBrowserDefaults(options.config);

@@ -231,7 +231,7 @@ export async function computeStats(
     options.nowMs === undefined ? {} : { nowMs: options.nowMs },
   );
   // Corrupt source metadata must not hide separately retained paid analysis receipts.
-  // These directories cannot be attributed to a lab/date, so scoped filters exclude them.
+  // These directories cannot be attributed to a study or date, so scoped filters exclude them.
   const indexedIds = new Set(index.runs.map((entry) => entry.runId));
   const entries: RunIndexEntry[] = [
     ...index.runs,

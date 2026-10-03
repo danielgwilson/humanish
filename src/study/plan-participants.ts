@@ -1,4 +1,4 @@
-// Who takes part in a lab: one record per participant, built from the declared roster or a count.
+// Who takes part in a study: one record per participant, built from the declared roster or a count.
 // Computer-use and shared-world participants share the desktop fields; each kind adds its own.
 
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
@@ -117,7 +117,7 @@ function desktopParticipant(
 }
 
 /**
- * The participants of a computer-use lab: the declared roster, else `count` identical ones. A count
+ * The participants of a computer-use study: the declared roster, else `count` identical ones. A count
  * override (`--count`) applies only when no roster is declared.
  */
 export function computerUseParticipants(
@@ -138,7 +138,7 @@ export function computerUseParticipants(
   });
 }
 
-/** The participants of a shared-world lab, one per roster entry, typed by the plane they share. */
+/** The participants of a shared-world study, one per roster entry, typed by the plane they share. */
 export function sharedWorldParticipants(config: StudyConfig): SharedWorldRoster {
   const roster = rosterOf(config.actors[0]) ?? [];
   const participantAt = (entry: StudyParticipantEntry, index: number): DesktopParticipant =>
@@ -161,7 +161,7 @@ export function sharedWorldParticipants(config: StudyConfig): SharedWorldRoster 
   };
 }
 
-/** The ids of the participants a computer-use or shared-world lab runs, in roster order. */
+/** The ids of the participants a computer-use or shared-world study runs, in roster order. */
 export function declaredParticipantIds(config: StudyConfig): string[] {
   const actor = config.actors[0];
   const roster = rosterOf(actor);

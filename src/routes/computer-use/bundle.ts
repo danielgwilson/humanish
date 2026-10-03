@@ -51,7 +51,7 @@ function isOneParticipantRun(base: Pick<CuaRunBundleBase, "participantRuns" | "r
 /**
  * The judgment for the current state of a computer-use run, by the rule for its shape: one
  * participant (its tallied status is the verdict) or several (every participant must pass). The bundle's
- * verdict and the lab result's ok both come from it.
+ * verdict and the study result's ok both come from it.
  */
 export function judgeComputerUseRun(
   base: Pick<CuaRunBundleBase, "participantRuns" | "rerun">,

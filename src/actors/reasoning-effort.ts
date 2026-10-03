@@ -1,7 +1,7 @@
-// The provider-declared reasoning-effort vocabulary, kept in its own module so the lab schema and
+// The provider-declared reasoning-effort vocabulary, kept in its own module so the study schema and
 // the OpenAI provider can share it without the schema depending on a provider.
 //
-// Why this exists: effort was reachable in the provider and unreachable from a lab. Every
+// Why this exists: effort was reachable in the provider and unreachable from a study. Every
 // computer-use run humanish had ever done was therefore the provider default, not by decision but
 // by omission. Effort changes who the participant is, the same way a persona prompt does
 // (docs/principles/actor-fidelity.md: capability settings are recruiting decisions), so pinning it
@@ -10,7 +10,7 @@
 //
 // Support is model-dependent. OpenAI documents the vocabulary below as the union across models and
 // states plainly that "supported values are model-dependent"; there is no offline way to know which
-// subset a given model id accepts. So this module refuses to pretend: it validates that a lab asked
+// subset a given model id accepts. So this module refuses to pretend: it validates that a study asked
 // for a real effort level, and a model that does not support the one it was asked for fails on the
 // first turn with the provider's own message rather than being silently downgraded. Silent
 // downgrade is the worse failure: it would record an effort the run did not actually use.

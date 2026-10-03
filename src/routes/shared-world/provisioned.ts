@@ -86,7 +86,7 @@ export interface ProvisionedPlaneSetup {
   subjectEnvNames: string[];
   hasGithubToken: boolean;
   checkpoints: StudySubjectStateCheckpoint[];
-  /** The in-sandbox email catch, when a comms lab declared one. */
+  /** The in-sandbox email catch, when a comms study declared one. */
   commsEmail: StudyCommsEmail | undefined;
   commsPort: number | undefined;
   /** The catch's base URL, injected into the subject's env at create. */
@@ -144,7 +144,7 @@ class SubjectPlane {
   private subjectDesktop: E2BDesktopSandbox | undefined;
   private subjectShell: Shell | undefined;
   // The in-sandbox email catch on the one subject sandbox; drained at teardown. Undefined
-  // unless a comms lab declared it.
+  // unless a comms study declared it.
   private deployedComms: DeployedCommsCatch | undefined;
   // Background prober dispose signal, cleared in teardown.
   private proberDisposed = false;

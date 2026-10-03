@@ -40,7 +40,7 @@ export function catchTokenRefusal(token: string | undefined): string | undefined
   return `The comms catch token is ${token.length} characters; it must be at least ${MIN_CATCH_TOKEN_LENGTH}, such as the output of \`openssl rand -hex 16\`, on the catch and in the run.`;
 }
 
-/** The catch token the run sends: the value of `authTokenEnv`, when the lab names one. */
+/** The catch token the run sends: the value of `authTokenEnv`, when the study names one. */
 export function catchTokenOf(
   external: StudyCommsExternal,
   env: Record<string, string | undefined>,
