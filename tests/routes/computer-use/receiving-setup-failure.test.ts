@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseStudyDocument } from "../../../src/study/config.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
@@ -20,9 +20,11 @@ vi.mock("../../../src/comms/receiving-runtime.js", async (importOriginal) => ({
 }));
 
 function realEmailCloneConfig(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "receiving-setup-failure",
+    route: "computer-use",
+    mode: "live",
     subject: {
       source: "clone",
       repos: ["example-org/example-app"],
@@ -32,16 +34,10 @@ function realEmailCloneConfig(): StudyConfig {
         url: "http://127.0.0.1:3000/",
       },
     },
-    actors: [
-      {
-        type: "openai-computer-use",
-        mission: "Use your own email to join the app.",
-        lanes: [{ id: "participant-a", persona: "first-time-visitor" }],
-      },
-    ],
+    actor: { type: "openai-computer-use", mission: "Use your own email to join the app." },
+    participants: [{ id: "participant-a", persona: "first-time-visitor" }],
     comms: { email: { connection: "mail" } },
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-    scenario: { mode: "live" },
     review: { analysis: { maxCostUsd: 1 } },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);

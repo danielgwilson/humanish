@@ -14,8 +14,8 @@ import {
   DECLARED_SCORER_MALFORMED,
 } from "../../src/study/adapter-extension.js";
 import { foldScorerFailures } from "../../src/run/judge.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import type { RunAdapterScore, RunBundle } from "../../src/index.js";
@@ -765,26 +765,26 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
 
 describe("parser: review.scorer consumed on scorer-capable routes, typos rejected", () => {
   it("a terminal study declaring review.scorer emits no unread-field warning for scorer", () => {
-    const result = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const result = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "terminal-scorer",
+      route: "terminal",
+      mode: "live",
       subject: {
         source: "terminal-product",
         product: { name: "widget-cli", publicSurfaces: ["https://example.com/widget"] },
       },
-      actors: [
-        {
-          type: "codex-exec",
-          persona: "autonomous-creative-agent",
-          mission: "Discover widget-cli.",
-        },
-      ],
+      actor: {
+        type: "codex-exec",
+        persona: "autonomous-creative-agent",
+        mission: "Discover widget-cli.",
+      },
+      caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
       execution: {
         target: "e2b-terminal",
         runtimeAuth: "openai-env",
         terminal: { transport: "exec-stream", stdin: "disabled" },
       },
-      scenario: { mode: "live", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } },
       review: { scorer: { ref: "scorers/product.mjs" } },
     });
     expect(result.ok).toBe(true);

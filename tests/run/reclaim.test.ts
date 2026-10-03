@@ -9,8 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // enumerating the account, and records what happened to each. These tests drive the
 // real run-dir resolution chain (a $0 dry-run creates the managed dir + latest pointer) with a
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import {
@@ -24,20 +24,22 @@ import { RECLAIM_RECEIPT_ARTIFACT, reclaimRunSandboxes } from "../../src/run/rec
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 function dryRunConfig(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "reclaim-fixture",
+    route: "terminal",
+    mode: "dry-run",
     subject: {
       source: "terminal-product",
       product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
     },
-    actors: [{ type: "codex-exec", mission: "Contract only." }],
+    actor: { type: "codex-exec", mission: "Contract only." },
+    caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 },
     execution: {
       target: "e2b-terminal",
       runtimeAuth: "openai-env",
       terminal: { transport: "exec-stream", stdin: "disabled" },
     },
-    scenario: { mode: "dry-run", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 } },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;

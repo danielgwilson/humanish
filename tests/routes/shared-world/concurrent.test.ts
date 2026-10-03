@@ -31,8 +31,8 @@ import {
   concurrentSharedWorldValidationReason,
   sharedWorldValidationReason,
 } from "../../../src/study/validation.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { prepareStudy, runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -372,7 +372,8 @@ function makeRunSession(
   };
 }
 
-function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): StudyConfig {
+/** The concurrent shared-world study as a humanish.study.v3 object. */
+function concurrentStudy(roleCount = 3, concurrency = 3, template?: string) {
   const lanes = Array.from({ length: roleCount }, (_unused, i) => ({
     id: `persona-${String(i + 1).padStart(2, "0")}`,
     actorType: i === 0 ? "initiator" : "collaborator",
@@ -381,13 +382,14 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): St
     persona: `persona-${i + 1}`,
     entry: `/seat-${i + 1}`,
   }));
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  return {
+    schema: STUDY_SCHEMA,
     id: "concurrent-shared-world-proof",
     title: "Concurrent shared-world proof",
+    route: "shared-world",
+    mode: "live",
     subject: {
       source: "clone",
-      topology: "shared-world",
       exposure: "synthetic",
       repos: ["example-org/collab-app"],
       env: ["DATABASE_URL"],
@@ -404,15 +406,19 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): St
         ],
       },
     },
-    actors: [{ type: "openai-computer-use", mission: "Use the shared app.", lanes }],
+    actor: { type: "openai-computer-use", mission: "Use the shared app." },
+    participants: lanes,
     execution: {
       target: "e2b-desktop",
       timeoutMs: 60_000,
       concurrency,
       ...(template === undefined ? {} : { desktop: { template } }),
     },
-    scenario: { mode: "live" },
-  });
+  };
+}
+
+function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): StudyConfig {
+  const parsed = parseStudy(concurrentStudy(roleCount, concurrency, template));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -1131,15 +1137,15 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       detachedTimers: { now: () => 0, sleep: async () => {} },
       proberCadenceMs: 100_000,
     };
-    const declared = concurrentConfig(2, 2);
-    const [named, unnamed] = declared.actors[0]!.lanes!;
+    const declared = concurrentStudy(2, 2);
+    const [named, unnamed] = declared.participants;
     const { id: _id, ...unnamedSeat } = unnamed!;
     // The second participant has no id, and email has no recipients: the parser fills one per
     // participant.
     const labWith = (email: Record<string, unknown>) =>
-      parseStudyDocument({
+      parseStudy({
         ...declared,
-        actors: [{ ...declared.actors[0], lanes: [named, unnamedSeat] }],
+        participants: [named, unnamedSeat],
         comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, ...email } },
       });
     const parsed = labWith({});
@@ -1875,13 +1881,14 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       persona: `persona-${i + 1}`,
       entry: `/seat-${i + 1}`,
     }));
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "concurrent-shared-world-local-tree-proof",
       title: "Concurrent shared-world local-tree proof",
+      route: "shared-world",
+      mode: "live",
       subject: {
         source: "local-tree",
-        topology: "shared-world",
         exposure: "synthetic",
         env: ["DATABASE_URL"],
         serve: {
@@ -1897,9 +1904,9 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
           ],
         },
       },
-      actors: [{ type: "openai-computer-use", mission: "Use the shared app.", lanes }],
+      actor: { type: "openai-computer-use", mission: "Use the shared app." },
+      participants: lanes,
       execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -2409,7 +2416,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
         "utf8",
       ),
     );
-    const parsed = parseStudyDocument(raw);
+    const parsed = parseStudy(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
   }

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import {
   automaticAnalysisBudget,
@@ -172,7 +172,7 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     expect(raw.review.analysis).toBe(false);
     expect(raw.execution.runtimeAuth).toBe("openai-egress");
-    expect(parseStudyDocument(raw).ok).toBe(true);
+    expect(parseStudy(raw).ok).toBe(true);
     expect(await readFile(path.resolve("scripts/release-dogfood.mjs"), "utf8")).toContain(
       "must explicitly disable automatic analysis",
     );
@@ -182,7 +182,7 @@ describe("automatic analysis admission and producer boundary", () => {
       await readFile(path.resolve("humanish/studies/scripted-demo.yaml"), "utf8"),
     );
     expect(raw.review.analysis).toBe(false);
-    expect(parseStudyDocument(raw).ok).toBe(true);
+    expect(parseStudy(raw).ok).toBe(true);
   });
   it.each([undefined, false, { maxCostUsd: 7 }])(
     "metadata preflight and TUI summary disclose resolved budget %j without dispatch",

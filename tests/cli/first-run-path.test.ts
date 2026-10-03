@@ -11,7 +11,7 @@ import {
   starterLocalAgentFor,
   type FirstRunEnvironment,
 } from "../../src/cli/first-run-path.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { brainOf } from "../../src/study/plan-base.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
 import { runInit } from "../../src/study/init.js";
@@ -319,7 +319,7 @@ describe("init finds a provider key the way every other command does", () => {
     try {
       expect(await initActor(cwd, env)).toEqual({ actor: "local-agent", capped: false });
       const lab = await readFile(path.join(cwd, "humanish/studies/try-live.yaml"), "utf8");
-      const parsed = parseStudyDocument(parseYaml(lab));
+      const parsed = parseStudy(parseYaml(lab));
       if (!parsed.ok) throw new Error(parsed.error.message);
       expect(brainOf(parsed.config, false)).toEqual({ kind: "local-agent", agent: "claude" });
     } finally {

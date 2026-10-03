@@ -20,7 +20,7 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {
@@ -182,39 +182,34 @@ describe("the study budget stops a participant with budget_reached", () => {
 
 describe("caps parsing and session defaults", () => {
   const baseLab = {
-    schema: "humanish.lab.v2",
+    schema: "humanish.study.v3",
     id: "sizing-test",
     title: "sizing",
+    route: "computer-use",
+    mode: "dry-run",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [{ type: "openai-computer-use", mission: "Look around." }],
+    actor: { type: "openai-computer-use", mission: "Look around." },
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "dry-run" },
   };
 
   it("parses execution.caps.maxTotalUsd and refuses a negative one", () => {
-    const good = parseStudyDocument({
-      ...baseLab,
-      execution: { target: "e2b-desktop", caps: { maxTotalUsd: 25 } },
-    });
+    const good = parseStudy({ ...baseLab, caps: { maxTotalUsd: 25 } });
     expect(good.ok).toBe(true);
     if (good.ok) expect(good.config.execution?.caps?.maxTotalUsd).toBe(25);
 
-    const bad = parseStudyDocument({
-      ...baseLab,
-      execution: { target: "e2b-desktop", caps: { maxTotalUsd: -1 } },
-    });
+    const bad = parseStudy({ ...baseLab, caps: { maxTotalUsd: -1 } });
     expect(bad.ok).toBe(false);
   });
 
   it("defaults an app-url session to 30 minutes", () => {
-    const parsed = parseStudyDocument(baseLab);
+    const parsed = parseStudy(baseLab);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(30 * 60_000);
   });
 
   it("derives a provisioned-route default that fits the one-hour sandbox cap", () => {
-    const parsed = parseStudyDocument({
+    const parsed = parseStudy({
       ...baseLab,
       subject: {
         source: "clone",
@@ -229,7 +224,7 @@ describe("caps parsing and session defaults", () => {
   });
 
   it("subtracts declared state seeding from the derived default", () => {
-    const parsed = parseStudyDocument({
+    const parsed = parseStudy({
       ...baseLab,
       subject: {
         source: "clone",

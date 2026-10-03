@@ -43,8 +43,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -2000,25 +2000,24 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   describe("clone subject across two participants", () => {
     const cloneFanoutConfig = (): StudyConfig => {
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "clone-fanout-proof",
         title: "Clone fan-out proof",
+        route: "computer-use",
+        mode: "live",
         subject: {
           source: "clone",
           repos: ["example-org/example-app"],
           serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
         },
-        actors: [
-          {
-            type: "openai-computer-use",
-            persona: "first-time-visitor",
-            mission: "Explore the app and stop.",
-            count: 2,
-          },
-        ],
+        actor: {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+        participants: 2,
         execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 2 },
-        scenario: { mode: "live" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
       return parsed.config;
@@ -2188,13 +2187,14 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   it("geometry mismatch ⇒ DEVICE_GEOMETRY (the per-participant device claim is verified in-sandbox)", async () => {
     // Single participant whose desktop reports the wrong dimensions.
     const handle = makeFanoutModule({ geometryOverride: () => [800, 600] });
-    const config = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const config = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "geometry-proof",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", mission: "Explore." }],
+      actor: { type: "openai-computer-use", mission: "Explore." },
       execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "mobile" } },
-      scenario: { mode: "live" },
     });
     if (!config.ok) throw new Error(config.error.message);
     const outcome = await runStudyWith(
@@ -2405,27 +2405,23 @@ describe("cua fan-out: cost estimate (sum participant token lines + one aggregat
 
 describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome window minimum (no clip)", () => {
   const cfg = (device?: string, rawResolution?: [number, number]): StudyConfig => {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "floor-probe",
       title: "floor probe",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "https://example.com/" },
       policies: { allowPublicTargets: true },
-      actors: [
-        {
-          type: "openai-computer-use",
-          mission: "Look.",
-          lanes: [
-            { id: "solo", ...(device ? { device } : {}), instruction: "Look at the screen." },
-          ],
-        },
+      actor: { type: "openai-computer-use", mission: "Look." },
+      participants: [
+        { id: "solo", ...(device ? { device } : {}), instruction: "Look at the screen." },
       ],
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         ...(rawResolution ? { desktop: { resolution: rawResolution } } : {}),
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;

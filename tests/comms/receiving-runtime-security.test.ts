@@ -8,8 +8,8 @@ import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import { inspectCommsRecovery } from "../../src/comms/receiving-recovery.js";
 import { prepareReceivingRun } from "../../src/comms/receiving-runtime.js";
 import type { ReceivingSurfaceFile } from "../../src/comms/receiving-types.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 
 // Synthetic canaries and explicit mutations of the sanitized, live-derived wire fixtures.
@@ -35,13 +35,14 @@ function response(wire: Wire): Response {
   });
 }
 function config(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "receiving-security",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
-    actors: [{ type: "openai-computer-use", mission: "Read your email." }],
+    actor: { type: "openai-computer-use", mission: "Read your email." },
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "live" },
     comms: { email: { connection: "mail" } },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);

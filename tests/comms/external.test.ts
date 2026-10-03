@@ -20,8 +20,8 @@ import {
 } from "../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { freePort } from "../helpers/free-port.js";
 
 const TOKEN = "test-token-not-a-secret";
@@ -127,18 +127,20 @@ describe("adopter-hosted comms ingress", () => {
 
 describe("comms.email.external config", () => {
   const appUrlLab = (comms: Record<string, unknown>) => ({
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "external-comms",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "https://app.example.test/" },
-    actors: [{ type: "openai-computer-use", count: 1, mission: "Sign up." }],
+    actor: { type: "openai-computer-use", mission: "Sign up." },
+    participants: 1,
     execution: { target: "e2b-desktop" },
     policies: { allowPublicTargets: true },
-    scenario: { mode: "live" },
     comms,
   });
 
   it("makes comms live on an app-url subject instead of warning it inert", () => {
-    const result = parseStudyDocument(
+    const result = parseStudy(
       appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
     );
     expect(result.ok).toBe(true);
@@ -154,13 +156,13 @@ describe("comms.email.external config", () => {
   });
 
   it("drops the injectEnv requirement for an external catch (there is no subject env to inject)", () => {
-    const withoutInject = parseStudyDocument(
+    const withoutInject = parseStudy(
       appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
     );
     expect(withoutInject.ok).toBe(true);
     // ...but still refuses when nothing declares where mail should go, and the message names every
     // transport that would satisfy it rather than only the HTTP one.
-    const neither = parseStudyDocument(appUrlLab({ email: {} }));
+    const neither = parseStudy(appUrlLab({ email: {} }));
     expect(neither.ok).toBe(false);
     if (!neither.ok) {
       expect(neither.error.message).toContain("injectEnv");
@@ -170,11 +172,9 @@ describe("comms.email.external config", () => {
   });
 
   it("rejects a non-absolute URL and a malformed token env name", () => {
-    const badUrl = parseStudyDocument(
-      appUrlLab({ email: { external: { catchBaseUrl: "/relative" } } }),
-    );
+    const badUrl = parseStudy(appUrlLab({ email: { external: { catchBaseUrl: "/relative" } } }));
     expect(badUrl.ok).toBe(false);
-    const badEnv = parseStudyDocument(
+    const badEnv = parseStudy(
       appUrlLab({
         email: { external: { catchBaseUrl: "https://c.example.test", authTokenEnv: "not a var" } },
       }),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 
 // The terminal route injects the operator's runtime LLM key command-scoped, and codex spawns
 // the participant's shell as a child, so the participant inherits that key. Two participants in a
@@ -11,17 +11,19 @@ import { parseStudyDocument } from "../../../src/study/config.js";
 // cooperation: it cannot reach a host that is not on the list.
 
 function parse(execution: Record<string, unknown>) {
-  return parseStudyDocument({
-    schema: V2_SCHEMA,
+  return parseStudy({
+    schema: STUDY_SCHEMA,
     id: "egress-test",
     title: "Egress test",
+    route: "terminal",
+    mode: "dry-run",
     subject: {
       source: "terminal-product",
       product: { name: "humanish", publicSurfaces: ["https://github.com/danielgwilson/humanish"] },
     },
-    actors: [{ type: "codex-exec", mission: "Do the thing." }],
+    actor: { type: "codex-exec", mission: "Do the thing." },
+    caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 },
     execution: { target: "e2b-terminal", runtimeAuth: "openai-env", ...execution },
-    scenario: { mode: "dry-run", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 } },
   });
 }
 

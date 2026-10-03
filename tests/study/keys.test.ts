@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 
 const base = {
   schema: V2_SCHEMA,
@@ -66,7 +66,7 @@ describe("unknown lab fields", () => {
   it("parses every committed study", async () => {
     const dir = "humanish/studies";
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml"))) {
-      const result = parseStudyDocument(parse(await readFile(path.join(dir, file), "utf8")));
+      const result = parseStudy(parse(await readFile(path.join(dir, file), "utf8")));
       expect(result.ok ? "ok" : result.error.message, file).toBe("ok");
     }
   });

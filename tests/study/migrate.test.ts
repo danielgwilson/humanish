@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import { migrateStudies } from "../../src/study/migrate.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
@@ -687,7 +687,7 @@ describe("every committed lab", () => {
       const before = parseStudyDocument(
         parse(await readFile(path.join(ROOT, "tests/fixtures/labs-v2", name), "utf8")),
       );
-      const after = parseStudyDocument(
+      const after = parseStudy(
         parse(await readFile(path.join(cwd, "humanish/studies", name), "utf8")),
       );
       if (!before.ok || !after.ok) throw new Error(`${name} did not parse`);

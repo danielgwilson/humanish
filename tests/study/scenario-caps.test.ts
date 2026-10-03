@@ -5,9 +5,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
@@ -26,15 +26,17 @@ function computerUseLab(caps: Record<string, number>): Record<string, unknown> {
 
 function terminalLab(caps: Record<string, number>): Record<string, unknown> {
   return {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "scenario-caps-terminal",
+    route: "terminal",
+    mode: "dry-run",
     subject: {
       source: "terminal-product",
       product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
     },
-    actors: [{ type: "codex-exec", mission: "Discover widgetsmith-cli from public surfaces." }],
+    actor: { type: "codex-exec", mission: "Discover widgetsmith-cli from public surfaces." },
+    caps: caps,
     execution: { target: "e2b-terminal" },
-    scenario: { mode: "dry-run", caps },
   };
 }
 
@@ -60,7 +62,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
   });
 
   it("leaves a terminal lab's positive scenario.caps.maxUsd alone", () => {
-    const result = parseStudyDocument(terminalLab({ maxUsd: 1.5, maxJobs: 0, maxMinutes: 10 }));
+    const result = parseStudy(terminalLab({ maxUsd: 1.5, maxJobs: 0, maxMinutes: 10 }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.scenario?.caps?.maxUsd).toBe(1.5);
@@ -104,7 +106,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
       const raw: unknown = parse(
         await readFile(path.join(repoRoot, "humanish", "studies", `${id}.yaml`), "utf8"),
       );
-      const result = parseStudyDocument(raw);
+      const result = parseStudy(raw);
       expect(result.ok ? "ok" : result.error.message).toBe("ok");
       if (!result.ok) return;
       expect(result.config.execution?.caps?.maxUsd).toBe(3);
@@ -117,7 +119,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
     const dir = path.join(repoRoot, "humanish", "studies");
     const refused: string[] = [];
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml"))) {
-      const result = parseStudyDocument(parse(await readFile(path.join(dir, file), "utf8")));
+      const result = parseStudy(parse(await readFile(path.join(dir, file), "utf8")));
       if (!result.ok && result.error.message.includes("scenario.caps.")) refused.push(file);
     }
     expect(refused).toEqual([]);

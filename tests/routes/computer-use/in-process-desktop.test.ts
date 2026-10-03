@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import type { CuaExecutor, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
 import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
 import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
 import type { CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
@@ -22,15 +22,14 @@ afterEach(async () => {
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-in-process-desktop-"));
   temporary.push(cwd);
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "in-process-desktop",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [
-      { type: "openai-computer-use", persona: "first-time-visitor", mission: "Save a note." },
-    ],
+    actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Save a note." },
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   const spec = participantRun({

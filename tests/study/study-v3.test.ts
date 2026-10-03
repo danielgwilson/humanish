@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { DEFAULT_LOCAL_BROWSER_STARTER, starterFilesFor } from "../../src/study/init-templates.js";
 import { planStudy } from "../../src/study/plan.js";
 import type { PlanResult } from "../../src/study/plan-types.js";
@@ -134,7 +134,7 @@ function expectTwin(name: string, v2: Raw): string[] {
   const source = parsed(v2);
   const route = routeOf(source.config);
   const { study, dropped } = twin(v2, route);
-  const result = parseStudyDocument(study);
+  const result = parseStudy(study);
   if (!result.ok) throw new Error(`${name}: ${result.error.message}`);
   const projected = parsed(withoutPaths(v2, dropped));
   expect({ ...result.config, schema: V2_SCHEMA }, name).toEqual(projected.config);
