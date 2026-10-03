@@ -324,7 +324,7 @@ describe("read-only participant debrief", () => {
         { estimatedCostUsd: 0.02 },
       ],
     });
-    expect(cost?.note).toContain("LOWER BOUND");
+    expect(cost?.note).toContain("a lower bound");
   });
 
   it("treats the typed friction list as authoritative for its summary", async () => {

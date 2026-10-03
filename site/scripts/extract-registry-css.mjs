@@ -106,7 +106,6 @@ const ITEMS = {
       "lrow",
       "ln",
       "ld",
-      "whint",
       "chip",
       "chip-pass",
       "chip-dot",

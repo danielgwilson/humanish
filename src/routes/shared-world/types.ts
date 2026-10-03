@@ -32,8 +32,7 @@ import type {
 } from "../computer-use/types.js";
 import type { ProvisionedPlaneSetup } from "./provisioned.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
-
-export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
+import { type StudyResultIdentity } from "../../run/study-result.js";
 
 export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {
   mode: "concurrent-shared-world-lab",
@@ -144,11 +143,10 @@ export interface ConcurrentSharedWorldParticipantResult {
   error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
 }
 
-export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult {
-  schema: typeof CONCURRENT_SHARED_WORLD_LAB_SCHEMA;
+export interface ConcurrentSharedWorldLabResult
+  extends AutomaticAnalysisResult, StudyResultIdentity<"shared-world"> {
   ok: boolean;
   cwd: string;
-  labId: string;
   actor: string;
   topology: "shared-world";
   topologyMode: "concurrent";

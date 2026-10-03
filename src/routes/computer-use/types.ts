@@ -52,8 +52,7 @@ import type {
   SharedWorldParticipant,
 } from "../../lab/plan-participants.js";
 import type { ResolvedParticipant } from "../../run/participant.js";
-
-export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
+import { type StudyResultIdentity } from "../../run/study-result.js";
 
 // The fan-out topology of this route: N participants = N independent E2B desktop sandboxes,
 // each its own world (clone/serve + subject.state per participant). Shared-world has its own route.
@@ -330,13 +329,12 @@ export type CuaSubjectProvenanceArg =
       state: RunSubjectProvenance["state"];
     };
 
-export interface CuaActorLabResult extends AutomaticAnalysisResult {
-  schema: typeof CUA_ACTOR_LAB_SCHEMA;
+export interface CuaActorLabResult
+  extends AutomaticAnalysisResult, StudyResultIdentity<"computer-use"> {
   /** True when the Observer verified the bundle, all live participants passed credibility checks
    * (or this is a dry-run), and no declared adapter/scorer verdict failed. */
   ok: boolean;
   cwd: string;
-  labId: string;
   /** The registry-resolved actor id that ran (or would run) the session. */
   actor: string;
   appUrl: string;

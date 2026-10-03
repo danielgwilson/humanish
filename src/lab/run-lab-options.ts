@@ -5,16 +5,13 @@
 
 import path from "node:path";
 
-import { CUA_ACTOR_LAB_SCHEMA } from "../routes/computer-use/types.js";
-import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted/types.js";
-import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types.js";
-import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
 import { knownSecretValues, labEventEmitter, type LabEvent } from "./run-lab-events.js";
 import { rosterOf } from "./parse/actors.js";
+import { studyResultIdentity } from "../run/study-result.js";
 
 type Refusal = {
   ok: false;
@@ -161,18 +158,24 @@ export function optionRefusalOutcome(
   const actor = config.actors[0]?.type ?? "";
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
   const runId = options.runId ?? "not-created";
-  const common = { ok: false, cwd, labId: config.id, actor, dryRun, runId, warnings: [], error };
+  const common = { ok: false, cwd, actor, dryRun, runId, warnings: [], error };
   switch (route) {
     case "preview":
       return {
         route: "preview",
-        result: { schema: "humanish.run-result.v1", ok: false, cwd, warnings: [], error },
+        result: {
+          ...studyResultIdentity("preview", config.id),
+          ok: false,
+          cwd,
+          warnings: [],
+          error,
+        },
       };
     case "computer-use":
       return {
         route: "computer-use",
         result: {
-          schema: CUA_ACTOR_LAB_SCHEMA,
+          ...studyResultIdentity("computer-use", config.id),
           ...common,
           ok: false,
           appUrl: config.subject.appUrl ?? config.subject.serve?.url ?? "",
@@ -183,7 +186,7 @@ export function optionRefusalOutcome(
       return {
         route: "scripted",
         result: {
-          schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+          ...studyResultIdentity("scripted", config.id),
           ...common,
           ok: false,
           appUrl: config.subject.appUrl ?? "",
@@ -194,7 +197,7 @@ export function optionRefusalOutcome(
       return {
         route: "terminal",
         result: {
-          schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+          ...studyResultIdentity("terminal", config.id),
           ...common,
           ok: false,
           product: config.subject.product?.name ?? "",
@@ -205,7 +208,7 @@ export function optionRefusalOutcome(
       return {
         route: "shared-world",
         result: {
-          schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+          ...studyResultIdentity("shared-world", config.id),
           ...common,
           ok: false,
           topology: "shared-world",

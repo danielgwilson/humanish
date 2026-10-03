@@ -120,97 +120,55 @@ export function buildDraft(
     };
   }
 
-  // The fallback below is dry-run-shaped: it says no browser behavior was exercised. A live
-  // bundle without a candidate gets a draft that describes the run that happened instead, built
-  // from the same review lines the stakeholder surfaces show (participants and tasks keep their
-  // denominators).
-  if (bundle.mode === "live") {
-    const participantEndings = participantOutcomeDetails(bundle.streams);
-    const review = withCuaReviewProvenance(bundle.review, bundle.streams);
-    const actualLines = [
-      review.summary,
-      ...(bundle.review.participants === undefined
-        ? []
-        : [
-            `Participants: ${formatParticipantOutcomes(bundle.review.participants, participantEndings)}.`,
-          ]),
-      ...(bundle.review.tasks === undefined
-        ? []
-        : [`Tasks: ${formatRunTaskFunnel(bundle.review.tasks)}.`]),
-    ];
-    return {
-      schema: FEEDBACK_SCHEMA,
-      run_id: bundle.runId,
-      adapter_id: bundle.source.packageName ?? bundle.scenario.id,
-      scenario_id: bundle.scenario.id,
-      persona_id: bundle.persona.id,
-      actor: (bundle.streams ?? []).some((stream) => stream.actor?.lane === "computer-use")
-        ? "computer-use"
-        : "unknown",
-      substrate: "unknown",
-      failure_owner: "unknown",
-      summary: "Live study completed without a participant-reported finding",
-      expected: bundle.scenario.goal,
-      actual: actualLines.join(" "),
-      source_bundle: bundlePath,
-      evidence: [
-        {
-          path: bundlePath,
-          kind: "state",
-          note: "Source run bundle.",
-        },
-        {
-          path: path.join(path.dirname(bundlePath), "review.md"),
-          kind: "review",
-          note: "The run's review: verdict, participants, and gaps.",
-        },
-      ],
-      redaction: {
-        status: "passed",
-        notes: bundle.redaction.notes,
-      },
-      idempotency_key: `humanish:${bundle.runId}:live-run-summary`,
-      proposed_next_state: "study-quality-review",
-      acceptance_proof: [
-        feedbackProofCommands(bundle.runId).verify,
-        feedbackProofCommands(bundle.runId).watch,
-      ],
-    };
-  }
-
+  // A bundle without a candidate gets a draft that describes the run that happened, built from the
+  // same review lines the stakeholder surfaces show (participants and tasks keep their
+  // denominators). Feedback refuses a dry run before it gets here.
+  const participantEndings = participantOutcomeDetails(bundle.streams);
+  const review = withCuaReviewProvenance(bundle.review, bundle.streams);
+  const actualLines = [
+    review.summary,
+    ...(bundle.review.participants === undefined
+      ? []
+      : [
+          `Participants: ${formatParticipantOutcomes(bundle.review.participants, participantEndings)}.`,
+        ]),
+    ...(bundle.review.tasks === undefined
+      ? []
+      : [`Tasks: ${formatRunTaskFunnel(bundle.review.tasks)}.`]),
+  ];
   return {
     schema: FEEDBACK_SCHEMA,
     run_id: bundle.runId,
-    adapter_id: bundle.source.packageName ?? "synthetic-app",
+    adapter_id: bundle.source.packageName ?? bundle.scenario.id,
     scenario_id: bundle.scenario.id,
     persona_id: bundle.persona.id,
-    actor: "synthetic-dry-run",
-    substrate: "local-filesystem",
-    failure_owner: "harness",
-    summary: "Dry-run contract proof needs product-evidence follow-up",
-    expected:
-      "humanish should produce verified, public-safe evidence before product claims are filed.",
-    actual:
-      "This dry-run produced a contract-proof bundle only; no browser or product behavior was exercised.",
+    actor: (bundle.streams ?? []).some((stream) => stream.actor?.lane === "computer-use")
+      ? "computer-use"
+      : "unknown",
+    substrate: "unknown",
+    failure_owner: "unknown",
+    summary: "Live study completed without a participant-reported finding",
+    expected: bundle.scenario.goal,
+    actual: actualLines.join(" "),
     source_bundle: bundlePath,
     evidence: [
       {
         path: bundlePath,
         kind: "state",
-        note: "Synthetic run bundle.",
+        note: "Source run bundle.",
       },
       {
         path: path.join(path.dirname(bundlePath), "review.md"),
         kind: "review",
-        note: "Review skeleton labels this as contract proof only.",
+        note: "The run's review: verdict, participants, and gaps.",
       },
     ],
     redaction: {
       status: "passed",
       notes: bundle.redaction.notes,
     },
-    idempotency_key: `humanish:${bundle.runId}:dry-run-contract-proof`,
-    proposed_next_state: "watch",
+    idempotency_key: `humanish:${bundle.runId}:live-run-summary`,
+    proposed_next_state: "study-quality-review",
     acceptance_proof: [
       feedbackProofCommands(bundle.runId).verify,
       feedbackProofCommands(bundle.runId).watch,
@@ -350,10 +308,14 @@ export function isUsableFeedbackCandidate(candidate: unknown): candidate is RunF
   );
 }
 
+/** An evidence path inside the run directory, as "run.json" or "screenshots/step-003.png". */
+function runRelative(draft: FeedbackDraft, evidencePath: string): string {
+  const relative = path.relative(path.dirname(draft.source_bundle), evidencePath);
+  return relative === "" || relative.startsWith("..") ? evidencePath : relative;
+}
+
 export function renderMarkdown(draft: FeedbackDraft, repo: string): string {
   return `This issue was drafted by humanish from a verified humanish run bundle.
-
-It contributes to public-safe simulation harness coverage. The feedback command did not mutate GitHub, commit code, or claim unobserved product behavior.
 
 ## Summary
 
@@ -369,14 +331,9 @@ ${draft.actual}
 
 ## Evidence
 
-${draft.evidence.map((item) => `- ${item.kind}: \`${item.path}\` - ${item.note}`).join("\n")}
+${draft.evidence.map((item) => `- ${item.kind} ${runRelative(draft, item.path)}: ${item.note}`).join("\n")}
 
-## Filing Notes
-
-- Repository: ${repo}
-- GitHub mutation: not performed
-- Substrate: ${draft.substrate}
-- Production data: not used
+Repository: ${repo}
 
 \`\`\`yaml
 humanish_feedback:

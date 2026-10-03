@@ -109,10 +109,10 @@ export function registerTuiCommand(
 ): void {
   parent
     .command("tui")
-    .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
-    .summary(
-      "Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.",
+    .description(
+      "Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect <lab> --json and humanish runs --json.",
     )
+    .summary("Browse studies and runs in a terminal UI for people.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(
       "--env-file <path>",
@@ -188,7 +188,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
           `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. ` +
           "It renders frames of escape codes into a transcript, and its keys can start runs. " +
           "`humanish runs --json` lists runs, `humanish lab list --json` lists the labs in this project, " +
-          "and `humanish lab run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
+          "and `humanish run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
       },
     };
   }
@@ -200,7 +200,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
       error: {
         code: "HUMANISH_TUI_REQUIRES_TTY",
         message:
-          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish lab run --json` starts one.",
+          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish run <lab> --json` starts one.",
       },
     };
   }

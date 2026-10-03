@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "concurrent-shared-world-proof",
+    "labId": "concurrent-shared-world-proof",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "concurrent-shared-world-proof",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -1218,7 +1220,7 @@
         "total": 0
       },
       "desktopMinutes": "[desktopMinutes]",
-      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+      "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Each line's reason says what is missing. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
     }
   },
   "sandbox-receipts.ndjson": [

@@ -333,18 +333,12 @@ importers:
 
   site:
     dependencies:
-      '@flags-sdk/posthog':
-        specifier: ^1.1.0
-        version: 1.1.0
       '@types/mdx':
         specifier: ^2.0.14
         version: 2.0.14
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(next@16.3.6(@babel/core@7.29.7)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
-      flags:
-        specifier: ^4.3.1
-        version: 4.3.1(next@16.3.6(@babel/core@7.29.7)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       fumadocs-core:
         specifier: 16.15.15
         version: 16.15.15(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.40.0(react@19.3.0))(next@16.3.6(@babel/core@7.29.7)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(zod@4.6.5)
@@ -665,10 +659,6 @@ packages:
     resolution: {integrity: sha512-eeY4p/lz7kkDJMidREe7sp2nln16P1M1p64Fb+csn4SssxC2EjKBGqP0NEIlVDVd6iCuPbM7cVlkE/qbwJX4jg==}
     engines: {node: '>=20.18.1 <21 || >=22'}
 
-  '@edge-runtime/cookies@5.0.2':
-    resolution: {integrity: sha512-Sd8LcWpZk/SWEeKGE8LT6gMm5MGfX/wm+GPnh1eBEtCpya3vYqn37wYknwAHw92ONoyyREl1hJwxV/Qx2DWNOg==}
-    engines: {node: '>=16'}
-
   '@emnapi/core@1.11.2':
     resolution: {integrity: sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA==}
 
@@ -845,10 +835,6 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
-
-  '@flags-sdk/posthog@1.1.0':
-    resolution: {integrity: sha512-IYL/DaGrNVxJmGnRxGHkOQHHfq/OZ4dX+ZWkiTSNE4oKEndvD0jH3cxoD9aQmacFSvNclRoDWJSliy8iMyAYpw==}
-    engines: {node: ^20.20.0 || >=22.22.0}
 
   '@floating-ui/core@1.8.0':
     resolution: {integrity: sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ==}
@@ -3397,23 +3383,6 @@ packages:
     resolution: {integrity: sha512-1yD6RmLI1XBfxugvORwlck6f75tYL+iR0jqwsOrOxMZyGYqUuDhJ0l4AXdO1iX/FTs9cBAMEk1gWSEx1kSbylg==}
     engines: {node: '>=6'}
 
-  flags@4.3.1:
-    resolution: {integrity: sha512-Fiwdhv12ltn73KiOEiUQKGI8KG69W95TTy2dc4Z2yBGbsbDOf21Cw7XVdNNEr5RNjZnnThomRehDqaCDVu5ENw==}
-    peerDependencies:
-      '@opentelemetry/api': ^1.7.0
-      next: '*'
-      react: '*'
-      react-dom: '*'
-    peerDependenciesMeta:
-      '@opentelemetry/api':
-        optional: true
-      next:
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
   formatly@0.7.1:
     resolution: {integrity: sha512-ESuCEJE0SGgabl9q+zABI8LhJDmF+8nhpuqDzuM48HfJ9QTD5o6PqFJDFZY7w6f8xsh5lixuj5nJsQNvYOWvKQ==}
     engines: {node: '>=18.3.0'}
@@ -3845,9 +3814,6 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
-
-  jose@5.10.0:
-    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
   jose@6.2.3:
     resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
@@ -4620,15 +4586,6 @@ packages:
       '@types/react':
         optional: true
       react:
-        optional: true
-
-  posthog-node@5.45.0:
-    resolution: {integrity: sha512-wCPydi0qtuVP+PMyyCI12Cl0/id4CODMxijMjrX9FRPBxZus/0SqO2TTiia5Psk2JHfIgdP+Hd85LdXYRB6liQ==}
-    engines: {node: ^20.20.0 || >=22.22.0}
-    peerDependencies:
-      rxjs: ^7.0.0
-    peerDependenciesMeta:
-      rxjs:
         optional: true
 
   powershell-utils@0.1.0:
@@ -5826,8 +5783,6 @@ snapshots:
     dependencies:
       e2b: 2.49.0
 
-  '@edge-runtime/cookies@5.0.2': {}
-
   '@emnapi/core@1.11.2':
     dependencies:
       '@emnapi/wasi-threads': 1.2.2
@@ -5928,12 +5883,6 @@ snapshots:
     optional: true
 
   '@exodus/bytes@1.15.1': {}
-
-  '@flags-sdk/posthog@1.1.0':
-    dependencies:
-      posthog-node: 5.45.0
-    transitivePeerDependencies:
-      - rxjs
 
   '@floating-ui/core@1.8.0':
     dependencies:
@@ -7877,15 +7826,6 @@ snapshots:
     dependencies:
       locate-path: 3.0.0
 
-  flags@4.3.1(next@16.3.6(@babel/core@7.29.7)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
-    dependencies:
-      '@edge-runtime/cookies': 5.0.2
-      jose: 5.10.0
-    optionalDependencies:
-      next: 16.3.6(@babel/core@7.29.7)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-
   formatly@0.7.1:
     dependencies:
       fd-package-json: 2.0.0
@@ -8343,8 +8283,6 @@ snapshots:
   isexe@3.1.5: {}
 
   jiti@2.7.0: {}
-
-  jose@5.10.0: {}
 
   jose@6.2.3: {}
 
@@ -9429,10 +9367,6 @@ snapshots:
       react: 19.3.0
     transitivePeerDependencies:
       - preact-render-to-string
-
-  posthog-node@5.45.0:
-    dependencies:
-      '@posthog/core': 1.55.0
 
   powershell-utils@0.1.0: {}
 

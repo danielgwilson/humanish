@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-live-proof",
+    "labId": "terminal-live-proof",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "terminal-live-proof",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,

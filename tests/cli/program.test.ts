@@ -1,17 +1,7 @@
 import { CommanderError } from "commander";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
-import {
-  access,
-  chmod,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { connect as netConnect, createServer as createNetServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -141,8 +131,6 @@ describe("humanish CLI scaffold", () => {
   it.each([
     ["run", "lanes"],
     ["run", "roster"],
-    ["lab run", "lanes"],
-    ["lab run", "roster"],
   ] as const)(
     "%s rejects unknown %s fields in JSON before creating run evidence",
     async (command, field) => {
@@ -250,47 +238,28 @@ describe("humanish CLI scaffold", () => {
     expect(result.stdout).toContain("Public-safety boundary");
   });
 
-  it("sets a short .summary() on every top-level leaf command so the subcommand list de-wraps", () => {
-    // Commander lists .summary() (falling back to .description()) in the parent's
-    // subcommand table; a missing .summary() is how the top-level --help list used
-    // to wrap every long-description command onto two lines.
-    const program = createProgram();
-    const expectedSummaries: Record<string, string> = {
-      init: "Set up humanish/ source and .humanish/ runtime state.",
-      doctor: "Explain project readiness and missing setup.",
-      run: "Run a persona/scenario simulation or dry-run bundle.",
-      verify: "Validate a run bundle and public-safety gates.",
-      cleanup: "Write a resource cleanup inspection receipt.",
-      review: "Build a review packet from verified run evidence.",
-      runs: "List local humanish runs and latest pointers.",
-      watch: "Run participants, open the observer, stay attached.",
-      observe: "Follow a run's saved evidence over loopback http.",
-      codex: "Run Codex-native humanish integration surfaces.",
-      lab: "List, inspect, and run humanish lab manifests.",
-      feedback: "Create public-safe feedback drafts, no GitHub API.",
-    };
-
-    for (const [name, summary] of Object.entries(expectedSummaries)) {
-      const command = program.commands.find((candidate) => candidate.name() === name);
-      expect(command, `expected a top-level "${name}" command`).toBeDefined();
-      expect(command?.summary()).toBe(summary);
-      expect(summary.length).toBeLessThanOrEqual(60);
-    }
-  });
-
-  it("uses the short summaries, not the long descriptions, in the top-level --help subcommand list", async () => {
+  it("lists each visible top-level command on one line of the root --help", async () => {
+    // At 80 columns commander wraps a long summary onto indented continuation lines, which would
+    // show up here as rows that do not start with a command name.
     const result = await runCli(["--help"]);
+    const lines = result.stdout.split("\n");
+    const start = lines.indexOf("Commands:") + 1;
+    const rows = lines.slice(start, lines.indexOf("", start));
+    const program = createProgram();
+    const visible = program
+      .createHelp()
+      .visibleCommands(program)
+      .map((command) => command.name());
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Set up humanish/ source and .humanish/ runtime state.");
-    expect(result.stdout).toContain("Write a resource cleanup inspection receipt.");
-    expect(result.stdout).toContain("Follow a run's saved evidence over loopback http.");
-    expect(result.stdout).toContain("Create public-safe feedback drafts, no GitHub API.");
+    expect(rows.map((row) => row.trim().split(" ")[0])).toEqual(visible);
+    expect(visible).not.toContain("codex");
+    expect(program.commands.map((command) => command.name())).toContain("codex");
   });
 
-  it("reports the package version", async () => {
+  it.each([["--version"], ["-v"]])("reports the package version for %s", async (flag) => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
-    const result = await runCli(["--version"]);
+    const result = await runCli([flag]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
@@ -693,38 +662,6 @@ describe("humanish CLI scaffold", () => {
     );
   });
 
-  it("refuses the removed run --app-url before loading env or writing a run", async () => {
-    await withTempApp(
-      { "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) },
-      async (cwd) => {
-        // A missing --env-file would fail on its own; the refusal has to come first.
-        const base = ["--app-url", "http://127.0.0.1:3000", "--env-file", "missing.env"];
-        const direct = await runCli(["run", ...base, "--count", "2", "--cwd", cwd, "--json"]);
-        const withLab = await runCli(["run", "first-run", ...base, "--cwd", cwd, "--json"]);
-        const human = await runCli(["run", ...base, "--cwd", cwd]);
-
-        for (const result of [direct, withLab]) {
-          const envelope = JSON.parse(result.stdout) as {
-            ok: boolean;
-            error: { code: string; message: string };
-          };
-          expect(result.exitCode).toBe(2);
-          expect(envelope.ok).toBe(false);
-          expect(envelope.error.code).toBe("HUMANISH_APP_URL_REMOVED");
-          expect(envelope.error.message).toContain(
-            "https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios",
-          );
-        }
-        expect(human.exitCode).toBe(2);
-        expect(human.stdout).toMatch(/^HUMANISH_APP_URL_REMOVED: /);
-        await expect(access(path.join(cwd, ".humanish"))).rejects.toThrow();
-
-        const run = createProgram().commands.find((command) => command.name() === "run");
-        expect(run?.helpInformation()).not.toContain("--app-url");
-      },
-    );
-  });
-
   it("fails closed for invalid target cwd and invalid package.json", async () => {
     const missingRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-missing-root-"));
     const missing = path.join(missingRoot, "missing");
@@ -1068,6 +1005,7 @@ interface ServeEnvelope {
   oauth?: { provider: string; allowEmails: string[]; allowDomains: string[] };
   runsListed: number;
   shareReadyCount?: number;
+  entryRunId?: string;
   warnings: string[];
   error?: { code: string; message: string };
 }
@@ -1173,37 +1111,53 @@ function findFreePort(): Promise<number> {
 }
 
 describe("humanish serve command", () => {
-  it("serves the run library over loopback with a machine envelope, then tears down once on SIGTERM", async () => {
-    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
-      await seedDryRunBundle(cwd, "serve-loopback-run");
+  // `serve` is the hidden alias of `observe --all` until 0.109.0; both serve the same library.
+  it.each([[["observe", "--all"]], [["serve"]]])(
+    "%j serves the run library over loopback with a machine envelope, then tears down once on SIGTERM",
+    async (command) => {
+      await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+        await seedDryRunBundle(cwd, "serve-loopback-run");
 
-      const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
-      const cli = startAttachedCli(["serve", "--cwd", cwd, "--json", "--no-open"]);
-      await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
+        const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
+        const cli = startAttachedCli([
+          ...command,
+          "--run",
+          "serve-loopback-run",
+          "--cwd",
+          cwd,
+          "--json",
+          "--no-open",
+        ]);
+        await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
-      const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
-      expect(envelope.schema).toBe("humanish.serve-result.v1");
-      expect(envelope.ok).toBe(true);
-      expect(envelope.mode).toBe("loopback");
-      expect(envelope.safe).toBe(false);
-      expect(envelope.host).toBe("127.0.0.1");
-      expect(envelope.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
-      expect(envelope.oauth).toBeUndefined();
-      expect(envelope.runsListed).toBe(1);
+        const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
+        expect(envelope.schema).toBe("humanish.serve-result.v1");
+        expect(envelope.ok).toBe(true);
+        expect(envelope.mode).toBe("loopback");
+        expect(envelope.safe).toBe(false);
+        expect(envelope.host).toBe("127.0.0.1");
+        expect(envelope.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+        expect(envelope.oauth).toBeUndefined();
+        expect(envelope.runsListed).toBe(1);
+        expect(envelope.entryRunId).toBe("serve-loopback-run");
+        expect(cli.stderr().split("humanish serve is deprecated").length - 1).toBe(
+          command[0] === "serve" ? 1 : 0,
+        );
 
-      // Mirror the watch signal test: deliver SIGTERM twice; the stop path must
-      // run exactly once and exit with exitCodeForSignal(SIGTERM).
-      const listeners = sigtermListenersSince(preexisting);
-      expect(listeners).toHaveLength(1);
-      for (const listener of listeners) listener("SIGTERM");
-      for (const listener of listeners) listener("SIGTERM");
-      await cli.finished;
+        // Mirror the watch signal test: deliver SIGTERM twice; the stop path must
+        // run exactly once and exit with exitCodeForSignal(SIGTERM).
+        const listeners = sigtermListenersSince(preexisting);
+        expect(listeners).toHaveLength(1);
+        for (const listener of listeners) listener("SIGTERM");
+        for (const listener of listeners) listener("SIGTERM");
+        await cli.finished;
 
-      expect(cli.exitCode()).toBe(143);
-      expect(cli.stderr().split("observe stopped").length - 1).toBe(1);
-      expect(cli.stderr()).not.toContain("cleanup failed");
-    });
-  });
+        expect(cli.exitCode()).toBe(143);
+        expect(cli.stderr().split("observe stopped").length - 1).toBe(1);
+        expect(cli.stderr()).not.toContain("cleanup failed");
+      });
+    },
+  );
 
   it("rejects conflicting or unsafe serve option combinations with exit 2 and exact error codes (fail-closed matrix)", async () => {
     await withTempApp(
@@ -1247,7 +1201,15 @@ describe("humanish serve command", () => {
         ];
 
         for (const row of matrix) {
-          const result = await runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...row.args]);
+          const result = await runCli([
+            "observe",
+            "--all",
+            "--cwd",
+            cwd,
+            "--json",
+            "--no-open",
+            ...row.args,
+          ]);
           const envelope = JSON.parse(result.stdout) as ServeEnvelope;
           expect(result.exitCode, `exit code for: ${row.args.join(" ")}`).toBe(2);
           expect(envelope.error?.code, `error code for: ${row.args.join(" ")}`).toBe(row.code);
@@ -1268,7 +1230,7 @@ describe("humanish serve command", () => {
           // The flags are gone: commander refuses the unknown option (a non-zero exit, surfaced here as
           // a thrown error), rather than silently accepting a no-op: the pre-1.0 breaking change.
           await expect(
-            runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...removed]),
+            runCli(["observe", "--all", "--cwd", cwd, "--json", "--no-open", ...removed]),
           ).rejects.toThrow();
         }
       },
@@ -1279,7 +1241,16 @@ describe("humanish serve command", () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
       await seedDryRunBundle(cwd, "serve-entry-run");
 
-      const result = await runCli(["serve", "--run", "nope", "--cwd", cwd, "--json", "--no-open"]);
+      const result = await runCli([
+        "observe",
+        "--all",
+        "--run",
+        "nope",
+        "--cwd",
+        cwd,
+        "--json",
+        "--no-open",
+      ]);
       const envelope = JSON.parse(result.stdout) as ServeEnvelope;
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
@@ -1302,7 +1273,8 @@ describe("humanish serve command", () => {
       );
 
       const result = await runCli([
-        "serve",
+        "observe",
+        "--all",
         "--safe",
         "--run",
         "serve-blocked-run",
@@ -1325,7 +1297,8 @@ describe("humanish serve command", () => {
 
       const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
       const cli = startAttachedCli([
-        "serve",
+        "observe",
+        "--all",
         "--cwd",
         cwd,
         "--expose",
@@ -1374,7 +1347,8 @@ describe("humanish serve command", () => {
       try {
         const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
         const cli = startAttachedCli([
-          "serve",
+          "observe",
+          "--all",
           "--cwd",
           cwd,
           "--safe",
@@ -1433,7 +1407,8 @@ describe("humanish serve command", () => {
       try {
         const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
         const cli = startAttachedCli([
-          "serve",
+          "observe",
+          "--all",
           "--cwd",
           cwd,
           "--expose",
@@ -1496,7 +1471,8 @@ describe("humanish serve command", () => {
         process.env.PATH = emptyDir;
         try {
           const result = await runCli([
-            "serve",
+            "observe",
+            "--all",
             "--cwd",
             cwd,
             "--expose",
@@ -1828,7 +1804,7 @@ describe("study facts ride the result seam", () => {
       command,
       io,
       {
-        schema: "humanish.cua-lab-result.v2",
+        schema: "humanish.study-result.v1",
         ok: true,
         labId: "try-live",
         actor: "openai-computer-use",
@@ -1981,10 +1957,12 @@ describe("run writes the same bundle watch does", () => {
 describe("CUA ending output", () => {
   it("shows distinct lane causes without calling the first lane the whole session", () => {
     const output = formatCuaLabHuman({
-      schema: "humanish.cua-lab-result.v2",
+      schema: "humanish.study-result.v1",
+      route: "computer-use",
+      studyId: "synthetic",
+      labId: "synthetic",
       ok: false,
       cwd: "/synthetic",
-      labId: "synthetic",
       actor: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
       dryRun: false,

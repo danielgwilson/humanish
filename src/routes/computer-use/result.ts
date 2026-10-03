@@ -30,7 +30,6 @@ import {
   subjectProvenanceArg,
 } from "./subject-projection.js";
 import {
-  CUA_ACTOR_LAB_SCHEMA,
   CUA_FANOUT_STRATEGY,
   type CuaActorLabErrorCode,
   type CuaActorLabResult,
@@ -42,6 +41,7 @@ import {
   participantSubjectEnv,
 } from "./types.js";
 import { plannedAppUrl } from "./plan.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /** Aggregate participant counts for the result projection. */
 function buildParticipantSummary(
@@ -205,10 +205,9 @@ function cuaLabResult(args: {
   })();
 
   return {
-    schema: CUA_ACTOR_LAB_SCHEMA,
+    ...studyResultIdentity("computer-use", labId),
     ok,
     cwd,
-    labId,
     actor: args.actorId,
     appUrl,
     dryRun,

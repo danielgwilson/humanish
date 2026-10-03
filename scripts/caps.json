@@ -11,22 +11,23 @@
       "archaeology": 0,
       "seat-comments": 0,
       "cua-route": 0,
-      "honest": 71,
-      "history": 18,
+      "honest": 70,
+      "history": 16,
       "series-codes": 0,
       "name-refs": 0,
-      "string-em-dashes": 153,
-      "string-issue-refs": 10,
-      "string-slice": 10,
-      "string-rationale": 28,
-      "string-plural-s": 57,
-      "string-caps": 278
+      "string-em-dashes": 65,
+      "string-issue-refs": 6,
+      "string-slice": 1,
+      "string-rationale": 16,
+      "string-plural-s": 54,
+      "string-caps": 216,
+      "prompt-markers": 0
     },
     "tests": {
       "issue-refs": 0,
       "fix-tags": 0,
       "caps": 0,
-      "lane-comments": 333,
+      "lane-comments": 332,
       "em-dashes": 0,
       "invariant-refs": 0,
       "authority": 0,
@@ -105,11 +106,11 @@
     }
   },
   "vocabulary": {
-    "lane": 98,
+    "lane": 95,
     "seat": 0,
     "role": 49,
-    "sim": 21,
-    "lab": 2335,
+    "sim": 16,
+    "lab": 2250,
     "doc-backend": 17
   },
   "site": {

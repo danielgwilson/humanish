@@ -75,7 +75,7 @@ describe("observed desktop resources", () => {
       reason: "no_desktop_resources",
       ratesAsOf: null,
     });
-    expect(cost.note).toContain("LOWER BOUND");
+    expect(cost.note).toContain("a lower bound");
   });
 
   it("keeps the observed span but records unknown remaining lifetime after unconfirmed cleanup", () => {

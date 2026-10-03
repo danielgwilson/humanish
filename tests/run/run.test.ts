@@ -433,6 +433,32 @@ describe("dry-run bundles", () => {
       // Cleanup never kills, so the human summary does not offer a killed count.
       const human = await runCli(["cleanup", "--cwd", cwd, "--run", "latest"]);
       expect(human.stdout).toContain("resources: already-clean 1, skipped 0, failed 0");
+      expect(human.stdout).not.toContain("reclaim");
+    });
+  });
+
+  it("ends cleanup's human output with the reclaim command when a sandbox is not recorded as stopped", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "cleanup-leftover" });
+      const bundlePath = path.join(cwd, ".humanish/runs/cleanup-leftover/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as Record<string, unknown>;
+      bundle.providerResources = [
+        {
+          schema: "humanish.provider-resource.v1",
+          provider: "e2b-desktop",
+          kind: "sandbox",
+          id: "sbx-leftover",
+          owner: "humanish",
+          status: "unknown",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ];
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      const human = await runCli(["cleanup", "--cwd", cwd, "--run", "latest"]);
+      expect(human.stdout).toContain("resources: already-clean 0, skipped 0, failed 1");
+      expect(human.stdout.trimEnd().split("\n").at(-1)).toBe(
+        `To stop leftover sandboxes, run humanish reclaim --run cleanup-leftover --cwd ${cwd}.`,
+      );
     });
   });
 
@@ -1307,8 +1333,8 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(verify.ok).toBe(true);
       expect(verify.checks.find((entry) => entry.name === "actor engagement")?.ok).toBe(true);
       expect(verify.warnings).toHaveLength(1);
-      expect(verify.warnings[0]).toContain("FULL-FIDELITY (raw)");
-      expect(verify.warnings[0]).toContain("NOT publish-safe");
+      expect(verify.warnings[0]).toContain("are unblurred");
+      expect(verify.warnings[0]).toContain("not safe to publish as it is");
       expect(verify.shareSafety.status).toBe("local_only");
       expect(verify.shareSafety.reasons.map((reason) => reason.code)).toContain("RAW_SCREENSHOTS");
       expect(
@@ -1326,12 +1352,12 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(jsonBody.shareSafety.reasons.map((reason) => reason.code)).toContain(
         "RAW_SCREENSHOTS",
       );
-      expect(jsonBody.warnings[0]).toContain("FULL-FIDELITY (raw)");
+      expect(jsonBody.warnings[0]).toContain("are unblurred");
       const human = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd]);
       expect(human.exitCode).toBe(0);
       expect(human.stdout).toMatch(/^verified raw-posture-live · local_only · \d+ checks passed\n/);
       expect(human.stdout).toContain("share-safety: RAW_SCREENSHOTS: ");
-      expect(human.stdout).toContain("warning: Screenshots are FULL-FIDELITY (raw)");
+      expect(human.stdout).toContain("warning: Screenshots on ");
     });
   });
 
@@ -1469,7 +1495,7 @@ describe("verify: subject state provenance", () => {
       });
       const empty = await verifyRun(cwd, "state-seeded-empty");
       expect(stateCheck(empty)?.ok).toBe(false);
-      expect(stateCheck(empty)?.message).toContain("hollow");
+      expect(stateCheck(empty)?.message).toContain("claims state the run did not set up");
 
       await writeCuaRunFixture(cwd, "state-seeded-bad-digest", {
         dryRun: false,
@@ -1519,7 +1545,7 @@ describe("verify: subject state provenance", () => {
       });
       const value = await verifyRun(cwd, "state-unpinned-value");
       expect(stateCheck(value)?.ok).toBe(false);
-      expect(stateCheck(value)?.message).toContain("not an env var NAME shape");
+      expect(stateCheck(value)?.message).toContain("not an environment variable name");
       expect(stateCheck(value)?.message).not.toContain(leakedValue);
     });
   });
@@ -1557,7 +1583,7 @@ describe("verify: subject state provenance", () => {
       const verify = await verifyRun(cwd, "state-unpinned-failed-seed");
       expect(verify.ok).toBe(false);
       expect(stateCheck(verify)?.ok).toBe(false);
-      expect(stateCheck(verify)?.message).toContain("passed live run cannot carry failed");
+      expect(stateCheck(verify)?.message).toContain("passed live run cannot have failed");
     });
   });
 
@@ -1571,7 +1597,9 @@ describe("verify: subject state provenance", () => {
       const verify = await verifyRun(cwd, "state-undeclared-env");
       expect(verify.ok).toBe(true);
       expect(stateCheck(verify)?.ok).toBe(true);
-      const stateWarnings = verify.warnings.filter((warning) => warning.includes("no state story"));
+      const stateWarnings = verify.warnings.filter((warning) =>
+        warning.includes("no state is declared"),
+      );
       expect(stateWarnings).toHaveLength(1);
       expect(stateWarnings[0]).toContain("DATABASE_URL");
       expect(stateWarnings[0]).not.toContain("GITHUB_TOKEN");

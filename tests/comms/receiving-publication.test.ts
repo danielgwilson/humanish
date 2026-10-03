@@ -91,6 +91,8 @@ describe("receiving restrictions in retained evidence", () => {
       if (marker !== "receiving snapshot")
         bundle.publication = { restrictions: ["real-communications"] };
       if (marker !== "publication marker") bundle.commsReceiving = evidence();
+      // Feedback refuses a preview first; relabel the synthetic run so the share-safety gate decides.
+      bundle.mode = "live";
       await save();
       const verified = await verifyRun(cwd, RUN);
       expect(verified.ok).toBe(true);

@@ -5223,7 +5223,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       true,
     );
     // No undeclared-state nudge: the state story is declared.
-    expect(verified.warnings.some((w) => w.includes("no state story"))).toBe(false);
+    expect(verified.warnings.some((w) => w.includes("no state is declared"))).toBe(false);
   });
 
   it("fails closed on a mid-sequence step failure: partial provenance, no actor session, scrubbed tail, failed bundle that still verifies", async () => {
@@ -7289,7 +7289,7 @@ describe("runCuaActorLab cost estimates", () => {
     // The aggregate reports the older date (min), never the newer one (max would overclaim freshness).
     expect(cost!.ratesAsOf).toBe("2026-01-15");
     expect(cost!.note).toContain("2026-01-15");
-    expect(cost!.note).toContain("OLDEST");
+    expect(cost!.note).toContain("the oldest rate used");
     // Per-line breakdown keeps each line's own true asOf: only the aggregate is conservative.
     const asOfById = new Map(cost!.breakdown.map((l) => [l.laneId, l.ratesAsOf]));
     expect(asOfById.get("lane-01")).toBe("2026-08-01");
