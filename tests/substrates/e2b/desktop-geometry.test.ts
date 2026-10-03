@@ -37,7 +37,7 @@ describe("inspectDesktopScreenGeometry", () => {
     await expect(inspect(desktop)).resolves.toEqual({
       verified: { width: 1024, height: 768, source: "xdpyinfo" },
       error:
-        "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY: participant lane-01 requested a 1440x950 desktop but xdpyinfo reports 1024x768 in-sandbox; the participant's device geometry is unverified (fail-closed).",
+        "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY: participant lane-01 requested a 1440x950 desktop but xdpyinfo reports 1024x768 in the sandbox. The participant stops, because its screen does not match the device it declared.",
     });
   });
 

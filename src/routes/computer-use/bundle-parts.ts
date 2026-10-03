@@ -26,7 +26,7 @@ export function describeSubjectState(
     case "unpinned":
       return `UNPINNED (external: ${(state.externalEnvNames ?? []).join(", ")})`;
     case "declared-not-run":
-      return `declared, not run (${dryRun ? "dry-run contract" : "provisioning did not complete"})`;
+      return `declared, not run (${dryRun ? "dry run" : "provisioning did not complete"})`;
     case "undeclared":
       return "undeclared";
     case "external-public":
@@ -148,7 +148,7 @@ export function subjectProvenanceMessage(
 ): string {
   if (provenance.source === "clone") {
     if (dryRun) {
-      return `Subject declared: clone of ${provenance.repo}, to be served at ${publicAppUrl} in-sandbox (dry-run contract; nothing cloned)`;
+      return `Subject declared: clone of ${provenance.repo}, to be served at ${publicAppUrl} in-sandbox (dry run; nothing cloned)`;
     }
     if (provenance.commit) {
       return hasSession
@@ -158,7 +158,7 @@ export function subjectProvenanceMessage(
     return `Subject clone attempted from ${provenance.repo}; commit unresolved (provisioning failed before resolution)`;
   }
   if (dryRun) {
-    return `Subject declared: local working tree, to be packed and served at ${publicAppUrl} in-sandbox (dry-run contract; nothing packed)`;
+    return `Subject declared: local working tree, to be packed and served at ${publicAppUrl} in-sandbox (dry run; nothing packed)`;
   }
   if (provenance.archiveSha256) {
     const dirtyLabel =

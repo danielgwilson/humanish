@@ -7,5 +7,8 @@
     "ok": "boolean",
     "schema": "string",
     "store": "string"
+  },
+  "pinned": {
+    "action": "list"
   }
 }

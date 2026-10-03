@@ -9,5 +9,8 @@
     "schema": "string",
     "summary": "string",
     "verdict": "string"
+  },
+  "pinned": {
+    "verdict": "contract_proof_only"
   }
 }

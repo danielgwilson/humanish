@@ -620,10 +620,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       review: bundle.review,
     }).toLowerCase();
     expect(publicTruth).toContain(
-      "this contract-only run proves no live concurrency, scale, or adoption",
+      "this dry run proves nothing about live concurrency, scale, or adoption",
     );
     expect(publicTruth).toContain(
-      "proves contract shape only, not live behavior, scale, or adopter-harness replacement",
+      "checks the evidence shape only, not live behavior, scale, or adopter-harness replacement",
     );
     expect(publicTruth).not.toContain("receipt");
     expect(publicTruth).not.toContain("deferred live receipt");
@@ -1596,7 +1596,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         command: new Command(),
         io: {
           writeOut: (text) => printed.push(text),
-          writeErr: () => undefined,
+          // The failure's error line goes to stderr; the overlap verdict is in it or in stdout.
+          writeErr: (text) => printed.push(text),
           setExitCode: (code) => {
             exitCode = code;
           },

@@ -113,7 +113,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
       status: "passed",
       notes: ranLive
         ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
-        : "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs.",
+        : "Dry-run bundle: no browser ran and no screenshots were captured. The scenario is digest-pinned; live step text passes text redaction when a session runs.",
     },
     artifacts: bundleArtifacts(),
     review,
@@ -182,7 +182,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.contract.ready",
-      message: `Dry-run contract bundle ready: scenario ${args.journey.scenarioId} @ ${args.scenarioSourceDigest} (${args.scenarioSource}, ${args.journey.steps.length} step${args.journey.steps.length === 1 ? "" : "s"}) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser.`,
+      message: `Dry-run bundle ready: scenario ${args.journey.scenarioId} @ ${args.scenarioSourceDigest} (${args.scenarioSource}, ${args.journey.steps.length} step${args.journey.steps.length === 1 ? "" : "s"}) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser.`,
     });
   }
   return events;
@@ -233,8 +233,8 @@ function buildScriptedReview(args: {
     return {
       schema: REVIEW_SCHEMA,
       verdict: args.verdict,
-      summary: `Dry-run contract for scenario ${args.journey.scenarioId} (${args.scenarioSource}, ${args.journey.steps.length} steps) against ${args.appUrl}: composition and scenario contract proven at $0; no browser ran.`,
-      gaps: ["Live scripted session not yet run (dry-run contract only)."],
+      summary: `Dry run of scenario ${args.journey.scenarioId} (${args.scenarioSource}, ${args.journey.steps.length} steps) against ${args.appUrl}: composition and scenario checked at $0; no browser ran.`,
+      gaps: ["Live scripted session not yet run (dry run only)."],
     };
   }
 

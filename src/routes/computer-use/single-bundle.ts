@@ -97,7 +97,7 @@ function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string
       ? "Live computer-use session is running; stream auth URL is available only through the attached Observer server."
       : (args.session?.reason ??
         args.sessionError ??
-        "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
+        "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.");
   const lastScreenshot = args.screenshots[args.screenshots.length - 1];
   const desktopGeometry =
     args.desktopRoute === false
@@ -143,7 +143,7 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
         ? `Computer-use actor (${args.actorId}) is driving the subject app ${browserPlace(args)}.`
         : args.sessionError !== undefined
           ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
-          : `Contract participant for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
+          : `Computer-use actor (${args.actorId}) against ${publicAppUrl}; no session ran.`,
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });
@@ -280,7 +280,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
               level: "info" as const,
               type: "cua-lab.contract.ready",
               message:
-                "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
+                "Dry-run bundle ready; switch scenario.mode to live for a real desktop session.",
             }),
   ];
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
@@ -360,7 +360,7 @@ function singleReview(
           ? []
           : args.inProgress === true
             ? ["Live desktop session is still running."]
-            : ["Live desktop session not yet run (dry-run contract only)."],
+            : ["Live desktop session not yet run (dry run only)."],
     },
     [stream],
   );

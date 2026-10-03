@@ -830,7 +830,7 @@ describe("runCuaActorLab", () => {
       catchBaseUrl: `https://catch.example.test/${token}`,
       deliveries: async () => new Response("", { status: 200 }),
     });
-    expect(warnings).toContain("Comms catch captured ZERO email sends");
+    expect(warnings).toContain("The email catch captured no email sends");
     expect(warnings).not.toContain(token);
   });
 
@@ -4723,7 +4723,7 @@ describe("runCuaActorLab", () => {
     const dryProvenance = dryBundle.events.find(
       (event: { type: string }) => event.type === "cua-lab.subject.provenance",
     );
-    expect(dryProvenance?.message).toContain("dry-run contract; nothing cloned");
+    expect(dryProvenance?.message).toContain("dry run; nothing cloned");
     expect(dryProvenance?.message).not.toContain("Subject cloned from");
 
     // Probe failure: cloned at a real commit, but serving never completed; say exactly that.
@@ -5402,7 +5402,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const provenance = bundle.events.find(
       (event: { type: string }) => event.type === "cua-lab.subject.provenance",
     );
-    expect(provenance?.message).toContain("state: declared, not run (dry-run contract)");
+    expect(provenance?.message).toContain("state: declared, not run (dry run)");
 
     // The contract bundle verifies: declared-not-run is the dry-run marker.
     const verified = await verifyRun(cwd, result.runId);
@@ -7552,7 +7552,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       expect(thread).not.toContain("lane-01@example.test");
       expect(thread).not.toContain("Confirm your email");
       expect(thread).not.toContain("xyz789");
-      expect(result.warnings.some((w) => w.includes("captured ZERO email sends"))).toBe(false);
+      expect(result.warnings.some((w) => w.includes("captured no email sends"))).toBe(false);
     } finally {
       child.kill();
       await rm(dir, { recursive: true, force: true });

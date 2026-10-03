@@ -384,7 +384,7 @@ describe("what a study reports about itself", () => {
     ).toEqual({ mode: "dry-run", outcome: "ok" });
     expect(
       deriveRunFacts({
-        schema: "humanish.lab-preflight-result.v1",
+        schema: "humanish.study-check.v1",
         ok: false,
         lab: "try-live",
         labId: "try-live",

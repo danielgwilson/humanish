@@ -73,7 +73,7 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
+        "notes": "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
       },
       "lifecycle": [
         {
@@ -83,7 +83,7 @@
         }
       ],
       "knownGaps": [
-        "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
+        "This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.",
         "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts."
       ]
     },
@@ -165,13 +165,13 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
+    "summary": "Dry run: the terminal-product study was declared without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
     "gaps": [
-      "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
+      "This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.",
       "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts."
     ]
   },
-  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- summary: Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.\n- mission: Discover widgetsmith-cli from public surfaces.\n- subject: Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest 5bc9377b0c3e.\n- credentials: Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.\n- caps: Spend/job/time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.\n\n## Gaps\n- This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.\n- No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.\n",
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- summary: Dry run: the terminal-product study was declared without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.\n- mission: Discover widgetsmith-cli from public surfaces.\n- subject: Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest 5bc9377b0c3e.\n- credentials: Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.\n- caps: Spend/job/time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.\n\n## Gaps\n- This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.\n- No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -230,8 +230,8 @@
         "streamKind": "terminal",
         "mode": "cli-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
-        "summary": "Contract participant for the terminal agent (codex-exec) studying widgetsmith-cli from public surfaces.",
+        "currentStep": "Dry run: the terminal-product study was declared without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
+        "summary": "Dry-run participant for the terminal agent (codex-exec) studying widgetsmith-cli from public surfaces.",
         "streamIds": [
           "stream-001"
         ],
@@ -263,7 +263,7 @@
         },
         "ui": {
           "intent": "Watch the terminal agent discover and use widgetsmith-cli from its public surfaces.",
-          "state": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior."
+          "state": "Dry run: the terminal-product study was declared without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior."
         },
         "artifacts": [
           {
@@ -324,7 +324,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.contract.ready",
-        "message": "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
+        "message": "Dry-run bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -338,7 +338,7 @@
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
+      "notes": "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
     },
     "artifacts": {
       "run": "run.json",
@@ -350,9 +350,9 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
+      "summary": "Dry run: the terminal-product study was declared without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
       "gaps": [
-        "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
+        "This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.",
         "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts."
       ]
     },

@@ -18,6 +18,11 @@ The Unreleased section holds the full notes for the next version until it is tag
     Pass the path of one to run it.
   - `init` skips a starter whose name another study directory already uses. `comms configure`
     refuses to write when its destination name is in use.
+- Library names for studies: `runStudy`, `parseStudy`, `STUDY_SCHEMA`, `StudyConfig`,
+  `StudyEvent`, `StudyOutcome`, `StudyResult`, `StudyRoute`, `RunStudyOptions` and
+  `BrowserScoringContext`. The computer-use loop's nine `Cua*` types and `CuaAdmissionLimitError`
+  are also exported as `ComputerUse*`, such as `ComputerUseProvider` and
+  `ComputerUseAdmissionLimitError`. `parseStudy` reads v3 and v2 documents.
 - Study files can use the format `schema: humanish.study.v3`.
   - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
     `scripted`) and `mode:` (`dry-run` or `live`).
@@ -42,11 +47,6 @@ The Unreleased section holds the full notes for the next version until it is tag
   `docs/history/roadmap/` from the npm package. These are contributor and maintainer pages; read
   them on GitHub. The package now ships `docs/README.md`, the index of the docs it ships, and a
   shipped doc that linked one of the removed pages links it on GitHub.
-
-### Deprecated
-
-- `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
-  minor removes it.
 - `--sims` on `run`, `lab run` and `watch`, and `--lanes` on `lab run`, deprecated in 0.107.0. Use
   `--count` and `--participants`. Commander now reports an unknown option.
 - `watch --follow`, hidden and deprecated since 2026-06-01. Human output follows without it.
@@ -55,6 +55,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Deprecated
 
+- The library's lab and `Cua` names: `runLab`, `parseLabConfig`, `LAB_CONFIG_SCHEMA`, `LabConfig`,
+  `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`, `RunLabOptions`, `BrowserLabScoringContext`,
+  the nine `Cua*` loop types and `CuaAdmissionLimitError`. Each is the same function, class or type
+  as its new name, so existing code keeps working and `instanceof` matches either class name.
+  `LAB_CONFIG_SCHEMA` keeps the v2 id, `"humanish.lab.v2"`, and the error's `name` stays
+  `CuaAdmissionLimitError`. The next minor removes them.
+- `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
+  minor removes it.
 - `humanish lab run` is a hidden alias of `humanish run` and is removed in the next minor. It takes
   the same flags and prints "warning: humanish lab run is deprecated and is removed in the next
   minor. Use humanish run <lab>." on stderr. `humanish lab --help` no longer lists it.
@@ -64,7 +72,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `humanish watch --run <id>` is hidden and is removed in the next minor. It prints "warning:
   humanish watch --run is deprecated and is removed in the next minor. Use humanish observe --run
   <id>." on stderr and still shows the saved run.
-
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
   carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
   `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
@@ -72,6 +79,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
+
+- The `--json` results that list, show, check and count studies say study where they said lab.
+  - `lab list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
+  - `lab inspect`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.
+  - `lab preflight`: `humanish.lab-preflight-result.v1` is `humanish.study-check.v1`, and `lab`
+    and `labId` are `study` and `studyId`.
+  - `stats`: `humanish.stats.v1` is `humanish.stats.v2`. `lab` is `study`, `labs` is `studies`,
+    and each row's `lab` is `study`.
+  - A study that cannot be found or parsed reports `study` where it reported `lab`.
+  - The summary the TUI reads is `humanish.study-summary.v1`, with `studyId`.
 
 - A study's result names its route and its study the same way on every route.
   - Computer-use, scripted, terminal and shared-world results carry
@@ -83,13 +100,24 @@ The Unreleased section holds the full notes for the next version until it is tag
   - `humanish run` with no study, `observe`, and a refusal a command makes before it picks a route
     keep `humanish.run-result.v1`.
 
-- Error codes name the study or the route where they said lab. Only the prefix changes.
+- Human-mode errors print on stderr in one shape: `<command> failed: <message>`, `code: <CODE>`,
+  and `next: humanish lab list` for `HUMANISH_STUDY_NOT_FOUND`. `keys` and the `comms` connection
+  commands, whose results carry no code, print the first line only. Before, most commands printed
+  `CODE: message` on stdout. A script that greps stdout for `HUMANISH_` codes has to read stderr or
+  switch to `--json`. `--json` output and exit codes do not change; tests/golden/cli-errors/ pins
+  16 failing commands' JSON byte for byte. A failed run still prints its run id, route and
+  participants on stdout, and a failed `verify` its failing checks. docs/contracts/errors.md lists
+  the code families and where each appears.
+- Error codes name the study or the route where they said lab, and the participant where they said
+  sim. For the lab codes only the prefix changes.
   - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
   - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
   - `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is `HUMANISH_SHARED_WORLD_*`.
   - `HUMANISH_TERMINAL_LAB_*` is `HUMANISH_TERMINAL_*`, and `HUMANISH_SCRIPTED_LAB_*` is
     `HUMANISH_SCRIPTED_*`.
   - `HUMANISH_LAUNCH_INVALID_LAB` is `HUMANISH_LAUNCH_INVALID_STUDY`.
+  - `HUMANISH_INVALID_SIM_COUNT` is `HUMANISH_INVALID_PARTICIPANT_COUNT`, the code for a `--count`
+    that is not a positive integer.
 
   A script or library caller that matches a code by its old name needs the new one. Runs saved
   before the change keep the codes they were written with, and nothing reads a code back from a
@@ -165,6 +193,16 @@ The Unreleased section holds the full notes for the next version until it is tag
     dry run" in place of "an evidence preview".
   - `contract_proof_only` stays the value of `streams[].status` and `review.verdict` in `run.json`.
     CONTEXT.md maps it to dry run. "preview" now names only the route.
+- Dry-run bundles on every route stop calling the run a contract. Review summaries, gaps, events,
+  redaction notes and participant summaries say dry run, for example "Dry-run bundle ready; switch
+  scenario.mode to live for a real desktop session." in place of "Dry-run contract bundle ready;
+  ...", and "it checks the evidence shape only" in place of "it proves contract shape only".
+  - A participant that has no session and no error reads "...; no session ran." in place of
+    "Contract participant ...". A live participant can end that way too, so the line does not say
+    dry run.
+  - The first-run dry run's sample streams say "recorded" in place of "contract captured".
+  - Event types such as `cua-lab.contract.ready`, event ids, the `contract-only` state marker and
+    `contract_proof_only` keep their spelling.
 - `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
   passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
   as what verify found, such as "redaction did not pass (status: pending)" or "review.md is
@@ -304,6 +342,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   keep their two-column gutter and the labs list keeps the ▸ before the selected description.
   "Start a LIVE run" reads "Start a live run", empty states are sentences, and on-screen em
   dashes became colons or semicolons.
+- A word that names no command is reported as an unknown command whatever options follow it.
+  `humanish nope --cwd .` and `humanish verfy --run latest` print "error: unknown command 'nope'"
+  and "Did you mean 'verify'?" and exit 1. Before, an option after the word won: they printed
+  "unknown option '--cwd'" and listed the commands that take `--cwd`, as if the word were one of
+  them. `humanish nope --help` also reports the unknown command, where it printed the root help.
+  A real command with a wrong option, such as `verify --nope`, keeps the unknown-option message.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

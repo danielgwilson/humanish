@@ -45,10 +45,10 @@ function options(
         unreadable: [],
       }),
       listLabs: async () => ({
-        schema: "humanish.lab-list.v1",
+        schema: "humanish.study-list.v1",
         ok: true,
         cwd: "/projects/example-app",
-        labs: [],
+        studies: [],
         warnings: [],
       }),
       readProjectState: () => ({

@@ -66,10 +66,10 @@ function options(
       unreadable: [],
     }),
     listLabs: async () => ({
-      schema: "humanish.lab-list.v1",
+      schema: "humanish.study-list.v1",
       ok: true,
       cwd: "/projects/acme-app",
-      labs: LABS,
+      studies: LABS,
       warnings: [],
     }),
     startRun: async () => ({
@@ -242,10 +242,10 @@ describe("the interrupted card", () => {
         unreadable: [],
       }),
       listLabs: async () => ({
-        schema: "humanish.lab-list.v1",
+        schema: "humanish.study-list.v1",
         ok: true,
         cwd: "/projects/acme-app",
-        labs: LABS,
+        studies: LABS,
         warnings: [],
       }),
       startRun: async () => ({

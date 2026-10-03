@@ -76,6 +76,36 @@ describe("a mistyped command", () => {
     );
   });
 
+  it("is named as the unknown command whatever options follow it", async () => {
+    // Commander checks options before the root action runs; without the root's parseOptions
+    // override, `nope --cwd .` reports --cwd and lists the commands that take it.
+    for (const args of [
+      ["nope", "--cwd", "."],
+      ["nope", "--json"],
+    ]) {
+      const { exitCode, output } = await runCli(args);
+      expect({ args, exitCode, output }).toEqual({
+        args,
+        exitCode: 1,
+        output: "error: unknown command 'nope'. humanish --help lists the commands.\n",
+      });
+    }
+    const nearMiss = await runCli(["verfy", "--run", "latest"]);
+    expect(nearMiss).toEqual({
+      exitCode: 1,
+      output: "error: unknown command 'verfy'. Did you mean 'verify'?\n",
+    });
+  });
+
+  it("keeps the option message for a real command, or no command, with a wrong option", async () => {
+    for (const args of [["verify", "--nope"], ["--nope"]]) {
+      const { exitCode, output } = await runCli(args);
+      expect(exitCode, args.join(" ")).toBe(1);
+      expect(output, args.join(" ")).toContain("error: unknown option '--nope'");
+      expect(output, args.join(" ")).not.toContain("unknown command");
+    }
+  });
+
   it("leaves subcommands strict about extra arguments", async () => {
     const { exitCode, output } = await runCli(["verify", "extra"]);
     expect(exitCode).not.toBe(0);

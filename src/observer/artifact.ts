@@ -85,7 +85,7 @@ function loadObserverArtifact(): string {
             });
           } catch {
             throw new Error(
-              "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output.",
+              "observer workspace build failed; run `pnpm --filter humanish-observer build` to see the full output.",
             );
           }
         }
@@ -200,7 +200,7 @@ function renderObserverAppHtml(
     .replace("</body>", () => `${renderExportAssets(assets)}</body>`)
     .replace(
       /<title>[^<]*<\/title>/,
-      () => `<title>humanish Observer — ${escapeHtml(data.run.runId)}</title>`,
+      () => `<title>humanish Observer · ${escapeHtml(data.run.runId)}</title>`,
     );
 }
 

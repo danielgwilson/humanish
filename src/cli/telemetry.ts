@@ -325,9 +325,11 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
         ? r.labId
         : typeof labRecord?.id === "string"
           ? labRecord.id
-          : typeof r.lab === "string"
-            ? r.lab
-            : undefined;
+          : typeof r.study === "string"
+            ? r.study
+            : typeof r.lab === "string"
+              ? r.lab
+              : undefined;
   const lab = safeLabId(labId);
   if (lab !== undefined) facts.lab = lab;
 

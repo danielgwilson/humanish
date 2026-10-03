@@ -1764,7 +1764,15 @@ describe("restricted Codex notifications outside a turn", () => {
       async () => expect((await f.entries()).some((e) => e.method === "turn/start")).toBe(true),
       AFTER_SPAWN,
     );
-    expect(await session.close()).toBe(true);
+    // Close waits at most 1 s for the interrupt's reply before it stops the process, and the fake
+    // writes the item just before that reply. A fake starved past 1 s dies before writing it. With
+    // setTimeout frozen, close waits for the reply itself, so the item arrives under any load.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldClearNativeTimers: true });
+    try {
+      expect(await session.close()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(await pending).toMatchObject({ status: "cancelled" });
     expect((await f.entries()).some((entry) => entry.method === "turn/interrupt")).toBe(true);
     expect(session.policyRefusal).toBe("codex_tool_call");

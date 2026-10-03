@@ -70,7 +70,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
   const participants = normalizeParticipantCount(options.participantCount);
   if (participants === null) {
     return refused(requestedCwd, warnings, {
-      code: "HUMANISH_INVALID_SIM_COUNT",
+      code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
       message: "--count must be a positive integer.",
     });
   }
@@ -136,7 +136,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       {
         at: createdAt,
         event: "run.created",
-        message: `Synthetic dry-run contract bundle created with ${participants} simulated participant${participants === 1 ? "" : "s"}.`,
+        message: `Synthetic dry-run bundle created with ${participants} simulated participant${participants === 1 ? "" : "s"}.`,
       },
       {
         at: createdAt,
@@ -268,7 +268,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     kind: "ui" as const,
     mode: "browser-sim" as const,
     label: "UI journey",
-    currentStep: "Route and viewport contract captured",
+    currentStep: "Route and viewport recorded",
     summary:
       "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
     tail: "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
@@ -278,7 +278,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     kind: "terminal" as const,
     mode: "cli-sim" as const,
     label: "CLI actor",
-    currentStep: "Command transcript contract captured",
+    currentStep: "Command transcript recorded",
     summary:
       "Simulated CLI participant reserved for command-by-command persona runs with stdout/stderr and artifact links.",
     // Every command in a shipped sample tail must be one the CLI actually accepts: participants
@@ -291,7 +291,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     kind: "tui" as const,
     mode: "tui-sim" as const,
     label: "TUI actor",
-    currentStep: "Terminal UI frame contract captured",
+    currentStep: "Terminal UI frame recorded",
     summary:
       "Simulated TUI participant reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
     tail: "\u001b[2mhumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
@@ -301,10 +301,10 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     kind: "codex-ui" as const,
     mode: "codex-app-sim" as const,
     label: "Codex UI",
-    currentStep: "App-server embed contract captured",
+    currentStep: "App-server embed recorded",
     summary:
       "Simulated Codex UI participant reserved for app-server sessions that can be watched beside terminal evidence.",
-    tail: "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
+    tail: "codex-app-server session (dry run)\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
     viewport: { width: 1280, height: 900, deviceScaleFactor: 1 },
   },
 ] as const;
@@ -327,7 +327,7 @@ function buildSyntheticObserverFixtures(args: {
       at: args.createdAt,
       level: "info",
       type: "observer.contract.created",
-      message: "Created public-safe observer stream contract.",
+      message: "Created the public-safe Observer streams.",
     },
   ];
 
@@ -407,7 +407,7 @@ function buildSyntheticObserverFixtures(args: {
         at: args.createdAt,
         level: "info",
         type: "sim.contract.ready",
-        message: `${template.label} stream contract ready.`,
+        message: `${template.label} stream ready.`,
       }),
       participantEvent(ids, {
         id: `event-${String(index + 1).padStart(3, "0")}-b`,

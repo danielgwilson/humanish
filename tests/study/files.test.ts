@@ -100,7 +100,7 @@ describe("study discovery", () => {
     await write("humanish/labs/bar.yaml", "bar");
 
     const listed = await listLabManifests(cwd);
-    expect(listed.labs.map((entry) => [entry.path, entry.error])).toEqual([
+    expect(listed.studies.map((entry) => [entry.path, entry.error])).toEqual([
       ["humanish/labs/bar.yaml", undefined],
       [
         "humanish/studies/foo.yaml",
