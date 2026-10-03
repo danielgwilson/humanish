@@ -304,7 +304,7 @@ export class LiveTerminalSandbox {
     // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
     // and a failure fails the run closed rather than handing the agent a half-built world. It
     // exists so a study can put the participant in a prepared project: asking an agent what
-    // studies a project contains, in an empty directory, measures the lab and not the product
+    // studies a project contains, in an empty directory, measures the study and not the product
     // (learned the hard way on the desktop route, labs/tui-self-study.yaml).
     const install = plan.product.install;
     if (install === undefined) return true;

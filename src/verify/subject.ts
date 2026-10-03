@@ -129,7 +129,7 @@ export function subjectStateFindings(bundle: RunBundle): string[] {
 
 /**
  * Advisory (never flips ok): a live clone bundle whose subject env is provisioned while its
- * state story is undeclared probably points at state the lab does not control. Emitted at
+ * state story is undeclared probably points at state the study does not control. Emitted at
  * most once per bundle (the subject block is bundle-level, never per stream). GITHUB_TOKEN
  * is mechanically excluded: the harness consumes that name for clone auth, and it carries no
  * state implication.

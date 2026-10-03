@@ -47,7 +47,7 @@ export interface CodexActorDescriptor extends ActorDescriptorBase {
 // CuaActorDescriptor covers every actor of the computer-use run kind. The ids share a session
 // entry and differ in where the provider comes from: local-agent builds it from the operator's
 // signed-in CLI, openai-computer-use from a keyed API client. The id stays distinct because it is
-// the slot a lab names when it chooses a brain. There is no toActorTrace: runComputerUseLoop
+// the slot a study names when it chooses a brain. There is no toActorTrace: runComputerUseLoop
 // already returns a complete ActorTrace at result.trace, so a mapper would be an identity
 // function. The union is intentionally heterogeneous: each descriptor exposes only the entries
 // it has.
@@ -83,7 +83,7 @@ export type ActorDescriptor =
  * CuaActorDescriptor: its runSession takes CuaActorSessionOptions and returns a CuaLoopResult.
  * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature and add
  * its id to CuaActorDescriptor["id"], so code narrowed by this guard can still tell the ids apart.
- * This guard is what lets the lab dispatch on capabilities rather than on hardcoded actor ids.
+ * This guard is what lets humanish dispatch on capabilities rather than on hardcoded actor ids.
  */
 export function isCuaActorDescriptor(
   descriptor: ActorDescriptor,
@@ -96,7 +96,7 @@ export function isCuaActorDescriptor(
  * "scripted-browser" run kind is a ScriptedBrowserActorDescriptor; runSession takes
  * ScriptedBrowserSessionOptions and returns ScriptedBrowserSessionResult (trace fully formed,
  * like the CUA shape; no separate toActorTrace). Any future scripted driver (e.g. a HAR
- * replayer) must keep this signature; it is what lets the lab dispatch on capabilities, not ids.
+ * replayer) must keep this signature; it is what lets humanish dispatch on capabilities.
  */
 export function isScriptedBrowserActorDescriptor(
   descriptor: ActorDescriptor,

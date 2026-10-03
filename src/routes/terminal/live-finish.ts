@@ -1,5 +1,5 @@
 // Finishing a live terminal session: the actor trace from the captured stream, the spend ledger
-// and its caps check, the evidence files, the bundle, and the lab result.
+// and its caps check, the evidence files, the bundle, and the study result.
 import { buildRunCostSummary } from "../../run/cost-summary.js";
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import type { RunBundle } from "../../run/bundle.js";

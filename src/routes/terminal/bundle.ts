@@ -30,14 +30,14 @@ import type { TerminalLedgers } from "./types.js";
 import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } from "./ledger.js";
 
 /**
- * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change: a new
+ * Project the terminal-product run into a humanish.run-bundle.v1 (no schema change: a new
  * producer only). Dry run: a contract bundle. The terminal stream is a contract placeholder
  * (stdin disabled, no captured tail, because nothing ran), the subject is declared unpinned, and
  * the caps/policies/runtime-auth declarations are recorded without pretending that live ledgers
  * exist. The shipped live builder fills the same evidence contract. Exported for tests.
  */
 export function buildTerminalProductBundle(args: {
-  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and study. */
   run: BundleRun;
   actorId: string;
   dryRun: boolean;
@@ -161,7 +161,7 @@ export function buildTerminalProductBundle(args: {
  * mode==="live") enforces the ledgers + proven cleanup + interventions-present over this bundle.
  */
 export function buildLiveTerminalProductBundle(args: {
-  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and study. */
   run: BundleRun;
   actorId: string;
   studyId: string;

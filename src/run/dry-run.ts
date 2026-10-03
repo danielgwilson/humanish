@@ -75,7 +75,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     });
   }
 
-  // Bind the physical project, as the lab routes do: a symlinked cwd retargeted mid-run cannot
+  // Bind the physical project, as the routes do: a symlinked cwd retargeted mid-run cannot
   // redirect source reads or run storage into another project.
   const physicalCwd = await realpath(requestedCwd);
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);

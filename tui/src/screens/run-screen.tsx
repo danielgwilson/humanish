@@ -65,7 +65,7 @@ export interface RunScreenProps {
 /**
  * One run, as A card.
  *
- * The question changed, so the shape does: on the lab screen you are watching, here you are asking
+ * The question changed, so the shape does: on the study screen you are watching, here you are asking
  * what happened. So the denominator leads (`1/1 reached the goal`, never a bare "pass") then the
  * participant's own closing words, then the real figure with its decomposition, then what you can
  * do about it.

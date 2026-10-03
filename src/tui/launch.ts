@@ -21,14 +21,14 @@ import { resolveStudyManifest } from "../study/discover.js";
 import { prepareManagedHumanishOutputDirectory } from "../run/contained-output.js";
 
 /**
- * A lab handle is the manifest filename, which is what `humanish run` resolves. Restricted to
+ * A study handle is the manifest filename, which is what `humanish run` resolves. Restricted to
  * characters a manifest name can actually contain, and (the part that matters) never allowed to
- * begin with `-`, because argv is positional: a lab called `--json` would otherwise be handed to
+ * begin with `-`, because argv is positional: a study called `--json` would otherwise be handed to
  * the CLI as a flag. There is no shell involved, so this is the whole injection surface.
  *
  * A leading underscore is allowed: `_wip.yaml` is an ordinary way to name a work-in-progress
  * manifest, `humanish run _wip` resolves it, and refusing it here would leave the surface
- * listing a lab it will not start. A leading dot stays out: that names a hidden file, not a lab.
+ * listing a study it will not start. A leading dot stays out: that names a hidden file, not a study.
  */
 const SAFE_STUDY_HANDLE = /^[A-Za-z0-9_][A-Za-z0-9._:-]*$/;
 
@@ -40,7 +40,7 @@ export interface LaunchRunOptions {
   cwd: string;
   /** The manifest handle (filename stem), as `humanish run` takes it. */
   study: string;
-  /** Exact selected manifest, avoiding a same-name committed lab shadowing a local copy. */
+  /** Exact selected manifest, avoiding a same-name committed study shadowing a local copy. */
   manifestPath?: string;
   mode: "dry-run" | "live";
   /** Injected in tests; defaults to the real spawn. */

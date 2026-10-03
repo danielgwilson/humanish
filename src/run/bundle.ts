@@ -165,7 +165,7 @@ export interface RunEvent {
  * One executed (or declared) subject-state seed step. Live records carry execution fields
  * (ok/exitCode/timedOut/durationMs); dry-run "declared, not run" records carry only the
  * declaration (name, phase, command digest). The command itself never persists; the digest
- * pins "same recipe" across bundles while the lab YAML in the consumer's repo stays the
+ * pins "same recipe" across bundles while the study YAML in the consumer's repo stays the
  * plaintext source of truth (publish-safe by construction).
  */
 export interface RunSubjectStateStepRecord {
@@ -523,7 +523,7 @@ export interface ReviewSummary {
    */
   participants?: ParticipantOutcomes;
   /**
-   * The study's per-task completion rates, present only when the lab declared a protocol
+   * The study's per-task completion rates, present only when the study declared a protocol
    * and at least one session produced a funnel. Absent means no protocol was measured, never that
    * everyone finished.
    */
@@ -568,7 +568,7 @@ export interface BundleRun {
 
 /**
  * The fields every run bundle starts with, in the saved order. The run supplies its id, mode,
- * start time and lab; the route passes the participant count and source. The public target cwd
+ * start time and study; the route passes the participant count and source. The public target cwd
  * and the run's own artifact root are the defaults.
  */
 export function bundleHead(

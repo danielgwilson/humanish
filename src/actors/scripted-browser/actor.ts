@@ -102,7 +102,7 @@ export interface ScriptedBrowserSessionOptions {
   /** id = actors[0].persona ?? "scripted-journey"; promptDigest = journey.sourceDigest prefix
    *  (the step manifest is the "prompt"; no model prompt exists on this route). */
   persona: ActorPersonaRef;
-  /** Journey wall-clock budget in ms; the lab route passes execution.timeoutMs or 300_000. */
+  /** Journey wall-clock budget in ms; the route passes execution.timeoutMs or 300_000. */
   timeoutMs: number;
   /** Absolute; the session writes screenshots/ and traces/<surface>.json beneath it. */
   artifactRoot: string;
@@ -152,7 +152,7 @@ export async function runScriptedBrowserSession(
   return runScriptedBrowserSessionInPreparedRoot(options, preparedArtifactRoot);
 }
 
-/** Internal lab seam: the run root is already prepared and must stay bound to that identity. */
+/** Internal route seam: the run root is already prepared and must stay bound to that identity. */
 export async function runScriptedBrowserSessionInPreparedRoot(
   options: ScriptedBrowserSessionOptions,
   preparedArtifactRoot: PreparedOutputRoot,

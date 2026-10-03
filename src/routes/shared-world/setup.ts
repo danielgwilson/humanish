@@ -52,7 +52,7 @@ function makeRunId(): string {
   return `concurrent-shared-world-${stamp}-${randomBytes(4).toString("hex")}`;
 }
 
-/** What validation derived from the lab, which setup reads. */
+/** What validation derived from the study, which setup reads. */
 interface AdmittedStudy {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
@@ -84,7 +84,7 @@ interface AdmittedStudy {
   ) => ConcurrentSharedWorldStudyResult;
 }
 
-/** The provisioned plane's setup, or undefined when the lab declares no `subject.serve`. */
+/** The provisioned plane's setup, or undefined when the study declares no `subject.serve`. */
 function provisionedSetup(
   study: AdmittedStudy,
   prepared: Pick<

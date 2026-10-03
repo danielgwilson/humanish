@@ -1,5 +1,5 @@
 // The disk→view-model projection. Pure functions, no I/O, no rendering: this is where
-// lab grouping, the trust line's arithmetic, thought normalization and list-window math live, so
+// study grouping, the trust line's arithmetic, thought normalization and list-window math live, so
 // the parts most likely to be wrong are testable without a terminal.
 //
 // The rules these encode, because they are the ones a UI is most tempted to break:
@@ -10,21 +10,21 @@
 
 import type { RunIndexEntry } from "./run-index.js";
 
-/** One lab as the labs list shows it. */
+/** One study as the study list shows it. */
 export interface StudyRollup {
   studyId: string;
-  /** Total runs attributed to this lab. */
+  /** Total runs attributed to this study. */
   runs: number;
   /** Runs whose status record is fresh right now. */
   live: number;
-  /** The newest run of this lab, whatever its state. */
+  /** The newest run of this study, whatever its state. */
   latest?: RunIndexEntry;
   /** Live runs, newest first; the labs list shows the first one inline. */
   liveRuns: RunIndexEntry[];
 }
 
 /**
- * Group runs by lab, newest-first within each lab and by recency between labs. Runs with no lab
+ * Group runs by study, newest-first within each study and by recency between studies. Runs with no study
  * attribution are collected under `unattributed` rather than invented into a study. That is the
  * home for pre-contract runs and library callers.
  */
@@ -54,7 +54,7 @@ export function groupRunsByStudy(entries: readonly RunIndexEntry[]): {
       liveRuns,
     };
   });
-  // A lab someone is working in sorts first; otherwise most recently used.
+  // A study someone is working in sorts first; otherwise most recently used.
   studies.sort((left, right) => {
     if (left.live !== right.live) return right.live - left.live;
     return recencyOf(right.latest) - recencyOf(left.latest);
@@ -73,12 +73,12 @@ function recencyOf(entry: RunIndexEntry | undefined): number {
 }
 
 /**
- * What the launch screen may claim about a lab, and on what evidence. Every figure carries the
+ * What the launch screen may claim about a study, and on what evidence. Every figure carries the
  * number of runs it came from; `sample: 0` means there is nothing to claim and the caller must
  * say so rather than showing an empty number.
  */
 export interface StudyExpectation {
-  /** How many completed runs of this lab the figures are drawn from. */
+  /** How many completed runs of this study the figures are drawn from. */
   sample: number;
   medianDurationMs?: number;
   /** Range across the sample, so the UI can show a span instead of a false point estimate. */
@@ -90,7 +90,7 @@ export interface StudyExpectation {
 }
 
 /**
- * Derive what to expect from a lab's own history. Only finished runs count: an interrupted run's
+ * Derive what to expect from a study's own history. Only finished runs count: an interrupted run's
  * duration is the length of an accident, not of a study, and including it would quietly bias the
  * estimate the operator uses to decide whether to press Start.
  *
@@ -143,7 +143,7 @@ function median(sorted: readonly number[]): number {
 
 /**
  * The one sentence the launch screen shows about time and money, with its denominator attached.
- * A lab with no history says so plainly instead of borrowing another lab's numbers or inventing
+ * A study with no history says so plainly instead of borrowing another study's numbers or inventing
  * a range. "No runs yet" is information, and the operator can still press Start.
  */
 export function expectationLine(expectation: StudyExpectation): string {
@@ -173,7 +173,7 @@ export function expectationLine(expectation: StudyExpectation): string {
 }
 
 /**
- * The one line a lab may say about itself, wherever it is shown.
+ * The one line a study may say about itself, wherever it is shown.
  *
  * Prefers live figures: cost and duration are what someone reads before spending, and a median
  * diluted by dry runs reports a live study as cheaper and faster than it has ever been. With no
@@ -298,10 +298,10 @@ export function livenessLabel(entry: Pick<RunIndexEntry, "liveness" | "verdict">
   }
 }
 
-/** A lab as the labs list shows it: what is declared, joined to what actually happened. */
+/** A study as the study list shows it: what is declared, joined to what actually happened. */
 export interface StudyRow {
   /**
-   * Stable identity for this row. A manifest's path when it has one, else the lab id, because two
+   * Stable identity for this row. A manifest's path when it has one, else the study id, because two
    * manifests can declare the same id, and keying rows by id makes them collapse into a pair of
    * indistinguishable duplicates.
    */
@@ -318,24 +318,24 @@ export interface StudyRow {
   title?: string;
   /**
    * The shortest label that is unique among the rows it is listed with: the title when no other
-   * lab shares it, else the filename, else the full path. A list is only navigable if every row can
+   * study shares it, else the filename, else the full path. A list is only navigable if every row can
    * be told from every other one, and a title is not guaranteed to be distinct: two manifests in
    * this repo carry the same title and the same declared id, differing only by filename.
    */
   label: string;
   /** The manifest's own words, for the list to say what this study is. */
   description?: string;
-  /** Repo-relative manifest path, absent for a lab known only from run history. */
+  /** Repo-relative manifest path, absent for a study known only from run history. */
   path?: string;
   origin?: "committed" | "ignored" | "explicit";
   /**
-   * False for a lab that has runs but no manifest here: renamed, deleted, or run from a path that
+   * False for a study that has runs but no manifest here: renamed, deleted, or run from a path that
    * is gone. Its runs are still evidence and must stay reachable, so it is listed and marked rather
    * than dropped.
    */
   declared: boolean;
   /**
-   * How many other manifests declare this same lab id. Above zero, the run history below is shared
+   * How many other manifests declare this same study id. Above zero, the run history below is shared
    * between them and cannot be attributed to one file. That is worth saying, because it is a
    * misconfiguration the operator almost certainly does not know about.
    */
@@ -366,7 +366,7 @@ export interface DeclaredStudy {
 }
 
 /**
- * Join declared lab manifests to run history.
+ * Join declared study manifests to run history.
  *
  * Neither side alone is the truth. A fresh project has manifests and no runs, and those labs are the
  * whole screen, and a list built only from history would be empty on exactly the first visit that
@@ -379,7 +379,7 @@ export interface DeclaredStudy {
  * share an id. Collapsing them hides a real file; keying by id duplicates a row with no way to tell
  * the copies apart. Both happen in practice: this repo has exactly that pair.
  *
- * Order puts a lab someone is working in first, then labs by how recently they ran, then declared
+ * Order puts a study someone is working in first, then studies by how recently they ran, then declared
  * labs that have never run (alphabetically by the displayed label, so the order on screen is the
  * order a reader can predict), then labs known only from history.
  */
@@ -463,7 +463,7 @@ export function studyRows(
  *
  * Falling straight back to the filename whenever a title repeats, instead of decorating the
  * duplicate with a suffix, keeps the label something the operator can act on, because the filename
- * is exactly what `humanish lab run` takes.
+ * is exactly what `humanish run` takes.
  */
 function assignLabels(rows: StudyRow[]): void {
   const count = (values: readonly string[]): Map<string, number> => {

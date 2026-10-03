@@ -157,7 +157,7 @@ export async function doctor(
           : { codexParticipantReadiness: options.codexParticipantReadiness }),
       })
     : undefined;
-  // Without --lab, each key row names the labs that need it instead of failing.
+  // Without --study, each key row names the studies that need it instead of failing.
   const keyUsers = setup ? undefined : await studiesByRequiredKey(cwd, keyPresent);
   const checks: DoctorCheck[] = [
     ...(await projectChecks(projectRoot)),
@@ -283,7 +283,7 @@ async function desktopSdkCheck(setup: StudySetup | undefined): Promise<DoctorChe
   });
   const version = present ? await installedDesktopSdkVersion() : undefined;
   const advisory = desktopSdkAdvisory(version);
-  // Without --lab nothing selects a desktop route yet, so an absent SDK is advisory.
+  // Without --study nothing selects a desktop route yet, so an absent SDK is advisory.
   const advisoryOnly = !present && setup === undefined;
   return {
     name: "e2b desktop sdk",
@@ -326,7 +326,7 @@ function terminalSurfaceCheck(): DoctorCheck {
   };
 }
 
-/** Probes the live-run keys, plus the receiving-email key a real-comms lab names. */
+/** Probes the live-run keys, plus the receiving-email key a real-comms study names. */
 async function probeDoctorKeys(
   cwd: string,
   env: NodeJS.ProcessEnv,
@@ -381,7 +381,7 @@ function studyList(studies: readonly string[]): string {
  * chain a live command resolves (env/--env-file, project overlay, vendor stores, the
  * humanish user store). Values never appear; sources and fill commands do.
  *
- * With --lab, a key the selected route requires fails when missing. Without it, `keyUsers` maps
+ * With --study, a key the selected route requires fails when missing. Without it, `keyUsers` maps
  * each key to the project's labs that need it, and a key row never fails: a missing key one of
  * them needs is a note.
  */
@@ -411,7 +411,7 @@ function keyChecks(
     }
     // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
     const required = setup.keys.includes(probe.name);
-    // A key the lab is known not to read says so, so a present but unused key does not read as
+    // A key the study is known not to read says so, so a present but unused key does not read as
     // one the run will use.
     const unused = setup.reads !== undefined && !setup.reads.has(probe.name);
     return {

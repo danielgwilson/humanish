@@ -1,7 +1,7 @@
-// The two reachability probes `humanish lab preflight` can run: public-preview checks a public
+// The two reachability probes `humanish study check` can run: public-preview checks a public
 // target from an E2B desktop, and sandbox-loopback serves a clone subject inside one. Each leases one
 // sandbox, journals it for `humanish reclaim --preflight`, and tears it down. preflight.ts resolves
-// the lab and dispatches here.
+// the study and dispatches here.
 
 import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
 import { CUA_ACTOR_STUDY_PROVIDER_METADATA } from "../routes/computer-use/e2b-desktop/prepare.js";
@@ -175,7 +175,7 @@ export async function runSandboxLoopbackPreflight(
   }
 
   let subjectCommitDigest: string | undefined;
-  // The longest the clone and serve steps can take with the lab's own budgets, so the probe is
+  // The longest the clone and serve steps can take with the study's own budgets, so the probe is
   // never cut off where the run's provisioning would still be allowed to finish.
   const leaseMs =
     cloneProvisioningBudgetMs(serve, ctx.config.subject.state) + PREFLIGHT_LEASE_BUFFER_MS;

@@ -204,7 +204,7 @@ export function exitCodeForSignal(signal: WatchStopSignal): number {
 }
 
 // True when any tunnel-edge exposure flag is present (not --safe, which is an orthogonal filter).
-// Callers refuse exposure with it on the non-lab watch path and on non-computer-use routes, where
+// Callers refuse exposure with it on the watch path without a study and on non-computer-use routes, where
 // there is no live desktop to stream.
 export function watchExposeRequested(o: {
   expose?: boolean | undefined;

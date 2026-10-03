@@ -48,7 +48,7 @@ import {
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import { type CuaActorStudyErrorCode, type RunCuaActorStudyOptions } from "./types.js";
 
-/** The error a computer-use lab returns before a run starts. */
+/** The error a computer-use study returns before a run starts. */
 export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorStudyErrorCode> {
   /**
    * Where the route returns it. "before-scope": analysis and tasks, returned before the run scope
@@ -72,7 +72,7 @@ export function cuaDescriptorOf(actor: string): CuaActorDescriptor {
 }
 
 /**
- * The subject a lab declares, read from its config and the caller's driving for the planner's checks. The checks
+ * The subject a study declares, read from its config and the caller's driving for the planner's checks. The checks
  * read the declaration because the planned subject falls back to app-url when a provisioned
  * subject cannot be built, which would hide the declaration a refusal has to name. A planned run
  * reads `plan.runner.subject` instead.
@@ -139,7 +139,7 @@ export function cuaDeclaredState(plan: ComputerUsePlan): StudySubjectState | und
   return subject.kind === "clone" || subject.kind === "local-tree" ? subject.state : undefined;
 }
 
-/** The URL a refused lab's result names, from its declaration: a provisioned subject's serve URL. */
+/** The URL a refused study's result names, from its declaration: a provisioned subject's serve URL. */
 export function declaredAppUrl(config: StudyConfig): string {
   const { subject } = config;
   const provisioned = subject.source === "clone" || subject.source === "local-tree";
@@ -160,7 +160,7 @@ const invalid = (message: string): Rejection => ({
 });
 
 /**
- * The first reason a computer-use lab cannot start, checked before any sandbox, key or provider
+ * The first reason a computer-use study cannot start, checked before any sandbox, key or provider
  * is touched. The parser enforces most of these too; the engine repeats them for library callers
  * that hand it a config directly. The groups run in this order, and each returns its first reason.
  */
@@ -301,7 +301,7 @@ function rosterShapeReason(config: StudyConfig): Rejection {
   // allowPublicTargets with more than one participant, clone.fanout.
   const fanoutReason = computerUseValidationReason(config);
   if (fanoutReason) return { code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID", message: fanoutReason };
-  // The sandbox deadline is derived from the session budget, so a lab can ask for a session that
+  // The sandbox deadline is derived from the session budget, so a study can ask for a session that
   // cannot legally be provisioned. Show the arithmetic: the provider's own error names a limit
   // but not which knob produced it.
   const derivedSandboxMs = resolveParticipantSandboxMs(config);
@@ -327,7 +327,7 @@ function rerunPlan({
 }
 
 /**
- * Plan a computer-use lab. It is called for any config handed to the computer-use runner, not only
+ * Plan a computer-use study. It is called for any config handed to the computer-use runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planComputerUseStudy(
@@ -394,7 +394,7 @@ export function planComputerUseStudy(
       actor,
     );
   // The in-process route drives subject.appUrl on this machine and creates no desktop, so it would
-  // skip the subject a clone, local-tree or desktop-cli lab declares.
+  // skip the subject a clone, local-tree or desktop-cli study declares.
   const source = config.subject.source;
   if (
     driving.inProcess &&

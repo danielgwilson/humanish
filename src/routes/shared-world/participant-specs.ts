@@ -107,7 +107,7 @@ function buildActorSpec(
 
 /** Thread the host-yielded lobby code into a follower's mission at runtime (external-public route).
  *  The code flows into the follower's join instruction; it is persisted only as the composed prompt
- *  the model reads (never a raw bundle field), and the lab scrubs the code from all narration. The
+ *  the model reads (never a raw bundle field), and humanish scrubs the code from all narration. The
  *  follower joins through the real UI (a direct /lobby/CODE visit does not auto-join a non-member). */
 export function withLobbyCodeMission(
   spec: DesktopParticipantRun,

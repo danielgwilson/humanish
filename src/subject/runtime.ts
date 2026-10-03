@@ -5,11 +5,11 @@
 // Node for the computer-use clone/local-tree route. Without it, any study whose `serve.install`
 // runs npm or pnpm dies with `pnpm: command not found` after its sandbox is created and paid for.
 //
-// That failure is invisible up front: `lab inspect` is clean, the plan prints normally, the sandbox
+// That failure is invisible up front: `study show` is clean, the plan prints normally, the sandbox
 // provisions, and the first signal is a shell exit code attributed to "subject install failed".
 // Nobody can debug that from the outside.
 //
-// The harness provides the runtime instead of warning about it. An adopter writing a lab for a Node app should not have to
+// The harness provides the runtime instead of warning about it. An adopter writing a study for a Node app should not have to
 // know which binaries the template happens to carry. That is the harness's job, and the terminal
 // route already treats it that way. Detection is conservative and the bootstrap is skipped whenever
 // a runtime is already present, so a custom template that ships Node pays nothing.

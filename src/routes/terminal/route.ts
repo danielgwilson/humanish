@@ -81,7 +81,7 @@ export async function runTerminalProductStudy(
   return terminalStudyRefusal(options, planned.refusal);
 }
 
-/** A refused terminal lab's result: the route's envelope, and the analysis record a refusal gets. */
+/** A refused terminal study's result: the route's envelope, and the analysis record a refusal gets. */
 export function terminalStudyRefusal(
   options: RunTerminalProductStudyOptions,
   refusal: TerminalRefusal,
@@ -122,7 +122,7 @@ type DryTerminalPlan = Extract<TerminalPlan, { readonly dryRun: true }>;
 
 /**
  * Run a terminal plan. The run scope gives a direct library caller the same run lifetime the CLI
- * gets: whichever of its fail-closed exits the lab takes, the run it started is closed, and only a
+ * gets: whichever of its fail-closed exits the run takes, the run it started is closed, and only a
  * run that published its final bundle reaches automatic analysis.
  */
 export async function runTerminalPlan(

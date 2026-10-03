@@ -10,7 +10,7 @@
 // against a real app (it fills forms and clicks buttons). A dry run parses and digest-pins the
 // scenario and writes the contract bundle without touching anything.
 //
-// Subject provenance: an app-url run declares that the lab did not provision the
+// Subject provenance: an app-url run declares that humanish did not provision the
 // subject, so its build provenance is unpinned and the evidence binds to the scenario digest. A
 // clone run records commit, env names, state provenance and a host digest, never the raw getHost
 // URL or a secret value.
@@ -59,7 +59,7 @@ export async function runScriptedBrowserStudy(
 }
 
 /**
- * A refused scripted lab's result, at the refusal's stage: a before-scope refusal has its own field
+ * A refused scripted study's result, at the refusal's stage: a before-scope refusal has its own field
  * order and no analysis record; the others come after the output directory checks.
  */
 export async function scriptedStudyRefusal(

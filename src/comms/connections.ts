@@ -94,7 +94,7 @@ export async function readCommsConnections(cwd: string): Promise<CommsConnection
   }
 }
 
-/** Add one exact profile. No lab mutation, network, provider resources or credential values. */
+/** Add one exact profile. No study mutation, network, provider resources or credential values. */
 export async function saveCommsConnection(
   cwd: string,
   name: string = DEFAULT_COMMS_PROVIDER.id,

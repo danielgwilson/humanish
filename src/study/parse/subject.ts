@@ -320,7 +320,7 @@ function parsePublicTarget(
 }
 
 // The product name interpolates into evidence labels and the composed prompt; the public-safe
-// token shape is the same strict constraint as a lab id.
+// token shape is the same strict constraint as a study id.
 const PRODUCT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 function parseProduct(raw: unknown): { ok: true; value: StudySubjectProduct } | StudyParseFailure {
@@ -384,7 +384,7 @@ function parseProduct(raw: unknown): { ok: true; value: StudySubjectProduct } | 
   };
 }
 
-// Public-safe stance: a computer-use actor's entry URL is always an app the lab owner runs on
+// Public-safe stance: a computer-use actor's entry URL is always an app the study owner runs on
 // loopback (inside the sandbox), never an arbitrary public site. (The constraint binds the
 // entry point; a navigation watchdog for mid-session escapes is a later slice.) Exported so
 // the engine re-enforces the same boundary on configs that arrive through the library API.

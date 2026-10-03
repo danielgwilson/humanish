@@ -1,8 +1,8 @@
 import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
-// What a lab is, for the surface that has to describe it before you spend money.
+// What a study is, for the surface that has to describe it before you spend money.
 //
-// The run index and run detail answer questions about runs. This answers a question about the lab
+// The run index and run detail answer questions about runs. This answers a question about the study
 // itself (what it drives, who is in it, which model, and what it is allowed to spend), which is
 // what a stakeholder reads on the screen where they decide whether to press Start.
 //
@@ -59,7 +59,7 @@ export interface StudySummary {
    * The reasoning effort that will actually run, override or default, and `"per-lane"` when the
    * roster declares more than one, because a single value would be a lie about half the participants.
    *
-   * Shown because it was a silent constant: unreachable from a lab, so every run took the provider
+   * Shown because it was a silent constant: unreachable from a study, so every run took the provider
    * default. A study variable you cannot see is one nobody chose.
    */
   reasoningEffort?: string;
@@ -71,8 +71,8 @@ export interface StudySummary {
   keysReady?: boolean;
   missingKeys?: string[];
   /**
-   * The planner's refusal message when a live key check finds the lab will not plan, as
-   * `humanish lab run` would report it. `keysReady` is then unset: a refused plan lists no keys.
+   * The planner's refusal message when a live key check finds the study will not plan, as
+   * `humanish run` would report it. `keysReady` is then unset: a refused plan lists no keys.
    */
   planRefusal?: string;
 }
@@ -92,7 +92,7 @@ function reasoningEffortOf(config: Record<string, unknown>): string {
   return resolved.size === 1 ? [...resolved][0]! : fallback;
 }
 
-/** One short phrase for what the lab drives. */
+/** One short phrase for what the study drives. */
 function subjectOf(config: Record<string, unknown>): string | undefined {
   const subject = config.subject as
     | { source?: string; repos?: string[]; appUrl?: string }
@@ -141,8 +141,8 @@ export interface ReadStudySummaryOptions {
 }
 
 /**
- * Describe one lab. Returns null when the manifest cannot be resolved: the caller already knows
- * the lab exists from the listing, so this failing means the file changed underneath them.
+ * Describe one study. Returns null when the manifest cannot be resolved: the caller already knows
+ * the study exists from the listing, so this failing means the file changed underneath them.
  */
 export async function readStudySummary(
   cwd: string,
@@ -158,7 +158,7 @@ export async function readStudySummary(
   let keysReady: boolean | undefined;
   let missingKeys: string[] | undefined;
   const dryRun = resolveStudyDryRun(inspected.config, undefined, true) === true;
-  // A live key check reads the plan's requirements. A lab the planner refuses has none to check,
+  // A live key check reads the plan's requirements. A study the planner refuses has none to check,
   // so the summary reports the refusal in place of its keys.
   const planned =
     options.checkKeys === true && !dryRun ? await planCliRun(inspected.config, cwd) : undefined;

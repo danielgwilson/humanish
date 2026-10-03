@@ -1,4 +1,4 @@
-// The participant runs a computer-use lab drives, built before anything is created: the sandbox
+// The participant runs a computer-use study drives, built before anything is created: the sandbox
 // and session budgets, the concurrency bound, each participant's prompt, bundle ids and artifact
 // paths, and the public plan printed before any sandbox or provider call. loadCuaParticipants
 // compiles the committed personas first and narrows a rerun to its selected participants.
@@ -85,7 +85,7 @@ export function resolveParticipantSandboxMs(config: StudyConfig): number {
 }
 
 /**
- * The in-flight participant bound a lab declares. Defaults to the participant count: every
+ * The in-flight participant bound a study declares. Defaults to the participant count: every
  * declared participant runs at once, because a throttle nobody asked for silently turns "N actors
  * live" into waves; total session count and spend are the same either way, only wall-clock
  * and simultaneity differ. A declared execution.concurrency is a cap, clamped to [1, participants].

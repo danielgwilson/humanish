@@ -23,7 +23,7 @@ import {
   type TerminalProductStudyResult,
 } from "./types.js";
 
-/** The error a terminal lab returns before a run starts. `actor` names the registered actor. */
+/** The error a terminal study returns before a run starts. `actor` names the registered actor. */
 export interface TerminalRefusal extends RouteRefusal<
   "terminal",
   NonNullable<TerminalProductStudyResult["error"]>["code"]
@@ -34,7 +34,7 @@ export interface TerminalRefusal extends RouteRefusal<
 export type TerminalPlanResult = RoutePlanResult<TerminalPlan, TerminalRefusal>;
 
 /**
- * Plan a terminal-product lab. It is called for any config handed to the terminal runner, not
+ * Plan a terminal-product study. It is called for any config handed to the terminal runner, not
  * only one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planTerminalStudy(

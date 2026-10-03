@@ -1,4 +1,4 @@
-// The provisioned subject of a live clone scripted-browser lab: one E2B desktop that clones,
+// The provisioned subject of a live clone scripted-browser study: one E2B desktop that clones,
 // seeds and serves the app, exposed through a tokenless getHost URL and killed by exact id at
 // teardown.
 

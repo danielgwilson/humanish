@@ -18,7 +18,7 @@ import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
 /**
- * One row of the lab screen. Start and history share a cursor because they share a screen: pressing
+ * One row of the study screen. Start and history share a cursor because they share a screen: pressing
  * Down from Start lands on the newest run, which is how it reads to someone holding an arrow key.
  * Defined once and used by everything that counts, indexes or opens a row.
  */
@@ -128,7 +128,7 @@ export function StudyScreen(props: StudyScreenProps): React.ReactElement {
       ) : null}
       {summary?.communications ? <Text color={PALETTE.warn}>{summary.communications}</Text> : null}
       {summary?.planRefusal === undefined ? null : (
-        // A lab that will not plan lists no keys. The planner's message is what `lab run` would
+        // A study that will not plan lists no keys. The planner's message is what `run` would
         // print, so it stands where the missing keys would, and wraps for the same reason.
         <Box width={columns}>
           <Text wrap="wrap" {...color(PALETTE.warn)}>

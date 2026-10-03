@@ -157,7 +157,7 @@ async function reclaimRun(
 }
 
 /**
- * Kill the sandboxes left by interrupted `humanish lab preflight` probes. A probe journals under
+ * Kill the sandboxes left by interrupted `humanish study check` probes. A probe journals under
  * .humanish/preflight/<probe-id>/ and removes the journal after a confirmed kill, so what is left
  * belongs to a probe that died or could not confirm its teardown. A journal whose probe may still
  * be running is left alone with the reason (see preflightReclaimDecision).

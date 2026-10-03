@@ -24,7 +24,7 @@ import type {
 import { isRecord } from "../../run/type-guards.js";
 
 // A participant id interpolates into its evidence paths (screenshots/<id>/, actors/<id>.json), so
-// it must be a public-safe path token, same shape as a lab id.
+// it must be a public-safe path token, same shape as a study id.
 export const PARTICIPANT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 export const PARTICIPANT_ID_MAX_CHARS = 40;
@@ -46,7 +46,7 @@ export function focusOf(
   return actor?.laneFocus;
 }
 
-// Actor ids humanish no longer registers. Rejecting them at parse keeps a lab that names one
+// Actor ids humanish no longer registers. Rejecting them at parse keeps a study that names one
 // from running on a route that ignores actors[0].type, such as a this-repo dry run.
 const REMOVED_ACTOR_TYPES: ReadonlySet<string> = new Set(["pi-agent-core", "claude-agent-sdk"]);
 

@@ -12,7 +12,7 @@ import {
   type SubjectPhaseEvent,
 } from "./steps.js";
 
-/** The longest provisionCloneSubject can take with the lab's budgets: the clone, then serving. */
+/** The longest provisionCloneSubject can take with the study's budgets: the clone, then serving. */
 export function cloneProvisioningBudgetMs(
   serve: StudySubjectServe,
   state: StudySubjectState | undefined,
@@ -24,7 +24,7 @@ export function cloneProvisioningBudgetMs(
  * Provision a clone subject inside the sandbox: clone, then the shared serve pipeline (install,
  * state before-build, build, state before-start, start, readiness probe, state after-ready).
  * Returns the latest subject HEAD after successful provisioning. Throws (with a capped log tail
- * for the caller to redact) on any failing step; the lab persists that as a failed-evidence
+ * for the caller to redact) on any failing step; the route persists that as a failed-evidence
  * bundle.
  *
  * Auth: when GITHUB_TOKEN is among the declared subject env names, the clone authenticates via an

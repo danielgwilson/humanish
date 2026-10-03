@@ -60,7 +60,7 @@ defaults:
 type StarterActor = "openai-computer-use" | "local-agent";
 
 /**
- * The flagship live lab. A ChatGPT-account Codex participant has no API-dollar price, so preflight
+ * The flagship live study. A ChatGPT-account Codex participant has no API-dollar price, so preflight
  * refuses a dollar cap on it (HUMANISH_COMPUTER_USE_UNPRICED_CAP); that variant is bounded by the
  * session timeout instead of a cap it could never enforce.
  */
@@ -435,9 +435,9 @@ export const humanishScripts: Record<string, string> = {
 };
 
 /**
- * The starter files, with the live lab written for the brain this machine can use.
+ * The starter files, with the live study written for the brain this machine can use.
  *
- * `local-agent` is not a variant of the lab so much as a different participant: on a machine with
+ * `local-agent` is not a variant of the study so much as a different participant: on a machine with
  * a signed-in Codex and no provider key, the study runs with the operator's own agent and needs
  * only E2B. Writing the other one there would hand someone homework instead of a first run.
  */

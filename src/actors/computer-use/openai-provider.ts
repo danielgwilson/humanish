@@ -84,8 +84,8 @@ export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
 export const DEFAULT_OPENAI_CU_MODEL = "gpt-5.6-sol";
 
 /**
- * The effort a request carries when a lab declares none. Exported because a default that only
- * exists as a literal inside the provider is exactly how it stayed invisible: the lab surface has
+ * The effort a request carries when a study declares none. Exported because a default that only
+ * exists as a literal inside the provider is exactly how it stayed invisible: the study surface has
  * to be able to say what will actually run.
  */
 export const DEFAULT_OPENAI_CU_REASONING_EFFORT: ReasoningEffort = "medium";
@@ -620,7 +620,7 @@ export function createOpenAiResponsesProvider(
   return {
     id: "openai-responses-cu",
     version: model,
-    // The effort the wire actually carries, not the one the lab asked for: the provider defaults
+    // The effort the wire actually carries, not the one the study asked for: the provider defaults
     // an absent request to "medium", and the trace has to say what produced it.
     modelSettings: {
       reasoningEffort,

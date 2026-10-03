@@ -73,7 +73,7 @@ export function terminalExecutionFailures(args: {
   ];
 }
 
-/** The terminal-product lab result for a live run, from its session, cleanup and cost ledger. */
+/** The terminal-product study result for a live run, from its session, cleanup and cost ledger. */
 export function terminalStudyResult(args: {
   cwd: string;
   studyId: string;
@@ -119,9 +119,9 @@ export function terminalStudyResult(args: {
     observer,
     warnings,
   } = args;
-  // The lab's exit code: verified evidence, no harness error and proven cleanup. A blocked/
+  // The run's exit code: verified evidence, no harness error and proven cleanup. A blocked/
   // timed-out agent run is still ok-as-evidence at the bundle level (the failure is the evidence),
-  // but the lab result surfaces ok:false on a harness error or unproven teardown (fail-closed).
+  // but the study result surfaces ok:false on a harness error or unproven teardown (fail-closed).
   // remaining===0 is the by-id-confirmed-reclaimed state; remaining===1 (still present) and
   // remaining===-1 (kill(id) itself failed) are both unproven by design.
   const cleanupProven = cleanup.killed && cleanup.remaining === 0;

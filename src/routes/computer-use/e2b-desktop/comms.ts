@@ -43,7 +43,7 @@ export interface ParticipantComms {
 /**
  * On an in-sandbox subject route, redirect the app's email-API sends into an in-sandbox catch
  * (loopback) so its verification mail is captured instead of sent to the internet. Undefined when the
- * lab declares no fake email, which leaves the participant unchanged.
+ * study declares no fake email, which leaves the participant unchanged.
  */
 export function planParticipantComms(
   comms: StudyConfig["comms"],
@@ -101,7 +101,7 @@ export interface RunningCommsCatch {
 
 /**
  * Start the in-sandbox email catch before the subject serve, so the app's send-API base URL
- * resolves the moment it boots. A comms-declared lab that cannot stand the catch up fails closed
+ * resolves the moment it boots. A comms-declared study that cannot stand the catch up fails closed
  * rather than silently sending real mail.
  */
 export async function startCommsCatch(

@@ -1,12 +1,12 @@
 // Run identity and liveness on disk: one small record per run, written by every backend, that says
-// which lab the run belongs to and whether it is still alive. A reader can list and classify runs
+// which study the run belongs to and whether it is still alive. A reader can list and classify runs
 // from it without parsing every bundle, and can tell a live run from an abandoned one.
 //
 // run.json remains the evidence of record. This file is a derived index and liveness record:
 // `verify` never gates on it, nothing here is a claim about what a participant did, and when the
 // two disagree run.json wins and this file can be rebuilt from it.
 //
-// Public safety: it holds only the run id, the lab id/path/origin (the strings `humanish lab list`
+// Public safety: it holds only the run id, the study id/path/origin (the strings `humanish study list`
 // prints), the mode, a local pid and timestamps. It holds no hostname or user/path identity: an
 // operator may share the run directory, so a share-safety gate must have nothing to strip here.
 

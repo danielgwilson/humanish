@@ -89,7 +89,7 @@ type HostedCodexReadiness = CodexReadiness & {
 
 /**
  * The hosted participant check: the operator-auth launch to an ephemeral thread, with no turn,
- * using the lab's declared model and reasoning effort as a run would.
+ * using the study's declared model and reasoning effort as a run would.
  */
 async function hostedCodexReadiness(
   env: NodeJS.ProcessEnv,
@@ -221,8 +221,8 @@ type AnalysisBudget = NonNullable<ReturnType<typeof automaticAnalysisBudget>>;
 
 /**
  * Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network.
- * `keys` are the keys a live run requires. `reads` are the provider keys the lab is known to read,
- * required or not; it is undefined when that is unknown: the lab does not plan, or a declared
+ * `keys` are the keys a live run requires. `reads` are the provider keys the study is known to read,
+ * required or not; it is undefined when that is unknown: the study does not plan, or a declared
  * scorer's host code may read any key.
  */
 export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
@@ -489,8 +489,8 @@ function checkScope(analysis: ReturnType<typeof automaticAnalysisBudget>): Check
 
 /**
  * The ids of the project's labs that need each provider key for a live run, from the same plan
- * `doctor --lab` reads. Each listed manifest resolves by its path, since a file name need not match
- * the id inside. A lab that runs dry, that the plain CLI cannot run, or that does not plan needs
+ * `doctor --study` reads. Each listed manifest resolves by its path, since a file name need not match
+ * the id inside. A study that runs dry, that the plain CLI cannot run, or that does not plan needs
  * none.
  */
 export async function studiesByRequiredKey(
@@ -512,7 +512,7 @@ export async function studiesByRequiredKey(
 }
 
 /**
- * The lab planned with no run options, so its own scenario mode decides dry or live. Doctor and the
+ * The study planned with no run options, so its own scenario mode decides dry or live. Doctor and the
  * TUI read a live run's keys and subject env from this plan's requirements.
  */
 export async function planCliRun(config: StudyConfig, cwd: string): Promise<PlanResult> {

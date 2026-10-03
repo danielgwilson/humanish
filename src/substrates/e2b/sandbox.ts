@@ -238,7 +238,7 @@ export async function destroyE2BSandbox(
 /** Versioned public template built by runtime/browser-media/e2b-template.mjs. */
 export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";
 
-/** The desktop template a lab asks for; undefined selects the SDK default. */
+/** The desktop template a study asks for; undefined selects the SDK default. */
 export function e2bDesktopTemplate(config: {
   readonly execution?: Pick<NonNullable<StudyConfig["execution"]>, "target" | "desktop">;
 }): string | undefined {

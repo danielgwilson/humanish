@@ -36,7 +36,7 @@ export interface InitOptions {
   yes?: boolean;
   /** Injected so a test can decide what credentials this machine appears to have. */
   env?: NodeJS.ProcessEnv;
-  /** Configure the starter local-browser lab without making the operator edit YAML. */
+  /** Configure the starter local-browser study without making the operator edit YAML. */
   localBrowser?: { appUrl: string; mission?: string };
 }
 
@@ -111,7 +111,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
 
   await planAgentsFile(preparedProjectRoot, cwd, plan);
 
-  // The starter live lab is written for the brain this machine can actually use. Shipping it as
+  // The starter live study is written for the brain this machine can actually use. Shipping it as
   // openai-computer-use on a machine with no provider key but a signed-in Codex would hand someone
   // a file that asks for a credential they were just told they do not need.
   const machine = await firstRunEnvironment(options.env ?? process.env, requestedCwd);
@@ -403,7 +403,7 @@ function validateLocalBrowserStarter(
 }
 
 /**
- * What this machine can run, for the starter lab and the next steps. Local CLI status is
+ * What this machine can run, for the starter study and the next steps. Local CLI status is
  * classified without returning its output or reading its credential file. Provider keys go
  * through the same discovery chain as every other command (process env, the project overlay,
  * `e2b auth login`, the `humanish keys set` store) and only their presence is read, never a value.

@@ -1,4 +1,4 @@
-// The scripted-browser lab's schema constant, options and result types.
+// The scripted-browser study's schema constant, options and result types.
 
 import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
 import type { StudyEvent } from "../../study/run-study-events.js";
@@ -10,7 +10,7 @@ import type { StudyDeps } from "../../study/study-deps.js";
 import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
-/** What a scripted run takes besides its plan. The plan carries the config, dry run and lab. */
+/** What a scripted run takes besides its plan. The plan carries the config, dry run and study. */
 export type ScriptedRunInput = Omit<RunScriptedBrowserStudyOptions, "config" | "dryRun">;
 
 export interface RunScriptedBrowserStudyOptions {
@@ -43,7 +43,7 @@ interface ScriptedBrowserStudySession {
 export interface ScriptedBrowserStudyResult
   extends AutomaticAnalysisResult, StudyResultIdentity<"scripted"> {
   /** True when the bundle verified and (dry-run, or every session reached a terminal verdict
-   * without a harness error). The subject failing the script is successful evidence, and the lab
+   * without a harness error). The subject failing the script is successful evidence, and the run
    * does not fail for it. */
   ok: boolean;
   cwd: string;

@@ -11,7 +11,7 @@
 // Shipping it as a command rather than a spec matters: the adopter runs the identical
 // implementation humanish deploys in-sandbox, so the capture shape, the inbox surface, and the
 // drain contract cannot drift between the two planes. Point the app's email-API base URL at this
-// server and point the lab's `catchBaseUrl` at it too.
+// server and point the study's `catchBaseUrl` at it too.
 //
 // Runtime: the catch is a python3 stdlib server with no dependencies (that was the 0.29.0 lesson:
 // a co-located catcher must use a runtime the environment guarantees). This command writes the
@@ -47,7 +47,7 @@ export interface CommsCatchHostOptions {
   /** Optional loopback SMTP listener sharing the HTTP capture and inbox pipeline. */
   smtpPort?: number;
   /** Restrict the rendered inbox to these addresses. Omit to render whatever the app actually mailed;
-   *  a standalone catch has no lab roster to read recipients from, and an operator who forgets to
+   *  a standalone catch has no study roster to read recipients from, and an operator who forgets to
    *  name one should not get a healthy catch that renders an empty inbox forever. */
   recipients?: string[];
   /** Inbox re-render cadence in ms (test seam). */

@@ -53,7 +53,7 @@ export interface ObserverData {
     /** The same thing as one readable line, so a renderer cannot accidentally show a number
      *  without its denominator. */
     participantsLine?: string;
-    /** The study's per-task completion rates, when the lab declared a protocol. */
+    /** The study's per-task completion rates, when the study declared a protocol. */
     tasks?: RunBundle["review"]["tasks"];
     /** Pre-formatted like participantsLine, denominator on every number. */
     tasksLine?: string;

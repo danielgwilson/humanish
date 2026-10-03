@@ -2,7 +2,7 @@
 //
 // Why: `actors[].localAgent: codex` already runs through a persistent app-server thread,
 // so the participant remembers what it tried. `claude` spawned `claude -p` per turn, so every
-// turn started cold. Measured on the same lab with the same credentials (n=1 each): one-shot,
+// turn started cold. Measured on the same study with the same credentials (n=1 each): one-shot,
 // 188 actions over 90 turns and never finished; a thread that remembers, 21 actions over 8 turns
 // and goal_satisfied in 103 s. A participant that cannot remember trying the menu tries the menu
 // again. Until this existed, comparing the two agents measured the transport, not the model.

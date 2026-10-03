@@ -31,7 +31,7 @@ import type {
 import { addressedRecipients } from "../../study/parse/comms.js";
 import { plural } from "../../run/text.js";
 
-/** The in-sandbox email catch a provisioned plane deploys, when the lab declares one. */
+/** The in-sandbox email catch a provisioned plane deploys, when the study declares one. */
 export interface SubjectComms {
   email: StudyCommsEmail | undefined;
   port: number | undefined;
@@ -108,7 +108,7 @@ export async function prepareExternalComms(
       code: "HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID",
       message: tokenRefusal,
     };
-  // Fail closed before any actor sandbox is created: a comms lab whose catch is unreachable
+  // Fail closed before any actor sandbox is created: a comms study whose catch is unreachable
   // collects nothing while every participant still spends. The probe asserts our service marker in
   // /health, so an adopter's proxy answering 200 for everything cannot pass for a catch.
   if (!dryRun && !(await externalCatchHealthy(externalComms))) {
@@ -197,7 +197,7 @@ export async function drainExternalComms(
   return path;
 }
 
-/** What receiving guards: the lab's email declaration and the subject env names and values. */
+/** What receiving guards: the study's email declaration and the subject env names and values. */
 export function receivingSourceOf(
   residual: SharedWorldPlan["residual"],
   env: readonly string[],
@@ -211,7 +211,7 @@ export function receivingSourceOf(
 }
 
 /**
- * Real email receiving, when the lab declares it on a live run. It registers the connection's
+ * Real email receiving, when the study declares it on a live run. It registers the connection's
  * secrets with the run's scrub before any desktop starts. Returns the message the run fails with
  * when setup fails.
  */

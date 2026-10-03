@@ -1,4 +1,5 @@
-// humanish.lab.v2: a lab is a composition over code primitives. There is no hardcoded lab kind.
+// The normalized config, in the humanish.lab.v2 spelling: a study composes code primitives, with no
+// hardcoded study kind.
 // A humanish.study.v3 file is rewritten into this spelling first (parse/study-v3.ts), and then must
 // take the route it declares and set no field that route does not read.
 //
@@ -24,7 +25,7 @@
 // presets belong to the computer-use route; scripted surfaces are the driver's own desktop/mobile
 // viewports where isMobile/DSF genuinely render via playwright emulation).
 // On the other routes those fields remain forward-declared and are not yet consumed:
-// parseStudy emits a warning listing any such field that is set, so `lab inspect` shows
+// parseStudy emits a warning listing any such field that is set, so `study show` shows
 // the truth.
 //
 // NOTE on actors[0].count: it carries route-specific meanings. Preview route: simCount;

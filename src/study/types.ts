@@ -72,7 +72,7 @@ export interface StudySubjectServe {
   build?: string;
   /** Required long-lived start command, launched detached; the sandbox lifecycle owns it. */
   start: string;
-  /** Loopback entry URL: the readiness-probe target and the URL the actor drives. The lab
+  /** Loopback entry URL: the readiness-probe target and the URL the actor drives. humanish
    *  serves the clone inside the sandbox, so this is always loopback (not subject to
    *  allowPublicTargets, which governs app-url subjects, i.e. external deployments). */
   url: string;
@@ -145,7 +145,7 @@ export interface StudySubjectState {
   /** Ordered seed/migration/fixture steps. Order within a phase is declaration order. */
   seed?: StudySubjectStateStep[];
   /**
-   * Env var names whose values point at state the lab does not control (e.g. a shared dev
+   * Env var names whose values point at state the study does not control (e.g. a shared dev
    * DB). Must be a subset of subject.env (so the declaration is mechanically backed by a
    * provisioned name, not a vibe). Flips state provenance to "unpinned".
    */
@@ -165,7 +165,7 @@ export interface StudySubjectState {
  * concrete product name + surfaces are operator data; committed fixtures use a neutral mock name.
  */
 export interface StudySubjectProduct {
-  /** Public-safe product label (shape-validated like a lab id; interpolates into evidence). */
+  /** Public-safe product label (shape-validated like a study id; interpolates into evidence). */
   name: string;
   /**
    * How the product gets onto the machine, run with no keys before the participant starts, in the
@@ -175,7 +175,7 @@ export interface StudySubjectProduct {
    * Absent means the participant installs it themselves from the public surfaces, which is a
    * different study, one about the install. Present means the study starts
    * where you want it to start: asking a participant what studies a project contains, in an empty
-   * directory, measures the lab rather than the product.
+   * directory, measures the study rather than the product.
    * Both routes prepare Node/npm when install is absent; product installation remains the
    * participant's task. A missing template runtime must not become a product finding.
    */
@@ -186,7 +186,7 @@ export interface StudySubjectProduct {
    *
    * This exists because the first live study failed on it: the participant was asked what studies
    * the project contained, landed in an empty home directory, correctly reported that there was no
-   * project, and stopped. The finding was about the lab, not the product. A study of a
+   * project, and stopped. The finding was about the study, not the product. A study of a
    * project-scoped tool has to put the participant inside a project, the same way an app study opens
    * the app rather than a blank tab.
    */
@@ -248,7 +248,7 @@ export interface StudySubject {
    * `app-url`: a loopback http(s) URL the computer-use actor drives (127.0.0.1/localhost
    * only; driving arbitrary public sites is not allowed). The URL must be reachable from
    * inside the desktop sandbox; library callers provision it via the prepareDesktop hook.
-   * For a config-only path use `clone` + `serve`: the lab serves the app itself.
+   * For a config-only path use `clone` + `serve`: humanish serves the app itself.
    *
    * `local-app`: the loopback http(s) URL of an already-running local dev server the caller's
    * custom CuaExecutor drives in-process (no sandbox, no public-target option, always
@@ -264,10 +264,10 @@ export interface StudySubject {
    */
   env?: string[];
   /**
-   * Literal, non-secret env values committed alongside the lab: the configuration every real app
+   * Literal, non-secret env values committed alongside the study: the configuration every real app
    * needs before it will boot: a public base URL, a transport selector, a feature flag. None of that
    * is secret, and routing it through `subject.env` would force an adopter to carry a private env
-   * file just to reproduce a public study, which is the opposite of a reproducible lab.
+   * file just to reproduce a public study, which is the opposite of a reproducible study.
    *
    * These values are recorded in evidence, because they are part of how the subject was configured,
    * so a value that looks like a secret or a local path is refused at parse rather than committed to
@@ -287,7 +287,7 @@ export interface StudySubject {
    */
   product?: StudySubjectProduct;
   /**
-   * `local-tree` (computer-use route): local-tree packs the lab resolution cwd (the project
+   * `local-tree` (computer-use route): local-tree packs the study's working directory (the project
    * directory humanish runs from) instead of cloning a repo. `exclude` adds extra archive excludes
    * on top of the always-on denylist; `keep` preserves the sandbox on failure for debugging;
    * `maxArchiveBytes` caps the upload. Consumed on the local-tree route; rejected on every other
@@ -401,7 +401,7 @@ export interface StudyActor {
   /** Consumed on the app-url route (laneFocus.instruction appended to the mission). XOR `lanes`. */
   laneFocus?: StudyParticipantFocus;
   /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. A mission on
-   *  its own is a complete, valid lab; `tasks` is additive, never required. */
+   *  its own is a complete, valid study; `tasks` is additive, never required. */
   mission?: string;
   /**
    * The researcher's protocol: discrete tasks, each with what the participant is asked to do and
@@ -599,7 +599,7 @@ export interface StudyExecution {
    * openai-egress keeps the raw runtime key outside the sandbox.
    *
    * Absent means unrestricted, which is the historical behavior and stays the default, because a
-   * wrong host list fails studies in ways that look like product bugs. Opt in per lab.
+   * wrong host list fails studies in ways that look like product bugs. Opt in per study.
    *
    * Domain filtering covers HTTP on :80 (Host header) and TLS on :443 (SNI); anything else needs
    * an IP or CIDR. `*.example.com` matches subdomains at any depth and not the apex, which needs
@@ -630,7 +630,7 @@ export interface StudyScenarioCaps {
    * the participant ran out of budget; never `gave_up`, because a study-level stop is not the
    * participant's doing). Estimated model spend only; desktop-minutes ride the cost summary but
    * not this ledger. Independent of the per-participant `maxUsd` backstop; either, both, or neither may
-   * be set. A positive `scenario.caps.maxTotalUsd` on a computer-use lab is a parse error; on the
+   * be set. A positive `scenario.caps.maxTotalUsd` on a computer-use study is a parse error; on the
    * terminal route it is inert (warned), since the single agent's maxUsd already caps the run.
    */
   maxTotalUsd?: number;
@@ -670,7 +670,7 @@ export interface StudyPolicies {
    */
   redactScreenshots?: boolean;
   /**
-   * Allow an app-url subject to point at a non-loopback (public/preview/staging) URL the lab
+   * Allow an app-url subject to point at a non-loopback (public/preview/staging) URL the study
    * owner declares. Default `false` (loopback-only). The invariant is "the actor drives a target
    * the owner declared"; setting this is that declaration (e.g. a Vercel preview of your app).
    */

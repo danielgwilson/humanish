@@ -81,7 +81,7 @@ export interface RunConcurrentSharedWorldStudyOptions {
   scorerProvenance?: RunScorerProvenance;
 }
 
-/** What a shared-world run takes besides its plan. The plan carries the config, dry run and lab. */
+/** What a shared-world run takes besides its plan. The plan carries the config, dry run and study. */
 export type SharedWorldRunInput = Omit<RunConcurrentSharedWorldStudyOptions, "config" | "dryRun">;
 
 export type ConcurrentSharedWorldStudyErrorCode =
@@ -249,7 +249,7 @@ export interface ExternalCommsWiring {
 export interface ConcurrentBundleArgs {
   /** The run's judgment (judgeSharedWorldRun over the other fields). */
   judgment: SharedWorldJudgment;
-  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and study. */
   run: BundleRun;
   plan: SharedWorldPlan;
   descriptor: CuaActorDescriptor;
@@ -263,7 +263,7 @@ export interface ConcurrentBundleArgs {
   seedDigest: string;
   subjectCommit?: string;
   hostDigest?: string;
-  /** Run-level digest-only comms-thread evidence path (humanish.comms-thread.v1), when a comms lab
+  /** Run-level digest-only comms-thread evidence path (humanish.comms-thread.v1), when a comms study
    *  captured mail into the subject sandbox's catch. Registered on the first persona stream (it is a
    *  property of the one shared app, and belongs to no single persona). */
   commsArtifactPath?: string;
@@ -307,7 +307,7 @@ export interface PlaneResults {
 /** Which plane runs, and the setup it needs beyond the plane context. */
 export interface PlaneSelection {
   planeClass: ConcurrentSharedWorldPlaneClass;
-  /** Undefined when the lab declares no `subject.serve`. */
+  /** Undefined when the study declares no `subject.serve`. */
   provisioned: ProvisionedPlaneSetup | undefined;
   externalWiring: ExternalCommsWiring | undefined;
 }

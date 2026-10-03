@@ -40,7 +40,7 @@ export function detachedTimersOf(options: DetachedTimers): DetachedTimers {
 export interface DetachedStepOptions extends DetachedTimers {
   /** Short [a-z0-9-] label; names the script/status/log files under /tmp. */
   name: string;
-  /** The shell command to run (the lab author's own command: package.json-script trust). */
+  /** The shell command to run (the study author's own command: package.json-script trust). */
   command: string;
   cwd?: string;
   /** Wall-clock budget for the step. */

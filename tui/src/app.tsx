@@ -89,8 +89,8 @@ export function App({
   // A live start is armed by the first Enter and committed by the second; a dry run needs neither.
   const [confirming, setConfirming] = useState<"live" | undefined>(undefined);
   // Launch state is scoped to the study it belongs to: it is one surface with one piece of state, and
-  // an unscoped note follows the operator to a different lab's screen and reports something about
-  // that lab which is not true of it.
+  // an unscoped note follows the operator to a different study's screen and reports something about
+  // that study which is not true of it.
   const [launchError, setLaunchError] = useState<{ studyKey: string; text: string } | undefined>(
     undefined,
   );
@@ -117,7 +117,7 @@ export function App({
   /** Advances the spinners. A live row that does not move reads as stale data. */
   const [liveTick, setTick] = useState(0);
   const tick = frozenTick ?? liveTick;
-  /** Which side the Start toggle is on. Per lab, so switching labs does not carry `live` across. */
+  /** Which side the Start toggle is on. Per study, so switching studies does not carry `live` across. */
   const [summary, setSummary] = useState<StudySummary | null | undefined>(undefined);
   /** Detail for live runs only, so the studies list can name who is in them. */
   const [liveDetails, setLiveDetails] = useState<Map<string, RunDetail>>(new Map());
@@ -128,7 +128,7 @@ export function App({
   const clock = now ?? Date.now();
 
   // Identity of the selected row, kept current so a refresh that reorders the list can put the
-  // cursor back on the same thing. A live lab sorts to the top the moment a run starts, so an index
+  // cursor back on the same thing. A live study sorts to the top the moment a run starts, so an index
   // held across a refresh silently points at a different study, and that is how someone opens, or
   // starts, the wrong one.
   const selectedIdRef = useRef<string | undefined>(undefined);
@@ -846,7 +846,7 @@ function project(
 /**
  * Every live run in the project, once.
  *
- * Not a flatMap over lab rows: two manifests can declare the same lab id, so a run belonging to
+ * Not a flatMap over study rows: two manifests can declare the same study id, so a run belonging to
  * that id is reachable from both rows and would be listed twice: the same participant, twice, at
  * the same elapsed time, which reads as two people working.
  */
@@ -861,13 +861,13 @@ function liveRunsOf(data: ProjectData): RunIndexEntry[] {
   return out;
 }
 
-/** A lab's display name from its id, for screens that only carry the id. */
+/** A study's display name from its id, for screens that only carry the id. */
 function labelForStudy(data: ProjectData, studyId: string | undefined): string {
   if (studyId === undefined) return "";
   return data.rows.find((row) => row.studyId === studyId)?.label ?? studyId;
 }
 
-/** The lab screen's rows, from the one definition both counting and opening share. */
+/** The study screen's rows, from the one definition both counting and opening share. */
 function itemsForStudy(
   data: ProjectData,
   studyKey: string,
@@ -952,7 +952,7 @@ function openSelected(
   if (data === undefined) return undefined;
   if (screen.name === "studies") {
     const row = data.rows[selected];
-    // Past the last lab is the peer.
+    // Past the last study is the peer.
     if (row === undefined) return selected === data.rows.length ? { name: "all-runs" } : undefined;
     return { name: "study", studyKey: row.key };
   }

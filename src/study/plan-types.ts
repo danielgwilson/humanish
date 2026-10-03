@@ -1,4 +1,4 @@
-// The StudyPlan union: what planStudy decides about a lab before anything runs. Each route has its own
+// The StudyPlan union: what planStudy decides about a study before anything runs. Each route has its own
 // variant, and each supported subject and substrate pairing is its own case, so a combination the
 // routes refuse cannot be written down. Numeric bounds, unique ids, safe URLs and "exactly one
 // host" stay checks in planStudy.
@@ -63,14 +63,14 @@ export type ResidualConfig = Pick<
 
 export interface PlannedAnalysis {
   readonly config: AnalysisConfig;
-  /** "default" when the lab declared no review.analysis. */
+  /** "default" when the study declared no review.analysis. */
   readonly trigger: "default" | "explicit";
   readonly preferLargerOutput: boolean;
 }
 
 interface PlanBase {
   readonly studyId: string;
-  /** The lab's declared title, which bundles record. */
+  /** The study's declared title, which bundles record. */
   readonly title?: string;
   readonly study?: RunStudyProvenance;
   /** A frozen copy owned by the plan. */
@@ -95,7 +95,7 @@ interface PreviewPlan extends PlanBase {
 
 /**
  * The model driving a desktop participant. `caller` is the library caller's createProvider.
- * `declaredModel` is actors[0].model as the lab wrote it, absent when undeclared: the providers
+ * `declaredModel` is actors[0].model as the study wrote it, absent when undeclared: the providers
  * take it as written, and spend is priced at it, else the default (pricedModel). An openai
  * brain's `model` is the one its provider runs, with that default applied.
  */
@@ -219,7 +219,7 @@ export type TerminalPlan = PlanBase & {
     readonly version?: string;
     /** Passed to Codex as `--model` on every run, so the bundle can name and price it. */
     readonly model: string;
-    /** `declared` by the lab's actor, or humanish's participant default. */
+    /** `declared` by the study's actor, or humanish's participant default. */
     readonly modelSource: "declared" | "humanish_default";
     readonly reasoningEffort?: ReasoningEffort;
     readonly auth?: StudyRuntimeAuth;

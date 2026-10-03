@@ -54,7 +54,7 @@ export async function resolveReceivingConnection(
   return { connection, apiKey, adapter: createReceivingAdapter(connection, apiKey) };
 }
 
-/** What receiving reads from a lab: its email declaration and the subject env it guards. */
+/** What receiving reads from a study: its email declaration and the subject env it guards. */
 export interface ReceivingSource {
   readonly comms?: StudyConfig["comms"];
   readonly subject: {

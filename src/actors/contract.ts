@@ -458,7 +458,7 @@ export interface ActorTrace {
    * carried. Present on traces whose provider declares settings; absent everywhere else and on
    * every pre-existing bundle, and its absence is tolerated by verify.
    *
-   * It exists because effort was a silent constant: unreachable from a lab, so every run took the
+   * It exists because effort was a silent constant: unreachable from a study, so every run took the
    * provider default. Effort is part of who the participant was, not of how the instrument was
    * tuned (docs/principles/actor-fidelity.md), so a trace that does not carry it is a result with
    * half its sample description missing, and two such traces cannot be compared.
@@ -478,8 +478,8 @@ export interface ActorTrace {
   affordanceUse?: AffordanceUse;
   /**
    * Additive + optional task funnel (humanish.task-funnel.v1): how far this participant got
-   * through the lab's declared protocol, corroborated per task by observations rather than by the
-   * actor's own narration. Present only when the lab declared `tasks` and the session ran; absent
+   * through the study's declared protocol, corroborated per task by observations rather than by the
+   * actor's own narration. Present only when the study declared `tasks` and the session ran; absent
    * on every pre-existing bundle and on dry-run contract bundles (a funnel that
    * was never measured is not an empty funnel). Its absence is tolerated by verify.
    */

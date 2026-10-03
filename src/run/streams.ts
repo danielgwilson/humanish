@@ -108,7 +108,7 @@ export interface RunDesktopGeometry {
     requested: { width: number; height: number };
     verified?: { width: number; height: number; source: "xdpyinfo" };
     /**
-     * The device preset as declared by the lab, present only when it differs from `requested`
+     * The device preset as declared by the study, present only when it differs from `requested`
      * because the rendered width was floored to MIN_DESKTOP_RENDER_WIDTH.
      *
      * Without this, a floored run is indistinguishable from a faithful one: `verified` compares
@@ -136,7 +136,7 @@ export interface RunDesktopGeometry {
     source: "cdp";
   };
   /**
-   * Mobile fidelity beyond viewport size, present only when the lab asked for it. `requested`
+   * Mobile fidelity beyond viewport size, present only when the study asked for it. `requested`
    * is what was applied through CDP; `resolved` is what the page reported about itself afterwards
    * and is the proof, never copied from the request. A run without this block is a
    * responsive-viewport study, whatever its preset is named.

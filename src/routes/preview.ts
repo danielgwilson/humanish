@@ -1,4 +1,4 @@
-// The preview route: a lab whose subject is this repo runs the synthetic dry run. planStudy decides
+// The preview route: a study whose subject is this repo runs the synthetic dry run. planStudy decides
 // the sim count and refuses what a synthetic run would ignore; runPreviewPlan does the rest.
 
 import type { AdmittedPlan, RunStudyOptions } from "../run-study.js";

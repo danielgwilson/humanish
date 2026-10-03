@@ -24,7 +24,7 @@ export type SetupTarget =
 
 /**
  * What a run reports while it runs. `plan` comes from computer use only; the other routes run from
- * the lab plan but do not emit it. `subject-phase` comes from computer use (participant target)
+ * the study plan but do not emit it. `subject-phase` comes from computer use (participant target)
  * and shared world (subject target).
  */
 export type StudyEvent =

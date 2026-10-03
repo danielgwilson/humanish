@@ -128,7 +128,7 @@ export async function applyEnvFileOption(args: {
   io: CliIo;
   env?: NodeJS.ProcessEnv;
   onDiscovered?: (names: string[]) => void;
-  /** False for the lab-running commands, which discover only once the lab resolves to live. */
+  /** False for the study-running commands, which discover only once the study resolves to live. */
   discoverKeys?: boolean;
 }): Promise<boolean> {
   const env = args.env ?? process.env;
@@ -219,7 +219,7 @@ export type HumanOutput = string | { stdout?: string; error?: CliError | undefin
 
 /**
  * The command to run next, by code. A code is listed only when its messages do not already name a
- * command: the run-not-found and lab-less run messages do.
+ * command: the run-not-found and missing-study messages do.
  */
 const NEXT_COMMAND: Readonly<Record<string, string>> = {
   HUMANISH_STUDY_NOT_FOUND: "humanish study list",

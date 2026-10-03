@@ -192,7 +192,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   // cyber = the Daybreak frontier tier.
   "gpt-5.6-sol": rateWithLongContextTier(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
   // "gpt-5.6" is OpenAI's own alias for gpt-5.6-sol (models index); priced identically so a
-  // lab configured with the alias never reads as unpriced.
+  // study configured with the alias never reads as unpriced.
   "gpt-5.6": rateWithLongContextTier(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
   "gpt-5.6-terra": rateWithLongContextTier(2, 0.2, 2.5, 12),
   "gpt-5.6-luna": rateWithLongContextTier(0.2, 0.02, 0.25, 1.2),
@@ -204,7 +204,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   "daybreak-red-latest": rateWithLongContextTier(12.5, 1.25, 15.625, 75),
   // gpt-6-astra (shipped 2026-09-03; API access announced as rolling out). Same two mechanics
   // as the 5.6 family on the sheet: writes at 1.25x, >272K re-tiers at 2x input-side / 1.5x
-  // output ($20 / $2 / $25 / $75 long-context columns). These rates cover explicit lab
+  // output ($20 / $2 / $25 / $75 long-context columns). These rates cover explicit study
   // model choices and the study-analysis default; the computer-use default is separate.
   "gpt-6-astra": rateWithLongContextTier(10, 1, 12.5, 50, GPT6_ASTRA_AS_OF, GPT6_ASTRA_SOURCE),
 };

@@ -1,8 +1,8 @@
-// Which subject, target and actor compositions a lab may declare. Each rule returns the refusal
+// Which subject, target and actor compositions a study may declare. Each rule returns the refusal
 // message for the first thing its composition gets wrong, or null. compositionReason runs them in
 // the parser's order, and only parseStudy calls it. planStudy does not: each route planner checks
 // a library caller's config itself, under its route's error codes. The planners call the shared
-// checks in lab/validation.ts and desktopCliProductReason below. The other subject rules here have
+// checks in study/validation.ts and desktopCliProductReason below. The other subject rules here have
 // planner counterparts whose conditions and wording differ (clone serve and repo, local-tree
 // target, in-process fan-out, loopback targets, scripted scenario.ref).
 
@@ -49,7 +49,7 @@ export function compositionReason(config: StudyConfig): string | null {
   );
 }
 
-/** Why a this-repo lab cannot run live. The parser and the preview planner both refuse with it. */
+/** Why a this-repo study cannot run live. The parser and the preview planner both refuse with it. */
 export const THIS_REPO_DRY_RUN_ONLY =
   "this-repo studies are dry-run only; use a clone or app-url subject for a live run.";
 
@@ -312,7 +312,7 @@ function terminalValidationReason(config: StudyConfig): string | null {
   return null;
 }
 
-// A clone lab is served in-sandbox for a participant to drive, so only a computer-use or a
+// A clone study is served in-sandbox for a participant to drive, so only a computer-use or a
 // scripted-browser actor can run it. Any other actor would parse and then fail at run start.
 // Terminal actors were already refused above with their own message.
 function cloneActorValidationReason(config: StudyConfig): string | null {

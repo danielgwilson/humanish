@@ -97,7 +97,7 @@ interface CuaWatchPlan {
   finishedPlan: ObserverPlan | undefined;
 }
 
-/** The server, tunnel and Observer a followed watch attaches while the lab runs. */
+/** The server, tunnel and Observer a followed watch attaches while the study runs. */
 interface CuaLiveAttachment {
   server: ObserverServer | null;
   observer: (ObserverResult & { ok: true }) | null;

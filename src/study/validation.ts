@@ -260,7 +260,7 @@ export function taskProtocolValidationReason(
 
 /**
  * Refuse a clone subject whose target is not an explicit e2b-desktop. Every clone route clones and
- * serves the repo inside a hosted desktop sandbox, and routeOf sends every clone lab to
+ * serves the repo inside a hosted desktop sandbox, and routeOf sends every clone study to
  * one, so any other target, or none, would still run on an E2B desktop. Requiring it explicitly
  * also means the parser's clone checks, which run only on e2b-desktop, cannot be skipped. Enforced
  * at parse and again on the computer-use and scripted-browser routes for library callers.
@@ -273,9 +273,9 @@ export function cloneTargetValidationReason(config: StudyConfig): string | null 
 }
 
 /**
- * Refuse a positive `scenario.caps.maxUsd` or `maxTotalUsd` on a computer-use lab.
+ * Refuse a positive `scenario.caps.maxUsd` or `maxTotalUsd` on a computer-use study.
  * `scenario.caps` belongs to the terminal route; the computer-use route stops on `execution.caps`,
- * so a dollar figure here would read as a cap while the lab ran uncapped. Zero spends nothing
+ * so a dollar figure here would read as a cap while the study ran uncapped. Zero spends nothing
  * either way and stays a warning. Enforced at parse and again on the computer-use routes for
  * library callers.
  */

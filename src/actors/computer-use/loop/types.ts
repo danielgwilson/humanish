@@ -70,7 +70,7 @@ export interface CuaObservation {
    * in-memory progress key is derived from it. A structured blob has no detectable secret shape
    * (the published-evidence scan catches only secret-shaped patterns), so it is handled like
    * stateSignature, which is never written as text either. Persisting it would need a stringified
-   * projection through redaction.redactText and the lab's scrubText, with its fields capped or
+   * projection through redaction.redactText and the run's scrubText, with its fields capped or
    * allowlisted, since pattern and literal redaction cannot sanitize an arbitrary blob.
    */
   appState?: Record<string, unknown>;
@@ -298,7 +298,7 @@ export interface CuaLoopOptions {
   /**
    * Extra literal scrub for known provisioned values (which have no detectable "shape", so
    * pattern redaction cannot catch them), composed before redactText on every model-authored
-   * text item (reasoning, message, completion summary) and the loop error. The lab passes the
+   * text item (reasoning, message, completion summary) and the loop error. The route passes the
    * env-value scrubber here so a value the model narrates can never land raw in the trace.
    * Default: identity (the loop is shape-only on its own).
    */
@@ -321,7 +321,7 @@ export interface CuaLoopOptions {
   /** Injected pause for the dwell window's cadence; tests advance their clock through it. */
   sleep?: (ms: number) => Promise<void>;
   /**
-   * The lab's declared protocol: discrete tasks whose completion is corroborated by the
+   * The study's declared protocol: discrete tasks whose completion is corroborated by the
    * same observations stopWhen reads, on the same cadence. The tracker never influences the loop's
    * control flow: a completed task list does not stop a session (that is stopWhen's job); it only
    * records the funnel that lands on the trace. The participant-facing halves of these tasks are
@@ -333,7 +333,7 @@ export interface CuaLoopOptions {
    * Spend cap in USD. When set, the loop stops with budget_reached as soon as the running
    * estimated spend crosses it, before the next provider turn. Absent means uncapped. maxUsd: 0
    * can still permit one model request before its reported spend trips the check. Enforcement
-   * needs an estimate, so the lab refuses a cap on an unpriced model at preflight.
+   * needs an estimate, so humanish refuses a cap on an unpriced model at preflight.
    */
   maxUsd?: number;
   /**

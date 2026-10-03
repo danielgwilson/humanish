@@ -188,7 +188,7 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
         ...(args.session ? { actorStatus: args.session.status } : {}),
         ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
       },
-      // The seam this lab exists to fill: the provider-neutral actor evidence projection.
+      // The seam this route exists to fill: the provider-neutral actor evidence projection.
       ...(args.session ? { actor: args.session.trace } : {}),
       artifacts: [
         { label: "run bundle", path: "run.json", kind: "bundle" as const },
@@ -376,7 +376,7 @@ export function buildSingleParticipantBundle(args: {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
   realEmail?: boolean;
-  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and study. */
   run: BundleRun;
   actorId: string;
   appUrl: string;
@@ -404,7 +404,7 @@ export function buildSingleParticipantBundle(args: {
   isMobile?: boolean;
   screenshots: string[];
   /** Relative run-dir path of the digest-only comms-thread evidence artifact (humanish.comms-thread.v1),
-   *  when a comms lab captured mail; registered as a "log" stream artifact. */
+   *  when a comms study captured mail; registered as a "log" stream artifact. */
   commsArtifactPath?: string;
   /**
    * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").

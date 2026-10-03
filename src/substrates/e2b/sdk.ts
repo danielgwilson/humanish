@@ -17,7 +17,7 @@ export interface E2BDesktopModule {
     create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
     /**
      * Launch on a custom E2B desktop template (image) by name or ID: the SDK's
-     * `Sandbox.create(template, opts)` overload. Lets a lab run on an adopter-maintained image
+     * `Sandbox.create(template, opts)` overload. Lets a study run on an adopter-maintained image
      * with extra runtimes baked in (e.g. node/bun/a local Postgres the stock `desktop` template
      * lacks), instead of the stock template. The base @e2b/desktop SDK implements this; the
      * wrapper just exposes it. Threaded from `execution.desktop.template`.

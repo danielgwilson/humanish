@@ -25,7 +25,7 @@ import {
 // `count: 2` is the declared override that adds the mobile surface.
 const DEFAULT_SURFACE_COUNT = 1;
 
-/** The error a scripted lab returns before a run starts. */
+/** The error a scripted study returns before a run starts. */
 export interface ScriptedRefusal extends RouteRefusal<
   "scripted",
   | "HUMANISH_STUDY_ANALYSIS_INVALID"
@@ -57,7 +57,7 @@ export function injectedBrowser(deps: StudyDeps | undefined): boolean {
 }
 
 /**
- * Plan a scripted-browser lab. It is called for any config handed to the scripted runner, not only
+ * Plan a scripted-browser study. It is called for any config handed to the scripted runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planScriptedStudy(

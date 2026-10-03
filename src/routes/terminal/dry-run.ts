@@ -147,7 +147,7 @@ async function prepareDryPersona(args: {
   ).mission;
   const terminalPersona = await resolveTerminalPersona({ plan, cwd, warnings });
   // The composed prompt = mission + persona + public-surface manifest. Only the author mission
-  // goes plaintext into evidence (it is public-safe committed lab text); the full composed prompt
+  // goes plaintext into evidence (it is public-safe committed study text); the full composed prompt
   // is recorded as a digest (the safety contract's mission ruling).
   const composedPrompt = composePrompt({
     mission,

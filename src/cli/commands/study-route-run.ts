@@ -1,5 +1,5 @@
-// What a route's CLI setup hands the lab command: the runStudyWith options it chose and how it presents
-// the outcome. runRoute plans the lab once and runs it between the two.
+// What a route's CLI setup hands the run command: the runStudyWith options it chose and how it presents
+// the outcome. runRoute plans the study once and runs it between the two.
 
 import { type InternalRunStudyOptions, type StudyOutcome, prepareStudy } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
@@ -13,9 +13,9 @@ export interface RouteRun {
 }
 
 /**
- * Plans the lab with a route's options, then presents the refusal or the run. `beforeRun` runs
+ * Plans the study with a route's options, then presents the refusal or the run. `beforeRun` runs
  * only for a plan that will run: it loads the scorer, or writes its own refusal and returns
- * undefined, so a refused lab never imports the scorer's host code. `afterRun` runs once runStudyWith
+ * undefined, so a refused study never imports the scorer's host code. `afterRun` runs once runStudyWith
  * has returned or thrown, before presentation, which may hold its own signal handlers (watch's
  * Observer and tunnel).
  */

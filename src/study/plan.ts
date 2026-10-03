@@ -1,4 +1,4 @@
-// The route decision. A lab's route follows from its composition (subject.source,
+// The route decision. A study's route follows from its composition (subject.source,
 // execution.target, the first actor's registered run kind, subject.topology), never from a
 // declared kind. This is the only function that decides it.
 
@@ -81,7 +81,7 @@ type RoutePlanResult =
   | { readonly ok: false; readonly refusal: PlanRefusal };
 
 /**
- * The plan a lab runs under, built without reading files, env or the network. Each route's planner
+ * The plan a study runs under, built without reading files, env or the network. Each route's planner
  * makes every refusal that route makes, in the route's order and with its codes and messages; the
  * route's exported runner calls the same planner.
  */
@@ -95,7 +95,7 @@ export function planStudy(
   const result = planRoute(routeOf(config), study, options, input, deps);
   if (!result.ok) return result;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
-  // plan.lab for the run's status record and bundle.
+  // plan.study for the run's status record and bundle.
   const plan = options.study === undefined ? result.plan : { ...result.plan, study: options.study };
   return { ok: true, planned: { plan } };
 }

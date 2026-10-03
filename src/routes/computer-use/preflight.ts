@@ -58,7 +58,7 @@ export async function liveCuaRejection(args: {
       message: `Live computer-use studies need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}${suggestion}`,
     };
   }
-  // A caller's createProvider makes the brain `caller`, so only the lab's own local agent is checked.
+  // A caller's createProvider makes the brain `caller`, so only the study's own local agent is checked.
   if (localAgent) {
     // Refuse here, before a sandbox exists. "codex is not installed" discovered after the
     // machine is paid for is the same information delivered at the worst possible moment.
@@ -88,7 +88,7 @@ export async function liveCuaRejection(args: {
       };
     }
   }
-  // Adopter-hosted comms catch: fail closed before any sandbox is created, because a comms lab
+  // Adopter-hosted comms catch: fail closed before any sandbox is created, because a comms study
   // whose catch is unreachable collects nothing while every participant still spends. The probe asserts
   // humanish's own service marker in /health, so an adopter's proxy answering 200 for everything cannot
   // pass for a catch.

@@ -5,7 +5,7 @@
 // by the CLI, which imports it from the same modules every other command uses.
 //
 // The reason for the seam: a terminal UI that reads the filesystem itself would become a second
-// implementation of "what is a run, which lab does it belong to, is it alive", one that ships
+// implementation of "what is a run, which study does it belong to, is it alive", one that ships
 // minified, is invisible to the root test suite, and drifts from `humanish runs` the first time
 // either side changes. Injection keeps exactly one implementation, already unit-tested, and leaves
 // the bundle a view layer that can be reasoned about as one.
@@ -70,8 +70,8 @@ export interface TuiCapabilities {
    */
   readRunDetail(cwd: string, runId: string): Promise<RunDetail | null>;
   /**
-   * What a lab is: subject, participants, model, spend caps, and whether the keys a live run needs
-   * resolve right now. Read for the lab being looked at, because it is what someone reads before
+   * What a study is: subject, participants, model, spend caps, and whether the keys a live run needs
+   * resolve right now. Read for the study being looked at, because it is what someone reads before
    * deciding to spend money.
    */
   readStudySummary(

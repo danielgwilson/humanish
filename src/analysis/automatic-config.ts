@@ -17,7 +17,7 @@ interface StudyAnalysisSettings {
   question?: string;
   timeoutMs?: number;
 }
-/** The lab's review.analysis: a provider selection for a separate review after a live study. */
+/** The study's review.analysis: a provider selection for a separate review after a live study. */
 export type StudyAnalysis = StudyAnalysisSettings &
   (
     | { provider?: "openai"; maxCostUsd: number; maxOutputTokens?: number }
@@ -46,7 +46,7 @@ const SENSITIVE_QUESTION = {
   message: "review.analysis.question contains sensitive text and cannot be sent for analysis.",
 } as const;
 
-/** The spend cap on an analysis the lab did not declare. */
+/** The spend cap on an analysis the study did not declare. */
 export const DEFAULT_ANALYSIS_MAX_COST_USD = 3;
 
 /** Called for parsed manifests and direct library configs, before participant execution. */

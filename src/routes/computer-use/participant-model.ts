@@ -89,7 +89,7 @@ export async function startParticipantModel(
     // started with no memory of the last. HUMANISH_LOCAL_AGENT_ONE_SHOT=1 keeps that path
     // reachable as a measurement switch: MemTrapBench (2026-08) reports memory frameworks
     // degrading agent performance by 10-40% on some tasks, so "remembers" has to be measured
-    // against "does not" on the same lab, not assumed. The trace records which one ran.
+    // against "does not" on the same study, not assumed. The trace records which one ran.
     const oneShot =
       env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== undefined &&
       env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== "" &&
@@ -270,7 +270,7 @@ export async function recordParticipantTrace(
   warnings: string[],
 ): Promise<void> {
   // Per-participant model-token cost estimate, attached to the trace before it is persisted (the model
-  // id is authoritative here: provider.version). Kept at the lab boundary so the pure loop
+  // id is authoritative here: provider.version). Kept at the study boundary so the pure loop
   // never depends on the operator rate table. estimateActorCost declares absent (null) for an
   // unknown rate / missing usage rather than guessing.
   session.trace.estimatedCost = estimateActorCostForExecution(

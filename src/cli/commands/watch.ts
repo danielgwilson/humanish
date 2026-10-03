@@ -217,7 +217,7 @@ async function watchStudy(
   study: string,
   options: WatchOptions,
 ): Promise<void> {
-  // Forwarded wholesale, as `run` forwards its options, so a run flag reaches the lab either way.
+  // Forwarded wholesale, as `run` forwards its options, so a run flag reaches the run either way.
   await runStudyCommand({ command, io, study, mode: "watch", options });
 }
 
