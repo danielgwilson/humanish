@@ -173,7 +173,7 @@ const runOf = (f: Awaited<ReturnType<typeof fixture>>, env: Record<string, strin
   env,
   deps: seamsOf(f),
 });
-describe("ready desktop lane contract", () => {
+describe("ready desktop participant contract", () => {
   it.each([
     { speech: false, template: undefined, expected: undefined },
     { speech: true, template: undefined, expected: E2B_SPEECH_TEMPLATE },
@@ -361,7 +361,7 @@ describe("ready desktop lane contract", () => {
     expect(f.order.slice(-2)).toEqual(["model-close-unconfirmed", "release"]);
   });
 
-  it("uses the custom model on a desktop lane and closes it before the desktop", async () => {
+  it("uses the custom model on a desktop participant and closes it before the desktop", async () => {
     const f = await fixture();
     const provider: CuaProvider = {
       id: "synthetic-provider",
@@ -388,7 +388,7 @@ describe("ready desktop lane contract", () => {
     expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
   });
 
-  it("runs a hosted Claude lane on one Claude session and closes it before the desktop", async () => {
+  it("runs a hosted Claude participant on one Claude session and closes it before the desktop", async () => {
     const f = await fixture();
     const provider: CuaProvider = {
       id: "claude-session",
@@ -730,7 +730,7 @@ describe("ready desktop lane contract", () => {
     await expect(adapter.openSession()).rejects.toThrow("must be prepared");
   });
 
-  it("a finalized hosted lane cannot allocate later", async () => {
+  it("a finalized hosted participant cannot allocate later", async () => {
     const f = await fixture();
     const adapter = createE2BParticipantDesktop(f.spec, f.deps, []);
     await adapter.finalize({ failed: true });

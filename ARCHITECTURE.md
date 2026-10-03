@@ -102,7 +102,7 @@ not.
 | `observer/`                | The Observer page, a single-file Vite build                                            | `observer/README.md`                |
 | `tui/`                     | The Ink terminal app                                                                   | `tui/README.md`                     |
 | `site/`                    | humanish.dev and its user docs in `site/content/docs/`                                 | `site/README.md`                    |
-| `humanish/`                | This repo's own labs, personas, scenarios, fixtures and coverage notes                 | `humanish/labs/first-run.yaml`      |
+| `humanish/`                | This repo's own studies, personas, scenarios, fixtures and coverage notes              | `humanish/studies/first-run.yaml`   |
 | `examples/`                | Library examples shipped in the npm package: a participant and a scorer                | `examples/README.md`                |
 | `adapters/`                | Adapter fixture sets that `tests/lab/adapter-fixtures.test.ts` checks                  | `adapters/fixtures/README.md`       |
 | `bench/`                   | Benchmark apps with planted defects and their dated results                            | `bench/DEFECTS.md`                  |

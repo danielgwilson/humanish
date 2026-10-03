@@ -7,7 +7,7 @@ const THEME_STORAGE_KEY = "humanish-theme";
 /**
  * The nav theme toggle. Writes data-theme on <html> (the token system keys
  * off it), persists the choice, and resyncs every canvas. Hidden without JS
- * via the POC's `.js .tbtn` rule.
+ * via the prototype's `.js .tbtn` rule.
  */
 export default function ThemeToggle() {
   const toggle = () => {
@@ -16,7 +16,7 @@ export default function ThemeToggle() {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
-      /* private mode etc. — the attribute alone still themes this visit */
+      /* private mode etc.: the attribute alone still themes this visit */
     }
     syncTheme();
   };

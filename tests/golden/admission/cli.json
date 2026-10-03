@@ -11,7 +11,7 @@
         "message": "--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to the terminal route."
       }
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-terminal-live-no-caps.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -41,7 +41,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-terminal-live-no-caps.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -58,7 +58,7 @@
         "message": "--rerun-failed-from/--participants apply only to computer-use fan-out labs; this lab resolved to the scripted route."
       }
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-scripted.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -66,7 +66,7 @@
   "run adm-cu --participants lane-01 --json": {
     "exitCode": 2,
     "stdout": "",
-    "stderr": "error: --participants requires --rerun-failed-from.\n",
+    "stderr": "warning: humanish/labs/adm-cu.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\nerror: --participants requires --rerun-failed-from.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -74,7 +74,7 @@
   "run adm-cu --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
-    "stderr": "error: --count must be a positive integer.\n",
+    "stderr": "warning: humanish/labs/adm-cu.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\nerror: --count must be a positive integer.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -98,7 +98,7 @@
         "message": "--port must be an integer between 0 and 65535."
       }
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-cu.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -118,7 +118,7 @@
         "message": "--count must be a positive integer."
       }
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-preview.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -135,7 +135,7 @@
         "message": "review.scorer.ref is set, but this study runs on the scripted route, which cannot run a scorer. The run stops here so the scorer is not silently skipped. Use it with a terminal, computer-use or shared-world study, or remove review.scorer.ref."
       }
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-scripted.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -143,7 +143,7 @@
   "run adm-cu --scorer ./scorer.mjs --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
-    "stderr": "error: --count must be a positive integer.\n",
+    "stderr": "warning: humanish/labs/adm-cu.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\nerror: --count must be a positive integer.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -173,7 +173,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-terminal-live-no-caps.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -204,7 +204,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-cu-local-app.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -235,7 +235,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-cu-unpriced.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -269,7 +269,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-shared-unpriced.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -299,7 +299,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-terminal-live.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -330,7 +330,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-cu-unpriced.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -364,7 +364,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-shared-live.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -372,7 +372,7 @@
   "watch adm-shared-live --port 99999": {
     "exitCode": 2,
     "stdout": "humanish run adm-shared-live: live run failed\nroute: shared-world\nrun: not-created\nactor: openai-computer-use\ntopology: shared-world/concurrent (2 personas, concurrency 2)\n",
-    "stderr": "humanish watch failed: --port must be an integer between 0 and 65535.\ncode: HUMANISH_SHARED_WORLD_FAILED\n",
+    "stderr": "warning: humanish/labs/adm-shared-live.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\nhumanish watch failed: --port must be an integer between 0 and 65535.\ncode: HUMANISH_SHARED_WORLD_FAILED\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -396,7 +396,7 @@
         "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-cu.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -413,7 +413,7 @@
         "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
-    "stderr": "",
+    "stderr": "warning: humanish/labs/adm-scripted.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false

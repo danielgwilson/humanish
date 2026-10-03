@@ -106,7 +106,7 @@ describe("CUA diagnostic control evidence", () => {
   });
   const summary = (...participants: ReturnType<typeof lane>[]) =>
     summarizeCuaDiagnostics({ dryRun: false, evidenceInvalid: false, participants });
-  it("never projects the first lane over divergent causes or a missing lane diagnostic", () => {
+  it("never projects the first participant over divergent causes or a missing participant diagnostic", () => {
     const limited = lane("incomplete", {
       category: "session_interrupted",
       stopCause: "provider_output_limit",

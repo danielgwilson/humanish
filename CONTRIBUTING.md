@@ -16,8 +16,8 @@ the steps below update both.
    local VM golden, `tests/golden/routes/computer-use-local-vm-live.json`, records the persona id.
    Rerun it with `-u` to rewrite the golden, then check with `git diff tests/golden/` that only
    the persona id changed.
-4. Run `mkdir -p .humanish/local/labs`, then copy `humanish/labs/dwell-window-todomvc.yaml` to
-   `.humanish/local/labs/walkthrough.yaml`. Change its `id` to `walkthrough` and delete its
+4. Run `mkdir -p .humanish/local/studies`, then copy `humanish/studies/dwell-window-todomvc.yaml`
+   to `.humanish/local/studies/walkthrough.yaml`. Change its `id` to `walkthrough` and delete its
    `persona:` line.
 5. Run `pnpm humanish run walkthrough --dry-run --no-open`. It prints the run id on its `run:`
    line. Check `persona.id` in `.humanish/runs/<runId>/run.json`.
@@ -91,15 +91,15 @@ Two kinds of change need one more step:
 
 `pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files. It also holds four
 counts to caps: oxlint warnings (`lint`, capped in package.json), prose in comments and test names
-under `src/`, `tests/`, `scripts/`, `tui/` and `observer/`, and in the root guides, `docs/` outside
-`docs/history/` and the site's docs pages (`prose:check`: issue references, `FIX-N` tags, all-caps
-emphasis, em dashes, invariant numbers, review labels, contrast frames in docs and the other kinds
-listed at the top of `scripts/check-code-prose.mjs`, which also counts the text of `src/` string
-literals), and identifiers and file names in `src/` outside the exempt contract modules that still
-say a retired participant word (lane, seat, role or sim) or lab (`vocabulary:check`), and hex colors
-written into rules, classes no site component names, and px font sizes, spacing and radii written
-into rules instead of read from the scale tokens, in the site and Observer stylesheets
-(`site-css:check`).
+under `src/`, `tests/`, `scripts/`, `tui/`, `observer/` and `site/`'s source files, and in the root
+guides, `docs/` outside `docs/history/` and the site's docs pages (`prose:check`: issue references,
+`FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels, contrast frames in
+docs and the other kinds listed at the top of `scripts/check-code-prose.mjs`, which also counts the
+text of `src/` string literals), and identifiers and file names in `src/` outside the exempt
+contract modules that still say a retired participant word (lane, seat, role or sim) or lab
+(`vocabulary:check`), and hex colors written into rules, classes no site component names, and px
+font sizes, spacing and radii written into rules instead of read from the scale tokens, in the site
+and Observer stylesheets (`site-css:check`).
 A study is what a user designs and runs, and a run is one execution of it; lab is the old name for a
 study. The last three read their caps from `scripts/caps.json`. Each check fails when its count
 rises above the cap and also when it falls below it, so the PR that reduces a count lowers the cap

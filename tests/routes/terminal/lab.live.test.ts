@@ -19,7 +19,7 @@ import { verifyRun } from "../../../src/verify/verify.js";
 //   2. CODEX_API_KEY or OPENAI_API_KEY, plus E2B_API_KEY, must be present (operator-side; the
 //      runtime key is injected only into the command-scoped codex invocation, never
 //      sandbox-global). CODEX_API_KEY is preferred (it is the documented single-invocation
-//      `codex exec` auth channel); when only OPENAI_API_KEY is set, the lane injects its value
+//      `codex exec` auth channel); when only OPENAI_API_KEY is set, the route injects its value
 //      under both names, so either is sufficient here too.
 //   3. @e2b/desktop is the lazily-loaded substrate.
 // Asserts the safety contract holds against a real agent: real sandbox created + reclaimed,
@@ -69,7 +69,7 @@ function liveConfig(): LabConfig {
   return parsed.config;
 }
 
-describe.skipIf(!LIVE)("terminal-product lane (live, key-gated, E2B + Codex)", () => {
+describe.skipIf(!LIVE)("terminal-product route (live, key-gated, E2B + Codex)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-livereal-"));
@@ -101,7 +101,8 @@ describe.skipIf(!LIVE)("terminal-product lane (live, key-gated, E2B + Codex)", (
       expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(true);
 
       // No credential value in evidence: neither real key (whichever the operator exported, or both
-      // if the lane dual-injected OPENAI_API_KEY under CODEX_API_KEY too) ever appears in any artifact.
+      // if the route dual-injected OPENAI_API_KEY under CODEX_API_KEY too) ever appears in any
+      // artifact.
       const runDir = path.join(cwd, ".humanish", "runs", result.runId);
       const realKeys = [process.env.CODEX_API_KEY, process.env.OPENAI_API_KEY]
         .map((value) => (value ?? "").trim())

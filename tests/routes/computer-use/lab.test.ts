@@ -1279,7 +1279,7 @@ describe("runCuaActorLab", () => {
     expect(sandbox.calls).toContainEqual(["leftClick", 11, 22]);
     expect(openIndex).toBeLessThan(sandbox.calls.findIndex(([name]) => name === "leftClick"));
 
-    // The prompt was composed from config (persona + mission + lane focus).
+    // The prompt was composed from config (persona + mission + participant focus).
     const instructions = sessionOptionsSeen[0]?.instructions ?? "";
     expect(instructions).toContain("first-time-visitor");
     expect(instructions).toContain("Explore the app and stop.");
@@ -1513,7 +1513,7 @@ describe("runCuaActorLab", () => {
     const launch = commands.find((command) => command.includes("browser_preference='chrome'"))!;
     expect(launch).toContain("--user-agent=Mozilla/5.0 (iPhone");
     expect(launch).toContain("--touch-events=enabled");
-    // The holder was started detached (its script goes through files.write) with the lane's
+    // The holder was started detached (its script goes through files.write) with the participant's
     // preset as the emulated device.
     const holderScript = sandbox.calls
       .filter((call) => call[0] === "files.write" && String(call[1]).includes("mobile-emulation-"))
@@ -1563,8 +1563,8 @@ describe("runCuaActorLab", () => {
     ]);
   });
 
-  // A phone lane whose every observation reads a new tab (T2) the participant opened; the tab's own
-  // fidelity read-back is what the test varies.
+  // A phone participant whose every observation reads a new tab (T2) the participant opened; the
+  // tab's own fidelity read-back is what the test varies.
   function laterTabSandbox(secondTabInnerWidth: number) {
     return makeFakeSandbox({
       commandHandler: (command) => {
@@ -1785,7 +1785,7 @@ describe("runCuaActorLab", () => {
     ]);
   }, 30_000);
 
-  // A lane with a declared synthetic camera: the fake desktop answers the ffmpeg feed
+  // A participant with a declared synthetic camera: the fake desktop answers the ffmpeg feed
   // generation and the Chrome launch, and the test reads what the browser was launched with.
   function cameraSandbox(ffmpegExit: number) {
     const commands: string[] = [];
@@ -1928,7 +1928,7 @@ describe("runCuaActorLab", () => {
     expect(bundle.desktopBrowser.media.flags).toContain("--use-fake-ui-for-media-stream");
   });
 
-  it("a desktop image without ffmpeg fails the lane closed before the browser launches, named", async () => {
+  it("a desktop image without ffmpeg fails the participant closed before the browser launches, named", async () => {
     const { sandbox, commands } = cameraSandbox(127);
     const outcome = await runCameraLane(sandbox, {});
     expect(outcome.result.ok).toBe(false);
@@ -2011,7 +2011,7 @@ describe("runCuaActorLab", () => {
     expect(phases).toContain("cua-lab.sandbox.create.retry");
   });
 
-  it("sandbox create is not retried on an auth failure: the lane fails closed on the first attempt", async () => {
+  it("sandbox create is not retried on an auth failure: the participant fails closed on the first attempt", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     let attempts = 0;
@@ -2056,7 +2056,7 @@ describe("runCuaActorLab", () => {
     expect(attempts).toBe(1);
   });
 
-  it("mobile emulation leaves a desktop-preset lane alone: no launch flags, no holder, no fidelity block", async () => {
+  it("mobile emulation leaves a desktop-preset participant alone: no launch flags, no holder, no fidelity block", async () => {
     const commands: string[] = [];
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
@@ -2125,7 +2125,7 @@ describe("runCuaActorLab", () => {
     ).toBe(false);
   });
 
-  it("mobile emulation fails the lane closed when the launched browser is not Chromium", async () => {
+  it("mobile emulation fails the participant closed when the launched browser is not Chromium", async () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
         if (command.includes("browser_preference='firefox'")) {
@@ -2377,7 +2377,7 @@ describe("runCuaActorLab", () => {
       },
     }) as unknown as CuaLoopResult;
 
-  it("flags a goal_satisfied lane whose own narrative reports a real blocker", () => {
+  it("flags a goal_satisfied participant whose own narrative reports a real blocker", () => {
     expect(
       resolveSelfReportedBlocker(
         fakeBlockerSession("I could not complete the task; the delete button was disabled"),
@@ -2385,7 +2385,7 @@ describe("runCuaActorLab", () => {
     ).toContain("could not complete");
   });
 
-  it("tallies a refused goal_satisfied under the status the lane judged, one rule for N=1 and fan-out", () => {
+  it("tallies a refused goal_satisfied under the status the participant judged, one rule for N=1 and fan-out", () => {
     expect(
       participantStatusForCredibility("passed", { noEngagement: false, selfReportedBlocker: true }),
     ).toBe("blocked");
@@ -2501,9 +2501,9 @@ describe("runCuaActorLab", () => {
   });
 
   it("does not flag a clean pass that says nothing blocked it", () => {
-    // Found on 2026-09-01 by a real benchmark run: a passing lane ended "No functional failures
-    // blocked me, and cleanup left the app back at an empty list" and was downgraded from a pass
-    // to a lab failure. The negation list only knew real/remaining/actual, so the ordinary
+    // Found on 2026-09-01 by a real benchmark run: a passing participant ended "No functional
+    // failures blocked me, and cleanup left the app back at an empty list" and was downgraded from
+    // a pass to a study failure. The negation list only knew real/remaining/actual, so the ordinary
     // qualifier "functional" slipped through and the trailing verb "blocked" tripped the scan.
     expect(
       resolveSelfReportedBlocker(
@@ -2568,7 +2568,7 @@ describe("runCuaActorLab", () => {
     ).toBeUndefined();
   });
 
-  it("only inspects goal_satisfied lanes", () => {
+  it("only inspects goal_satisfied participants", () => {
     expect(
       resolveSelfReportedBlocker(
         fakeBlockerSession("cannot proceed", { completionReason: "timeout" }),
@@ -3002,7 +3002,8 @@ describe("runCuaActorLab", () => {
     ).toBe(true);
 
     // The captured mail was drained + routed + written as a digest-only comms-thread artifact, and
-    // registered in the lane's stream artifacts (so the bundle's existence-verify + scan cover it).
+    // registered in the participant's stream artifacts (so the bundle's existence-verify + scan
+    // cover it).
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     const commsArtifact = bundle.streams[0].artifacts.find(
@@ -3025,7 +3026,7 @@ describe("runCuaActorLab", () => {
     expect(threadRaw).not.toContain("Confirm your email");
   });
 
-  it("comms:email:fake: tells the persona its address and inbox URL, and stays silent for a lane that has neither", async () => {
+  it("comms:email:fake: tells the persona its address and inbox URL, and stays silent for a participant that has neither", async () => {
     // The half no test covered. Capture and drain were proven; whether the actor is ever told an
     // inbox exists was not. That is the gap a live run hit: mail landing in a catch nobody opened,
     // because the persona was never handed the address to sign up with or the URL to read.
@@ -3096,9 +3097,9 @@ describe("runCuaActorLab", () => {
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain(String(commsPort));
   });
 
-  it("comms:email:fake: does not tell a lane about an inbox it could never receive into", async () => {
-    // A lane with no addressed recipient must not be sent to an inbox that will stay empty: it
-    // would refresh forever and burn the session on a promise the harness cannot keep.
+  it("comms:email:fake: does not tell a participant about an inbox it could never receive into", async () => {
+    // A participant with no addressed recipient must not be sent to an inbox that will stay empty:
+    // it would refresh forever and burn the session on a promise the harness cannot keep.
     const commsPort = 8025;
     const base = cloneCuaConfig();
     const config: LabConfig = {
@@ -3219,7 +3220,8 @@ describe("runCuaActorLab", () => {
   it("comms:email:fake: tells the persona its inbox URL and renders the live surface mid-run", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    // Recipient lane must match the N=1 lane id (lane-01) for the inbox instruction to be injected.
+    // The recipient's `lane` must match the N=1 participant id (`lane-01`) for the inbox
+    // instruction to be injected.
     const config: LabConfig = {
       ...base,
       comms: {
@@ -3431,9 +3433,9 @@ describe("runCuaActorLab", () => {
   });
 
   it("a participant the harness refused as 'not a credible pass' is not written up as a pass", async () => {
-    // Found on a real run: the lane said ok:false / HUMANISH_COMPUTER_USE_FAILED / "not a credible
-    // pass", and the bundle said verdict pass, 1/1 reached the goal. Every projection of the
-    // bundle (Observer tally, `humanish runs`, the status index, a share) repeated the pass.
+    // Found on a real run: the participant said ok:false / HUMANISH_COMPUTER_USE_FAILED / "not a
+    // credible pass", and the bundle said verdict pass, 1/1 reached the goal. Every projection of
+    // the bundle (Observer tally, `humanish runs`, the status index, a share) repeated the pass.
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(
@@ -3453,13 +3455,14 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
-    // The lane's judgment, unchanged: the actor claimed goal_satisfied, the harness refused it.
+    // The participant's judgment, unchanged: the actor claimed goal_satisfied, the harness refused
+    // it.
     expect(result.session?.completionReason).toBe("goal_satisfied");
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FAILED");
     expect(result.error?.message).toContain("not a credible pass");
 
-    // The durable evidence now says the same thing the lane said.
+    // The durable evidence now says the same thing the participant said.
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
@@ -3849,7 +3852,7 @@ describe("runCuaActorLab", () => {
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
   });
 
-  it("rejects path-shaped runtime lane ids before provider or desktop hooks", async () => {
+  it("rejects path-shaped runtime participant ids before provider or desktop hooks", async () => {
     const config = cuaConfig();
     const actor = config.actors[0]!;
     const { laneFocus: _laneFocus, ...actorWithoutLaneFocus } = actor;
@@ -4847,7 +4850,7 @@ describe("runCuaActorLab", () => {
   });
 });
 
-describe("execution.desktop.template (custom E2B desktop image, single-lane computer-use route)", () => {
+describe("execution.desktop.template (custom E2B desktop image, single-participant computer-use route)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-template-"));
@@ -4964,7 +4967,7 @@ describe("Chrome DevTools readiness after launch", () => {
     return parsed.config;
   }
 
-  /** Runs one lane whose launch command printed `markers` after the usual identity lines. */
+  /** Runs one participant whose launch command printed `markers` after the usual identity lines. */
   async function runWithLaunch(config: LabConfig, markers: string) {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) =>
@@ -5002,7 +5005,7 @@ describe("Chrome DevTools readiness after launch", () => {
     return { sandbox, result: outcome.result, bundle, phase };
   }
 
-  it("fails an emulated lane closed when Chrome exited before DevTools answered, before any holder starts", async () => {
+  it("fails an emulated participant closed when Chrome exited before DevTools answered, before any holder starts", async () => {
     const { sandbox, result, bundle, phase } = await runWithLaunch(
       chromeConfig("mobile"),
       "HUMANISH_BROWSER_CDP_NOT_READY=exited\nHUMANISH_BROWSER_CDP_WAITED_MS=900\nHUMANISH_BROWSER_LOG_TAIL=[1:1:ERROR] Missing X server or $DISPLAY\n",
@@ -5021,7 +5024,7 @@ describe("Chrome DevTools readiness after launch", () => {
     });
   });
 
-  it("keeps a lane without emulation running, with a warning, when DevTools never answered", async () => {
+  it("keeps a participant without emulation running, with a warning, when DevTools never answered", async () => {
     const { result, phase } = await runWithLaunch(
       chromeConfig("desktop"),
       "HUMANISH_BROWSER_CDP_NOT_READY=timeout\nHUMANISH_BROWSER_CDP_WAITED_MS=30000\nHUMANISH_BROWSER_LOG_TAIL=\n",
@@ -5658,7 +5661,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(types.some((type) => type.includes(".clone."))).toBe(false);
     });
 
-    it("live fan-out (2 lanes): packs the working tree once, uploads it per lane, extracts via tar, and carries archive provenance on every lane + the aggregate", async () => {
+    it("live fan-out (2 participants): packs the working tree once, uploads it per participant, extracts via tar, and carries archive provenance on every participant + the aggregate", async () => {
       const config = localTreeCuaConfig({ count: 2 });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, created, killed } = makeFakeModule(sandbox);
@@ -5689,11 +5692,12 @@ describe("buildSingleParticipantBundle", () => {
       expect(result.ok).toBe(true);
       expect(created.length).toBe(2);
 
-      // Packed exactly once for the whole 2-lane fan-out, rooted at the study's resolution cwd.
+      // Packed exactly once for the whole 2-participant fan-out, rooted at the study's resolution
+      // cwd.
       expect(packCalls).toHaveLength(1);
       expect(packCalls[0]?.root).toBe(await realpath(cwd));
 
-      // Every lane uploaded the same archive bytes to the same remote path, octet-stream.
+      // Every participant uploaded the same archive bytes to the same remote path, octet-stream.
       const uploads = sandbox.calls.filter(
         (call): call is [string, string, ArrayBuffer, { useOctetStream?: boolean } | undefined] =>
           call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz",
@@ -5718,7 +5722,8 @@ describe("buildSingleParticipantBundle", () => {
       );
       expect(extractScript?.[2]).toContain("rm -f /home/user/.humanish-source.tar.gz");
 
-      // Provenance: aggregate + every lane carry archiveSha256/commit/dirty from the hook result.
+      // Provenance: aggregate + every participant carry archiveSha256/commit/dirty from the hook
+      // result.
       const expectedSubject = {
         source: "local-tree",
         archiveSha256: FIXED_ARCHIVE.archiveSha256,
@@ -5740,7 +5745,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(killed.length).toBeGreaterThan(0);
     });
 
-    it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a per-participant cap and cites the ~N × cap ceiling", async () => {
+    it("live fan-out (2 participants) with maxUsd: warns that maxUsd is a per-participant cap and cites the ~N × cap ceiling", async () => {
       const config = localTreeCuaConfig({ count: 2, caps: { maxUsd: 3 } });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
@@ -5766,8 +5771,8 @@ describe("buildSingleParticipantBundle", () => {
 
       const capWarning = result.warnings.find((w) => w.includes("caps each participant"));
       expect(capWarning).toBeDefined();
-      // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3, and the warning
-      // points at the shared study budget as the fix, since it exists now.
+      // 2 participants × $3 → the true ~$6 ceiling is surfaced, not the per-participant $3, and the
+      // warning points at the shared study budget as the fix, since it exists now.
       expect(capWarning).toContain("2 × $3");
       expect(capWarning).toContain("about $6");
       expect(capWarning).toContain("maxTotalUsd");
@@ -5811,9 +5816,10 @@ describe("buildSingleParticipantBundle", () => {
       expect(phaseCalls.length).toBeGreaterThan(0);
       expect(phaseCalls.every(({ ctx }) => ctx.count === 2)).toBe(true);
 
-      // (a) both lanes reported phase events under their own distinct lane id, and each lane's own
-      // boundary sequence is the full upload/extract/install/build/ready chain (no lane silently
-      // skipped, no cross-lane mixing within a single lane's sequence).
+      // (a) both participants reported phase events under their own distinct participant id, and
+      // each participant's own boundary sequence is the full upload/extract/install/build/ready
+      // chain (no participant silently skipped, no cross-participant mixing within a single
+      // participant's sequence).
       const participantIds = [...new Set(phaseCalls.map(({ ctx }) => ctx.id))].sort();
       expect(participantIds).toEqual(["lane-01", "lane-02"]);
       const expectedTypes = [
@@ -5838,9 +5844,9 @@ describe("buildSingleParticipantBundle", () => {
         expect(types).toEqual(expectedTypes);
       }
 
-      // (b) the persisted fan-out bundle attributes each lane's completed phase events to that
-      // lane's own simId/streamId (lane-01 -> sim-001/stream-001, lane-02 -> sim-002/stream-002):
-      // no cross-lane leakage into the wrong lane's stream.
+      // (b) the persisted fan-out bundle attributes each participant's completed phase events to
+      // that participant's own simId/streamId (lane-01 -> sim-001/stream-001, lane-02 ->
+      // sim-002/stream-002): no cross-participant leakage into the wrong participant's stream.
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
       const persistedPhaseEvents = (
@@ -5860,7 +5866,8 @@ describe("buildSingleParticipantBundle", () => {
           throw new Error(`unexpected phase event id shape: ${event.id}`);
         }
       }
-      // Both lanes actually persisted (neither lane's phase trail silently swallowed).
+      // Both participants actually persisted (neither participant's phase trail silently
+      // swallowed).
       expect(persistedPhaseEvents.some((event) => event.simId === "sim-001")).toBe(true);
       expect(persistedPhaseEvents.some((event) => event.simId === "sim-002")).toBe(true);
 
@@ -5868,7 +5875,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(verified.ok).toBe(true);
     });
 
-    it("extract failure, throwing CommandExitError shape: fails the lane with a scrubbed tail", async () => {
+    it("extract failure, throwing CommandExitError shape: fails the participant with a scrubbed tail", async () => {
       const config = localTreeCuaConfig();
       const sandbox = makeFakeSandbox({
         commandHandler: cloneCommandHandler(),
@@ -5903,7 +5910,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(message).toContain("tar: unexpected end of archive");
     });
 
-    it("extract failure, structural fake returning a nonzero exitCode (not throwing): fails the lane with a scrubbed tail", async () => {
+    it("extract failure, structural fake returning a nonzero exitCode (not throwing): fails the participant with a scrubbed tail", async () => {
       const config = localTreeCuaConfig();
       const sandbox = makeFakeSandbox({
         commandHandler: cloneCommandHandler((command) => {
@@ -6029,7 +6036,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
     });
 
-    it("subject.localTree.keep: true preserves the sandbox on a failed lane (mirrors subject.clone.keep)", async () => {
+    it("subject.localTree.keep: true preserves the sandbox on a failed participant (mirrors subject.clone.keep)", async () => {
       const config = localTreeCuaConfig({ localTree: { keep: true } });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, killed } = makeFakeModule(sandbox);
@@ -6103,7 +6110,7 @@ describe("buildSingleParticipantBundle", () => {
     }
   });
 
-  it("keeps sensitive public target URLs out of persisted bundle text while preserving lane metadata", () => {
+  it("keeps sensitive public target URLs out of persisted bundle text while preserving participant metadata", () => {
     const rawUrl = "https://3000-example-sandbox.e2b.app/bootstrap/session";
     const bundle = buildSingleParticipantBundle({
       verdict: "contract_proof_only",
@@ -6326,7 +6333,8 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(result.ok).toBe(true);
     expect(result.observer?.ok).toBe(true);
 
-    // The trace's provider id is the injected brain's id (no new lane needed); zero screenshots.
+    // The trace's provider id is the injected brain's id (no new participant needed); zero
+    // screenshots.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.provider).toBe("fake-state-brain");
@@ -6389,8 +6397,8 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(created).toHaveLength(0);
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    // The trace is priced like a hosted lane's; the caller's model has no rate, so the estimate is
-    // declared unknown and the run's cost block says so.
+    // The trace is priced like a hosted participant's; the caller's model has no rate, so the
+    // estimate is declared unknown and the run's cost block says so.
     expect(bundle.streams[0].actor.estimatedCost).toMatchObject({ estimatedCostUsd: null });
     expect(bundle.cost).toMatchObject({ estimatedTotalUsd: null, fullyEstimated: false });
   });
@@ -6529,7 +6537,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(verified.ok).toBe(false);
   });
 
-  it("a gave_up in-process run is an abandoned lane: a participant outcome, still not an engaged pass", async () => {
+  it("a gave_up in-process run is an abandoned participant: a participant outcome, still not an engaged pass", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runLab(
       localAppConfig(),
@@ -6557,7 +6565,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
     // The participant stopped trying. That is a finding about the product, not the harness
-    // malfunctioning, but it is still not a pass, and the lane must not be counted as one.
+    // malfunctioning, but it is still not a pass, and the participant must not be counted as one.
     expect(result.session?.status).toBe("abandoned");
     expect(result.session?.completionReason).toBe("gave_up");
     expect(result.ok).toBe(false);
@@ -7012,7 +7020,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(status).not.toHaveProperty("outcome");
   });
 
-  it("fires onObserverReady for a single lane and serves the live in-progress bundle (incl. the stream URL) even after a timed_out run", async () => {
+  it("fires onObserverReady for a single participant and serves the live in-progress bundle (incl. the stream URL) even after a timed_out run", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     let readyObserver: (ObserverResult & { ok: true }) | undefined;
@@ -7135,7 +7143,7 @@ describe("runCuaActorLab cost estimates", () => {
   const readBundle = async (runId: string): Promise<any> =>
     JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"));
 
-  it("attaches a labeled per-lane + run-level estimated cost with provenance and deterministic desktop-minutes; verify passes", async () => {
+  it("attaches a labeled per-participant + run-level estimated cost with provenance and deterministic desktop-minutes; verify passes", async () => {
     const { module, killed } = makeFakeModule(makeFakeSandbox());
     const result = await runCuaActorLab({
       cwd,
@@ -7204,7 +7212,7 @@ describe("runCuaActorLab cost estimates", () => {
   });
 
   it.each(["absent", "rejected"] as const)(
-    "keeps metadata %s unpriced while the actual lane still reclaims its handle",
+    "keeps metadata %s unpriced while the actual participant still reclaims its handle",
     async (mode) => {
       const sandbox = makeFakeSandbox();
       if (mode === "absent") delete sandbox.getInfo;
@@ -7475,7 +7483,7 @@ describe("adopter-hosted comms on the app-url route", () => {
 
       // The app's send, captured by the adopter's catch, addressed to lane-01's filled
       // deterministic address (recipients omitted in the study on purpose: the parser fills one
-      // per lane, and this proves the filled address is what the funnel matches).
+      // per participant, and this proves the filled address is what the funnel matches).
       const posted = await fetch(`${baseUrl}/emails`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -7604,10 +7612,10 @@ describe("computer-use run id reuse", () => {
   });
 });
 
-// Characterization: the complete run directory and returned result of a single-lane computer-use
-// run, on the fake E2B module with a scripted provider transport and on the in-process route with
-// a state executor, pinned so a refactor of bundle assembly or artifact writing shows up as a
-// diff. Regenerate with `pnpm vitest run tests/routes/computer-use/lab.test.ts -u`.
+// Characterization: the complete run directory and returned result of a single-participant
+// computer-use run, on the fake E2B module with a scripted provider transport and on the in-process
+// route with a state executor, pinned so a refactor of bundle assembly or artifact writing shows up
+// as a diff. Regenerate with `pnpm vitest run tests/routes/computer-use/lab.test.ts -u`.
 describe("computer-use run directory goldens", () => {
   let goldenCwd: string;
   beforeEach(async () => {
@@ -7620,7 +7628,7 @@ describe("computer-use run directory goldens", () => {
   it.each([
     ["dry run", true, "computer-use-dry-run.json"],
     ["live run", false, "computer-use-live.json"],
-  ] as const)("%s with one lane", async (_label, dryRun, golden) => {
+  ] as const)("%s with one participant", async (_label, dryRun, golden) => {
     const sandbox: FakeSandbox = makeFakeSandbox({
       commandHandler: measuredChromeDesktop(() => sandbox.screen),
     });

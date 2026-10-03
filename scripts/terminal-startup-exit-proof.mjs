@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(root, "dist/cli.js");
 const preload = join(root, "tests/fixtures/e2b-desktop-startup/fault-preload.mjs");
 const lab = (
-  await readFile(join(root, "humanish/labs/terminal-product-demo.yaml"), "utf8")
+  await readFile(join(root, "humanish/studies/terminal-product-demo.yaml"), "utf8")
 ).replace("mode: dry-run", "mode: live");
 
 for (const phase of ["Xvfb", "startxfce4"]) {

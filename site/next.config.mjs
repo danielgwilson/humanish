@@ -62,7 +62,7 @@ const nextConfig = {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
       {
-        // Captures and posters are pinned by content in ASSETS.sha256.json; a new run gets a new slug.
+        // `ASSETS.sha256.json` pins captures and posters by content; a new run gets a new slug.
         source: "/runs/:slug/screenshots/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },

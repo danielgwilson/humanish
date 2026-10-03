@@ -150,7 +150,7 @@ function expectTwin(name: string, v2: Raw): string[] {
 }
 
 async function committedSources(): Promise<[string, Raw][]> {
-  const dir = path.join(ROOT, "humanish", "labs");
+  const dir = path.join(ROOT, "tests", "fixtures", "labs-v2");
   const names = (await readdir(dir)).filter((name) => name.endsWith(".yaml")).sort();
   return Promise.all(
     names.map(async (name): Promise<[string, Raw]> => [

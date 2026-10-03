@@ -399,7 +399,7 @@ scripted-browser lab after starting the app on loopback. The lab replays a
 with `count: 2`. The scripted steps make no model requests. Post-run analysis
 still runs by default when `OPENAI_API_KEY` is set, with a $3 cap; keep
 `review.analysis: false` to skip it. Copy the shape of
-[`humanish/labs/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/labs/scripted-demo.yaml)
+[`humanish/studies/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/studies/scripted-demo.yaml)
 or the example in the
 [lab manifest reference](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios):
 set `subject.appUrl` to the loopback URL, `scenario.ref` to the scenario id,

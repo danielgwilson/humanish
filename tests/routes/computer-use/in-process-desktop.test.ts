@@ -150,7 +150,7 @@ describe("in-process participant desktop", () => {
     await expect(desktop.openSession()).rejects.toThrow("needs RunLabOptions.inProcess");
   });
 
-  it("runs a participant through the lane runner with one provider and no sandbox", async () => {
+  it("runs a participant through the participant runner with one provider and no sandbox", async () => {
     const f = await fixture();
     const provider: CuaProvider = {
       id: "synthetic-in-process-model",

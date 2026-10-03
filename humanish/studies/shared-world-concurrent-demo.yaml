@@ -1,0 +1,82 @@
+schema: humanish.study.v3
+id: shared-world-concurrent-demo
+title: "Concurrent shared world: three participants on one service at once (dry run)"
+description: >-
+  Three personas drive one provisioned, mutable service at the same time. One subject sandbox
+  clones, serves (on 0.0.0.0) and seeds the app once and exposes it through getHost; three
+  participant desktops then open that URL at once, bounded by execution.concurrency. A background
+  prober records the subject's checkpoint digests on a cadence: a stateSeries of the shared app
+  changing under load. A dry run, the default, writes one run bundle with the concurrent
+  shared-world evidence (attributionClass: shared-world; topologyMode: concurrent; laneWindows,
+  stateSeries and outcomes; the concurrent attributionLimits) at no cost. A live run needs
+  OPENAI_API_KEY, E2B_API_KEY, scenario.mode: live and a stateful seeded app. The dry run tests the
+  plumbing and the attribution contract, and a separately authorized live run shows one observed
+  concurrent run; neither proves scale, repeatability or that it can replace an adopter's harness.
+  The repo here is a fictional collaboration app for CI.
+route: shared-world # the declared override of the per-lane-worlds default (#164)
+mode: dry-run # default; the live path provisions a real subject + N actor sandboxes — gated
+subject:
+  source: clone
+  # SYNTHETIC subject attestation (REQUIRED on the concurrent route): the subject is exposed on an
+  # internet-reachable getHost URL for the run, so the author attests it is synthetic seeded data.
+  # This is author-trust + a provenance gate (verify also requires state.provenance == seeded),
+  # NOT a no-real-data guarantee.
+  exposure: synthetic
+  repos:
+    - example-org/collab-notes-app # FICTIONAL neutral multi-role app for the public CI fixture
+  clone:
+    depth: 1
+  env:
+    - DATABASE_URL # provisioned by NAME into the SUBJECT sandbox only; the value never persists
+  serve:
+    install: pnpm install --frozen-lockfile
+    build: pnpm build
+    # getHost only routes to a port bound on ALL interfaces — bind 0.0.0.0 (the readiness probe
+    # stays loopback). A loopback-only bind would 502 from the actor sandboxes.
+    start: pnpm start -H 0.0.0.0
+    url: http://127.0.0.1:3000/ # loopback readiness-probe target; getHost exposes the 0.0.0.0 port
+  state:
+    # Seed the shared plane ONCE (before the server starts). Persisted as a command DIGEST only.
+    seed:
+      - name: db-migrate
+        command: pnpm db:migrate
+        when: before-start
+      - name: seed-baseline
+        command: pnpm db:seed
+        when: before-start
+    # Read-only digest probes the background prober runs on a cadence (baseline + periodic + final).
+    # Only sha256-16(scrubbed stdout) persists — never the raw value. Deltas under load ARE the
+    # observed system-state evolution (NOT attributed to any one actor — concurrent is ambiguous).
+    checkpoint:
+      - name: notes-count
+        command: psql "$DATABASE_URL" -tAc "select count(*) from notes"
+      - name: reviews-count
+        command: psql "$DATABASE_URL" -tAc "select count(*) from reviews"
+actor:
+  type: openai-computer-use # REAL dispatch key: resolves in the actor registry
+  mission: Use the shared app to accomplish your role's task, then stop.
+# The roster IS the persona roster (≥2). On the CONCURRENT route every persona drives the SAME
+# getHost URL AT ONCE (entry is a same-origin route appended to it); each gets its OWN desktop
+# sandbox, so per-persona device IS physically honored here.
+participants:
+  - id: persona-author
+    persona: contributor
+    device: desktop
+    entry: /compose
+    instruction: Create and publish a note titled "Launch checklist".
+  - id: persona-reviewer
+    persona: reviewer
+    device: desktop
+    entry: /inbox
+    instruction: Open the most recent published note and leave one review comment.
+  - id: persona-skimmer
+    persona: impatient-skimmer
+    device: mobile
+    entry: /feed
+    instruction: Skim the feed on a phone and react to the newest note.
+execution:
+  target: e2b-desktop # required: each persona drives a hosted desktop browser
+  # PER-PERSONA budget. The subject sandbox must outlive every participant (timeoutMs + 30m provisioning
+  # + 10m seeding + 10m buffer, capped at E2B's hour), so 10 minutes is this seeded lab's fit.
+  timeoutMs: 600000
+  concurrency: 3 # all 3 participants live at once (also the default when omitted: concurrency = participant count); lower it only to cap simultaneous paid desktops

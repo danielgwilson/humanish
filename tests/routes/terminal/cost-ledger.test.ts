@@ -16,7 +16,7 @@ import { DEFAULT_OPENAI_CU_MODEL } from "../../../src/actors/computer-use/openai
 // Slice 3 deterministic proof ($0, no live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
 // discipline + the no-spend proof derived from the ledger + full caps enforcement (fail-closed).
 // Reuses the slice-2 fake-E2B-module + mock-CLI pattern; the slice-3 cost signal is injected via the
-// costProbe DI seam (the lane has no real product-spend signal yet: that is slice 4).
+// costProbe DI seam (the route has no real product-spend signal yet).
 
 const FAKE_RUNTIME_KEY = "FAKEKEY-terminal-slice3-do-not-leak-1234567890";
 
@@ -79,7 +79,7 @@ function makeFakeModule(opts: {
         return true; // real-SDK-accurate: kill(id) resolves true ("found and killed")
       },
       // No Sandbox.getInfo/list on this fake: exercises the noGetInfo fallback in
-      // teardownSandbox, where kill(id)'s own boolean is the by-id proof. This lane's cleanup
+      // teardownSandbox, where kill(id)'s own boolean is the by-id proof. This route's cleanup
       // proof is not what these slice 3 cost-ledger tests are about; see
       // tests/routes/terminal/lab.test.ts for the by-id cleanup coverage.
     },
@@ -313,7 +313,8 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.noSpendProof.knownZeroLines).toEqual(["product"]);
     expect(ledgers.noSpendProof.unmeasuredLines.sort()).toEqual(["media", "payment", "provider"]);
     expect(ledgers.noSpendProof.satisfied).toBe(true);
-    // "absent / n/a" is reserved: all four applicable lines are present this lane, so none is omitted.
+    // "absent / n/a" is reserved: all four applicable lines are present on this route, so none is
+    // omitted.
     expect(Object.keys(ledgers.cost.lines).sort()).toEqual([
       "media",
       "payment",

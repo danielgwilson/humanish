@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 import { TH, curTheme, onThemeRedraw, prefersReducedMotion } from "@/lib/theme";
 
 /**
- * HeroCrowd — the dash-field crowd behind the hero, ported verbatim from the
- * POC's initCrowd(): an offscreen luminance scene of abstract figures sampled
+ * HeroCrowd: the dash-field crowd behind the hero, ported verbatim from the
+ * prototype's initCrowd(): an offscreen luminance scene of abstract figures sampled
  * into horizontal dash strokes, IO-gated rAF loop, pointer hover lift,
  * theme-aware repaint. Reduced motion draws a single finished frame.
  * The CSS .crowd-fallback behind the canvas covers the no-JS case.
