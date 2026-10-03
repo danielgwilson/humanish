@@ -1,5 +1,5 @@
 {
- "note": "Captures from kept humanish run bundles, converted to JPEG for the site and reviewed frame by frame before publication. try-live: cua-2026-09-16T16-20-26-762Z-c44a6d1d (drawDB, one participant). lobby-0927: concurrent-shared-world-2026-09-27T20-57-56-664Z-1e8c9646 (a multiplayer movie-guessing game the maintainer built, eight participants, its production deployment under synthetic player names; the game is not named in this repo). Regenerate with scripts/site-run-assets-manifest.mjs.",
+ "note": "Captures from kept humanish run bundles, converted to JPEG for the site and reviewed frame by frame before publication. try-live: cua-2026-10-03T10-43-07-890Z-833df699 (drawDB, one participant). lobby-0927: concurrent-shared-world-2026-09-27T20-57-56-664Z-1e8c9646 (a multiplayer movie-guessing game the maintainer built, eight participants, its production deployment under synthetic player names; the game is not named in this repo). Regenerate with scripts/site-run-assets-manifest.mjs.",
  "assets": {
   "site/public/runs/lobby-0927/poster.jpg": "497b81cf3df20709290c0ddbc2a0712df767ca9415fd283680394095d2c8781e",
   "site/public/runs/lobby-0927/screenshots/lobby-host/turn-00-start.jpg": "9eec05391cac0703ce33afb521562ef1acb4c33518f315501d74b35261e47a1c",
@@ -508,14 +508,14 @@
   "site/public/runs/lobby-0927/screenshots/player-two/turn-72.jpg": "2115d782875abd2ebb5a59832818128d5ec5b98a276cbd7ca3f7a2f7715ab069",
   "site/public/runs/lobby-0927/screenshots/player-two/turn-73.jpg": "90cb87c5b1d27fbef05476dd22cf207d3dcef053671ad3931a1d65620a96240a",
   "site/public/runs/lobby-0927/screenshots/player-two/turn-74.jpg": "f523696065adee53508c0770e3c87c5bddadc2d878a056411d297068a0f561e6",
-  "site/public/runs/try-live/poster.jpg": "00472f9535a45f578342ab9dee68334cbcd31e19c59f1b87478557e5b8286c01",
-  "site/public/runs/try-live/screenshots/turn-00-start.jpg": "c1ec74da179ac86272755a4d2a8d0708951f91fb5c1322906eaac1fdbaaff773",
-  "site/public/runs/try-live/screenshots/turn-01.jpg": "49351271280e376b50864eab30df0c11e011c4bf0e61af57b18086473673efd5",
-  "site/public/runs/try-live/screenshots/turn-02.jpg": "df1621ad364e0cfec7076672f72fcc276c25aa6710aa2fa070b4ae85e9fe88eb",
-  "site/public/runs/try-live/screenshots/turn-03.jpg": "1d1b6c565765ad2bdd1493ff398688410bfeb068136bcd9e0ee0d5fbb7daee98",
-  "site/public/runs/try-live/screenshots/turn-04.jpg": "066f245142dfa619d2c2450c84dd60f285cad9fe6cf47e0c26f1d6ce16486e92",
-  "site/public/runs/try-live/screenshots/turn-05.jpg": "9d5b93971cf5d4a143301536ce58b9789f83b2f91de4f65c1c2c894ee3f3c8be",
-  "site/public/runs/try-live/screenshots/turn-06.jpg": "22ac3941fbc6cf9f45bbaa99497de5c51014b6db24c72110e20a0b77fb3cc902",
-  "site/public/runs/try-live/screenshots/turn-07.jpg": "d239ae55dd8f504cc53c834b839830344c7d6bcbc545235c9c7ec1c06dc61b37"
+  "site/public/runs/try-live/poster.jpg": "19a71294b721e3a4aadf7814e7ac8ac6c856a69d73909f713bf09dd004fbd31c",
+  "site/public/runs/try-live/screenshots/turn-00-start.jpg": "cc5ba014df2014464f47215f27580ee70d9587e4e237c573ffdd3582d606f5fd",
+  "site/public/runs/try-live/screenshots/turn-01.jpg": "a2705eddd23e6cef4fd4755dd647eaa72ce58242fa98520c6667f5c0c18a6f9e",
+  "site/public/runs/try-live/screenshots/turn-02.jpg": "20bd54605d266f6f9b683cc4706abfda1463184de89be6c36f9211fe4bf2ed1f",
+  "site/public/runs/try-live/screenshots/turn-03.jpg": "5cffdc1474e308f9ccaf238770896b33edfceb1becbbf3127ded7c13a2952ca6",
+  "site/public/runs/try-live/screenshots/turn-04.jpg": "9606dbc12eeaff2c6d069185d151bd7d446ed144e60204980456496a57c436c8",
+  "site/public/runs/try-live/screenshots/turn-05.jpg": "82628503f231abcf208ed8a3ddbb60f6fe1de93e323e182a9f7b0bd7bd0df2a0",
+  "site/public/runs/try-live/screenshots/turn-06.jpg": "01dc116f825557793cc8f50444bb7340befa4752f9c6747dae6bf519ea643c54",
+  "site/public/runs/try-live/screenshots/turn-07.jpg": "19a71294b721e3a4aadf7814e7ac8ac6c856a69d73909f713bf09dd004fbd31c"
  }
 }

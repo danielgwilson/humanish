@@ -10,7 +10,7 @@
     "harnessFailed": 0,
     "reportedFriction": 1
   },
-  "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal, 1 reported friction. Recorded summary: REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+  "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal, 1 reported friction. Recorded summary: REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
   "gaps": [
     "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
   ]

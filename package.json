@@ -91,6 +91,7 @@
     "prose:check": "node scripts/check-code-prose.mjs",
     "vocabulary:check": "tsx scripts/check-retired-words.ts",
     "site-css:check": "node scripts/check-site-css.mjs",
+    "site:tour": "tsx scripts/site-tour.ts",
     "site:hero:proof": "node scripts/site-hero-wrap-proof.mjs"
   },
   "dependencies": {
