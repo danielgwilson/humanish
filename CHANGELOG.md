@@ -18,6 +18,11 @@ The Unreleased section holds the full notes for the next version until it is tag
     Pass the path of one to run it.
   - `init` skips a starter whose name another study directory already uses. `comms configure`
     refuses to write when its destination name is in use.
+- Library names for studies: `runStudy`, `parseStudy`, `STUDY_SCHEMA`, `StudyConfig`,
+  `StudyEvent`, `StudyOutcome`, `StudyResult`, `StudyRoute`, `RunStudyOptions` and
+  `BrowserScoringContext`. The computer-use loop's nine `Cua*` types and `CuaAdmissionLimitError`
+  are also exported as `ComputerUse*`, such as `ComputerUseProvider` and
+  `ComputerUseAdmissionLimitError`. `parseStudy` reads v3 and v2 documents.
 - Study files can use the format `schema: humanish.study.v3`.
   - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
     `scripted`) and `mode:` (`dry-run` or `live`).
@@ -50,6 +55,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Deprecated
 
+- The library's lab and `Cua` names: `runLab`, `parseLabConfig`, `LAB_CONFIG_SCHEMA`, `LabConfig`,
+  `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`, `RunLabOptions`, `BrowserLabScoringContext`,
+  the nine `Cua*` loop types and `CuaAdmissionLimitError`. Each is the same function, class or type
+  as its new name, so existing code keeps working and `instanceof` matches either class name.
+  `LAB_CONFIG_SCHEMA` keeps the v2 id, `"humanish.lab.v2"`, and the error's `name` stays
+  `CuaAdmissionLimitError`. The next minor removes them.
 - `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
   minor removes it.
 - `humanish lab run` is a hidden alias of `humanish run` and is removed in the next minor. It takes
