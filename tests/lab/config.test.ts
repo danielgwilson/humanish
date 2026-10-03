@@ -156,7 +156,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     // A recipient naming a lane that does not exist is a hard error listing the real lane ids:
     // the single-lane example's `lane-01` copied into a roster lab is the field failure this
-    // guards against (an unmatched lane silently disabled the whole funnel for that seat).
+    // guards against (an unmatched lane silently disabled the whole funnel for that participant).
     const unknownLane = parseLabConfig(
       multiLane({
         email: {
@@ -179,7 +179,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     if (!zeroCoverage.ok)
       expect(zeroCoverage.error.message).toContain("no participant with an address");
 
-    // Omitted recipients fill one deterministic address per lane: all seats can do email.
+    // Omitted recipients fill one deterministic address per lane: all participants can do email.
     const filled = parseLabConfig(multiLane({ email: { injectEnv: "RESEND_API_URL" } }));
     expect(filled.ok).toBe(true);
     if (filled.ok) {
@@ -485,7 +485,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("consumes execution.concurrency on the cua route (no warning) but still warns it elsewhere", () => {
+    it("consumes execution.concurrency on the computer-use route (no warning) but still warns it elsewhere", () => {
       // Consumed here (bounds in-flight fan-out lanes) → zero warnings.
       const onCua = parseLabConfig({
         ...validCua,
@@ -508,7 +508,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(offCua.warnings[0]).toContain("execution.concurrency");
     });
 
-    it("warns about laneFocus.id/label on the cua route: only laneFocus.instruction is consumed there", () => {
+    it("warns about laneFocus.id/label on the computer-use route: only laneFocus.instruction is consumed there", () => {
       const result = parseLabConfig({
         ...validCua,
         actors: [{ type: "openai-computer-use", laneFocus: { id: "lane-1", label: "Lane one" } }],
@@ -856,7 +856,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         },
       );
 
-      it("accepts a homogeneous count > 1 on the cua route (lifted rejection), default concurrency min(N,3)", () => {
+      it("accepts a homogeneous count > 1 on the computer-use route (lifted rejection), default concurrency min(N,3)", () => {
         const result = parseLabConfig({
           ...validCua,
           actors: [{ type: "openai-computer-use", count: 4 }],
@@ -985,7 +985,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
           ["viewer", "review-queue", "case-001", "desktop"],
           ["manager", "dashboard", "case-001", "wide"],
         ]);
-        // The declared cap (2) is below the 4-seat roster, and the parser says so out loud:
+        // The declared cap (2) is below the 4-participant roster, and the parser says so out loud:
         // a green run in waves must never be mistaken for the all-live run the roster promises.
         expect(result.warnings).toEqual([
           expect.stringContaining("execution.concurrency 2 caps a 4-participant roster"),
@@ -1213,7 +1213,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
       });
 
-      it("warns actors[0].lanes as inert on a non-cua route, and the other routes' rules still fire", () => {
+      it("warns actors[0].lanes as inert on a non-computer-use route, and the other routes' rules still fire", () => {
         const result = parseLabConfig({
           schema: LAB_CONFIG_SCHEMA,
           id: "synthetic-lanes",
@@ -1267,7 +1267,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(garbage.ok).toBe(false);
     });
 
-    it("policies.redactScreenshots parses on the cua route with zero warnings (it is consumed)", () => {
+    it("policies.redactScreenshots parses on the computer-use route with zero warnings (it is consumed)", () => {
       const result = parseLabConfig({ ...validCua, policies: { redactScreenshots: true } });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -1275,7 +1275,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("execution.desktop.device parses on the cua route with zero warnings (consumed)", () => {
+    it("execution.desktop.device parses on the computer-use route with zero warnings (consumed)", () => {
       const result = parseLabConfig({
         ...validCua,
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { device: "mobile" } },
@@ -1286,7 +1286,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("execution.desktop.browser parses on the cua route with zero warnings (consumed)", () => {
+    it("execution.desktop.browser parses on the computer-use route with zero warnings (consumed)", () => {
       const result = parseLabConfig({
         ...validCua,
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { browser: "chrome" } },
@@ -1297,7 +1297,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("execution.desktop.fidelity parses on the cua route with zero warnings, and rejects bad shapes", () => {
+    it("execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes", () => {
       const ok = parseLabConfig({
         ...validCua,
         execution: {
@@ -1364,7 +1364,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain("mobile");
     });
 
-    it("warns execution.desktop.device as inert on a non-cua route", () => {
+    it("warns execution.desktop.device as inert on a non-computer-use route", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
         id: "scripted-device",
@@ -1378,7 +1378,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings[0]).toContain("execution.desktop.device");
     });
 
-    it("warns execution.desktop.browser as inert on a non-cua route", () => {
+    it("warns execution.desktop.browser as inert on a non-computer-use route", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
         id: "scripted-browser",
@@ -1392,7 +1392,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings[0]).toContain("execution.desktop.browser");
     });
 
-    it("execution.desktop.template parses + trims on the cua route with zero warnings (consumed; any string is a valid name/id)", () => {
+    it("execution.desktop.template parses + trims on the computer-use route with zero warnings (consumed; any string is a valid name/id)", () => {
       const result = parseLabConfig({
         ...validCua,
         execution: {
@@ -1427,8 +1427,8 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      // It routes to the cua backend, but the in-process route launches no E2B desktop, so the
-      // template can never be consumed here → it must warn, never be silently ignored.
+      // It routes to the computer-use route, but the in-process route launches no E2B desktop, so
+      // the template can never be consumed here → it must warn, never be silently ignored.
       expect(isComputerUseComposition(result.config)).toBe(true);
       expect(result.warnings.join(" ")).toContain("execution.desktop.template");
     });
@@ -1584,7 +1584,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings[0]).toContain("scenario.ref");
     });
 
-    it("keeps warning execution.desktop.* on the scripted route (device presets are the cua route's)", () => {
+    it("keeps warning execution.desktop.* on the scripted route (device presets are the computer-use route's)", () => {
       const result = parseLabConfig({
         ...validScripted,
         execution: { target: "local", desktop: { device: "mobile" } },
@@ -1750,8 +1750,8 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("rejects clone.fanout on the cua route (declared behavior change) but accepts clone.keep/depth", () => {
-      // clone.fanout is now a hard parse error on the cua route: fan-out is declared via
+    it("rejects clone.fanout on the computer-use route (declared behavior change) but accepts clone.keep/depth", () => {
+      // clone.fanout is now a hard parse error on the computer-use route: fan-out is declared via
       // actors[0].count/lanes. No current route reads subject.clone.fanout.
       const rejected = parseLabConfig({
         ...validCloneCua,
@@ -1772,7 +1772,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(accepted.warnings).toEqual([]);
     });
 
-    it("accepts a homogeneous count > 1 on the clone cua route (each lane clones the same repo)", () => {
+    it("accepts a homogeneous count > 1 on the clone computer-use route (each lane clones the same repo)", () => {
       const result = parseLabConfig({
         ...validCloneCua,
         actors: [{ type: "openai-computer-use", count: 3 }],
@@ -1888,7 +1888,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       subject: { ...validCloneCua.subject, state },
     });
 
-    it("parses a full state declaration (all three phases + external) with zero warnings on the cua route", () => {
+    it("parses a full state declaration (all three phases + external) with zero warnings on the computer-use route", () => {
       const result = parseLabConfig(
         withState({
           seed: [
@@ -2035,7 +2035,7 @@ describe("parseLabConfig (local-app subject)", () => {
     scenario: { mode: "live" },
   };
 
-  it("parses a local-app + computer-use actor and routes to the cua backend", () => {
+  it("parses a local-app + computer-use actor and routes to the computer-use route", () => {
     const result = parseLabConfig(validLocalApp);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -2574,7 +2574,7 @@ describe("shared-world topology routing + cross-validation", () => {
   });
 
   it("topology + checkpoint warn as inert off the shared-world route, and the other routes are byte-stable", () => {
-    // topology on an app-url cua route warns inert.
+    // topology on an app-url computer-use route warns inert.
     const appUrl = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "sw-warn",
@@ -2671,7 +2671,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("refuses explicit concurrency 1 with a migration message; an omitted concurrency runs all seats", () => {
+  it("refuses explicit concurrency 1 with a migration message; an omitted concurrency runs all participants", () => {
     // The sequential shared-world route was removed in 0.106.0. A lab that still declares
     // concurrency 1 must fail at parse with the fix, never silently run concurrently.
     const seq1 = parseLabConfig(
@@ -2682,8 +2682,8 @@ describe("concurrent shared-world routing + cross-validation", () => {
       expect(seq1.error.message).toContain("at least 2 (got 1)");
       expect(seq1.error.message).toContain("omit execution.concurrency");
     }
-    // All-parallel default: omitting concurrency means every seat lives at once; the
-    // parser fills concurrency = seat count.
+    // All-parallel default: omitting concurrency means every participant lives at once; the
+    // parser fills concurrency = participant count.
     const allParallel = parseLabConfig(
       validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000 } }),
     );
@@ -2694,7 +2694,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
       );
       expect(isSharedWorldComposition(allParallel.config)).toBe(true);
       expect(routeOf(allParallel.config)).toBe("shared-world");
-      // No waves warning: the filled default equals the seat count.
+      // No waves warning: the filled default equals the participant count.
       expect(allParallel.warnings.filter((w) => w.includes("caps a"))).toEqual([]);
     }
   });
@@ -2752,7 +2752,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
   it("exposure: synthetic is enum-validated and inert (warned) off the concurrent route", () => {
     const badExposure = parseLabConfig(validConcurrent({ subject: { exposure: "real" } }));
     expect(badExposure.ok).toBe(false);
-    // exposure on a plain app-url cua route warns inert.
+    // exposure on a plain app-url computer-use route warns inert.
     const offRoute = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "exp-warn",
@@ -2811,7 +2811,7 @@ describe("parseLabConfig (local-tree subject)", () => {
     execution: { target: "e2b-desktop" },
   };
 
-  it("parses a minimal local-tree study and routes to the cua backend with zero warnings", () => {
+  it("parses a minimal local-tree study and routes to the computer-use route with zero warnings", () => {
     const result = parseLabConfig(validLocalTree);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -3026,9 +3026,10 @@ describe("parseLabConfig (local-tree subject)", () => {
   });
 });
 
-// A one-seat shared world never parses: the two-participant roster floor refuses it on both planes
-// before the concurrency rule can, so no single-participant exception to that rule is reachable.
-describe("shared-world one-seat rosters and the concurrency rule", () => {
+// A one-participant shared world never parses: the two-participant roster floor refuses it on both
+// planes before the concurrency rule can, so no single-participant exception to that rule is
+// reachable.
+describe("shared-world one-participant rosters and the concurrency rule", () => {
   const PROVISIONED_FLOOR = "requires an `actors[0].lanes` roster of at least 2 roles";
   const EXTERNAL_FLOOR = "a single-participant shared world proves no shared session";
   const CONCURRENCY_RULE = "need `execution.concurrency` of at least 2";
@@ -3067,12 +3068,15 @@ describe("shared-world one-seat rosters and the concurrency rule", () => {
   it.each([
     ["omitted", undefined],
     ["1", 1],
-  ])("refuses a one-seat provisioned roster by the roster floor (concurrency %s)", (_, value) => {
-    const execution = { target: "e2b-desktop", timeoutMs: 60000, concurrency: value };
-    const message = refusal(oneLane(validSharedWorld({ execution })));
-    expect(message).toContain(PROVISIONED_FLOOR);
-    expect(message).not.toContain(CONCURRENCY_RULE);
-  });
+  ])(
+    "refuses a one-participant provisioned roster by the roster floor (concurrency %s)",
+    (_, value) => {
+      const execution = { target: "e2b-desktop", timeoutMs: 60000, concurrency: value };
+      const message = refusal(oneLane(validSharedWorld({ execution })));
+      expect(message).toContain(PROVISIONED_FLOOR);
+      expect(message).not.toContain(CONCURRENCY_RULE);
+    },
+  );
 
   it.each([
     ["a one-seat roster", [{ id: "host", host: true }]],
@@ -3083,7 +3087,7 @@ describe("shared-world one-seat rosters and the concurrency rule", () => {
     expect(message).not.toContain(CONCURRENCY_RULE);
   });
 
-  it("keeps the migration refusal for two or more seats at concurrency 1", () => {
+  it("keeps the migration refusal for two or more participants at concurrency 1", () => {
     const provisioned = validSharedWorld({
       execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 },
     });

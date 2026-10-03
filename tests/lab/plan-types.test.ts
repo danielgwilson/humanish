@@ -79,7 +79,7 @@ export function refusedShapes(): unknown[] {
     seatWithTasks satisfies ProvisionedParticipant,
     // @ts-expect-error 4, as a literal
     { ...provisionedSeat, tasks: [] } satisfies ProvisionedParticipant,
-    // @ts-expect-error 5. external public seats open the public URL
+    // @ts-expect-error 5. external public participants open the public URL
     externalWithEntry satisfies ExternalPublicParticipant,
     // @ts-expect-error 5, as a literal
     { ...externalSeat, entry: "/x" } satisfies ExternalPublicParticipant,
@@ -89,7 +89,7 @@ export function refusedShapes(): unknown[] {
     inProcessOpenai satisfies ComputerUseRunner,
     // @ts-expect-error 9. live terminal caps need maxMinutes
     terminalWithoutMinutes satisfies TerminalPlan,
-    // @ts-expect-error 10. a shared world has at least two seats
+    // @ts-expect-error 10. a shared world has at least two participants
     oneSeat satisfies SharedWorldPlane,
   ];
 }

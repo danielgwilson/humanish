@@ -11,7 +11,7 @@ export interface TerminalSize {
  *
  * Two things go wrong if you just read `stdout.columns` once. Under tmux and over a freshly
  * attached SSH session the first value can be a placeholder (commonly 80x24) that is replaced
- * milliseconds later — a layout computed from it is wrong for the rest of the session unless
+ * milliseconds later: a layout computed from it is wrong for the rest of the session unless
  * something re-reads. And a stream that is not a TTY reports `undefined`, which silently becomes
  * `NaN` in any arithmetic and collapses every box to zero width.
  *
@@ -19,7 +19,7 @@ export interface TerminalSize {
  * post-attach correction that arrives without a resize event.
  *
  * The stream comes from Ink's own `useStdout` rather than from a prop, so the size measured is
- * always the size of the stream being RENDERED INTO. Passing it separately allows the two to be
+ * always the size of the stream being rendered into. Passing it separately allows the two to be
  * different objects, and then every box is laid out to one width and drawn into another.
  */
 export function useTerminalSize(): TerminalSize {

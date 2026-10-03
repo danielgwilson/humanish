@@ -78,7 +78,7 @@ describe("real receiving admission on non-receiving backends", () => {
     ["terminal", runTerminalProductLab, "HUMANISH_TERMINAL_SUBJECT_INVALID"],
     ["scripted", runScriptedBrowserLab, "HUMANISH_SCRIPTED_SCENARIO_INVALID"],
   ] as const)(
-    "refuses direct %s even when the config describes a supported CUA route",
+    "refuses direct %s even when the config describes a supported computer-use route",
     async (_name, runner, code) => {
       const source = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!;
       const config = receiving(baseline(source.config));

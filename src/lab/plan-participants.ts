@@ -50,7 +50,7 @@ export interface ComputerUseParticipant extends DesktopParticipant {
   readonly targetUrl?: string;
 }
 
-/** A seat on a provisioned plane: an optional same-origin path under `serve.url`. */
+/** A participant on a provisioned plane: an optional same-origin path under `serve.url`. */
 export interface ProvisionedParticipant extends DesktopParticipant {
   readonly entry?: string;
   // Fields of other participant kinds. `never` keeps them out even through a variable, where
@@ -60,7 +60,7 @@ export interface ProvisionedParticipant extends DesktopParticipant {
   readonly targetUrl?: never;
 }
 
-/** A seat on an external public plane: exactly one seat hosts the shared session. */
+/** A participant on an external public plane: exactly one participant hosts the shared session. */
 export interface ExternalPublicParticipant extends DesktopParticipant {
   readonly host: boolean;
   readonly entry?: never;

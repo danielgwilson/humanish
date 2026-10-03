@@ -1,27 +1,20 @@
 schema: humanish.lab.v2
 id: persona-contrast-demo
-title: Is the persona axis load-bearing? (two contrasting personas, one app, one mission)
-description: >
-  A CONTROL, not a product study. Two participants clone and drive the SAME public app with the
-  SAME mission and differ in exactly one variable: the persona. If their traces come back
-  indistinguishable, the persona block is decoration and any finding attributed to
-  "persona behavior" in this harness is unsupported — which is worth knowing before
-  tuning persona prompts further.
-  WHY THIS EXISTS: rule-file and persona-instruction effects have been measured as
-  largely content-independent in other harnesses (random rules tying with curated ones),
-  so a persona axis that LOOKS like it works is a known failure mode. The cheapest honest
-  check is to run the contrast and compare, and the cheapest damning version of it is to
-  swap in a persona that does not fit the mission at all and see whether anything moves.
-  See docs/principles/actor-fidelity.md for the evidence and the scoping of what a
-  persona claim can mean.
-  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
-  launches no sandbox. A live run needs OPENAI_API_KEY + E2B_API_KEY and a gitignored
-  .humanish/labs/ copy with mode: live.
-  WHAT TO COMPARE afterwards (per participant, from the run bundle): action count and mix,
-  wall-clock to terminal state, completion reason, how early the participant stopped, whether it
-  reported friction, and the affordance classes it used. Read the two actor traces side by
-  side; a persona axis that works shows up as a DIFFERENCE, and one run proves nothing
-  about scale or repeatability.
+title: Does the persona change the participant? Two contrasting personas, one app, one mission
+description: >-
+  A control, not a product study. Two participants clone and drive the same public app with the same
+  mission and differ only in persona. If their traces come back the same, the persona block is
+  decoration, and a finding attributed to persona behavior in this harness has no support; that is
+  worth knowing before tuning persona prompts further. Other harnesses have measured rule-file and
+  persona-instruction effects as largely independent of content, with random rules tying curated
+  ones, so a persona axis that only looks like it works is a known failure. The cheapest check is to
+  swap in a persona that does not fit the mission and see whether anything moves. Compare, per
+  participant: action count and mix, time to the end, completion reason, how early it stopped,
+  whether it reported friction, and the affordance classes it used. A persona axis that works shows
+  up as a difference, and one run proves nothing about scale or repeatability. See
+  docs/principles/actor-fidelity.md. Committed as a dry run, which builds a dry-run bundle at no
+  cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and a gitignored .humanish/labs/ copy with
+  mode: live.
 subject:
   source: clone
   repos:

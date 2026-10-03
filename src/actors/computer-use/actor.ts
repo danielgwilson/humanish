@@ -94,7 +94,7 @@ export interface CuaActorSessionOptions {
    *  OpenAI provider send one HTTP dispatch per turn. Library-only. */
   requireReportedUsageForSpendCap?: boolean;
   /** Runtime-only observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
-   *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
+   *  the concurrent shared-world handoff barrier to latch a host's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;
   /** Runtime-only per-turn narration callback threaded to the loop; see CuaLoopOptions.onMessage. */
   onMessage?: (text: string) => void;

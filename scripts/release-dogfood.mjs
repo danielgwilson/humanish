@@ -2,15 +2,15 @@
 // Meet the release candidate before anyone else does.
 //
 // `pnpm release:check` proves the code is internally consistent. It cannot tell you whether a
-// person landing on this build can get anywhere with it — and that gap is not theoretical: 0.56.0
+// person landing on this build can get anywhere with it, and that gap is not theoretical: 0.56.0
 // passed every check and shipped a regression that hid a run's price exactly when someone was
 // deciding whether to set up keys. A synthetic participant found it hours later. So the honest
-// last gate before a tag is to run the product's own first-contact study against the CANDIDATE.
+// last gate before a tag is to run the product's own first-contact study against the candidate.
 //
-// It installs the PACKED TARBALL, not `humanish@latest`. Installing latest would measure the last
+// It installs the packed tarball, not `humanish@latest`. Installing latest would measure the last
 // release, which is the one artifact we already know about.
 //
-// This spends money and needs keys, so it is NOT part of release:check and never runs in CI. It is
+// This spends money and needs keys, so it is not part of release:check and never runs in CI. It is
 // a deliberate act by a maintainer with a terminal. The lab's own caps hold product spend to $0;
 // what it costs is the agent's tokens (about a dollar) plus a few sandbox-minutes.
 
@@ -46,12 +46,12 @@ const tarball = (await readdir(cwd)).find((f) => f.startsWith("humanish-") && f.
 if (!tarball) fail("npm pack produced no tarball.");
 
 // The committed first-contact fixture, with two changes: it goes live, and the candidate is put on
-// the machine for it. Everything else — the mission that names no command, the caps, the
-// deny-by-default credential policy — is the fixture's, unedited.
+// the machine for it. Everything else (the mission that names no command, the caps, the
+// deny-by-default credential policy) is the fixture's, unedited.
 //
-// ONE HONEST DIFFERENCE from the committed study, worth knowing when you read the report: the
-// fixture has the participant DISCOVER and install humanish from its public surfaces, which would
-// install whatever npm is serving — the last release, the one artifact we already know about. A
+// One honest difference from the committed study, worth knowing when you read the report: the
+// fixture has the participant discover and install humanish from its public surfaces, which would
+// install whatever npm is serving: the last release, the one artifact we already know about. A
 // pre-release gate has to meet the candidate, so this pre-installs it. The discovery half is not
 // lost, it just lives in the committed fixture, which anyone can run for free as a dry run.
 const fixture = await readFile(path.join(cwd, "humanish", "labs", "first-contact.yaml"), "utf8");
@@ -79,11 +79,11 @@ let lab = fixture
     `${productBlock}    upload: ${tarball}\n    install: >-\n      sudo -n npm install -g "$HUMANISH_PRODUCT_UPLOAD"\n      && humanish init --yes\n`,
   );
 
-// THE MISSION HAS TO CHANGE, and the first version of this gate missed it. first-contact tells the
-// participant to FIND and install humanish from its public surfaces — so it did exactly that:
+// The mission has to change, and the first version of this gate missed it. first-contact tells the
+// participant to find and install humanish from its public surfaces, so it did exactly that:
 // `npm install --save-dev humanish` from the registry, then `npx humanish`, which used the
 // published release and never touched the candidate we had just installed for it. The gate spent a
-// dollar telling us the LAST release worked. So the gate's copy says plainly that the build under
+// dollar telling us the last release worked. So the gate's copy says plainly that the build under
 // test is already here and must not be fetched.
 const missionAnchor = "    mission: >-\n";
 if (!lab.includes(missionAnchor))
@@ -172,7 +172,7 @@ console.log(
 console.log("  error it reports from one is not the sandbox's network.");
 console.log("");
 
-// VERIFY THE GATE TESTED THE CANDIDATE. Assuming it did is how the first version of this script
+// Verify the gate tested the candidate. Assuming it did is how the first version of this script
 // passed while measuring the previous release: the participant is free to install whatever it
 // likes, and the only proof it used ours is its own transcript.
 try {
@@ -200,11 +200,11 @@ try {
   );
 }
 
-// WHAT COUNTS AS GETTING THERE. The gate withholds E2B and provider credentials by design (it is
+// What counts as getting there. The gate withholds E2B and provider credentials by design (it is
 // a no-spend gate), so a participant that completes the free path and then stops at the credential
-// wall has hit a boundary WE imposed, not a regression. One run called that `passed` and the next
-// called it `blocked` on an identical build — a verdict that flips on the participant's mood is
-// not a gate. So the criterion is what the participant DID, read off its own transcript, with the
+// wall has hit a boundary we imposed, not a regression. One run called that `passed` and the next
+// called it `blocked` on an identical build: a verdict that flips on the participant's mood is
+// not a gate. So the criterion is what the participant did, read off its own transcript, with the
 // self-reported marker used only to catch outright failure.
 const milestones = [
   [/humanish init|init --yes/i, "set the project up"],

@@ -120,8 +120,8 @@ export function labPersonaIds(config: {
 
 /**
  * Same resolution from a plain cwd, for the labs that carry a directory string rather than an
- * already-prepared root. Realpath-then-prepare mirrors the cua lab so a symlinked cwd still reads
- * personas from the physical project.
+ * already-prepared root. Realpath-then-prepare mirrors the computer-use route so a symlinked cwd
+ * still reads personas from the physical project.
  */
 export async function resolveCommittedPersonasForCwd(
   cwd: string,

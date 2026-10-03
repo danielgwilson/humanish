@@ -4852,7 +4852,7 @@ describe("runCuaActorLab", () => {
   });
 });
 
-describe("execution.desktop.template (custom E2B desktop image, single-lane cua route)", () => {
+describe("execution.desktop.template (custom E2B desktop image, single-lane computer-use route)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-template-"));

@@ -566,7 +566,7 @@
   "effort-contrast-demo": {
     "dry": {
       "labId": "effort-contrast-demo",
-      "title": "Is the effort axis load-bearing? (one persona, one mission, two reasoning efforts)",
+      "title": "Does reasoning effort change the participant? One persona, one mission, two efforts",
       "residual": {
         "defaults": {
           "open": false
@@ -1011,7 +1011,7 @@
   "last-mile": {
     "dry": {
       "labId": "last-mile",
-      "title": "How far a coding agent gets toward a real study, with no keys (self-study, terminal route)",
+      "title": "How far a coding agent gets toward a live study without keys (self-study, terminal route)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -1208,7 +1208,7 @@
   "lobby-trivia-3player": {
     "dry": {
       "labId": "lobby-trivia-3player",
-      "title": "Multiplayer 3-player mobile lobby (external-public shared world; deterministic dry-run)",
+      "title": "Three mobile participants in one multiplayer lobby on a public app (shared world, dry run)",
       "residual": {
         "policies": {
           "allowPublicTargets": true
@@ -1462,7 +1462,7 @@
   "persona-contrast-demo": {
     "dry": {
       "labId": "persona-contrast-demo",
-      "title": "Is the persona axis load-bearing? (two contrasting personas, one app, one mission)",
+      "title": "Does the persona change the participant? Two contrasting personas, one app, one mission",
       "residual": {
         "defaults": {
           "open": false

@@ -23,6 +23,9 @@
 //   participant, the computer-use route, a plain claim and the current behavior.
 // - `series-codes`, `name-refs`: a test name that opens with a code such as `L14:` or `W5:`, or
 //   that cites an issue (`#123`). Test names only; the name says the behavior.
+// - The `labs` root reads the `title` and `description` of each `humanish/labs/*.yaml`, which
+//   `lab list`, `lab inspect` and the TUI show, and counts every kind above except the two test-name
+//   kinds, at `prose.labs.<kind>`.
 // - `title-case-headers`: a Title Case header (`## How It Works`) in a root `*.md` file, outside
 //   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
 //   verb phrases (`## Read the results`).
@@ -37,6 +40,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
 import { parseSync } from "oxc-parser";
+import { parse as parseYaml } from "yaml";
 import {
   CAPS_RUN,
   EM_DASH,
@@ -107,9 +111,16 @@ const STRING_KINDS = {
 };
 const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps"];
 
+// The title and description of each committed lab, which `lab list`, `lab inspect` and the TUI
+// show. They are held to the comment rules; the test-name kinds do not apply.
+const LABS_DIR = "humanish/labs";
+const LAB_KINDS = KINDS.filter((kind) => kind !== "series-codes" && kind !== "name-refs");
+const LAB_FIELDS = ["title", "description"];
+
 /** Every hit, keyed by its cap path in scripts/caps.json: `prose.src.caps`, `prose.tests.caps`, ... */
 const hits = new Map([
   ...ROOTS.flatMap((root) => KINDS.map((kind) => [`prose.${root}.${kind}`, []])),
+  ...LAB_KINDS.map((kind) => [`prose.labs.${kind}`, []]),
   ["prose.markdown.title-case-headers", []],
   ...STRING_KIND_NAMES.map((kind) => [`prose.src.${kind}`, []]),
 ]);
@@ -249,6 +260,23 @@ for (const root of ROOTS) {
       const at = (match) => `${file}:${lineOf(offset)} ${match[0].trim()}`;
       scan(name, root, at, { testName: true });
     });
+  }
+}
+
+const labFiles = existsSync(LABS_DIR)
+  ? readdirSync(LABS_DIR)
+      .filter((name) => name.endsWith(".yaml"))
+      .sort()
+  : [];
+for (const name of labFiles) {
+  const file = `${LABS_DIR}/${name}`;
+  const text = readFileSync(file, "utf8");
+  const lab = parseYaml(text);
+  for (const field of LAB_FIELDS) {
+    const value = lab?.[field];
+    if (typeof value !== "string") continue;
+    const line = text.split("\n").findIndex((row) => row.startsWith(`${field}:`)) + 1;
+    scan(value, "labs", (match) => `${file}:${line} ${field} ${match[0]}`, { testName: false });
   }
 }
 
