@@ -404,7 +404,11 @@ export interface ActorConversation {
   /** When a threaded session switched to explicit_context (ISO-8601), and on which request. */
   switchedAt?: string;
   switchedAtRequest?: number;
-  /** Turns summarized into a text note, their screenshots dropped, to stay within the budget. */
+  /**
+   * Earlier turns the latest explicit_context request no longer carried whole, to stay within the
+   * budget: written as lines of a text note, or only counted once the note reached its cap. Their
+   * screenshots were dropped. 0 when no explicit_context request summarized any.
+   */
   summarizedTurns: number;
   /**
    * Per participant request, in order: its mode and, in explicit_context, what it carried and its

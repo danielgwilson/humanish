@@ -66,13 +66,14 @@ interface SentBody {
 async function runTurns(
   turns: number,
   options: { zeroDataRetention?: boolean } = {},
+  replyFor: (n: number) => Record<string, unknown> = reply,
 ): Promise<{ bodies: SentBody[]; provider: ReturnType<typeof createOpenAiResponsesProvider> }> {
   const bodies: SentBody[] = [];
   let n = 0;
   const fetchFn: FetchLike = async (_url, init) => {
     bodies.push(JSON.parse(init.body) as SentBody);
     n += 1;
-    const value = reply(n);
+    const value = replyFor(n);
     return {
       ok: true,
       status: 200,
@@ -138,13 +139,40 @@ describe("an explicit-context conversation", () => {
     // The opening keeps the instructions and loses its screenshot first.
     expect(JSON.stringify(opening)).toContain("Sign up with the address in your brief");
     expect(JSON.stringify(opening)).not.toContain("input_image");
-    // The oldest turns are a text note that keeps what was thought, said and done.
-    expect(note).toMatchObject({ role: "developer" });
+    // The oldest turns are a text note that keeps what was thought, said and done. It is an
+    // assistant message, so page text the model quoted gains no authority by being summarized.
+    expect(note).toMatchObject({ role: "assistant", content: [{ type: "output_text" }] });
     expect(JSON.stringify(note)).toContain("Turn 1: thought: turn-1 thought");
     expect(JSON.stringify(note)).toContain("did: click (1, 1)");
     // The newest turns are carried whole, with their screens.
     expect(text(last)).toContain('"call_id":"call_79"');
     expect(text(last)).not.toContain('"call_id":"call_1"');
+  });
+
+  it("caps each note line, so a reply with many actions cannot overrun the note", async () => {
+    const busy = (n: number): Record<string, unknown> => {
+      const value = reply(n);
+      const output = value.output as Array<Record<string, unknown>>;
+      output[2] = {
+        ...output[2],
+        actions: Array.from({ length: 1_000 }, (_, i) => ({ type: "click", x: i, y: n })),
+      };
+      return value;
+    };
+    const { bodies, provider } = await runTurns(60, { zeroDataRetention: true }, busy);
+    expect(provider.conversation!.summarizedTurns).toBeGreaterThan(20);
+    const note = bodies[59]!.input[1] as { content: Array<{ text: string }> };
+    const noteText = note.content[0]!.text;
+    const lines = noteText.split("\n").slice(1);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(1_200);
+    expect(noteText.length).toBeLessThan(17_000);
+  });
+
+  it("reports no summarized turns for a threaded conversation", async () => {
+    const { bodies, provider } = await runTurns(80);
+    expect(bodies[79]!.previous_response_id).toBe("resp_79");
+    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
   });
 
   it("switches mid-session and records when, keeping what came before the switch", async () => {
@@ -186,6 +214,48 @@ describe("an explicit-context conversation", () => {
       mode: "explicit_context",
       explicitReason: "zdr_rejection",
       switchedAt: "2026-10-03T00:00:00.000Z",
+      switchedAtRequest: 3,
+      requests: [{ mode: "threaded" }, { mode: "threaded" }, { mode: "explicit_context" }],
+    });
+  });
+
+  it("numbers the switch by request, counting a reply set aside at its output limit", async () => {
+    let n = 0;
+    const fetchFn: FetchLike = async () => {
+      n += 1;
+      const value =
+        n === 1
+          ? {
+              id: "resp_cut",
+              status: "incomplete",
+              incomplete_details: { reason: "max_output_tokens" },
+              output: [],
+              usage: { input_tokens: 900, output_tokens: 1024 },
+            }
+          : reply(n);
+      if (n === 3)
+        return {
+          ok: false,
+          status: 400,
+          text: async () => "previous_response_id is not supported: Zero Data Retention",
+          json: async () => ({}),
+        };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(value),
+        json: async () => value,
+      };
+    };
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn,
+      delayFn: async () => undefined,
+      now: () => Date.parse("2026-10-03T00:00:00Z"),
+    });
+    for (let turn = 0; turn < 3; turn += 1)
+      await provider.nextTurn(request(), new AbortController().signal);
+    expect(provider.conversation).toMatchObject({
       switchedAtRequest: 3,
       requests: [{ mode: "threaded" }, { mode: "threaded" }, { mode: "explicit_context" }],
     });

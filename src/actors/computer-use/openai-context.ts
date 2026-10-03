@@ -11,7 +11,10 @@ import type { CuaAction } from "./loop.js";
 // exchange boundaries: one reply's output items together with the items that answered them.
 // When the estimate passes the budget, the opening screenshot goes first, then the oldest
 // exchanges become lines of a progress note that keeps their reasoning summaries, messages and
-// actions as text. The newest MIN_KEPT_EXCHANGES exchanges are never collapsed.
+// actions as text. The note is an assistant message, so text the model wrote (which can quote a
+// web page) keeps the trust it had when the model wrote it. The newest MIN_KEPT_EXCHANGES
+// exchanges are never collapsed, so a request passes the budget when they alone exceed it; the
+// trace's per-request estimate shows when that happens.
 
 /** The estimated input a carried conversation may reach before its oldest turns are summarized. */
 export const CONTEXT_TOKEN_BUDGET = 64_000;
@@ -19,11 +22,19 @@ export const CONTEXT_TOKEN_BUDGET = 64_000;
 const MIN_KEPT_EXCHANGES = 2;
 /** The progress note's length cap; past it, the oldest lines are counted instead of shown. */
 const NOTE_CHAR_LIMIT = 16_000;
-/** A screenshot whose size cannot be read is estimated at the image token cap. */
-const UNKNOWN_IMAGE_TOKENS = 1_600;
+/** One note line's cap, so a reply with many actions cannot push the note past its own cap. */
+const LINE_CHAR_LIMIT = 1_200;
+/**
+ * Image input tokens per 32-pixel patch. The gpt-5.x and gpt-6 models bill 1.2 per patch, and at
+ * the default (auto) detail gpt-5.6 and gpt-6 keep the screenshot's own size. Models that resize
+ * to a lower patch budget bill less, so the estimate errs high for them.
+ */
+const TOKENS_PER_PATCH = 1.2;
+/** A screenshot whose size cannot be read is estimated as a 2,500-patch image. */
+const UNKNOWN_IMAGE_TOKENS = 3_000;
 
 interface CarriedExchange {
-  /** The request number whose reply produced `output` (1 for the opening request). */
+  /** The accepted reply's number, from 1; a reply set aside at its output limit is not counted. */
   readonly turn: number;
   readonly output: readonly unknown[];
   readonly answers: readonly unknown[];
@@ -47,11 +58,6 @@ export class CarriedConversation {
   private collapsedTurns = 0;
 
   constructor(private readonly budget = CONTEXT_TOKEN_BUDGET) {}
-
-  /** Exchanges summarized into the progress note so far. */
-  get collapsed(): number {
-    return this.collapsedTurns;
-  }
 
   /**
    * Record an accepted reply. `sent` is what that request added after the carried items: the
@@ -109,11 +115,11 @@ export class CarriedConversation {
   private noteItem(): Record<string, unknown> | undefined {
     if (this.notes.length === 0) return undefined;
     const lead =
-      `Your earlier turns in this session, oldest first. Their screenshots are no longer shown; ` +
-      `this is what you thought, said and did.` +
+      `My notes on my earlier turns in this session, oldest first. Their screenshots are no ` +
+      `longer shown; this is what I thought, said and did.` +
       (this.notesDropped === 0 ? "" : ` (${this.notesDropped} earlier turns are not listed.)`);
-    return inputMessage("developer", [
-      { type: "input_text", text: `${lead}\n${this.notes.join("\n")}` },
+    return inputMessage("assistant", [
+      { type: "output_text", text: `${lead}\n${this.notes.join("\n")}` },
     ]);
   }
 }
@@ -148,7 +154,8 @@ function describeExchange(exchange: CarriedExchange): string {
     said.length > 0 ? `said: ${clip(said.join(" "), 300)}` : undefined,
     did.length > 0 ? `did: ${did.join(", ")}` : undefined,
   ].filter((part) => part !== undefined);
-  return `Turn ${exchange.turn}: ${parts.length > 0 ? parts.join("; ") : "no recorded output"}.`;
+  const line = `Turn ${exchange.turn}: ${parts.length > 0 ? parts.join("; ") : "no recorded output"}`;
+  return `${clip(line, LINE_CHAR_LIMIT - 1)}.`;
 }
 
 function describeAction(action: CuaAction): string {
@@ -194,9 +201,9 @@ function withoutImages(item: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
- * A rough input-token estimate: images by their size in 32-pixel patches (the cap is the
- * model's per-image limit), everything else at four characters a token. It decides when to
- * trim, not what is billed; the trace records the billed input per request beside it.
+ * A rough input-token estimate: images by their size in 32-pixel patches, everything else at four
+ * characters a token. It decides when to trim, not what is billed; the trace records the billed
+ * input per request beside it.
  */
 export function estimateTokens(items: readonly unknown[]): number {
   let tokens = 0;
@@ -213,7 +220,7 @@ function imageTokens(dataUrl: string): number {
   const size = pngSize(dataUrl);
   if (size === undefined) return UNKNOWN_IMAGE_TOKENS;
   const patches = Math.ceil(size.width / 32) * Math.ceil(size.height / 32);
-  return Math.min(patches, 1_536) + 85;
+  return Math.ceil(patches * TOKENS_PER_PATCH);
 }
 
 /** A PNG's width and height, from the IHDR chunk at the start of its data URL. */

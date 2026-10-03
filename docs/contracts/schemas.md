@@ -932,9 +932,11 @@ Core-owned fields:
   in encrypted form. It carries the opening message, every exchange of a reply
   with the outputs that answered it, and the latest reply. Past an estimated
   64,000 input tokens the opening screenshot is dropped first, then the oldest
-  exchanges become lines of a developer note that keeps their reasoning
-  summaries, messages and actions as text. The two newest exchanges are always
-  carried whole. `summarizedTurns` counts the exchanges in the note.
+  exchanges become lines of a note, sent as an assistant message, that keeps
+  their reasoning summaries, messages and actions as text. The two newest
+  exchanges are always carried whole, even when they alone pass the budget. `summarizedTurns` counts the earlier exchanges the latest
+  `explicit_context` request no longer carried whole: lines of the note, or
+  only counted once the note reached its cap.
   `requests[]` has one entry per participant request: its `mode` and, in
   `explicit_context`, `carriedExchanges`, `carriedScreenshots` and
   `estimatedInputTokens`. Billed input per request is in `tokenUsage.turns`. A

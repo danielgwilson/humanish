@@ -166,6 +166,7 @@ export class ConversationRecord {
   private explicitReason: ActorConversation["explicitReason"];
   private switchedAt: string | undefined;
   private switchedAtRequest: number | undefined;
+  private summarizedTurns = 0;
   private readonly requests: ActorConversation["requests"] = [];
 
   constructor(
@@ -175,11 +176,12 @@ export class ConversationRecord {
     if (configured) this.explicitReason = "configured";
   }
 
-  /** The organization rejected server-side state, so the next request is explicit_context. */
-  switched(state: OpenAiConversationState): void {
+  /** The organization rejected server-side state, so the request being sent is explicit_context. */
+  switched(): void {
     this.explicitReason = "zdr_rejection";
     this.switchedAt = new Date(this.now()).toISOString();
-    this.switchedAtRequest = state.replies + 1;
+    // Counted like requests[], which includes replies set aside at their output limit.
+    this.switchedAtRequest = this.requests.length + 1;
   }
 
   /** A participant request just went out with `sent` after the carried conversation. */
@@ -189,6 +191,8 @@ export class ConversationRecord {
       return;
     }
     const carried = state.conversation.size();
+    // Only summaries a request carried count; the conversation also trims after the last reply.
+    this.summarizedTurns = carried.notedTurns;
     this.requests.push({
       mode: "explicit_context",
       carriedExchanges: carried.exchanges,
@@ -205,7 +209,7 @@ export class ConversationRecord {
       ...(this.switchedAtRequest === undefined
         ? {}
         : { switchedAtRequest: this.switchedAtRequest }),
-      summarizedTurns: state.conversation.collapsed,
+      summarizedTurns: this.summarizedTurns,
       requests: this.requests.map((request) => ({ ...request })),
     };
   }

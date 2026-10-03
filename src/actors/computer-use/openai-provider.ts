@@ -575,7 +575,7 @@ export function createOpenAiResponsesProvider(
           continue;
         }
         if (error instanceof ZdrError && state.mode !== "explicit_context") {
-          record.switched(state);
+          record.switched();
           state.mode = "explicit_context";
           continue;
         }

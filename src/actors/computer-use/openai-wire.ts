@@ -353,9 +353,9 @@ export function buildInitialRequest(
   };
 }
 
-/** One input message, read as the words of `sender`: the user, or the developer's own note. */
+/** One input message, read as the words of `sender`: the user, the developer, or the model itself. */
 export function inputMessage(
-  sender: "user" | "developer",
+  sender: "user" | "developer" | "assistant",
   content: readonly unknown[],
 ): Record<string, unknown> {
   return { role: sender, content: [...content] };
