@@ -26,6 +26,7 @@ import {
 import { validateCwd } from "../run/project.js";
 import { pathExists, readTextIfExists, validateInitProjectPaths } from "./init-paths.js";
 import { planGitignore, planPackageJson, type PlannedWrite } from "./init-plan.js";
+import { otherStudyFiles, STUDY_DIRECTORIES, studyFileStem } from "../study/files.js";
 
 const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
 
@@ -242,7 +243,20 @@ async function planStarterFiles(
       );
     }
 
-    if (existing === null) {
+    const others =
+      existing === null ? await otherStudyFilesFor(preparedProjectRoot, file.path) : [];
+    if (others.length > 0) {
+      const stem = studyFileStem(path.basename(file.path));
+      plan.changes.push({
+        path: file.path,
+        action: "skip",
+        target: file.plane,
+        reason: `${others.join(", ")} already uses the name ${stem}`,
+      });
+      plan.warnings.push(
+        `Skipped ${file.path}: ${others.join(", ")} already uses the name ${stem}, and a second file with that name would make \`run ${stem}\` fail.`,
+      );
+    } else if (existing === null) {
       plan.changes.push({
         path: file.path,
         action: "create",
@@ -274,6 +288,33 @@ async function planStarterFiles(
       );
     }
   }
+}
+
+/**
+ * The study files that already use a starter study's name in any study directory, other than the
+ * starter's own path. An unsafe path counts as present, so init skips the starter rather than
+ * failing.
+ */
+async function otherStudyFilesFor(
+  preparedProjectRoot: PreparedSelectedOutputDirectory,
+  relativePath: string,
+): Promise<string[]> {
+  const stem = studyFileStem(path.basename(relativePath));
+  const inStudyDirectory = STUDY_DIRECTORIES.some(
+    (directory) => directory.relativeDir === path.dirname(relativePath),
+  );
+  if (stem === undefined || !inStudyDirectory) return [];
+  return otherStudyFiles(
+    stem,
+    async (candidate) => {
+      try {
+        return (await readTextIfExists(preparedProjectRoot, candidate)) !== null;
+      } catch {
+        return true;
+      }
+    },
+    relativePath,
+  );
 }
 
 /** Create each ignored runtime directory that is missing. */
