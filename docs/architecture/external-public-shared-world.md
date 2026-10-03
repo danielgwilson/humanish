@@ -72,7 +72,7 @@ Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
    `/\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/` (a locale prefix `/en/lobby/CODE` and a query/hash suffix
    are tolerated), a lobby code in its narration (`extractLobbyCodeFromNarration`), or a vision read
    of its screenshot (`readLobbyCodeFromFrame`). The vision reads are out-of-band OpenAI calls, at
-   most 30 per participant, and are not counted against `execution.caps.maxUsd`. The host keeps playing
+   most 30 per participant, and are not counted against `caps.maxUsd`. The host keeps playing
    after resolving, so its window overlaps the followers'.
 3. **Barrier.** Follower participants (`host` absent) do not compose a mission or open their target until
    the latch resolves or the handoff deadline passes. On resolve, code is threaded into each

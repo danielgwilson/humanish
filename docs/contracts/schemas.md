@@ -56,13 +56,53 @@ workflow without leaking private upstream truth into core.
 | Serve result                      | `humanish.serve-result.v1` (`src/observer/serve.ts` is authoritative)                                                                                                          | none (command result envelope; see Serve Result below)                              |
 | Serve control plane               | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1)                                                                                      | none                                                                                |
 
-## Lab Manifest
+## Study File
 
-Schema: `humanish.lab.v2` (types in `src/lab/types.ts`, parsed by `src/lab/config.ts`). There
-is deliberately no v1 compatibility: v1 (`kind`, top-level `sims`) had zero real users and was
-deleted when labs became config.
+Schema: `humanish.study.v3`. `src/lab/parse/study-v3.ts` rewrites a v3 document into the
+normalized config in `src/lab/types.ts`, which `src/lab/config.ts` parses. A `humanish.lab.v2`
+file still parses in 0.108 with one warning that names `humanish migrate`; 0.109 removes it.
 
-A lab is a composition over code primitives, not a hardcoded kind:
+A study declares its route and composes code primitives; it is not a hardcoded kind. The
+top-level keys:
+
+| Key                                                               | Meaning                                                                                                                                            |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`, `id`, `title`, `description`                            | the document's identity                                                                                                                            |
+| `route`                                                           | required: `preview`, `computer-use`, `shared-world`, `terminal` or `scripted`                                                                      |
+| `mode`                                                            | `dry-run` (the default) or `live`                                                                                                                  |
+| `actor`                                                           | who drives it, one object: `type`, `model`, `localAgent`, `persona`, `mission`, `tasks`, `maxOutputTokens`, `reasoningEffort`, `stopWhen`, `dwell` |
+| `participants`                                                    | a count, a homogeneous `{ count, instruction }`, or a list of entries (below)                                                                      |
+| `surfaces`                                                        | scripted only: `[desktop]` or `[desktop, mobile]`                                                                                                  |
+| `caps`                                                            | the route's budget (below)                                                                                                                         |
+| `scenario`                                                        | scripted only: a committed scenario id or path                                                                                                     |
+| `subject`, `execution`, `policies`, `review`, `defaults`, `comms` | as below                                                                                                                                           |
+
+The parser reads only the declared route's keys. A key that route never reads is an error that
+names the route, such as "route: computer-use does not read scenario. Remove it.", and an
+unknown key is an error that lists the known ones; both are `HUMANISH_STUDY_INVALID`.
+
+`participants` takes the forms its route accepts:
+
+| Route          | Forms                                                                          | Default        |
+| -------------- | ------------------------------------------------------------------------------ | -------------- |
+| `preview`      | a count                                                                        | 4              |
+| `computer-use` | a count, a homogeneous object, or a list (a `local-app` subject takes no list) | 1              |
+| `shared-world` | a list of at least two entries                                                 | none: required |
+| `scripted`     | none; `surfaces` instead                                                       |                |
+| `terminal`     | none; one agent                                                                |                |
+
+`caps` keeps each route's meaning, and a route refuses the keys it does not read:
+`computer-use` and `shared-world` read `maxUsd` and `maxTotalUsd`; `terminal` reads `maxUsd`,
+`maxJobs` and `maxMinutes`; `preview` and `scripted` take no `caps`.
+
+A v2 file maps as follows: `actors[0]` is `actor`; `lanes` is the `participants` list; a
+`roster` group is an entry with `count`; `count` is the count; `count` with `laneFocus` is the
+homogeneous object; `execution.caps` (computer-use, shared-world) or `scenario.caps`
+(terminal) is `caps`; `scenario.mode` is `mode`; `scenario.ref` is `scenario`; and
+`subject.topology: shared-world` is `route: shared-world`. A key the v2 inert-field table
+marks inert for the route is not in v3.
+
+The rest of this section names keys by their v3 spelling:
 
 - `subject`: what the run acts on: `this-repo`, `clone` (owner/repo slugs,
   optional in-sandbox `serve` + env var names + `state`), `local-tree` (the
@@ -123,49 +163,46 @@ before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   appear in `subject.env`) pointing at state the lab does not control,
   recorded as unpinned in provenance. Commands persist in evidence as
   sha256-16 digests only, never as text;
-- `actors`: who drives it. On computer-use (including shared-world),
-  scripted-browser, and terminal-product routes, `actors[0].type` is a real
-  dispatch key resolved against the actor registry. On the synthetic route it
-  remains a descriptive label (e.g. `synthetic-persona`). The
+- `actor`: who drives it. On the computer-use, shared-world, scripted and
+  terminal routes, `actor.type` is a real dispatch key resolved against the
+  actor registry. On the preview route it remains a descriptive label (e.g.
+  `synthetic-persona`). The
   `codex-exec` descriptor's direct `runSession` member is a fail-closed
   compatibility entry, not the live runner; the terminal-product lab route
   owns the live sandbox, auth, cap, evidence, and cleanup lifecycle.
-  `actors[0].count` carries route-specific meanings: synthetic route participant
-  count (simCount); scripted-browser route surface roster (1 = desktop,
-  2 = desktop + mobile, default 1); computer-use **E2B** route the homogeneous
-  fan-out participant count (N identical participants, each its own E2B desktop: separate
-  worlds, cap 16). The in-process/local-app computer-use route stays single
-  participant (no E2B to fan out);
-- `actors[0].lanes[]` (computer-use E2B route): a differentiated fan-out roster,
-  each `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
+  A `participants` count is the preview route's participant count (simCount),
+  and on the computer-use **E2B** route the homogeneous fan-out count (N
+  identical participants, each its own E2B desktop: separate worlds, cap 16).
+  The scripted route's `surfaces` is its surface list (`[desktop]`, the default,
+  or `[desktop, mobile]`). The in-process/local-app computer-use route stays
+  single participant (no E2B to fan out);
+- a `participants` list (computer-use E2B route): a differentiated fan-out,
+  each entry `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
 instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` becoming one independent E2B desktop (or, on the
   shared-world routes, one participant against the shared plane). `actorType`,
   `surface`, and `caseGroup` are adapter-owned public-safe labels for grouping
   simulated users; they are not core enums, and `actorType` is deliberately
-  separate from the execution dispatch key `actors[0].type`. `lanes` is XOR with
-  `count` (declare a roster or a homogeneous count) and XOR with
-  `actors[0].laneFocus` (a roster's per-participant `instruction` is the steer);
-  `lanes[].device` is XOR with a raw `execution.desktop.resolution`. Participant ids
+  separate from the execution dispatch key `actor.type`. A list sets the count,
+  so `--count` does not apply to it, and each entry's `instruction` is the steer;
+  an entry's `device` is XOR with a raw `execution.desktop.resolution`. Participant ids
   default `lane-01`..`lane-NN` (`role-01`..`role-NN` for shared-world participants), must be unique, and name per-participant evidence paths
-  (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 participants. On other
-  routes `lanes` is inert (warned), except the scripted-browser route, which rejects it. `subject.clone.fanout` is rejected on
-  the cua, shared-world and scripted-browser routes (declare fan-out via
-  `count`/`lanes`). No current route reads `clone.fanout`;
-- `actors[0].lanes[].target` (app-url × computer-use E2B route only): an
+  (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 participants. The other
+  routes refuse a list (table above). `subject.clone.fanout` is rejected on the
+  computer-use, shared-world and scripted routes (declare fan-out with
+  `participants`). No current route reads `clone.fanout`;
+- `participants[].target` (app-url × computer-use E2B route only): an
   absolute browser URL that participant opens instead of `subject.appUrl`. This is the
   setup-produced-target handoff for crawler/swarm labs: an adapter may start any
   topology it needs, then declare exactly which target each actor should drive.
-  If any participant declares `target`, every participant in that roster must declare one.
+  If any participant declares `target`, every entry in the list must declare one.
   Public/non-loopback targets still require `policies.allowPublicTargets: true`.
   `target` is mutually exclusive with `entry`: `target` is an absolute app-url
   browser target; `entry` is a shared-world participant's same-origin path;
-- `actors[0].roster[]` (computer-use E2B route): compact authoring sugar for
-  repeated participant groups, each `{ id, count, actorType?, surface?, caseGroup?,
-persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?,
-dwell? }`. The parser expands it into
-  deterministic `lanes[]` before the engine runs (`viewer-01`, `viewer-02`,
-  ...), so the runtime and run bundle keep one normalized participant shape. `roster`
-  is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
+- a `participants` entry with `count: n` (computer-use E2B route): a group of
+  repeated participants. It needs an `id` and the parser expands it to
+  `<id>-01` … `<id>-NN`, even when n is 1, before the engine runs (`viewer-01`,
+  `viewer-02`, ...), so the runtime and run bundle keep one normalized participant
+  shape. Ids are checked for collisions after expansion;
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
   cap on participants in flight at once. When omitted, every participant runs
   simultaneously: independent participants resolve it from the final participant count,
@@ -184,17 +221,17 @@ dwell? }`. The parser expands it into
   change: it was the single-session budget pre-fan-out); there is no run-level
   wall clock. `policies.allowPublicTargets` cannot combine with N>1 against one
   implicit public `subject.appUrl` (ambiguous shared-world-ish topology); it may
-  combine with N>1 only when the roster declares explicit `lanes[].target` for
-  every participant, or when `subject.topology: shared-world` is also declared. That
+  combine with N>1 only when every `participants` entry declares `target`, or when
+  the study declares `route: shared-world`. That
   routes N>1 against one public target to the external-public shared-world plane
   (see Shared-World Evidence below), not separate worlds;
 - `subject.publicTarget: { owner, authorized: true }` (external-public shared-world
   route only): the operator's required ownership attestation when a real public
-  deployment (`source: app-url` + `topology: shared-world` + `allowPublicTargets` +
+  deployment (`source: app-url` + `route: shared-world` + `allowPublicTargets` +
   `concurrency > 1`) is used directly as the shared plane. The harness neither
   provisions nor exposes the target, so it cannot attest synthetic data; the operator
   must attest they own/operate it. Author-trust (unverifiable); rejected on non-app-url
-  subjects and inert (warned) on other app-url routes. `actors[0].lanes[].host: true` marks the single designated host participant there;
+  subjects and inert (warned) on other app-url routes. `participants[].host: true` marks the single designated host participant there;
 - `subject.appUrl`: a loopback http(s) URL a computer-use actor drives, or (on the
   external-public shared-world route) the non-loopback public deployment used as the
   shared plane (with `publicTarget` + `allowPublicTargets`);
@@ -248,14 +285,14 @@ dwell? }`. The parser expands it into
   metadata; with `openai-egress` it stays in the host-side E2B header transform
   set at sandbox creation, and the agent gets a placeholder. A dry-run neither
   reads nor injects it;
-- `scenario`: `mode: dry-run` (a synthetic bundle, no spend) or `live`.
-  `scenario.ref` is consumed (and required) on the scripted-browser route: it
-  resolves a committed scenario (`humanish/scenarios/<ref>.yaml` or a repo
-  path) whose `browser.steps` are what the actor executes, digest-pinned into
-  bundle provenance; on other routes `ref`/`inline` stay forward-declared
-  warnings. On the scripted route `live` gates real browser actuation against
-  the declared app. Provider spend stays $0 by mechanism (no model runs);
-- `scenario.caps` (terminal-product route): `{ maxUsd, maxJobs, maxMinutes }`,
+- `mode`: `dry-run` (a synthetic bundle, no spend; the default) or `live`. On the
+  scripted route `live` gates real browser actuation against the declared app.
+  Provider spend stays $0 there by mechanism (no model runs);
+- `scenario` (scripted route, required): a committed scenario id or path
+  (`humanish/scenarios/<id>.yaml` or a repo path) whose `browser.steps` are what
+  the actor executes, digest-pinned into bundle provenance. Every other route
+  refuses it;
+- `caps` on the terminal route: `{ maxUsd, maxJobs, maxMinutes }`,
   all non-negative numbers (0 = no-spend, the default). This budget bounds the
   in-sandbox live key by mechanism: the live key is never exercised without a
   fail-closed cap in force. `maxMinutes` is the
@@ -270,11 +307,8 @@ dwell? }`. The parser expands it into
   `subject.product.install` is declared) plus `maxMinutes` plus a 5-minute
   teardown buffer; a live run refuses a `maxMinutes` that would take it past
   E2B's one-hour limit (`HUMANISH_TERMINAL_CAPS_INVALID`). The no-spend proof is derived from that real ledger, never asserted (see
-  Terminal Cost Ledger And No-Spend Proof).
-  Inert (warned) on every other route, except that a positive
-  `scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab
-  is a parse error naming the matching `execution.caps` field, which is what
-  that route enforces;
+  Terminal Cost Ledger And No-Spend Proof). `maxTotalUsd` is refused on the
+  terminal route;
 - `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`,
   `mediaPermission` (`prompt` | `granted`), and the
   terminal-product credential-boundary booleans `allowPrivateRepoAccess`,
@@ -301,8 +335,8 @@ dwell? }`. The parser expands it into
   route getHost-exposes). `recipients[]` = `{ lane, address? }`: omit the list
   and the parser fills one deterministic address per participant
   (`<laneId>@example.test`) so every participant can do email. When declared, a
-  `lane` must be one of the lab's real participant ids (roster ids, or the generated
-  `lane-01..lane-NN` under `count`). An unknown participant id is a hard parse error
+  `lane` must be one of the study's real participant ids (list or group ids, or the
+  generated `lane-01..lane-NN` under a count). An unknown participant id is a hard parse error
   listing them, zero addressed participants is a hard error, partial coverage warns
   with the uncovered participants. Each addressed participant's actor prompt is extended with
   the full handoff: its address ("enter exactly that"), the inbox URL, and the
@@ -378,12 +412,12 @@ carries `publication.restrictions: [real-communications]`. Verification keeps th
 run local-only regardless of screenshot redaction. See the
 [receiving contract](https://humanish.dev/docs/email-receiving).
 
-Lab routes report results in their own schemas (`humanish.run-result.v1`,
-`humanish.cua-lab-result.v2`, `humanish.scripted-lab-result.v1`,
-`humanish.terminal-lab-result.v1`,
-`humanish.concurrent-shared-world-lab-result.v1`); the evidence record stays
-`humanish.run-bundle.v1` in every case. The computer-use result bumped to v2 for
-fan-out: it carries `plan` (the pre-flight participant table: concurrency, waves,
+A study's result has one schema on every route, `humanish.study-result.v1`
+(`src/run/study-result.ts`), with `route`, `studyId` and, until 0.109, a deprecated `labId`
+holding the same value. Route-specific fields stay on their route's result. `humanish run`
+with no study, `observe`, and a refusal made before a route is picked keep
+`humanish.run-result.v1`. The evidence record stays `humanish.run-bundle.v1` in every case.
+The computer-use result carries `plan` (the pre-flight participant table: concurrency, waves,
 per-participant session budget, worst-case sandbox-minutes), `lanes[]` (always present,
 length 1 at N=1; per-participant status/session/sandbox/subject), and `laneSummary`
 (passed/skipped/harnessErrors/hollow counts). The top-level `session`/`sandbox`
@@ -399,7 +433,7 @@ error, engaged, and no self-reported blocker.
 
 Explicit failed-participant reruns are supported on the CUA fan-out route via
 `humanish run <lab> --rerun-failed-from <run-id> [--participants <ids>]`, where a
-participant id is a declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position.
+participant id is a declared `participants` entry id, or `lane-01`, `lane-02`, … by position.
 The source run must be a live CUA fan-out bundle. humanish creates a new run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
 the source verdict unchanged, and records lineage as `run.rerun` plus a
@@ -411,28 +445,28 @@ That field is the judge's status (`judgedStatus` in `src/run/judge.ts`), so a go
 session that reported a blocker counts as blocked. A source bundle without `judgedStatus` falls back
 to the stream's trace status, its actor status and completion reason, and a zero-action check.
 
-Manifests are human-authored `.yaml` source under `humanish/studies/*.yaml` for
-committed public-safe labs, or ignored `.humanish/studies/*.yaml` /
-`.humanish/local/studies/*.yaml` for private local dogfood. Fields the engine does
-not yet consume are accepted but reported as warnings (`humanish study show`
-shows them), so a manifest never silently claims behavior that did not run.
+Study files are human-authored `.yaml` source under `humanish/studies/*.yaml` for
+committed public-safe studies, or ignored `.humanish/studies/*.yaml` /
+`.humanish/local/studies/*.yaml` for private local dogfood. A v3 key the declared route
+does not read is an error, so a study file never silently claims behavior that did not run.
+A v2 file keeps its inert-field warnings until 0.109 (`humanish study show` shows them).
 
 Committed fixture (`humanish/studies/first-run.yaml`):
 
 ```yaml
-schema: humanish.lab.v2
+schema: humanish.study.v3
 id: first-run
 title: First-run synthetic Observer
 description: >-
   Writes a preview run: a synthetic run bundle and Observer for four participants. Needs no browser,
   model or keys, and costs nothing. Run it with humanish run first-run.
+route: preview
+mode: dry-run
 subject:
   source: this-repo
-actors:
-  - type: synthetic-persona
-    count: 4
-scenario:
-  mode: dry-run
+actor:
+  type: synthetic-persona
+participants: 4
 defaults:
   open: true
 ```
@@ -704,7 +738,7 @@ claim can never leak onto the external-public class (or vice versa).
   authoritative in-sandbox checkpoint `stateSeries` with a delta-on-pass.
 
 - `external-public`: a real, operator-owned public deployment used directly as the shared plane
-  (`subject.source: app-url` + `topology: shared-world` + `policies.allowPublicTargets: true` +
+  (`subject.source: app-url` + `route: shared-world` + `policies.allowPublicTargets: true` +
   `execution.concurrency > 1`). No getHost, no clone, no subject sandbox, no seed. The subject
   carries the ownership attestation `subject.publicTarget: { owner, authorized: true }` (the
   analog of `exposure: synthetic`: you cannot attest synthetic on a real site, but you must attest
@@ -880,7 +914,7 @@ Core-owned fields:
   meaning the subject failed the script while the harness executed faithfully; and
   `budget_reached`: a computer-use session ended by a limit. The loop
   (`src/actors/computer-use/loop/ending.ts`) emits it when the time budget runs
-  out after at least one material action, when `execution.caps.maxUsd` or the
+  out after at least one material action, when `caps.maxUsd` or the
   study's shared spend threshold is crossed, when the adapter reports a local
   admission limit, or when the provider hits its output or context token limit.
   Every `budget_reached` session has status `incomplete`
@@ -909,7 +943,7 @@ Core-owned fields:
   (docs/principles/actor-fidelity.md), so a trace without it is a result missing
   half its sample description
 - optional `modelSettings.maxOutputTokens`: the declared positive integer
-  `actors[0].maxOutputTokens`, passed to every first-party OpenAI CUA response
+  `actor.maxOutputTokens`, passed to every first-party OpenAI CUA response
   request, including reasoning output. Absent when undeclared. The first request
   of a session and closing reports use `min(maxOutputTokens, 1024)`, or 1024 when
   undeclared; the first request also carries the opening screenshot as an
@@ -1033,7 +1067,7 @@ cost-probe seam. The terminal route records the model as `codex` and does not pi
 model, so a measured token count stays `usd: null` with `source: unpriced-token-usage`, and
 `knownTotalUsd: 0` with `fullyMeasured: false` means no line of this ledger was priced. E2B
 time for the terminal sandbox is not a line of this ledger, whose lines are checked against
-`scenario.caps.maxUsd`. The run bundle's `cost` summary prices it as a `desktop-minutes`
+`caps.maxUsd`. The run bundle's `cost` summary prices it as a `desktop-minutes`
 line (see Run Cost Summary And Estimated Actor Cost below).
 
 ```yaml
@@ -1071,7 +1105,7 @@ knownTotalUsd: 0
 statement: "No-spend proof not established for maxUsd=0: no spend line was measured. …"
 ```
 
-**Full caps enforcement (fail-closed, not advisory).** `scenario.caps.maxUsd`
+**Full caps enforcement (fail-closed, not advisory).** `caps.maxUsd`
 is enforced against the ledger: if the observed known spend exceeds `maxUsd`, the
 run fails closed (`HUMANISH_TERMINAL_CAPS_EXCEEDED`); `maxJobs` likewise when
 a known job count is present; `maxMinutes` is the wall-clock kill (unchanged).
@@ -1224,7 +1258,7 @@ Three new `.v1` schema tags ship, all additive and optional so
   to Codex (`gpt-5.6-sol` unless the lab declares one) with `basis:
 aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bundles record
   `no_rate_for_model` (model `codex`). The terminal trace records the same `estimatedCost`. The sandbox line is not part of the
-  terminal cost ledger, whose lines are checked against `scenario.caps.maxUsd`.
+  terminal cost ledger, whose lines are checked against `caps.maxUsd`.
 
 The summary follows the same null discipline as the terminal cost ledger above.
 `estimatedTotalUsd` sums only the non-null `breakdown` lines and is `null` iff
@@ -1280,8 +1314,8 @@ mismatch). A correctly-labeled huge estimate still passes. Cost is neither a
 secret nor a share-blocker: its magnitude never affects `shareSafety`. A labeling
 failure fails verify, which blocks sharing like any other failed check.
 
-**Computer-use spend thresholds.** `execution.caps.maxUsd` applies independently
-to each participant. `execution.caps.maxTotalUsd` shares an estimated model-spend ledger
+**Computer-use spend thresholds.** `caps.maxUsd` applies independently
+to each participant. `caps.maxTotalUsd` shares an estimated model-spend ledger
 across the study's participants. Either, both, or neither may be declared. Without a
 shared threshold, N participants each have their own `maxUsd`; N × `maxUsd` is the sum
 of those thresholds, not a guaranteed total spending ceiling.
@@ -1369,7 +1403,7 @@ original interruption cause first, with any missing usage still recorded as
 unknown.
 
 These computer-use rules do not replace the terminal route's separate
-`scenario.caps` cost-ledger and product-spend rules described above.
+`caps` cost-ledger and product-spend rules described above.
 
 ## Affordance Use
 

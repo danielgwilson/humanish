@@ -3,7 +3,7 @@
 Part of this contract ships and part is still open. Shipped: the evidence schema
 `humanish.actor-trace.v1` (`src/actors/contract.ts`) and a closed first-party registry of five
 descriptors (`src/actors/registry.ts`: `codex-app-server`, `openai-computer-use`, `local-agent`,
-`scripted-browser`, `codex-exec`). `actors[0].type` is a real dispatch key on the computer-use,
+`scripted-browser`, `codex-exec`). `actor.type` is a real dispatch key on the computer-use,
 scripted-browser, and terminal-product routes. Product scoring, feedback, and artifact hooks are
 extension seams, but public out-of-tree actor registration and its conformance certification are not
 shipped. Also not shipped: the full `Actor.run(input)` interface, `ApprovalPolicy`,
@@ -339,7 +339,7 @@ switch with no default, so a new completion reason forces a compile-time decisio
 status. ~30 min (`1_800_000`) is a reasonable default for open-ended watch; the persona
 still stops early on `goal_satisfied`/`gave_up`/`stopWhen`.
 
-Actuation-vs-spend gate: on the scripted lab route `scenario.mode: live` is still required
+Actuation-vs-spend gate: on the scripted route `mode: live` is still required
 even though provider spend is $0 by mechanism. The gate's justification there is actuation,
 not cost: a live scripted run drives a real browser against a real running app
 (state-mutating effects on the operator's app), which deserves the same affirmative

@@ -22,7 +22,7 @@ reference under `docs/` by what it is for. To make a first change, start with
 - [architecture/state-driven-executor.md](architecture/state-driven-executor.md): the `CuaExecutor`
   library path.
 - [architecture/task-protocol-support.md](architecture/task-protocol-support.md): which routes
-  accept `actors[0].tasks`.
+  accept `actor.tasks`.
 - [architecture/external-public-shared-world.md](architecture/external-public-shared-world.md) and
   [architecture/terminal-product-route.md](architecture/terminal-product-route.md): two routes in
   depth.

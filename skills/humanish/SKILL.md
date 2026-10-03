@@ -116,7 +116,7 @@ request. Inspect a failed attempt before explicitly retrying `--provider codex
 ## Local browser setup
 
 On Linux x64 with local rootful Docker, KVM and TUN, or a supported M3-or-newer
-Mac with native ARM64 Node and Lima 2.2+, an `app-url` lab can set `execution.target: local` and `actors[0].type: local-agent` with
+Mac with native ARM64 Node and Lima 2.2+, an `app-url` study can set `execution.target: local` and `actor.type: local-agent` with
 `localAgent: codex`. It uses the supported Codex ChatGPT login, not E2B or an
 OpenAI API key. Inference is remote and consumes account quota. Existing hosted
 labs stay hosted; never silently change their execution or billing provider.
@@ -230,42 +230,44 @@ and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
 values only. Do not write real emails, names, customer data, tickets, logs, or
 tokens into scenario files.
 
-## Authoring Labs
+## Authoring Studies
 
-Create reusable simulation runs as `.yaml` lab manifests:
+Write reusable studies as `.yaml` study files (`humanish.study.v3`):
 
 ```yaml
-schema: humanish.lab.v2
+schema: humanish.study.v3
 id: first-run
 title: First-run synthetic Observer
+route: preview
+mode: dry-run
 subject:
   source: this-repo
-actors:
-  - type: synthetic-persona
-    count: 4
-scenario:
-  mode: dry-run
+actor:
+  type: synthetic-persona
+participants: 4
 defaults:
   open: true
 ```
 
-A lab is a composition (`subject` × `actors` × `execution` × `scenario` ×
-`policies`), not a hardcoded kind; there is no v1 compatibility. Run
-`npx humanish study show <lab>` to see how a manifest parses, including
-warnings for fields the engine does not consume yet.
+A study declares its `route` (`preview`, `computer-use`, `shared-world`, `terminal` or
+`scripted`) and composes `subject`, `actor`, `participants`, `caps`, `execution` and
+`policies` for it; a key the route does not read is a parse error that names the route.
+Run `npx humanish study show <study>` to see how a study file parses. A
+`humanish.lab.v2` file from 0.107 still runs with a warning; `npx humanish migrate`
+rewrites it as v3 under `studies/`.
 
 ### Many actors at once (fan-out, shared worlds, concurrency)
 
-- **Every declared participant runs live at once by default.** A 6-participant
-  roster is 6 simultaneous actors; total sessions and spend are the same either
+- **Every declared participant runs live at once by default.** A 6-entry
+  `participants` list is 6 simultaneous actors; total sessions and spend are the same either
   way, only wall-clock and simultaneity differ. `execution.concurrency` is a
   CAP, not a mode: declare it only to bound simultaneous paid desktops, and
   expect a parse warning when the cap makes participants run in waves (a green
   waved run looks identical to the all-live run you meant, so the harness says
   so up front).
 - **Separate worlds (`per-lane-worlds`) vs one shared world.** A plain
-  multi-participant computer-use lab gives each actor its OWN app instance
-  (independent studies in parallel). Add `subject.topology: shared-world` for N
+  multi-participant computer-use study gives each actor its OWN app instance
+  (independent studies in parallel). Declare `route: shared-world` for N
   actors in ONE world (a lobby, a shared DB, actors seeing each other's
   changes). Shared-world participants run at once; `execution.concurrency` must
   be at least 2 there.
@@ -274,7 +276,7 @@ warnings for fields the engine does not consume yet.
   run looks like idle tiles — another reason to leave the cap out unless you
   need it.
 
-Use committed `humanish/studies/*.yaml` for public-safe, reproducible labs. Use
+Use committed `humanish/studies/*.yaml` for public-safe, reproducible studies. Use
 ignored `.humanish/studies/*.yaml` or `.humanish/local/studies/*.yaml` for private repo
 targets, local-only dogfood, or machine-specific settings. Never commit private
 repo names, stream URLs, credential values, screenshots, logs, source snippets,
@@ -402,8 +404,8 @@ still runs by default when `OPENAI_API_KEY` is set, with a $3 cap; keep
 [`humanish/studies/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/studies/scripted-demo.yaml)
 or the example in the
 [lab manifest reference](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios):
-set `subject.appUrl` to the loopback URL, `scenario.ref` to the scenario id,
-and `scenario.mode: live`. Without `mode: live` the lab is a dry run that opens
+set `subject.appUrl` to the loopback URL, `scenario` to the scenario id,
+and `mode: live`. Without `mode: live` the study is a dry run that opens
 no browser.
 
 ```bash

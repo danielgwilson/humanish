@@ -237,8 +237,8 @@ Read every optional field defensively, and spread-omit optional fields
 
 - **A config-only deterministic `state-contract` route.** A registered,
   model-free route driving a built-in `window.app.*` bridge over the existing
-  `ScriptedPageLike.evaluate` primitive + a YAML step program, `scenario.mode:
-live` gating actuation. It would be deterministic step replay, not
+  `ScriptedPageLike.evaluate` primitive + a YAML step program, `mode: live`
+  gating actuation. It would be deterministic step replay, not
   `runComputerUseLoop`, and must not overclaim friction-loop reuse.
 - **A `subject.contract.ref` JS-module loader.** A config-referenced module
   loaded and run in-process with full harness privileges is a genuinely new trust

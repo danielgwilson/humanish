@@ -1,6 +1,6 @@
 # Task protocol support
 
-`actors[0].tasks` adds a participant protocol to the mission. Goals reach the
+`actor.tasks` adds a participant protocol to the mission. Goals reach the
 participant; hidden success criteria go only to the observation tracker. A route
 that cannot carry both halves refuses the declaration before execution. Removing
 `tasks` is an explicit choice to run a mission-only study, not an automatic fallback.
