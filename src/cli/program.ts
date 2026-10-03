@@ -386,7 +386,11 @@ export function createProgram(
   program
     .name("humanish")
     .description(PRODUCT_SENTENCE)
-    .version(CLI_VERSION)
+    .version(CLI_VERSION, "-v, --version", "Print the version.")
+    // Set before the commands register: commander copies the help option and help command into
+    // each subcommand when it is created.
+    .helpOption("-h, --help", "Show help for this command.")
+    .helpCommand("help [command]", "Show help for a command.")
     .showHelpAfterError()
     .option("--json", "Print machine-readable JSON responses where supported.")
     .configureOutput({
@@ -411,30 +415,35 @@ export function createProgram(
         "  humanish must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
         "  private screenshots, or private upstream artifacts.",
       ].join("\n"),
+    )
+    .addHelpText(
+      "afterAll",
+      "\nDocs: https://humanish.dev/docs\nEvery command and option: https://humanish.dev/docs/cli",
     );
 
+  // --help lists commands in this order: a study's workflow first, then the supporting commands.
   registerInitCommand(program, cliIo);
   registerDoctorCommand(program, cliIo);
-  registerTuiCommand(program, cliIo, { ...defaultTuiRuntime, ...io.tuiRuntime });
-  registerTelemetryCommand(program, cliIo);
-  registerKeysCommand(program, cliIo);
   registerRunCommand(program, cliIo);
+  registerWatchCommand(program, cliIo);
+  registerObserveCommand(program, cliIo);
   registerVerifyCommand(program, cliIo);
-  registerCleanupCommand(program, cliIo);
   registerReviewCommand(program, cliIo);
   registerAnalyzeCommand(program, cliIo);
+  registerFeedbackCommands(program, cliIo);
+  registerExportCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
   registerStatsCommand(program, cliIo);
-  registerExportCommand(program, cliIo);
+  registerLabCommands(program, cliIo);
   registerCommsCommands(program, cliIo);
   registerRuntimeCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);
-  registerWatchCommand(program, cliIo);
-  registerObserveCommand(program, cliIo);
+  registerCleanupCommand(program, cliIo);
+  registerKeysCommand(program, cliIo);
+  registerTelemetryCommand(program, cliIo);
   registerServeCommand(program, cliIo);
+  registerTuiCommand(program, cliIo, { ...defaultTuiRuntime, ...io.tuiRuntime });
   registerCodexCommands(program, cliIo);
-  registerLabCommands(program, cliIo);
-  registerFeedbackCommands(program, cliIo);
   // Only the root takes a stray word, so the action above can name the command it meant. Set after
   // registration: commander copies this setting into each subcommand when it is created.
   program.allowExcessArguments(true);

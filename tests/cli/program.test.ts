@@ -250,47 +250,28 @@ describe("humanish CLI scaffold", () => {
     expect(result.stdout).toContain("Public-safety boundary");
   });
 
-  it("sets a short .summary() on every top-level leaf command so the subcommand list de-wraps", () => {
-    // Commander lists .summary() (falling back to .description()) in the parent's
-    // subcommand table; a missing .summary() is how the top-level --help list used
-    // to wrap every long-description command onto two lines.
-    const program = createProgram();
-    const expectedSummaries: Record<string, string> = {
-      init: "Set up humanish/ source and .humanish/ runtime state.",
-      doctor: "Explain project readiness and missing setup.",
-      run: "Run a persona/scenario simulation or dry-run bundle.",
-      verify: "Validate a run bundle and public-safety gates.",
-      cleanup: "Write a resource cleanup inspection receipt.",
-      review: "Build a review packet from verified run evidence.",
-      runs: "List local humanish runs and latest pointers.",
-      watch: "Run participants, open the observer, stay attached.",
-      observe: "Follow a run's saved evidence over loopback http.",
-      codex: "Run Codex-native humanish integration surfaces.",
-      lab: "List, inspect, and run humanish lab manifests.",
-      feedback: "Create public-safe feedback drafts, no GitHub API.",
-    };
-
-    for (const [name, summary] of Object.entries(expectedSummaries)) {
-      const command = program.commands.find((candidate) => candidate.name() === name);
-      expect(command, `expected a top-level "${name}" command`).toBeDefined();
-      expect(command?.summary()).toBe(summary);
-      expect(summary.length).toBeLessThanOrEqual(60);
-    }
-  });
-
-  it("uses the short summaries, not the long descriptions, in the top-level --help subcommand list", async () => {
+  it("lists each visible top-level command on one line of the root --help", async () => {
+    // At 80 columns commander wraps a long summary onto indented continuation lines, which would
+    // show up here as rows that do not start with a command name.
     const result = await runCli(["--help"]);
+    const lines = result.stdout.split("\n");
+    const start = lines.indexOf("Commands:") + 1;
+    const rows = lines.slice(start, lines.indexOf("", start));
+    const program = createProgram();
+    const visible = program
+      .createHelp()
+      .visibleCommands(program)
+      .map((command) => command.name());
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Set up humanish/ source and .humanish/ runtime state.");
-    expect(result.stdout).toContain("Write a resource cleanup inspection receipt.");
-    expect(result.stdout).toContain("Follow a run's saved evidence over loopback http.");
-    expect(result.stdout).toContain("Create public-safe feedback drafts, no GitHub API.");
+    expect(rows.map((row) => row.trim().split(" ")[0])).toEqual(visible);
+    expect(visible).not.toContain("codex");
+    expect(program.commands.map((command) => command.name())).toContain("codex");
   });
 
-  it("reports the package version", async () => {
+  it.each([["--version"], ["-v"]])("reports the package version for %s", async (flag) => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
-    const result = await runCli(["--version"]);
+    const result = await runCli([flag]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");

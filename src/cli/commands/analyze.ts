@@ -42,7 +42,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .description(
       "Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.",
     )
-    .summary("Generate evidence-linked study findings.")
+    .summary("Analyze a live run and write evidence-linked findings.")
     .option("--run <id>", "Completed run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(

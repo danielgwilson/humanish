@@ -23,8 +23,10 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
   parent
     .command("watch")
     .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
-    .description("Run synthetic participants, open the observer, and keep the shell attached.")
-    .summary("Run participants, open the observer, stay attached.")
+    .description(
+      "Run a study, open its Observer and keep the shell attached. With --run, watch a saved run in place of a new one.",
+    )
+    .summary("Run a study and follow it in the Observer.")
     .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
     .option("--run <id>", "Watch an existing run id or latest pointer.")
     .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
