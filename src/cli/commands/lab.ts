@@ -12,6 +12,8 @@ import { addRunOptions, handleRun } from "./run-command.js";
 import {
   applyEnvFileOption,
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
   type LabCommandOptions,
   parsePositiveInteger,
@@ -26,7 +28,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("list")
     .description("List committed and ignored humanish lab manifests.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleLabList(io, options, command));
 
@@ -34,7 +36,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .command("inspect")
     .argument("<lab>", "Lab id or .yaml path.")
     .description("Inspect a humanish lab manifest without running it.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((labName, options, command) => handleLabInspect(io, labName, options, command));
 
@@ -44,17 +46,14 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .description(
       "Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .addOption(
       new Option("--reachability <mode>", "Reachability mode.")
         .choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"])
         .default("metadata"),
     )
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
-    .option(
-      "--env-file <path>",
-      "Load a local env file for this preflight without persisting values.",
-    )
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((labName, options, command) => handleLabPreflight(io, labName, options, command));
 

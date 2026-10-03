@@ -35,7 +35,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
   )
     .option(
       "--expose",
-      "CUA lab only: expose the live run through an authenticated edge so you can watch from a phone. Requires edge auth.",
+      "Computer-use studies only: share the live run through an authenticated tunnel, to watch from a phone. Requires --oauth or --public-url.",
     )
     .addOption(
       new Option(
@@ -56,22 +56,19 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
       "--allow-email <addr>",
       "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.",
       collectRepeated,
-      [],
     )
     .option(
       "--allow-domain <domain>",
       "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.",
       collectRepeated,
-      [],
     )
     .option(
       "--public-url <origin>",
       "Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose.",
     )
-    .option(
-      "--safe",
-      "Not applicable to watch: a live run is never share_ready, so --safe (an `observe --all` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain).",
-    )
+    // Hidden: watch rejects --safe with a pointer to the library filter and to edge auth, which
+    // a bare "unknown option" would lose.
+    .addOption(new Option("--safe").hideHelp())
     .addHelpText(
       "after",
       [
@@ -82,8 +79,8 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
         "  humanish watch",
         "  humanish watch first-run",
         "",
-        "Watch a live CUA run from your phone (tunnel-edge auth):",
-        "  humanish watch my-cua-lab --expose --tunnel ngrok --oauth google --allow-email you@example.com",
+        "Watch a live computer-use run from your phone through an authenticated tunnel:",
+        "  humanish watch my-browser-study --expose --tunnel ngrok --oauth google --allow-email you@example.com",
         "",
         "Agent/CI path:",
         "  humanish watch --json --no-open",
@@ -103,8 +100,8 @@ interface WatchOptions extends LabCommandOptions {
   tunnel?: "ngrok";
   tunnelDomain?: string;
   oauth?: "google";
-  allowEmail: string[];
-  allowDomain: string[];
+  allowEmail?: string[];
+  allowDomain?: string[];
   publicUrl?: string;
   safe?: boolean;
 }
@@ -165,7 +162,7 @@ async function handleWatch(
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
       message:
-        "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish observe --all --expose`.",
+        "--expose/--tunnel/--oauth apply only to a live computer-use run; to expose finished evidence use `humanish observe --all --expose`.",
     });
     return;
   }

@@ -65,7 +65,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish doctor`: Explain project readiness and missing humanish setup.
 - `humanish run`: Run a study, as a dry run or with live participants. This is the everyday command.
 - `humanish watch`: Run a study, open its Observer and keep the shell attached.
-- `humanish observe`: Open a saved run in the Observer, served on http://127.0.0.1. With --all, serve the run library.
+- `humanish observe`: Open a saved run in the Observer, served on http://127.0.0.1; without --run, the latest. With --all, serve the run library, opening on --run when given.
 - `humanish verify`: Check a run's evidence and share safety.
 - `humanish review`: Show a run's review: verdict, summary and gaps.
 - `humanish analyze`: Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.

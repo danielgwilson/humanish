@@ -35,6 +35,7 @@ const STRING_KINDS = [
   "string-slice",
   "string-rationale",
   "string-plural-s",
+  "string-cua",
   "string-caps",
   "prompt-markers",
 ] as const;
@@ -408,6 +409,17 @@ describe("prose:check counts prose in src strings apart from comments", () => {
     expect(dashes.count).toBe(0);
     expect(slice.count).toBe(0);
     expect(plural.count).toBe(0);
+  });
+
+  it("counts CUA as a word in strings, outside identifiers and code spans", async () => {
+    const strings = [
+      'const label = "CUA desktop";',
+      'const code = "HUMANISH_CUA_LAB_FANOUT_INVALID";',
+      'const help = "See `CUA` in the glossary.";',
+      "",
+    ].join("\n");
+    const hits = await hitsOf("string-cua", strings);
+    expect(hits.words).toEqual(["CUA"]);
   });
 
   it("counts strings only under src", async () => {

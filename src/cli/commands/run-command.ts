@@ -7,7 +7,10 @@ import { runLabCommand } from "./lab-run.js";
 import {
   applyEnvFileOption,
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
   formatRunHuman,
+  freePortOption,
   JSON_OPTION_DESCRIPTION,
   type LabCommandOptions as RunOptions,
   parsePositiveInteger,
@@ -21,17 +24,17 @@ export type { RunOptions };
 export function addRunOptions(command: Command): Command {
   return command
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
-    .option("--open", "Open the observer in the default browser.")
+    .option("--open", "Open the Observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without an attached watch server.")
-    .option("--port <port>", "Local observer server port when following.", "0")
+    .addOption(freePortOption())
     .option(
       "--count <count>",
       "Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab.",
     )
     .option(
       "--rerun-failed-from <run>",
-      "Computer-use labs only: start a new run for the failed participants of a prior run.",
+      "Computer-use studies only: start a new run for the failed participants of a prior run.",
     )
     .option(
       "--participants <ids>",
@@ -39,10 +42,10 @@ export function addRunOptions(command: Command): Command {
     )
     .option(
       "--scorer <path>",
-      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code.",
+      "Score with this .mjs module, a path inside the repo, in place of review.scorer.ref. It runs as code, so review it first. Terminal, computer-use and shared-world studies only.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--env-file <path>", "Load a local env file for this run without persisting values.")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option(
       "--run-id <id>",
       "Explicit run id for deterministic fixture tests; refused when that run already exists.",

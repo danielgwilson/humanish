@@ -6,6 +6,8 @@ import type { CodexAppServerUiState } from "../../actors/codex/app-server-ui.js"
 import { redactText } from "../../evidence/redaction.js";
 import {
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  freePortOption,
   JSON_OPTION_DESCRIPTION,
   parseObserverPort,
   parseTimeoutMs,
@@ -41,13 +43,13 @@ export function registerCodexCommands(parent: Command, io: CliIo): void {
     .description(
       "Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--prompt <text>", "Prompt to submit to Codex app-server.")
     .option("--prompt-file <path>", "Read the Codex app-server prompt from a file.")
     .option("--run-root <path>", "Artifact directory for redacted app-server evidence.")
     .option("--state-file <path>", "State JSON file for external observers.")
     .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(900_000))
-    .option("--port <port>", "Local browser UI port.", "0")
+    .addOption(freePortOption())
     .option("--model <model>", "Optional Codex model override.")
     .addOption(
       new Option("--sandbox <mode>", "Turn sandbox policy.")
