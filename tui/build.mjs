@@ -1,19 +1,19 @@
-// Bundle the Ink app to ONE file that ships inside the humanish package.
+// Bundle the Ink app to one file that ships inside the humanish package.
 //
 // Why bundle at all: `npx humanish tui` has to work first-try. Ink pulls ~25 transitive
-// dependencies, and making them optional peers does not work — npm does not install optional
+// dependencies, and making them optional peers does not work: npm does not install optional
 // peerDependencies, so the command would fail on exactly the fresh machine it most needs to work
 // on. Making them ordinary dependencies would instead put that tree in every user's install,
 // including the agents who never open a terminal UI. Bundling puts the bytes in the tarball and
 // nothing in the user's node_modules.
 //
-// The bundle is a VIEW LAYER ONLY. Everything humanish knows how to do — reading the run index,
-// projecting it, launching runs — is injected by the CLI (see src/tui/contract.ts), so this file
+// The bundle is a view layer only. Everything humanish knows how to do (reading the run index,
+// projecting it, launching runs) is injected by the CLI (see src/tui/contract.ts), so this file
 // never becomes a second copy of the product's logic that can drift from the tested one.
 
 import { build } from "esbuild";
 
-// Ink imports `react-devtools-core` at module scope and only USES it when DEV is set. Marking it
+// Ink imports `react-devtools-core` at module scope and only uses it when dev is set. Marking it
 // `external` leaves a static import that Node resolves eagerly at load, so the published bundle
 // would crash on a machine that (correctly) does not have this optional peer installed. It has to
 // be replaced with an empty module, not externalized.

@@ -30,7 +30,7 @@ import {
   scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
-import { MODEL_RATES } from "../../run/pricing.js";
+import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
 import type { ConcurrentSharedWorldLabErrorCode } from "./types.js";
 
 /** The error a shared-world lab returns before a run starts. */
@@ -110,11 +110,7 @@ export function planSharedWorldLab(
   if (!input.dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)) {
     const model = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
     if (!MODEL_RATES[model])
-      return refuse(
-        "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
-        `The declared spend cap cannot be enforced for unpriced model "${model}".`,
-        actor,
-      );
+      return refuse("HUMANISH_SHARED_WORLD_UNPRICED_CAP", unpricedCapMessage(model), actor);
   }
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason) return refuse(invalid, receivingReason, actor);
@@ -174,7 +170,7 @@ export function planSharedWorldLab(
               externalCatch: plane.kind === "external-public",
             }),
             // The external-public plane reads the host's lobby code with the OpenAI API, whatever
-            // brain drives the seats.
+            // brain drives the participants.
             ...(plane.kind === "external-public" && brain.kind !== "openai"
               ? [{ kind: "key" as const, name: "OPENAI_API_KEY" as const }]
               : []),

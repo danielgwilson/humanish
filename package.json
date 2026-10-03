@@ -1,13 +1,13 @@
 {
   "name": "humanish",
   "version": "0.107.0",
-  "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
+  "description": "Synthetic user research for apps, CLIs, and agent-facing product flows.",
   "keywords": [
-    "agent-harness",
     "cli",
-    "persona-simulation",
-    "ui-testing",
-    "ux-research"
+    "computer-use",
+    "synthetic-users",
+    "usability-testing",
+    "user-research"
   ],
   "homepage": "https://github.com/danielgwilson/humanish#readme",
   "bugs": {
@@ -74,7 +74,7 @@
     "docs:generate": "tsx scripts/generate-cli-docs.ts",
     "docs:check": "tsx scripts/generate-cli-docs.ts --check && tsx scripts/check-doc-paths.ts && tsx scripts/check-doc-symbols.ts && tsx scripts/check-doc-comments.ts",
     "observer:browser:proof": "node scripts/observer-browser-proof.mjs",
-    "observer:iframe:proof": "node scripts/observer-iframe-proof.mjs",
+    "observer:iframe:proof": "node --import tsx scripts/observer-iframe-proof.mjs",
     "observer:chrome:proof": "node scripts/observer-chrome-proof.mjs",
     "observer:reliability:proof": "node scripts/observer-reliability-proof.mjs",
     "tui:connections:proof": "python3 scripts/tui-connections-proof.py",
@@ -84,7 +84,7 @@
     "comms:agentmail:contract": "node --import tsx scripts/agentmail-contract-check.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "node scripts/check-lint-cap.mjs --max-warnings=442",
+    "lint": "node scripts/check-lint-cap.mjs --max-warnings=440",
     "knip": "knip",
     "prose:check": "node scripts/check-code-prose.mjs",
     "vocabulary:check": "tsx scripts/check-retired-words.ts",

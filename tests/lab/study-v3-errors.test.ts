@@ -232,7 +232,7 @@ describe("route, mode and the keys a route does not read", () => {
         execution: { ...(study.execution as Raw), completionTimeoutMs: 5 },
       }),
     ).toBe(
-      "route: computer-use does not read execution.completionTimeoutMs, review.scoring (reserved for a later slice; not yet consumed). Remove them.",
+      "route: computer-use does not read execution.completionTimeoutMs, review.scoring (reserved; no route reads it yet). Remove them.",
     );
     expect(refusal({ ...scripted, actor: { type: "scripted-browser", mission: "x" } })).toBe(
       "route: scripted does not read actor.mission (the scripted-browser actor runs no model). Remove it.",

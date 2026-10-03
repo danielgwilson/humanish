@@ -78,8 +78,8 @@ export function computerUseParticipantCount(config: LabConfig): number {
 
 /**
  * A participant's id: its declared roster id, else `lane-NN` (independent participants) or `role-NN`
- * (shared-world seats) from its 0-based position. The parser's filled email recipients and the
- * routes that name participants both call this, so a filled recipient names a participant that
+ * (shared-world participants) from its 0-based position. The parser's filled email recipients and
+ * the routes that name participants both call this, so a filled recipient names a participant that
  * runs.
  */
 export function participantIdAt(
@@ -96,12 +96,12 @@ export function participantIdAt(
  * whose first actor does. Single source of truth: routeOf and the warning logic
  * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
  * scripted-browser route arrived. Behavior-preserving for every parse-valid config:
- * routeOf keeps a bare app-url fallback to the cua backend so library-API configs
+ * routeOf keeps a bare app-url fallback to the computer-use route so library-API configs
  * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
 export function isComputerUseComposition(config: LabConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
-  // routes to the cua backend exactly like an app-url subject with a computer-use actor.
+  // routes to the computer-use route exactly like an app-url subject with a computer-use actor.
   if (config.subject.source === "app-url" || config.subject.source === "local-app") {
     return actorResolvesToComputerUse(config.actors[0]?.type);
   }
@@ -128,10 +128,10 @@ export function isComputerUseComposition(config: LabConfig): boolean {
  * True when this config routes to the shared-world route: a clone or local-tree subject
  * on a hosted desktop whose first actor resolves to a computer-use actor and that declares the
  * `shared-world` topology. Mirror of isComputerUseComposition; the single source of truth shared by
- * routeOf (which checks it before the cua route) and the warning logic. Every
+ * routeOf (which checks it before the computer-use route) and the warning logic. Every
  * shared-world study runs its participants at once (`execution.concurrency` >= 2). The same
  * clone/local-tree × e2b-desktop × computer-use composition without `topology: shared-world` stays per-lane-worlds
- * (the cua route); the topology declaration is the override switch.
+ * (the computer-use route); the topology declaration is the override switch.
  */
 export function isSharedWorldComposition(config: LabConfig): boolean {
   return (
@@ -156,7 +156,7 @@ export function isProvisionedSharedWorldComposition(config: LabConfig): boolean 
  * seed. The operator-ownership attestation `subject.publicTarget` is required (validated in
  * externalPublicSharedWorldValidationReason, not here; this predicate is the router only, so a
  * half-declared external-public config still routes here to get its precise fail-closed reason
- * rather than silently downgrading to the per-participant cua route).
+ * rather than silently downgrading to the per-participant computer-use route).
  */
 export function isExternalPublicSharedWorldComposition(config: LabConfig): boolean {
   return (

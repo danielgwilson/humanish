@@ -98,7 +98,7 @@ export function localOnlyBanner(reasons: string[]): string {
   const why = reasons.length === 0 ? "" : ` (${reasons.join(", ")})`;
   return (
     `<div id="humanish-local-only" role="alert" tabindex="0" style="position:sticky;top:0;z-index:2147483647;max-height:40vh;overflow:auto;background:#7a1f1f;color:#fff;font:600 14px/1.4 system-ui,sans-serif;padding:10px 16px;text-align:center">` +
-    `LOCAL ONLY. This export was made from a bundle that is not share-safe${why}. Do not forward it outside the team that owns the run.` +
+    `Local only. This export was made from a bundle that is not share-safe${why}. Do not forward it outside the team that owns the run.` +
     `</div>`
   );
 }
@@ -586,7 +586,7 @@ export function formatExportHuman(result: ExportResult | ExportFailure): string 
   const lines = [
     `humanish export ${result.runId}`,
     `file: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${result.embeddedImages} image(s) embedded)`,
-    `share safety: ${result.shareSafety.status}${result.watermarked ? " — WATERMARKED LOCAL ONLY" : ""}`,
+    `share safety: ${result.shareSafety.status}${result.watermarked ? " (watermarked: local only)" : ""}`,
     ...result.warnings.map((warning) => `warning: ${warning}`),
   ];
   return `${lines.join("\n")}\n`;

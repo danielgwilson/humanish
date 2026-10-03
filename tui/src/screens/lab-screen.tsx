@@ -26,12 +26,12 @@ export type LabItem = { kind: "start"; mode: LabRunMode } | { kind: "run"; run: 
 type LabRunMode = "dry-run" | "live";
 
 /**
- * TWO start rows, not one row with a hidden mode.
+ * Two start rows, not one row with a hidden mode.
  *
  * This was one row carrying a ←/→ toggle, on the argument that arming made a misread toggle
  * harmless. Both halves of that were wrong in practice. The stakeholder it was built for could not
- * find how to start a real run at all — a mode you have to press a key to discover is a mode most
- * people never discover — and the toggle ate ←/→ on that row, so the two keys that mean back and
+ * find how to start a real run at all: a mode you have to press a key to discover is a mode most
+ * people never discover, and the toggle ate ←/→ on that row, so the two keys that mean back and
  * open everywhere else in the app silently meant something different here. Splitting the row
  * restores both, and costs no safety: the live row still arms and still restates the spend.
  */
@@ -64,7 +64,7 @@ export interface LabScreenProps {
 
 /**
  * The object, and where the lifecycle lives. What this study does, what it typically costs, one
- * action, then its runs newest-first — so idle, running and finished are one screen rather than
+ * action, then its runs newest-first, so idle, running and finished are one screen rather than
  * three, and the run you just started appears where you are already looking.
  */
 export function LabScreen(props: LabScreenProps): React.ReactElement {
@@ -82,8 +82,8 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
             summary.subject,
             summary.participants,
             summary.model,
-            // The effort is part of "which model" — a knob nobody could see is how it stayed
-            // pinned at the provider default for every run humanish ever did (#497).
+            // The effort is part of "which model": a knob nobody could see is how it stayed
+            // pinned at the provider default for every run humanish ever did.
             summary.reasoningEffort === undefined ? undefined : `${summary.reasoningEffort} effort`,
           ]
             .filter(Boolean)
@@ -92,7 +92,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       )}
       <Box width={columns}>
         <Text dimColor wrap="truncate-end">
-          {/* The SAME rule the labs list uses. Falling back to the mode-mixed expectation here put
+          {/* The same rule the studies list uses. Falling back to the mode-mixed expectation here put
               a dry-run-derived figure directly above a control that spends money. */}
           {labSummaryLine(row)}
           {capsLine(summary)}
@@ -134,13 +134,13 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         </Box>
       )}
       {summary?.keysReady === false ? (
-        // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
-        // in a shell they sourced, a password manager, another project — and what they need is the
+        // Naming what is missing is only half of it. Someone reading this has the keys somewhere
+        // (in a shell they sourced, a password manager, another project), and what they need is the
         // one command that makes them resolve here, every time, without pasting a value into a
         // terminal that is recording frames.
-        // WRAPS, where every other line on this screen truncates. Truncation is right for a
+        // Wraps, where every other line on this screen truncates. Truncation is right for a
         // status: half a duration still reads as a duration. It is wrong for the one instruction
-        // that unblocks the screen — `humanish keys set openai` (or pass --e… ends mid-flag, and a
+        // that unblocks the screen: `humanish keys set openai` (or pass --e… ends mid-flag, and a
         // command you cannot finish typing is not advice.
         <Box flexDirection="column" width={columns}>
           <Text {...color(PALETTE.warn)}>{summary.missingKeys?.join(", ")} not found</Text>
@@ -167,7 +167,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       {canStart ? (
         <Box marginTop={1} flexDirection="column">
           <StartRows {...props} active={activeStart(items, selected)} />
-          {/* The armed prompt RESTATES the spend rather than assuming the row above was read. That
+          {/* The armed prompt restates the spend rather than assuming the row above was read. That
               was the safety argument for the old hidden toggle, and it survives the split. */}
           {props.confirming === "live" ? (
             <Box marginTop={1}>
@@ -247,7 +247,7 @@ function StartRows(props: LabScreenProps & { active: LabRunMode | undefined }): 
  * before you press anything: a dry run is free and a live one spends, so the row itself carries
  * the number rather than making you arm it to find out.
  *
- * The live row still arms — the first Enter restates the spend, the second commits — so the safety
+ * The live row still arms (the first Enter restates the spend, the second commits) so the safety
  * that justified the old hidden toggle is intact while the option is now visible.
  */
 function StartRow({
@@ -267,8 +267,8 @@ function StartRow({
   );
   // The price stays even when the keys are missing. Rev 9 replaced it with the gate, and a
   // participant studying this screen reported exactly the consequence: "switching the TUI to live
-  // mode displayed no estimate or budget — only missing-key warnings". Whether a run is worth
-  // setting keys up FOR is the decision being made at that moment, so the number has to survive
+  // mode displayed no estimate or budget: only missing-key warnings". Whether a run is worth
+  // setting keys up for is the decision being made at that moment, so the number has to survive
   // the blocker (labs/tui-self-study.yaml).
   const valueText = (
     <Text dimColor={!blocked} {...color(blocked ? PALETTE.warn : undefined)}>
@@ -391,9 +391,9 @@ function RunList({
 }
 
 /**
- * The live run gets real vertical space and leads with the PARTICIPANT, then their thinking in
+ * The live run gets real vertical space and leads with the participant, then their thinking in
  * full, then activity and spend as one quiet trailing line. Mid-run, cost is a guard rail rather
- * than the subject — it answers a question before you start and after you finish.
+ * than the subject: it answers a question before you start and after you finish.
  */
 function LiveRun({
   run,

@@ -33,14 +33,15 @@ export function computerUseValidationReason(config: LabConfig): string | null {
   if (structuralReason) {
     return structuralReason;
   }
-  // clone.fanout is a declared behavior change: rejected on the cua route (was inert-warned).
-  // Fan-out is declared via `actors[0].count` or `actors[0].lanes`; subject.clone.fanout never applied here.
+  // clone.fanout is a declared behavior change: rejected on the computer-use route (was
+  // inert-warned). Fan-out is declared via `actors[0].count` or `actors[0].lanes`;
+  // subject.clone.fanout never applied here.
   if (config.subject.clone?.fanout !== undefined) {
     return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)";
   }
   if (roster !== undefined) {
     if (actor?.count !== undefined) {
-      return "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both.";
+      return "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both.";
     }
     if (focusOf(actor) !== undefined) {
       return "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant.";
@@ -54,7 +55,7 @@ export function computerUseValidationReason(config: LabConfig): string | null {
     const targeted = roster.filter((entry) => entry.target !== undefined);
     if (targeted.length > 0) {
       if (config.subject.source !== "app-url") {
-        return "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism.";
+        return "`actors[0].lanes[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`.";
       }
       if (roster.some((entry) => entry.entry !== undefined)) {
         return "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path.";
@@ -66,7 +67,7 @@ export function computerUseValidationReason(config: LabConfig): string | null {
   }
   const participantCount = computerUseParticipantCount(config);
   if (participantCount > MAX_COMPUTER_USE_PARTICIPANTS) {
-    return `Computer-use fan-out is capped at ${MAX_COMPUTER_USE_PARTICIPANTS} participants (declared ${participantCount}); N concurrent paid desktops is real spend, and there is no override above the cap this slice.`;
+    return `A computer-use study runs at most ${MAX_COMPUTER_USE_PARTICIPANTS} participants, and this one declares ${participantCount}. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies.`;
   }
   // Public targets fan out into N independent worlds driving the same public app, which is an
   // ambiguous shared-world-ish shape, not a per-participant target swarm. Permit N>1 public runs only
@@ -80,7 +81,7 @@ export function computerUseValidationReason(config: LabConfig): string | null {
     declaredTargets(config).length === 0 &&
     config.subject.topology !== "shared-world"
   ) {
-    return "policies.allowPublicTargets cannot be combined with fan-out to more than one participant (N>1): N participants against one declared public target is the SHARED-WORLD topology (layer 7, #164), not `per-lane-worlds`. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target participant.";
+    return "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant.";
   }
   return null;
 }
@@ -145,7 +146,7 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
     return structuralReason;
   }
   if (config.subject.source !== "clone" && config.subject.source !== "local-tree") {
-    return "`subject.topology: shared-world` requires `subject.source: clone` or `subject.source: local-tree` - the shared world is ONE provisioned, served, seeded plane (#164).";
+    return "`subject.topology: shared-world` needs `subject.source: clone` or `local-tree`, which humanish serves as one seeded app every participant uses, or `app-url` for a public deployment you own.";
   }
   if (config.execution?.target !== "e2b-desktop") {
     return "`subject.topology: shared-world` requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against one in-sandbox app.";
@@ -155,14 +156,14 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
   }
   const serve = config.subject.serve;
   if (!serve) {
-    return "`subject.topology: shared-world` requires `subject.serve` (start + url) — the lab serves ONE shared app in-sandbox that every role drives.";
+    return "`subject.topology: shared-world` needs `subject.serve` (start and url): humanish starts one copy of the app in the sandbox, and every participant uses it.";
   }
   const roster = rosterOf(config.actors[0]);
   if (!roster || roster.length < 2) {
-    return "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction).";
+    return "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with.";
   }
   if (!config.subject.state?.checkpoint || config.subject.state.checkpoint.length === 0) {
-    return "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app.";
+    return "`subject.topology: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app.";
   }
   for (const entry of roster) {
     if (entry.entry !== undefined && resolveEntryUrl(serve.url, entry.entry) === null) {
@@ -308,7 +309,8 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
  * Shared-world participants share one live app, so at least two must be live at once. The
  * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0; the parser
  * fills an omitted concurrency with the participant count. Both callers check it after their
- * two-participant roster floor, so a one-seat roster gets the roster refusal, never this one.
+ * two-participant roster floor, so a one-participant roster gets the roster refusal, never this
+ * one.
  */
 function sharedWorldConcurrencyReason(config: LabConfig): string | null {
   // Direct library callers skip the parser, so an omitted value defaults here exactly as the
@@ -335,11 +337,11 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
   const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
   if (sharedWorldConcurrency) return sharedWorldConcurrency;
   if (config.subject.exposure !== "synthetic") {
-    return "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL).";
+    return "A shared-world study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic and seeded.";
   }
   const serve = config.subject.serve;
   if (!serve || !serve.start.includes("0.0.0.0")) {
-    return "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)";
+    return "A shared-world study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0, and a loopback-only server answers 502. The readiness probe still uses loopback.";
   }
   if (config.subject.clone?.keep === true || config.subject.localTree?.keep === true) {
     const keepField =
@@ -366,7 +368,7 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
     return structuralReason;
   }
   if (config.subject.source !== "app-url") {
-    return "the external-public shared-world route requires `subject.source: app-url` — a real public deployment is used directly as the shared plane (no clone, no provisioned subject).";
+    return "An external-public shared-world study needs `subject.source: app-url`: the participants share a public deployment you already run, so there is nothing to clone or serve.";
   }
   if (config.execution?.target !== "e2b-desktop") {
     return "the external-public shared-world route requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against the one public deployment.";
@@ -381,42 +383,42 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
   if (sharedWorldConcurrency) return sharedWorldConcurrency;
   if (config.policies?.allowPublicTargets !== true) {
-    return "the external-public shared-world route requires `policies.allowPublicTargets: true` — the shared plane is a real non-loopback public deployment.";
+    return "An external-public shared-world study needs `policies.allowPublicTargets: true`, because the participants drive a public deployment.";
   }
   const appUrl = config.subject.appUrl ?? "";
   if (!isHttpUrl(appUrl) || isLoopbackUrl(appUrl)) {
-    return "the external-public shared-world route requires a non-loopback http(s) `subject.appUrl` — a loopback URL is not a shared public plane (use the getHost provisioned route for a local subject).";
+    return "An external-public shared-world study needs a public http(s) `subject.appUrl`, not a loopback URL. For an app you run locally, use a clone or local-tree subject, which humanish serves itself.";
   }
   // The operator-ownership attestation (the honest analog of exposure: synthetic; you cannot claim
   // synthetic on a real site, but you must attest you own/operate it). Author-trust; unverifiable.
   if (config.subject.publicTarget?.authorized !== true) {
-    return "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).";
+    return "An external-public shared-world study needs `subject.publicTarget: { owner, authorized: true }` to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it.";
   }
   // No provisioned-subject field is allowed: with no sandbox they cannot act, so they are rejected
   // with a precise reason, never silently ignored. exposure: synthetic in particular
   // would be a false claim on a real site (the harness neither provisioned nor exposed it).
   if (config.subject.exposure !== undefined) {
-    return "`subject.exposure: synthetic` is forbidden on the external-public shared-world route — you cannot attest a real public deployment is synthetic seeded data; use `subject.publicTarget` to attest ownership instead.";
+    return "`subject.exposure: synthetic` does not apply to an external-public shared-world study: a real public deployment is not seeded synthetic data. Declare ownership with `subject.publicTarget` instead.";
   }
   if (config.subject.serve !== undefined) {
-    return "`subject.serve` is forbidden on the external-public shared-world route — the harness does not serve the plane (it is an already-deployed public app); there is no in-sandbox serve to run.";
+    return "`subject.serve` does not apply to an external-public shared-world study: the app is already deployed, so humanish serves nothing. Remove `subject.serve`.";
   }
   if (
     config.subject.state?.seed !== undefined ||
     config.subject.state?.checkpoint !== undefined ||
     config.subject.state !== undefined
   ) {
-    return "`subject.state` (seed/checkpoint/external) is forbidden on the external-public shared-world route — the harness neither seeds nor snapshots the plane (no in-sandbox filesystem to digest); no authoritative shared-state proof is possible on this class.";
+    return "`subject.state` (seed, checkpoint or external) does not apply to an external-public shared-world study: humanish cannot seed or read a deployment it does not run. Remove `subject.state`.";
   }
   if (config.subject.clone !== undefined || config.subject.repos !== undefined) {
-    return "`subject.clone`/`subject.repos` are forbidden on the external-public shared-world route — nothing is cloned; the public deployment IS the plane.";
+    return "`subject.clone` and `subject.repos` do not apply to an external-public shared-world study: the participants use the public deployment, so nothing is cloned. Remove them.";
   }
   if (roster.some((entry) => entry.entry !== undefined)) {
     return "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI.";
   }
   const hostEntries = roster.filter((entry) => entry.host === true);
   if (hostEntries.length !== 1) {
-    return `the external-public shared-world route requires EXACTLY ONE \`host: true\` participant (the designated host that creates the shared session; got ${hostEntries.length}). The other ≥1 participants are followers that join it.`;
+    return `An external-public shared-world study needs exactly one \`host: true\` participant, the one who creates the shared session, and this study has ${hostEntries.length}. Every other participant joins that session.`;
   }
   return null;
 }

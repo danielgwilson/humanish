@@ -75,10 +75,12 @@ was not repeated in the message trace.
 ### `draft`
 
 Builds structured feedback from the first usable run candidate, or the candidate
-selected with `--candidate`. With no candidate, a dry run produces a contract
-follow-up and a live run produces a summary of its recorded review. These
-fallbacks do not add a finding to the candidate list. All drafts require a
-verified `share_ready` run and are written under the run bundle, not GitHub.
+selected with `--candidate`. With no candidate, a live run produces a summary of
+its recorded review; that fallback does not add a finding to the candidate list.
+A dry run tests no product behavior, so `draft`, `verify`, `issue` and
+`issue-url` refuse it with `HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN`. All drafts
+require a verified `share_ready` live run and are written under the run bundle,
+not GitHub.
 
 ### `verify`
 

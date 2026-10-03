@@ -1,36 +1,24 @@
 schema: humanish.lab.v2
 id: first-contact
 title: A coding agent meets humanish for the first time (self-study, terminal route)
-description: >
-  humanish studying humanish. A real autonomous terminal agent lands in a fresh Linux shell,
-  finds humanish from PUBLIC SURFACES ONLY, and tries to get somewhere useful with it. The
-  participant is the population this product is actually adopted by — a coding agent doing
-  setup work on someone's behalf — so this is a first-contact usability study, not a smoke test.
-  WHY THIS EXISTS: every judgement about humanish's developer experience so far has been made
-  by people who already know how it works. That is the one perspective a maintainer cannot
-  generate, and the abandonment case is the finding we most need and least want.
-  THE MISSION DELIBERATELY NAMES NO COMMAND. Not `init`, not `doctor`, not `tui`. Whether the
-  agent discovers them is the measurement; a mission that lists them would answer the question
-  by asking it. Read the transcript for what it reached for FIRST, and for what it never found.
-  WHAT TO READ AFTERWARDS, in order of how much it would change our work:
-  1. Did the agent ever discover that `humanish tui` exists? It is the human surface, and if an
-     agent setting humanish up for a person never learns to hand off to it, that is a docs
-     finding, not a TUI finding.
-  2. When it ran a command that cannot work in a pipe, did the refusal get it unstuck? The TUI
-     refuses a non-TTY with a structured error that is DESIGNED to name the command that would
-     have answered the question instead. This is the one error message in the product aimed
-     squarely at agents, and this lab is the only way to find out whether it lands.
-  3. Where did it stall, guess, or give up — and did it ever believe it had succeeded when it
-     had not? A confident wrong summary is worse than a stall.
-  NO NESTED SPEND. The agent's own model requests go through an E2B egress rule that attaches
-  the runtime key outside the sandbox (runtimeAuth: openai-egress), so the agent never holds the
-  key, and it gets no E2B key and no provider credentials, so it cannot launch a study of its own.
-  The proxy stays able to spend for any process in the sandbox until teardown; the mission says
-  what the credential is for. That bound is deliberate and
-  it is also honest as a study design — it reproduces exactly what a developer meets on day one
-  before any keys are set, which is where adoption actually fails.
-  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
-  launches no sandbox. A live run needs OPENAI_API_KEY and a gitignored .humanish/labs/ copy.
+description: >-
+  humanish studying humanish. An autonomous terminal agent starts in a fresh Linux shell, finds
+  humanish from its public pages only, and tries to get somewhere useful with it. Coding agents
+  doing setup for a person are the population that adopts humanish, so this is a first-contact
+  usability study. Every judgement of humanish's developer experience so far came from people who
+  already know how it works, and a maintainer cannot supply the newcomer's view. The mission names
+  no command (not init, doctor or tui): whether the agent discovers them is the measurement. Read
+  afterwards, in order of how much the answer would change the work: 1) whether the agent ever
+  learned that humanish tui exists, since an agent that never learns to hand off to the person's
+  surface points at the docs; 2) when it ran a command that cannot work in a pipe, whether the
+  refusal, which names the command to use instead, got it unstuck; 3) where it stalled, guessed or
+  gave up, and whether it believed it had succeeded when it had not. The agent never holds a key:
+  its model requests go through an E2B egress rule that adds the runtime key outside the sandbox
+  (runtimeAuth: openai-egress), and it gets no E2B or provider credentials, so it cannot start a
+  study of its own. The proxy can still spend for any process in the sandbox until teardown, and the
+  mission says what the credential is for. That matches what a developer meets on day one, before
+  setting any keys. Committed as a dry run, which builds a dry-run bundle at no cost. A live run
+  needs OPENAI_API_KEY and a gitignored .humanish/labs/ copy.
 subject:
   source: terminal-product
   product:

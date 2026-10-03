@@ -91,7 +91,7 @@ export async function validateTerminalProductEvidence(
     findings.push("cleanup proof is missing");
   } else if (cleanup.killed !== true || cleanup.remaining !== 0) {
     findings.push(
-      `cleanup not proven by id (killed=${String(cleanup.killed)}, remaining=${String(cleanup.remaining)}); a run that cannot prove sandbox teardown fails closed`,
+      `sandbox cleanup is not proven by id (killed=${String(cleanup.killed)}, remaining=${String(cleanup.remaining)}), so the run cannot pass`,
     );
   }
 
@@ -142,7 +142,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   const cost = isRecord(ledgers.cost) ? ledgers.cost : undefined;
   if (!cost || cost.schema !== "humanish.terminal-cost-ledger.v1") {
     findings.push(
-      "missing or malformed cost ledger (humanish.terminal-cost-ledger.v1) — a live terminal-product run must derive a cost ledger",
+      "missing or malformed cost ledger (humanish.terminal-cost-ledger.v1): a live terminal-product run must record one",
     );
     return findings;
   }
@@ -179,7 +179,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   const proof = isRecord(ledgers.noSpendProof) ? ledgers.noSpendProof : undefined;
   if (!proof || proof.schema !== "humanish.terminal-no-spend-proof.v1") {
     findings.push(
-      "missing or malformed no-spend proof (humanish.terminal-no-spend-proof.v1) — the no-spend proof must be derived from the ledger",
+      "missing or malformed no-spend proof (humanish.terminal-no-spend-proof.v1): a live terminal-product run must derive one from its cost ledger",
     );
     return findings;
   }
@@ -191,7 +191,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   for (const category of knownZeroLines) {
     if (nullCategories.has(String(category))) {
       findings.push(
-        `no-spend proof claims zero on line "${String(category)}" but the cost ledger marks it null (UNMEASURED); a proof may not claim zero on a line it did not measure`,
+        `the no-spend proof claims zero on line "${String(category)}", but the cost ledger marks that line unmeasured (null), and a proof may not claim zero for a line it did not measure`,
       );
     }
   }
@@ -203,7 +203,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   const maxUsd = typeof proof.maxUsd === "number" ? proof.maxUsd : null;
   if (maxUsd !== null && Number.isFinite(knownTotalUsd) && knownTotalUsd > maxUsd) {
     findings.push(
-      `observed KNOWN spend ${knownTotalUsd} USD exceeds the declared cap maxUsd=${maxUsd}; the run must fail closed, not verify green`,
+      `measured spend ${knownTotalUsd} USD is over the declared cap maxUsd=${maxUsd}, so the run cannot pass verification`,
     );
   }
   // A proof that asserts `satisfied:true` while a known line is non-zero (knownNonZeroLines) is

@@ -13,11 +13,14 @@ const end = "<!-- humanish-cli:end -->";
 const check = process.argv.includes("--check");
 const program = createProgram();
 
+/** Every command `--help` lists, depth first. Hidden commands and their subcommands are skipped. */
 function walk(
   command: Command,
   trail: string[] = [],
 ): { command: Command; name: string; depth: number }[] {
+  const visible = command.createHelp().visibleCommands(command);
   return command.commands.flatMap((child) => {
+    if (!visible.includes(child)) return [];
     const names = [...trail, child.name()];
     return [
       { command: child, name: `humanish ${names.join(" ")}`, depth: names.length },
@@ -109,9 +112,9 @@ const commandIndex = [
   "",
   "This command index is generated from the shipped CLI. Full arguments and options: https://humanish.dev/docs/cli",
   "",
-  ...entries.map(
-    ({ command, name }) => `- \`${name}\`: ${command.summary() || command.description()}`,
-  ),
+  // The full description: --help shows the one-line summary, and an agent reading this file needs
+  // the rest (what tui refuses, what reclaim never touches).
+  ...entries.map(({ command, name }) => `- \`${name}\`: ${command.description()}`),
   "",
   end,
 ].join("\n");
@@ -122,6 +125,14 @@ const nextLlms =
   llms.slice(0, llms.indexOf(start)) + commandIndex + llms.slice(llms.indexOf(end) + end.length);
 
 let stale = false;
+// Commander's default help text means program.ts lost its helpOption setting, which every
+// subcommand inherits.
+if (reference.includes("display help for command")) {
+  process.stderr.write(
+    "The CLI reference shows commander's default help text; set helpOption in program.ts\n",
+  );
+  stale = true;
+}
 for (const [path, expected] of [
   [referencePath, reference],
   [llmsPath, nextLlms],

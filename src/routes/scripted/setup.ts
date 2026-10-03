@@ -16,12 +16,9 @@ import type { ScriptedPlan } from "../../lab/plan-types.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
-import {
-  SCRIPTED_BROWSER_LAB_SCHEMA,
-  type ScriptedBrowserLabResult,
-  type ScriptedRunInput,
-} from "./types.js";
+import { type ScriptedBrowserLabResult, type ScriptedRunInput } from "./types.js";
 import type { LabDeps } from "../../lab/lab-deps.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 // Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
 // sandbox-seconds are pennies; a short default only truncated slow-loading subjects.
@@ -78,10 +75,9 @@ export async function prepareScriptedRun(
     code: NonNullable<ScriptedBrowserLabResult["error"]>["code"],
     message: string,
   ): ScriptedBrowserLabResult => ({
-    schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+    ...studyResultIdentity("scripted", plan.labId),
     ok: false,
     cwd,
-    labId: plan.labId,
     actor: plan.actor,
     appUrl: evidenceAppUrl,
     dryRun,

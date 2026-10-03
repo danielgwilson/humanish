@@ -54,7 +54,7 @@ export interface ProbeSummary {
   unixSockets: string[];
   /** TCP remotes, with the loopback provider shown as `<loopback>`. */
   tcpRemotes: string[];
-  /** Connected UDP remotes; `*` is an unconnected UDP socket. */
+  /** Connected udp remotes; `*` is an unconnected udp socket. */
   udpRemotes: string[];
   /** The recursive before/after snapshot of the probe's work directory. */
   files: FileChanges;

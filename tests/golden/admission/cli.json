@@ -16,13 +16,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-terminal-live-no-caps --json": {
+  "run adm-terminal-live-no-caps --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.terminal-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "terminal",
+      "studyId": "adm-terminal-live-no-caps",
+      "labId": "adm-terminal-live-no-caps",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-terminal-live-no-caps",
       "actor": "codex-exec",
       "product": "widgetsmith-cli",
       "dryRun": false,
@@ -44,7 +46,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-scripted --rerun-failed-from prior-run --json": {
+  "run adm-scripted --rerun-failed-from prior-run --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.run-result.v1",
@@ -61,7 +63,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --participants lane-01 --json": {
+  "run adm-cu --participants lane-01 --json": {
     "exitCode": 2,
     "stdout": "",
     "stderr": "error: --participants requires --rerun-failed-from.\n",
@@ -69,7 +71,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --count 0 --json": {
+  "run adm-cu --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
     "stderr": "error: --count must be a positive integer.\n",
@@ -77,13 +79,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --port 99999 --json": {
+  "run adm-cu --port 99999 --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu",
+      "labId": "adm-cu",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu",
       "actor": "openai-computer-use",
       "appUrl": "",
       "dryRun": true,
@@ -99,10 +103,13 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-preview --count 0 --json": {
+  "run adm-preview --count 0 --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.run-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "preview",
+      "studyId": "adm-preview",
+      "labId": "adm-preview",
       "ok": false,
       "cwd": "[cwd]",
       "warnings": [],
@@ -116,7 +123,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-scripted --scorer ./scorer.mjs --json": {
+  "run adm-scripted --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.run-result.v1",
@@ -125,7 +132,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_STUDY_SCORER_UNSUPPORTED_BACKEND",
-        "message": "review.scorer.ref is declared but this lab resolves to the scripted route, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, computer-use or shared-world lab."
+        "message": "review.scorer.ref is set, but this study runs on the scripted route, which cannot run a scorer. The run stops here so the scorer is not silently skipped. Use it with a terminal, computer-use or shared-world study, or remove review.scorer.ref."
       }
     },
     "stderr": "",
@@ -133,7 +140,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --scorer ./scorer.mjs --count 0 --json": {
+  "run adm-cu --scorer ./scorer.mjs --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
     "stderr": "error: --count must be a positive integer.\n",
@@ -141,13 +148,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-terminal-live-no-caps --scorer ./scorer.mjs --json": {
+  "run adm-terminal-live-no-caps --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.terminal-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "terminal",
+      "studyId": "adm-terminal-live-no-caps",
+      "labId": "adm-terminal-live-no-caps",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-terminal-live-no-caps",
       "actor": "codex-exec",
       "product": "widgetsmith-cli",
       "dryRun": false,
@@ -169,13 +178,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu-local-app --scorer ./scorer.mjs --json": {
+  "run adm-cu-local-app --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu-local-app",
+      "labId": "adm-cu-local-app",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu-local-app",
       "actor": "openai-computer-use",
       "appUrl": "http://127.0.0.1:3000/",
       "dryRun": true,
@@ -198,13 +209,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu-unpriced --json": {
+  "run adm-cu-unpriced --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu-unpriced",
+      "labId": "adm-cu-unpriced",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu-unpriced",
       "actor": "openai-computer-use",
       "appUrl": "http://127.0.0.1:3000/",
       "dryRun": false,
@@ -227,13 +240,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-shared-unpriced --json": {
+  "run adm-shared-unpriced --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.concurrent-shared-world-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "shared-world",
+      "studyId": "adm-shared-unpriced",
+      "labId": "adm-shared-unpriced",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-shared-unpriced",
       "actor": "openai-computer-use",
       "topology": "shared-world",
       "topologyMode": "concurrent",
@@ -245,7 +260,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
-        "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
+        "message": "execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
@@ -259,13 +274,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-terminal-live --scorer ./scorer.mjs --json": {
+  "run adm-terminal-live --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.terminal-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "terminal",
+      "studyId": "adm-terminal-live",
+      "labId": "adm-terminal-live",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-terminal-live",
       "actor": "codex-exec",
       "product": "widgetsmith-cli",
       "dryRun": false,
@@ -287,13 +304,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu-unpriced --scorer ./scorer.mjs --json": {
+  "run adm-cu-unpriced --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu-unpriced",
+      "labId": "adm-cu-unpriced",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu-unpriced",
       "actor": "openai-computer-use",
       "appUrl": "http://127.0.0.1:3000/",
       "dryRun": false,
@@ -316,13 +335,15 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-shared-live --scorer ./scorer.mjs --json": {
+  "run adm-shared-live --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.concurrent-shared-world-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "shared-world",
+      "studyId": "adm-shared-live",
+      "labId": "adm-shared-live",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-shared-live",
       "actor": "openai-computer-use",
       "topology": "shared-world",
       "topologyMode": "concurrent",
@@ -350,7 +371,7 @@
   },
   "watch adm-shared-live --port 99999": {
     "exitCode": 2,
-    "stdout": "humanish lab concurrent-shared-world failed\nHUMANISH_SHARED_WORLD_FAILED: --port must be an integer between 0 and 65535.\nrun: not-created\nlab: adm-shared-live\nactor: openai-computer-use\ntopology: shared-world/concurrent (2 personas, concurrency 2)\n",
+    "stdout": "humanish run adm-shared-live: live run failed\nroute: shared-world\nHUMANISH_SHARED_WORLD_FAILED: --port must be an integer between 0 and 65535.\nrun: not-created\nactor: openai-computer-use\ntopology: shared-world/concurrent (2 personas, concurrency 2)\n",
     "stderr": "",
     "runs": false,
     "subprocess": 0,
@@ -359,10 +380,12 @@
   "watch adm-cu --safe --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu",
+      "labId": "adm-cu",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu",
       "actor": "openai-computer-use",
       "appUrl": "",
       "dryRun": true,
@@ -370,7 +393,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -387,7 +410,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -404,7 +427,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -412,7 +435,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-clone-codex-app-server --json": {
+  "run adm-clone-codex-app-server --json": {
     "exitCode": 2,
     "stdout": {
       "ok": false,
@@ -447,7 +470,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-clone-no-serve --json": {
+  "run adm-clone-no-serve --json": {
     "exitCode": 2,
     "stdout": {
       "ok": false,
@@ -455,7 +478,7 @@
       "lab": "adm-clone-no-serve",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it."
+        "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
       },
       "warnings": []
     },

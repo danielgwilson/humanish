@@ -23,6 +23,10 @@ const KINDS = [
   "name-refs",
 ] as const;
 const ROOTS = ["src", "tests", "scripts", "tui"] as const;
+/** The labs root counts every kind but the two test-name kinds, each capped at 0 here. */
+const LAB_CAPS = Object.fromEntries(
+  KINDS.filter((kind) => kind !== "series-codes" && kind !== "name-refs").map((kind) => [kind, 0]),
+);
 const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui"] as const;
 /** Kinds counted in src string literals only. */
 const STRING_KINDS = [
@@ -32,6 +36,7 @@ const STRING_KINDS = [
   "string-rationale",
   "string-plural-s",
   "string-caps",
+  "prompt-markers",
 ] as const;
 /** A count named for its kind and root suffix: `caps` for src, `caps-tests` for the tests root. */
 type Count =
@@ -54,7 +59,7 @@ function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = [])
   );
   const titleCase: Count = "title-case-headers";
   const markdown = omit.includes(titleCase) ? {} : { [titleCase]: caps[titleCase] ?? 0 };
-  return `${JSON.stringify({ prose: { ...prose, markdown } }, null, 2)}\n`;
+  return `${JSON.stringify({ prose: { ...prose, labs: LAB_CAPS, markdown } }, null, 2)}\n`;
 }
 
 /** Runs the checker over one fixture file (src/fixture.ts unless given) with a fixture
@@ -426,6 +431,18 @@ describe("prose:check counts prose in src strings apart from comments", () => {
     expect(caps.count).toBe(0);
   });
 
+  it("counts each prompt marker, so a new exemption raises a cap", async () => {
+    const marked = [
+      "// prose-check: model prompt (the participant model reads this)",
+      'const prompt = "Reply with JSON only.";',
+      "",
+    ].join("\n");
+    const hits = await hitsOf("prompt-markers", marked);
+    expect(hits.count).toBe(1);
+    expect(await exitWith({ "prompt-markers": 1 }, marked)).toBe(0);
+    expect(await exitWith({ "prompt-markers": 0 }, marked)).toBe(1);
+  });
+
   it("does not count string literal types", async () => {
     const hits = await hitsOf(
       "string-rationale",
@@ -446,5 +463,54 @@ describe("prose:check counts prose in src strings apart from comments", () => {
     expect(await exitWith({ ...others, "string-em-dashes": 1 }, source)).toBe(0);
     expect(await exitWith({ ...others, "string-em-dashes": 0 }, source)).toBe(1);
     expect(await exitWith({ ...others, "string-em-dashes": 2 }, source)).toBe(1);
+  });
+});
+
+describe("prose:check reads the title and description of each lab", () => {
+  /** The `prose.labs.<kind>` lines `--list` prints for one fixture lab file. */
+  async function labHits(yaml: string): Promise<{ status: number; lines: string[] }> {
+    const { status, stdout } = await run(["--list"], yaml, "humanish/labs/demo.yaml");
+    return {
+      status,
+      lines: stdout.split("\n").filter((line) => line.includes("humanish/labs/demo.yaml")),
+    };
+  }
+
+  it("counts each kind in a lab's title and description, with the field it came from", async () => {
+    const { status, lines } = await labHits(
+      [
+        "schema: humanish.lab.v2",
+        "id: demo",
+        "title: The ONE study (#164)",
+        "description: >-",
+        "  It measures the honest answer \u2014 a seat per participant.",
+        "mission: SAME as before, not counted",
+        "",
+      ].join("\n"),
+    );
+
+    expect(status).toBe(1);
+    expect(lines).toEqual([
+      "  humanish/labs/demo.yaml:3 title #164",
+      "  humanish/labs/demo.yaml:3 title ONE",
+      "  humanish/labs/demo.yaml:4 description \u2014",
+      "  humanish/labs/demo.yaml:4 description seat",
+      "  humanish/labs/demo.yaml:4 description honest",
+    ]);
+  });
+
+  it("passes a lab whose title and description hold none of them", async () => {
+    const { status, lines } = await labHits(
+      [
+        "schema: humanish.lab.v2",
+        "id: demo",
+        'title: "A demo study: one participant on a loopback app"',
+        "description: Runs one participant against a loopback app as a dry run.",
+        "",
+      ].join("\n"),
+    );
+
+    expect(lines).toEqual([]);
+    expect(status).toBe(0);
   });
 });

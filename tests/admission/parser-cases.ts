@@ -127,7 +127,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "local-app on e2b-desktop",
     raw: lab("cuLocalApp", { execution: { target: "e2b-desktop" } }),
-    parser: "local-app subjects drive an in-process",
+    parser: "A local-app subject drives a local dev server",
   },
   {
     name: "local-app with scripted actor",
@@ -147,29 +147,29 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "local-app public targets",
     raw: lab("cuLocalApp", { policies: { allowPublicTargets: true } }),
-    parser: "not supported on the local-app route",
+    parser: "does not apply to a local-app subject",
   },
 
   // app-url, scripted
   {
     name: "scripted app-url on e2b-desktop",
     raw: lab("scriptedAppUrl", { execution: { target: "e2b-desktop" } }),
-    parser: "run on the operator's machine",
+    parser: "runs on this machine",
   },
   {
     name: "scripted app-url without ref",
     raw: lab("scriptedAppUrl", { scenario: undefined }),
-    parser: "require `scenario.ref`",
+    parser: "needs `scenario.ref`",
   },
   {
     name: "scripted app-url count 3",
     raw: lab("scriptedAppUrl", {}, { count: 3 }),
-    parser: "support actors[0].count of 1",
+    parser: "takes `actors[0].count` 1 (desktop) or 2",
   },
   {
     name: "scripted app-url redacted screenshots",
     raw: lab("scriptedAppUrl", { policies: { redactScreenshots: true } }),
-    parser: "is not implemented on the scripted-browser route",
+    parser: "is not supported on the scripted-browser route yet",
   },
   {
     name: "scripted app-url public targets",
@@ -213,12 +213,12 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "scripted clone on local",
     raw: lab("scriptedClone", { execution: { target: "local" } }),
-    parser: "scripted-browser actors require `execution.target: e2b-desktop`",
+    parser: "scripted-browser actor needs `execution.target: e2b-desktop`",
   },
   {
     name: "scripted clone without serve",
     raw: lab("scriptedClone", { subject: { serve: undefined } }),
-    parser: "scripted-browser actors require `subject.serve`",
+    parser: "scripted-browser actor needs `subject.serve`",
   },
   {
     name: "scripted clone two repos",
@@ -228,7 +228,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "scripted clone topology",
     raw: lab("scriptedClone", { subject: { topology: "shared-world" } }),
-    parser: "do not support `subject.topology`",
+    parser: "does not support `subject.topology`",
   },
   {
     name: "scripted clone keep",
@@ -238,12 +238,12 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "scripted clone without ref",
     raw: lab("scriptedClone", { scenario: undefined }),
-    parser: "require `scenario.ref`",
+    parser: "needs `scenario.ref`",
   },
   {
     name: "scripted clone count 3",
     raw: lab("scriptedClone", {}, { count: 3 }),
-    parser: "support actors[0].count of 1",
+    parser: "takes `actors[0].count` 1 (desktop) or 2",
   },
   {
     name: "scripted clone lanes",
@@ -253,27 +253,27 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "scripted clone redacted screenshots",
     raw: lab("scriptedClone", { policies: { redactScreenshots: true } }),
-    parser: "is not implemented on the scripted-browser route",
+    parser: "is not supported on the scripted-browser route yet",
   },
   {
     name: "scripted clone public targets",
     raw: lab("scriptedClone", { policies: { allowPublicTargets: true } }),
-    parser: "not supported on the clone scripted-browser route",
+    parser: "does not apply to a clone scripted-browser study",
   },
   {
     name: "scripted clone without exposure",
     raw: lab("scriptedClone", { subject: { exposure: undefined } }),
-    parser: "require `subject.exposure: synthetic`",
+    parser: "scripted-browser study needs `subject.exposure: synthetic`",
   },
   {
     name: "scripted clone without seed",
     raw: lab("scriptedClone", { subject: { state: undefined } }),
-    parser: "require `subject.state.seed`",
+    parser: "needs `subject.state.seed`",
   },
   {
     name: "scripted clone loopback bind",
     raw: lab("scriptedClone", { subject: { serve: { start: "pnpm start" } } }),
-    parser: "to bind all interfaces",
+    parser: "to listen on all interfaces",
   },
 
   // clone and local-tree, computer use
@@ -285,7 +285,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "cu clone without serve",
     raw: lab("cuClone", { subject: { serve: undefined } }),
-    parser: "before the actor drives it",
+    parser: "before the participant opens it",
   },
   {
     name: "cu clone two repos",
@@ -318,7 +318,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "lanes and count",
     raw: lab("cuAppUrl", {}, { count: 2, lanes: [{ id: "a" }, { id: "b" }] }),
-    parser: "Declare EITHER",
+    parser: "Set either `actors[0].count`",
   },
   {
     name: "laneFocus and lanes",
@@ -350,7 +350,7 @@ export const parserCases: readonly AdmissionCase[] = [
         ],
       },
     ),
-    parser: "is supported only on app-url",
+    parser: "works only on app-url computer-use studies",
   },
   {
     name: "lane target and entry",
@@ -375,7 +375,11 @@ export const parserCases: readonly AdmissionCase[] = [
     ),
     parser: "every participant in the roster must declare target",
   },
-  { name: "seventeen lanes", raw: lab("cuAppUrl", {}, { count: 17 }), parser: "capped at 16" },
+  {
+    name: "seventeen lanes",
+    raw: lab("cuAppUrl", {}, { count: 17 }),
+    parser: "runs at most 16 participants",
+  },
   {
     name: "public target fan-out",
     raw: lab(
@@ -383,7 +387,7 @@ export const parserCases: readonly AdmissionCase[] = [
       { subject: { appUrl: "https://example.com/" }, policies: { allowPublicTargets: true } },
       { count: 2 },
     ),
-    parser: "cannot be combined with fan-out to more than one participant",
+    parser: "with more than one participant sends them all to one public app",
   },
   {
     name: "clone fanout on computer use",
@@ -405,17 +409,17 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "shared world without serve",
     raw: lab("sharedProvisioned", { subject: { serve: undefined } }),
-    parser: "before the actor drives it",
+    parser: "before the participant opens it",
   },
   {
     name: "shared world one seat",
     raw: lab("sharedProvisioned", {}, { lanes: [{ id: "author", entry: "/seat-1" }] }),
-    parser: "at least 2 roles",
+    parser: "roster of at least 2",
   },
   {
     name: "shared world without checkpoint",
     raw: lab("sharedProvisioned", { subject: { state: { checkpoint: undefined } } }),
-    parser: "requires `subject.state.checkpoint`",
+    parser: "read-only `subject.state.checkpoint` probe",
   },
   {
     name: "shared world cross-origin entry",
@@ -434,12 +438,12 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "shared world without exposure",
     raw: lab("sharedProvisioned", { subject: { exposure: undefined } }),
-    parser: "requires `subject.exposure: synthetic`",
+    parser: "A shared-world study needs `subject.exposure: synthetic`",
   },
   {
     name: "shared world loopback bind",
     raw: lab("sharedProvisioned", { subject: { serve: { start: "pnpm start" } } }),
-    parser: "to bind all interfaces",
+    parser: "to listen on all interfaces",
   },
   {
     name: "shared world clone keep",
@@ -456,17 +460,17 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "external loopback url",
     raw: lab("sharedExternal", { subject: { appUrl: "http://127.0.0.1:3000/" } }),
-    parser: "requires a non-loopback",
+    parser: "needs a public http(s) `subject.appUrl`",
   },
   {
     name: "external without ownership",
     raw: lab("sharedExternal", { subject: { publicTarget: undefined } }),
-    parser: "requires `subject.publicTarget",
+    parser: "needs `subject.publicTarget",
   },
   {
     name: "external with exposure",
     raw: lab("sharedExternal", { subject: { exposure: "synthetic" } }),
-    parser: "is forbidden on the external-public",
+    parser: "does not apply to an external-public shared-world study",
   },
   {
     name: "external seat entry",
@@ -480,7 +484,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "external without host",
     raw: lab("sharedExternal", {}, { lanes: [{ id: "a" }, { id: "b" }] }),
-    parser: "EXACTLY ONE",
+    parser: "exactly one `host: true` participant",
   },
   {
     name: "external one seat",
@@ -489,7 +493,7 @@ export const parserCases: readonly AdmissionCase[] = [
       { execution: { concurrency: 2 } },
       { lanes: [{ id: "host", host: true }] },
     ),
-    parser: "at least 2 roles",
+    parser: "roster of at least 2",
   },
 
   // desktop-cli
@@ -501,7 +505,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "desktop-cli on local",
     raw: lab("cuDesktopCli", { execution: { target: "local" } }),
-    parser: "studied at a hosted desktop",
+    parser: "runs on a hosted desktop",
   },
   {
     name: "desktop-cli codex-app-server",
@@ -518,7 +522,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "terminal on e2b-desktop",
     raw: lab("terminal", { execution: { target: "e2b-desktop" } }),
-    parser: "run the agent inside an E2B shell",
+    parser: "runs its agent in an E2B shell",
   },
   {
     name: "terminal computer-use actor",

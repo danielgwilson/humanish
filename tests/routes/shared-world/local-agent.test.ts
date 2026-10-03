@@ -1,6 +1,7 @@
-// A shared-world lab with a local-agent brain runs each seat on the operator's signed-in agent:
-// the seats' runner deps carry the plan's brain, the route checks its sign-in before acquiring
-// anything, and only the external-public plane's lobby-code reader asks for OPENAI_API_KEY.
+// A shared-world study with a local-agent brain runs each participant on the operator's signed-in
+// agent: the participants' runner deps carry the plan's brain, the route checks its sign-in before
+// acquiring anything, and only the external-public plane's lobby-code reader asks for
+// OPENAI_API_KEY.
 
 import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -57,7 +58,7 @@ function planeContext(brain: PlaneContext["plan"]["brain"]): PlaneContext {
 }
 
 describe("shared world with a local-agent brain", () => {
-  it("hands each seat's runner the plan's brain, with its agent and declared model", () => {
+  it("hands each participant's runner the plan's brain, with its agent and declared model", () => {
     const live = { streamUrls: [] };
     const scrub = (text: string) => text;
     const localAgent = {

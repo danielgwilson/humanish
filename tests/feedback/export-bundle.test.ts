@@ -27,7 +27,7 @@ import {
 import { exportRun, formatExportHuman } from "../../src/feedback/export.js";
 import { exportRedactedBundle } from "../../src/feedback/export-bundle.js";
 import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/feedback/feedback.js";
-import { runDryRun } from "../../src/run/dry-run.js";
+import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { computeStats } from "../../src/run/stats.js";
@@ -62,7 +62,7 @@ describe("redacted bundle export", () => {
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-bundle-"));
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-    await runDryRun({ cwd, dryRun: true, runId: RUN });
+    await runSyntheticLive({ cwd, dryRun: true, runId: RUN });
     runDir = path.join(cwd, ".humanish", "runs", RUN);
     const image = new PNG({ width: 640, height: 400 });
     for (let i = 0; i < image.data.length; i += 4) {

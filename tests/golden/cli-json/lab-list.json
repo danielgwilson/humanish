@@ -1,0 +1,19 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "cwd": "string",
+    "labs": [
+      {
+        "description": "string",
+        "id": "string",
+        "origin": "string",
+        "path": "string",
+        "source": "string",
+        "title": "string"
+      }
+    ],
+    "ok": "boolean",
+    "schema": "string",
+    "warnings": []
+  }
+}

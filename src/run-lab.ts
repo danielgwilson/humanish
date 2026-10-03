@@ -27,7 +27,7 @@ import { type LabConfig } from "./lab/types.js";
 import type { ObserverResult } from "./observer/render.js";
 import { admitComputerUsePlan, computerUseLabRefusal } from "./routes/computer-use/route.js";
 import { type CuaActorLabResult } from "./routes/computer-use/types.js";
-import { admitPreviewPlan, previewLabRefusal } from "./routes/preview.js";
+import { admitPreviewPlan, previewLabRefusal, type PreviewStudyResult } from "./routes/preview.js";
 import { admitScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
 import { type ScriptedBrowserLabResult } from "./routes/scripted/types.js";
 import { admitSharedWorldPlan, sharedWorldLabRefusal } from "./routes/shared-world/route.js";
@@ -35,7 +35,6 @@ import { type ConcurrentSharedWorldLabResult } from "./routes/shared-world/types
 import { admitTerminalPlan, terminalLabRefusal } from "./routes/terminal/route.js";
 import { type TerminalProductLabResult } from "./routes/terminal/types.js";
 import { type RunScorerProvenance } from "./run/bundle.js";
-import { type RunResult } from "./run/results.js";
 import { type RunLabProvenance } from "./run/status.js";
 import { isLocalBrowserLab, localBrowserDefaults } from "./substrates/local/runtime-config.js";
 
@@ -180,7 +179,7 @@ async function refusalOutcome(
     case "preview":
       return {
         route: "preview",
-        result: previewLabRefusal(options.cwd, refusal),
+        result: previewLabRefusal(options.cwd, config.id, refusal),
       };
     case "computer-use":
       return {
@@ -266,7 +265,7 @@ interface RouteOutcome<R extends LabRoute, T> {
 }
 
 export type LabOutcome =
-  | RouteOutcome<"preview", RunResult>
+  | RouteOutcome<"preview", PreviewStudyResult>
   | RouteOutcome<"computer-use", CuaActorLabResult>
   | RouteOutcome<"scripted", ScriptedBrowserLabResult>
   | RouteOutcome<"terminal", TerminalProductLabResult>
@@ -285,7 +284,7 @@ export type AdmittedPlan<R extends LabRoute = LabRoute> =
 
 /** The result of a run on route `R`, the `result` of that route's `LabOutcome`. */
 export type LabResult<R extends LabRoute = LabRoute> = {
-  preview: RunResult;
+  preview: PreviewStudyResult;
   "computer-use": CuaActorLabResult;
   scripted: ScriptedBrowserLabResult;
   terminal: TerminalProductLabResult;

@@ -1,0 +1,13 @@
+{
+  "exitCode": 2,
+  "shape": {
+    "cwd": "string",
+    "error": {
+      "code": "string",
+      "message": "string"
+    },
+    "ok": "boolean",
+    "run": "string",
+    "schema": "string"
+  }
+}

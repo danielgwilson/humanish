@@ -1,0 +1,10 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "candidates": [],
+    "cwd": "string",
+    "ok": "boolean",
+    "run": "string",
+    "schema": "string"
+  }
+}

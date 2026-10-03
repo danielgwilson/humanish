@@ -38,10 +38,10 @@ import { runLabParticipants } from "./live-phase.js";
 import { admitCuaRun, type AdmittedCuaRun, refuseCuaLab, startCuaRun } from "./setup.js";
 import {
   type ComputerUseRunInput,
-  CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabResult,
   type RunCuaActorLabOptions,
 } from "./types.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /**
  * Plans and runs a computer-use lab in one call. It is not exported from src/index.ts; tests call
@@ -75,10 +75,9 @@ export async function computerUseLabRefusal(
   const { config, dryRun } = options;
   if (refusal.stage === "before-scope")
     return {
-      schema: CUA_ACTOR_LAB_SCHEMA,
+      ...studyResultIdentity("computer-use", config.id),
       ok: false,
       cwd: path.resolve(options.cwd),
-      labId: config.id,
       actor: config.actors[0]?.type ?? "",
       dryRun,
       runId: options.runId ?? "not-created",

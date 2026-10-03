@@ -1,35 +1,27 @@
 schema: humanish.lab.v2
 id: lobby-trivia-3player
-title: Multiplayer 3-player mobile lobby (external-public shared world; deterministic dry-run)
-description: >
-  THREE mobile-layout personas play the SAME multiplayer game lobby on a REAL public
-  deployment AT ONCE — the external-public shared-world plane (#164 phase 2). The public site is used
-  DIRECTLY as the shared plane: NO getHost, NO clone, NO subject sandbox, NO seed. A host-first
-  barrier extracts the /lobby/CODE from the host participant's CDP-observed URL and threads it into the
-  follower join missions; followers go through the real Join flow (a direct /lobby/CODE visit does
-  not auto-join a non-member). Dry-run (the default) emits ONE run bundle with the external-public
-  concurrent evidence block (attributionClass: shared-world; planeClass: external-public;
-  laneWindows + outcomes; publicOriginDigest; the external-public attributionLimits) at $0 — no
-  sandboxes, no provider tokens. A live run needs OPENAI_API_KEY + E2B_API_KEY and scenario.mode:
-  live.
-  MOBILE FIDELITY CAVEAT: on the E2B-desktop route the rendered WIDTH IS FLOORED to
-  MIN_DESKTOP_RENDER_WIDTH (500), because Chrome refuses a window narrower than ~500 CSS px and a
-  narrower X screen let the window overflow and clip the page (0.20.3, #304). So BOTH participants below
-  render at 500 wide: `mobile` (414) and `small-mobile` (360) are IDENTICAL in layout on this route,
-  and this lab does NOT currently exercise two different mobile widths. Only the HEIGHT renders as
-  declared (896 and 740). The preset widths remain the honest device identity for the persona prompt
-  and metadata, not a rendered guarantee; desktopGeometry.screen.verified confirms the FLOORED
-  number against itself, so a matching `verified` block is NOT evidence the preset width rendered.
-  There is also NO touch input, and isMobile/DPR are prompt-signal + metadata (DPR renders only via
-  the CDP geometry path). "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium participants, not
-  touch devices. True sub-500 CSS-viewport rendering is the #221 CDP-device-emulation upgrade.
-  HONESTY: this is a real public-application study of a deployment the operator attests they
-  own/operate (subject.publicTarget). The harness OBSERVES that each participant reached the operator-
-  declared origin and converged on one lobby path; it did NOT provision, seed, or control the plane.
-  Attribution stays shared-world (N participants, ONE plane) but every strength claim degrades honestly and
-  is asserted-absent: provenance external-public (not seeded); NO synthetic attestation (you cannot
-  claim synthetic on a real site); NO authoritative shared-state proof; concurrency by temporal
-  co-occupancy + observed lobby convergence. No one run implies adoption, scale, or repeatability.
+title: Three mobile participants in one multiplayer lobby on a public app (shared world, dry run)
+description: >-
+  Three participants on mobile layouts play the same multiplayer lobby on a public deployment at the
+  same time: the external-public shared-world route. The public site is the shared plane, so there
+  is no getHost, clone, subject sandbox or seed. The host creates the lobby; humanish reads the
+  lobby code from the host's page URL and gives it to the other participants, who join through the
+  app's join flow, since visiting /lobby/CODE directly does not join a non-member. A dry run, the
+  default, writes one run bundle with the external-public shared-world evidence (attributionClass:
+  shared-world; planeClass: external-public; laneWindows and outcomes; publicOriginDigest; the
+  external-public attributionLimits) at no cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and
+  scenario.mode: live. On this route Chrome refuses a window narrower than 500px, so the mobile
+  (414) and small-mobile (360) participants both render 500 wide and only their heights differ (896
+  and 740). The preset widths stay the device identity in the persona prompt and metadata, and
+  desktopGeometry.screen.verified confirms the 500px width, not the preset's. There is no touch
+  input. This study does not set execution.desktop.fidelity.mobileEmulation, which requests the
+  preset's CSS viewport, touch, pixel ratio and user agent on Chrome or Chromium. The operator
+  attests owning or operating the deployment (subject.publicTarget). humanish observes that each
+  participant reached the declared origin and the same lobby path, and does not provision, seed or
+  control the app, so the bundle claims less than a provisioned run: provenance is external-public,
+  there is no synthetic-data attestation or authoritative shared-state proof, and concurrency rests
+  on overlapping sessions and the shared lobby. One run implies nothing about adoption, scale or
+  repeatability.
 subject:
   source: app-url # the real public deployment IS the shared plane (no clone, no getHost)
   topology: shared-world # the declared override of the per-lane-worlds default (#164)

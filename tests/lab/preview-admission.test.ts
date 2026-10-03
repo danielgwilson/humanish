@@ -48,7 +48,10 @@ describe("preview admission", () => {
     const outcome = await runLab(preview(extra), { cwd, dryRun: true });
     expect(outcome.route).toBe("preview");
     expect(outcome.result).toEqual({
-      schema: "humanish.run-result.v1",
+      schema: "humanish.study-result.v1",
+      route: "preview",
+      studyId: "preview-admission",
+      labId: "preview-admission",
       ok: false,
       cwd: path.resolve(cwd),
       warnings: [],

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/check-docs-highlighting.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "registry:build": "node scripts/extract-registry-css.mjs && shadcn build registry.json -o public/r",

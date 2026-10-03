@@ -21,7 +21,7 @@
 // clone slice it also consumes subject.{repos,serve,env,state,exposure,clone.depth} and
 // execution.desktop.template. actors[0].{mission,laneFocus,model} are inert on that route
 // because no model runs, and most execution.desktop.* fields remain forward-declared (device
-// presets belong to the cua route; scripted surfaces are the driver's own desktop/mobile
+// presets belong to the computer-use route; scripted surfaces are the driver's own desktop/mobile
 // viewports where isMobile/DSF genuinely render via playwright emulation).
 // On the other routes those fields remain forward-declared and are not yet consumed:
 // parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
@@ -31,8 +31,8 @@
 // scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
 // defaults-table single-participant row governs; count: 2 is the declared override); computer-use
 // E2B route: the homogeneous fan-out participant count (N identical participants, each its own E2B
-// desktop), capped at 16; the in-process/local-app cua route stays single-participant (no E2B to
-// fan out).
+// desktop), capped at 16; the in-process/local-app computer-use route stays single-participant (no
+// E2B to fan out).
 //
 // NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route): a
 // differentiated fan-out roster: each `{ id?, persona?, device?, instruction?, target? }` becomes one
@@ -42,10 +42,10 @@
 // XOR `actors[0].laneFocus` (each entry's `instruction` is the roster's steer); `lanes[].device` XOR
 // raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight participants (default:
 // the participant count, all at once; env HUMANISH_CUA_MAX_CONCURRENCY may only lower it, per invariant
-// 3). On every non-cua route normalized `lanes` are inert (warned). subject.clone.fanout is
-// rejected on the cua route. `lanes[].target` is app-url × computer-use only: an absolute browser
-// URL this participant opens instead of `subject.appUrl`; it is the generic setup-produced-target
-// handoff, not a service topology primitive.
+// 3). On every non-computer-use route normalized `lanes` are inert (warned). subject.clone.fanout
+// is rejected on the computer-use route. `lanes[].target` is app-url × computer-use only: an
+// absolute browser URL this participant opens instead of `subject.appUrl`; it is the generic
+// setup-produced-target handoff, not a service topology primitive.
 //
 // There is deliberately no v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
@@ -220,11 +220,12 @@ function parseV2(raw: Record<string, unknown>): LabConfigParseResult {
   const scenarioCapsReason = scenarioCapsValidationReason(config);
   if (scenarioCapsReason) return invalid(scenarioCapsReason);
 
-  // All-parallel default: a multi-seat lab that does not declare execution.concurrency runs
-  // every seat at once; the declared field is a cap the author chose, never a mode. Independent
-  // computer-use participants resolve that default from the final participant count when they plan, after any
-  // --count override, so the parser leaves it unset for them. A shared world's roster is fixed, so
-  // its default is filled here for the envelopes and warnings that read the parsed config.
+  // All-parallel default: a multi-participant study that does not declare execution.concurrency
+  // runs every participant at once; the declared field is a cap the author chose, never a mode.
+  // Independent computer-use participants resolve that default from the final participant count
+  // when they plan, after any --count override, so the parser leaves it unset for them. A shared
+  // world's roster is fixed, so its default is filled here for the envelopes and warnings that read
+  // the parsed config.
   {
     const participantCount = rosterOf(config.actors[0])?.length ?? config.actors[0]?.count ?? 1;
     if (

@@ -435,9 +435,11 @@ describe("selected lab setup without paid dispatch", () => {
       expect(
         result.checks.find((check) => check.name === "local participant authentication")?.ok,
       ).toBe(true);
-      expect(result.checks.find((check) => check.name === "post-run analysis")?.message).toContain(
-        "no automatic findings report",
-      );
+      expect(result.checks.find((check) => check.name === "post-run analysis")).toMatchObject({
+        ok: true,
+        status: "note",
+        message: expect.stringContaining("no automatic findings report"),
+      });
       expect(JSON.stringify(result)).not.toMatch(/synthetic-desktop-marker|private-account-marker/);
     });
   });

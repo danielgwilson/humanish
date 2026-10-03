@@ -166,7 +166,7 @@ describe("fresh cursor read avoids only redundant left/double-click movement", (
     expect(vi.mocked(port.leftClick).mock.calls).toEqual([[], [420, 450], [420, 450]]);
   });
 
-  it("keeps independent concurrent shared-world desktop seats independent", async () => {
+  it("keeps independent concurrent shared-world desktop participants independent", async () => {
     const a = desktop(() => ({ x: 420, y: 450 }));
     const b = desktop(() => ({ x: 200, y: 350 }));
     await Promise.all([
