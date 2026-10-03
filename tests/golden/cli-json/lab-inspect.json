@@ -23,12 +23,12 @@
       "title": "string"
     },
     "cwd": "string",
-    "lab": "string",
     "ok": "boolean",
     "origin": "string",
     "path": "string",
     "personas": [],
     "schema": "string",
+    "study": "string",
     "warnings": []
   }
 }

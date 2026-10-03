@@ -117,7 +117,7 @@ describe("observer rendering", () => {
       const html = await readFile(path.join(cwd, observerPath), "utf8");
       // The workspace artifact with this run's snapshot injected (no placeholder left,
       // no network references: the durability property the rebuild exists for).
-      expect(html).toContain("<title>humanish Observer — observer-proof</title>");
+      expect(html).toContain("<title>humanish Observer · observer-proof</title>");
       expect(html).toContain('id="observer-data"');
       expect(html).toContain("contract_proof_only");
       expect(html).not.toContain("__HUMANISH_OBSERVER_DATA__");

@@ -111,7 +111,7 @@ describe("what to do next, resolved against this machine", () => {
     });
     expect(byAgent.at(-1)?.command).toBe("npx humanish run try-live");
     // The point of the local-agent route: no API key hunt before the first real run.
-    expect(byAgent.at(-1)?.why).toContain("no API key needed");
+    expect(byAgent.at(-1)?.why).toContain("no API key is needed");
   });
 
   it("names the model credential only when there is genuinely no brain available", () => {

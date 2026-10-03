@@ -29,7 +29,7 @@ export interface FixtureRunSpec {
   durationMs?: number;
   verdict?: string;
   participants?: { total: number; reachedGoal: number; reportedFriction?: number };
-  /** `null` writes a declared-absent cost (the honest unknown), `undefined` omits it entirely. */
+  /** `null` writes a declared-absent cost (a recorded unknown), `undefined` omits it entirely. */
   estimatedCostUsd?: number | null;
   /** Reasoning-summary text for a live run, as a provider would emit it (markdown lead included). */
   thought?: string;

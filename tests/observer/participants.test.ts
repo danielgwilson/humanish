@@ -132,7 +132,7 @@ describe("observer data: participants", () => {
     expect(broke.run.participantsLine).not.toContain("gave up");
   });
 
-  it("is honestly absent when a bundle has no participants at all", () => {
+  it("is absent when a bundle has no participants at all", () => {
     const data = buildObserverData(bundleWith({ verdict: "contract_proof_only" }));
     expect(data.run.participants).toBeUndefined();
     expect(data.run.participantsLine).toBeUndefined();

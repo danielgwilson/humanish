@@ -174,7 +174,7 @@ export function loopResult(
       ? { interactionUsageIncomplete: true as const }
       : {}),
     // The funnel is present exactly when a protocol was declared, including a session that ended
-    // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
+    // on turn 0, whose funnel reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(session.taskTracker === undefined ? {} : { taskFunnel: session.taskTracker.funnel() }),
     ...(tokenUsage === undefined ? {} : { tokenUsage }),
     capabilities: provider.capabilities,

@@ -70,7 +70,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
   const participants = normalizeParticipantCount(options.participantCount);
   if (participants === null) {
     return refused(requestedCwd, warnings, {
-      code: "HUMANISH_INVALID_SIM_COUNT",
+      code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
       message: "--count must be a positive integer.",
     });
   }

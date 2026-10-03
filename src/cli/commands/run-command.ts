@@ -110,7 +110,7 @@ export async function handleRun(
     options.count === undefined ? undefined : parsePositiveInteger(options.count);
   if (participantCount === null) {
     refuseRun(command, io, options.cwd, {
-      code: "HUMANISH_INVALID_SIM_COUNT",
+      code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
       message: "--count must be a positive integer.",
     });
     return;

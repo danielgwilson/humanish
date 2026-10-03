@@ -236,7 +236,7 @@ export interface OpenAiResponsesProviderOptions {
    * summarizer the model supports); "off" never asks. If the account/model rejects the
    * request (e.g. an org not verified for reasoning summaries), the provider latches
    * summaries off for the session and retries the same turn; the run degrades to
-   * a run without summaries instead of failing after spend. Absence stays honest:
+   * a run without summaries instead of failing after spend. The trace records the absence:
    * no summary means no `reasoning` trace items and `counts.reasonings` stays 0.
    */
   reasoningSummary?: OpenAiReasoningSummary | "off";

@@ -38,6 +38,7 @@ const STRING_KINDS = [
   "string-cua",
   "string-caps",
   "prompt-markers",
+  "script-markers",
 ] as const;
 /** A count named for its kind and root suffix: `caps` for src, `caps-tests` for the tests root. */
 type Count =
@@ -468,6 +469,42 @@ describe("prose:check counts prose in src strings apart from comments", () => {
     expect(hits.count).toBe(1);
     expect(await exitWith({ "prompt-markers": 1 }, marked)).toBe(0);
     expect(await exitWith({ "prompt-markers": 0 }, marked)).toBe(1);
+  });
+
+  it("skips the statement after a `prose-check: script` comment, and counts the marker", async () => {
+    const scripted = [
+      "// prose-check: script (the page's JavaScript)",
+      "const js = `var TONES = 1; // ALWAYS one`;",
+      'const message = "The run is NOT ready.";',
+      "",
+    ].join("\n");
+    const [caps, markers] = await Promise.all([
+      hitsOf("string-caps", scripted),
+      hitsOf("script-markers", scripted),
+    ]);
+    expect(caps.words).toEqual(["NOT"]);
+    expect(markers.count).toBe(1);
+  });
+
+  it("skips one-word strings unless a template splices them into its text", async () => {
+    const tokens = [
+      'if (op === "EXECUTE" || code === "ESRCH") run("/tmp/x.XXXXXX");',
+      'const line = `overlap ${seen ? "PROVEN" : "not observed"}`;',
+      "",
+    ].join("\n");
+    const hits = await hitsOf("string-caps", tokens);
+    expect(hits.words).toEqual(["PROVEN"]);
+  });
+
+  it("skips caps words the shell reads and file stems", async () => {
+    const shell = [
+      "const a = 'export DISPLAY=\"${DISPLAY:-:0}\" LANG=C.UTF-8';",
+      "const b = `kill -INT -- ${pid}; env --default-signal=INT,TERM x; mktemp -d /tmp/y.XXXXXX`;",
+      'const c = "write an AGENTS.md, and do NOT skip it";',
+      "",
+    ].join("\n");
+    const hits = await hitsOf("string-caps", shell);
+    expect(hits.words).toEqual(["NOT"]);
   });
 
   it("does not count string literal types", async () => {

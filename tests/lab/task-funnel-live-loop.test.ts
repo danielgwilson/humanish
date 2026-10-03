@@ -215,7 +215,7 @@ describe("the live loop corroborates the protocol", () => {
     expect(funnel!.stoppedAt).toBe("see-verify-notice");
   });
 
-  it("emits no funnel when the study declared no protocol: honest absence, not an empty one", async () => {
+  it("emits no funnel when the study declared no protocol: absent, not empty", async () => {
     const provider = new RepeatProvider({
       actions: [],
       pendingSafetyChecks: [],

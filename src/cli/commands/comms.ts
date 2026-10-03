@@ -17,6 +17,7 @@ import {
   JSON_OPTION_DESCRIPTION,
   PORT_OPTION_DESCRIPTION,
   writeResult,
+  messageOutput,
 } from "../io.js";
 
 export function registerCommsCommands(parent: Command, io: CliIo): void {
@@ -55,7 +56,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--provider <id>", "Installed provider id.", "agentmail")
     .option(
       "--api-key-env <name>",
-      "Environment variable NAME, never its value.",
+      "The name of an environment variable, never its value.",
       "AGENTMAIL_API_KEY",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -122,7 +123,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     )
     .option(
       "--inbox-port <port>",
-      "Also serve a READ-ONLY inbox listener on 0.0.0.0:<port>, so a persona on another machine can open /inbox. Without it the catch stays loopback-only.",
+      "Also serve a read-only inbox listener on 0.0.0.0:<port>, so a persona on another machine can open /inbox. Without it the catch stays loopback-only.",
     )
     .option(
       "--recipient <address>",
@@ -176,7 +177,7 @@ async function handleCommsAdd(
       ? await saveCommsConnection(resolve(options.cwd), name, options.apiKeyEnv)
       : { ok: false, message: "Only AgentMail connection setup is currently available." }),
   };
-  writeResult(command, io, result, (value) => `${value.message}\n`);
+  writeResult(command, io, result, messageOutput);
   io.setExitCode(result.ok ? 0 : 2);
 }
 
@@ -201,7 +202,7 @@ async function handleCommsCheck(
         ok: false,
         message: "This lab does not select a real email connection.",
       };
-      writeResult(command, io, result, (value) => `${value.message}\n`);
+      writeResult(command, io, result, messageOutput);
       io.setExitCode(2);
       return;
     }
@@ -213,7 +214,7 @@ async function handleCommsCheck(
     env: process.env,
     online: options.online === true,
   });
-  writeResult(command, io, result, (value) => `${value.message}\n`);
+  writeResult(command, io, result, messageOutput);
   io.setExitCode(result.ok ? 0 : 2);
 }
 
@@ -229,7 +230,7 @@ async function handleCommsConfigure(
   command: Command,
 ): Promise<void> {
   const result = await configureCommsLab({ ...options, cwd: resolve(options.cwd) });
-  writeResult(command, io, result, (value) => `${value.message}\n`);
+  writeResult(command, io, result, messageOutput);
   io.setExitCode(result.ok ? 0 : 2);
 }
 
@@ -276,7 +277,7 @@ async function handleCommsRecover(
         adapter,
       })),
     };
-    writeResult(command, io, result, (value) => `${value.message}\n`);
+    writeResult(command, io, result, messageOutput);
     io.setExitCode(result.ok ? 0 : 2);
   } catch {
     const result = {
@@ -285,7 +286,7 @@ async function handleCommsRecover(
       message:
         "Recovery could not complete. Select one recorded run with --run, check its connection, and retry. No unrecorded resources are eligible.",
     };
-    writeResult(command, io, result, (value) => `${value.message}\n`);
+    writeResult(command, io, result, messageOutput);
     io.setExitCode(2);
   }
 }

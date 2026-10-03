@@ -27,6 +27,7 @@ import {
   type LabCommandOptions,
   noteRunFacts,
   writeResult,
+  type HumanOutput,
 } from "../io.js";
 import { watchExposeRequested } from "../observer-follow.js";
 import { beginRunSignalPhase } from "./run-signals.js";
@@ -156,7 +157,7 @@ export async function runLabCommand(args: {
           // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest.
           // Surface it so the invoker (who may not be the manifest author) knows executable code ran.
           args.io.writeErr(
-            `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`,
+            `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is code that humanish loaded and ran in this process. Review it as you would any code you run.\n`,
           );
         }
         const analysisBudget = automaticAnalysisBudget(config.review?.analysis, route);
@@ -243,11 +244,7 @@ function writeUnsupportedRerunFlagsResult(
   args.io.setExitCode(2);
 }
 
-function formatLabResolveFailureHuman(result: LabResolveFailure): string {
-  return (
-    [
-      `${result.error.code}: ${result.error.message}`,
-      ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
+function formatLabResolveFailureHuman(result: LabResolveFailure): HumanOutput {
+  const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
+  return { ...(warnings ? { stdout: warnings } : {}), error: result.error };
 }

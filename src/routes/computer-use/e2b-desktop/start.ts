@@ -133,7 +133,7 @@ export async function openParticipantSurface(
 
 /**
  * DevTools answering later than this after launch is recorded as a warning on the participant. Six live
- * launches answered in 4.8-7.7 s; the reads this wait now guards used to give up at about 11 s.
+ * launches answered in 4.8-7.7 s; without this wait the reads it guards give up at about 11 s.
  */
 const SLOW_DEVTOOLS_MS = 10_000;
 

@@ -37,11 +37,11 @@ export function describeSubjectState(
 /**
  * Feedback candidates derived from what live participants actually reported.
  *
- * A live run's feedback draft used to fall through to a dry-run template, because no browser route
- * ever built a candidate. The candidate worth filing is the one the study produced: a participant
+ * A live run's feedback draft comes from these candidates, never from a dry-run template. The
+ * candidate worth filing is the one the study produced: a participant
  * who reported friction on the way (the most valuable thing a run captures), or one who stopped
  * trying. A clean pass files nothing here: feedback exists to carry findings, and a run without
- * any falls back to an honest live summary in the draft layer instead of a template.
+ * any falls back to a live summary in the draft layer instead of a template.
  *
  * Everything quoted is already scrub+redacted (participant messages and `session.reason` pass
  * through redactNarration in the loop) and passes redactText again here as defense-in-depth.

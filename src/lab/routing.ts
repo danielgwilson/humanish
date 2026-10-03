@@ -91,13 +91,12 @@ export function participantIdAt(
 }
 
 /**
- * True when this config routes to the computer-use backend: an app-url subject whose first
- * actor resolves to a registered computer-use actor, or a clone subject on a hosted desktop
- * whose first actor does. Single source of truth: routeOf and the warning logic
- * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
- * scripted-browser route arrived. Behavior-preserving for every parse-valid config:
- * routeOf keeps a bare app-url fallback to the computer-use route so library-API configs
- * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
+ * True when this config routes to the computer-use backend: an app-url subject whose first actor
+ * resolves to a registered computer-use actor, or a clone subject on a hosted desktop whose first
+ * actor does. Single source of truth: routeOf and the warning logic both use it. (The app-url
+ * branch also checks the first actor, so a scripted-browser actor routes elsewhere. routeOf keeps a
+ * bare app-url fallback to the computer-use route so library-API configs with unknown actors still
+ * hit its fail-closed ACTOR_UNSUPPORTED.)
  */
 export function isComputerUseComposition(config: LabConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it

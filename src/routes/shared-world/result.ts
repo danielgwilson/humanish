@@ -138,7 +138,7 @@ function concurrentLabError(args: {
   if (handoffTimedOut) {
     // Checked before the observer failure: the host never yielded a /lobby/CODE within the
     // deadline (followers failed closed without opening), which is the root cause, and it can
-    // itself make the Observer unable to render a coherent run. Report the distinct, honest
+    // itself make the Observer unable to render a coherent run. Report the distinct
     // handoff-timeout code rather than a generic observer/run failure.
     return {
       code: "HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT",

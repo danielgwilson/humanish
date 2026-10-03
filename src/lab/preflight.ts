@@ -4,7 +4,7 @@ import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import { isLoopbackUrl } from "./parse/subject.js";
 import { type LabConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
-import { digest, fail, finalize, LAB_PREFLIGHT_SCHEMA } from "./preflight-result.js";
+import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
 import { type LabRoute, routeOf } from "./plan.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
 import { rosterOf } from "./parse/actors.js";
@@ -58,11 +58,13 @@ interface LabPreflightSpend {
 export interface LabPreflightResult {
   /** The separate budget for a future live run, never spend by preflight itself. */
   analysis?: AutomaticAnalysisBudget;
-  schema: typeof LAB_PREFLIGHT_SCHEMA;
+  schema: typeof STUDY_CHECK_SCHEMA;
   ok: boolean;
   cwd: string;
-  lab: string;
-  labId?: string;
+  /** The study the caller asked for, as given. */
+  study: string;
+  /** The resolved study's `id`, once the file parses. */
+  studyId?: string;
   origin?: string;
   path?: string;
   route?: LabRoute;
@@ -131,10 +133,10 @@ export async function runLabPreflight(
 
   if (!resolved.ok) {
     return {
-      schema: LAB_PREFLIGHT_SCHEMA,
+      schema: STUDY_CHECK_SCHEMA,
       ok: false,
       cwd,
-      lab: options.lab,
+      study: options.lab,
       reachability,
       checks: [
         {

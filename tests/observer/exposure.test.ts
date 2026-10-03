@@ -36,7 +36,7 @@ describe("validateExposure: serve surface (edge auth or --safe)", () => {
     expect(result.plan.mode).toBe("exposed");
     expect(result.plan.edgeAuthed).toBe(true);
     expect(result.plan.oauth).toEqual({ provider: "google", allowEmails: [], allowDomains: [] });
-    expect(result.plan.warnings.join(" ")).toContain("ANY Google account");
+    expect(result.plan.warnings.join(" ")).toContain("lets in any Google account");
   });
 
   it("--expose --tunnel ngrok --oauth google --allow-email → no allow-rule warning", () => {
@@ -52,7 +52,7 @@ describe("validateExposure: serve surface (edge auth or --safe)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.oauth?.allowEmails).toEqual(["you@example.com"]);
-    expect(result.plan.warnings.join(" ")).not.toContain("ANY Google account");
+    expect(result.plan.warnings.join(" ")).not.toContain("lets in any Google account");
   });
 
   it("--expose --tunnel ngrok --safe (no oauth) → share-safe-open", () => {

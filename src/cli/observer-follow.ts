@@ -10,6 +10,8 @@ import {
   parseObserverPort,
   wantsJson,
   writeResult,
+  type HumanOutput,
+  humanError,
 } from "./io.js";
 
 /** How a command shows an Observer, decided before the run it shows starts. */
@@ -103,10 +105,8 @@ export function withObserverServer(
   };
 }
 
-export function formatObserverHuman(result: ObserverResult): string {
-  if (!result.ok) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+export function formatObserverHuman(result: ObserverResult): HumanOutput {
+  if (!result.ok) return humanError(result.error);
 
   return (
     [
@@ -204,8 +204,8 @@ export function exitCodeForSignal(signal: WatchStopSignal): number {
 }
 
 // True when any tunnel-edge exposure flag is present (not --safe, which is an orthogonal filter).
-// Used to refuse exposure on the non-lab watch path and on non-computer-use routes, where there is
-// no live desktop to stream.
+// Callers refuse exposure with it on the non-lab watch path and on non-computer-use routes, where
+// there is no live desktop to stream.
 export function watchExposeRequested(o: {
   expose?: boolean | undefined;
   tunnel?: string | undefined;

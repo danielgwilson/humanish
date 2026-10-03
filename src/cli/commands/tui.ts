@@ -144,7 +144,7 @@ async function handleTui(
       ok: false,
       error: {
         code: "HUMANISH_TUI_BUNDLE_MISSING",
-        message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; in an install, this package is incomplete — please report it.`,
+        message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; an installed package always ships it, so please report this as a bug.`,
       },
     });
     return;
@@ -170,12 +170,12 @@ async function handleTui(
 
 /** The refusal for a session the surface cannot serve, or undefined when it may open. */
 function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | undefined {
-  // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands
-  // it runs, so the TTY check below passes and the surface used to open: a study watched an
-  // agent navigate the labs list and start a run it did not mean to start
-  // (humanish/labs/handed-a-human-surface.yaml). A TTY says a terminal exists, not that anyone is
-  // reading it. `--force` is the escape for the person who really is at this keyboard, and
-  // capturing frames from inside an agent session is exactly that case.
+  // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands it
+  // runs, so the TTY check below passes for an agent too, and an agent in the surface can start a
+  // run it did not mean to start (humanish/labs/handed-a-human-surface.yaml records one). A TTY
+  // says a terminal exists, not that anyone is reading it. `--force` is the escape for the person
+  // who really is at this keyboard, and capturing frames from inside an agent session is exactly
+  // that case.
   const agent = force ? undefined : detectAgentSession(runtime.env);
   if (agent !== undefined) {
     return {
@@ -300,7 +300,7 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
         return session.connectionCheck;
       },
       labs: async () =>
-        (await listLabManifests(cwd)).labs.map((lab) => ({
+        (await listLabManifests(cwd)).studies.map((lab) => ({
           title: lab.title ?? lab.id,
           path: lab.path,
         })),
@@ -355,7 +355,7 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
         ? {
             schema: TUI_ACTION_SCHEMA,
             ok: true as const,
-            message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`,
+            message: `set up humanish here: ${result.changes.filter((change) => change.action !== "skip").length} files written`,
           }
         : {
             schema: TUI_ACTION_SCHEMA,

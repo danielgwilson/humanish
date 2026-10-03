@@ -285,7 +285,7 @@ export interface RunStream {
   /**
    * Mid-run partial actor evidence: the redacted trace items recorded so far,
    * flushed while a live participant is still running so the attached Observer's timeline can
-   * grow. It is deliberately not an ActorTrace: a running participant has no honest status,
+   * grow. It is deliberately not an ActorTrace: a running participant has no final status,
    * completionReason, or completedAt, and this shape cannot claim them. Present only on
    * `inProgress` bundles; the final write replaces it with the real `actor` and never
    * carries it.

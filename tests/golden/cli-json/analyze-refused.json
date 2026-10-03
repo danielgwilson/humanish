@@ -11,5 +11,8 @@
     "run": "string",
     "schema": "string",
     "warnings": []
+  },
+  "pinned": {
+    "code": "ANALYSIS_REQUIRES_LIVE_RUN"
   }
 }

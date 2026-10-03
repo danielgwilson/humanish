@@ -42,7 +42,7 @@ describe("completion reason -> status", () => {
   }
 
   it("never calls an unfinished session a pass", () => {
-    // The specific regression: budget_reached used to return "passed".
+    // budget_reached in particular must not return "passed".
     expect(statusForCompletionReason("budget_reached")).not.toBe("passed");
     expect(statusForCompletionReason("gave_up")).not.toBe("passed");
   });

@@ -389,7 +389,7 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (!isHttpUrl(appUrl) || isLoopbackUrl(appUrl)) {
     return "An external-public shared-world study needs a public http(s) `subject.appUrl`, not a loopback URL. For an app you run locally, use a clone or local-tree subject, which humanish serves itself.";
   }
-  // The operator-ownership attestation (the honest analog of exposure: synthetic; you cannot claim
+  // The operator-ownership attestation (the counterpart of exposure: synthetic; you cannot claim
   // synthetic on a real site, but you must attest you own/operate it). Author-trust; unverifiable.
   if (config.subject.publicTarget?.authorized !== true) {
     return "An external-public shared-world study needs `subject.publicTarget: { owner, authorized: true }` to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it.";

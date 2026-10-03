@@ -830,7 +830,7 @@ describe("runCuaActorLab", () => {
       catchBaseUrl: `https://catch.example.test/${token}`,
       deliveries: async () => new Response("", { status: 200 }),
     });
-    expect(warnings).toContain("Comms catch captured ZERO email sends");
+    expect(warnings).toContain("The email catch captured no email sends");
     expect(warnings).not.toContain(token);
   });
 
@@ -3397,7 +3397,7 @@ describe("runCuaActorLab", () => {
     expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
   });
 
-  it("does not pass a goal_satisfied run with zero actions and zero messages (blank-screen honesty guard)", async () => {
+  it("does not pass a goal_satisfied run with zero actions and zero messages (blank-screen guard)", async () => {
     // Model immediately returns done with no action and no message, i.e. it saw a blank/loading
     // screen and stopped. This must not be reported as a pass.
     const noEngagementSession = [
@@ -3472,7 +3472,7 @@ describe("runCuaActorLab", () => {
     expect(bundle.review.summary).toContain(
       "Recorded summary: Not counted as a pass: the participant's final message described a blocker.",
     );
-    // Zero recorded completions, 1 blocked, 1 reported friction: the honest reading of that run.
+    // Zero recorded completions, 1 blocked, 1 reported friction: what that run recorded.
     expect(bundle.review.participants).toMatchObject({
       total: 1,
       reachedGoal: 0,
@@ -3531,7 +3531,7 @@ describe("runCuaActorLab", () => {
     expect(sessionOptionsSeen[0]?.instructions).toContain("mobile user");
     expect(sessionOptionsSeen[0]?.instructions).toContain("414x896");
     // The bundle records the requested screen (the floored render target we actually asked E2B for), but
-    // this fake exposes no CDP measurement and therefore cannot honestly claim a CSS viewport.
+    // this fake exposes no CDP measurement and therefore cannot claim a CSS viewport.
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
     );
@@ -4022,7 +4022,7 @@ describe("runCuaActorLab", () => {
     expect(typeof status.completedAt).toBe("string");
   });
 
-  it("points .humanish/runs/latest.json at the cua run so `verify --run latest` stays honest", async () => {
+  it("points .humanish/runs/latest.json at the cua run so `verify --run latest` verifies this run", async () => {
     const outcome = await runLab(cuaConfig(), { cwd, dryRun: true });
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -4713,7 +4713,7 @@ describe("runCuaActorLab", () => {
     expect(result.observer?.ok).toBe(true);
   });
 
-  it("provenance wording is honest per phase: dry-run declares, failed provisioning never claims 'served'", async () => {
+  it("provenance wording matches each phase: dry-run declares, failed provisioning never claims 'served'", async () => {
     // Dry-run: nothing cloned; the event must say so.
     const dry = await runLab(cloneCuaConfig(), { cwd, dryRun: true });
     if (dry.route !== "computer-use") throw new Error("expected cua backend");
@@ -5275,7 +5275,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(result.error?.message).not.toContain(plainValue);
 
     // Partial state provenance: the succeeded step ok:true, the failing step ok:false with
-    // its exit code, the unreached step absent, and the marker stays honest.
+    // its exit code, the unreached step absent, and the marker stays declared-not-run.
     expect(result.subject?.state.provenance).toBe("declared-not-run");
     expect(result.subject?.state.seed).toEqual([
       {
@@ -5309,7 +5309,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       expect(text, file).not.toContain(plainValue);
     }
 
-    // A failed bundle with honest partial provenance still verifies its state claim
+    // A failed bundle with partial provenance still verifies its state claim
     // (verdict is fail, so the passed-live-with-failed-step rule does not trip).
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
@@ -5362,7 +5362,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
   });
 
-  it("dry-run records the declared recipe as declared-not-run: digests and phases only, no execution fields, honest event wording", async () => {
+  it("dry-run records the declared recipe as declared-not-run: digests and phases only, no execution fields, event wording says not run", async () => {
     const outcome = await runLab(cloneCuaConfig({ state: THREE_PHASE_STATE }), {
       cwd,
       dryRun: true,
@@ -5404,7 +5404,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     );
     expect(provenance?.message).toContain("state: declared, not run (dry run)");
 
-    // The contract bundle verifies: declared-not-run is the honest dry-run marker.
+    // The contract bundle verifies: declared-not-run is the dry-run marker.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
     expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
@@ -6096,7 +6096,7 @@ describe("buildSingleParticipantBundle", () => {
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simCount).toBe(1);
     expect(bundle.simulations[0]?.progress).toBe(100);
-    // Honest no-session notes: zero frames exist, so no redaction (blur or raw) is claimed.
+    // No-session notes: zero frames exist, so no redaction (blur or raw) is claimed.
     expect(bundle.redaction.notes).toContain("No screenshots captured");
     expect(bundle.redaction.notes).not.toContain("blurred fail-closed");
     // Stream artifact references are unique and relative (verifyRun's evidence rules).
@@ -6236,7 +6236,7 @@ function makeStateExecutor(): CuaExecutor & { actuated: CuaAction[] } {
 }
 
 // A fake state "brain": reasons over appState, takes one real action, then stops (so the run
-// bumps counts.actions and passes the noEngagement honesty guard), with no requiresFrame.
+// bumps counts.actions and passes the noEngagement guard), with no requiresFrame.
 function makeStateProvider(): CuaProvider {
   let i = 0;
   return {
@@ -6504,7 +6504,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(blocker).not.toContain(canary);
   });
 
-  it("a hollow in-process run (zero actions/messages) still fails the honesty guard + verifyRun", async () => {
+  it("a hollow in-process run (zero actions/messages) still fails the no-engagement guard + verifyRun", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runLab(
       localAppConfig(),
@@ -6775,7 +6775,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("keeps a zero-progress timeout an honest failure (timed_out → result.ok false)", async () => {
+  it("keeps a zero-progress timeout a failure (timed_out → result.ok false)", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(
@@ -6831,7 +6831,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
 
     // Two material turns then done. Turn 2's nextTurn polls the persisted run.json for the
     // flush of turn 1's items: the flush is fire-and-forget, so a bounded poll (real fs,
-    // fake substrate, $0) is the honest way to observe it without a test-only seam.
+    // fake substrate, $0) observes it without a test-only seam.
     const runJsonPath = (): string => path.join(cwd, ".humanish", "runs", "run-flush", "run.json");
     function flushProvider(clock: { t: number }): CuaProvider {
       let turn = 0;
@@ -6911,7 +6911,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     if (outcome.route !== "computer-use") return;
 
     // Mid-run: the persisted in-progress bundle carried the partial; schema'd, stamped items,
-    // on a stream still honestly marked running (no completion claims anywhere).
+    // on a stream still marked running (no completion claims anywhere).
     expect(midRunBundle).toBeTruthy();
     expect(JSON.stringify(midRunBundle)).not.toContain(secret);
     const liveStream = midRunBundle?.streams.find((stream) => stream.liveActor !== undefined);
@@ -7552,7 +7552,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       expect(thread).not.toContain("lane-01@example.test");
       expect(thread).not.toContain("Confirm your email");
       expect(thread).not.toContain("xyz789");
-      expect(result.warnings.some((w) => w.includes("captured ZERO email sends"))).toBe(false);
+      expect(result.warnings.some((w) => w.includes("captured no email sends"))).toBe(false);
     } finally {
       child.kill();
       await rm(dir, { recursive: true, force: true });

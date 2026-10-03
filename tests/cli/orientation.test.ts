@@ -1,6 +1,6 @@
 // Bare `humanish` orients instead of printing a menu.
 //
-// It used to print commander's help: sixteen subcommands, identical whether you had never run the
+// Commander's help prints sixteen subcommands, identical whether you had never run the
 // tool or had a finished study on disk. A human cannot tell where to start from that, and a coding
 // agent cannot tell where it is, which is the question it has to answer before choosing a command.
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";

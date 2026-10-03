@@ -1,0 +1,13 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.export-result.v1",
+  "ok": false,
+  "cwd": "[cwd]",
+  "run": "nope",
+  "error": {
+    "code": "HUMANISH_EXPORT_RUN_NOT_FOUND",
+    "message": "No run resolves from \"nope\" under [cwd]."
+  }
+}

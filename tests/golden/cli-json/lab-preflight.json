@@ -9,8 +9,6 @@
       }
     ],
     "cwd": "string",
-    "lab": "string",
-    "labId": "string",
     "ok": "boolean",
     "origin": "string",
     "path": "string",
@@ -24,7 +22,18 @@
       "e2bDesktop": "boolean",
       "model": "boolean"
     },
+    "study": "string",
+    "studyId": "string",
     "targets": [],
     "warnings": []
+  },
+  "pinned": {
+    "route": "preview",
+    "reachability": "metadata",
+    "checks": [
+      "lab manifest",
+      "route",
+      "reachability"
+    ]
   }
 }

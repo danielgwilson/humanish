@@ -32,8 +32,8 @@ const STATUS_TONES: Record<string, string> = {
 
 export function renderLibraryHtml(history: LibraryHistory, opts: LibraryRenderOptions): string {
   const emptyState = opts.safe
-    ? "No share_ready runs yet — run `humanish verify` to see why."
-    : "No runs yet — run `humanish watch` to create one.";
+    ? "No share_ready runs yet. Run `humanish verify` to see why."
+    : "No runs yet. Run `humanish watch` to create one.";
 
   return `<!doctype html>
 <html lang="en" data-theme="dark">
@@ -68,6 +68,7 @@ function modeLabel(opts: LibraryRenderOptions): string {
   return opts.safe ? `${auth} · share_ready only` : auth;
 }
 
+// prose-check: script (the library page's CSS)
 function libraryCss(): string {
   return `
 :root { color-scheme: dark; }
@@ -110,6 +111,7 @@ main { padding: 1rem 1.1rem 3rem; max-width: 44rem; margin: 0 auto; }
 `;
 }
 
+// prose-check: script (the library page's JavaScript)
 function libraryClientJs(): string {
   const tones = JSON.stringify(STATUS_TONES);
   return `

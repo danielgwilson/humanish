@@ -124,7 +124,7 @@ describe("personaToDirectives", () => {
   // A trait describes how competently an actor works the surfaces its population uses; it must not
   // name an affordance that escapes those surfaces. The `high` skill directive once read "inspect
   // configuration, and try the recovery paths an expert would", which a computer-use actor could
-  // honestly read as license to open devtools or type a `javascript:` URL, so a human-persona run
+  // reasonably read as license to open devtools or type a `javascript:` URL, so a human-persona run
   // could route around the friction the study measured and still come back green. Whether such an
   // affordance is in scope belongs to the declared population, never to a trait table, so no
   // directive may name one. See docs/principles/actor-fidelity.md.

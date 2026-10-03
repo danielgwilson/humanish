@@ -43,7 +43,10 @@
         "unpricedRuns": "number"
       }
     ],
-    "labs": [
+    "note": "string",
+    "ok": "boolean",
+    "schema": "string",
+    "studies": [
       {
         "costs": {
           "analysisAttempts": "number",
@@ -61,7 +64,6 @@
         "dryRun": "number",
         "durationSamples": "number",
         "judged": "number",
-        "lab": "string",
         "live": "number",
         "medianCostUsd": "number",
         "participants": {
@@ -72,12 +74,10 @@
         "passed": "number",
         "passRate": "number",
         "runs": "number",
+        "study": "string",
         "unpricedRuns": "number"
       }
     ],
-    "note": "string",
-    "ok": "boolean",
-    "schema": "string",
     "totals": {
       "costs": {
         "analysisAttempts": "number",

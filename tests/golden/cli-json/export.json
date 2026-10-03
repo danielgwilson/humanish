@@ -14,5 +14,8 @@
     },
     "warnings": [],
     "watermarked": "boolean"
+  },
+  "pinned": {
+    "shareSafety": "share_ready"
   }
 }

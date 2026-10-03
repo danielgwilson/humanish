@@ -496,7 +496,7 @@ export async function studiesByRequiredKey(
 ): Promise<Map<string, string[]>> {
   const { listStudies, resolveStudy, resolveDryRun, routeOf } = await studyLoaders();
   const users = new Map<string, Set<string>>();
-  for (const entry of (await listStudies(cwd)).labs) {
+  for (const entry of (await listStudies(cwd)).studies) {
     const resolved = await resolveStudy(cwd, entry.path);
     if (!resolved.ok || resolveDryRun(resolved.config, undefined, true) === true) continue;
     if (unsupportedCliRoute(resolved.config, routeOf(resolved.config))) continue;
