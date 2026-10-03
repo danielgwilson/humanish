@@ -13,6 +13,7 @@ import { resolveRouteShouldOpen } from "../../src/cli/commands/study-route-open.
 import { followObserver } from "../../src/cli/observer-follow.js";
 import { runFactsFor, writeResult } from "../../src/cli/io.js";
 import * as humanishIndex from "../../src/index.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
 // treat "no getuid" the same as "not root" (permission fault injection still works).
@@ -74,7 +75,9 @@ async function withTempApp<T>(
     for (const [relativePath, contents] of Object.entries(files)) {
       const filePath = path.join(cwd, relativePath);
       await mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, contents, "utf8");
+      // A study given in the humanish.lab.v2 shape is written as the v3 file migrate would make.
+      const v2 = /studies\/[^/]+\.yaml$/.test(relativePath) && contents.includes("humanish.lab.v2");
+      await writeFile(filePath, v2 ? studyFileText(contents, cwd) : contents, "utf8");
     }
 
     return await callback(cwd);
@@ -129,26 +132,22 @@ describe("humanish CLI scaffold", () => {
   });
 
   it.each([
-    ["run", "lanes"],
-    ["run", "roster"],
+    ["run", "a list entry", {}],
+    ["run", "a group with a count", { count: 2 }],
   ] as const)(
-    "%s rejects unknown %s fields in JSON before creating run evidence",
-    async (command, field) => {
+    "%s rejects an unknown participant field on %s in JSON before creating run evidence",
+    async (command, _form, extra) => {
       const manifest = {
-        schema: "humanish.lab.v2",
+        schema: "humanish.study.v3",
         id: "typo",
+        route: "computer-use",
+        mode: "dry-run",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-        actors: [
-          {
-            type: "openai-computer-use",
-            [field]: [
-              { id: "reader", runtme: "different", ...(field === "roster" ? { count: 2 } : {}) },
-            ],
-          },
-        ],
+        actor: { type: "openai-computer-use" },
+        participants: [{ id: "reader", runtme: "different", ...extra }],
         execution: { target: "e2b-desktop" },
       };
-      await withTempApp({ "humanish/labs/typo.yaml": JSON.stringify(manifest) }, async (cwd) => {
+      await withTempApp({ "humanish/studies/typo.yaml": JSON.stringify(manifest) }, async (cwd) => {
         // A regression can only reach a dry backend; this contract test never permits paid work.
         const result = await runCli([
           ...command.split(" "),
@@ -165,7 +164,7 @@ describe("humanish CLI scaffold", () => {
         expect(envelope.ok).toBe(false);
         expect(envelope.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(envelope.error.message).toContain(
-          `Unknown study field(s) in \`actors[0].${field}[0]\`: runtme`,
+          "Unknown study field in `participants[0]`: runtme",
         );
         expect(await readdir(cwd)).not.toContain(".humanish");
       });
@@ -466,7 +465,7 @@ describe("humanish CLI scaffold", () => {
     await withTempApp(
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-        "humanish/labs/first-run.yaml": [
+        "humanish/studies/first-run.yaml": [
           "schema: humanish.lab.v2",
           "id: first-run",
           "title: First run",
@@ -512,7 +511,7 @@ describe("humanish CLI scaffold", () => {
     await withTempApp(
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-        "humanish/labs/first-run.yaml": [
+        "humanish/studies/first-run.yaml": [
           "schema: humanish.lab.v2",
           "id: first-run",
           "subject:",
@@ -581,7 +580,7 @@ describe("humanish CLI scaffold", () => {
       await withTempApp(
         {
           "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-          "humanish/labs/first-run.yaml": [
+          "humanish/studies/first-run.yaml": [
             "schema: humanish.lab.v2",
             "id: first-run",
             "subject:",
@@ -627,7 +626,7 @@ describe("humanish CLI scaffold", () => {
     await withTempApp(
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-        "humanish/labs/first-run.yaml": [
+        "humanish/studies/first-run.yaml": [
           "schema: humanish.lab.v2",
           "id: first-run",
           "subject:",
@@ -1011,7 +1010,7 @@ interface ServeEnvelope {
 
 const SERVE_LAB_FIXTURE: Record<string, string> = {
   "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-  "humanish/labs/first-run.yaml": [
+  "humanish/studies/first-run.yaml": [
     "schema: humanish.lab.v2",
     "id: first-run",
     "subject:",
@@ -1503,7 +1502,7 @@ describe("humanish observe --all", () => {
 // that aborts at validateExposure before runStudyWith, so no sandbox/provider spend occurs ($0).
 const CUA_LAB_FIXTURE: Record<string, string> = {
   "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-  "humanish/labs/cua-live.yaml": [
+  "humanish/studies/cua-live.yaml": [
     "schema: humanish.lab.v2",
     "id: cua-live",
     "subject:",
@@ -1730,21 +1729,24 @@ describe("study provenance survives the whole CLI path", () => {
   it("`run` stamps the resolved study into the bundle and the status record", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-provenance-"));
     try {
-      const labPath = path.join(cwd, "humanish", "labs", "provenance-demo.yaml");
+      const labPath = path.join(cwd, "humanish", "studies", "provenance-demo.yaml");
       await mkdir(path.dirname(labPath), { recursive: true });
       await writeFile(
         labPath,
-        [
-          "schema: humanish.lab.v2",
-          "id: provenance-demo",
-          "subject:",
-          "  source: this-repo",
-          "actors:",
-          "  - type: synthetic-persona",
-          "scenario:",
-          "  mode: dry-run",
-          "",
-        ].join("\n"),
+        studyFileText(
+          [
+            "schema: humanish.lab.v2",
+            "id: provenance-demo",
+            "subject:",
+            "  source: this-repo",
+            "actors:",
+            "  - type: synthetic-persona",
+            "scenario:",
+            "  mode: dry-run",
+            "",
+          ].join("\n"),
+          cwd,
+        ),
         "utf8",
       );
 
@@ -1760,7 +1762,7 @@ describe("study provenance survives the whole CLI path", () => {
       };
       expect(bundle.lab).toEqual({
         id: "provenance-demo",
-        path: path.join("humanish", "labs", "provenance-demo.yaml"),
+        path: path.join("humanish", "studies", "provenance-demo.yaml"),
         origin: "committed",
       });
 
@@ -1892,7 +1894,7 @@ describe("run writes the same bundle watch does", () => {
     await withTempApp(
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-        "humanish/labs/first-run.yaml": [
+        "humanish/studies/first-run.yaml": [
           "schema: humanish.lab.v2",
           "id: first-run",
           "title: First run",
@@ -1986,18 +1988,21 @@ describe("CUA ending output", () => {
       actors: [{ type: "openai-computer-use", count: 2 }],
       execution: { target: "e2b-desktop" },
     };
-    await withTempApp({ "humanish/labs/preview.yaml": JSON.stringify(manifest) }, async (cwd) => {
-      const result = await runCli(["run", "preview", "--dry-run", "--no-open", "--cwd", cwd]);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain("diagnostic: preview");
-      expect(result.stdout).toContain(
-        "humanish run preview: dry run finished\nroute: computer-use\n",
-      );
-      expect(result.stdout.match(/dry run, nothing ran live · preview/g)).toHaveLength(2);
-      const verified = await runCli(["verify", "--run", "latest", "--cwd", cwd, "--json"]);
-      expect(verified.exitCode).toBe(0);
-      expect(JSON.parse(verified.stdout).ok).toBe(true);
-    });
+    await withTempApp(
+      { "humanish/studies/preview.yaml": JSON.stringify(manifest) },
+      async (cwd) => {
+        const result = await runCli(["run", "preview", "--dry-run", "--no-open", "--cwd", cwd]);
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("diagnostic: preview");
+        expect(result.stdout).toContain(
+          "humanish run preview: dry run finished\nroute: computer-use\n",
+        );
+        expect(result.stdout.match(/dry run, nothing ran live · preview/g)).toHaveLength(2);
+        const verified = await runCli(["verify", "--run", "latest", "--cwd", cwd, "--json"]);
+        expect(verified.exitCode).toBe(0);
+        expect(JSON.parse(verified.stdout).ok).toBe(true);
+      },
+    );
   });
 });
 

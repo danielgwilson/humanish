@@ -5,20 +5,18 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
-import { parseStudy } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 import { normalizeRunStudyOptions } from "../../src/study/run-study-options.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { runStudy, type RunStudyOptions } from "../../src/run-study.js";
 import { lab } from "../admission/fixtures.js";
+import { studyConfig } from "../helpers/study-file.js";
 
 // The package's runStudyWith refuses the RunStudyOptions fields it no longer has, and the typed options
 // emit no deprecation warning. Only tests set the internal options.
 
 function config(): StudyConfig {
-  const parsed = parseStudy(lab("cuAppUrl"));
-  if (!parsed.ok) throw new Error(parsed.error.message);
-  return parsed.config;
+  return studyConfig(lab("cuAppUrl"));
 }
 
 type WarningSpy = { mock: { calls: unknown[][] } };

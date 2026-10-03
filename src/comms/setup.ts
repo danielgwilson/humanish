@@ -18,7 +18,7 @@ import {
 } from "./providers.js";
 import { createReceivingAdapter } from "./receiving-runtime.js";
 import { RECEIVING_SCOPE_UNSUPPORTED, type ReceivingAdapter } from "./receiving-types.js";
-import { parseStudy } from "../study/config.js";
+import { parseStudyDocument } from "../study/config.js";
 import { resolveStudyManifest } from "../study/discover.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -229,7 +229,7 @@ export async function configureCommsStudy(args: {
     }
     const study = parseDocument(studyText);
     study.setIn(["comms", "email", "connection"], args.connection);
-    const validated = parseStudy(study.toJS());
+    const validated = parseStudyDocument(study.toJS());
     if (!validated.ok)
       return {
         ...base,
@@ -248,7 +248,7 @@ export async function configureCommsStudy(args: {
       return {
         ...base,
         message:
-          "This is already the local receiving copy. Select its original study to configure a separate copy, or edit this manifest directly.",
+          "This is already the local receiving copy. Select its original study to configure a separate copy, or edit this study file directly.",
       };
     // A second file with this name in another study directory would make discovery refuse both.
     const stem = filename.replace(/\.yaml$/, "");

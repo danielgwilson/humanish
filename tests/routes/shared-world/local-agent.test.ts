@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { planStudy } from "../../../src/study/plan.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { participantRunDeps } from "../../../src/routes/shared-world/participant-specs.js";
@@ -35,7 +35,7 @@ async function projectDir(): Promise<string> {
 }
 
 function config(base: "sharedProvisioned" | "sharedExternal", actor?: Record<string, unknown>) {
-  const parsed = parseStudy(lab(base, live, actor));
+  const parsed = parseStudyDocument(lab(base, live, actor));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -132,7 +132,7 @@ describe("shared world with a local-agent brain", () => {
     const base = lab("sharedProvisioned", live, localAgent);
     const raw =
       caps === undefined ? base : { ...base, execution: { ...(base.execution as object), caps } };
-    const parsed = parseStudy(raw);
+    const parsed = parseStudyDocument(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runStudyWith(
       parsed.config,

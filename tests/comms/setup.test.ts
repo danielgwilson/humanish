@@ -7,11 +7,12 @@ import { saveCommsConnection } from "../../src/comms/connections.js";
 import { checkCommsConnection, configureCommsStudy } from "../../src/comms/setup.js";
 import { AGENTMAIL_RECEIVING_CODES, AgentMailReceivingError } from "../../src/comms/agentmail.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
 import { launchRun } from "../../src/tui/launch.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
 import type { ReceivingAdapter } from "../../src/comms/receiving-types.js";
+import { studyFileText } from "../helpers/study-file.js";
 const lab = {
   schema: V2_SCHEMA,
   id: "signup",
@@ -133,12 +134,17 @@ describe("connection authentication", () => {
   );
 });
 describe("receiving lab selection", () => {
-  async function source() {
-    await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
-    await writeFile(path.join(cwd, "humanish/labs/signup.yaml"), stringify(lab));
+  /** The source study: v3 under humanish/studies, or the v2 file under humanish/labs. */
+  async function source(options: { v2?: boolean } = {}) {
+    const dir = options.v2 ? "humanish/labs" : "humanish/studies";
+    await mkdir(path.join(cwd, dir), { recursive: true });
+    await writeFile(
+      path.join(cwd, dir, "signup.yaml"),
+      options.v2 ? stringify(lab) : studyFileText(lab, cwd),
+    );
   }
   it("previews without mutation, then saves a resolvable local copy while preserving source", async () => {
-    await source();
+    await source({ v2: true });
     const before = await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8");
     const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({
@@ -169,8 +175,8 @@ describe("receiving lab selection", () => {
     await source();
     const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
     await writeFile(
-      path.join(cwd, "humanish/labs/signup.yaml"),
-      stringify({ ...lab, title: "Changed" }),
+      path.join(cwd, "humanish/studies/signup.yaml"),
+      studyFileText({ ...lab, title: "Changed" }, cwd),
     );
     expect(
       await configureCommsStudy({
@@ -190,8 +196,8 @@ describe("receiving lab selection", () => {
       allowedOrigins: ["https://accounts.example.test"],
       linkOrigin: "http://127.0.0.1:3000",
     };
-    const original = stringify({ ...lab, comms: { email } });
-    await writeFile(path.join(cwd, "humanish/labs/signup.yaml"), original);
+    const original = studyFileText({ ...lab, comms: { email } }, cwd);
+    await writeFile(path.join(cwd, "humanish/studies/signup.yaml"), original);
     const result = await configureCommsStudy({
       cwd,
       lab: "signup",
@@ -201,7 +207,7 @@ describe("receiving lab selection", () => {
     expect(result).toMatchObject({ ok: true, applied: true });
     const selected = await resolveStudyManifest(cwd, result.path!);
     expect(selected.ok && selected.config.comms?.email).toEqual({ kind: "real", ...email });
-    expect(await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8")).toBe(original);
+    expect(await readFile(path.join(cwd, "humanish/studies/signup.yaml"), "utf8")).toBe(original);
   });
   it("never overwrites a selected manifest that is already the receiving destination", async () => {
     await source();
@@ -226,22 +232,22 @@ describe("receiving lab selection", () => {
   });
   it("launches the exact selected local path even with a same-name committed manifest", async () => {
     await source();
-    await mkdir(path.join(cwd, ".humanish/local/labs"), { recursive: true });
+    await mkdir(path.join(cwd, ".humanish/local/studies"), { recursive: true });
     await writeFile(
-      path.join(cwd, ".humanish/local/labs/signup.yaml"),
-      stringify({ ...lab, comms: { email: { connection: "agentmail" } } }),
+      path.join(cwd, ".humanish/local/studies/signup.yaml"),
+      studyFileText({ ...lab, comms: { email: { connection: "agentmail" } } }, cwd),
     );
     const spawn = vi.fn(() => ({ pid: 4242, unref() {}, on() {} }));
     const launched = await launchRun({
       cwd,
       lab: "signup",
-      manifestPath: ".humanish/local/labs/signup.yaml",
+      manifestPath: ".humanish/local/studies/signup.yaml",
       mode: "live",
       spawn: spawn as never,
     });
     expect(launched.ok).toBe(true);
     expect(spawn).toHaveBeenCalledTimes(1);
-    expect(launched.ok && launched.run.command.at(-1)).toBe(".humanish/local/labs/signup.yaml");
+    expect(launched.ok && launched.run.command.at(-1)).toBe(".humanish/local/studies/signup.yaml");
   });
   it("rejects unsupported receiving and dangerous mixtures before execution", () => {
     for (const email of [
@@ -249,15 +255,15 @@ describe("receiving lab selection", () => {
       { connection: "agentmail", recipients: [] },
       { connection: "agentmail", allowedOrigins: ["https://target.test/path"] },
     ])
-      expect(parseStudy({ ...lab, comms: { email } }).ok).toBe(false);
+      expect(parseStudyDocument({ ...lab, comms: { email } }).ok).toBe(false);
     expect(
-      parseStudy({
+      parseStudyDocument({
         ...lab,
         actors: [{ type: "local-agent", mission: "Sign up" }],
         comms: { email: { connection: "agentmail" } },
       }).ok,
     ).toBe(false);
-    const real = parseStudy({
+    const real = parseStudyDocument({
       ...lab,
       actors: [{ type: "openai-computer-use", count: 2, mission: "Sign up" }],
       comms: { email: { connection: "agentmail" } },

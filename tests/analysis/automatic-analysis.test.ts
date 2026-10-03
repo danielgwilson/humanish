@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import {
   automaticAnalysisBudget,
@@ -37,6 +37,7 @@ import { stopRun } from "../../src/tui/actions.js";
 import * as automaticJobs from "../../src/analysis/automatic.js";
 import { routeOf } from "../../src/study/plan.js";
 import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
@@ -93,7 +94,7 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(resolveAutomaticAnalysis(raw).ok).toBe(false);
   });
   it.each(fixtures)("preserves explicit opt-out on every route: $name", ({ config: base }) => {
-    const parsed = parseStudy({ ...base, review: { analysis: false } });
+    const parsed = parseStudyDocument({ ...base, review: { analysis: false } });
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.review?.analysis).toBe(false);
   });
@@ -171,7 +172,7 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     expect(raw.review.analysis).toBe(false);
     expect(raw.execution.runtimeAuth).toBe("openai-egress");
-    expect(parseStudy(raw).ok).toBe(true);
+    expect(parseStudyDocument(raw).ok).toBe(true);
     expect(await readFile(path.resolve("scripts/release-dogfood.mjs"), "utf8")).toContain(
       "must explicitly disable automatic analysis",
     );
@@ -181,18 +182,21 @@ describe("automatic analysis admission and producer boundary", () => {
       await readFile(path.resolve("humanish/studies/scripted-demo.yaml"), "utf8"),
     );
     expect(raw.review.analysis).toBe(false);
-    expect(parseStudy(raw).ok).toBe(true);
+    expect(parseStudyDocument(raw).ok).toBe(true);
   });
   it.each([undefined, false, { maxCostUsd: 7 }])(
     "metadata preflight and TUI summary disclose resolved budget %j without dispatch",
     async (setting) => {
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
-      await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+      await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
       const manifest = {
         ...base,
         ...(setting === undefined ? {} : { review: { analysis: setting } }),
       };
-      await writeFile(path.join(cwd, "humanish", "labs", "budget.yaml"), JSON.stringify(manifest));
+      await writeFile(
+        path.join(cwd, "humanish", "studies", "budget.yaml"),
+        studyFileText(manifest, cwd),
+      );
       const preflight = await runStudyPreflight({ cwd, lab: "budget", env: {} });
       expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
       expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "computer-use"));
@@ -215,7 +219,7 @@ describe("automatic analysis admission and producer boundary", () => {
     },
   );
   it.each(fixtures)("parses opt-in only on eligible producer routes: $name", ({ config: base }) => {
-    const parsed = parseStudy({ ...base, review: { analysis: { maxCostUsd: 5 } } });
+    const parsed = parseStudyDocument({ ...base, review: { analysis: { maxCostUsd: 5 } } });
     expect(parsed.ok, JSON.stringify(parsed)).toBe(routeOf(base) !== "preview");
     if (parsed.ok) expect(parsed.config.review?.analysis).toEqual({ maxCostUsd: 5 });
   });
@@ -608,8 +612,11 @@ describe("automatic analysis admission and producer boundary", () => {
       vi.stubEnv("E2B_API_KEY", "test-e2b-key");
       await mkdir(path.join(cwd, ".humanish", "runs", "taken-run"), { recursive: true });
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
-      await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
-      await writeFile(path.join(cwd, "humanish", "labs", "default.yaml"), JSON.stringify(base));
+      await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
+      await writeFile(
+        path.join(cwd, "humanish", "studies", "default.yaml"),
+        studyFileText(base, cwd),
+      );
       let stdout = "";
       let stderr = "";
       const program = createProgram({
@@ -648,10 +655,10 @@ describe("automatic analysis admission and producer boundary", () => {
     "CLI entry $prefix reports dry-run skip without starting analysis",
     async ({ prefix }) => {
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
-      await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+      await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
       await writeFile(
-        path.join(cwd, "humanish", "labs", "review.yaml"),
-        JSON.stringify({ ...base, review: { analysis: { maxCostUsd: 5 } } }),
+        path.join(cwd, "humanish", "studies", "review.yaml"),
+        studyFileText({ ...base, review: { analysis: { maxCostUsd: 5 } } }, cwd),
       );
       let stdout = "";
       let stderr = "";

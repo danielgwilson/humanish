@@ -95,7 +95,7 @@ export const parserCases: readonly AdmissionCase[] = [
         },
       },
     }),
-    parser: "that do not exist",
+    parser: "that does not exist",
   },
   {
     name: "recipients without address",

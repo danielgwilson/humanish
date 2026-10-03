@@ -103,7 +103,7 @@ describe("humanish export", () => {
     expect(html).toContain("../run.json");
     expect(html).not.toContain("humanish-local-only");
     expect(html).toContain('<meta name="humanish-observer-mode" content="snapshot">');
-    expect(formatExportHuman(result)).toContain("1 image(s) embedded");
+    expect(formatExportHuman(result)).toContain("1 image embedded");
     // The file says what verify said, so its chrome can agree with the result envelope.
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
   });

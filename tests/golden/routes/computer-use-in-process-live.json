@@ -353,7 +353,7 @@
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace item(s), 0 screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace items, 0 screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -659,6 +659,7 @@
         "reportedFriction": 0
       },
       "estimatedCostUsd": null,
+      "estimatedCostComplete": false,
       "ok": true,
       "execution": {
         "succeeded": true,

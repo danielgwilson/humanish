@@ -41,6 +41,7 @@ import {
 } from "./types.js";
 import type { DesktopParticipantRun } from "../computer-use/types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { plural } from "../../run/text.js";
 
 /** The results of a run whose plane did not run (a dry run) or has not reported yet. */
 export function emptyPlaneResults(): PlaneResults {
@@ -184,7 +185,7 @@ function concurrentStudyError(args: {
   }
   return {
     code: "HUMANISH_SHARED_WORLD_FAILED",
-    message: `Concurrent shared-world run did not run coherently: ${passed}/${participantCount} actor(s) reached a terminal, engaged passed session.`,
+    message: `Concurrent shared-world run did not run coherently: ${passed}/${plural(participantCount, "actor")} reached a terminal, engaged passed session.`,
   };
 }
 

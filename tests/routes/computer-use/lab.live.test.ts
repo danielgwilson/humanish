@@ -7,7 +7,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 
 // The single live rung for the computer-use route: a real study config dispatched through runStudyWith to
@@ -49,7 +49,7 @@ describe.skipIf(!LIVE)("cua-actor-lab (live, spend-gated)", () => {
     "dispatches a lab config to a real desktop session and persists a verified bundle",
     { timeout: 360_000 },
     async () => {
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "cua-live-proof",
         title: "CUA lab live proof",

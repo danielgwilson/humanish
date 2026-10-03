@@ -551,6 +551,7 @@
     "outcome": {
       "verdict": "fail",
       "estimatedCostUsd": 0.00888,
+      "estimatedCostComplete": true,
       "ok": false,
       "execution": {
         "succeeded": false,

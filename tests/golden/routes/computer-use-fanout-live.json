@@ -260,7 +260,7 @@
     "humanish: Persona impatient-skimmer has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
     "humanish: Persona power-user has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
     "humanish: Persona comparison-shopper has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
-    "humanish computer-use fan-out plan (fanout-proof): 4 participant(s), strategy per-lane-worlds, concurrency 1, 4 wave(s).",
+    "humanish computer-use fan-out plan (fanout-proof): 4 participants, strategy per-lane-worlds, concurrency 1, 4 waves.",
     "  session budget 60s per participant; worst-case ~44 sandbox-minutes total.",
     "  - mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242",
     "  - small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8",
@@ -303,7 +303,7 @@
     "redaction": {
       "status": "passed",
       "screenshots": "raw",
-      "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+      "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
     },
     "startedAt": "[ts]",
     "completedAt": "[ts]",
@@ -424,7 +424,7 @@
     "redaction": {
       "status": "passed",
       "screenshots": "raw",
-      "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+      "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
     },
     "startedAt": "[ts]",
     "completedAt": "[ts]",
@@ -545,7 +545,7 @@
     "redaction": {
       "status": "passed",
       "screenshots": "raw",
-      "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+      "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
     },
     "startedAt": "[ts]",
     "completedAt": "[ts]",
@@ -666,7 +666,7 @@
     "redaction": {
       "status": "passed",
       "screenshots": "raw",
-      "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+      "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
     },
     "startedAt": "[ts]",
     "completedAt": "[ts]",
@@ -930,12 +930,12 @@
       "harnessFailed": 0,
       "reportedFriction": 0
     },
-    "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participant(s) reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
+    "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
     "gaps": [
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participant(s) reached a terminal, engaged verdict: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -1144,7 +1144,7 @@
           "redaction": {
             "status": "passed",
             "screenshots": "raw",
-            "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+            "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
           },
           "startedAt": "[ts]",
           "completedAt": "[ts]",
@@ -1361,7 +1361,7 @@
           "redaction": {
             "status": "passed",
             "screenshots": "raw",
-            "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+            "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
           },
           "startedAt": "[ts]",
           "completedAt": "[ts]",
@@ -1573,7 +1573,7 @@
           "redaction": {
             "status": "passed",
             "screenshots": "raw",
-            "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+            "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
           },
           "startedAt": "[ts]",
           "completedAt": "[ts]",
@@ -1785,7 +1785,7 @@
           "redaction": {
             "status": "passed",
             "screenshots": "raw",
-            "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+            "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
           },
           "startedAt": "[ts]",
           "completedAt": "[ts]",
@@ -1927,7 +1927,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.fanout.plan",
-        "message": "Fan-out plan: 4 participant(s) (per-lane-worlds), concurrency 1, 4 wave(s); session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+        "message": "Fan-out plan: 4 participants (per-lane-worlds), concurrency 1, 4 waves; session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
       },
       {
         "id": "event-002-subject-mobile-newcomer",
@@ -2061,7 +2061,7 @@
         "harnessFailed": 0,
         "reportedFriction": 0
       },
-      "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participant(s) reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
+      "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
       "gaps": [
         "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
       ]
@@ -2308,6 +2308,7 @@
         "reportedFriction": 0
       },
       "estimatedCostUsd": 0,
+      "estimatedCostComplete": false,
       "ok": true,
       "execution": {
         "succeeded": true,

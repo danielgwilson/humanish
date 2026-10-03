@@ -17,7 +17,7 @@ import {
   type StudyTask,
 } from "../../src/study/tasks.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 
 const PROTOCOL: StudyTask[] = [
   {
@@ -129,7 +129,7 @@ describe("formatTaskFunnel", () => {
 
 describe("tasks config parsing", () => {
   const lab = (actor: Record<string, unknown>) =>
-    parseStudy({
+    parseStudyDocument({
       schema: V2_SCHEMA,
       id: "task-lab",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

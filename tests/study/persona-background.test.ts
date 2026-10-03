@@ -17,6 +17,7 @@ import {
 import { inspectStudyManifest } from "../../src/study/discover.js";
 import { buildInitialRequest } from "../../src/actors/computer-use/openai-wire.js";
 import { DEVICE_PRESETS } from "../../src/study/device-presets.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const fallback = { id: "organizer", name: "Organizer" };
 const roots: string[] = [];
@@ -27,24 +28,27 @@ async function project(persona: unknown) {
   const root = await mkdtemp(path.join(tmpdir(), "humanish-background-"));
   roots.push(root);
   await mkdir(path.join(root, "humanish/personas"), { recursive: true });
-  await mkdir(path.join(root, "humanish/labs"), { recursive: true });
+  await mkdir(path.join(root, "humanish/studies"), { recursive: true });
   await writeFile(path.join(root, "humanish/personas/organizer.yaml"), JSON.stringify(persona));
   await writeFile(
-    path.join(root, "humanish/labs/study.yaml"),
-    JSON.stringify({
-      schema: "humanish.lab.v2",
-      id: "study",
-      subject: { source: "app-url", appUrl: "http://127.0.0.1:8000" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "organizer",
-          mission: "Organize Saturday's event.",
-        },
-      ],
-      scenario: { mode: "dry-run" },
-      execution: { target: "e2b-desktop" },
-    }),
+    path.join(root, "humanish/studies/study.yaml"),
+    studyFileText(
+      {
+        schema: "humanish.lab.v2",
+        id: "study",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:8000" },
+        actors: [
+          {
+            type: "openai-computer-use",
+            persona: "organizer",
+            mission: "Organize Saturday's event.",
+          },
+        ],
+        scenario: { mode: "dry-run" },
+        execution: { target: "e2b-desktop" },
+      },
+      root,
+    ),
   );
   return root;
 }

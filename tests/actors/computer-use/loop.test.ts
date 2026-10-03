@@ -2144,7 +2144,7 @@ describe("dwell window: the harness holds, looks, and requests no model turn", (
     expect(started).toBeGreaterThan(-1);
     expect(completed).toBeGreaterThan(started);
     const complete = result.trace.items[completed];
-    expect(complete?.text).toContain("3 frame(s) over 3000ms");
+    expect(complete?.text).toContain("3 frames over 3000ms");
     expect(complete?.text).toContain("no model turn was requested");
     // The frames were persisted on the cadence, named as dwell frames.
     expect(

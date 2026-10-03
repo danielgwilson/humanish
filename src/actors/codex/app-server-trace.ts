@@ -2,6 +2,7 @@
 // from app-server envelopes, and the redaction applied before anything is persisted.
 import { digestText, publicPathForTrace, redactText, tailText } from "../../evidence/redaction.js";
 import { isRecord } from "../../run/type-guards.js";
+import { plural } from "../../run/text.js";
 
 export const CODEX_APP_SERVER_TRACE_SCHEMA = "humanish.codex-app-server-trace.v1";
 
@@ -471,7 +472,7 @@ export function renderTranscript(trace: CodexAppServerTrace): string {
       trace.fileChanges
         .map(
           (fileChange) =>
-            `${fileChange.status ?? "fileChange"} ${fileChange.changeCount ?? 0} change(s)`,
+            `${fileChange.status ?? "fileChange"} ${plural(fileChange.changeCount ?? 0, "change")}`,
         )
         .join("\n"),
     ],

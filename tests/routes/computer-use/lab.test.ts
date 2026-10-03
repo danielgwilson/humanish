@@ -62,7 +62,7 @@ import type {
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
@@ -390,7 +390,7 @@ function browserFeedback(ctx: BrowserLabScoringContext): RunFeedbackCandidate[] 
 }
 
 function cuaConfig(appUrl = "http://127.0.0.1:3000/"): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "cua-routing-proof",
     title: "CUA routing proof",
@@ -429,7 +429,7 @@ function cloneCuaConfig(extra?: {
   state?: unknown;
   keep?: boolean;
 }): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "cua-clone-proof",
     title: "CUA clone proof",
@@ -464,7 +464,7 @@ function cloneCuaConfig(extra?: {
 describe("lab routing (app-url → cua)", () => {
   it("routeOf sends app-url to computer-use and leaves the other routes untouched", () => {
     expect(routeOf(cuaConfig())).toBe("computer-use");
-    const synthetic = parseStudy({
+    const synthetic = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
@@ -482,7 +482,7 @@ describe("lab routing (app-url → cua)", () => {
         actors: [{ type }],
         execution: { target: "e2b-desktop" },
       } as const;
-      expect(parseStudy(clone).ok).toBe(false);
+      expect(parseStudyDocument(clone).ok).toBe(false);
       expect(routeOf(clone as unknown as StudyConfig)).toBe("computer-use");
     }
   });
@@ -512,7 +512,7 @@ describe("lab routing (app-url → cua)", () => {
     }
     // A computer-use clone lab without the desktop target no longer parses; it would still have
     // routed to cua and run on a hosted desktop.
-    const untargeted = parseStudy({
+    const untargeted = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "s2",
       subject: { source: "clone", repos: ["example-org/example-app"] },
@@ -532,7 +532,7 @@ describe("desktop-cli runtime prerequisites", () => {
   });
 
   function configFor(install?: string): StudyConfig {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       ...cuaConfig(),
       subject: {
         source: "desktop-cli",
@@ -652,7 +652,7 @@ describe("runCuaActorLab", () => {
     // The drain's error quotes the run's OpenAI key and the catch's bearer token; the warning must
     // carry neither.
     const token = ["tango", "lima", "catch", "credential"].join("-");
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-external-comms",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -721,7 +721,7 @@ describe("runCuaActorLab", () => {
     deliveries: () => Promise<Response>;
   }) {
     const catchBaseUrl = options.catchBaseUrl ?? "https://catch.example.test";
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-external-comms",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -841,7 +841,7 @@ describe("runCuaActorLab", () => {
   it("records a drained operator-hosted catch in the bundle and leaves the verdict alone", async () => {
     const tokenEnv = "CATCH_TOKEN";
     const token = ["synthetic", "catch", "token"].join("-");
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-external-comms-drained",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1342,7 +1342,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("continues the E2B study with a warning when optional recording cannot start", async () => {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-recording-startup-failure",
       title: "Recording startup failure",
@@ -1474,7 +1474,7 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-mobile-fidelity",
       title: "Mobile fidelity",
@@ -1653,7 +1653,7 @@ describe("runCuaActorLab", () => {
   }
   async function runLaterTabLane(sandbox: ReturnType<typeof makeFakeSandbox>) {
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-mobile-fidelity-drift",
       title: "Mobile fidelity drift",
@@ -1728,7 +1728,7 @@ describe("runCuaActorLab", () => {
   it("a lab's dwell window reaches the session the participant runs: actor default, participant override", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-dwell-plumbing",
       title: "Dwell plumbing",
@@ -1819,7 +1819,7 @@ describe("runCuaActorLab", () => {
     policies: Record<string, unknown>,
   ) {
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-camera",
       title: "Participant camera",
@@ -1968,7 +1968,7 @@ describe("runCuaActorLab", () => {
       return realCreate(...args);
     };
     module.Sandbox.create = failingOnce as unknown as typeof module.Sandbox.create;
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-create-retry",
       title: "Sandbox create retry",
@@ -2024,7 +2024,7 @@ describe("runCuaActorLab", () => {
       throw new Error("401 Unauthorized: invalid API key");
     };
     module.Sandbox.create = alwaysUnauthorized as unknown as typeof module.Sandbox.create;
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-create-no-retry",
       title: "Sandbox create, no retry",
@@ -2076,7 +2076,7 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-mobile-fidelity-desktop-lane",
       title: "Mobile fidelity, desktop lane",
@@ -2143,7 +2143,7 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-mobile-fidelity-firefox",
       title: "Mobile fidelity on Firefox",
@@ -2826,7 +2826,7 @@ describe("runCuaActorLab", () => {
     expect(screenshotLabels.every((label: string) => label.endsWith("(raw)"))).toBe(true);
     expect(bundle.redaction.notes).toContain("Screenshots are unblurred");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
-    expect(reviewMd).toMatch(/\d+ raw screenshot\(s\)/);
+    expect(reviewMd).toMatch(/\d+ raw screenshots?/);
     for (const text of [JSON.stringify(bundle), reviewMd]) {
       expect(text).not.toContain("(redacted)");
       expect(text).not.toContain("redacted screenshot");
@@ -2880,7 +2880,7 @@ describe("runCuaActorLab", () => {
     expect(screenshotLabels.every((label: string) => label.endsWith("(blurred)"))).toBe(true);
     expect(bundle.redaction.notes).toContain("blurred at capture");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
-    expect(reviewMd).toMatch(/\d+ blurred screenshot\(s\)/);
+    expect(reviewMd).toMatch(/\d+ blurred screenshots?/);
     expect(reviewMd).not.toContain("redacted screenshot");
   });
 
@@ -4864,7 +4864,7 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
   });
 
   function templatedConfig(template?: string): StudyConfig {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-template-proof",
       title: "CUA template proof",
@@ -4944,7 +4944,7 @@ describe("Chrome DevTools readiness after launch", () => {
   });
 
   function chromeConfig(device: "mobile" | "desktop"): StudyConfig {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-devtools-readiness",
       title: "DevTools readiness",
@@ -5209,7 +5209,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const provenance = bundle.events.find(
       (event: { type: string }) => event.type === "cua-lab.subject.provenance",
     );
-    expect(provenance?.message).toContain("state: seeded (3 step(s): prebuild, db-up, admin-user)");
+    expect(provenance?.message).toContain("state: seeded (3 steps: prebuild, db-up, admin-user)");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
     expect(reviewMd).toContain("state: seeded");
     for (const file of ["run.json", "review.md", "events.ndjson"]) {
@@ -5542,7 +5542,7 @@ describe("buildSingleParticipantBundle", () => {
       caps?: { maxUsd?: number };
       localTree?: { keep?: boolean; exclude?: string[]; maxArchiveBytes?: number };
     }): StudyConfig {
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "cua-local-tree-proof",
         title: "CUA local-tree proof",
@@ -6270,7 +6270,7 @@ function makeStateProvider(): CuaProvider {
 }
 
 function localAppConfig(appUrl = "http://localhost:5173/"): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "downstream-local-app-state",
     title: "State-driven local app",
@@ -7120,7 +7120,7 @@ describe("runCuaActorLab cost estimates", () => {
     },
   ];
   function configWithModel(model?: string, caps?: { maxUsd?: number }): StudyConfig {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-cost-proof",
       title: "CUA cost proof",
@@ -7421,7 +7421,7 @@ describe("adopter-hosted comms on the app-url route", () => {
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     try {
       const port = (server.address() as { port: number }).port;
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "older-external-catch",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -7500,7 +7500,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       });
       expect(posted.ok).toBe(true);
 
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "cua-external-comms",
         title: "CUA adopter-hosted comms",

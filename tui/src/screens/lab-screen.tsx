@@ -5,6 +5,7 @@ import type { StudySummary } from "../../../src/study/summary.js";
 import type { RunDetail } from "../../../src/run/detail.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import type { StudyRow } from "../../../src/run/projection.js";
+import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
 import {
   expectationLine,
   formatDuration,
@@ -488,9 +489,10 @@ function PastRun({
       ? (run.verdict ?? "no verdict")
       : `${run.participants.reachedGoal}/${run.participants.total} reached the goal`;
   const cost =
-    run.estimatedCostUsd === undefined || run.estimatedCostUsd === null
+    run.estimatedCostUsd === undefined ||
+    (run.estimatedCostUsd === null && run.analysisCost === undefined)
       ? ""
-      : ` · run ~$${run.estimatedCostUsd.toFixed(2)} (excl. analysis)`;
+      : ` · run ${runCostLabel(indexedRunCost(run))}`;
   const summary = [when, outcome].filter(Boolean).join(" · ") + cost;
   return (
     <Box width={columns}>

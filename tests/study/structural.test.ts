@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { parse as parseYaml } from "yaml";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
@@ -61,7 +61,7 @@ describe("lab refactor structural necessity (rung 1)", () => {
 // engine would pass an expressiveness test that never executes).
 describe("lab config expressiveness (rung 3)", () => {
   it("a clone+e2b composition with a free-form actor label is refused at parse", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "migration-rehearsal",
       title: "bespoke-sim to humanish migration",
@@ -111,7 +111,7 @@ describe("lab config expressiveness (rung 3)", () => {
 
   it("synthetic behavior is a function of config (actor count -> simCount), not just a parsed label", async () => {
     const base = (count: number) =>
-      parseStudy({
+      parseStudyDocument({
         schema: V2_SCHEMA,
         id: "behavioral",
         subject: { source: "this-repo" },

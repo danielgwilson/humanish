@@ -2,7 +2,7 @@
 // deterministically at $0. Shared by the scorer loader and RunStudyOptions equivalence tests.
 
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import type { RunTerminalProductStudyOptions } from "../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -99,7 +99,7 @@ export function terminalConfig(extra?: Record<string, unknown>): StudyConfig {
     },
     ...extra,
   };
-  const parsed = parseStudy(raw);
+  const parsed = parseStudyDocument(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

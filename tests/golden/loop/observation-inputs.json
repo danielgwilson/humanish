@@ -20,7 +20,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "3 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "3 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:20.000Z",
@@ -442,7 +442,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "blurred",
-          "notes": "2 screenshot(s) redacted to blurred thumbnails via RedactionHooks"
+          "notes": "2 screenshots redacted to blurred thumbnails via RedactionHooks"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:16.000Z",

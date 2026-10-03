@@ -5,26 +5,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { doctor } from "../../src/cli/doctor.js";
 import { saveCommsConnection } from "../../src/comms/connections.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const noAgents = { which: async () => undefined };
-const manifest = [
-  "schema: humanish.lab.v2",
-  "id: preview",
-  "subject:",
-  "  source: app-url",
-  "  appUrl: https://preview.example.test/",
-  "actors:",
-  "  - type: openai-computer-use",
-  "execution:",
-  "  target: e2b-desktop",
-  "scenario:",
-  "  mode: live",
-  "policies:",
-  "  allowPublicTargets: true",
-  "comms:",
-  "  email:",
-  "    connection: study-mail",
-].join("\n");
+const manifest = studyFileText(
+  [
+    "schema: humanish.lab.v2",
+    "id: preview",
+    "subject:",
+    "  source: app-url",
+    "  appUrl: https://preview.example.test/",
+    "actors:",
+    "  - type: openai-computer-use",
+    "execution:",
+    "  target: e2b-desktop",
+    "scenario:",
+    "  mode: live",
+    "policies:",
+    "  allowPublicTargets: true",
+    "comms:",
+    "  email:",
+    "    connection: study-mail",
+  ].join("\n"),
+);
 
 describe("doctor checks the selected receiving credential without contacting its provider", () => {
   let cwd: string;
@@ -42,9 +45,9 @@ describe("doctor checks the selected receiving credential without contacting its
       E2B_API_KEY: "synthetic-desktop-canary",
       XDG_CONFIG_HOME: path.join(cwd, "user-config"),
     };
-    await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
+    await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
     await writeFile(path.join(cwd, ".gitignore"), ".humanish/\n");
-    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), manifest);
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), manifest);
     fetch.mockClear();
     vi.stubGlobal("fetch", fetch);
   });
@@ -117,7 +120,7 @@ describe("doctor checks the selected receiving credential without contacting its
   it("does not require the receiving credential for a dry run", async () => {
     expect((await saveCommsConnection(cwd, "study-mail")).ok).toBe(true);
     await writeFile(
-      path.join(cwd, "humanish/labs/preview.yaml"),
+      path.join(cwd, "humanish/studies/preview.yaml"),
       manifest.replace("mode: live", "mode: dry-run"),
     );
     const result = await inspect();

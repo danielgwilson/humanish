@@ -25,6 +25,7 @@ import { analysisSharingProblems } from "../analysis/sharing.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedFile } from "../run/evidence-files.js";
 import { shellQuote } from "../substrates/shell.js";
+import { plural } from "../run/text.js";
 
 const EXPORT_SCHEMA = "humanish.export-result.v1";
 /** Past this the file stops being a thing you attach to an email. Declared, never silent. */
@@ -582,7 +583,7 @@ export function formatExportHuman(
   if (result.format === "bundle") {
     return [
       `humanish export ${result.runId}`,
-      `workspace: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${result.embeddedImages} blurred image(s))`,
+      `workspace: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${plural(result.embeddedImages, "blurred image")})`,
       `share safety: ${result.shareSafety.status}`,
       `verify: humanish verify --cwd ${shellQuote(result.path)} --run ${shellQuote(result.runId)}`,
       `feedback: humanish feedback draft --cwd ${shellQuote(result.path)} --run ${shellQuote(result.runId)}`,
@@ -592,7 +593,7 @@ export function formatExportHuman(
   }
   const lines = [
     `humanish export ${result.runId}`,
-    `file: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${result.embeddedImages} image(s) embedded)`,
+    `file: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${plural(result.embeddedImages, "image")} embedded)`,
     `share safety: ${result.shareSafety.status}${result.watermarked ? " (watermarked: local only)" : ""}`,
     ...result.warnings.map((warning) => `warning: ${warning}`),
   ];

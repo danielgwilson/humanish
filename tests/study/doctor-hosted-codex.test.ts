@@ -2,10 +2,10 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import { studySetupChecks, type StudySetupCheckArgs } from "../../src/study/doctor.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -26,7 +26,7 @@ const codex = (authStatus: DetectedLocalAgent["authStatus"]): DetectedLocalAgent
 
 /** A hosted local-agent Codex lab, with the declared model and effort a run would use. */
 const hostedLab = (actor: Record<string, unknown> = {}) =>
-  stringify({
+  studyFileText({
     schema: "humanish.lab.v2",
     id: "hosted-codex",
     subject: { source: "app-url", appUrl: "https://preview.example.test/" },
@@ -44,11 +44,11 @@ async function participantRow(
 ) {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-doctor-hosted-"));
   directories.push(cwd);
-  await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
-  await writeFile(path.join(cwd, "humanish/labs/hosted.yaml"), manifest);
+  await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
+  await writeFile(path.join(cwd, "humanish/studies/hosted.yaml"), manifest);
   const result = await studySetupChecks({
     cwd,
-    lab: "humanish/labs/hosted.yaml",
+    lab: "humanish/studies/hosted.yaml",
     env: { HUMANISH_STRICT_KEYS: "1", PATH: "" },
     agents,
     keyPresent: () => false,

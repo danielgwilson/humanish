@@ -41,7 +41,7 @@ import {
   externalPublicSharedWorldValidationReason,
   concurrentSharedWorldValidationReason,
 } from "../../../src/study/validation.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -375,7 +375,7 @@ function externalPublicConfig(overrides?: {
 }
 
 function parseExternal(overrides?: Parameters<typeof externalPublicConfig>[0]): StudyConfig {
-  const parsed = parseStudy(externalPublicConfig(overrides));
+  const parsed = parseStudyDocument(externalPublicConfig(overrides));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -531,14 +531,14 @@ describe("external-public config validation + routing", () => {
   });
 
   it("rejects a missing publicTarget.authorized", () => {
-    const parsed = parseStudy(externalPublicConfig({ omitPublicTarget: true }));
+    const parsed = parseStudyDocument(externalPublicConfig({ omitPublicTarget: true }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("subject.publicTarget");
   });
 
   it("rejects a loopback appUrl (not a public plane)", () => {
-    const parsed = parseStudy(externalPublicConfig({ appUrl: "http://127.0.0.1:3000/" }));
+    const parsed = parseStudyDocument(externalPublicConfig({ appUrl: "http://127.0.0.1:3000/" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("not a loopback URL");
@@ -554,17 +554,17 @@ describe("external-public config validation + routing", () => {
     ] as const) {
       const base = externalPublicConfig() as Record<string, unknown>;
       const subject = { ...(base.subject as Record<string, unknown>), ...subjectPatch };
-      const parsed = parseStudy({ ...base, subject });
+      const parsed = parseStudyDocument({ ...base, subject });
       expect(parsed.ok, `${field} must be rejected`).toBe(false);
       if (!parsed.ok) expect(parsed.error.message).toContain(needle);
     }
   });
 
   it("rejects zero hosts or more than one", () => {
-    const zero = parseStudy(externalPublicConfig({ hostCount: 0 }));
+    const zero = parseStudyDocument(externalPublicConfig({ hostCount: 0 }));
     expect(zero.ok).toBe(false);
     if (!zero.ok) expect(zero.error.message).toContain("exactly one `host: true` participant");
-    const two = parseStudy(externalPublicConfig({ hostCount: 2 }));
+    const two = parseStudyDocument(externalPublicConfig({ hostCount: 2 }));
     expect(two.ok).toBe(false);
     if (!two.ok) expect(two.error.message).toContain("exactly one `host: true` participant");
   });
@@ -574,7 +574,7 @@ describe("external-public config validation + routing", () => {
     const base = externalPublicConfig({ concurrency: 1 }) as Record<string, unknown>;
     const actor = (base.actors as Array<Record<string, unknown>>)[0]!;
     actor.lanes = [(actor.lanes as unknown[])[0]];
-    const parsed = parseStudy(base);
+    const parsed = parseStudyDocument(base);
     expect(parsed.ok).toBe(false);
   });
 });
@@ -584,7 +584,7 @@ describe("external-public config validation + routing", () => {
 // ---------------------------------------------------------------------------
 describe("getHost synthetic gate stays intact", () => {
   function provisionedConfig(): StudyConfig {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "provisioned-gethost",
       subject: {
@@ -961,7 +961,7 @@ describe("review.summary is external-public plane-aware", () => {
     expect(summary).not.toContain("public sandbox URL");
   });
 
-  it("live summary reports lobby convergence and drops the 'state delta(s) under load' clause", async () => {
+  it("live summary reports lobby convergence and drops the state-delta clause", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }));
     const result = await runConcurrentSharedWorld({
@@ -976,7 +976,7 @@ describe("review.summary is external-public plane-aware", () => {
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     const summary = bundle.review.summary;
-    expect(summary).not.toContain("state delta(s) under load");
+    expect(summary).not.toMatch(/state deltas? under load/);
     expect(summary).toContain("participants converged on one lobby");
   });
 
@@ -1006,7 +1006,7 @@ describe("review.summary is external-public plane-aware", () => {
 
     expect(bundle.review.verdict).toBe("pass");
     const expectedSummary =
-      "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
+      "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
     expect(bundle.review.summary).toBe(expectedSummary);
     expect(bundle.review.summary).not.toContain("reached their goal");
     expect(reviewMarkdown).toContain("- verdict: pass");
@@ -1278,7 +1278,7 @@ describe("lobby-trivia-3player committed lab", () => {
         "utf8",
       ),
     ) as Record<string, unknown>;
-    const parsed = parseStudy(raw);
+    const parsed = parseStudyDocument(raw);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.warnings ?? []).toEqual([]);
@@ -1593,7 +1593,7 @@ describe("external-public participant wiring", () => {
     try {
       const { port } = server.address() as AddressInfo;
       const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         ...input,
         comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
       });
@@ -1630,7 +1630,7 @@ describe("external-public comms catch token", () => {
     });
     try {
       const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         ...input,
         comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
       });
@@ -1676,7 +1676,7 @@ describe("external-public comms catch token", () => {
     });
     try {
       const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         ...input,
         comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
       });

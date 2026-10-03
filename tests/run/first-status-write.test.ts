@@ -6,7 +6,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { RUN_STATUS_FILE } from "../../src/run/status.js";
@@ -38,7 +38,7 @@ const RUN_ID = "run-status-before-sandbox";
 const env = { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" };
 
 function parsed(input: unknown): StudyConfig {
-  const result = parseStudy(input);
+  const result = parseStudyDocument(input);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }

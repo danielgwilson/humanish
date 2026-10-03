@@ -12,6 +12,7 @@ import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { FakeInbox } from "./fake-inbox.js";
 import { collectExternalCommsThread } from "./sandbox-catch.js";
 import type { CommsAddress } from "./types.js";
+import { plural } from "../run/text.js";
 
 /**
  * The shortest catch bearer token humanish uses. The token guards GET /deliveries on a host the run
@@ -95,7 +96,7 @@ export async function collectExternalCommsEvidence(args: {
     if (collected.captured > 0) {
       return {
         warnings: scrubbed([
-          `The email catch captured ${collected.captured} email send(s), but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
+          `The email catch captured ${plural(collected.captured, "email send")}, but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
         ]),
       };
     }

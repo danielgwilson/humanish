@@ -9,7 +9,7 @@ import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -45,7 +45,7 @@ type Route = "cua-clone" | "cua-local-tree" | "concurrent-provisioned" | "concur
 function configuration(route: Route): StudyConfig {
   const concurrent = route.startsWith("concurrent-");
   const external = route === "concurrent-external";
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: `receiving-${route}`,
     title: "Receiving orchestration proof",

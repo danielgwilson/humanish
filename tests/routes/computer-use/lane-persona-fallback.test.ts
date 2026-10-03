@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 
 // With a `lanes` roster present, participant persona resolution once read only `lane.persona`. Every
@@ -13,7 +13,7 @@ import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/part
 // declared, so this is a fidelity bug, not a cosmetic one.
 
 function planFor(actor: Record<string, unknown>) {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "lane-persona-fallback",
     title: "Lane persona fallback",

@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TERMINAL_AGENT_CAPABILITIES } from "../../../src/actors/contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../../src/actors/registry.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import {
   isComputerUseComposition,
   isScriptedBrowserComposition,
@@ -79,7 +79,7 @@ function terminalConfig(overrides?: {
 }
 
 function parsedTerminalConfig(overrides?: Parameters<typeof terminalConfig>[0]): StudyConfig {
-  const parsed = parseStudy(terminalConfig(overrides));
+  const parsed = parseStudyDocument(terminalConfig(overrides));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -119,9 +119,11 @@ describe("terminal-product parse matrix", () => {
       {},
       "0.153.3",
     ]) {
-      expect(parseStudy({ ...base, execution: { ...base.execution, runtime } }).ok).toBe(false);
+      expect(parseStudyDocument({ ...base, execution: { ...base.execution, runtime } }).ok).toBe(
+        false,
+      );
     }
-    const result = parseStudy({
+    const result = parseStudyDocument({
       ...base,
       execution: { ...base.execution, runtime: { version: "0.153.3" } },
     });
@@ -132,16 +134,16 @@ describe("terminal-product parse matrix", () => {
     }
   });
   it("accepts opt-in openai-egress and rejects unknown runtime auth modes", () => {
-    const parsed = parseStudy(terminalConfig({ runtimeAuth: "openai-egress" }));
+    const parsed = parseStudyDocument(terminalConfig({ runtimeAuth: "openai-egress" }));
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.execution?.runtimeAuth).toBe("openai-egress");
-    const invalid = parseStudy(terminalConfig({ runtimeAuth: "custom-proxy" }));
+    const invalid = parseStudyDocument(terminalConfig({ runtimeAuth: "custom-proxy" }));
     expect(invalid.ok).toBe(false);
     if (!invalid.ok) expect(invalid.error.message).toContain("openai-env or openai-egress");
   });
 
   it("terminal-product + terminal actor parses, consumes product/caps/mission/runtimeAuth (no inert warnings), routes to terminal", () => {
-    const parsed = parseStudy(terminalConfig());
+    const parsed = parseStudyDocument(terminalConfig());
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     // The terminal route consumes product/caps/mission/persona/runtimeAuth: none flagged inert.
@@ -171,12 +173,12 @@ describe("terminal-product parse matrix", () => {
 
   it("rejects terminal-product + a non-terminal actor", () => {
     // A computer-use actor on a terminal-product subject hits the terminal-product block's guard.
-    const cua = parseStudy(terminalConfig({ actorType: "openai-computer-use" }));
+    const cua = parseStudyDocument(terminalConfig({ actorType: "openai-computer-use" }));
     expect(cua.ok).toBe(false);
     if (cua.ok) return;
     expect(cua.error.message).toContain("must be a registered terminal actor");
     // A free-form (non-registered) label also fails closed on the terminal-product route.
-    expect(parseStudy(terminalConfig({ actorType: "not-a-real-actor" })).ok).toBe(false);
+    expect(parseStudyDocument(terminalConfig({ actorType: "not-a-real-actor" })).ok).toBe(false);
   });
 
   it("rejects clone-only fields (serve/clone/state/repos) on a terminal-product subject", () => {
@@ -188,14 +190,14 @@ describe("terminal-product parse matrix", () => {
     ]) {
       const raw = terminalConfig() as { subject: Record<string, unknown> };
       Object.assign(raw.subject, field);
-      const parsed = parseStudy(raw);
+      const parsed = parseStudyDocument(raw);
       expect(parsed.ok, JSON.stringify(field)).toBe(false);
     }
   });
 
   it("rejects e2b-terminal target with a non-terminal-product subject (the substrate is terminal-only)", () => {
     // app-url block rejects it first (e2b-terminal != e2b-desktop): still fail-closed.
-    const viaAppUrl = parseStudy({
+    const viaAppUrl = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "wrong-substrate-appurl",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -204,7 +206,7 @@ describe("terminal-product parse matrix", () => {
     });
     expect(viaAppUrl.ok).toBe(false);
     // A clone subject is refused by the clone target guard, which names the target it needs.
-    const viaClone = parseStudy({
+    const viaClone = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "wrong-substrate-clone",
       subject: { source: "clone", repos: ["owner/repo"] },
@@ -219,7 +221,7 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("rejects a terminal actor on a non-terminal-product subject", () => {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "wrong-subject",
       subject: { source: "this-repo" },
@@ -233,7 +235,7 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("rejects a non-e2b-terminal target on a terminal-product subject", () => {
-    const parsed = parseStudy(
+    const parsed = parseStudyDocument(
       terminalConfig({ target: "e2b-desktop" as unknown as "e2b-terminal" }),
     );
     expect(parsed.ok).toBe(false);
@@ -242,7 +244,7 @@ describe("terminal-product parse matrix", () => {
   it("rejects subject.appUrl on a terminal-product subject (it drives public surfaces, not one app)", () => {
     const raw = terminalConfig() as { subject: Record<string, unknown> };
     raw.subject.appUrl = "http://127.0.0.1:3000/";
-    const parsed = parseStudy(raw);
+    const parsed = parseStudyDocument(raw);
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain(
@@ -251,14 +253,14 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("validates publicSurfaces are http(s) URLs and product.name is a public-safe token", () => {
-    expect(parseStudy(terminalConfig({ publicSurfaces: ["not-a-url"] })).ok).toBe(false);
+    expect(parseStudyDocument(terminalConfig({ publicSurfaces: ["not-a-url"] })).ok).toBe(false);
     const badName = terminalConfig() as { subject: { product: { name: string } } };
     badName.subject.product.name = "-bad name";
-    expect(parseStudy(badName).ok).toBe(false);
+    expect(parseStudyDocument(badName).ok).toBe(false);
   });
 
   it("validates caps are non-negative numbers; rejects a negative cap", () => {
-    const parsed = parseStudy(terminalConfig({ caps: { maxUsd: -1 } }));
+    const parsed = parseStudyDocument(terminalConfig({ caps: { maxUsd: -1 } }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("non-negative number");
@@ -267,10 +269,10 @@ describe("terminal-product parse matrix", () => {
   it("rejects an interactive PTY transport label and assisted stdin (protocol-label + safety contract)", () => {
     const ptyRaw = terminalConfig() as { execution: { terminal: { transport: string } } };
     ptyRaw.execution.terminal.transport = "pty";
-    expect(parseStudy(ptyRaw).ok).toBe(false);
+    expect(parseStudyDocument(ptyRaw).ok).toBe(false);
     const stdinRaw = terminalConfig() as { execution: { terminal: { stdin: string } } };
     stdinRaw.execution.terminal.stdin = "sent";
-    expect(parseStudy(stdinRaw).ok).toBe(false);
+    expect(parseStudyDocument(stdinRaw).ok).toBe(false);
   });
 
   it("forward-declared: caps/product/runtimeAuth set on a non-terminal route fire inert warnings", () => {
@@ -278,7 +280,7 @@ describe("terminal-product parse matrix", () => {
     // act there, so they must warn. product cannot be set on this-repo at all (it is
     // a parse error), so we exercise caps + runtimeAuth here; product is covered by the
     // never-falsely-flagged assertion below.
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "inert-fields",
       subject: { source: "this-repo" },
@@ -294,7 +296,7 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("forward-declared: on the terminal route, product/caps/runtimeAuth/mission are not falsely flagged inert", () => {
-    const parsed = parseStudy(terminalConfig());
+    const parsed = parseStudyDocument(terminalConfig());
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     const warned = parsed.warnings.join(" ");
@@ -311,21 +313,21 @@ describe("terminal-product parse matrix", () => {
 
 describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", () => {
   it("routes the four prior backends as before, and the route predicates stay disjoint for terminal", () => {
-    const cua = parseStudy({
+    const cua = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use" }],
       execution: { target: "e2b-desktop" },
     });
-    const scripted = parseStudy({
+    const scripted = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "scripted",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
       actors: [{ type: "scripted-browser", count: 2 }],
       scenario: { ref: "scripted-first-run" },
     });
-    const synthetic = parseStudy({
+    const synthetic = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
@@ -344,7 +346,7 @@ describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", (
   });
 
   it("scripted-browser mission inert warning still fires", () => {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "scripted-warn",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
@@ -591,8 +593,12 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       path.join(ROOT, "humanish", "studies", "terminal-product-demo.yaml"),
       "utf8",
     );
-    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "humanish", "labs", "terminal-product-demo.yaml"), lab, "utf8");
+    await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
+    await writeFile(
+      path.join(cwd, "humanish", "studies", "terminal-product-demo.yaml"),
+      lab,
+      "utf8",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

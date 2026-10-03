@@ -24,6 +24,7 @@ import type { StudyPreflightResult, StudyPreflightTarget, PreflightContext } fro
 import { digest, fail, finalize } from "./preflight-result.js";
 import type { StudyConfig } from "./types.js";
 import { rosterOf } from "./parse/actors.js";
+import { plural } from "../run/text.js";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 // Room on the probe's lease for desktop boot and teardown around the work it does.
@@ -146,7 +147,7 @@ export async function runSandboxLoopbackPreflight(
         {
           name: "subject env",
           ok: false,
-          message: `${missingEnv.length} declared env var value(s) missing`,
+          message: `${plural(missingEnv.length, "declared env var value")} missing`,
         },
       ],
     );

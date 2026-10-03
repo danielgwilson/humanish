@@ -147,7 +147,7 @@
     "redaction": {
       "status": "passed",
       "screenshots": "raw",
-      "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+      "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
     },
     "startedAt": "[ts]",
     "completedAt": "[ts]",
@@ -389,7 +389,7 @@
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# Computer-use run: local-vm-golden\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# Computer-use run: local-vm-golden\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -516,7 +516,7 @@
           "redaction": {
             "status": "passed",
             "screenshots": "raw",
-            "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+            "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
           },
           "startedAt": "[ts]",
           "completedAt": "[ts]",
@@ -751,6 +751,7 @@
         "reportedFriction": 0
       },
       "estimatedCostUsd": null,
+      "estimatedCostComplete": false,
       "ok": true,
       "execution": {
         "succeeded": true,

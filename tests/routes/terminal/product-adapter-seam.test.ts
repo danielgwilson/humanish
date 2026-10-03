@@ -31,7 +31,7 @@ type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
 // harness in-test: the adapter itself uses the barrel exclusively, asserted below.)
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import type { TerminalScorer } from "../../../src/routes/terminal/types.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
@@ -212,7 +212,7 @@ function liveConfig(): StudyConfig {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseStudy(raw);
+  const parsed = parseStudyDocument(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

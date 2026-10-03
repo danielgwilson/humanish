@@ -10,6 +10,7 @@ import { CuaAbortError, CuaDeadlineError } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice, type Evidence } from "./trace.js";
 import type { CuaObservation, CuaProvider, CuaTurn } from "./types.js";
+import { plural } from "../../../run/text.js";
 
 // How a loop session ends. Every ending is one Stop value: the completion reason, its public
 // reason text, the structured cause when there is one, the trace evidence to record, and whether
@@ -102,8 +103,8 @@ export function timeLimit(session: LoopSession): Stop {
   return {
     completionReason: "budget_reached",
     reason: session.actionHistory.interruptedActionOutcome
-      ? `reached the ${timeoutMs}ms time budget with ${materialActions} material action attempt(s), ${turns} turn(s); the latest action outcome is uncertain`
-      : `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${turns} turn(s))`,
+      ? `reached the ${timeoutMs}ms time budget with ${plural(materialActions, "material action attempt")}, ${plural(turns, "turn")}; the latest action outcome is uncertain`
+      : `reached the ${timeoutMs}ms time budget after productive activity (${plural(materialActions, "material action")}, ${plural(turns, "turn")})`,
     stopCause: "time_limit",
   };
 }
@@ -119,12 +120,12 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
   const spend =
     booked === 0
       ? `estimated spend $${estimate}`
-      : `estimated spend $${estimate}, including the worst case of ${booked} lost request(s),`;
+      : `estimated spend $${estimate}, including the worst case of ${plural(booked, "lost request")},`;
   return {
     completionReason: "budget_reached",
     reason:
       materialActions > 0
-        ? `Stopped before the next model turn: ${spend} passed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${turns} turn(s))`
+        ? `Stopped before the next model turn: ${spend} passed execution.caps.maxUsd=$${maxUsd} after productive activity (${plural(materialActions, "material action")}, ${plural(turns, "turn")})`
         : `Stopped before the next model turn: ${spend} passed execution.caps.maxUsd=$${maxUsd} with no material progress`,
     stopCause: "spend_limit",
   };
@@ -240,10 +241,10 @@ export function providerInterrupted(interruption: NonNullable<CuaTurn["interrupt
  * Safety-check categories are provider-defined enums (e.g. "malicious_instructions"), not free
  * text; the evidence records them (redacted for defense-in-depth) so it shows why the run paused.
  */
-export function blockedOnSafetyChecks(checks: string): Stop {
+export function blockedOnSafetyChecks(checks: string, count: number): Stop {
   return {
     completionReason: "blocked_approval",
-    reason: `paused on model safety check(s): ${checks}; not acknowledged`,
+    reason: `paused on ${count === 1 ? "a model safety check" : `${count} model safety checks`}: ${checks}; not acknowledged`,
     evidence: {
       kind: "approval",
       body: () => ({ lifecycle: "completed", status: "blocked", title: `safety check: ${checks}` }),

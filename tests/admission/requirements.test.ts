@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import type { Requirement } from "../../src/study/plan-types.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
@@ -84,7 +84,7 @@ describe("plan.requirements keys", () => {
   it.each(Object.entries(shapes))(
     "%s refuses a live run without each required key",
     async (_name, raw) => {
-      const parsed = parseStudy(raw);
+      const parsed = parseStudyDocument(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
       const cwd = await projectDir();
       const planned = planStudy(parsed.config, options(cwd, ALL_KEYS));
@@ -116,7 +116,7 @@ describe("plan.requirements keys", () => {
   it.each(Object.entries(shapes))(
     "%s refuses no live run that has every declared key for a missing key",
     async (_name, raw) => {
-      const parsed = parseStudy(raw);
+      const parsed = parseStudyDocument(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
       const cwd = await projectDir();
       const planned = planStudy(parsed.config, options(cwd, ALL_KEYS));
@@ -216,7 +216,7 @@ const obligations: Record<
 
 /** Runs `raw` live with `env` and returns its refusal code, run directories and module loads. */
 async function liveRun(raw: RawLab, env: Record<string, string>) {
-  const parsed = parseStudy(raw);
+  const parsed = parseStudyDocument(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   const cwd = await projectDir();
   const loads = { count: 0 };
@@ -284,7 +284,7 @@ describe("route obligations, independent of plan.requirements", () => {
   it.each(Object.entries(obligations))(
     "%s lists exactly its obligations in plan.requirements",
     async (_name, { raw, keys, subjectEnv }) => {
-      const parsed = parseStudy(raw);
+      const parsed = parseStudyDocument(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
       const planned = planStudy(parsed.config, options(await projectDir(), ALL_KEYS));
       if (!planned.ok) throw new Error(planned.refusal.message);
@@ -306,7 +306,7 @@ describe("requirements with a local study's desktop and a caller's provider", ()
   // A local browser lab runs on the local VM study's desktop, so it needs no E2B_API_KEY, and a
   // caller's createProvider drives it, so it needs no OPENAI_API_KEY.
   it("lists neither key, and preflight refuses neither", async () => {
-    const parsed = parseStudy(lab("cuAppUrl", { ...live, execution: { target: "local" } }));
+    const parsed = parseStudyDocument(lab("cuAppUrl", { ...live, execution: { target: "local" } }));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const cwd = await projectDir();
     let desktopReached = false;

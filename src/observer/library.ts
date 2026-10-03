@@ -13,6 +13,8 @@ export interface LibraryHistory {
     estimatedCostUsd: number | null;
     costRatesAsOf: string | null;
     costPlaceholder: boolean;
+    /** The row's cost text: participants and desktops plus the run's analyses (src/run/run-cost.ts). */
+    costLabel: string | null;
   }>;
 }
 
@@ -157,7 +159,10 @@ function libraryClientJs(): string {
       var metaBits = [run.mode || "unknown", run.streamCount + " participants", run.createdAt || ""];
       // Labeled cost token: ALWAYS "~$X est." (never a bare "$X"), so the library never implies an
       // authoritative charge. Null = omitted (advisory, fail-open on display).
-      if (run.estimatedCostUsd != null) {
+      if (run.costLabel) {
+        metaBits.push(run.costLabel + (run.costPlaceholder ? " (placeholder)" : ""));
+        if (run.costRatesAsOf) meta.title = "estimated, rates as of " + run.costRatesAsOf;
+      } else if (run.estimatedCostUsd != null) {
         metaBits.push("~$" + Number(run.estimatedCostUsd).toFixed(2) + " est." + (run.costPlaceholder ? " (placeholder)" : ""));
         if (run.costRatesAsOf) meta.title = "estimated, rates as of " + run.costRatesAsOf;
       }

@@ -229,7 +229,10 @@ This presentation does not rewrite the saved analysis or reviewer corrections.
 The frozen `humanish.observer-data.v1` schema is unchanged. A companion
 `humanish.study-analysis.v1` artifact records source/config/input hashes,
 participant context, evidence manifest, coverage, provider/model/prompt version,
-status, usage and validated findings:
+status, usage and validated findings. The Observer's projection of it,
+`observer/study-analysis.json`, also carries `spend`: what every analysis
+request of the run cost, as [study costs](study-costs.md#one-runs-cost)
+describes:
 
 ```text
 .humanish/runs/<run>/

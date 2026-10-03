@@ -89,13 +89,23 @@ import {
   taskProtocolValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
+import { plural } from "../run/text.js";
 
 /**
- * Validate a parsed YAML object into a StudyConfig. Pure: the caller owns file IO. Structural
- * validation only. Fields the engine does not yet consume are accepted but reported in
- * `warnings` so `lab inspect` never silently swallows a setting that does nothing.
+ * The package's study parser (src/index.ts) and the one discovery uses. It reads what
+ * parseStudyDocument reads.
  */
 export function parseStudy(raw: unknown): StudyParseResult {
+  return parseStudyDocument(raw);
+}
+
+/**
+ * Validate a parsed YAML object, humanish.study.v3 or humanish.lab.v2, into a StudyConfig. Pure:
+ * the caller owns file IO. Structural validation only. Fields the engine does not yet consume are
+ * accepted but reported in `warnings` so `study show` never silently swallows a setting that does
+ * nothing. migrate and comms configure call it directly, since they read v2 files to convert them.
+ */
+export function parseStudyDocument(raw: unknown): StudyParseResult {
   if (!isRecord(raw)) {
     return invalid("A study file must be a YAML object.");
   }
@@ -259,7 +269,7 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
       );
       if (unknown.length > 0) {
         return invalid(
-          `comms.email.recipients name participant(s) that do not exist: ${unknown.map((r) => `"${recipientParticipantId(r)}"`).join(", ")}. This study's participant ids are: ${participantIds.join(", ")}. A recipient's \`lane\` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant.`,
+          `comms.email.recipients name ${plural(unknown.length, "participant")} that ${unknown.length === 1 ? "does" : "do"} not exist: ${unknown.map((r) => `"${recipientParticipantId(r)}"`).join(", ")}. This study's participant ids are: ${participantIds.join(", ")}. A recipient's \`lane\` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant.`,
         );
       }
       if (!email.recipients.some((recipient) => recipient.address !== undefined)) {

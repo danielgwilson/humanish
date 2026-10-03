@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
 import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runInit } from "../../src/study/init.js";
 import { starterFilesFor } from "../../src/study/init-templates.js";
 import { resolveStudyManifest, listStudyManifests } from "../../src/study/discover.js";
@@ -106,7 +106,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     const labs = files.filter((file) => file.path.startsWith("humanish/studies/"));
     expect(labs.map((file) => file.path)).toContain("humanish/studies/try-live.yaml");
     for (const file of labs) {
-      const parsed = parseStudy(parse(file.contents));
+      const parsed = parseStudyDocument(parse(file.contents));
       expect(parsed.ok, `${file.path} should parse`).toBe(true);
       if (!parsed.ok) continue;
       const config = parsed.config;
@@ -158,7 +158,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     const tryLive = starterFilesFor(actor).find(
       (file) => file.path === "humanish/studies/try-live.yaml",
     )!;
-    const parsed = parseStudy(parse(tryLive.contents));
+    const parsed = parseStudyDocument(parse(tryLive.contents));
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.config.actors[0]?.type).toBe(actor);

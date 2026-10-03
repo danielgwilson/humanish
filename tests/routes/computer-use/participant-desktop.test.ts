@@ -23,7 +23,7 @@ import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -60,7 +60,7 @@ const specFields = {
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-ready-desktop-"));
   temporary.push(cwd);
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "ready-desktop",
     title: "Ready desktop",
@@ -182,7 +182,7 @@ describe("ready desktop participant contract", () => {
     "selects the desktop image for speech=$speech, override=$template",
     async ({ speech, template, expected }) => {
       const f = await fixture();
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         ...f.config,
         actors: [
           {
@@ -231,7 +231,7 @@ describe("ready desktop participant contract", () => {
       `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.153.0\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(executable, 0o700);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       ...f.config,
       actors: [
         {
@@ -266,7 +266,7 @@ describe("ready desktop participant contract", () => {
       `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.157.1\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(executable, 0o700);
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       ...f.config,
       actors: [
         {
@@ -448,7 +448,7 @@ describe("ready desktop participant contract", () => {
       ...f.config,
       execution: { ...f.config.execution, target: "local" as const },
     };
-    expect(parseStudy(config).ok).toBe(true);
+    expect(parseStudyDocument(config).ok).toBe(true);
     const result = await runCuaActorStudy({ cwd: f.cwd, config, dryRun: false, deps: seamsOf(f) });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");

@@ -14,6 +14,7 @@ import {
 import { participantResourceIds, type ParticipantIds } from "../../run/participant-records.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
 import { type CuaSubjectProvenanceArg, type ParticipantRunOutcome } from "./types.js";
+import { plural } from "../../run/text.js";
 
 /** The human-readable state story appended to the provenance event (and review.md via it). */
 export function describeSubjectState(
@@ -22,7 +23,7 @@ export function describeSubjectState(
 ): string {
   switch (state.provenance) {
     case "seeded":
-      return `seeded (${state.seed?.length ?? 0} step(s): ${(state.seed ?? []).map((record) => record.name).join(", ")})`;
+      return `seeded (${plural(state.seed?.length ?? 0, "step")}: ${(state.seed ?? []).map((record) => record.name).join(", ")})`;
     case "unpinned":
       return `unpinned (external: ${(state.externalEnvNames ?? []).join(", ")})`;
     case "declared-not-run":

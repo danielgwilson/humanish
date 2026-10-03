@@ -6,6 +6,7 @@ import type {
 } from "../actors/contract.js";
 import type { CuaGoalSource } from "../actors/goal-source.js";
 import type { AutomaticAnalysisView } from "./job.js";
+import type { RunAnalysisCost } from "../run/run-cost.js";
 
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
@@ -217,4 +218,9 @@ export interface LoadedAnalysis {
   warnings: string[];
   /** Independent post-run execution metadata; never changes evidence sharing grades. */
   automatic?: AutomaticAnalysisView;
+  /**
+   * What the run's analysis requests cost, every attempt counted once (src/run/costs.ts
+   * readAnalysisAccounting, the reader stats uses). Absent when the run sent none.
+   */
+  spend?: RunAnalysisCost;
 }

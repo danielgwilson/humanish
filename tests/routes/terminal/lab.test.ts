@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
 import { V2_SCHEMA, type StudyConfig, type StudyRuntimeAuth } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import { type TerminalCostProbe } from "../../../src/routes/terminal/types.js";
@@ -306,7 +306,7 @@ function liveConfig(overrides?: {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseStudy(raw);
+  const parsed = parseStudyDocument(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

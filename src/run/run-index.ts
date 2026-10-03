@@ -16,6 +16,8 @@
 
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { AnalysisCostCache, readIndexedAnalysisCost } from "./run-index-analysis.js";
+import type { RunAnalysisCost } from "./run-cost.js";
 
 import {
   RUN_STATUS_FILE,
@@ -47,7 +49,12 @@ export interface RunIndexEntry {
   completedAt?: string;
   verdict?: string;
   participants?: { total: number; reachedGoal: number; reportedFriction?: number };
+  /** Participants and desktops only; analysis bills separately and is in `analysisCost`. */
   estimatedCostUsd?: number | null;
+  /** False when that figure is a lower bound; absent when unknown (a status record before 0.109). */
+  estimatedCostComplete?: boolean;
+  /** The run's analysis requests, every attempt counted once; absent when it sent none. */
+  analysisCost?: RunAnalysisCost;
   /** Wall-clock span when both ends are known; used for per-lab medians. */
   durationMs?: number;
 }
@@ -81,6 +88,8 @@ interface CacheSlot {
  */
 export class RunIndexCache {
   private readonly slots = new Map<string, CacheSlot>();
+  /** Analysis costs, keyed on their own fingerprint: analysis lands after the status record. */
+  readonly analysis = new AnalysisCostCache();
 
   get(runId: string, key: CacheKey): RunIndexEntry | undefined {
     const slot = this.slots.get(runId);
@@ -103,6 +112,7 @@ export class RunIndexCache {
     for (const runId of this.slots.keys()) {
       if (!keep.has(runId)) this.slots.delete(runId);
     }
+    this.analysis.retain(keep);
   }
 
   get size(): number {
@@ -149,6 +159,9 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
     ...(record.outcome?.estimatedCostUsd === undefined
       ? {}
       : { estimatedCostUsd: record.outcome.estimatedCostUsd }),
+    ...(typeof record.outcome?.estimatedCostComplete === "boolean"
+      ? { estimatedCostComplete: record.outcome.estimatedCostComplete }
+      : {}),
     ...(Number.isFinite(started) && Number.isFinite(ended) ? { durationMs: ended - started } : {}),
   };
 }
@@ -167,7 +180,7 @@ interface BundleFacts {
     verdict?: string;
     participants?: { total: number; reachedGoal: number; reportedFriction?: number };
   };
-  cost?: { estimatedTotalUsd?: number | null };
+  cost?: { estimatedTotalUsd?: number | null; fullyEstimated?: unknown };
 }
 
 /** A status record this run can be classified from: well formed and naming this run. */
@@ -224,6 +237,9 @@ function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
     ...(bundle.cost?.estimatedTotalUsd === undefined
       ? {}
       : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
+    ...(typeof bundle.cost?.fullyEstimated === "boolean"
+      ? { estimatedCostComplete: bundle.cost.fullyEstimated }
+      : {}),
   };
 }
 
@@ -263,66 +279,16 @@ export async function readRunIndex(
   const unreadable: string[] = [];
 
   for (const runId of runIds) {
-    const runDir = path.join(runsRoot, runId);
-    const statusFile = path.join(runDir, RUN_STATUS_FILE);
-    const bundleFile = path.join(runDir, RUN_BUNDLE_FILE);
-
-    // Cheapest source first: the status record. Its stat is the cache key, so a live run whose
-    // record ticks every 5s re-reads 586 bytes and nothing else.
-    const statusKey = await statKey(statusFile);
-    if (statusKey !== null) {
-      const cached = cache?.get(runId, statusKey);
-      if (cached !== undefined) {
-        // A running record's liveness is time-dependent, so it is recomputed even on a cache hit:
-        // an unchanged record can still have gone stale. An ended record (finished or
-        // interrupted, both with completedAt) keeps the liveness it was cached with.
-        runs.push(
-          cached.derivedFrom === "status" &&
-            cached.updatedAt !== undefined &&
-            cached.completedAt === undefined
-            ? {
-                ...cached,
-                liveness: classifyRunStatus(
-                  { state: "running", updatedAt: cached.updatedAt },
-                  nowMs,
-                ),
-              }
-            : cached,
-        );
-        continue;
-      }
-      const raw = await readJson(statusFile);
-      if (usableStatusRecord(raw, runId)) {
-        const entry = entryFromStatus(raw, nowMs);
-        cache?.set(runId, statusKey, entry);
-        runs.push(entry);
-        continue;
-      }
-    }
-
-    // No usable status record: fall back to the bundle. This is every run written before the
-    // contract existed, and it is why an old project still lists correctly.
-    const bundleKey = await statKey(bundleFile);
-    if (bundleKey !== null) {
-      const cached = cache?.get(runId, bundleKey);
-      if (cached !== undefined) {
-        runs.push(cached);
-        continue;
-      }
-      const raw = await readJson(bundleFile);
-      if (raw !== null && typeof raw === "object") {
-        const entry = entryFromBundle(runId, raw as BundleFacts);
-        cache?.set(runId, bundleKey, entry);
-        runs.push(entry);
-        continue;
-      }
+    const entry = await readEntry(runId, path.join(runsRoot, runId), cache, nowMs);
+    if (entry === "unreadable") {
       unreadable.push(runId);
       continue;
     }
-
-    // Neither record nor bundle: receipts without an outcome. That is precisely an interrupted
-    // run (the shape a dropped connection leaves), and saying so is more useful than hiding it.
-    runs.push({ runId, derivedFrom: "directory", liveness: "interrupted" });
+    const analysisCost =
+      entry.derivedFrom === "directory"
+        ? undefined
+        : await readIndexedAnalysisCost(cwd, runId, cache?.analysis);
+    runs.push(analysisCost === undefined ? entry : { ...entry, analysisCost });
   }
 
   cache?.retain(runIds);
@@ -333,6 +299,60 @@ export async function readRunIndex(
     runs: options.limit === undefined ? runs : runs.slice(0, Math.max(0, options.limit)),
     unreadable,
   };
+}
+
+/** One run's entry, cheapest source first, or "unreadable" when its bundle cannot be parsed. */
+async function readEntry(
+  runId: string,
+  runDir: string,
+  cache: RunIndexCache | undefined,
+  nowMs: number,
+): Promise<RunIndexEntry | "unreadable"> {
+  const statusFile = path.join(runDir, RUN_STATUS_FILE);
+  const bundleFile = path.join(runDir, RUN_BUNDLE_FILE);
+
+  // Cheapest source first: the status record. Its stat is the cache key, so a live run whose
+  // record ticks every 5s re-reads 586 bytes and nothing else.
+  const statusKey = await statKey(statusFile);
+  if (statusKey !== null) {
+    const cached = cache?.get(runId, statusKey);
+    if (cached !== undefined) {
+      // A running record's liveness is time-dependent, so it is recomputed even on a cache hit:
+      // an unchanged record can still have gone stale. An ended record (finished or
+      // interrupted, both with completedAt) keeps the liveness it was cached with.
+      return cached.derivedFrom === "status" &&
+        cached.updatedAt !== undefined &&
+        cached.completedAt === undefined
+        ? {
+            ...cached,
+            liveness: classifyRunStatus({ state: "running", updatedAt: cached.updatedAt }, nowMs),
+          }
+        : cached;
+    }
+    const raw = await readJson(statusFile);
+    if (usableStatusRecord(raw, runId)) {
+      const entry = entryFromStatus(raw, nowMs);
+      cache?.set(runId, statusKey, entry);
+      return entry;
+    }
+  }
+
+  // No usable status record: fall back to the bundle. This is every run written before the
+  // contract existed, and it is why an old project still lists correctly.
+  const bundleKey = await statKey(bundleFile);
+  if (bundleKey !== null) {
+    const cached = cache?.get(runId, bundleKey);
+    if (cached !== undefined) return cached;
+    const raw = await readJson(bundleFile);
+    if (raw === null || typeof raw !== "object") return "unreadable";
+    const entry = entryFromBundle(runId, raw as BundleFacts);
+    cache?.set(runId, bundleKey, entry);
+    return entry;
+  }
+
+  // Neither record nor bundle: receipts without an outcome. That is precisely an interrupted
+  // run (the shape a dropped connection leaves), and saying so is more useful than hiding it.
+  return { runId, derivedFrom: "directory", liveness: "interrupted" };
 }
 
 /** Newest-first ordering: the most recent thing known about a run, else its id's own timestamp. */

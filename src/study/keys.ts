@@ -309,7 +309,7 @@ function unknownKeysMessage(
     const suggestion = closest(key, known);
     return suggestion ? `${key} (did you mean \`${suggestion}\`?)` : key;
   });
-  return `Unknown ${noun} field(s)${path ? ` in \`${path}\`` : ""}: ${named.join(", ")}. Known fields: ${known.join(", ")}.`;
+  return `Unknown ${noun} ${unknown.length === 1 ? "field" : "fields"}${path ? ` in \`${path}\`` : ""}: ${named.join(", ")}. Known fields: ${known.join(", ")}.`;
 }
 
 // The known key within edit distance 2, or one that differs only in case.

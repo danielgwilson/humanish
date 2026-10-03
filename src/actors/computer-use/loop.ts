@@ -327,6 +327,7 @@ function reviewSafetyChecks(
       session.settings.redaction.redactText(
         turn.pendingSafetyChecks.map((check) => check.code).join(", "),
       ),
+      turn.pendingSafetyChecks.length,
     );
   }
   conversation.acknowledgedSafetyChecks = acks;

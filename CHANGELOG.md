@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Every surface that shows one run's cost adds that run's analyses, counted as `humanish stats`
+  counts them, and says when the figure is a lower bound: the Observer's cost line, the library
+  row and the terminal UI's run rows, with "2 analyses" for a run analyzed twice. The run index
+  gains `analysisCost` and `estimatedCostComplete`, and `status.json`'s outcome gains
+  `estimatedCostComplete`; `estimatedCostUsd` stays participants and desktops only.
+
 ### Removed
 
 - The `humanish lab` commands, deprecated in 0.108.0: `lab list`, `lab inspect`, `lab preflight` and

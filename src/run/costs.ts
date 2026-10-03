@@ -1,5 +1,5 @@
 import { round6 } from "./pricing.js";
-import { bindExistingRunArtifactPaths } from "./paths.js";
+import { bindExistingRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
 import type { RunIndexEntry } from "./run-index.js";
 import { contradictsAccountBilling } from "../verify/costs.js";
 import { EVIDENCE_LIMITS } from "../analysis/evidence.js";
@@ -115,44 +115,14 @@ export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise
       runWarnings.push("RUN_COST_COMPLETENESS_UNKNOWN");
     }
 
-    const [history, automatic] = await Promise.all([
-      readAnalysisAccountingRecords(prepared),
-      readAutomaticAnalysisAccounting(prepared),
-    ]);
-    analysisWarnings.push(...history.warnings);
-    const records = new Map(history.records.map((record) => [record.id, record]));
-    if (automatic === "unknown") analysisWarnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
-    else if (automatic) {
-      if (automatic.uncertain) analysisWarnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
-      const id = automatic.reused ? automatic.analysisId : automatic.attemptId;
-      if (id && (automatic.started || automatic.analysisId !== null) && !records.has(id)) {
-        records.set(id, { id, receipt: null, start: null, legacy: false });
-      }
-    }
-    for (const record of records.values()) {
-      costs.analysisAttempts += 1;
-      if (record.legacy) analysisWarnings.push("ANALYSIS_LEGACY_REPORT_ACCOUNTING");
-      const usage = record.receipt?.usage;
-      if (!usage) {
-        costs.analysisUnpricedAttempts += 1;
-        costs.analysisUnresolvedAttempts += 1;
-        continue;
-      }
-      if (!usage.dispatched) {
-        costs.analysisNotDispatchedAttempts += 1;
-        costs.analysisEstimatedUsd = sumKnown(costs.analysisEstimatedUsd, 0);
-      } else {
-        costs.analysisDispatchedAttempts += 1;
-        if (isKnownUsd(usage.estimatedCostUsd)) {
-          costs.analysisEstimatedUsd = sumKnown(costs.analysisEstimatedUsd, usage.estimatedCostUsd);
-        }
-        if (!isKnownUsd(usage.estimatedCostUsd) || !usage.usageComplete)
-          costs.analysisUnpricedAttempts += 1;
-      }
-    }
-    // A skipped/queued automatic job says nothing about historical manual requests.
-    // Only final no-dispatch receipts contribute a supported zero to recorded attempts.
-    if (records.size === 0) analysisWarnings.push("ANALYSIS_HISTORY_NOT_RECORDED");
+    const analysis = await readAnalysisAccounting(prepared);
+    analysisWarnings.push(...analysis.warnings);
+    costs.analysisAttempts = analysis.attempts;
+    costs.analysisDispatchedAttempts = analysis.dispatched;
+    costs.analysisNotDispatchedAttempts = analysis.notDispatched;
+    costs.analysisUnpricedAttempts = analysis.unpriced;
+    costs.analysisUnresolvedAttempts = analysis.unresolved;
+    costs.analysisEstimatedUsd = analysis.estimatedUsd;
     costs.analysisHistoryUncertainRuns = analysisWarnings.length > 0 ? 1 : 0;
   } catch {
     costs.incompleteRunEstimates = 1;
@@ -165,4 +135,83 @@ export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise
     costs,
     warnings: [...new Set([...runWarnings, ...analysisWarnings])],
   };
+}
+
+/** One run's analysis history, every distinct attempt counted once. */
+export interface AnalysisAccounting {
+  attempts: number;
+  /** Attempts that sent a request and recorded its usage. */
+  dispatched: number;
+  notDispatched: number;
+  /** Dispatched or possibly dispatched attempts without a complete price. */
+  unpriced: number;
+  /** A dispatch marker survives with no usable final accounting. */
+  unresolved: number;
+  /** The known estimates of the dispatched attempts; 0 when every attempt sent nothing. */
+  estimatedUsd: number | null;
+  /** Who billed the dispatched attempts. */
+  providers: Array<"openai" | "codex">;
+  /** History that could not be read whole; ANALYSIS_HISTORY_NOT_RECORDED when there is none. */
+  warnings: string[];
+}
+
+/**
+ * The single reader of a run's analysis spend. Stats totals and every surface that shows one
+ * run's cost read it, so they cannot disagree. Receipts are read without opening evidence.
+ */
+export async function readAnalysisAccounting(
+  prepared: PreparedRunArtifactPaths,
+): Promise<AnalysisAccounting> {
+  const accounting: AnalysisAccounting = {
+    attempts: 0,
+    dispatched: 0,
+    notDispatched: 0,
+    unpriced: 0,
+    unresolved: 0,
+    estimatedUsd: null,
+    providers: [],
+    warnings: [],
+  };
+  const [history, automatic] = await Promise.all([
+    readAnalysisAccountingRecords(prepared),
+    readAutomaticAnalysisAccounting(prepared),
+  ]);
+  accounting.warnings.push(...history.warnings);
+  const records = new Map(history.records.map((record) => [record.id, record]));
+  if (automatic === "unknown") accounting.warnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
+  else if (automatic) {
+    if (automatic.uncertain) accounting.warnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
+    const id = automatic.reused ? automatic.analysisId : automatic.attemptId;
+    if (id && (automatic.started || automatic.analysisId !== null) && !records.has(id)) {
+      records.set(id, { id, receipt: null, start: null, legacy: false });
+    }
+  }
+  const providers = new Set<"openai" | "codex">();
+  for (const record of records.values()) {
+    accounting.attempts += 1;
+    if (record.legacy) accounting.warnings.push("ANALYSIS_LEGACY_REPORT_ACCOUNTING");
+    const usage = record.receipt?.usage;
+    if (!usage) {
+      accounting.unpriced += 1;
+      accounting.unresolved += 1;
+      continue;
+    }
+    if (!usage.dispatched) {
+      accounting.notDispatched += 1;
+      accounting.estimatedUsd = sumKnown(accounting.estimatedUsd, 0);
+      continue;
+    }
+    accounting.dispatched += 1;
+    if (record.receipt) providers.add(record.receipt.provider);
+    if (isKnownUsd(usage.estimatedCostUsd)) {
+      accounting.estimatedUsd = sumKnown(accounting.estimatedUsd, usage.estimatedCostUsd);
+    }
+    if (!isKnownUsd(usage.estimatedCostUsd) || !usage.usageComplete) accounting.unpriced += 1;
+  }
+  // A skipped or queued automatic job says nothing about earlier manual requests. Only final
+  // no-dispatch receipts contribute a supported zero.
+  if (records.size === 0) accounting.warnings.push("ANALYSIS_HISTORY_NOT_RECORDED");
+  accounting.providers = [...providers].sort();
+  accounting.warnings = [...new Set(accounting.warnings)];
+  return accounting;
 }

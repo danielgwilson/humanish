@@ -38,10 +38,13 @@ const literal = (node: AstNode | undefined): string | undefined =>
 // A runtime edge is anything that survives type erasure under verbatimModuleSyntax: value
 // imports and re-exports (including `import { type X }`, which emits `import {} from`), dynamic
 // import(), require() and `import x = require()`.
-function runtimeCliEdges(file: string, source: string): string[] {
+function runtimeEdges(
+  file: string,
+  source: string,
+): Array<{ edge: string; target: string | null }> {
   const { program, errors } = parseSync(file, source, { sourceType: "module" });
   if (errors.length > 0) throw new Error(`${file} does not parse: ${errors[0]?.message}`);
-  const edges: string[] = [];
+  const edges: Array<{ edge: string; target: string | null }> = [];
   const record = (specifier: string | undefined, start: unknown): void => {
     if (specifier === undefined || typeof start !== "number") return;
     const target = specifier.startsWith(".")
@@ -51,10 +54,8 @@ function runtimeCliEdges(file: string, source: string): string[] {
         : path.isAbsolute(specifier)
           ? path.resolve(specifier)
           : null;
-    if (target === CLI_ROOT || target?.startsWith(`${CLI_ROOT}${path.sep}`)) {
-      const line = source.slice(0, start).split("\n").length;
-      edges.push(`${path.relative(OBSERVER_ROOT, file)}:${line}: ${specifier}`);
-    }
+    const line = source.slice(0, start).split("\n").length;
+    edges.push({ edge: `${path.relative(OBSERVER_ROOT, file)}:${line}: ${specifier}`, target });
   };
   const visit = (value: unknown): void => {
     if (Array.isArray(value)) {
@@ -108,6 +109,22 @@ async function runtimeFiles(directory: string): Promise<string[]> {
     )
   ).flat();
 }
+
+// The one CLI module the app may bundle: the run cost every surface shows. It must keep only type
+// imports, which the test below checks, so no CLI code comes with it.
+const SHARED_CLI_MODULE = path.join(CLI_ROOT, "run", "run-cost.ts");
+
+function runtimeCliEdges(file: string, source: string): string[] {
+  return runtimeEdges(file, source)
+    .filter(({ target }) => target === CLI_ROOT || target?.startsWith(`${CLI_ROOT}${path.sep}`))
+    .filter(({ target }) => target?.replace(/\.js$/, ".ts") !== SHARED_CLI_MODULE)
+    .map(({ edge }) => edge);
+}
+
+it("the shared run-cost module carries only type imports into the artifact", async () => {
+  const edges = runtimeEdges(SHARED_CLI_MODULE, await readFile(SHARED_CLI_MODULE, "utf8"));
+  expect(edges.map(({ edge }) => edge)).toEqual([]);
+});
 
 it("Observer runtime modules never import CLI values", async () => {
   const files = [

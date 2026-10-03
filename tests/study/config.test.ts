@@ -13,14 +13,14 @@ import {
 } from "../../src/study/routing.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
 import { declaredParticipantIds } from "../../src/study/plan-participants.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 
 describe("parseLabConfig (humanish.lab.v2)", () => {
   it("refuses a clone lab whose actor can neither drive nor script the served app", () => {
     // The removed OSS meta-lab used this shape. It parsed, then failed at run start.
     for (const type of ["codex-app-server", "humanish-setup"]) {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "codex-clone",
         subject: { source: "clone", repos: ["example-org/example-app"] },
@@ -33,7 +33,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain(`Got "${type}"`);
     }
     // A terminal actor keeps its own, earlier refusal.
-    const terminal = parseStudy({
+    const terminal = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "terminal-clone",
       subject: { source: "clone", repos: ["example-org/example-app"] },
@@ -45,7 +45,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   });
 
   it("warns that codexAppServer is inert on a computer-use clone lab", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua-clone-codex-app-server",
       subject: {
@@ -62,7 +62,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   });
 
   it("parses a synthetic-shaped lab (this-repo + persona actor, dry-run)", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "first-run",
       subject: { source: "this-repo" },
@@ -81,7 +81,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   it.each(["pi-agent-core", "claude-agent-sdk"])(
     "rejects the unregistered actor type %s on a route that ignores actors[0].type",
     (type) => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "first-run",
         subject: { source: "this-repo" },
@@ -99,7 +99,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   );
 
   it("parses a comms:email:fake block (adopter-named injectEnv, port, declared recipients)", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "comms-lab",
       subject: {
@@ -158,7 +158,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     // participant ids: the single-participant example's `lane-01` copied into a roster study is the
     // field failure this guards against (an unmatched `lane` silently disabled the whole
     // funnel for that participant).
-    const unknownLane = parseStudy(
+    const unknownLane = parseStudyDocument(
       multiLane({
         email: {
           injectEnv: "RESEND_API_URL",
@@ -174,7 +174,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     // Declared recipients covering zero participants with an address = a guaranteed-dead funnel →
     // error.
-    const zeroCoverage = parseStudy(
+    const zeroCoverage = parseStudyDocument(
       multiLane({ email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "signup-01" }] } }),
     );
     expect(zeroCoverage.ok).toBe(false);
@@ -183,7 +183,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     // Omitted recipients fill one deterministic address per participant: all participants can do
     // email.
-    const filled = parseStudy(multiLane({ email: { injectEnv: "RESEND_API_URL" } }));
+    const filled = parseStudyDocument(multiLane({ email: { injectEnv: "RESEND_API_URL" } }));
     expect(filled.ok).toBe(true);
     if (filled.ok) {
       expect(filled.config.comms?.email?.recipients).toEqual([
@@ -195,7 +195,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     }
 
     // Partial coverage is legal but loud: the uncovered participants are named.
-    const partial = parseStudy(
+    const partial = parseStudyDocument(
       multiLane({
         email: {
           injectEnv: "RESEND_API_URL",
@@ -222,17 +222,20 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       execution: { target: "e2b-desktop" },
       scenario: { mode: "dry-run" },
     };
-    const single = parseStudy({ ...base, actors: [{ type: "openai-computer-use", count: 1 }] });
+    const single = parseStudyDocument({
+      ...base,
+      actors: [{ type: "openai-computer-use", count: 1 }],
+    });
     expect(single.ok).toBe(true);
     if (single.ok) expect(declaredParticipantIds(single.config)).toEqual(["lane-01"]);
-    const counted = parseStudy({
+    const counted = parseStudyDocument({
       ...base,
       actors: [{ type: "openai-computer-use", count: 3 }],
     });
     expect(counted.ok).toBe(true);
     if (counted.ok)
       expect(declaredParticipantIds(counted.config)).toEqual(["lane-01", "lane-02", "lane-03"]);
-    const rostered = parseStudy({
+    const rostered = parseStudyDocument({
       ...base,
       actors: [{ type: "openai-computer-use", lanes: [{ id: "host" }, { id: "guest" }] }],
     });
@@ -241,7 +244,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   });
 
   it("defaults comms:email kind to fake and requires a valid injectEnv name", () => {
-    const ok = parseStudy({
+    const ok = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "c",
       subject: {
@@ -278,14 +281,19 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       scenario: { mode: "live" as const },
     };
     // Fail-loud (never silently swallowed): missing injectEnv, an invalid env name, and real kind all reject.
-    expect(parseStudy({ ...base, comms: { email: { kind: "fake" } } }).ok).toBe(false);
-    expect(parseStudy({ ...base, comms: { email: { injectEnv: "not a var" } } }).ok).toBe(false);
+    expect(parseStudyDocument({ ...base, comms: { email: { kind: "fake" } } }).ok).toBe(false);
+    expect(parseStudyDocument({ ...base, comms: { email: { injectEnv: "not a var" } } }).ok).toBe(
+      false,
+    );
     expect(
-      parseStudy({ ...base, comms: { email: { kind: "real", injectEnv: "RESEND_API_URL" } } }).ok,
+      parseStudyDocument({
+        ...base,
+        comms: { email: { kind: "real", injectEnv: "RESEND_API_URL" } },
+      }).ok,
     ).toBe(false);
 
     // linkOrigin escape hatch: a valid absolute origin parses; a non-URL rejects.
-    const withOrigin = parseStudy({
+    const withOrigin = parseStudyDocument({
       ...base,
       comms: { email: { injectEnv: "RESEND_API_URL", linkOrigin: "https://app.example.test" } },
     });
@@ -293,7 +301,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     if (withOrigin.ok)
       expect(withOrigin.config.comms?.email?.linkOrigin).toBe("https://app.example.test");
     expect(
-      parseStudy({
+      parseStudyDocument({
         ...base,
         comms: { email: { injectEnv: "RESEND_API_URL", linkOrigin: "not a url" } },
       }).ok,
@@ -301,10 +309,16 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     // port is capped at 65534 (the catch reserves port+1 for the 0.0.0.0 inbox listener).
     expect(
-      parseStudy({ ...base, comms: { email: { injectEnv: "RESEND_API_URL", port: 65534 } } }).ok,
+      parseStudyDocument({
+        ...base,
+        comms: { email: { injectEnv: "RESEND_API_URL", port: 65534 } },
+      }).ok,
     ).toBe(true);
     expect(
-      parseStudy({ ...base, comms: { email: { injectEnv: "RESEND_API_URL", port: 65535 } } }).ok,
+      parseStudyDocument({
+        ...base,
+        comms: { email: { injectEnv: "RESEND_API_URL", port: 65535 } },
+      }).ok,
     ).toBe(false);
   });
 
@@ -312,7 +326,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     // The contract: on this-repo/clone routes actor.type is a free-form label and routing
     // ignores it. Only the app-url (computer-use) route resolves it against the actor registry,
     // because only there does the descriptor actually run the session.
-    const result = parseStudy({
+    const result = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "future",
       subject: { source: "this-repo" },
@@ -322,7 +336,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   });
 
   it("warns (does not silently swallow) when forward-declared fields are set", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "forward",
       subject: { source: "this-repo" },
@@ -338,7 +352,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   });
 
   it("rejects multiple actors (fan-out not wired: fail closed, not silent)", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "multi",
       subject: { source: "this-repo" },
@@ -441,7 +455,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       },
     ],
   ])("rejects invalid config: %s", (_label, input) => {
-    const result = parseStudy(input);
+    const result = parseStudyDocument(input);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
@@ -470,7 +484,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     };
 
     it("parses a computer-use study with zero warnings: every set field is consumed on this route", () => {
-      const result = parseStudy(validCua);
+      const result = parseStudyDocument(validCua);
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.config.subject).toEqual({
@@ -483,7 +497,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     it("consumes execution.concurrency on the computer-use route (no warning) but still warns it elsewhere", () => {
       // Consumed here (bounds in-flight fan-out participants) → zero warnings.
-      const onCua = parseStudy({
+      const onCua = parseStudyDocument({
         ...validCua,
         execution: { ...validCua.execution, concurrency: 2 },
       });
@@ -492,7 +506,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(onCua.warnings).toEqual([]);
 
       // Still inert (warned) on a route that does not consume it (regression guard).
-      const offCua = parseStudy({
+      const offCua = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "synthetic-concurrency",
         subject: { source: "this-repo" },
@@ -505,7 +519,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("warns about laneFocus.id/label on the computer-use route: only laneFocus.instruction is consumed there", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         actors: [{ type: "openai-computer-use", laneFocus: { id: "lane-1", label: "Lane one" } }],
       });
@@ -517,7 +531,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("warns that comms.email is inert on an app-url subject: the in-sandbox catch has no sandbox to host", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         comms: {
           email: {
@@ -534,7 +548,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("does not warn about comms.email on a clone subject, which the catch can host", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "clone-comms",
         subject: {
@@ -557,7 +571,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("parses actor-level and per-participant deterministic stopWhen guards", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         actors: [
           {
@@ -597,7 +611,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         { any: [{ appStatePathEquals: { path: "status", equals: { value: "done" } } }] },
       ],
     ])("rejects invalid stopWhen: %s", (_label, stopWhen) => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         actors: [{ type: "openai-computer-use", stopWhen }],
       });
@@ -607,7 +621,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("parses an actor-level dwell window with defaults and a participant-level override", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         actors: [
           {
@@ -651,7 +665,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       ["then unknown", { ms: 5_000, then: "pause" }],
       ["when invalid", { ms: 5_000, when: { any: [] } }],
     ])("rejects an invalid dwell window: %s", (_label, dwell) => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         actors: [{ type: "openai-computer-use", dwell }],
       });
@@ -661,7 +675,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("parses a synthetic camera and the permission policy", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: {
           ...(validCua.execution as Record<string, unknown>),
@@ -676,7 +690,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("accepts a .y4m camera file and defaults the permission to the participant's own answer", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: {
           ...(validCua.execution as Record<string, unknown>),
@@ -705,7 +719,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         "injection is unsupported",
       ],
     ])("rejects %s before any spend", (_label, desktop, needle) => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: { ...(validCua.execution as Record<string, unknown>), desktop },
       });
@@ -715,7 +729,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("rejects unimplemented microphone file injection even with a custom desktop template", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: {
           ...(validCua.execution as Record<string, unknown>),
@@ -731,14 +745,14 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("rejects an unknown mediaPermission", () => {
-      const result = parseStudy({ ...validCua, policies: { mediaPermission: "auto" } });
+      const result = parseStudyDocument({ ...validCua, policies: { mediaPermission: "auto" } });
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.message).toContain("mediaPermission");
     });
 
     it("keeps warning about mission/persona/model on routes that do not consume them", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "preview-with-prompt-fields",
         subject: { source: "this-repo" },
@@ -765,7 +779,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       ["unregistered actor type", { ...validCua, actors: [{ type: "not-a-real-actor" }] }],
       ["registered but not computer-use", { ...validCua, actors: [{ type: "codex-app-server" }] }],
     ])("fails closed on cua mis-config: %s", (_label, input) => {
-      const result = parseStudy(input);
+      const result = parseStudyDocument(input);
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
@@ -775,7 +789,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       it.each(["misson", "runtme", "count", "constructor"])(
         "rejects an unknown participant field %s before it can disappear",
         (key) => {
-          const result = parseStudy({
+          const result = parseStudyDocument({
             ...validCua,
             actors: [
               { type: "openai-computer-use", lanes: [{ id: "reader", [key]: "different" }] },
@@ -785,13 +799,13 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
           if (result.ok) return;
           expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
           expect(result.error.message).toContain(
-            "Unknown study field(s) in `actors[0].lanes[0]`: " + key,
+            "Unknown study field in `actors[0].lanes[0]`: " + key,
           );
         },
       );
 
       it("names all unknown roster fields at the declared group index before expansion", () => {
-        const result = parseStudy({
+        const result = parseStudyDocument({
           ...validCua,
           actors: [
             {
@@ -807,7 +821,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         if (result.ok) return;
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(result.error.message).toContain(
-          "Unknown study field(s) in `actors[0].roster[1]`: misson, runtme",
+          "Unknown study fields in `actors[0].roster[1]`: misson, runtme",
         );
         expect(result.error.message).not.toContain("lanes[2]");
       });
@@ -828,7 +842,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
             entry: "/queue",
             host: false,
           };
-          const result = parseStudy({
+          const result = parseStudyDocument({
             ...validCua,
             execution: { target: "e2b-desktop", timeoutMs: 120000 },
             actors: [
@@ -853,7 +867,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       );
 
       it("accepts a homogeneous count > 1 on the computer-use route (lifted rejection), default concurrency min(N,3)", () => {
-        const result = parseStudy({
+        const result = parseStudyDocument({
           ...validCua,
           actors: [{ type: "openai-computer-use", count: 4 }],
         });
@@ -864,7 +878,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
 
       it("accepts a differentiated `lanes` roster (per-participant persona/device/instruction)", () => {
-        const result = parseStudy({
+        const result = parseStudyDocument({
           ...validCua,
           actors: [
             {
@@ -895,7 +909,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
 
       it("accepts explicit per-participant public targets when every participant declares one and the owner opts in", () => {
-        const result = parseStudy({
+        const result = parseStudyDocument({
           ...validCua,
           subject: { source: "app-url", appUrl: "https://fallback.preview.example.test/" },
           actors: [
@@ -928,7 +942,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       });
 
       it("expands compact roster groups into deterministic participants", () => {
-        const result = parseStudy({
+        const result = parseStudyDocument({
           ...validCua,
           actors: [
             {
@@ -1203,14 +1217,14 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
           },
         ],
       ])("fails closed on fan-out mis-config: %s", (_label, input) => {
-        const result = parseStudy(input);
+        const result = parseStudyDocument(input);
         expect(result.ok, _label).toBe(false);
         if (result.ok) return;
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
       });
 
       it("warns actors[0].lanes as inert on a non-computer-use route, and the other routes' rules still fire", () => {
-        const result = parseStudy({
+        const result = parseStudyDocument({
           schema: V2_SCHEMA,
           id: "synthetic-lanes",
           subject: { source: "this-repo" },
@@ -1223,7 +1237,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("names the registered computer-use actors in the unsupported-actor error", () => {
-      const result = parseStudy({ ...validCua, actors: [{ type: "codex-app-server" }] });
+      const result = parseStudyDocument({ ...validCua, actors: [{ type: "codex-app-server" }] });
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.message).toContain("openai-computer-use");
@@ -1236,7 +1250,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         "https://127.0.0.1/",
         "http://[::1]:3000/",
       ]) {
-        const result = parseStudy({ ...validCua, subject: { source: "app-url", appUrl } });
+        const result = parseStudyDocument({ ...validCua, subject: { source: "app-url", appUrl } });
         expect(result.ok, appUrl).toBe(true);
       }
     });
@@ -1247,15 +1261,18 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         subject: { source: "app-url", appUrl: "https://preview-123.vercel.app/" },
       };
       // Without the policy: rejected (safe default).
-      const blocked = parseStudy(publicTarget);
+      const blocked = parseStudyDocument(publicTarget);
       expect(blocked.ok).toBe(false);
       if (!blocked.ok) expect(blocked.error.message).toContain("allowPublicTargets");
       // With the policy: the owner has declared the target; accepted.
-      const allowed = parseStudy({ ...publicTarget, policies: { allowPublicTargets: true } });
+      const allowed = parseStudyDocument({
+        ...publicTarget,
+        policies: { allowPublicTargets: true },
+      });
       expect(allowed.ok).toBe(true);
       if (allowed.ok) expect(allowed.config.subject.appUrl).toBe("https://preview-123.vercel.app/");
       // A garbage non-URL is still rejected even with the policy (shape gate holds).
-      const garbage = parseStudy({
+      const garbage = parseStudyDocument({
         ...publicTarget,
         subject: { source: "app-url", appUrl: "not a url" },
         policies: { allowPublicTargets: true },
@@ -1264,7 +1281,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("policies.redactScreenshots parses on the computer-use route with zero warnings (it is consumed)", () => {
-      const result = parseStudy({ ...validCua, policies: { redactScreenshots: true } });
+      const result = parseStudyDocument({ ...validCua, policies: { redactScreenshots: true } });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.config.policies?.redactScreenshots).toBe(true);
@@ -1272,7 +1289,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("execution.desktop.device parses on the computer-use route with zero warnings (consumed)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { device: "mobile" } },
       });
@@ -1283,7 +1300,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("execution.desktop.browser parses on the computer-use route with zero warnings (consumed)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { browser: "chrome" } },
       });
@@ -1294,7 +1311,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes", () => {
-      const ok = parseStudy({
+      const ok = parseStudyDocument({
         ...validCua,
         execution: {
           target: "e2b-desktop",
@@ -1328,7 +1345,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         [{ mobileEmulation: true, touch: "on" }, "touch"],
         [{ mobileEmulation: true, userAgent: "   " }, "userAgent"],
       ] as const) {
-        const bad = parseStudy({
+        const bad = parseStudyDocument({
           ...validCua,
           execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { fidelity } },
         });
@@ -1339,7 +1356,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("rejects an unknown desktop browser", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { browser: "safari" } },
       });
@@ -1350,7 +1367,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("rejects an unknown device preset", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { device: "foldable" } },
       });
@@ -1361,7 +1378,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("warns execution.desktop.device as inert on a non-computer-use route", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "scripted-device",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1375,7 +1392,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("warns execution.desktop.browser as inert on a non-computer-use route", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "scripted-browser",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1389,7 +1406,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("execution.desktop.template parses + trims on the computer-use route with zero warnings (consumed; any string is a valid name/id)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: {
           target: "e2b-desktop",
@@ -1404,7 +1421,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("rejects a blank/whitespace execution.desktop.template (set-but-empty is a mistake, not a template)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCua,
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { template: "   " } },
       });
@@ -1414,7 +1431,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("warns execution.desktop.template as inert on the local-app route (routes to cua but creates no desktop)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "local-app-template",
         subject: { source: "local-app", appUrl: "http://localhost:5173/" },
@@ -1441,7 +1458,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     };
 
     it("parses a scripted study with zero warnings: every set field is consumed on this route", () => {
-      const result = parseStudy(validScripted);
+      const result = parseStudyDocument(validScripted);
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.config.actors[0]?.type).toBe("scripted-browser");
@@ -1450,7 +1467,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("accepts an absent execution.target (absent means local on this route)", () => {
-      const result = parseStudy({ ...validScripted, execution: { timeoutMs: 60000 } });
+      const result = parseStudyDocument({ ...validScripted, execution: { timeoutMs: 60000 } });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.warnings).toEqual([]);
@@ -1458,7 +1475,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     it("accepts surface counts 1 and 2 (desktop / desktop + mobile)", () => {
       for (const count of [1, 2]) {
-        const result = parseStudy({
+        const result = parseStudyDocument({
           ...validScripted,
           actors: [{ type: "scripted-browser", count }],
         });
@@ -1498,14 +1515,14 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         },
       ],
     ])("fails closed on scripted mis-config: %s", (_label, input) => {
-      const result = parseStudy(input);
+      const result = parseStudyDocument(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
     });
 
     it("rejects subject.state on the scripted route (a clone-only field on an app-url subject)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validScripted,
         subject: {
           source: "app-url",
@@ -1520,7 +1537,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("accepts app-url × local for a computer-use desktop adapter", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validScripted,
         actors: [{ type: "openai-computer-use" }],
         scenario: undefined,
@@ -1529,7 +1546,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("names the scripted-browser actors in the app-url × e2b-desktop unsupported-actor error", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validScripted,
         actors: [{ type: "codex-app-server" }],
         execution: { target: "e2b-desktop" },
@@ -1542,7 +1559,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("warns mission/laneFocus/model as inert on the scripted route (no model runs); persona/count/timeoutMs stay de-warned", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validScripted,
         actors: [
           {
@@ -1568,7 +1585,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("keeps warning scenario.ref as forward-declared on non-scripted routes", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "synthetic-with-ref",
         subject: { source: "this-repo" },
@@ -1581,7 +1598,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("keeps warning execution.desktop.* on the scripted route (device presets are the computer-use route's)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validScripted,
         execution: { target: "local", desktop: { device: "mobile" } },
       });
@@ -1591,7 +1608,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("parses clone × e2b-desktop × scripted-browser as a provisioned synthetic scripted route", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "provisioned-scripted",
         subject: {
@@ -1676,7 +1693,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         subject: { ...base.subject, ...typedPatch.subject },
         actors: typedPatch.actors ?? base.actors,
       };
-      const result = parseStudy(input);
+      const result = parseStudyDocument(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
       expect(result.error.message).toContain(expected);
@@ -1706,7 +1723,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     };
 
     it("parses configurable install/build timeouts on serve (monorepo-scale builds exceed the default)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCloneCua,
         subject: {
           ...validCloneCua.subject,
@@ -1725,7 +1742,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("serve.url stays loopback-only even with allowPublicTargets (the lab serves the clone in-sandbox)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCloneCua,
         subject: {
           ...validCloneCua.subject,
@@ -1738,7 +1755,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("parses with zero warnings: serve, env, and clone.depth are all consumed on this route", () => {
-      const result = parseStudy(validCloneCua);
+      const result = parseStudyDocument(validCloneCua);
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.config.subject.serve?.start).toBe("pnpm start");
@@ -1749,7 +1766,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     it("rejects clone.fanout on the computer-use route (declared behavior change) but accepts clone.keep/depth", () => {
       // clone.fanout is now a hard parse error on the computer-use route: fan-out is declared via
       // `actors[0].count`/`lanes`. No current route reads subject.clone.fanout.
-      const rejected = parseStudy({
+      const rejected = parseStudyDocument({
         ...validCloneCua,
         subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true, fanout: 2 } },
       });
@@ -1759,7 +1776,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(rejected.error.message).toContain("subject.clone.fanout");
 
       // clone.keep + depth alone parse clean (keep is honored on failure; depth is consumed).
-      const accepted = parseStudy({
+      const accepted = parseStudyDocument({
         ...validCloneCua,
         subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true } },
       });
@@ -1769,7 +1786,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("accepts a homogeneous count > 1 on the clone computer-use route (each participant clones the same repo)", () => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...validCloneCua,
         actors: [{ type: "openai-computer-use", count: 3 }],
       });
@@ -1853,7 +1870,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         { ...validCloneCua, actors: [{ type: "openai-computer-use", count: 17 }] },
       ],
     ])("fails closed on clone+serve mis-config: %s", (_label, input) => {
-      const result = parseStudy(input);
+      const result = parseStudyDocument(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
@@ -1885,7 +1902,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("parses a full state declaration (all three phases + external) with zero warnings on the computer-use route", () => {
-      const result = parseStudy(
+      const result = parseStudyDocument(
         withState({
           seed: [
             {
@@ -1927,7 +1944,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("parses seed-only state (no external): the common synthetic-seed shape", () => {
-      const result = parseStudy(
+      const result = parseStudyDocument(
         withState({
           seed: [{ name: "fixtures", command: "pnpm prisma db seed" }],
         }),
@@ -1998,14 +2015,14 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         },
       ],
     ])("fails closed on state mis-config: %s", (_label, input) => {
-      const result = parseStudy(input);
+      const result = parseStudyDocument(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
     });
 
     it("names the provisioned-channel rule when external is not backed by subject.env", () => {
-      const result = parseStudy(withState({ external: ["REDIS_URL"] }));
+      const result = parseStudyDocument(withState({ external: ["REDIS_URL"] }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.message).toContain("subject.env");
@@ -2032,7 +2049,7 @@ describe("parseLabConfig (local-app subject)", () => {
   };
 
   it("parses a local-app + computer-use actor and routes to the computer-use route", () => {
-    const result = parseStudy(validLocalApp);
+    const result = parseStudyDocument(validLocalApp);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject).toEqual({
@@ -2047,7 +2064,7 @@ describe("parseLabConfig (local-app subject)", () => {
   });
 
   it("accepts execution.target: local explicitly (and absent), routing to cua either way", () => {
-    const explicit = parseStudy({
+    const explicit = parseStudyDocument({
       ...validLocalApp,
       execution: { target: "local", timeoutMs: 60000 },
     });
@@ -2057,7 +2074,10 @@ describe("parseLabConfig (local-app subject)", () => {
 
   it("accepts loopback variants (127.0.0.1, [::1], https)", () => {
     for (const appUrl of ["http://127.0.0.1:3000/", "https://localhost/", "http://[::1]:5173/"]) {
-      const result = parseStudy({ ...validLocalApp, subject: { source: "local-app", appUrl } });
+      const result = parseStudyDocument({
+        ...validLocalApp,
+        subject: { source: "local-app", appUrl },
+      });
       expect(result.ok, appUrl).toBe(true);
     }
   });
@@ -2124,14 +2144,14 @@ describe("parseLabConfig (local-app subject)", () => {
       },
     ],
   ])("fails closed on local-app mis-config: %s", (_label, input) => {
-    const result = parseStudy(input);
+    const result = parseStudyDocument(input);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("the e2b-desktop rejection names the right remedy (app-url for the hosted desktop route)", () => {
-    const result = parseStudy({ ...validLocalApp, execution: { target: "e2b-desktop" } });
+    const result = parseStudyDocument({ ...validLocalApp, execution: { target: "e2b-desktop" } });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.message).toContain("app-url");
@@ -2246,7 +2266,7 @@ function validSharedWorldLocalTree(overrides?: {
 
 describe("shared-world topology routing + cross-validation", () => {
   it("parses a valid shared-world lab, routes to the shared-world backend, no warnings", () => {
-    const result = parseStudy(validSharedWorld());
+    const result = parseStudyDocument(validSharedWorld());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject.topology).toBe("shared-world");
@@ -2271,7 +2291,7 @@ describe("shared-world topology routing + cross-validation", () => {
   });
 
   it("accepts subject.source: local-tree: parses, routes to shared-world, no warnings", () => {
-    const result = parseStudy(validSharedWorldLocalTree());
+    const result = parseStudyDocument(validSharedWorldLocalTree());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject.source).toBe("local-tree");
@@ -2283,7 +2303,7 @@ describe("shared-world topology routing + cross-validation", () => {
   });
 
   it("local-tree + concurrency>1 also routes to the concurrent shared-world backend", () => {
-    const result = parseStudy(
+    const result = parseStudyDocument(
       validSharedWorldLocalTree({
         subject: {
           exposure: "synthetic",
@@ -2300,16 +2320,20 @@ describe("shared-world topology routing + cross-validation", () => {
   });
 
   it("local-tree shared-world still rejects subject.repos/subject.clone (local-tree never carries git slugs)", () => {
-    const withRepos = parseStudy(validSharedWorldLocalTree({ subject: { repos: ["a/b"] } }));
+    const withRepos = parseStudyDocument(
+      validSharedWorldLocalTree({ subject: { repos: ["a/b"] } }),
+    );
     expect(withRepos.ok).toBe(false);
     if (!withRepos.ok) expect(withRepos.error.message).toContain("subject.repos");
-    const withClone = parseStudy(validSharedWorldLocalTree({ subject: { clone: { depth: 1 } } }));
+    const withClone = parseStudyDocument(
+      validSharedWorldLocalTree({ subject: { clone: { depth: 1 } } }),
+    );
     expect(withClone.ok).toBe(false);
     if (!withClone.ok) expect(withClone.error.message).toContain("subject.clone");
   });
 
   it("execution.desktop.browser parses on shared-world with zero warnings", () => {
-    const result = parseStudy(
+    const result = parseStudyDocument(
       validSharedWorld({
         execution: {
           target: "e2b-desktop",
@@ -2326,7 +2350,7 @@ describe("shared-world topology routing + cross-validation", () => {
   });
 
   it("rejects malformed participant grouping metadata instead of persisting arbitrary labels", () => {
-    const result = parseStudy(
+    const result = parseStudyDocument(
       validSharedWorld({
         actors: [
           {
@@ -2344,7 +2368,7 @@ describe("shared-world topology routing + cross-validation", () => {
   });
 
   it("expands compact roster groups before shared-world validation", () => {
-    const result = parseStudy(
+    const result = parseStudyDocument(
       validSharedWorld({
         actors: [
           {
@@ -2399,7 +2423,7 @@ describe("shared-world topology routing + cross-validation", () => {
     const sw = validSharedWorld();
     const subject = { ...(sw.subject as Record<string, unknown>) };
     delete subject.topology;
-    const result = parseStudy({ ...sw, subject });
+    const result = parseStudyDocument({ ...sw, subject });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(isSharedWorldComposition(result.config)).toBe(false);
@@ -2485,31 +2509,31 @@ describe("shared-world topology routing + cross-validation", () => {
       }),
     ],
   ])("fails closed on shared-world mis-config: %s", (_label, input) => {
-    const result = parseStudy(input as Record<string, unknown>);
+    const result = parseStudyDocument(input as Record<string, unknown>);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("each fail-closed reason names its requirement precisely", () => {
-    const noServe = parseStudy(validSharedWorld({ subject: { serve: undefined } }));
+    const noServe = parseStudyDocument(validSharedWorld({ subject: { serve: undefined } }));
     expect(noServe.ok).toBe(false);
     if (!noServe.ok) expect(noServe.error.message).toContain("subject.serve");
-    const oneRole = parseStudy(
+    const oneRole = parseStudyDocument(
       validSharedWorld({
         actors: [{ type: "openai-computer-use", lanes: [{ id: "only", entry: "/x" }] }],
       }),
     );
     expect(oneRole.ok).toBe(false);
     if (!oneRole.ok) expect(oneRole.error.message).toContain("roster of at least 2");
-    const noCheckpoint = parseStudy(
+    const noCheckpoint = parseStudyDocument(
       validSharedWorld({
         subject: { state: { seed: [{ name: "migrate", command: "pnpm db:migrate" }] } },
       }),
     );
     expect(noCheckpoint.ok).toBe(false);
     if (!noCheckpoint.ok) expect(noCheckpoint.error.message).toContain("subject.state.checkpoint");
-    const badEntry = parseStudy(
+    const badEntry = parseStudyDocument(
       validSharedWorld({
         actors: [
           {
@@ -2539,11 +2563,11 @@ describe("shared-world topology routing + cross-validation", () => {
   });
 
   it("rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact)", () => {
-    const noCommand = parseStudy(
+    const noCommand = parseStudyDocument(
       validSharedWorld({ subject: { state: { checkpoint: [{ name: "c1" }] } } }),
     );
     expect(noCommand.ok).toBe(false);
-    const dupName = parseStudy(
+    const dupName = parseStudyDocument(
       validSharedWorld({
         subject: {
           state: {
@@ -2557,7 +2581,7 @@ describe("shared-world topology routing + cross-validation", () => {
     );
     expect(dupName.ok).toBe(false);
     if (!dupName.ok) expect(dupName.error.message).toContain("unique");
-    const badRedact = parseStudy(
+    const badRedact = parseStudyDocument(
       validSharedWorld({
         subject: {
           state: { checkpoint: [{ name: "c1", command: "echo a", redact: "not-a-list" }] },
@@ -2569,7 +2593,7 @@ describe("shared-world topology routing + cross-validation", () => {
 
   it("topology + checkpoint warn as inert off the shared-world route, and the other routes are byte-stable", () => {
     // topology on an app-url computer-use route warns inert.
-    const appUrl = parseStudy({
+    const appUrl = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "sw-warn",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/", topology: "per-lane-worlds" },
@@ -2584,20 +2608,20 @@ describe("shared-world topology routing + cross-validation", () => {
     }
 
     // Every existing route still parses + routes unchanged (regression guard).
-    const synthetic = parseStudy({
+    const synthetic = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
     });
-    const scripted = parseStudy({
+    const scripted = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "sc",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "scripted-browser" }],
       scenario: { ref: "scripted-first-run" },
     });
-    const terminal = parseStudy({
+    const terminal = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "t",
       subject: {
@@ -2655,7 +2679,7 @@ function validConcurrent(overrides?: {
 
 describe("concurrent shared-world routing + cross-validation", () => {
   it("routes shared-world + concurrency>1 to the concurrent backend; no warnings", () => {
-    const result = parseStudy(validConcurrent());
+    const result = parseStudyDocument(validConcurrent());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(isSharedWorldComposition(result.config)).toBe(true);
@@ -2668,7 +2692,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
   it("refuses explicit concurrency 1 with a migration message; an omitted concurrency runs all participants", () => {
     // The sequential shared-world route was removed in 0.106.0. A lab that still declares
     // concurrency 1 must fail at parse with the fix, never silently run concurrently.
-    const seq1 = parseStudy(
+    const seq1 = parseStudyDocument(
       validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 } }),
     );
     expect(seq1.ok).toBe(false);
@@ -2678,7 +2702,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
     }
     // All-parallel default: omitting concurrency means every participant lives at once; the
     // parser fills concurrency = participant count.
-    const allParallel = parseStudy(
+    const allParallel = parseStudyDocument(
       validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000 } }),
     );
     expect(allParallel.ok).toBe(true);
@@ -2721,33 +2745,33 @@ describe("concurrent shared-world routing + cross-validation", () => {
       }),
     ],
   ])("fails closed on concurrent mis-config: %s", (_label, input) => {
-    const result = parseStudy(input as Record<string, unknown>);
+    const result = parseStudyDocument(input as Record<string, unknown>);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("each concurrent fail-closed reason names its requirement precisely", () => {
-    const noExposure = parseStudy(validConcurrent({ subject: { exposure: undefined } }));
+    const noExposure = parseStudyDocument(validConcurrent({ subject: { exposure: undefined } }));
     expect(noExposure.ok).toBe(false);
     if (!noExposure.ok) expect(noExposure.error.message).toContain("subject.exposure: synthetic");
-    const badBind = parseStudy(
+    const badBind = parseStudyDocument(
       validConcurrent({
         subject: { serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } },
       }),
     );
     expect(badBind.ok).toBe(false);
     if (!badBind.ok) expect(badBind.error.message).toContain("0.0.0.0");
-    const keep = parseStudy(validConcurrent({ subject: { clone: { keep: true } } }));
+    const keep = parseStudyDocument(validConcurrent({ subject: { clone: { keep: true } } }));
     expect(keep.ok).toBe(false);
     if (!keep.ok) expect(keep.error.message).toContain("subject.clone.keep");
   });
 
   it("exposure: synthetic is enum-validated and inert (warned) off the concurrent route", () => {
-    const badExposure = parseStudy(validConcurrent({ subject: { exposure: "real" } }));
+    const badExposure = parseStudyDocument(validConcurrent({ subject: { exposure: "real" } }));
     expect(badExposure.ok).toBe(false);
     // exposure on a plain app-url computer-use route warns inert.
-    const offRoute = parseStudy({
+    const offRoute = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "exp-warn",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/", exposure: "synthetic" },
@@ -2762,14 +2786,14 @@ describe("concurrent shared-world routing + cross-validation", () => {
   });
 
   it("existing routes stay byte-stable (none route to concurrent shared-world)", () => {
-    const synthetic = parseStudy({
+    const synthetic = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
     });
     // A plain cua fan-out (concurrency>1 but no shared-world topology) stays cua, not concurrent shared-world.
-    const fanout = parseStudy({
+    const fanout = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "f",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -2806,7 +2830,7 @@ describe("parseLabConfig (local-tree subject)", () => {
   };
 
   it("parses a minimal local-tree study and routes to the computer-use route with zero warnings", () => {
-    const result = parseStudy(validLocalTree);
+    const result = parseStudyDocument(validLocalTree);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject.source).toBe("local-tree");
@@ -2818,7 +2842,7 @@ describe("parseLabConfig (local-tree subject)", () => {
   });
 
   it("normalizes localTree.exclude entries (leading ./ and trailing / stripped)", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       ...validLocalTree,
       subject: { ...validLocalTree.subject, localTree: { exclude: ["./big-media", "vendor/"] } },
     });
@@ -2828,7 +2852,7 @@ describe("parseLabConfig (local-tree subject)", () => {
   });
 
   it("round-trips subject.localTree fields (keep/exclude/maxArchiveBytes)", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       ...validLocalTree,
       subject: {
         ...validLocalTree.subject,
@@ -2845,7 +2869,7 @@ describe("parseLabConfig (local-tree subject)", () => {
   });
 
   it("localTree is optional - a bare local-tree lab has no subject.localTree at all", () => {
-    const result = parseStudy(validLocalTree);
+    const result = parseStudyDocument(validLocalTree);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject.localTree).toBeUndefined();
@@ -2919,40 +2943,43 @@ describe("parseLabConfig (local-tree subject)", () => {
       },
     ],
   ])("fails closed on local-tree mis-config: %s", (_label, input) => {
-    const result = parseStudy(input);
+    const result = parseStudyDocument(input);
     expect(result.ok, _label).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it("each local-tree fail-closed reason names its requirement precisely", () => {
-    const withRepos = parseStudy({
+    const withRepos = parseStudyDocument({
       ...validLocalTree,
       subject: { ...validLocalTree.subject, repos: ["a/b"] },
     });
     expect(withRepos.ok).toBe(false);
     if (!withRepos.ok) expect(withRepos.error.message).toContain("subject.repos");
 
-    const withClone = parseStudy({
+    const withClone = parseStudyDocument({
       ...validLocalTree,
       subject: { ...validLocalTree.subject, clone: { depth: 1 } },
     });
     expect(withClone.ok).toBe(false);
     if (!withClone.ok) expect(withClone.error.message).toContain("subject.clone");
 
-    const noServe = parseStudy({ ...validLocalTree, subject: { source: "local-tree" } });
+    const noServe = parseStudyDocument({ ...validLocalTree, subject: { source: "local-tree" } });
     expect(noServe.ok).toBe(false);
     if (!noServe.ok) expect(noServe.error.message).toContain("subject.serve");
 
-    const noTarget = parseStudy({ ...validLocalTree, execution: undefined });
+    const noTarget = parseStudyDocument({ ...validLocalTree, execution: undefined });
     expect(noTarget.ok).toBe(false);
     if (!noTarget.ok) expect(noTarget.error.message).toContain("execution.target: e2b-desktop");
 
-    const badActor = parseStudy({ ...validLocalTree, actors: [{ type: "codex-app-server" }] });
+    const badActor = parseStudyDocument({
+      ...validLocalTree,
+      actors: [{ type: "codex-app-server" }],
+    });
     expect(badActor.ok).toBe(false);
     if (!badActor.ok) expect(badActor.error.message).toContain("computer-use actor");
 
-    const localTreeOnClone = parseStudy({
+    const localTreeOnClone = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "clone-with-localtree",
       subject: { source: "clone", repos: ["example-org/example-app"], localTree: { keep: true } },
@@ -2966,7 +2993,7 @@ describe("parseLabConfig (local-tree subject)", () => {
     // full positive proof (roster + checkpoint declared, parses ok, routes to shared-world). Here,
     // the bare validLocalTree fixture (no roster/checkpoint) still fails closed, but now on the
     // roster requirement - never on a source rejection.
-    const sharedWorldOnBareLocalTree = parseStudy({
+    const sharedWorldOnBareLocalTree = parseStudyDocument({
       ...validLocalTree,
       subject: { ...validLocalTree.subject, topology: "shared-world" },
     });
@@ -2978,14 +3005,14 @@ describe("parseLabConfig (local-tree subject)", () => {
       expect(sharedWorldOnBareLocalTree.error.message).toContain("roster of at least 2");
     }
 
-    const badExclude = parseStudy({
+    const badExclude = parseStudyDocument({
       ...validLocalTree,
       subject: { ...validLocalTree.subject, localTree: { exclude: [""] } },
     });
     expect(badExclude.ok).toBe(false);
     if (!badExclude.ok) expect(badExclude.error.message).toContain("subject.localTree.exclude");
 
-    const badMax = parseStudy({
+    const badMax = parseStudyDocument({
       ...validLocalTree,
       subject: { ...validLocalTree.subject, localTree: { maxArchiveBytes: 0 } },
     });
@@ -2994,7 +3021,7 @@ describe("parseLabConfig (local-tree subject)", () => {
   });
 
   it("serve/env/state are shared with the clone route (same parsing + semantic validation)", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       ...validLocalTree,
       subject: {
         ...validLocalTree.subject,
@@ -3010,7 +3037,7 @@ describe("parseLabConfig (local-tree subject)", () => {
   });
 
   it("still fails closed on a malformed state block (semantic validation is shared with clone)", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       ...validLocalTree,
       subject: { ...validLocalTree.subject, state: { external: ["REDIS_URL"] } },
     });
@@ -3054,7 +3081,7 @@ describe("shared-world one-participant rosters and the concurrency rule", () => 
     };
   }
   function refusal(config: unknown): string {
-    const parsed = parseStudy(config);
+    const parsed = parseStudyDocument(config);
     if (parsed.ok) throw new Error("expected the lab to be refused");
     return parsed.error.message;
   }

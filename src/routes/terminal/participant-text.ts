@@ -1,6 +1,7 @@
 import type { ActorTraceItem } from "../../actors/contract.js";
 import { normalizeLocalActorTranscript } from "../../run/terminal-contract.js";
 import { MESSAGE_CHARS, PENDING_LINE_CHARS, TEXT_ITEMS_BYTES, TEXT_ITEMS_MAX } from "./types.js";
+import { plural } from "../../run/text.js";
 
 // Analysis may quote message and reasoning items as the participant's own words, so these items
 // carry only the agent's text. Command output, usage records and harness lines stay in the
@@ -179,7 +180,7 @@ export function createTerminalParticipantReader(sanitize: (text: string) => stri
       if (droppedLines > 0)
         notices.push([
           "agent output lines skipped",
-          `Skipped ${droppedLines} stdout line(s) that ran past ${PENDING_LINE_CHARS} characters without a newline. Items on those lines are not in this trace or its counts.`,
+          `Skipped ${plural(droppedLines, "stdout line")} that ran past ${PENDING_LINE_CHARS} characters without a newline. Items on those lines are not in this trace or its counts.`,
         ]);
       notices.forEach(([title, text], index) =>
         items.push({

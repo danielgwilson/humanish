@@ -32,7 +32,7 @@ import {
   sharedWorldValidationReason,
 } from "../../../src/study/validation.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { prepareStudy, runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -381,7 +381,7 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): St
     persona: `persona-${i + 1}`,
     entry: `/seat-${i + 1}`,
   }));
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "concurrent-shared-world-proof",
     title: "Concurrent shared-world proof",
@@ -1138,7 +1138,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // The second participant has no id, and email has no recipients: the parser fills one per
     // participant.
     const labWith = (email: Record<string, unknown>) =>
-      parseStudy({
+      parseStudyDocument({
         ...declared,
         actors: [{ ...declared.actors[0], lanes: [named, unnamedSeat] }],
         comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, ...email } },
@@ -1640,14 +1640,14 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain(
-      "2/3 actor(s) reached a terminal, engaged passed session",
+      "2/3 actors reached a terminal, engaged passed session",
     );
 
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.summary).toContain("2/3 actor session(s) passed credibility checks");
+    expect(bundle.review.summary).toContain("2/3 actor sessions passed credibility checks");
     expect(bundle.review.summary).toContain("mission endpoint: 2/3 ended goal_satisfied");
     expect(bundle.review.summary).toContain(
       "completion reasons: actor_error 1/3, goal_satisfied 2/3",
@@ -1876,7 +1876,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       persona: `persona-${i + 1}`,
       entry: `/seat-${i + 1}`,
     }));
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "concurrent-shared-world-local-tree-proof",
       title: "Concurrent shared-world local-tree proof",
@@ -2410,7 +2410,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
         "utf8",
       ),
     );
-    const parsed = parseStudy(raw);
+    const parsed = parseStudyDocument(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
   }

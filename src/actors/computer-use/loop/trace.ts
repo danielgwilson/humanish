@@ -10,6 +10,7 @@ import {
 import type { Stop } from "./ending.js";
 import type { LoopSession } from "./session.js";
 import type { CuaLoopResult } from "./types.js";
+import { plural } from "../../../run/text.js";
 
 // The session's trace: the recorder every item passes through while the loop runs, and the
 // projection of the finished session onto its CuaLoopResult and public-safe ActorTrace.
@@ -118,8 +119,8 @@ export function loopResult(
   const screenshotNote = !(counts.screenshots > 0)
     ? "no screenshots captured"
     : session.redactScreenshots
-      ? `${counts.screenshots} screenshot(s) redacted to blurred thumbnails via RedactionHooks`
-      : `${counts.screenshots} unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share`;
+      ? `${plural(counts.screenshots, "screenshot")} redacted to blurred thumbnails via RedactionHooks`
+      : `${plural(counts.screenshots, "unblurred screenshot")} kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share`;
   // Self-describing artifact: when any observation carried structured app state,
   // the trace says how the loop handled it: it fed progress and task checks and was not written to
   // the trace. The appState itself never appears in this bundle.

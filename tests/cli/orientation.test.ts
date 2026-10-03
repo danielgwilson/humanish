@@ -15,6 +15,7 @@ import {
   ORIENTATION_SCHEMA,
 } from "../../src/cli/orientation.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 let dir: string | undefined;
 afterEach(async () => {
@@ -51,13 +52,16 @@ describe("readOrientation", () => {
 
   async function projectWithLabs(ids: string[]): Promise<string> {
     const created = await emptyProject();
-    await mkdir(path.join(created, "humanish", "labs"), { recursive: true });
+    await mkdir(path.join(created, "humanish", "studies"), { recursive: true });
     for (const id of ids)
       await writeFile(
-        path.join(created, "humanish", "labs", `${id}.yaml`),
-        ["schema: humanish.lab.v2", `id: ${id}`, "subject:", "  source: this-repo", "actors:"]
-          .concat(["  - type: synthetic-persona"])
-          .join("\n"),
+        path.join(created, "humanish", "studies", `${id}.yaml`),
+        studyFileText(
+          ["schema: humanish.lab.v2", `id: ${id}`, "subject:", "  source: this-repo", "actors:"]
+            .concat(["  - type: synthetic-persona"])
+            .join("\n"),
+          created,
+        ),
         "utf8",
       );
     return created;
