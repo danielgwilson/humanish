@@ -400,7 +400,7 @@ for the supported library seam.
 
 `import ... from "humanish"` covers four things:
 
-- run a lab: `runStudy`, `RunStudyOptions`, `StudyOutcome`, `StudyResult`, `StudyEvent`, `routeOf`,
+- run a study: `runStudy`, `RunStudyOptions`, `StudyOutcome`, `StudyResult`, `StudyEvent`, `routeOf`,
   `parseStudy`, `STUDY_SCHEMA`;
 - read a run: `verifyRun`, `renderObserver`, `RunBundle`, `ActorTrace`;
 - bring a participant: `ComputerUseProvider`, `ComputerUseExecutor`, `ProviderContext`,
