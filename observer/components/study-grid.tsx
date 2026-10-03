@@ -11,9 +11,9 @@ import type { AnalysisArtifact } from "../../src/analysis/types";
 /** The analysis fields the cost line reads: who ran it, and what it was billed. */
 type AnalysisSpend = Pick<AnalysisArtifact, "provider" | "usage">;
 
-/** An estimate, or a known part of one when some of the spend has no price. */
+/** An estimate, saying so when some of the spend has no price and is not in it. */
 const estimateText = (value: number, complete: boolean) =>
-  complete ? `est. ~$${value.toFixed(2)}` : `known cost est. ~$${value.toFixed(2)}; total unknown`;
+  `est. ~$${value.toFixed(2)}${complete ? "" : " plus unpriced usage"}`;
 
 /**
  * What the run cost: participants and desktops from the run's cost summary, then the post-run

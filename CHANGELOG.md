@@ -10,14 +10,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
-- The Observer's cost line counts the analysis after a run. The run's cost summary covers
-  participants and desktops, and the analysis bills the OpenAI key separately. On a try-live run
-  the line read about $0.02 for participants and desktops, and showed no cost at all once analyzed
-  outcomes replaced the tally, while the analysis cost about $0.53. The line above the study grid
-  now adds `Analysis: est. ~$0.53 (OpenAI API key)` and a `Total` that includes it, with or
-  without analyzed outcomes. A Codex-account analysis reads "dollar cost unknown", and an analysis
-  that sent no request adds nothing. The try-live starter study's description says the analysis
-  bills OPENAI_API_KEY, how it is capped, and how to turn it off.
+- The Observer's cost line left out the analysis after a run, which bills the OpenAI key
+  separately: on a try-live run it showed about $0.02 for participants and desktops while the
+  analysis cost about $0.53, and it showed no cost once analyzed outcomes replaced the tally. The
+  line now adds the analysis spend as its own part and a total that includes it, with or without
+  analyzed outcomes. The try-live starter study's description says the analysis bills
+  OPENAI_API_KEY, is refused above $3, and is turned off with `review.analysis: false`.
 
 ## 0.108.0: Studies, one runner and one viewer, errors on stderr (2026-10-03)
 

@@ -404,7 +404,7 @@ describe("buildTally cost line", () => {
       placeholder: true,
     };
     expect(buildTally({ ...base, cost } as unknown as ObserverData)).toContain(
-      "Participants + desktops: known cost est. ~$0.03; total unknown (rates as of 2026-09-03, placeholder)",
+      "Participants + desktops: est. ~$0.03 plus unpriced usage (rates as of 2026-09-03, placeholder)",
     );
     const complete = buildTally({
       ...base,
@@ -413,8 +413,7 @@ describe("buildTally cost line", () => {
     expect(complete).toContain(
       "Participants + desktops: est. ~$0.03 (rates as of 2026-09-03, placeholder)",
     );
-    expect(complete).not.toContain("known cost");
-    expect(complete).not.toContain("total unknown");
+    expect(complete).not.toContain("unpriced");
   });
 
   const runCost = {
@@ -444,13 +443,13 @@ describe("buildTally cost line", () => {
     const tally = buildTally(data, apiAnalysis({}));
     expect(tally).toContain("Analysis: est. ~$0.53 (OpenAI API key)");
     // The participant's account usage has no price, so the total stays a lower bound.
-    expect(tally).toContain("Total: known cost est. ~$0.55; total unknown");
+    expect(tally).toContain("Total: est. ~$0.55 plus unpriced usage");
     const priced = buildTally(
       { ...base, cost: { ...runCost, fullyEstimated: true } } as unknown as ObserverData,
       apiAnalysis({}),
     );
     expect(priced).toContain("Total: est. ~$0.55");
-    expect(priced).not.toContain("total unknown");
+    expect(priced).not.toContain("unpriced");
   });
 
   it("keeps the cost when analyzed outcomes replace the tally", () => {
@@ -465,7 +464,7 @@ describe("buildTally cost line", () => {
     );
     expect(line).toContain("Analyzed outcomes: 1/2 passed · 1/2 stuck");
     expect(line).toContain("Analysis: est. ~$0.53 (OpenAI API key)");
-    expect(line).toContain("Total: known cost est. ~$0.55; total unknown");
+    expect(line).toContain("Total: est. ~$0.55 plus unpriced usage");
   });
 
   it("adds nothing for an analysis that sent no request, and no dollar figure for a Codex one", () => {
@@ -478,7 +477,7 @@ describe("buildTally cost line", () => {
       provider: "codex",
     });
     expect(codex).toContain("Analysis: Codex account, dollar cost unknown");
-    expect(codex).toContain("Total: known cost est. ~$0.02; total unknown");
+    expect(codex).toContain("Total: est. ~$0.02 plus unpriced usage");
   });
 
   it("an absent cost block stays silent (dry-run: nothing was spent, nothing is claimed)", () => {
