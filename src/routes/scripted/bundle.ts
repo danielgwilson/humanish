@@ -2,6 +2,7 @@
 // markdown that ship with it.
 
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
+import { verdictText } from "../../run/judge.js";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserPersonaJourney, BrowserSurface } from "../../actors/scripted-browser/types.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -261,7 +262,7 @@ export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
     "",
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
-    `- verdict: ${bundle.review.verdict}`,
+    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
     `- summary: ${bundle.review.summary}`,
     `- scenario: ${bundle.scenario.id} @ ${bundle.scenario.sourceDigest} (${bundle.scenario.source})`,
     ...(subject ? [`- subject: ${subject.message}`] : []),

@@ -23,7 +23,7 @@ export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
  *
  * The distinction matters because two of these are participant outcomes and the rest are not. A
  * participant who abandons a task is the single most valuable thing a usability study produces, and
- * recording that as `failed` (as this type used to force) reads as the instrument breaking. See
+ * recording that as `failed` reads as the instrument breaking. See
  * docs/principles/three-roles.md.
  *
  * - `passed`      the participant reached the goal
@@ -104,7 +104,7 @@ type ActorRunKind = "code" | "computer-use" | "scripted-browser" | "terminal";
 // disabled): `codex exec --json` launched via `commands.run`, output captured. It is not an
 // interactive duplex PTY; labeling captured exec output as an interactive transport would be a
 // claim/mechanism mismatch, so it gets its own
-// honest protocol label distinct from "cua-loop"/"scripted-steps".
+// protocol label distinct from "cua-loop"/"scripted-steps".
 type ActorProtocol = "json-rpc" | "json-stream" | "cua-loop" | "scripted-steps" | "terminal-exec";
 
 export type ActorTraceItemKind =
@@ -182,18 +182,18 @@ export interface ActorPersonaRef {
 export interface ActorTokenUsage {
   input?: number;
   output?: number;
-  /** Of `input`, how many tokens were served from the provider's prompt cache. Optional and
-   *  honestly absent: a provider that does not report it leaves this undefined rather than
+  /** Of `input`, how many tokens were served from the provider's prompt cache. Optional. A
+   *  provider that does not report it leaves this undefined rather than
    *  reporting 0, because 0 and "unknown" price very differently. */
   cachedInput?: number;
   /** Of `input`, how many tokens were newly written to the provider's prompt cache
    *  (OpenAI 5.6+ bills these at a surcharge and reports `cache_write_tokens`). Same
-   *  honestly-absent discipline as `cachedInput`. */
+   *  absent-when-unreported rule as `cachedInput`. */
   cacheWriteInput?: number;
   /** Per model-inference request usage, in request order. One provider interaction can contain
    *  several inferences around native tool calls. A provider that re-prices whole requests past
    *  an input-size threshold can only be priced exactly from these sizes; totals cannot say which
-   *  requests crossed. Additive and honestly absent on producers that do not record it. */
+   *  requests crossed. Additive, and absent on producers that do not record it. */
   turns?: Array<{
     input?: number;
     cachedInput?: number;
@@ -427,7 +427,7 @@ export interface ActorTrace {
    * It exists because effort was a silent constant: unreachable from a lab, so every run took the
    * provider default. Effort is part of who the participant was, not of how the instrument was
    * tuned (docs/principles/actor-fidelity.md), so a trace that does not carry it is a result with
-   * half its sample description missing, and two such traces cannot honestly be compared.
+   * half its sample description missing, and two such traces cannot be compared.
    */
   modelSettings?: { reasoningEffort: string; maxOutputTokens?: number };
   counts: Record<string, number>;
@@ -446,7 +446,7 @@ export interface ActorTrace {
    * Additive + optional task funnel (humanish.task-funnel.v1): how far this participant got
    * through the lab's declared protocol, corroborated per task by observations rather than by the
    * actor's own narration. Present only when the lab declared `tasks` and the session ran; absent
-   * on every pre-existing bundle and on dry-run contract bundles (honest absence: a funnel that
+   * on every pre-existing bundle and on dry-run contract bundles (a funnel that
    * was never measured is not an empty funnel). Its absence is tolerated by verify.
    */
   taskFunnel?: TaskFunnel;

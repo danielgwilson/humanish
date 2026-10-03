@@ -6,7 +6,7 @@
 // as a replacement glyph. Every ASCII character on the same screen was fine, which is exactly the
 // signature.
 //
-// The honest fix is not "stop using em dashes". It is to ask what the terminal can render and mean
+// The fix is not "stop using em dashes". It is to ask what the terminal can render and mean
 // it. A surface that emits characters its own terminal cannot decode is not being expressive, it is
 // producing garbage that reads as a bug in the tool.
 

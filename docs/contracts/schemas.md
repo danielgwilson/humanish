@@ -248,7 +248,7 @@ dwell? }`. The parser expands it into
   metadata; with `openai-egress` it stays in the host-side E2B header transform
   set at sandbox creation, and the agent gets a placeholder. A dry-run neither
   reads nor injects it;
-- `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`.
+- `scenario`: `mode: dry-run` (a synthetic bundle, no spend) or `live`.
   `scenario.ref` is consumed (and required) on the scripted-browser route: it
   resolves a committed scenario (`humanish/scenarios/<ref>.yaml` or a repo
   path) whose `browser.steps` are what the actor executes, digest-pinned into
@@ -393,7 +393,7 @@ the run bundle is byte-stable with the pre-fan-out output; only the result
 projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event
 (and a `cua-lab.fanout.fail-fast` event when a harness error skips queued participants);
 `ok = observer.ok ∧ every participant ok ∧ no failed adapter or declared-scorer verdict`,
-where a dry-run participant is ok as contract evidence and a live participant must pass
+where a dry-run participant is ok as synthetic and a live participant must pass
 `participantPassed` (`src/run/judge.ts`): not skipped, status `passed`, no harness
 error, engaged, and no self-reported blocker.
 

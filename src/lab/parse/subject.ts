@@ -298,7 +298,7 @@ function parseProductSubject(
 export const PUBLIC_TARGET_OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_./-]*$/;
 
 /** Parse the external-public shared-world ownership attestation ({ owner, authorized: true }). The
- *  harness cannot verify ownership: this is author-trust, surfaced honestly in the evidence class. */
+ *  harness cannot verify ownership: this is author-trust, and the evidence class says so. */
 function parsePublicTarget(
   raw: unknown,
 ): { ok: true; value: { owner: string; authorized: boolean } } | LabConfigParseFailure {

@@ -1,6 +1,6 @@
 // What `humanish` says when you run it with no arguments.
 //
-// It used to print commander's help: sixteen subcommands before any value, identical whether you
+// Commander's help would print sixteen subcommands before any value, identical whether you
 // had never run the tool or had a finished study sitting on disk. That is a poor first contact for
 // a human, and it is worse for a coding agent, which needs to know where it is before it can choose
 // a command; help is a menu, not an orientation.
@@ -76,7 +76,7 @@ export async function readOrientation(
 
 /**
  * The two or three commands worth running from this state. Deliberately short: a list of everything
- * is what bare invocation used to print, and it is why nobody read it.
+ * is commander's help, which nobody reads.
  */
 function nextCommandsFor(args: {
   initialized: boolean;
@@ -84,9 +84,9 @@ function nextCommandsFor(args: {
   hasRun: boolean;
   host: { platform: NodeJS.Platform; arch: string };
 }): OrientationCommand[] {
-  const preview = {
+  const dryRun = {
     command: "humanish run first-run",
-    why: "an evidence preview: no browser or model runs, no keys, no spend",
+    why: "a dry run: no browser or model runs, no keys, no spend",
   };
   if (!args.initialized) {
     return [
@@ -94,7 +94,7 @@ function nextCommandsFor(args: {
         command: "humanish init --yes",
         why: "write starter labs, personas and an AGENTS.md (--dry-run lists every file first)",
       },
-      preview,
+      dryRun,
     ];
   }
 
@@ -107,7 +107,7 @@ function nextCommandsFor(args: {
   ).find((id) => args.labIds.includes(id));
   if (!args.hasRun) {
     return [
-      preview,
+      dryRun,
       liveLab === undefined
         ? { command: "humanish lab list", why: "see the labs this project declares" }
         : {

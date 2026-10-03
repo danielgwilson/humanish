@@ -122,7 +122,7 @@ async function reclaimRun(
 
   const journal = await reclaimJournal(runPaths, hooks);
   if (journal.kind === "empty") {
-    // Honest empty: nothing journaled means either no sandbox was ever created (cheap interrupt:
+    // Empty: nothing journaled means either no sandbox was ever created (cheap interrupt:
     // nothing to reclaim) or the run predates receipts (0.35.x and earlier, where the create-time TTL
     // is the only backstop for those). Either way there is no id to act on, and saying so beats
     // pretending a scan happened.

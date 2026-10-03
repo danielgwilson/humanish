@@ -237,7 +237,7 @@ steps:
 id: first-run
 title: First-run synthetic Observer
 description: >-
-  Writes a preview run: a synthetic run bundle and Observer for four participants. Needs no browser,
+  Does a dry run: writes a synthetic run bundle and Observer for four participants. Needs no browser,
   model or keys, and costs nothing. Run it with humanish run first-run.
 subject:
   source: this-repo

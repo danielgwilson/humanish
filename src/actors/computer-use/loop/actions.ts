@@ -156,7 +156,7 @@ export async function runActionBatch(
       actionHistory.recentActionTitles.shift();
     trace.bump("actions");
     // Classify before execute, mirroring counts.actions: the record is of what the actor
-    // chose, so an action that then fails to actuate is still an honest record of the route
+    // chose, so an action that then fails to actuate is still a record of the route
     // it reached for.
     actionHistory.affordances.push(classifyCuaAction(action));
     session.phase = `executing ${title}`;
@@ -194,7 +194,7 @@ export async function runActionBatch(
       }
       if (isCuaExecutorError(error) || !isCommandExitError(error)) throw error;
       // A skipped action changes nothing on screen, so a persistently-failing run makes no
-      // progress and still terminates honestly via the idle/no-progress backstop (gave_up),
+      // progress and still terminates via the idle/no-progress backstop (gave_up),
       // never a silent actor_error and never an infinite loop.
       recordCommandFailure(session, title, error);
       continue;

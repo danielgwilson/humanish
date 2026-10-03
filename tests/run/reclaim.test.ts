@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Salvage tier: interrupted runs fail cheap. The run journals every created sandbox id to
 // disk the moment create returns; `humanish reclaim` kills by those exact recorded ids, never by
-// enumerating the account, and records honestly what happened to each. These tests drive the
+// enumerating the account, and records what happened to each. These tests drive the
 // real run-dir resolution chain (a $0 dry-run creates the managed dir + latest pointer) with a
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
@@ -186,7 +186,8 @@ describe("sandbox receipts + humanish reclaim", () => {
       "sb-gone": "already-gone",
       "sb-broken": "kill-failed",
     });
-    // A kill-failed means the reclaim did not fully succeed: exit honest, TTL is the backstop.
+    // A kill-failed means the reclaim did not fully succeed: the exit says so, and the TTL is the
+    // backstop.
     expect(result.ok).toBe(false);
 
     // The reclaim record lands next to the run it cleaned.
@@ -199,7 +200,7 @@ describe("sandbox receipts + humanish reclaim", () => {
     expect(receipt.outcomes).toHaveLength(3);
   });
 
-  it("a run with no receipts reclaims ok with an honest warning (nothing to act on, no scan pretended)", async () => {
+  it("a run with no receipts reclaims ok with a warning that it had nothing to act on (no scan pretended)", async () => {
     const run = await runTerminalProductLab({
       cwd,
       config: dryRunConfig(),

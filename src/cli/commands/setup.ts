@@ -114,7 +114,7 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
 /**
  * `humanish telemetry status|enable|disable`: the opt-out the convention requires, plus a `status`
  * that prints the exact document that would be sent. "You can read what we collect" is what makes
- * default-on honest rather than merely lawful.
+ * default-on collection checkable by the person it describes.
  */
 export function registerTelemetryCommand(parent: Command, io: CliIo): void {
   const telemetry = parent

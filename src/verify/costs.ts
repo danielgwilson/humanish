@@ -40,7 +40,7 @@ export function contradictsAccountBilling(
  * known lines. Absence always passes (fail-open on display): a bundle with no cost,
  * a null estimate, or a participant without estimatedCost is fine. A non-null figure must carry its
  * ratesAsOf date + source; a number total must equal round6(sum of only the non-null lines) and a
- * null line may never be coerced to 0. A null estimate must be declared honestly (a reason + null
+ * null line may never be coerced to 0. A null estimate must be declared (a reason + null
  * ratesAsOf), mirroring the terminal no-spend proof's null-discipline. Account-billed participants
  * also have their execution profile and provider request receipts checked here.
  */
@@ -96,7 +96,7 @@ function costSummaryFindings(cost: RunBundle["cost"]): string[] {
       );
     }
   } else if (anyKnown) {
-    // Every-line-null is the only honest null total; a null total beside a known line hides spend.
+    // Every-line-null is the only valid null total; a null total beside a known line hides spend.
     findings.push(
       "run cost estimatedTotalUsd is null but a breakdown line carries a known (non-null) cost",
     );

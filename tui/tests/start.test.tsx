@@ -472,7 +472,7 @@ describe("what the surface says about the run it just started", () => {
       }),
     });
     const { surface } = await openLab(options);
-    // The launch never resolves to a record, so it ends in the honest "has not reported in" branch
+    // The launch never resolves to a record, so it ends in the "has not reported in" branch
     // rather than opening a week-old failed run of a different lab and calling it this one.
     const frame = await surface.press(
       KEY.enter,

@@ -82,7 +82,7 @@ export interface AffordanceObservation {
 /** Aggregate per-run record: how many actions fell into each class. */
 export interface AffordanceUse {
   schema: typeof AFFORDANCE_CLASS_SCHEMA;
-  /** Counts by class; a class with zero actions is omitted so the record stays small and honest. */
+  /** Counts by class. A class with zero actions is omitted, so every listed class was used. */
   counts: Partial<Record<AffordanceClass, number>>;
   /** Total classified actions (the denominator for any rate an adopter computes). */
   total: number;

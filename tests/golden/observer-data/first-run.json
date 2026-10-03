@@ -7,7 +7,7 @@
     "mode": "dry-run",
     "status": "contract_proof_only",
     "title": "humanish CLI first-run smoke - First-Time Trial User",
-    "createdAt": "2026-08-19T07:38:06.016Z",
+    "createdAt": "2026-10-03T02:12:16.444Z",
     "simCount": 4,
     "persona": {
       "id": "synthetic-new-user",
@@ -25,26 +25,26 @@
     "packageName": "humanish",
     "redaction": {
       "status": "passed",
-      "notes": "Dry-run bundle contains synthetic contract proof only."
+      "notes": "Dry-run bundle: synthetic data only, nothing from a product."
     },
     "lifecycle": [
       {
-        "at": "2026-08-19T07:38:06.016Z",
+        "at": "2026-10-03T02:12:16.444Z",
         "event": "run.created",
         "message": "Synthetic dry-run contract bundle created with 4 simulated participants."
       },
       {
-        "at": "2026-08-19T07:38:06.016Z",
+        "at": "2026-10-03T02:12:16.444Z",
         "event": "persona.selected",
         "message": "Selected public-safe synthetic persona."
       },
       {
-        "at": "2026-08-19T07:38:06.016Z",
+        "at": "2026-10-03T02:12:16.444Z",
         "event": "scenario.selected",
         "message": "Selected public-safe first-run scenario."
       },
       {
-        "at": "2026-08-19T07:38:06.016Z",
+        "at": "2026-10-03T02:12:16.444Z",
         "event": "review.skeleton.created",
         "message": "Created review skeleton without claiming product proof."
       }
@@ -79,7 +79,7 @@
       "label": "UI journey",
       "status": "contract_proof_only",
       "transport": "polling",
-      "updatedAt": "2026-08-19T07:38:06.016Z",
+      "updatedAt": "2026-10-03T02:12:16.444Z",
       "embed": {
         "kind": "placeholder",
         "title": "UI journey"
@@ -131,16 +131,16 @@
         "streamIds": [
           "sim-01-ui"
         ],
-        "startedAt": "2026-08-19T07:38:06.016Z",
-        "updatedAt": "2026-08-19T07:38:06.016Z"
+        "startedAt": "2026-10-03T02:12:16.444Z",
+        "updatedAt": "2026-10-03T02:12:16.444Z"
       },
       "kindLabel": "UI",
-      "statusLabel": "Contract proof",
+      "statusLabel": "Dry run",
       "terminalPlain": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
       "timeline": [
         {
           "id": "event-001-a",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "info",
           "type": "sim.contract.ready",
           "message": "UI journey stream contract ready.",
@@ -149,7 +149,7 @@
         },
         {
           "id": "event-001-b",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "warn",
           "type": "sim.live-substrate.missing",
           "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -165,7 +165,7 @@
       "label": "CLI actor",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-08-19T07:38:06.016Z",
+      "updatedAt": "2026-10-03T02:12:16.444Z",
       "embed": {
         "kind": "terminal",
         "title": "CLI actor"
@@ -174,7 +174,7 @@
         "title": "CLI actor",
         "format": "plain",
         "stdin": "disabled",
-        "tail": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted"
+        "tail": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\nhumanish run dry-run"
       },
       "artifacts": [
         {
@@ -207,16 +207,16 @@
         "streamIds": [
           "sim-02-terminal"
         ],
-        "startedAt": "2026-08-19T07:38:06.016Z",
-        "updatedAt": "2026-08-19T07:38:06.016Z"
+        "startedAt": "2026-10-03T02:12:16.444Z",
+        "updatedAt": "2026-10-03T02:12:16.444Z"
       },
       "kindLabel": "CLI",
-      "statusLabel": "Contract proof",
-      "terminalPlain": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
+      "statusLabel": "Dry run",
+      "terminalPlain": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\nhumanish run dry-run",
       "timeline": [
         {
           "id": "event-002-a",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "info",
           "type": "sim.contract.ready",
           "message": "CLI actor stream contract ready.",
@@ -225,7 +225,7 @@
         },
         {
           "id": "event-002-b",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "warn",
           "type": "sim.live-substrate.missing",
           "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -241,7 +241,7 @@
       "label": "TUI actor",
       "status": "contract_proof_only",
       "transport": "pty",
-      "updatedAt": "2026-08-19T07:38:06.016Z",
+      "updatedAt": "2026-10-03T02:12:16.444Z",
       "embed": {
         "kind": "terminal",
         "title": "TUI actor"
@@ -283,16 +283,16 @@
         "streamIds": [
           "sim-03-tui"
         ],
-        "startedAt": "2026-08-19T07:38:06.016Z",
-        "updatedAt": "2026-08-19T07:38:06.016Z"
+        "startedAt": "2026-10-03T02:12:16.444Z",
+        "updatedAt": "2026-10-03T02:12:16.444Z"
       },
       "kindLabel": "TUI",
-      "statusLabel": "Contract proof",
+      "statusLabel": "Dry run",
       "terminalPlain": "humanish TUI frame\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
       "timeline": [
         {
           "id": "event-003-a",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "info",
           "type": "sim.contract.ready",
           "message": "TUI actor stream contract ready.",
@@ -301,7 +301,7 @@
         },
         {
           "id": "event-003-b",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "warn",
           "type": "sim.live-substrate.missing",
           "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -317,7 +317,7 @@
       "label": "Codex UI",
       "status": "contract_proof_only",
       "transport": "app-server",
-      "updatedAt": "2026-08-19T07:38:06.016Z",
+      "updatedAt": "2026-10-03T02:12:16.444Z",
       "embed": {
         "kind": "placeholder",
         "title": "Codex UI"
@@ -374,16 +374,16 @@
         "streamIds": [
           "sim-04-codex-ui"
         ],
-        "startedAt": "2026-08-19T07:38:06.016Z",
-        "updatedAt": "2026-08-19T07:38:06.016Z"
+        "startedAt": "2026-10-03T02:12:16.444Z",
+        "updatedAt": "2026-10-03T02:12:16.444Z"
       },
       "kindLabel": "Codex UI",
-      "statusLabel": "Contract proof",
+      "statusLabel": "Dry run",
       "terminalPlain": "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
       "timeline": [
         {
           "id": "event-004-a",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "info",
           "type": "sim.contract.ready",
           "message": "Codex UI stream contract ready.",
@@ -392,7 +392,7 @@
         },
         {
           "id": "event-004-b",
-          "at": "2026-08-19T07:38:06.016Z",
+          "at": "2026-10-03T02:12:16.444Z",
           "level": "warn",
           "type": "sim.live-substrate.missing",
           "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -405,14 +405,14 @@
   "events": [
     {
       "id": "event-000",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "info",
       "type": "observer.contract.created",
       "message": "Created public-safe observer stream contract."
     },
     {
       "id": "event-001-a",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "UI journey stream contract ready.",
@@ -421,7 +421,7 @@
     },
     {
       "id": "event-001-b",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -430,7 +430,7 @@
     },
     {
       "id": "event-002-a",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "CLI actor stream contract ready.",
@@ -439,7 +439,7 @@
     },
     {
       "id": "event-002-b",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -448,7 +448,7 @@
     },
     {
       "id": "event-003-a",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "TUI actor stream contract ready.",
@@ -457,7 +457,7 @@
     },
     {
       "id": "event-003-b",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -466,7 +466,7 @@
     },
     {
       "id": "event-004-a",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "Codex UI stream contract ready.",
@@ -475,7 +475,7 @@
     },
     {
       "id": "event-004-b",
-      "at": "2026-08-19T07:38:06.016Z",
+      "at": "2026-10-03T02:12:16.444Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",

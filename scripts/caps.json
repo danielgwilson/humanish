@@ -11,8 +11,8 @@
       "archaeology": 0,
       "seat-comments": 0,
       "cua-route": 0,
-      "honest": 70,
-      "history": 16,
+      "honest": 0,
+      "history": 0,
       "series-codes": 0,
       "name-refs": 0,
       "string-em-dashes": 37,
@@ -36,8 +36,8 @@
       "archaeology": 0,
       "seat-comments": 0,
       "cua-route": 0,
-      "honest": 52,
-      "history": 12,
+      "honest": 0,
+      "history": 0,
       "series-codes": 0,
       "name-refs": 0
     },
@@ -52,7 +52,7 @@
       "archaeology": 0,
       "seat-comments": 0,
       "cua-route": 0,
-      "honest": 3,
+      "honest": 0,
       "history": 0,
       "series-codes": 0,
       "name-refs": 0
@@ -68,8 +68,8 @@
       "archaeology": 0,
       "seat-comments": 0,
       "cua-route": 0,
-      "honest": 3,
-      "history": 1,
+      "honest": 0,
+      "history": 0,
       "series-codes": 0,
       "name-refs": 0
     },
@@ -142,7 +142,7 @@
     "seat": 0,
     "role": 49,
     "sim": 16,
-    "lab": 2250,
+    "lab": 2245,
     "doc-backend": 17
   },
   "site": {

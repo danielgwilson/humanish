@@ -73,7 +73,7 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (live, spend-gated)", () => 
 
       // The bundle verified, the sandbox is reclaimed, and the session reached a terminal verdict
       // without a harness error. We do not assert result.ok===true: ok additionally requires the
-      // actor to have engaged (>=1 action or message: the no-engagement honesty guard), which a
+      // actor to have engaged (>=1 action or message: the no-engagement guard), which a
       // trivial "look and report" mission against a static page may not elicit. Engagement is
       // asserted explicitly below so a blank-screen no-op cannot masquerade as a live proof.
       expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.session?.status);

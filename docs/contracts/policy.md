@@ -107,7 +107,7 @@ Spend policy names when provider costs may be incurred.
 | Mode                     | Meaning                                                                                            |
 | ------------------------ | -------------------------------------------------------------------------------------------------- |
 | `no_spend`               | No provider calls that can bill.                                                                   |
-| `dry_run_only`           | Only local contract proof; no live substrate.                                                      |
+| `dry_run_only`           | Only a local dry run; no live substrate.                                                           |
 | `explicit_live_provider` | Provider calls allowed because required env var names are present and operator intent is explicit. |
 | `maintainer_approved`    | Reserved for publish, billing, or high-risk mutation workflows.                                    |
 

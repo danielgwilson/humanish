@@ -7,30 +7,31 @@ import {
 } from "../../src/actors/contract.js";
 import { REVIEW_SCHEMA, type ReviewSummary } from "../../src/run/bundle.js";
 import {
+  type ExecutionFailure,
   foldScorerFailures,
   hollowCompletion,
   judgedStatus,
+  judgeExecution,
   judgeOneParticipant,
   judgeParticipants,
+  judgePreview,
   judgeScripted,
   judgeSharedWorld,
   judgeTerminal,
   judgmentOf,
+  OUTCOME_POLICIES,
+  type ParticipantFacts,
+  participantHarnessFailed,
   participantPassed,
   participantStatus,
+  resultOk,
+  sandboxCleanupFailure,
   selfReportedBlocker,
-  sharedWorldShortfall,
-  verdictForStatus,
-  type ParticipantFacts,
   type SessionEnding,
   type SharedWorldFacts,
-  judgeExecution,
-  judgePreview,
-  sandboxCleanupFailure,
-  OUTCOME_POLICIES,
-  participantHarnessFailed,
-  resultOk,
-  type ExecutionFailure,
+  sharedWorldShortfall,
+  verdictForStatus,
+  verdictText,
 } from "../../src/run/judge.js";
 
 const ending = (overrides: Partial<SessionEnding> = {}): SessionEnding => ({
@@ -679,5 +680,13 @@ describe("a judgment's verdict and passed come from one value", () => {
     expect(judgedStatus(skipped)).toBe("blocked");
     // shared-world's handoff skip also carries a session error: its participant records say failed.
     expect(judgedStatus({ ...skipped, sessionError: "handoff barrier: timed out" })).toBe("failed");
+  });
+});
+
+describe("verdictText", () => {
+  it("names contract_proof_only by the run's mode and leaves other verdicts alone", () => {
+    expect(verdictText("contract_proof_only", "dry-run")).toBe("dry run");
+    expect(verdictText("contract_proof_only", "live")).toBe("no verdict");
+    expect(verdictText("timed_out", "live")).toBe("timed_out");
   });
 });

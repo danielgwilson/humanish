@@ -74,7 +74,7 @@ describe("runDetachedStep", () => {
     expect(commands.some((command) => command.includes("setsid -f"))).toBe(true);
   });
 
-  it("reports a non-zero exit honestly with the log tail", async () => {
+  it("reports a non-zero exit with the log tail", async () => {
     const { desktop } = makeScriptedDesktop((command) => {
       if (command.includes("/status")) return { stdout: "3" };
       if (command.includes("tail -c")) return { stdout: "ERR something broke" };

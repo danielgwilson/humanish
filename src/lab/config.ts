@@ -48,7 +48,7 @@
 // setup-produced-target handoff, not a service topology primitive.
 //
 // There is deliberately no v1 compatibility: v1 had zero real users. Breaking schema changes
-// bump the version honestly.
+// bump the version.
 
 import {
   isLocalBrowserLab,

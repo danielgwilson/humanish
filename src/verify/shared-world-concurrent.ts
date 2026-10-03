@@ -22,12 +22,12 @@ const CONCURRENT_REQUIRED_LIMITS = [
 
 const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] as const;
 
-// External-public plane class: the honest-downgrade required set. Keeps the concurrent family (an
-// honest ceiling) and adds the mandatory disclosures for a plane the harness does not own: the
+// External-public plane class: the downgrade required set. Keeps the concurrent family and adds
+// the mandatory disclosures for a plane the harness does not own: the
 // operator-attested target the harness does not control, the absence of a synthetic attestation (you
 // cannot claim synthetic on a real site), the absence of an authoritative shared-state proof (no
 // in-sandbox filesystem to digest), and concurrency evidenced by temporal co-occupancy only. Verify
-// fails closed if any is missing (an absent honest-downgrade limit overclaims).
+// fails closed if any is missing (an absent downgrade limit overclaims).
 const EXTERNAL_PUBLIC_EXTRA_LIMITS = [
   "external-public-plane",
   "operator-attested-target-not-harness-controlled",
@@ -353,7 +353,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
     return findings; // can't reason further without the core series
   }
 
-  // Attribution ceiling: the concurrent family and every external-public honest-downgrade disclosure
+  // Attribution ceiling: the concurrent family and every external-public downgrade disclosure
   // must be present; the sequential family + any seeded/synthetic limit must be absent.
   findings.push(
     ...attributionLimitFindings(

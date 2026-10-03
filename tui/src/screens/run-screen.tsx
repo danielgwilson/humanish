@@ -26,7 +26,7 @@ export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefi
     // stops them. Reclaim leads; the evidence it did capture is still worth opening.
     return detail?.observerPath === undefined ? ["reclaim"] : ["reclaim", "observer"];
   }
-  // A run that is going nowhere costs money every turn, and stopping it used to mean finding the
+  // A run that is going nowhere costs money every turn, and stopping it should not mean finding the
   // pid yourself, so Stop leads. The Observer server renders a running run from its saved bundle
   // (src/tui/actions.ts), so it opens mid-run too. "Run again" mid-flight would spend twice.
   if (run.liveness === "running")
@@ -236,7 +236,7 @@ function InterruptedFacts({
       </Text>
       <Box>
         {/* A run that died before pricing itself genuinely does not know what it spent, and saying
-            so beats inventing a figure. The captured counts above are the honest proxy. */}
+            so beats inventing a figure. The captured counts above are the proxy. */}
         <Text dimColor>
           {run.estimatedCostUsd === undefined && participant?.estimatedCostUsd === undefined
             ? "cost unknown: it ended before pricing itself"

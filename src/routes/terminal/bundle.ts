@@ -13,7 +13,7 @@ import {
   bundleHead,
   type BundleRun,
 } from "../../run/bundle.js";
-import type { Verdict } from "../../run/judge.js";
+import { type Verdict, verdictText } from "../../run/judge.js";
 import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
 import {
   participantEvent,
@@ -261,8 +261,8 @@ export function buildLiveTerminalProductBundle(args: {
         ? []
         : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]),
       ...(args.capFailure === undefined ? [] : [args.capFailure]),
-      // Honesty gap: the no-spend proof always declares which spend lines it could not measure, so a
-      // green run never silently over-claims a fully-proven $0.
+      // Measurement gap: the no-spend proof always declares which spend lines it could not measure,
+      // so a green run never silently over-claims a fully-proven $0.
       ...(noSpend.unmeasuredLines.length > 0
         ? [
             `${noSpendLineMeasured(noSpend) ? noSpendNotEstablished(noSpend.maxUsd ?? 0) : "No-spend proof is partial."} ${describeMeasuredSpend(args.ledgers.cost, args.trace.tokenUsage)} An adapter may supply the missing signals through costProbe.`,
@@ -414,7 +414,7 @@ export function renderTerminalReviewMarkdown(bundle: RunBundle): string {
     "",
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
-    `- verdict: ${bundle.review.verdict}`,
+    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
     `- summary: ${bundle.review.summary}`,
     `- mission: ${bundle.scenario.goal}`,
     ...(subject ? [`- subject: ${subject.message}`] : []),
