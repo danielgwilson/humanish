@@ -10,6 +10,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
+- `humanish migrate [--dry-run] [--json] [path…]` converts `humanish.lab.v2` study files to
+  `humanish.study.v3`.
+  - Without paths it converts every v2 file in the six study directories. A file under a `labs/`
+    directory moves to the matching `studies/` directory; any other file is rewritten in place. A v3
+    file is skipped.
+  - It prints every source, destination, moved key and dropped key before it writes, and
+    `--dry-run` writes nothing. A dropped key is one the study's route never reads, such as a
+    terminal study's `execution.timeoutMs`; the report gives its value and comment.
+  - Comments move with their keys. A file that uses YAML anchors is refused with the line.
+  - It refuses a file whose v3 form would parse or plan differently, and a name another file
+    already uses, naming both. A second run changes nothing.
+  - An in-place rewrite deletes the original once the new file is in place and the original is
+    checked. If a failure leaves the original out of place, it is kept as `<name>.v2.bak` and listed.
+    On a filesystem without hard links, each new file is written and read back.
+  - It never writes over a file it did not create. Every source stays where it was if any file
+    fails before the last step. A source or backup that changes during the run is kept, and the
+    output lists its path.
 - Study files can live in `humanish/studies/`, `.humanish/studies/` and `.humanish/local/studies/`.
   - `run <name>` and `lab list` read those three directories first, then the three `labs/`
     directories.
@@ -79,6 +96,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   - A study that cannot be found or parsed reports `study` where it reported `lab`.
   - The summary the TUI reads is `humanish.study-summary.v1`, with `studyId`.
 
+- `humanish init` writes its starter studies as `humanish.study.v3` files under
+  `humanish/studies/`, and creates `.humanish/studies/` and `.humanish/local/studies/` where it
+  created the `labs/` ones. A starter whose name is already a file under `humanish/labs/` is
+  skipped, with a pointer to `humanish migrate`. The `cua-browser` starter's title is "Computer-use
+  browser study".
+- `humanish comms configure` writes its receiving copy as a v3 study to `.humanish/local/studies/`,
+  converting a v2 source first, and keeps the source's comments.
 - A study's result names its route and its study the same way on every route.
   - Computer-use, scripted, terminal and shared-world results carry
     `schema: "humanish.study-result.v1"`, `route` and `studyId`. So does a study's preview result.

@@ -285,11 +285,11 @@ describe("init finds a provider key the way every other command does", () => {
     const result = await runInit({ cwd, yes: true, env });
     expect(result.ok).toBe(true);
     expect(JSON.stringify(result)).not.toContain(fakeKey);
-    const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
+    const lab = await readFile(path.join(cwd, "humanish/studies/try-live.yaml"), "utf8");
     expect(lab).not.toContain(fakeKey);
     return {
-      actor: /^ {2}- type: (\S+)$/m.exec(lab)?.[1],
-      capped: /^ {4}maxUsd: 2\b/m.test(lab),
+      actor: /^actor:\n(?: {2}#.*\n)* {2}type: (\S+)$/m.exec(lab)?.[1],
+      capped: /^caps:\n {2}maxUsd: 2\b/m.test(lab),
     };
   }
 
@@ -318,7 +318,7 @@ describe("init finds a provider key the way every other command does", () => {
     const { root, cwd, env } = await machine({ signedInAgent: "claude" });
     try {
       expect(await initActor(cwd, env)).toEqual({ actor: "local-agent", capped: false });
-      const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
+      const lab = await readFile(path.join(cwd, "humanish/studies/try-live.yaml"), "utf8");
       const parsed = parseLabConfig(parseYaml(lab));
       if (!parsed.ok) throw new Error(parsed.error.message);
       expect(brainOf(parsed.config, false)).toEqual({ kind: "local-agent", agent: "claude" });
@@ -365,7 +365,7 @@ describe("init leaves instructions for the next coding agent", () => {
     const cwd = await project();
     try {
       await runInit({ cwd, yes: true, env: { HOME: cwd } });
-      const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
+      const lab = await readFile(path.join(cwd, "humanish/studies/try-live.yaml"), "utf8");
       // The defect this closes: `your-org/your-app` cannot be run by anyone.
       expect(lab).not.toContain("your-org/your-app");
       expect(lab).not.toContain("your-public-app.example");
@@ -385,7 +385,7 @@ describe("init leaves instructions for the next coding agent", () => {
     const cwd = await project();
     try {
       await runInit({ cwd, yes: true, env: { HOME: cwd } });
-      const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
+      const lab = await readFile(path.join(cwd, "humanish/studies/try-live.yaml"), "utf8");
       const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
       for (const text of [lab, agents]) {
         expect(text).not.toMatch(/fail-closed|ceiling|rather than overspending/i);
@@ -410,7 +410,7 @@ describe("init leaves instructions for the next coding agent", () => {
         },
       });
       expect(result.ok).toBe(true);
-      const lab = await readFile(path.join(cwd, "humanish/labs/local-browser.yaml"), "utf8");
+      const lab = await readFile(path.join(cwd, "humanish/studies/local-browser.yaml"), "utf8");
       expect(lab).toContain('appUrl: "http://localhost:4173/app"');
       expect(lab).toContain('mission: "Create a synthetic note and save it."');
       expect(lab).toContain("target: local");
@@ -436,7 +436,7 @@ describe("init leaves instructions for the next coding agent", () => {
         error: { code: "HUMANISH_INVALID_LOCAL_BROWSER" },
       });
       await expect(
-        readFile(path.join(cwd, "humanish/labs/local-browser.yaml"), "utf8"),
+        readFile(path.join(cwd, "humanish/studies/local-browser.yaml"), "utf8"),
       ).rejects.toThrow();
     } finally {
       await rm(cwd, { recursive: true, force: true });
@@ -447,7 +447,7 @@ describe("init leaves instructions for the next coding agent", () => {
     const cwd = await project();
     try {
       await runInit({ cwd, yes: true, env: { HOME: cwd } });
-      const file = path.join(cwd, "humanish/labs/local-browser.yaml");
+      const file = path.join(cwd, "humanish/studies/local-browser.yaml");
       const before = await readFile(file, "utf8");
       const result = await runInit({
         cwd,
@@ -460,7 +460,7 @@ describe("init leaves instructions for the next coding agent", () => {
       });
       expect(await readFile(file, "utf8")).toBe(before);
       expect(result.warnings).toContain(
-        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.",
+        "Skipped --local-browser/--local-mission: humanish/studies/local-browser.yaml already exists and init never overwrites it.",
       );
 
       const ordinaryRepeat = await runInit({ cwd, yes: true, env: { HOME: cwd } });

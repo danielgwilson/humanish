@@ -1,7 +1,7 @@
 // Study files resolve from the studies/ directories first, then the labs/ directories they replace.
 // One name in both families is an error, and no writer creates that collision.
 
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -88,7 +88,7 @@ describe("study discovery", () => {
     expect(!resolved.ok && resolved.error).toEqual({
       code: "HUMANISH_STUDY_AMBIGUOUS",
       message:
-        "foo names two files, humanish/studies/foo.yaml and .humanish/local/labs/foo.yml. Keep the one under studies/ and remove the other, or pass the path of the one to run.",
+        "foo names two files, humanish/studies/foo.yaml and .humanish/local/labs/foo.yml. Delete the one you do not want; if you keep .humanish/local/labs/foo.yml, run humanish migrate to move it. Or pass the path of the one to run.",
     });
     const explicit = await resolveLabManifest(cwd, ".humanish/local/labs/foo.yml");
     expect(explicit.ok && explicit.config.id).toBe("foo-old");
@@ -104,25 +104,25 @@ describe("study discovery", () => {
       ["humanish/labs/bar.yaml", undefined],
       [
         "humanish/studies/foo.yaml",
-        "foo names two files, humanish/studies/foo.yaml and humanish/labs/foo.yaml; running it by name fails until one is removed.",
+        "foo names two files, humanish/studies/foo.yaml and humanish/labs/foo.yaml; running it by name fails until you delete one (humanish migrate moves a kept labs/ file).",
       ],
       [
         "humanish/labs/foo.yaml",
-        "foo names two files, humanish/studies/foo.yaml and humanish/labs/foo.yaml; running it by name fails until one is removed.",
+        "foo names two files, humanish/studies/foo.yaml and humanish/labs/foo.yaml; running it by name fails until you delete one (humanish migrate moves a kept labs/ file).",
       ],
     ]);
   });
 });
 
 describe("writers", () => {
-  it("init skips a starter whose name a studies file already uses", async () => {
-    await write("humanish/studies/first-run.yaml", "first-run");
+  it("init skips a starter whose name a labs file already uses, and names migrate", async () => {
+    await write("humanish/labs/first-run.yaml", "first-run");
 
     const result = await runInit({ cwd, dryRun: true, env: {} });
-    const change = result.changes.find((entry) => entry.path === "humanish/labs/first-run.yaml");
+    const change = result.changes.find((entry) => entry.path === "humanish/studies/first-run.yaml");
     expect(change).toMatchObject({ action: "skip" });
     expect(result.warnings).toContain(
-      "Skipped humanish/labs/first-run.yaml: humanish/studies/first-run.yaml already uses the name first-run, and a second file with that name would make `run first-run` fail.",
+      "Skipped humanish/studies/first-run.yaml: humanish/labs/first-run.yaml already uses the name first-run, and a second file with that name would make `run first-run` fail. Run humanish migrate to move it to a studies/ directory.",
     );
   });
 
@@ -142,5 +142,22 @@ describe("writers", () => {
       message:
         "humanish/studies/signup-receiving.yaml already uses the name signup-receiving. Rename or remove it before configuring email, so `run signup-receiving` reads one file.",
     });
+  });
+
+  it("comms configure counts a dangling link as a file with that name", async () => {
+    await saveCommsConnection(cwd);
+    await write("humanish/labs/signup.yaml", "signup", {
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
+      actors: [{ type: "openai-computer-use", mission: "Create an account." }],
+      execution: { target: "e2b-desktop" },
+      scenario: { mode: "live" },
+    });
+    await symlink("missing.yaml", path.join(cwd, "humanish/labs/signup-receiving.yaml"));
+
+    const plan = await configureCommsLab({ cwd, lab: "signup", connection: "agentmail" });
+    expect(plan).toMatchObject({ ok: false });
+    expect((plan as { message: string }).message).toContain(
+      "humanish/labs/signup-receiving.yaml already uses the name signup-receiving.",
+    );
   });
 });

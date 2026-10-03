@@ -117,7 +117,7 @@ describe("what telemetry can possibly contain", () => {
 
   it("names every lab that humanish init writes", () => {
     const initLabIds = starterFiles
-      .filter((file) => file.path.startsWith("humanish/labs/"))
+      .filter((file) => file.path.startsWith("humanish/studies/"))
       .map((file) => /^id: (\S+)$/m.exec(file.contents)?.[1]);
     expect(initLabIds).toContain("local-browser");
     for (const id of initLabIds) expect(safeLabId(id)).toBe(id);

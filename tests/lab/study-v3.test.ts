@@ -1,7 +1,7 @@
 // A humanish.study.v3 file parses into the same config as its humanish.lab.v2 source, so the planner
-// cannot tell them apart. Each committed lab and each starter variant gets a v3 twin, built here by
-// the key mapping in handoffs/2026-10-02-study/DESIGN.md section 3, and three twins are written out
-// by hand. Error cases are in study-v3-errors.test.ts.
+// cannot tell them apart. Each committed lab gets a v3 twin, built here by the key mapping in
+// handoffs/2026-10-02-study/DESIGN.md section 3, independently of src/study/convert.ts. The starters
+// init writes are v3 already. Error cases are in study-v3-errors.test.ts.
 
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -178,112 +178,27 @@ describe("humanish.study.v3 twins", () => {
     });
   });
 
-  it("parse every starter variant into the same config, plans and warnings", () => {
+  it("are what init writes: every starter variant is a v3 study with no warnings", () => {
     const variants = [
       starterFilesFor("openai-computer-use"),
       starterFilesFor("local-agent", DEFAULT_LOCAL_BROWSER_STARTER, "codex"),
       starterFilesFor("local-agent", DEFAULT_LOCAL_BROWSER_STARTER, "claude"),
     ];
     const seen = new Set<string>();
-    for (const [index, files] of variants.entries()) {
-      for (const file of files.filter((f) => /^humanish\/labs\/.*\.yaml$/.test(f.path))) {
-        expect(expectTwin(`${index}:${file.path}`, parse(file.contents) as Raw)).toEqual([]);
+    for (const files of variants) {
+      for (const file of files.filter((f) => /^humanish\/studies\/.*\.yaml$/.test(f.path))) {
+        const result = parsed(parse(file.contents));
+        expect(result.config.schema, file.path).toBe(STUDY_SCHEMA);
+        expect(result.warnings, file.path).toEqual([]);
         seen.add(file.path);
       }
     }
     expect([...seen].sort()).toEqual([
-      "humanish/labs/cua-browser.yaml",
-      "humanish/labs/first-run.yaml",
-      "humanish/labs/lobby-trivia-3player.yaml",
-      "humanish/labs/local-browser.yaml",
-      "humanish/labs/try-live.yaml",
+      "humanish/studies/cua-browser.yaml",
+      "humanish/studies/first-run.yaml",
+      "humanish/studies/lobby-trivia-3player.yaml",
+      "humanish/studies/local-browser.yaml",
+      "humanish/studies/try-live.yaml",
     ]);
-  });
-});
-
-function starter(file: string, ...args: Parameters<typeof starterFilesFor>): Raw {
-  const found = starterFilesFor(...args).find((f) => f.path === `humanish/labs/${file}`);
-  return parse(found!.contents) as Raw;
-}
-
-describe("hand-written humanish.study.v3 twins", () => {
-  it("first-run", () => {
-    const v2 = starter("first-run.yaml", "openai-computer-use");
-    const study = parse(`schema: humanish.study.v3
-id: first-run
-title: ${JSON.stringify(v2.title)}
-description: ${JSON.stringify(v2.description)}
-route: preview
-mode: dry-run
-subject:
-  source: this-repo
-actor:
-  type: synthetic-persona
-participants: 4
-defaults:
-  open: true
-`);
-    expect({ ...parsed(study).config, schema: LAB_CONFIG_SCHEMA }).toEqual(parsed(v2).config);
-  });
-
-  it("local-browser", () => {
-    const v2 = starter("local-browser.yaml", "openai-computer-use");
-    const study = parse(`schema: humanish.study.v3
-id: local-browser
-title: ${JSON.stringify(v2.title)}
-description: ${JSON.stringify(v2.description)}
-route: computer-use
-mode: live
-subject:
-  source: app-url
-  appUrl: ${JSON.stringify(DEFAULT_LOCAL_BROWSER_STARTER.appUrl)}
-actor:
-  type: local-agent
-  localAgent: codex
-  persona: synthetic-new-user
-  mission: ${JSON.stringify(DEFAULT_LOCAL_BROWSER_STARTER.mission)}
-execution:
-  target: local
-  concurrency: 1
-  timeoutMs: 120000
-defaults:
-  open: true
-`);
-    expect({ ...parsed(study).config, schema: LAB_CONFIG_SCHEMA }).toEqual(parsed(v2).config);
-  });
-
-  it("try-live, openai-computer-use variant", () => {
-    const v2 = starter("try-live.yaml", "openai-computer-use");
-    const study = parse(`schema: humanish.study.v3
-id: try-live
-title: ${JSON.stringify(v2.title)}
-description: ${JSON.stringify(v2.description)}
-route: computer-use
-mode: live
-subject:
-  source: clone
-  repos: [drawdb-io/drawdb]
-  clone: { depth: 1 }
-  serve:
-    install: npm install --no-audit --no-fund
-    build: npm run build
-    start: npx vite preview --host 127.0.0.1 --port 3000
-    url: http://127.0.0.1:3000/
-actor:
-  type: openai-computer-use
-  maxOutputTokens: 8192
-  persona: synthetic-new-user
-  mission: >-
-    You have never seen this diagram tool before. Add two tables and give them meaningful names,
-    then stop and say what you did, what confused you, and where you hesitated.
-caps:
-  maxUsd: 2
-execution:
-  target: e2b-desktop
-  timeoutMs: 600000
-defaults:
-  open: true
-`);
-    expect({ ...parsed(study).config, schema: LAB_CONFIG_SCHEMA }).toEqual(parsed(v2).config);
   });
 });
