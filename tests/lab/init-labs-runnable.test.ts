@@ -47,9 +47,9 @@ describe("every lab `humanish init` writes is runnable", () => {
     expect(init.ok).toBe(true);
 
     const listed = await listLabManifests(cwd);
-    expect(listed.labs.length).toBeGreaterThan(0);
+    expect(listed.studies.length).toBeGreaterThan(0);
 
-    for (const lab of listed.labs) {
+    for (const lab of listed.studies) {
       const resolved = await resolveLabManifest(cwd, lab.id);
       expect(resolved.ok, `${lab.id} should resolve`).toBe(true);
       if (!resolved.ok) continue;

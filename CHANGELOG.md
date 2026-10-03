@@ -18,6 +18,11 @@ The Unreleased section holds the full notes for the next version until it is tag
     Pass the path of one to run it.
   - `init` skips a starter whose name another study directory already uses. `comms configure`
     refuses to write when its destination name is in use.
+- Library names for studies: `runStudy`, `parseStudy`, `STUDY_SCHEMA`, `StudyConfig`,
+  `StudyEvent`, `StudyOutcome`, `StudyResult`, `StudyRoute`, `RunStudyOptions` and
+  `BrowserScoringContext`. The computer-use loop's nine `Cua*` types and `CuaAdmissionLimitError`
+  are also exported as `ComputerUse*`, such as `ComputerUseProvider` and
+  `ComputerUseAdmissionLimitError`. `parseStudy` reads v3 and v2 documents.
 - Study files can use the format `schema: humanish.study.v3`.
   - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
     `scripted`) and `mode:` (`dry-run` or `live`).
@@ -50,6 +55,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Deprecated
 
+- The library's lab and `Cua` names: `runLab`, `parseLabConfig`, `LAB_CONFIG_SCHEMA`, `LabConfig`,
+  `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`, `RunLabOptions`, `BrowserLabScoringContext`,
+  the nine `Cua*` loop types and `CuaAdmissionLimitError`. Each is the same function, class or type
+  as its new name, so existing code keeps working and `instanceof` matches either class name.
+  `LAB_CONFIG_SCHEMA` keeps the v2 id, `"humanish.lab.v2"`, and the error's `name` stays
+  `CuaAdmissionLimitError`. The next minor removes them.
 - `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
   minor removes it.
 - `humanish lab run` is a hidden alias of `humanish run` and is removed in the next minor. It takes
@@ -68,6 +79,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
+
+- The `--json` results that list, show, check and count studies say study where they said lab.
+  - `lab list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
+  - `lab inspect`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.
+  - `lab preflight`: `humanish.lab-preflight-result.v1` is `humanish.study-check.v1`, and `lab`
+    and `labId` are `study` and `studyId`.
+  - `stats`: `humanish.stats.v1` is `humanish.stats.v2`. `lab` is `study`, `labs` is `studies`,
+    and each row's `lab` is `study`.
+  - A study that cannot be found or parsed reports `study` where it reported `lab`.
+  - The summary the TUI reads is `humanish.study-summary.v1`, with `studyId`.
 
 - A study's result names its route and its study the same way on every route.
   - Computer-use, scripted, terminal and shared-world results carry
@@ -172,6 +193,16 @@ The Unreleased section holds the full notes for the next version until it is tag
     dry run" in place of "an evidence preview".
   - `contract_proof_only` stays the value of `streams[].status` and `review.verdict` in `run.json`.
     CONTEXT.md maps it to dry run. "preview" now names only the route.
+- Dry-run bundles on every route stop calling the run a contract. Review summaries, gaps, events,
+  redaction notes and participant summaries say dry run, for example "Dry-run bundle ready; switch
+  scenario.mode to live for a real desktop session." in place of "Dry-run contract bundle ready;
+  ...", and "it checks the evidence shape only" in place of "it proves contract shape only".
+  - A participant that has no session and no error reads "...; no session ran." in place of
+    "Contract participant ...". A live participant can end that way too, so the line does not say
+    dry run.
+  - The first-run dry run's sample streams say "recorded" in place of "contract captured".
+  - Event types such as `cua-lab.contract.ready`, event ids, the `contract-only` state marker and
+    `contract_proof_only` keep their spelling.
 - `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
   passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
   as what verify found, such as "redaction did not pass (status: pending)" or "review.md is

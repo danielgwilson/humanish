@@ -24,10 +24,10 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
       unreadable: [],
     }),
     listLabs: async () => ({
-      schema: "humanish.lab-list.v1",
+      schema: "humanish.study-list.v1",
       ok: true,
       cwd: "/projects/acme-app",
-      labs: LABS,
+      studies: LABS,
       warnings: [],
     }),
     startRun: async (launch) => {
@@ -101,8 +101,8 @@ describe("starting a run", () => {
   it("shows local runtime and Codex-account readiness without implying API keys", async () => {
     const { options } = harness({
       readLabSummary: async () => ({
-        schema: "humanish.lab-summary.v1",
-        labId: "signup-flow",
+        schema: "humanish.study-summary.v1",
+        studyId: "signup-flow",
         caps: {},
         keysReady: true,
         runtime: {
@@ -141,8 +141,8 @@ describe("starting a run", () => {
     async (columns) => {
       const { options, started } = harness({
         readLabSummary: async () => ({
-          schema: "humanish.lab-summary.v1",
-          labId: "signup-flow",
+          schema: "humanish.study-summary.v1",
+          studyId: "signup-flow",
           caps: {},
           analysis: {
             provider: "codex",
@@ -174,8 +174,8 @@ describe("starting a run", () => {
     async (columns) => {
       const { options, started } = harness({
         readLabSummary: async () => ({
-          schema: "humanish.lab-summary.v1",
-          labId: "signup-flow",
+          schema: "humanish.study-summary.v1",
+          studyId: "signup-flow",
           caps: { laneUsd: 1 },
           analysis: { model: "gpt-6-astra", maxCostUsd: 3 },
         }),
@@ -300,10 +300,10 @@ describe("starting a run", () => {
     // rather than present and failing.
     const { started, options } = harness({
       listLabs: async () => ({
-        schema: "humanish.lab-list.v1",
+        schema: "humanish.study-list.v1",
         ok: true,
         cwd: "/projects/acme-app",
-        labs: [],
+        studies: [],
         warnings: [],
       }),
     });
@@ -517,8 +517,8 @@ describe("what the surface says about the run it just started", () => {
     // is the decision being made at that moment, so the number has to survive the blocker.
     const { options } = harness({
       readLabSummary: async () => ({
-        schema: "humanish.lab-summary.v1" as const,
-        labId: "signup-flow",
+        schema: "humanish.study-summary.v1" as const,
+        studyId: "signup-flow",
         caps: {},
         keysReady: false,
         missingKeys: ["OPENAI_API_KEY"],

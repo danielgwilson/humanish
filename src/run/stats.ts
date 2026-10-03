@@ -15,7 +15,7 @@ import {
 import { round6 } from "./pricing.js";
 import { plural } from "./text.js";
 
-const STATS_SCHEMA = "humanish.stats.v1";
+const STATS_SCHEMA = "humanish.stats.v2";
 
 interface StatsParticipants {
   total: number;
@@ -24,7 +24,8 @@ interface StatsParticipants {
 }
 
 interface StatsLabRow {
-  lab: string;
+  /** The study's `id`. */
+  study: string;
   runs: number;
   live: number;
   dryRun: number;
@@ -60,7 +61,8 @@ export interface StatsResult {
   ok: true;
   cwd: string;
   since?: string;
-  lab?: string;
+  /** The study the stats are limited to, when one was given. */
+  study?: string;
   totals: {
     runs: number;
     live: number;
@@ -73,7 +75,7 @@ export interface StatsResult {
     verdicts: Record<string, number>;
     costs: CostTotals;
   };
-  labs: StatsLabRow[];
+  studies: StatsLabRow[];
   days: StatsDayRow[];
   /** Same selected runs; individual accounting gaps are inspectable without reading private evidence. */
   costsByRun: CostRow[];
@@ -146,7 +148,7 @@ function addToLabRow(
   let row = labs.get(labId);
   if (row === undefined) {
     row = {
-      lab: labId,
+      study: labId,
       runs: 0,
       live: 0,
       dryRun: 0,
@@ -295,16 +297,16 @@ export async function computeStats(
       ...(runCosts.length === 0 ? {} : { medianCostUsd: round6(median(runCosts)!) }),
       costSamples: runCosts.length,
     }))
-    .sort((a, b) => b.runs - a.runs || a.lab.localeCompare(b.lab));
+    .sort((a, b) => b.runs - a.runs || a.study.localeCompare(b.study));
 
   return {
     schema: STATS_SCHEMA,
     ok: true,
     cwd,
     ...(options.since === undefined ? {} : { since: options.since }),
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...(options.lab === undefined ? {} : { study: options.lab }),
     totals: { ...totals, estimatedSpendUsd: round6(totals.estimatedSpendUsd) },
-    labs: labRows,
+    studies: labRows,
     days: [...days.values()]
       .map((row) => ({ ...row, estimatedSpendUsd: round6(row.estimatedSpendUsd) }))
       .sort((a, b) => a.day.localeCompare(b.day)),
@@ -401,7 +403,7 @@ export function formatStatsHuman(
   if (!result.ok) return { error: result.error };
   const t = result.totals;
   const scope = [
-    result.lab === undefined ? undefined : `lab ${result.lab}`,
+    result.study === undefined ? undefined : `lab ${result.study}`,
     result.since === undefined ? undefined : `since ${result.since}`,
   ].filter((part): part is string => part !== undefined);
   const lines = [
@@ -413,11 +415,11 @@ export function formatStatsHuman(
   const reportable = t.runs > 0 && !onlyFreeDryRuns(t);
   if (reportable) {
     lines.push(...totalsLines(t));
-    if (result.labs.length > 0)
+    if (result.studies.length > 0)
       lines.push(
         "",
         "per lab:",
-        ...result.labs.map((row) => {
+        ...result.studies.map((row) => {
           const rate =
             row.passRate === undefined ? "no verdicts" : `${row.passed} of ${row.judged} passed`;
           const duration =
@@ -428,7 +430,7 @@ export function formatStatsHuman(
             row.medianCostUsd === undefined
               ? "no priced participant/desktop runs"
               : `participant/desktop median ${money(row.medianCostUsd)} over ${row.costSamples}`;
-          return `- ${row.lab}: ${plural(row.runs, "run")}, ${row.live} live; ${rate}; ${duration}; known study spend ${knownMoney(row.costs.estimatedTotalUsd)}; ${cost}${unpricedTail(row.unpricedRuns, row.costs.analysisUnpricedAttempts)}`;
+          return `- ${row.study}: ${plural(row.runs, "run")}, ${row.live} live; ${rate}; ${duration}; known study spend ${knownMoney(row.costs.estimatedTotalUsd)}; ${cost}${unpricedTail(row.unpricedRuns, row.costs.analysisUnpricedAttempts)}`;
         }),
       );
     if (result.days.length > 0) lines.push("", "by day:", ...result.days.map(dayLine));
