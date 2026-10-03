@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "scripted-routing-proof",
+    "labId": "scripted-routing-proof",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "scripted-routing-proof",
     "actor": "scripted-browser",
     "appUrl": "http://127.0.0.1:5173/",
     "dryRun": false,

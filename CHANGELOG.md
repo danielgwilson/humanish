@@ -37,6 +37,8 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Deprecated
 
+- `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
+  minor removes it.
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
   carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
   `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
@@ -44,6 +46,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
+
+- A study's result names its route and its study the same way on every route.
+  - Computer-use, scripted, terminal and shared-world results carry
+    `schema: "humanish.study-result.v1"`, `route` and `studyId`. So does a study's preview result.
+  - Before, each route had its own schema: `humanish.cua-lab-result.v2`,
+    `humanish.scripted-lab-result.v1`, `humanish.terminal-lab-result.v1`,
+    `humanish.concurrent-shared-world-lab-result.v1`, and `humanish.run-result.v1` for the preview.
+    A consumer that tells results apart by `schema` reads `route` instead.
+  - `humanish run` with no study, `observe`, and a refusal a command makes before it picks a route
+    keep `humanish.run-result.v1`.
 
 - Error codes name the study or the route where they said lab. Only the prefix changes.
   - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.

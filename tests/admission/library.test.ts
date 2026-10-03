@@ -127,7 +127,7 @@ async function runEntry(
         } as InternalRunLabOptions,
         typed.deps,
       );
-      result = { route: outcome.route, ...outcome.result };
+      result = outcome.result;
     } else if (route === "computer-use") {
       result = await runCuaActorLab({
         cwd,

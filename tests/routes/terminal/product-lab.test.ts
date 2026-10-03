@@ -635,7 +635,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       labId: string;
       runId: string;
     };
-    expect(envelope.schema).toBe("humanish.terminal-lab-result.v1");
+    expect(envelope.schema).toBe("humanish.study-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("codex-exec");
