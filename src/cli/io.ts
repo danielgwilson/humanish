@@ -7,7 +7,7 @@ import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { loadEnvFile } from "../keys/env-file.js";
 import { discoverProviderKeys } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
@@ -40,9 +40,19 @@ export interface CliIo {
   keyDiscovery?: typeof discoverProviderKeys;
 }
 
-// Shared so the ~20 leaf commands that declare their own --json flag cannot drift
-// from each other in wording.
+// One text per shared flag, so the same flag reads the same on every command.
+// tests/cli/shared-options.test.ts walks the program and holds every use to these.
 export const JSON_OPTION_DESCRIPTION = "Print a machine-readable JSON response.";
+export const CWD_OPTION_DESCRIPTION = "Project directory.";
+export const RUN_OPTION_DESCRIPTION = "Run id, or latest.";
+export const ENV_FILE_OPTION_DESCRIPTION =
+  "Load unset variables from this env file. Values are never printed or saved.";
+export const PORT_OPTION_DESCRIPTION = "Port to listen on at 127.0.0.1.";
+
+/** `--port` for a loopback server whose default, 0, lets the OS pick a free port. */
+export function freePortOption(): Option {
+  return new Option("--port <port>", PORT_OPTION_DESCRIPTION).default("0", "a free port");
+}
 
 export interface LabCommandOptions {
   count?: string | undefined;
@@ -312,7 +322,7 @@ export function candidateOption(options: {
   };
 }
 
-export function collectRepeated(value: string, previous: string[]): string[] {
+export function collectRepeated(value: string, previous: string[] = []): string[] {
   return [...previous, value];
 }
 

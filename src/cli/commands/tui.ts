@@ -33,6 +33,8 @@ import {
   applyEnvFileOption,
   CLI_VERSION,
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
   markInvocationEnvelopeWritten,
   wantsJson,
@@ -113,11 +115,8 @@ export function registerTuiCommand(
       "Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect <lab> --json and humanish runs --json.",
     )
     .summary("Browse studies and runs in a terminal UI for people.")
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option(
-      "--env-file <path>",
-      "Load a local env file for this terminal session and its runs without printing values.",
-    )
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--force", "Open it anyway in a session that looks like an agent's.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleTui(io, runtime, options, command));

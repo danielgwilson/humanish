@@ -30,9 +30,9 @@
 //   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
 //   verb phrases (`## Read the results`).
 // - `string-*`: em dashes, issue references and caps, plus `a later slice`, harness rationale words
-//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`) and `(s)` plurals, counted
-//   in src string literals and template text: what a person reads in an error, a warning or
-//   command output. Model prompts and the terminal's transcoding table are not counted
+//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`), `(s)` plurals and `CUA`
+//   (say computer-use), counted in src string literals and template text: what a person reads in
+//   an error, a warning or command output. Model prompts and the terminal's transcoding table are not counted
 //   (`STRING_EXCLUDED`), nor is the statement after a `prose-check: model prompt` comment, nor a
 //   string literal type.
 // - `prompt-markers`: each `prose-check: model prompt` comment in src. The marker exempts the
@@ -123,6 +123,7 @@ const STRING_KINDS = {
   "string-rationale":
     /\b(?:fails? closed|fail-closed|by construction|hollow|honest(?:ly|y)?|safety lie)\b/gi,
   "string-plural-s": /[a-z](?<!\bhttp)\(s\)/g,
+  "string-cua": /\bCUA\b/g,
 };
 const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps", "prompt-markers"];
 

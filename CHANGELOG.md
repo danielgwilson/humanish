@@ -198,6 +198,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   a rate to `src/run/pricing.ts`, which the npm package does not ship, and the shared-world route
   named no fix. The run cost note and the terminal ledger note no longer name that file; the cost
   note says each line's reason names what is missing.
+- Option help reads the same across commands and drops internal words.
+  - `--cwd`, `--run`, `--env-file`, `--port` and `--json` have one description each on every
+    command. `--run` says "Run id, or latest." in place of six wordings; `--env-file` says "Load
+    unset variables from this env file. Values are never printed or saved." in place of six.
+  - `--port` shows "(default: a free port)" and `export --max-bytes` "(default: 25 MB)".
+  - Option help says computer-use in place of CUA, and drops "adopter scorer module", "admission
+    estimate" and "exposure intent". `--open` names the Observer with a capital O.
+  - `watch --safe` is hidden from help. It is still refused, with a message that names the
+    library filter and edge auth.
+  - The npm package keywords add ui-testing and ux-research back, beside the five from the
+    product-sentence change.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;

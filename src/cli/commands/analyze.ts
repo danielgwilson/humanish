@@ -14,7 +14,14 @@ import {
 import { listAnalyses } from "../../analysis/store.js";
 import { listAnalysisExecutions } from "../../analysis/store-executions.js";
 import { resolveRunPath } from "../../run/locate.js";
-import { type CliIo, discoverCliKeys, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
+import {
+  type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  discoverCliKeys,
+  JSON_OPTION_DESCRIPTION,
+  RUN_OPTION_DESCRIPTION,
+  writeResult,
+} from "../io.js";
 import { resolvePhysicalCwd } from "../../run/paths.js";
 
 /** Commander may collect a shared flag on the parent; only explicit values override leaf defaults. */
@@ -43,15 +50,15 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
       "Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.",
     )
     .summary("Analyze a live run and write evidence-linked findings.")
-    .option("--run <id>", "Completed run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option(
       "--provider <name>",
       "Analyst: openai (default) or restricted codex account. No provider fallback.",
     )
     .option(
       "--max-cost <usd>",
-      "Required for OpenAI, including dry-run: USD admission estimate ceiling, not a billing cap. Unsupported for Codex.",
+      "Required for OpenAI, also with --dry-run: send nothing when the estimated cost in USD is above this. The estimate is not a billing cap. Unsupported for Codex.",
     )
     .option(
       "--model <id>",
@@ -84,8 +91,8 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
   analyze
     .command("list")
     .description("List immutable analysis versions, including failed attempts.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleAnalyzeList(io, options, command));
   analyze
@@ -93,9 +100,9 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .description(
       "Read validated analysis and correction history. Defaults to the latest usable version.",
     )
-    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .option("--id <id>", "Exact analysis version.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleAnalyzeShow(io, options, command));
   analyze
@@ -103,8 +110,8 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .description(
       "Append a human review note bound to one exact finding version; original claims remain intact.",
     )
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .requiredOption("--analysis <id>", "Analysis version to review.")
     .requiredOption("--finding <id>", "Finding to review.")
     .addOption(
