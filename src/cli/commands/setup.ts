@@ -325,7 +325,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
 
   keys
     .command("list")
-    .description("List the NAMES stored in the user store. Values are never printed.")
+    .description("List the key names in the user store. Values are never printed.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (_options: { json?: boolean }, command) => {
       const storePath = userKeyStorePath(process.env);

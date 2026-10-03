@@ -131,7 +131,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   if (env.hasProviderKey || env.localAgents.length > 0) {
     const brain = env.hasProviderKey
       ? "your provider key"
-      : `${preferredAgent(env)?.label} (already signed in — no API key needed)`;
+      : `${preferredAgent(env)?.label} (already signed in, so no API key is needed)`;
     // Everything the step needs, in one line. Splitting it across two commands means the second
     // one fails, which is the same dead end this guidance exists to remove.
     const command = env.hasDesktopSdk
@@ -144,7 +144,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
     steps.push({
       command,
       why:
-        `a REAL study: one participant drives a real app in a hosted desktop, using ${brain}` +
+        `a live study: one participant drives a real app in a hosted desktop, using ${brain}` +
         (env.hasDesktopSdk ? "" : " (the desktop SDK is an optional peer, so it installs first)") +
         (!env.hasProviderKey
           ? "; automatic findings analysis is skipped without OPENAI_API_KEY"

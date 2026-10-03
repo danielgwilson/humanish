@@ -78,7 +78,7 @@ export function desktopSdkAdvisory(version: string | undefined): string | undefi
     (have[0] === floor[0] &&
       (have[1]! < floor[1]! || (have[1] === floor[1] && have[2]! < floor[2]!)));
   return older
-    ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, the supported floor for background command cleanup and stdin handles (older releases could keep the CLI alive minutes past its result, #581). Update with \`npm i -D @e2b/desktop@latest\`.`
+    ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, the supported floor for background command cleanup and stdin handles (older releases could keep the CLI alive for minutes after its result). Update with \`npm i -D @e2b/desktop@latest\`.`
     : undefined;
 }
 
@@ -120,7 +120,7 @@ export async function doctor(
   if (!cwdOk) {
     const checks = uncheckedProjectChecks(
       "this directory does not exist, or humanish cannot read it",
-      "not checked — the target directory could not be read",
+      "not checked: the target directory could not be read",
     );
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks: withStatus(checks) };
   }
@@ -131,7 +131,7 @@ export async function doctor(
   } catch {
     const checks = uncheckedProjectChecks(
       "target directory failed containment validation",
-      "not checked — containment validation failed first",
+      "not checked: the containment check failed first",
     );
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks: withStatus(checks) };
   }
@@ -289,7 +289,7 @@ async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck
       ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
       : setup?.desktop === false
         ? "optional peer @e2b/desktop is absent; not required by the selected route"
-        : "optional peer @e2b/desktop is NOT installed: dry runs work, but any live desktop participant will fail closed. Install it with `npm i -D @e2b/desktop`.",
+        : "optional peer @e2b/desktop is not installed: dry runs work, but a live run with a desktop participant fails when it starts. Install it with `npm i -D @e2b/desktop`.",
   };
 }
 
@@ -418,7 +418,7 @@ function keyChecks(
           ? `present (${probe.source}), not used by this lab`
           : `supplied by ${probe.source}; presence only, validity not tested`
         : required
-          ? `missing from every source — ${hint}`
+          ? `missing from every source; ${hint}`
           : `not required for the selected participant route; ${hint}`,
     };
   });

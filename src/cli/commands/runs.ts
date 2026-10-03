@@ -111,7 +111,7 @@ export function registerExportCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--local-only",
-      "Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file.",
+      'Export a bundle that is not share_ready, with a "Local only" banner in the file.',
     )
     .addOption(
       new Option("--max-bytes <n>", "Refuse an export larger than this many bytes.").default(

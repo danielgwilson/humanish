@@ -7,7 +7,7 @@ describe("doctor: the desktop SDK row names the installed version and a floor", 
       const advisory = desktopSdkAdvisory(version);
       expect(advisory).toContain(`${version} is older than 2.3.2`);
       expect(advisory).toContain("stdin handles");
-      expect(advisory).toContain("#581");
+      expect(advisory).toContain("alive for minutes after its result");
       expect(advisory).toContain("npm i -D @e2b/desktop@latest");
     }
   });
