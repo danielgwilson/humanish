@@ -53,7 +53,7 @@ Sandbox.prototype.kill = async function (...args) {
 const write = process.stdout.write;
 process.stdout.write = function (chunk, ...args) {
   try {
-    if (JSON.parse(String(chunk)).schema === "humanish.terminal-lab-result.v1") {
+    if (JSON.parse(String(chunk)).schema === "humanish.study-result.v1") {
       proof.jsonAtNs = String(process.hrtime.bigint());
     }
   } catch { /* Preserve unrelated stdout writes. */ }

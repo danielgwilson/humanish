@@ -103,7 +103,7 @@ function configuration(route: Route): LabConfig {
   return parsed.config;
 }
 
-/** The shared world the provisioned plane's checkpoint reads; each seat's turn bumps it. */
+/** The shared world the provisioned plane's checkpoint reads; each participant's turn bumps it. */
 interface FakeWorld {
   turns: number;
 }
@@ -323,7 +323,7 @@ describe("configured receiving through exported study runners", () => {
       }
       options.onObservedUrl?.("https://collaboration.example.test/lobby/AB2CD9");
       await new Promise((resolve) => setTimeout(resolve, 15));
-      // Both seats are mid-turn here, so the shared world changes while they overlap.
+      // Both participants are mid-turn here, so the shared world changes while they overlap.
       world.turns += 1;
       return {
         status: "passed",

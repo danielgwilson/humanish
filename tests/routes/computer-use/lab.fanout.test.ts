@@ -491,7 +491,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
       concurrency: undefined as unknown as number,
       lanes: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }],
     });
-    // No declared concurrency on a 5-lane roster → every seat runs at once: 5 lanes, 1 wave.
+    // No declared concurrency on a 5-lane roster → every participant runs at once: 5 lanes, 1 wave.
     const planDefault = resolveCuaParticipantPlan({
       ...config,
       execution: { target: "e2b-desktop" },
@@ -2448,8 +2448,8 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
       preset: "small-mobile",
     });
 
-    // ...and the two floored seats really are indistinguishable by rendered width, which is the
-    // reason a lab cannot claim it exercised two different mobile layouts on this route.
+    // ...and the two floored participants really are indistinguishable by rendered width, which is
+    // the reason a study cannot claim it exercised two different mobile layouts on this route.
     expect(mobile.resolution[0]).toBe(small.resolution[0]);
   });
 

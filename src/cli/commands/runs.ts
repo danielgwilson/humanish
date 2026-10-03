@@ -11,6 +11,7 @@ import {
   type ReclaimResult,
 } from "../../run/reclaim.js";
 import type { CleanupResult, RunResult } from "../../run/results.js";
+import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { runLabCommand } from "./lab-run.js";
@@ -32,8 +33,10 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
   parent
     .command("run")
     .argument("[lab]", "Optional lab id or .yaml path.")
-    .description("Run a lab (or a synthetic dry-run bundle). The everyday command.")
-    .summary("Run a persona/scenario simulation or dry-run bundle.")
+    .description(
+      "Run a study, as a dry run or with live participants. This is the everyday command.",
+    )
+    .summary("Run a study, as a dry run or with live participants.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
     // `humanish run <lab>` and `humanish lab run <lab>` are the same operation on the same
     // dispatcher, but this one used to forward four options while its sibling forwarded all of
@@ -154,8 +157,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
 export function registerVerifyCommand(parent: Command, io: CliIo): void {
   parent
     .command("verify")
-    .description("Validate a run bundle and public-safety gates.")
-    .summary("Validate a run bundle and public-safety gates.")
+    .description("Check a run's evidence and share safety.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--verbose", "Print every check, passing ones included.")
@@ -175,9 +177,9 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
   parent
     .command("cleanup")
     .description(
-      "Inspect recorded resource evidence and write cleanup.json; stored ids do not authorize provider mutation.",
+      "Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.",
     )
-    .summary("Write a resource cleanup inspection receipt.")
+    .summary("Check that a run's resources were stopped.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -191,14 +193,14 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
 export function registerReviewCommand(parent: Command, io: CliIo): void {
   parent
     .command("review")
-    .description("Build a review packet from verified run evidence.")
+    .description("Show a run's review: verdict, summary and gaps.")
     .summary("Build a review packet from verified run evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await readReview(options.cwd, options.run);
-      writeResult(command, io, result, (value) => `${JSON.stringify(value, null, 2)}\n`);
+      writeResult(command, io, result, formatReviewHuman);
       io.setExitCode("ok" in result && result.ok === false ? 2 : 0);
     });
 }
@@ -209,7 +211,7 @@ export function registerExportCommand(parent: Command, io: CliIo): void {
     .description(
       "Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.",
     )
-    .summary("Export Observer HTML or a redacted bundle workspace.")
+    .summary("Export a run as an Observer page or a redacted bundle.")
     .option("--run <id>", "Run id or 'latest'.", "latest")
     .addOption(
       new Option("--format <format>", "Output format; bundle creates a new standalone workspace.")
@@ -276,7 +278,7 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
     .description(
       "Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.",
     )
-    .summary("Roll up cost, outcomes, and durations across runs.")
+    .summary("Show cost, outcomes and durations across runs.")
     .option("--lab <id>", "Only runs from this lab id.")
     .option("--since <date>", "Only runs that started on or after this ISO date or datetime.")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -296,8 +298,7 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
 export function registerRunsCommand(parent: Command, io: CliIo): void {
   parent
     .command("runs")
-    .description("List local humanish runs and latest pointers.")
-    .summary("List local humanish runs and latest pointers.")
+    .description("List this project's runs and which one is latest.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -357,7 +358,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
     .description(
       "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.",
     )
-    .summary("Reclaim an interrupted run's sandboxes by recorded id.")
+    .summary("Stop an interrupted run's leftover sandboxes.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run <id>", "Run id, or 'latest'.", "latest")
     .addOption(
@@ -394,6 +395,36 @@ function formatReclaimHuman(result: ReclaimResult): string {
   for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
   if (result.error) lines.push(`  error: ${result.error.message}`);
   return lines.join("\n");
+}
+
+const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
+  contract_proof_only: "preview only; no product behavior was tested",
+  pass: "pass",
+  fail: "fail",
+  blocked: "blocked",
+  timed_out: "timed out",
+};
+
+/** A run's review: its verdict, summary and gaps, and where review.json is. */
+function formatReviewHuman(
+  result: VerifyResult | (ReviewSummary & { path: string; runId: string }),
+): string {
+  if (!("verdict" in result)) {
+    const why = result.error
+      ? `${result.error.code}: ${result.error.message}`
+      : `the run did not pass verify; humanish verify --run ${result.run} shows why`;
+    return `humanish review failed\nrun: ${result.run}\n${why}\n`;
+  }
+  return (
+    [
+      `humanish review ${result.runId}: ${REVIEW_VERDICTS[result.verdict]}`,
+      "",
+      result.summary,
+      ...(result.gaps.length === 0 ? [] : ["", "gaps:", ...result.gaps.map((gap) => `- ${gap}`)]),
+      "",
+      `review: ${result.path}`,
+    ].join("\n") + "\n"
+  );
 }
 
 /** The run id verify read, from the bundle path, so `latest` prints as the id it points at. */

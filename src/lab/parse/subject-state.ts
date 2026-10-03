@@ -21,14 +21,14 @@ export function parseEnvValues(
   if (raw === undefined) return { ok: true };
   if (!isRecord(raw)) {
     return invalid(
-      "`subject.envValues` must be a mapping of env var NAME to a literal non-secret value.",
+      "`subject.envValues` must map environment variable names to literal values that are not secret.",
     );
   }
   const envValues: Record<string, string> = {};
   for (const [name, rawValue] of Object.entries(raw)) {
     if (!ENV_NAME_PATTERN.test(name)) {
       return invalid(
-        `subject.envValues keys must be env var NAMES like NEXT_PUBLIC_APP_URL (got "${name}").`,
+        `subject.envValues keys must be environment variable names like NEXT_PUBLIC_APP_URL, and "${name}" is not one.`,
       );
     }
     const value =
@@ -42,7 +42,7 @@ export function parseEnvValues(
     // a secret looks like; the two must never disagree about the same string.
     if (containsSensitive(value)) {
       return invalid(
-        `\`subject.envValues.${name}\` looks like a secret or a local path, and these values are committed with the lab and recorded in evidence. Declare the NAME in \`subject.env\` instead — those values come from the caller's environment and never persist.`,
+        `\`subject.envValues.${name}\` looks like a secret or a local path, and envValues are committed with the study and recorded in evidence. List the name in \`subject.env\` instead: its value then comes from your environment and is never stored.`,
       );
     }
     envValues[name] = value;
@@ -85,7 +85,7 @@ export function parseState(
     const external = strList(raw.external);
     if (!external) {
       return invalid(
-        "`subject.state.external` must be a non-empty list of env var NAMES when set.",
+        "`subject.state.external` must be a non-empty list of environment variable names when it is set.",
       );
     }
     state.external = external;
@@ -173,11 +173,11 @@ export function subjectStateInvalidReason(
   }
   if (external !== undefined) {
     if (!Array.isArray(external) || external.length === 0) {
-      return "`subject.state.external` must be a non-empty list of env var NAMES when set.";
+      return "`subject.state.external` must be a non-empty list of environment variable names when it is set.";
     }
     for (const name of external) {
       if (typeof name !== "string" || !ENV_NAME_PATTERN.test(name)) {
-        return "subject.state.external entries must be env var NAMES like DATABASE_URL; values come from the caller's environment and are never persisted.";
+        return "subject.state.external entries must be environment variable names like DATABASE_URL. Their values come from your environment and are never stored.";
       }
       if (!env?.includes(name)) {
         return "subject.state.external names must also be declared in subject.env (the declaration must name a provisioned channel).";

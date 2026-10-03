@@ -245,7 +245,9 @@ describe("terminal-product parse matrix", () => {
     const parsed = parseLabConfig(raw);
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
-    expect(parsed.error.message).toContain("subject.appUrl` does not apply to terminal-product");
+    expect(parsed.error.message).toContain(
+      "subject.appUrl` does not apply to a terminal-product subject",
+    );
   });
 
   it("validates publicSurfaces are http(s) URLs and product.name is a public-safe token", () => {
@@ -633,7 +635,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       labId: string;
       runId: string;
     };
-    expect(envelope.schema).toBe("humanish.terminal-lab-result.v1");
+    expect(envelope.schema).toBe("humanish.study-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("codex-exec");
@@ -658,9 +660,9 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       "terminal-cli-human",
     ]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("humanish lab terminal dry-run");
+    expect(result.stdout).toContain("humanish run terminal-product-demo: dry run finished");
+    expect(result.stdout).toContain("route: terminal");
     expect(result.stdout).toContain("run: terminal-cli-human");
-    expect(result.stdout).toContain("lab: terminal-product-demo");
     expect(result.stdout).toContain("actor: codex-exec");
     expect(result.stdout).toContain("product: widgetsmith-cli");
   });

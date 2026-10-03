@@ -1,7 +1,7 @@
-// A render harness for text goldens (#455).
+// A render harness for text goldens.
 //
 // Deliberately in-repo rather than `ink-testing-library`, whose last publish was 2024 and which
-// declares no `ink` peer at all — a stale dependency in the position of deciding whether our
+// declares no `ink` peer at all: a stale dependency in the position of deciding whether our
 // committed goldens are correct. It is about thirty lines to render into a fake TTY and read the
 // frames back, and owning it means the harness can never disagree with the Ink version we ship.
 //
@@ -17,7 +17,7 @@ export interface RenderedFrames {
   /** Every frame Ink wrote, escape codes stripped, in order. */
   frames: string[];
   /**
-   * The frame that satisfied the wait predicate — NOT simply the last one. Ink's final writes are
+   * The frame that satisfied the wait predicate: not simply the last one. Ink's final writes are
    * cursor control that strips to an empty string, so "the last frame" is usually blank and a
    * golden taken from it would be empty and pass.
    */
@@ -44,8 +44,8 @@ export const KEY = {
 } as const;
 
 /**
- * Strip SGR colour and cursor control so a golden compares TEXT, not terminal capabilities.
- * Written with explicit \\u001B escapes: a literal ESC byte in source is invisible in review and
+ * Strip sgr colour and cursor control so a golden compares text, not terminal capabilities.
+ * Written with explicit \\u001B escapes: a literal esc byte in source is invisible in review and
  * silently lost by any tool that normalizes control characters.
  */
 function stripAnsi(value: string): string {
@@ -60,7 +60,7 @@ function fakeStdin(): NodeJS.ReadStream {
   };
   // Ink's `useInput` enables raw mode and then ref/unrefs the handle to control whether the process
   // stays alive. A PassThrough has none of that, and the missing method surfaces as a render crash
-  // INSIDE the frame rather than as a thrown error — which is exactly how it presented.
+  // inside the frame rather than as a thrown error, which is exactly how it presented.
   stream.isTTY = true;
   stream.setRawMode = () => stream;
   stream.ref = () => stream;
@@ -91,7 +91,7 @@ export interface RenderOptions {
 /**
  * Render a tree at a fixed terminal size and wait for the frame that matters.
  *
- * Waiting on a PREDICATE rather than a timer is what keeps these tests off the flaky list: a
+ * Waiting on a predicate rather than a timer is what keeps these tests off the flaky list: a
  * surface that loads data renders "reading…" first, and a fixed sleep captures whichever frame the
  * scheduler happened to reach.
  */
@@ -109,8 +109,8 @@ export async function renderToText(
     stdout,
     patchConsole: false,
     exitOnCtrlC: false,
-    // Ink decides interactivity from `is-in-ci` AND stdout.isTTY, and when it decides
-    // non-interactive it writes ONLY THE FINAL FRAME AT UNMOUNT — no erase sequences, no
+    // Ink decides interactivity from `is-in-ci` And stdout.isTTY, and when it decides
+    // non-interactive it writes only the final frame at unmount: no erase sequences, no
     // intermediate renders. This harness exists to observe frames as they change and to send keys
     // between them, so under CI every render test would wait forever for a frame that never comes.
     // The environment variable describes the machine, not this stream: we built a TTY above, so we
@@ -168,7 +168,7 @@ export async function renderToText(
       const from = frames.length;
       (stdin as unknown as { write(chunk: string): void }).write(input);
       // A keypress that changes nothing would hang forever on a "frame differs" predicate, so the
-      // default waits for any non-blank frame written after the key — Ink re-renders on input.
+      // default waits for any non-blank frame written after the key: Ink re-renders on input.
       return waitForFrame(until ?? ((frame) => frame.trim().length > 0), from, timeoutMs);
     },
     waitFor: (until, timeoutMs) => waitForFrame(until, 0, timeoutMs, ""),

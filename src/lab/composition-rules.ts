@@ -78,7 +78,7 @@ function localAppValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "local-app") {
     const type = config.actors[0]?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "local") {
-      return "local-app subjects drive an in-process LOCAL dev server with NO E2B desktop — set `execution.target: local` or omit it (absent means local); `e2b-desktop` is rejected (use an app-url subject for the hosted-desktop route).";
+      return "A local-app subject drives a local dev server in this process, with no E2B desktop. Set `execution.target: local` or omit it. To run on a hosted desktop, use an app-url subject with `execution.target: e2b-desktop`.";
     }
     if (!actorResolvesToComputerUse(type)) {
       return `actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`;
@@ -90,7 +90,7 @@ function localAppValidationReason(config: LabConfig): string | null {
       return "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";
     }
     if (config.policies?.allowPublicTargets === true) {
-      return "`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow.";
+      return "`policies.allowPublicTargets` does not apply to a local-app subject: it is always a loopback dev server, so there is no public target to allow. Remove the setting.";
     }
   }
   return null;
@@ -106,19 +106,19 @@ function appUrlValidationReason(config: LabConfig): string | null {
       // Scripted-browser route (all fail-closed, so claims match mechanism: a field that cannot act on
       // this route is rejected, never silently ignored).
       if (config.execution?.target !== undefined && config.execution.target !== "local") {
-        return "scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice.";
+        return "A scripted-browser actor on an app-url subject runs on this machine. Set `execution.target: local` or omit it. To run scripted steps on a hosted desktop, use a clone subject.";
       }
       if (!config.scenario?.ref) {
-        return "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.";
+        return "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.";
       }
       if ((config.actors[0]?.count ?? 1) > 2) {
-        return "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.";
+        return "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
       }
       if (config.policies?.redactScreenshots === true) {
-        return "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.";
+        return "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them.";
       }
       if (config.policies?.allowPublicTargets === true) {
-        return "`policies.allowPublicTargets` is not supported on the scripted-browser route — the scripted step driver enforces loopback at every navigation; public targets on this route are a later slice.";
+        return "`policies.allowPublicTargets` is not supported on the scripted-browser route: the step driver allows only loopback URLs at every navigation. Remove the setting, or drive the public URL with a computer-use actor.";
       }
       if (!isLoopbackUrl(config.subject.appUrl ?? "")) {
         return "`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route.";
@@ -140,7 +140,7 @@ function appUrlValidationReason(config: LabConfig): string | null {
         (target) => !config.policies?.allowPublicTargets && !isLoopbackUrl(target),
       );
       if (unsafeTarget !== undefined) {
-        return "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own.";
+        return "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`.";
       }
     }
   }
@@ -157,10 +157,10 @@ function scriptedBrowserValidationReason(config: LabConfig): string | null {
       return "scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject).";
     }
     if (config.execution?.target !== "e2b-desktop") {
-      return "clone subjects with scripted-browser actors require `execution.target: e2b-desktop` — the lab provisions the clone in E2B, exposes it with getHost, then drives deterministic browser steps.";
+      return "A clone subject with a scripted-browser actor needs `execution.target: e2b-desktop`: humanish builds the clone in an E2B sandbox, opens it at a public sandbox URL and runs the scenario's browser steps against it.";
     }
     if (!config.subject.serve) {
-      return "clone subjects with scripted-browser actors require `subject.serve` (start + url) — the lab serves the app in-sandbox before the scripted browser drives it.";
+      return "A clone subject with a scripted-browser actor needs `subject.serve` (start and url): humanish starts the app in the sandbox before the browser steps run.";
     }
     if ((config.subject.repos?.length ?? 0) !== 1) {
       return "clone scripted-browser labs require exactly one repo in subject.repos.";
@@ -170,38 +170,38 @@ function scriptedBrowserValidationReason(config: LabConfig): string | null {
       return `subject.repos[0] must be an owner/repo slug (got "${repo}").`;
     }
     if (config.subject.topology !== undefined) {
-      return "clone scripted-browser labs do not support `subject.topology` yet — this slice provisions one synthetic subject and one deterministic scripted actor roster, not a shared-world run.";
+      return "A clone scripted-browser study does not support `subject.topology` yet: it runs one synthetic subject for its scripted actor. Remove `subject.topology`.";
     }
     if (config.subject.clone?.fanout !== undefined || config.subject.clone?.keep === true) {
-      return "clone scripted-browser labs do not support `subject.clone.fanout` or `subject.clone.keep` yet — the provisioned subject is always a single disposable E2B sandbox.";
+      return "A clone scripted-browser study does not support `subject.clone.fanout` or `subject.clone.keep` yet: its subject is always one sandbox, removed after the run.";
     }
     if (!config.scenario?.ref) {
-      return "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.";
+      return "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.";
     }
     if ((config.actors[0]?.count ?? 1) > 2) {
-      return "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.";
+      return "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
     }
     if (rosterOf(config.actors[0]) !== undefined) {
-      return "`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster.";
+      return "`actors[0].lanes` is not supported on the scripted-browser route yet. Use `actors[0].count` to choose the desktop and mobile surfaces.";
     }
     if (config.policies?.redactScreenshots === true) {
-      return "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.";
+      return "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them.";
     }
     if (config.policies?.allowPublicTargets === true) {
-      return "`policies.allowPublicTargets` is not supported on the clone scripted-browser route — the only external host is the harness-minted getHost URL for a provisioned synthetic subject.";
+      return "`policies.allowPublicTargets` does not apply to a clone scripted-browser study: its only public URL is the sandbox URL humanish opens for its synthetic subject. Remove the setting.";
     }
     if (config.subject.exposure !== "synthetic") {
-      return "clone scripted-browser labs require `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data.";
+      return "A clone scripted-browser study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic.";
     }
     if (
       !config.subject.state?.seed ||
       config.subject.state.seed.length === 0 ||
       (config.subject.state.external?.length ?? 0) > 0
     ) {
-      return "clone scripted-browser labs require `subject.state.seed` and do not allow `subject.state.external` — getHost-exposed subjects must be synthetic seeded data, not external/unpinned state.";
+      return "A clone scripted-browser study needs `subject.state.seed` and cannot use `subject.state.external`: a subject at a public sandbox URL may hold only seeded synthetic data.";
     }
     if (!config.subject.serve.start.includes("0.0.0.0")) {
-      return "clone scripted-browser labs require `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; the readiness probe stays loopback.";
+      return "A clone scripted-browser study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0. The readiness probe still uses loopback.";
     }
   }
   return null;
@@ -217,7 +217,7 @@ function cloneComputerUseValidationReason(config: LabConfig): string | null {
     actorResolvesToComputerUse(config.actors[0]?.type)
   ) {
     if (!config.subject.serve) {
-      return "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it.";
+      return "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it.";
     }
     if ((config.subject.repos?.length ?? 0) !== 1) {
       return "computer-use clone labs serve one repo; declare exactly one repo in subject.repos.";
@@ -261,7 +261,7 @@ function localTreeValidationReason(config: LabConfig): string | null {
 /** A desktop-cli subject with no product to study. The computer-use planner checks this too. */
 export function desktopCliProductReason(config: LabConfig): string | null {
   return config.subject.source === "desktop-cli" && config.subject.product?.name === undefined
-    ? "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+    ? "A desktop-cli subject needs `subject.product.name`: the CLI the participant is asked to use."
     : null;
 }
 
@@ -270,7 +270,7 @@ function desktopCliValidationReason(config: LabConfig): string | null {
   if (productReason) return productReason;
   if (config.subject.source === "desktop-cli" && config.subject.product !== undefined) {
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-desktop") {
-      return "desktop-cli subjects are studied at a hosted desktop — set `execution.target: e2b-desktop` or omit it.";
+      return "A desktop-cli subject runs on a hosted desktop. Set `execution.target: e2b-desktop` or omit it.";
     }
     if (!actorResolvesToComputerUse(config.actors[0]?.type ?? "")) {
       return "desktop-cli subjects need a registered computer-use actor: the participant reads the screen and types, which is what makes an interactive surface studiable at all.";
@@ -292,7 +292,7 @@ function terminalValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "terminal-product") {
     const type = config.actors[0]?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-terminal") {
-      return "terminal-product subjects run the agent inside an E2B shell — set `execution.target: e2b-terminal` or omit it (absent means e2b-terminal); `local`/`e2b-desktop` are rejected.";
+      return "A terminal-product subject runs its agent in an E2B shell. Set `execution.target: e2b-terminal` or omit it; `local` and `e2b-desktop` are not supported.";
     }
     if (!actorResolvesToTerminal(type)) {
       return `actors[0].type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`;

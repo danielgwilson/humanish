@@ -184,7 +184,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     outputUsdPerToken: 30e-6,
     cachedInputUsdPerToken: 0.5e-6,
     asOf: "2026-08-05",
-    source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)",
+    source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 is no longer listed on openai.com/api/pricing)",
   },
   // The gpt-5.6 family (live sheet 2026-08-18, standard tier, short-context base rates;
   // the longContext block prices the >272K re-tier when per-request turns are recorded).

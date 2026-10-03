@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "downstream-local-app-state",
+    "labId": "downstream-local-app-state",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "downstream-local-app-state",
     "actor": "openai-computer-use",
     "appUrl": "http://localhost:5173/",
     "dryRun": false,
@@ -637,7 +639,7 @@
         "total": 0
       },
       "desktopMinutes": null,
-      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model."
+      "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Add a rate to src/run/pricing.ts to estimate this model."
     }
   },
   "status.json": {

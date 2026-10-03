@@ -18,8 +18,10 @@ import {
 export function registerFeedbackCommands(parent: Command, io: CliIo): void {
   const feedback = parent
     .command("feedback")
-    .description("Create public-safe feedback drafts without GitHub API mutation.")
-    .summary("Create public-safe feedback drafts, no GitHub API.");
+    .description(
+      "Draft public-safe feedback issues from a run. humanish never calls the GitHub API.",
+    )
+    .summary("Draft public-safe feedback issues from a run.");
 
   feedback
     .command("list")

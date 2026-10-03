@@ -9,11 +9,11 @@ import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
-// Text goldens at two widths (#455).
+// Text goldens at two widths.
 //
 // 80 is a desktop terminal; 45 is a phone in landscape, which is a width Daniel actually uses. Every
-// layout bug this surface can have — a status column that collides with a name, a path that wraps to
-// two lines, a run id that eats the whole row — is invisible until something measures characters at
+// layout bug this surface can have (a status column that collides with a name, a path that wraps to
+// two lines, a run id that eats the whole row) is invisible until something measures characters at
 // a fixed width, so these render through real yoga layout rather than asserting on props.
 //
 // Regenerate deliberately with UPDATE_TUI_GOLDENS=1; a golden that changes by accident is the
@@ -36,7 +36,7 @@ async function expectGolden(name: string, actual: string): Promise<void> {
 }
 
 /**
- * A COMPLETE set of capabilities, merged with whatever a test wants to change. No cast: the
+ * A complete set of capabilities, merged with whatever a test wants to change. No cast: the
  * compiler is the thing that catches a capability nobody remembered to fake, and a cast here would
  * turn that into an unhandled rejection mid-render instead.
  */
@@ -103,10 +103,10 @@ async function frameAt(
   const rendered = await renderToText(<App options={options(overrides)} now={NOW} tick={0} />, {
     columns,
     rows,
-    // Wait for the DATA-BEARING frame, never a fixed sleep: the first frame says "reading project…"
+    // Wait for the data-bearing frame, never a fixed sleep: the first frame says "reading project…"
     // and a timer captures whichever one the scheduler happened to reach. Defined by what the frame
-    // is NOT, so it cannot silently stop matching when the copy on the screen changes.
-    // Live participant names arrive from a SECOND async read, so a caller that asserts on them has
+    // is not, so it cannot silently stop matching when the copy on the screen changes.
+    // Live participant names arrive from a second async read, so a caller that asserts on them has
     // to wait for that frame rather than the first data-bearing one.
     until: until ?? ((frame) => frame.trim().length > 0 && !frame.includes("reading project")),
   });
@@ -119,7 +119,7 @@ describe("the labs screen, rendered", () => {
     await expectGolden("labs-80", await frameAt(80));
   });
 
-  it("at 45 columns — a phone in landscape", async () => {
+  it("at 45 columns: a phone in landscape", async () => {
     await expectGolden("labs-45", await frameAt(45));
   });
 
@@ -130,26 +130,26 @@ describe("the labs screen, rendered", () => {
     const never = lines.findIndex((line) => line.includes("never-run-lab"));
     expect(live).toBeGreaterThan(-1);
     expect(never).toBeGreaterThan(live);
-    // The lab that has never run says exactly that — it does not borrow a median from its
+    // The study that has never run says exactly that: it does not borrow a median from its
     // neighbours to look populated.
     expect(lines[never]).toContain("never run");
     expect(lines[never]).not.toContain("$");
-    // A live lab reports WHO is in it and for how long — not a count. "1 running" answers the less
+    // A live study reports who is in it and for how long: not a count. "1 running" answers the less
     // interesting half of the question; the participant and the elapsed clock answer the rest.
     expect(lines[live]).toMatch(/\d+:\d\d/);
     expect(lines[live]).not.toContain("1 running");
   });
 
-  it("shows one row per MANIFEST, and never two rows a reader cannot tell apart", async () => {
+  it("shows one row per manifest, and never two rows a reader cannot tell apart", async () => {
     const frame = await frameAt(80);
     const lines = frame.split("\n").filter((line) => line.trim().length > 0);
-    // Two manifests declare `diagram-editor` AND carry the same title. Both are real files and both
-    // are listed — but labelled by the handle that actually addresses them, so a reader can tell
+    // Two manifests declare `diagram-editor` And carry the same title. Both are real files and both
+    // are listed, but labelled by the handle that actually addresses them, so a reader can tell
     // them apart and knows what to type. Found on the real project, where a title-less fixture had
     // happily passed.
     expect(lines.filter((line) => line.includes("diagram-editor")).length).toBe(2);
     expect(frame).toContain("diagram-editor-live");
-    // The shared title is dropped precisely because it is shared — it identifies neither row.
+    // The shared title is dropped precisely because it is shared: it identifies neither row.
     expect(lines.filter((line) => line.includes("Is the diagram axis load-bearing?")).length).toBe(
       0,
     );
@@ -159,7 +159,7 @@ describe("the labs screen, rendered", () => {
   });
 
   it("a live lab names the participant, not the lane the harness ran them in", async () => {
-    // "CUA browser — observer-live-check" is the harness describing itself. The row is about who is
+    // "CUA browser: observer-live-check" is the harness describing itself. The row is about who is
     // in there, so the persona wins whenever the live flush carries one.
     const frame = await frameAt(
       80,
@@ -213,7 +213,7 @@ describe("the labs screen, rendered", () => {
     rendered.unmount();
     const frame = normalizeFrame(rendered.last);
     expect(frame).toContain("No studies here yet.");
-    // The empty state says what a study IS before telling you to run a command — someone seeing this
+    // The empty state says what a study is before telling you to run a command: someone seeing this
     // screen in their home directory has no idea what they are being asked to make.
     expect(frame).toContain("A study file says");
     expect(frame).toContain("humanish init");
@@ -246,7 +246,7 @@ describe("the labs screen, rendered", () => {
 describe("the harness renders the way a terminal does, not the way a build log does", () => {
   it("still produces frames while CI is set", async () => {
     // Ink consults `is-in-ci` and, when it decides non-interactive, writes only the final frame at
-    // unmount — no intermediate renders at all. Every render test above then waits forever for a
+    // unmount: no intermediate renders at all. Every render test above then waits forever for a
     // frame that never arrives, which is exactly how this suite failed in CI while passing locally.
     // Pinned here so the guard cannot be removed without a local failure.
     const previous = process.env.CI;
@@ -257,7 +257,7 @@ describe("the harness renders the way a terminal does, not the way a build log d
         until: (frame) => frame.includes("Signup flow"),
       });
       rendered.unmount();
-      // A frame arrived BEFORE unmount, which is the whole property.
+      // A frame arrived before unmount, which is the whole property.
       expect(rendered.last).toContain("Signup flow");
     } finally {
       if (previous === undefined) delete process.env.CI;
@@ -314,9 +314,9 @@ describe("the two empty states are different problems", () => {
     expect(frame).toContain("A study file says");
   });
 
-  it("a directory that is not a project is told THAT first", async () => {
+  it("a directory that is not a project is told that first", async () => {
     // `npx humanish tui` is easy to type anywhere, and someone in their home directory reading
-    // "write a lab" cannot act on it — they do not know they are in the wrong place.
+    // "write a lab" cannot act on it: they do not know they are in the wrong place.
     const frame = await frameAt(
       80,
       24,
@@ -333,8 +333,8 @@ describe("the two empty states are different problems", () => {
     );
     expect(frame).toContain("This directory is not a humanish project.");
     expect(frame).not.toContain("No studies here yet.");
-    // It now OFFERS to fix it rather than telling the reader to leave. "cd somewhere else and run
-    // a command" was a dead end shown to exactly the person most likely to give up (#505), and the
+    // It now offers to fix it rather than telling the reader to leave. "cd somewhere else and run
+    // a command" was a dead end shown to exactly the person most likely to give up, and the
     // row says what it will write before it writes it.
     expect(frame).toContain("Set up humanish here");
     expect(frame).toContain("writes humanish/ and updates package.json");
@@ -343,7 +343,7 @@ describe("the two empty states are different problems", () => {
   });
 });
 
-describe("all runs — everyone working, across every lab", () => {
+describe("all runs: everyone working, across every study", () => {
   const live = (runId: string, labId: string, minutesAgo: number) => ({
     runId,
     derivedFrom: "status" as const,
@@ -400,7 +400,7 @@ describe("all runs — everyone working, across every lab", () => {
       if (/❯\s+All runs/.test(frame)) break;
     }
     await rendered.press(KEY.enter, (candidate) => candidate.includes("synthetic-new-user"));
-    // Move to the participant who HAS recorded thinking: the quoted line follows the cursor, which
+    // Move to the participant who has recorded thinking: the quoted line follows the cursor, which
     // is the whole reason only one is quoted.
     let frame = "";
     for (let index = 0; index < 4; index += 1) {
@@ -423,7 +423,7 @@ describe("all runs — everyone working, across every lab", () => {
     expect(row).toMatch(/\d+:\d\d/);
   });
 
-  it("quotes ONE thought — the selected row's — not every participant at once", async () => {
+  it("quotes one thought, the selected row's, not every participant at once", async () => {
     // Three participants each streaming their thinking turns this into a log tail nobody can read.
     const frame = await openAllRuns();
     expect(frame).toContain("Figuring out table creation");
@@ -440,7 +440,7 @@ describe("all runs — everyone working, across every lab", () => {
   });
 });
 
-describe('the labs list says what a study IS (stakeholder feedback: "so i know wtf they are")', () => {
+describe('the studies list says what a study is (stakeholder feedback: "so i know wtf they are")', () => {
   it("shows the selected lab's own first sentence, and only the first", async () => {
     const surface = await renderToText(<App options={options()} now={NOW} tick={0} />, {
       columns: 80,

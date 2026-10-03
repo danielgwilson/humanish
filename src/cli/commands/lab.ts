@@ -22,8 +22,7 @@ import {
 export function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("List, inspect, and run humanish lab manifests.")
-    .summary("List, inspect, and run humanish lab manifests.");
+    .description("List, inspect and run the studies in humanish/labs/.");
 
   lab
     .command("list")

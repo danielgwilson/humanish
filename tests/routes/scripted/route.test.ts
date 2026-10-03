@@ -703,7 +703,7 @@ describe("runScriptedBrowserLab", () => {
         const verified = await verifyRun(cwd, result.runId);
         expect(verified.ok).toBe(true);
         expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
-        expect(verified.warnings.join("\n")).toContain("FULL-FIDELITY (raw)");
+        expect(verified.warnings.join("\n")).toContain("are unblurred");
         expect(result.warnings.join("\n")).toContain("full-fidelity");
 
         // Public safety: no absolute machine paths or secret-shaped text in any text artifact.
@@ -1456,7 +1456,7 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       runId: string;
       scenario: { id: string; source: string; steps: number };
     };
-    expect(envelope.schema).toBe("humanish.scripted-lab-result.v1");
+    expect(envelope.schema).toBe("humanish.study-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("scripted-browser");
@@ -1484,9 +1484,9 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       "scripted-cli-human",
     ]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("humanish lab scripted dry-run");
+    expect(result.stdout).toContain("humanish run scripted-demo: dry run finished");
+    expect(result.stdout).toContain("route: scripted");
     expect(result.stdout).toContain("run: scripted-cli-human");
-    expect(result.stdout).toContain("lab: scripted-demo");
     expect(result.stdout).toContain("actor: scripted-browser");
     expect(result.stdout).toContain("subject: http://127.0.0.1:5173/");
     expect(result.stdout).toContain("scenario: scripted-first-run @");

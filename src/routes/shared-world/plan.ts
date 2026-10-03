@@ -174,7 +174,7 @@ export function planSharedWorldLab(
               externalCatch: plane.kind === "external-public",
             }),
             // The external-public plane reads the host's lobby code with the OpenAI API, whatever
-            // brain drives the seats.
+            // brain drives the participants.
             ...(plane.kind === "external-public" && brain.kind !== "openai"
               ? [{ kind: "key" as const, name: "OPENAI_API_KEY" as const }]
               : []),

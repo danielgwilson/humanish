@@ -1,9 +1,11 @@
 {
   "real receiving": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "dryRun": true,
     "runId": "not-created",
@@ -16,10 +18,12 @@
     }
   },
   "invalid analysis": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "dryRun": true,
     "runId": "not-created",
@@ -32,10 +36,12 @@
     }
   },
   "tasks": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "dryRun": true,
     "runId": "not-created",
@@ -48,10 +54,12 @@
     }
   },
   "media": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -69,10 +77,12 @@
     }
   },
   "clone on the local target": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "",
     "dryRun": true,
@@ -90,10 +100,12 @@
     }
   },
   "unregistered actor": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "not-an-actor",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -111,10 +123,12 @@
     }
   },
   "public app url": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "https://example.com/",
     "dryRun": true,
@@ -132,10 +146,12 @@
     }
   },
   "clone without serve": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "[provisioned-subject]",
     "dryRun": true,
@@ -153,10 +169,12 @@
     }
   },
   "missing scenario ref": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -174,10 +192,12 @@
     }
   },
   "live clone without an E2B key": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "[provisioned-subject]",
     "dryRun": false,
@@ -195,10 +215,12 @@
     }
   },
   "real receiving and invalid analysis": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "dryRun": true,
     "runId": "not-created",
@@ -211,10 +233,12 @@
     }
   },
   "invalid analysis and tasks": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "dryRun": true,
     "runId": "not-created",
@@ -227,10 +251,12 @@
     }
   },
   "tasks and media": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "dryRun": true,
     "runId": "not-created",
@@ -243,10 +269,12 @@
     }
   },
   "media and clone on the local target": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "",
     "dryRun": true,
@@ -264,10 +292,12 @@
     }
   },
   "clone on the local target and unregistered actor": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "not-an-actor",
     "appUrl": "",
     "dryRun": true,
@@ -285,10 +315,12 @@
     }
   },
   "unregistered actor and public app url": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "not-an-actor",
     "appUrl": "https://example.com/",
     "dryRun": true,
@@ -306,10 +338,12 @@
     }
   },
   "public app url and missing scenario ref": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "https://example.com/",
     "dryRun": true,
@@ -327,10 +361,12 @@
     }
   },
   "clone without serve and missing scenario ref": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "[provisioned-subject]",
     "dryRun": true,
@@ -348,10 +384,12 @@
     }
   },
   "missing scenario ref and live clone without an E2B key": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "adm-scriptedappurl",
+    "labId": "adm-scriptedappurl",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-scriptedappurl",
     "actor": "scripted-browser",
     "appUrl": "[provisioned-subject]",
     "dryRun": false,

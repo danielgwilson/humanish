@@ -26,10 +26,10 @@ export interface AllRunsScreenProps {
 /**
  * Everyone who is working, across every lab.
  *
- * PARTICIPANTS LEAD the rows and the labs follow, because when three studies are running at once
- * the question is who is doing what — the lab is how you find them again, not what you are watching.
+ * Participants lead the rows and the studies follow, because when three studies are running at once
+ * the question is who is doing what: the study is how you find them again, not what you are watching.
  *
- * ONE THOUGHT LINE SERVES THE WHOLE SCREEN. Three concurrent participants each streaming their
+ * One thought line serves the whole screen. Three concurrent participants each streaming their
  * thinking turns this into a log tail nobody can read, so only the selected row's thinking is
  * quoted, attributed underneath. Moving the cursor changes whose mind you are in.
  */
@@ -96,7 +96,7 @@ export function AllRunsScreen({
               </Text>
             </Box>
           ))}
-          {/* Attribution stays on ONE line. Wrapped, it restarts at column zero and reads as more
+          {/* Attribution stays on one line. Wrapped, it restarts at column zero and reads as more
               of the quote rather than the label underneath it. */}
           <Box width={columns}>
             <Box width={2} flexShrink={0}>
@@ -149,7 +149,7 @@ function RunRow({
   const started = run.startedAt === undefined ? Number.NaN : Date.parse(run.startedAt);
   const elapsed = Number.isFinite(started) ? clockOf(now - started) : "";
   const right = expectedMs === undefined ? elapsed : `${elapsed} / ~${clockOf(expectedMs)}`;
-  // Three columns: who, where, how far. The middle one is the quietest — it is how you find them
+  // Three columns: who, where, how far. The middle one is the quietest; it is how you find them
   // again, not what you are watching.
   const whoRoom = Math.max(10, Math.floor((columns - right.length - 6) * 0.5));
   const labRoom = Math.max(8, columns - right.length - whoRoom - 6);
@@ -176,8 +176,8 @@ function RunRow({
 }
 
 /**
- * Spend as ONE reassurance line: visible, not shouting. It reports what is known and says so when
- * a run has not priced itself yet — a total that silently omits the unpriced ones would read as a
+ * Spend as one reassurance line: visible, not shouting. It reports what is known and says so when
+ * a run has not priced itself yet: a total that silently omits the unpriced ones would read as a
  * smaller number than the truth.
  */
 function spendLine(runs: readonly RunIndexEntry[], details: Map<string, RunDetail>): string {

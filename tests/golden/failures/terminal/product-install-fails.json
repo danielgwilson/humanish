@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-live-proof",
+    "labId": "terminal-live-proof",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-live-proof",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": false,
@@ -730,7 +732,7 @@
         "total": 0
       },
       "desktopMinutes": 0,
-      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+      "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
     }
   },
   "sandbox-receipts.ndjson": [

@@ -41,7 +41,7 @@ export function planeProvenanceFindings(
   const keys = new Set(items.map((item) => `${text(item.commit)}::${text(item.seedDigest)}`));
   if (keys.size > 1) {
     findings.push(
-      `${labels.items} reference divergent plane provenance (commit/seedDigest) — a ${labels.run} run drives ONE plane`,
+      `${labels.items} reference different plane provenance (commit or seedDigest), but a ${labels.run} run uses one plane`,
     );
   }
   if (!isRecord(plane)) return findings;
@@ -80,7 +80,7 @@ export function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvid
       if (typeof name !== "string" || !SUBJECT_ENV_NAME_PATTERN.test(name)) {
         // Never echoes the entry: a malformed entry may be a value.
         findings.push(
-          "sharedWorld.plane.envNames carries an entry that is not an env var NAME shape (values must never appear in evidence)",
+          "sharedWorld.plane.envNames has an entry that is not an environment variable name; evidence may hold names only, never values",
         );
       }
     }

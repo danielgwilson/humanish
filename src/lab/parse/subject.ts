@@ -49,7 +49,7 @@ export function parseSubject(
     const exposure = str(raw.exposure);
     if (exposure !== "synthetic") {
       return invalid(
-        "`subject.exposure` must be `synthetic` (the author attestation that the getHost-exposed subject is synthetic seeded data).",
+        "`subject.exposure` must be `synthetic`: your statement that the subject served on a public sandbox URL holds only synthetic seeded data.",
       );
     }
     subject.exposure = exposure;
@@ -92,7 +92,7 @@ function misplacedFieldFailure(
   // single loopback app, so reject appUrl on it.
   if (source === "terminal-product" && raw.appUrl !== undefined) {
     return invalid(
-      "`subject.appUrl` does not apply to terminal-product subjects — declare `subject.product.publicSurfaces` (the agent works from public surfaces, not one loopback app).",
+      "`subject.appUrl` does not apply to a terminal-product subject: its agent works from the product's public pages. List them in `subject.product.publicSurfaces` instead.",
     );
   }
 
@@ -215,12 +215,14 @@ function parseServedApp(
   if (raw.env !== undefined) {
     const env = strList(raw.env);
     if (!env || env.length === 0) {
-      return invalid("`subject.env` must be a non-empty list of env var NAMES when set.");
+      return invalid(
+        "`subject.env` must be a non-empty list of environment variable names when it is set.",
+      );
     }
     const badName = env.find((name) => !ENV_NAME_PATTERN.test(name));
     if (badName) {
       return invalid(
-        `subject.env entries must be env var NAMES like DATABASE_URL (got "${badName}"); values come from the caller's environment and are never persisted.`,
+        `subject.env entries must be environment variable names like DATABASE_URL, and "${badName}" is not one. Their values come from your environment and are never stored.`,
       );
     }
     subject.env = env;
@@ -260,7 +262,7 @@ function parseAppSubject(
   if (source === "local-app") {
     if (!isLoopbackUrl(appUrl)) {
       return invalid(
-        "`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on a local-app subject — it drives an already-running LOCAL dev server in-process; public targets are not supported on this route.",
+        "`subject.appUrl` must be a loopback URL (127.0.0.1 or localhost) on a local-app subject: humanish drives your running dev server from this process, so it cannot reach a public URL.",
       );
     }
   } else if (!isHttpUrl(appUrl)) {
@@ -302,7 +304,7 @@ function parsePublicTarget(
 ): { ok: true; value: { owner: string; authorized: boolean } } | LabConfigParseFailure {
   if (!isRecord(raw)) {
     return invalid(
-      "`subject.publicTarget` must be an object ({ owner, authorized: true }) — the operator's ownership attestation for the external-public shared plane.",
+      "`subject.publicTarget` must be an object, `{ owner, authorized: true }`, declaring that you own or operate the public deployment.",
     );
   }
   const owner = str(raw.owner);
@@ -313,7 +315,7 @@ function parsePublicTarget(
   }
   if (raw.authorized !== true) {
     return invalid(
-      "`subject.publicTarget.authorized` must be true — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).",
+      "`subject.publicTarget.authorized` must be true to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it.",
     );
   }
   return { ok: true, value: { owner, authorized: true } };
@@ -356,7 +358,7 @@ function parseProduct(
       upload.split(/[\\/]/).includes("..")
     ) {
       return invalid(
-        "`subject.product.upload` must stay inside the project — no absolute paths and no `..` segments.",
+        "`subject.product.upload` must stay inside the project: use a relative path with no `..` segments.",
       );
     }
   }
@@ -434,7 +436,7 @@ function parseServe(
   const url = str(raw.url);
   if (!url || !isLoopbackUrl(url)) {
     return invalid(
-      "`subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost) — the app is served INSIDE the sandbox.",
+      "`subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost), because the app runs inside the sandbox.",
     );
   }
   const serve: LabSubjectServe = { start, url };

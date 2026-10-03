@@ -13,8 +13,8 @@ import { LABS, NOW, RUNS } from "./fixtures.js";
 // The screen someone actually watches while a study is running.
 //
 // Daniel's steer, verbatim: "running has an over-emphasis on cost vs. the details of the persona
-// (abbreviated / truncated) and the current train of thought". So these assert the ORDER of the
-// frame as much as its content — a participant and their thinking above the money.
+// (abbreviated / truncated) and the current train of thought". So these assert the order of the
+// frame as much as its content: a participant and their thinking above the money.
 //
 // The detail shape mirrors a real computer-use run (`humanish.actor-trace.v1`), read off an actual
 // run rather than invented.
@@ -134,7 +134,7 @@ async function openLiveRun(
     const frame = await surface.press(KEY.down);
     if (/❯[^\n]*(starting|synthetic-new-user|CUA browser)/.test(frame)) break;
   }
-  // Wait for the DETAIL-bearing frame: entering the run screen renders its own facts first and the
+  // Wait for the detail-bearing frame: entering the run screen renders its own facts first and the
   // participants a moment later, so matching the status line alone captures the frame before the
   // thing under test has arrived.
   const frame = await surface.press(KEY.enter, (candidate) =>
@@ -155,7 +155,7 @@ describe("watching a run", () => {
 
     expect(participant).toBeGreaterThan(-1);
     expect(thought).toBeGreaterThan(participant);
-    // The ordering IS the requirement: who is in there and what they are thinking, then the money.
+    // The ordering is the requirement: who is in there and what they are thinking, then the money.
     expect(cost === -1 || cost > thought).toBe(true);
   });
 
@@ -165,7 +165,7 @@ describe("watching a run", () => {
     expect(frame).toContain("12 turns");
   });
 
-  it("quotes the thought — never paraphrased, and with the markdown lead dropped", async () => {
+  it("quotes the thought, never paraphrased, and with the markdown lead dropped", async () => {
     const { surface, frame } = await openLiveRun(LIVE_DETAIL);
     surface.unmount();
     expect(frame).toContain("Connecting fields for relationships");
@@ -232,7 +232,7 @@ describe("the interrupted card", () => {
 
   it("says what it spent and offers the action that stops the bleeding", async () => {
     // An interrupted run may have left sandboxes running, and those cost money until something
-    // stops them. This card is not an apology — it is the place that says so and does something.
+    // stops them. This card is not an apology: it is the place that says so and does something.
     const capabilities: TuiCapabilities = {
       readRunIndex: async () => ({
         schema: "humanish.run-index.v1",
@@ -319,7 +319,7 @@ describe("stopping a run that is still going", () => {
     const armed = await surface.press(KEY.enter, (candidate) =>
       candidate.includes("⏎ again to confirm"),
     );
-    // Nothing has been stopped yet — one keystroke must not be able to end a running study.
+    // Nothing has been stopped yet: one keystroke must not be able to end a running study.
     expect(stopped).toHaveLength(0);
     expect(armed).toContain("stop this run?");
 

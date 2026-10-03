@@ -24,7 +24,7 @@ pnpm release:check               # check + API proof + public-surface scan + ski
 ```
 
 `pnpm check` runs format:check, lint (oxlint, type-aware), knip, prose:check, vocabulary:check,
-typecheck, the vitest suite, the TUI tests, build, the startup proofs and a TUI smoke test. After
+site-css:check, typecheck, the vitest suite, the TUI tests, build, the startup proofs and a TUI smoke test. After
 changing a CLI option, run `pnpm docs:generate`; CI fails on a stale `site/content/docs/cli.mdx`.
 Observer changes also need `pnpm build` and the four `observer:*:proof` scripts, which CI's observer
 job runs in Chromium. `pnpm api:proof` (after `pnpm build`) installs the packed tarball in a
@@ -32,9 +32,10 @@ temporary project, compares its export names with `tests/golden/public-api.json`
 `examples/`. After an intended export change, run `pnpm api:proof --update` and review the golden
 diff.
 
-Three counts are held to caps: oxlint warnings (`lint`, `--max-warnings` in package.json), comment
-prose (`prose:check`) and words in `src/` identifiers and file names (`vocabulary:check`). The last
-two read their caps from `scripts/caps.json`. The retired participant words are lane, seat, role and
+Four counts are held to caps: oxlint warnings (`lint`, `--max-warnings` in package.json), comment
+prose (`prose:check`), words in `src/` identifiers and file names (`vocabulary:check`), and raw hex
+colors and unstyled classes in `site/app/globals.css` (`site-css:check`). The last three read their
+caps from `scripts/caps.json`. The retired participant words are lane, seat, role and
 sim. `lab` is retired too: a study is what a user designs and runs, and a run is one execution of
 it. Each checker fails when a count is above its cap or below it, so the
 PR that reduces a count lowers its cap to the new count; the failure names the cap and the value. A

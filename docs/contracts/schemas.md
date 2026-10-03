@@ -52,7 +52,7 @@ workflow without leaking private upstream truth into core.
 | Adapter score                     | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics)                                                                        | see Product-Adapter Extension Seam below                                            |
 | Adapter artifact                  | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references)                                                                   | see Product-Adapter Extension Seam below                                            |
 | Shared-world evidence             | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`)                                         | see Shared-World Evidence below                                                     |
-| Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of digests only — from/to/subject/link digests + an OTP count, never raw) | see `comms` under Lab Manifest                                                      |
+| Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of digests only: from/to/subject/link digests + one OTP count, never raw) | see `comms` under Lab Manifest                                                      |
 | Serve result                      | `humanish.serve-result.v1` (`src/observer/serve.ts` is authoritative)                                                                                                          | none (command result envelope; see Serve Result below)                              |
 | Serve control plane               | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1)                                                                                      | none                                                                                |
 
@@ -110,8 +110,8 @@ A lab is a composition over code primitives, not a hardcoded kind:
   `product.name` is a public-safe token (committed fixtures use a neutral mock
   name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
   skill manifest) that are the only world the agent sees. The lab does not
-  clone/provision the product, so its provenance is recorded unpinned
-  (invariant 5). `serve`/`clone`/`state`/`repos`/`appUrl` are rejected on a
+  clone/provision the product, so its provenance is recorded
+  unpinned. `serve`/`clone`/`state`/`repos`/`appUrl` are rejected on a
   terminal-product subject (a field that cannot act on the route is a parse
   error, not silently dropped). See
   [`docs/architecture/terminal-product-route.md`](../architecture/terminal-product-route.md);
@@ -178,7 +178,7 @@ dwell? }`. The parser expands it into
   there is refused at parse, since the sequential turn-taking route was removed
   in 0.106.0. The env override
   `HUMANISH_CUA_MAX_CONCURRENCY` may only lower the effective bound, never
-  raise concurrent paid desktops (invariant 3), and a lowering is recorded on
+  raise concurrent paid desktops, and a lowering is recorded on
   the plan (`envLoweredConcurrencyFrom`). Inert (warned) on other routes.
   `execution.timeoutMs` is the per-participant session budget on this route (semantics
   change: it was the single-session budget pre-fan-out); there is no run-level
@@ -218,7 +218,7 @@ dwell? }`. The parser expands it into
   template actually used is recorded in the run bundle as `desktopTemplate`
   (public-safe, since a template name is not a secret). Inert (warned) on every route
   that creates no desktop, incl. the in-process `local-app` cua route, so it is
-  never silently ignored (invariant 6). Custom images need the
+  never silently ignored. Custom images need the
   Desktop SDK's `xdotool` input support, `mktemp`, and the `C.UTF-8` locale:
   every typed text is written to a private 0600 file and typed with
   `LC_ALL=C.UTF-8 xdotool type --file` in one attempt. Without that locale a
@@ -237,8 +237,8 @@ dwell? }`. The parser expands it into
 - `execution.terminal` + `execution.runtimeAuth` (terminal-product route):
   `terminal.transport` is `exec-stream`: captured non-interactive exec output
   (stdin disabled); `pty` is rejected because labeling captured exec output as
-  an interactive PTY would overstate the mechanism (invariant 6; a true duplex
-  PTY transport does not ship). `terminal.stdin` defaults to `disabled`
+  an interactive PTY would overstate the mechanism (a duplex PTY
+  transport does not ship). `terminal.stdin` defaults to `disabled`
   (`sent`/assisted input is rejected until the interventions ledger + a
   non-comparable marker exist). `runtimeAuth` (`openai-env`, the default, or `openai-egress`)
   declares the agent's runtime-auth channel, recorded as names only. On a live run, the engine
@@ -283,7 +283,7 @@ dwell? }`. The parser expands it into
   only command-scoped). The scripted-browser route is loopback-only and rejects
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
-- `comms` (#297; hosted on the clone/local-tree computer-use route and the
+- `comms` (hosted on the clone/local-tree computer-use route and the
   shared-world getHost plane, or connected to an external catch on
   app-url/operator-provided subjects): off-app
   email the app itself sends, made a persona-driven testable surface. Lab
@@ -300,14 +300,14 @@ dwell? }`. The parser expands it into
   (the catch reserves `port+1` for the read-only inbox listener the shared-world
   route getHost-exposes). `recipients[]` = `{ lane, address? }`: omit the list
   and the parser fills one deterministic address per participant
-  (`<laneId>@example.test`) so every participant can do email (#351). When declared, a
+  (`<laneId>@example.test`) so every participant can do email. When declared, a
   `lane` must be one of the lab's real participant ids (roster ids, or the generated
   `lane-01..lane-NN` under `count`). An unknown participant id is a hard parse error
   listing them, zero addressed participants is a hard error, partial coverage warns
   with the uncovered participants. Each addressed participant's actor prompt is extended with
   the full handoff: its address ("enter exactly that"), the inbox URL, and the
   wait steering ("waiting for an email is normal, not a blocker").
-  `external` (#328) switches the funnel to an adopter-hosted catch, which is what
+  `external` switches the funnel to an adopter-hosted catch, which is what
   makes comms work on planes humanish does not provision (app-url /
   operator-provisioned): `{ catchBaseUrl, inboxBaseUrl?, authTokenEnv? }`. The
   operator runs the catch and points their own app's email-API base URL at it.
@@ -491,7 +491,7 @@ provenance` check.
   byte-stable. Public-safe (a template name is not a secret).
 - `attributionClass` (optional, additive): `isolated | shared-world`. Absent ==
   `isolated`, so every existing bundle is byte-stable. It is the
-  interaction-attribution axis (#164), independent of the persona-sampling
+  interaction-attribution axis, independent of the persona-sampling
   evidence classes. Set to `shared-world` by the shared-world route, paired
   with `sharedWorld`.
 - `sharedWorld` (optional, additive): the shared-world evidence block
@@ -566,7 +566,7 @@ feedbackCandidates: []
 
 ## Shared-World Evidence
 
-The shared-world topology (#164) is the declared override of the `per-lane-worlds`
+The shared-world topology is the declared override of the `per-lane-worlds`
 default: N distinct participants drive one provisioned, mutable service plane (one
 app + one seeded DB) so their actions interact through shared state. The one
 subject plane is provisioned via `subject.source: clone` (a fresh `git clone`) or
@@ -602,7 +602,7 @@ A shared-world bundle adds two additive, optional fields to `humanish.run-bundle
   - `attributionLimits: [...]`: the verify-enforced attribution ceiling (the set
     differs per `topologyMode`, below).
 
-  Sequential shape (`topologyMode: sequential`, #164 PR1; only in bundles written before
+  Sequential shape (`topologyMode: sequential`; only in bundles written before
   0.106.0):
   - `sequence: [roleId, …]`: the role ids that actually took a turn, in declared order.
   - `skippedTail` (optional, live sequential only): `{ afterRoleId, roles,
@@ -629,14 +629,14 @@ cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
   - Sequential `attributionLimits` must contain `sequential-only`, `no-concurrent-races`,
     and `delta-attributed-to-turn-not-action`.
 
-  Concurrent shape (`topologyMode: concurrent`, #164 phase 2: N personas drive one
+  Concurrent shape (`topologyMode: concurrent`: N personas drive one
   getHost-exposed plane at once; no `timeline`/`sequence`):
   - `plane.hostDigest`: sha256-16 of the harness-minted `getHost` origin every actor
-    drove (a first-class provisioned-subject target; invariant 2). A digest, not the raw
+    drove (a first-class provisioned-subject target). A digest, not the raw
     URL: a getHost URL embeds the live sandbox id and matches the publish-safety e2b-URL
     redaction, so it never lands raw in a published bundle (the raw tokenless URL is
     surfaced only on the ephemeral lab result). The orchestrator confirms the URL is
-    tokenless (no authKey; invariant 1) before digesting.
+    tokenless (no authKey) before digesting.
   - `plane.exposure: synthetic`: the required author attestation that the subject behind
     the internet-reachable getHost URL is synthetic seeded data (author-trust + a
     provenance gate, not a no-real-data guarantee).
@@ -665,15 +665,15 @@ is sha256-16 with no value-shaped field; all turns share one plane provenance; t
 mandatory limits are present; and a passed run shows ≥1 checkpoint `deltaFromPrev` (the
 delta-on-pass gate). Concurrent: no `timeline`; laneWindows and outcomes each
 cover exactly roleCount and stateSeries is present; the required limits are present and the forbidden ones absent;
-`plane.hostDigest` present and every `routeHostDigest` equals it (invariant 2);
+`plane.hostDigest` present and every `routeHostDigest` equals it;
 `plane.exposure == synthetic` and `subject.state.provenance == seeded` (the
 synthetic-subject gate); stateSeries snapshots are digest-only (allowed-keys tripwire);
 all laneWindows share one plane provenance; and the concurrency-on-pass gate: a passed
 run must show ≥2 overlapping laneWindows and a stateSeries delta whose timestamp is
 AT/AFTER an overlap interval start (otherwise it was not actually concurrent, or the
 world never changed under load). The per-participant no-engagement guard applies to both.
-Checkpoints / stateSeries persist digest-only by default until the #108 PII/PHI
-detector lands.
+Checkpoints / stateSeries persist digest-only by default until the
+[PII/PHI detector](https://github.com/danielgwilson/humanish/issues/108) lands.
 
 What the bundle can / cannot claim. Sequential: each role's own behavior at full
 fidelity; the observed system outcome as an ordered digest sequence; and the
@@ -685,7 +685,7 @@ world ("M of N"); proven concurrency (overlapping windows); and system-state evo
 under load (the stateSeries) with best-effort temporal correlation. It cannot claim
 strict causal attribution of a delta to an actor (concurrent ⇒ ambiguous), determinism
 of exact state, per-action granularity, or concurrency-safety (races are observed, never
-proven absent). Honesty: the deterministic $0 gate proves the plumbing + the
+proven absent). Limits: the deterministic $0 gate proves the plumbing + the
 attribution contract. A kept 2026-06-17 live receipt separately proves one
 bounded three-persona trial against a synthetic plane. Neither the deterministic
 gate nor that receipt proves scale, repeatability, or adopter-harness replacement.
@@ -892,12 +892,12 @@ Core-owned fields:
   may carry `cacheWriteInput` (tokens billed at the provider's cache-write rate,
   OpenAI 5.6+) and `turns[]` (per provider-request usage, the recorded fact
   long-context tier pricing needs). Both are additive and absent on
-  producers that do not report them (#334). Items may
+  producers that do not report them. Items may
   carry `at` (ISO-8601 recording stamp from the loop's clock) and, on
-  click-like `ui_action` items, structured `coord` (`x`/`y`). Both are additive
-  (#441): absent on older bundles and non-stamping producers, and absence means
+  click-like `ui_action` items, structured `coord` (`x`/`y`). Both are additive:
+  absent on older bundles and non-stamping producers, and absence means
   "timing/position unrecorded", never zero
-- optional `modelSettings` (`humanish.model-settings.v1`, #497): how the model was
+- optional `modelSettings` (`humanish.model-settings.v1`): how the model was
   asked to run, alongside `ids.model` which says which model it was.
   `reasoningEffort` records the value the request actually carried,
   including the provider default when a lab declared nothing. The resolved
@@ -928,8 +928,8 @@ Core-owned fields:
   cost estimate for this participant (see Run Cost Summary And Estimated Actor Cost).
   It is deliberately a different field from `tokenUsage.costUsd`: a bare
   `costUsd` is reserved for a real provider-returned charge, while
-  `estimatedCost.estimatedCostUsd` is a rate-table multiply, named honestly as
-  an estimate so a reader can never confuse the two (invariant 6). Absent on
+  `estimatedCost.estimatedCostUsd` is a rate-table multiply, named as an
+  estimate so a reader can never confuse the two. Absent on
   the Codex app-server and scripted routes and on every pre-existing bundle; the
   terminal route records a `null` estimate. A `null`
   `estimatedCostUsd` is declared absent (unknown rate / no usage), never 0.
@@ -1183,8 +1183,8 @@ that do answer the question rather than rendering escape codes into a pipe.
 
 The computer-use (CUA) route surfaces an advisory, additive cost estimate. It is
 never authoritative: every dollar figure is a rate-table multiply, labeled
-"estimated (rates as of `<date>`)", and is never presented as a provider charge
-(invariant 6). Three new `.v1` schema tags ship, all additive and optional so
+"estimated (rates as of `<date>`)", and is never presented as a provider charge.
+Three new `.v1` schema tags ship, all additive and optional so
 `humanish.run-bundle.v1` stays v1 and every pre-existing bundle is byte-stable:
 
 - `humanish.pricing.v1`: the operator-editable rate table in `src/run/pricing.ts`:
@@ -1573,7 +1573,7 @@ Acceptance semantics are route-specific:
   evidence.
 
 The `e2b-terminal` substrate is added to `RunFeedbackCandidate.substrate` so a
-terminal-agent candidate names its substrate honestly; browser candidates use
+terminal-agent candidate names the substrate it ran on; browser candidates use
 the existing `e2b-desktop` substrate. The routes invoke hooks over fully-assembled,
 redacted evidence (`TerminalProductScoringContext` or
 `BrowserLabScoringContext`: `bundle`, runtime-only `runDir`, run identifiers,
@@ -1584,7 +1584,7 @@ route the context also carries `transcript`: the full normalized session
 transcript, source-scrubbed then shape-redacted and byte-identical to the
 persisted `terminal-transcript.txt` (the trace's `transcriptTail` is a ~2KB
 projection of it), so an adopter rubric can find command-tier evidence anywhere
-in the session rather than only in the tail window (#341). Default behavior
+in the session, including outside the tail window. Default behavior
 (no hook) is unchanged. `verifyRun` re-checks the surviving shapes fail-closed,
 including existence for referenced adapter artifacts.
 

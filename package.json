@@ -1,13 +1,13 @@
 {
   "name": "humanish",
   "version": "0.107.0",
-  "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
+  "description": "Synthetic user research for apps, CLIs, and agent-facing product flows.",
   "keywords": [
-    "agent-harness",
     "cli",
-    "persona-simulation",
-    "ui-testing",
-    "ux-research"
+    "computer-use",
+    "synthetic-users",
+    "usability-testing",
+    "user-research"
   ],
   "homepage": "https://github.com/danielgwilson/humanish#readme",
   "bugs": {
@@ -54,7 +54,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm prose:check && pnpm vocabulary:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
+    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm prose:check && pnpm vocabulary:check && pnpm site-css:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
     "cli:startup:test": "node scripts/terminal-startup-exit-proof.mjs",
     "cli:preflight:test": "node scripts/task-route-preflight-proof.mjs",
     "humanish": "tsx src/cli.ts",
@@ -84,10 +84,11 @@
     "comms:agentmail:contract": "node --import tsx scripts/agentmail-contract-check.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "node scripts/check-lint-cap.mjs --max-warnings=442",
+    "lint": "node scripts/check-lint-cap.mjs --max-warnings=441",
     "knip": "knip",
     "prose:check": "node scripts/check-code-prose.mjs",
-    "vocabulary:check": "tsx scripts/check-retired-words.ts"
+    "vocabulary:check": "tsx scripts/check-retired-words.ts",
+    "site-css:check": "node scripts/check-site-css.mjs"
   },
   "dependencies": {
     "commander": "^15.0.0",

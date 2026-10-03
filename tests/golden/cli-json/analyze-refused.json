@@ -1,0 +1,15 @@
+{
+  "exitCode": 2,
+  "shape": {
+    "dryRun": "boolean",
+    "error": {
+      "code": "string",
+      "message": "string"
+    },
+    "ok": "boolean",
+    "reused": "boolean",
+    "run": "string",
+    "schema": "string",
+    "warnings": []
+  }
+}

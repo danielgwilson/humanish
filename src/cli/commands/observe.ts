@@ -25,8 +25,8 @@ import {
 export function registerObserveCommand(parent: Command, io: CliIo): void {
   parent
     .command("observe")
-    .description("Follow a run's saved evidence in Observer over loopback http://127.0.0.1.")
-    .summary("Follow a run's saved evidence over loopback http.")
+    .description("Open a saved run in the Observer, served on http://127.0.0.1.")
+    .summary("Open a saved run in the Observer.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option(
       "--port <port>",
@@ -175,9 +175,9 @@ export function registerServeCommand(parent: Command, io: CliIo): void {
   parent
     .command("serve")
     .description(
-      "Serve the local run library over loopback http, with optional tunnel-edge authenticated exposure.",
+      "Serve your run library on http://127.0.0.1, optionally shared through an authenticated tunnel. With --run, it opens on that run.",
     )
-    .summary("Serve the run library; optional tunnel-edge exposure.")
+    .summary("Serve your run library over HTTP.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(
       "--port <port>",

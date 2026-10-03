@@ -524,21 +524,16 @@ export async function detectLocalAgents(
   return found;
 }
 
-/** One line for `doctor`, in the register the other rows use. */
-export function localAgentDoctorMessage(found: readonly DetectedLocalAgent[]): string {
-  if (found.length === 0) {
-    return "no local coding agent found — openai-computer-use needs OPENAI_API_KEY; local-agent needs Codex or Claude Code installed and authenticated. Hosted desktops also need E2B_API_KEY.";
-  }
-  return (
-    found
-      .map((agent) =>
-        agent.authStatus === "authenticated"
-          ? `${agent.label} reports authenticated — actors[0].type: local-agent can use it instead of a provider API key; account access and limits are untested`
-          : agent.authStatus === "unauthenticated"
-            ? `${agent.label} reports not signed in — run \`${agent.id === "codex" ? "codex login" : "claude auth login"}\``
-            : `${agent.label} installed; authentication status could not be checked — run \`${agent.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed`,
-      )
-      .join(". ") +
-    ". Desktop and analysis requirements depend on the selected lab; run doctor --lab <lab> for its setup checks."
-  );
+/** Doctor's row when neither Codex nor Claude Code is installed. */
+export const NO_LOCAL_AGENT_MESSAGE =
+  "no local coding agent found. openai-computer-use needs OPENAI_API_KEY; local-agent needs Codex or Claude Code installed and signed in. Hosted desktops also need E2B_API_KEY.";
+
+/** Doctor's row for one installed agent, in the register the other rows use. */
+export function localAgentDoctorMessage(agent: DetectedLocalAgent): string {
+  if (agent.authStatus === "authenticated")
+    return `${agent.label} reports signed in; a lab with actors[0].type: local-agent can use it instead of a provider API key. Account access and limits are untested.`;
+  const status = agent.id === "codex" ? "codex login status" : "claude auth status";
+  return agent.authStatus === "unauthenticated"
+    ? `${agent.label} is installed and reports not signed in; run \`${agent.id === "codex" ? "codex login" : "claude auth login"}\``
+    : `${agent.label} is installed; its sign-in status could not be checked. Run \`${status}\`, and update the CLI if needed.`;
 }

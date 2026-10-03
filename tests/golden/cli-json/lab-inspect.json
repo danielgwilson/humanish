@@ -1,0 +1,34 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "config": {
+      "actors": [
+        {
+          "count": "number",
+          "type": "string"
+        }
+      ],
+      "defaults": {
+        "open": "boolean"
+      },
+      "description": "string",
+      "id": "string",
+      "scenario": {
+        "mode": "string"
+      },
+      "schema": "string",
+      "subject": {
+        "source": "string"
+      },
+      "title": "string"
+    },
+    "cwd": "string",
+    "lab": "string",
+    "ok": "boolean",
+    "origin": "string",
+    "path": "string",
+    "personas": [],
+    "schema": "string",
+    "warnings": []
+  }
+}

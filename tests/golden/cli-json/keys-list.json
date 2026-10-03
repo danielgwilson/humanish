@@ -1,0 +1,11 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "action": "string",
+    "message": "string",
+    "names": [],
+    "ok": "boolean",
+    "schema": "string",
+    "store": "string"
+  }
+}
