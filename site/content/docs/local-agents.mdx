@@ -12,28 +12,28 @@ set `review.analysis: false`. A Codex account analyst can also be
 [selected explicitly](repo:docs/product/automatic-analysis.md);
 changing the participant alone does not change the analyst.
 
-Replace the `actors` block in your [own-app lab](/docs/your-app) with this fragment,
-and delete `execution.caps`. A Codex participant signed in with a ChatGPT account
+Replace the `actor` block in your [own-app study](/docs/your-app) with this fragment,
+and delete `caps`. A Codex participant signed in with a ChatGPT account
 has no API price, so a dollar cap is refused with `HUMANISH_COMPUTER_USE_UNPRICED_CAP`
-(`HUMANISH_SHARED_WORLD_UNPRICED_CAP` in a shared-world lab);
+(`HUMANISH_SHARED_WORLD_UNPRICED_CAP` in a shared-world study);
 for Claude Code the cap does not bound subscription usage. Keep a finite
 `execution.timeoutMs`, which bounds both.
 
 ```yaml
-actors:
-  - type: local-agent # instead of openai-computer-use
-    localAgent: codex # use claude for Claude Code
-    persona: synthetic-new-user
-    mission: >-
-      Try the app as a newcomer. Complete its primary task, then report what happened.
+actor:
+  type: local-agent # instead of openai-computer-use
+  localAgent: codex # use claude for Claude Code
+  persona: synthetic-new-user
+  mission: >-
+    Try the app as a newcomer. Complete its primary task, then report what happened.
 ```
 
 `localAgent` chooses the installed CLI (`codex` is the default); `model` is a
 separate optional model selection passed to that CLI. When it is omitted, the
 hosted Codex route retains the operator's configured model selection. Having Codex
-installed does not change an `openai-computer-use` lab.
+installed does not change an `openai-computer-use` study.
 
-Check the CLI's sign-in state, then the lab's setup:
+Check the CLI's sign-in state, then the study's setup:
 
 ```bash
 codex login status                 # or: claude auth status

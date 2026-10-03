@@ -39,27 +39,27 @@ is `humanish run --dry-run`, a contract-proof dry run rather than this live stud
 writes `humanish/studies/local-browser.yaml` with safe defaults when the two options are omitted.
 The options provide the normal setup path for the app URL and mission on first setup. If the
 file already exists, `init` preserves it and warns that these options were skipped; edit the
-existing manifest to change its URL or mission. The commands above write this lab (its
+existing study file to change its URL or mission. The commands above write this study (its
 `description` is omitted here):
 
 ```yaml
-schema: humanish.lab.v2
+schema: humanish.study.v3
 id: local-browser
 title: Local browser · your app · Codex account
+route: computer-use
+mode: live
 subject:
   source: app-url
   appUrl: "http://127.0.0.1:3000"
-actors:
-  - type: local-agent
-    localAgent: codex
-    persona: synthetic-new-user
-    mission: "Create a note and explain anything confusing about saving it"
+actor:
+  type: local-agent
+  localAgent: codex
+  persona: synthetic-new-user
+  mission: "Create a note and explain anything confusing about saving it"
 execution:
   target: local
   concurrency: 1
   timeoutMs: 120000
-scenario:
-  mode: live
 defaults:
   open: true
 ```
@@ -76,7 +76,7 @@ The first live run downloads the pinned runtime archive (about 569 MiB on x64 or
 Later runs reuse the image.
 `humanish runtime setup` prepares it in advance. Status, doctor and dry-run never
 download an image or launch a participant. Preparation does not consume the
-participant's task-time budget. The TUI lists the same lab and runtime readiness;
+participant's task-time budget. The TUI lists the same study and runtime readiness;
 starting it uses the same preparation and execution path.
 
 This configuration needs neither an E2B key nor an OpenAI API key. Participants
@@ -89,7 +89,7 @@ ceilings are unknown; numeric dollar/token caps are rejected. Set
 For API billing and its supported caps, use `type: openai-computer-use`, remove
 `localAgent`, and provide `OPENAI_API_KEY`. Its analysis retains the existing API
 default. Neither path silently falls back to another provider or hosted desktop.
-Existing labs without `execution.target: local` retain their previous behavior.
+Existing studies without `execution.target: local` retain their previous behavior.
 
 Before handing the desktop to the participant, the guest opens the
 selected app and waits up to 30 seconds for the initial document's

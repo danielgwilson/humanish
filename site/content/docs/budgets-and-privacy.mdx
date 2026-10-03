@@ -10,21 +10,21 @@ humanish is free and MIT-licensed. A live study spends on the providers you brin
 Four steps cost nothing and need no keys:
 
 1. `npx humanish watch` opens the Observer on a bundled sample run. It does not open your app and sends no participant anywhere.
-2. `npx humanish run <lab> --dry-run` does a dry run of your lab without a browser, keys or provider spend, so a manifest mistake surfaces before a desktop exists.
+2. `npx humanish run <study> --dry-run` does a dry run of your study without a browser, keys or provider spend, so a mistake in the study file surfaces before a desktop exists.
 3. `npx humanish telemetry disable` (or `DO_NOT_TRACK=1`) stops usage telemetry.
-4. `review.analysis: false` in the lab keeps the analyst call out of the first live run.
+4. `review.analysis: false` in the study keeps the analyst call out of the first live run.
 
 ## Set a study budget
 
 For the computer-use route, declare both the study budget and a per-participant backstop:
 
 ```yaml
+caps:
+  maxTotalUsd: 4
+  maxUsd: 2
 execution:
   target: e2b-desktop
   timeoutMs: 600000
-  caps:
-    maxTotalUsd: 4
-    maxUsd: 2
 ```
 
 - `maxTotalUsd` tracks estimated model spend across the study.
@@ -33,7 +33,7 @@ execution:
 - E2B desktop time, app provisioning, and any services used by your target app are additional. Desktop estimates use dated assumptions; your provider bill is authoritative.
 - A model without a known rate cannot satisfy a fail-closed computer-use cap, so the run is refused rather than treated as free.
 
-The included `try-live` lab uses one participant, `maxUsd: 2` and `maxOutputTokens: 8192`. It is a starting point for learning the product, not a recommended budget for every task. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant (Codex when it is signed in, otherwise Claude Code) and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
+The included `try-live` study uses one participant, `maxUsd: 2` and `maxOutputTokens: 8192`. It is a starting point for learning the product, not a recommended budget for every task. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant (Codex when it is signed in, otherwise Claude Code) and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
 
 The first paid step is this one participant. [Store the keys](#store-credentials) first, then run `npx humanish run try-live` against a synthetic account on the target, with the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
 
@@ -46,7 +46,7 @@ it. Set `review.analysis: false` to disable the request, or configure
 key records a skip while preserving a successful recording. So does a default
 analysis whose admission estimate is over its limit; the CLI then prints the
 `humanish analyze` command that runs it with a sufficient `--max-cost`. An analysis
-you declare in the lab still fails when its estimate is over its limit. Dry-run and
+you declare in the study still fails when its estimate is over its limit. Dry-run and
 keyless preview routes make no analysis request.
 
 Analysis usage is stored separately from participant costs. Inspect it with
@@ -90,7 +90,7 @@ priced the same way.
 
 The `maxOutputTokens` control below requires humanish `0.83.0` or later.
 
-For first-party OpenAI computer-use studies, optional `actors[0].maxOutputTokens`
+For first-party OpenAI computer-use studies, optional `actor.maxOutputTokens`
 sets a positive integer limit on each response's output, including reasoning
 tokens. It applies to every participant, continuation and retry. A participant's
 first request and a closing report use the smaller of this value and 1024,
@@ -109,7 +109,7 @@ bound input/context tokens, total requests, cumulative spend or desktop time.
 Terminal, local-agent, scripted, custom-provider/session routes and per-participant
 overrides are rejected when they declare this unsupported control.
 
-The default computer-use model is `gpt-5.6-sol`. Set `actors[0].model` in the lab
+The default computer-use model is `gpt-5.6-sol`. Set `actor.model` in the study
 to pin another supported model. The checked-in rate table also prices models
 such as `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`; consult the table in your
 installed version instead of assuming a newly available model is priced.
@@ -128,17 +128,17 @@ request and records `usage_unreported`. A request that stalls or fails in transi
 may still have been billed, so humanish counts its worst case against the cap
 before sending it again: the previous request's input plus the actor's
 `maxOutputTokens`, at the model's rates. The retry happens only when that fits.
-Without `maxOutputTokens` the worst case has no bound, so a capped lab without
+Without `maxOutputTokens` the worst case has no bound, so a capped study without
 `maxOutputTokens` stops on a stall instead of retrying (`usage_unreported`). The
-`try-live` lab and the capped labs in `humanish/studies/` set `maxOutputTokens: 8192`
+`try-live` study and the capped studies in `humanish/studies/` set `maxOutputTokens: 8192`
 for that reason.
 
-The terminal route uses `scenario.caps.maxUsd` for its separate cost-ledger and
+The terminal route reads `caps.maxUsd` for its separate cost-ledger and
 product-spend rules; it does not use these computer-use model thresholds. Its
 Codex tokens are counted but unpriced, so a live terminal run with a positive
 `maxUsd` is refused with `HUMANISH_TERMINAL_UNPRICED_CAP` unless an adapter's
 cost probe measures spend. Set `maxUsd: 0` and bound the run with
-`scenario.caps.maxMinutes`, which stops the agent command. A sandbox may live at most an hour, and
+`caps.maxMinutes`, which stops the agent command. A sandbox may live at most an hour, and
 its timeout adds the setup before the agent command (up to 6 minutes, or 11 with
 `subject.product.install`) and a 5-minute teardown buffer to `maxMinutes`, so a
 live run refuses a `maxMinutes` above 49, or 44 with a product install
@@ -147,11 +147,11 @@ summary prices the terminal sandbox's compute time the way it prices a
 computer-use desktop, from its span and size; that estimate is not counted
 against `maxUsd`. A terminal run that exceeds its spend cap keeps the agent's own
 verdict and still fails, with `HUMANISH_TERMINAL_CAPS_EXCEEDED`; the review and
-`status.json` name the cap. The computer-use route uses `execution.caps`. A positive
-`scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab is
-refused when the lab is parsed, with a message that names the matching
-`execution.caps` field. `scenario.caps.maxTotalUsd` is not a terminal study
-budget. Check route warnings before relying on a field.
+`status.json` name the cap. Every route reads the same top-level `caps` block, and a
+key the route does not read is refused when the study is parsed: computer-use and
+shared-world read `maxUsd` and `maxTotalUsd`, terminal reads `maxUsd`, `maxJobs` and
+`maxMinutes`, so `maxTotalUsd` is not a terminal study budget. Check route warnings
+before relying on a field.
 
 ## Store credentials
 
@@ -165,11 +165,11 @@ For terminal studies, `execution.runtimeAuth: openai-egress` keeps the raw OpenA
 
 ## Use a signed-in coding agent
 
-`actors[0].type: local-agent` runs the participant on your signed-in Codex or Claude Code plan. E2B still bills for desktops, and a dollar cap does not bound plan usage. [Use a local coding agent](/docs/local-agents) has the setup and limits.
+`actor.type: local-agent` runs the participant on your signed-in Codex or Claude Code plan. E2B still bills for desktops, and a dollar cap does not bound plan usage. [Use a local coding agent](/docs/local-agents) has the setup and limits.
 
 ## Review evidence before sharing
 
-Run evidence stays in gitignored `.humanish/`, and no command publishes it. Use synthetic accounts and data, and keep private targets in ignored lab files. Run `npx humanish verify --run latest --json` and read the pixels before sharing anything. [Verify before sharing](/docs/read-results#verify-before-sharing) explains the `shareSafety` grades and the redacted export.
+Run evidence stays in gitignored `.humanish/`, and no command publishes it. Use synthetic accounts and data, and keep private targets in ignored study files. Run `npx humanish verify --run latest --json` and read the pixels before sharing anything. [Verify before sharing](/docs/read-results#verify-before-sharing) explains the `shareSafety` grades and the redacted export.
 
 ## Recover after an interruption
 
@@ -177,4 +177,4 @@ After a crash, run `npx humanish runs`, then `npx humanish cleanup --run YOUR_RU
 
 ## Choose telemetry
 
-Telemetry is on by default and never sends labs, subjects, personas, paths or evidence. `npx humanish telemetry disable` or `DO_NOT_TRACK=1` turns it off; [TELEMETRY.md](repo:TELEMETRY.md) lists every field.
+Telemetry is on by default and never sends studies, subjects, personas, paths or evidence. `npx humanish telemetry disable` or `DO_NOT_TRACK=1` turns it off; [TELEMETRY.md](repo:TELEMETRY.md) lists every field.
