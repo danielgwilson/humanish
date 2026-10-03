@@ -2979,7 +2979,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_STUDY_OPTION_UNSUPPORTED",
-          "message": "RunLabOptions.inProcess is not supported on the computer-use route: an in-process executor returns no frame, so it needs createProvider."
+          "message": "RunStudyOptions.inProcess is not supported on the computer-use route: an in-process executor returns no frame, so it needs createProvider."
         },
         "appUrl": "http://127.0.0.1:3000/",
         "lanes": []
@@ -3008,7 +3008,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
-          "message": "RunLabOptions.inProcess needs RunLabOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
+          "message": "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3124,7 +3124,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
+          "message": "Fan-out to more than one participant is not supported on the in-process route (RunStudyOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

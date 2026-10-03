@@ -283,7 +283,7 @@ function driverReason(
     return {
       code: "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
       message:
-        "RunLabOptions.inProcess needs RunLabOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session.",
+        "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session.",
     };
   // There is no built-in in-process driver for a local app.
   if (localAppSubject && !inProcessRoute)
@@ -403,7 +403,7 @@ export function planComputerUseStudy(
     return refuse(
       "in-scope",
       "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      `RunLabOptions.inProcess drives subject.appUrl in this process, and a ${source} subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop.`,
+      `RunStudyOptions.inProcess drives subject.appUrl in this process, and a ${source} subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop.`,
       actor,
     );
   // The parser's rule; without a product the desktop study fails later.
@@ -424,7 +424,7 @@ export function planComputerUseStudy(
     return refuse(
       "after-personas",
       "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route.",
+      "Fan-out to more than one participant is not supported on the in-process route (RunStudyOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route.",
       actor,
     );
   if (first === undefined) throw new Error("computerUseParticipants returned no participant");
