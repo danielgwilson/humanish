@@ -28,7 +28,14 @@ import {
 } from "./participant-records.js";
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./project.js";
 import { loadDryRunInputs } from "./dry-run-inputs.js";
-import { judgeExecution, judgePreview, OUTCOME_POLICIES, resultOk, type Verdict } from "./judge.js";
+import {
+  judgeExecution,
+  judgePreview,
+  OUTCOME_POLICIES,
+  resultOk,
+  type Verdict,
+  verdictText,
+} from "./judge.js";
 
 /**
  * The preview route's run. The run scope closes the run it started on every exit, including
@@ -152,7 +159,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     events: observerFixtures.events,
     redaction: {
       status: "passed",
-      notes: "Dry-run bundle contains synthetic contract proof only.",
+      notes: "Dry-run bundle: synthetic data only, nothing from a product.",
     },
     artifacts: bundleArtifacts(),
     review: createReviewSummary(judgment.verdict),
@@ -192,15 +199,14 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
 }
 
 /**
- * The preview's review, with the verdict judgePreview gave it. It claims artifact plumbing only,
- * never product behavior.
+ * The preview's review, with the verdict judgePreview gave it. It claims only that the run's
+ * files were written, never product behavior.
  */
 function createReviewSummary(verdict: Verdict): ReviewSummary {
   return {
     schema: REVIEW_SCHEMA,
     verdict,
-    summary:
-      "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
+    summary: "Dry run: humanish wrote a synthetic run bundle. No product behavior was tested.",
     gaps: [
       "No browser was launched.",
       "No product state was verified.",
@@ -217,7 +223,7 @@ Run: ${bundle.runId}
 
 Mode: ${bundle.mode}
 
-Verdict: ${bundle.review.verdict}
+Verdict: ${verdictText(bundle.review.verdict, bundle.mode)}
 
 ${bundle.review.summary}
 
@@ -278,7 +284,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     // Every command in a shipped sample tail must be one the CLI actually accepts: participants
     // read and run them. tests/surface/shipped-command-strings.test.ts checks this against the
     // command table.
-    tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
+    tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\nhumanish run dry-run",
     viewport: undefined,
   },
   {

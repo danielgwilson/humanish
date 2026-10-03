@@ -16,5 +16,10 @@
       }
     ],
     "schema": "string"
+  },
+  "pinned": {
+    "ids": [
+      "agentmail"
+    ]
   }
 }

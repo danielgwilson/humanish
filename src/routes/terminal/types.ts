@@ -347,7 +347,7 @@ export interface NoSpendProof {
   unmeasuredLines: CostCategory[];
   /** Sum of the known lines (== 0 for a satisfied no-spend run). */
   knownTotalUsd: number;
-  /** Human-readable honesty statement covering both what is proven and what is unmeasured. */
+  /** Human-readable statement covering both what is proven and what is unmeasured. */
   statement: string;
 }
 
@@ -369,7 +369,7 @@ export interface TerminalLedgers {
      *  this exact sandbox running/paused (still present); -1 = kill(id) itself failed, threw, or
      *  was unavailable (the server-side kill-on-timeout is the backstop). */
     remaining: number;
-    /** Honest, human-readable statement of which by-id signal produced `remaining`. */
+    /** Human-readable statement of which by-id signal produced `remaining`. */
     reason: string;
   };
   /** The spend ledger. Unknowns are `null`, never guessed; the no-spend proof

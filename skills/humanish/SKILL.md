@@ -372,8 +372,8 @@ inbox page. See `docs/contracts/schemas.md` for the full `comms:` shape and
 
 ## First Proof Run
 
-Run the no-credentials path first. This proves humanish artifact plumbing, not
-target app behavior:
+Run the no-credentials path first. It is a dry run: humanish writes a synthetic
+run bundle and tests no target app behavior:
 
 ```bash
 npx humanish doctor

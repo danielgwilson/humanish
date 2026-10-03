@@ -1,0 +1,15 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.env-file-result.v1",
+  "ok": false,
+  "cwd": "[cwd]",
+  "envFile": "missing.env",
+  "loaded": [],
+  "skipped": [],
+  "error": {
+    "code": "HUMANISH_ENV_FILE_NOT_FOUND",
+    "message": "Env file was not readable: missing.env"
+  }
+}

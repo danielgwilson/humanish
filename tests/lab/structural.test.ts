@@ -70,8 +70,8 @@ describe("lab config expressiveness (rung 3)", () => {
         repos: ["example-org/private-app"],
         clone: { depth: 1, fanout: 1 },
       },
-      // No route runs a free-form actor label on a clone lab; it used to parse and then fail at
-      // run start, so the parser refuses it and names the actors that can run a clone lab.
+      // No route runs a free-form actor label on a clone study; parsing it would defer the failure
+      // to run start, so the parser refuses it and names the actors that can run a clone study.
       actors: [
         {
           type: "codex-migrator",

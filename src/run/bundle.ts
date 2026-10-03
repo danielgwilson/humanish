@@ -218,7 +218,7 @@ export interface RunSubjectProvenance {
      * external-public: an operator-declared, operator-owned public deployment used
      *   directly as the shared plane; humanish neither provisioned nor seeded it (no getHost, no
      *   clone, no in-sandbox filesystem). It is not "seeded" (nothing was seeded) and not "unpinned" (this is
-     *   an owned target, not an uncontrolled external DB). The honest marker for the external-public
+     *   an owned target, not an uncontrolled external DB). The marker for the external-public
      *   plane class; verify asserts it in place of the getHost seeded gate.
      */
     provenance: "seeded" | "unpinned" | "declared-not-run" | "undeclared" | "external-public";
@@ -228,7 +228,7 @@ export interface RunSubjectProvenance {
 }
 
 /**
- * How well a run attributed interaction between actors: a separate honesty axis, orthogonal to the
+ * How well a run attributed interaction between actors: a separate evidence axis, orthogonal to the
  * persona-sampling evidence classes (which answer "how representative is the actor?"). Absent ==
  * `isolated` (every existing bundle byte-stable). `shared-world` means N participants drove one
  * mutable plane and their per-participant attribution is weaker (its ceiling is pinned in `sharedWorld.attributionLimits`).
@@ -322,7 +322,7 @@ export interface RunBundle {
    */
   rerun?: RunRerunLineage;
   /**
-   * The interaction-attribution honesty axis. Absent == `isolated` (every existing bundle
+   * The interaction-attribution evidence axis. Absent == `isolated` (every existing bundle
    * byte-stable). Set to `shared-world` by the shared-world backend, paired with `sharedWorld`.
    */
   attributionClass?: RunAttributionClass;
@@ -358,8 +358,8 @@ export interface RunBundle {
   providerResources?: RunProviderResource[];
   /**
    * Which lab manifest produced this run. Optional + additive: absent on every bundle
-   * written before this contract and on library callers who pass a LabConfig directly (the run is
-   * then honestly lab-less rather than guessed). For older bundles a reader may fall back to
+   * written before this contract and on library callers who pass a LabConfig directly (the run
+   * then has no study id rather than a guessed one). For older bundles a reader may fall back to
    * `inferLegacyLabId`, which reads only the historical `persona.source = "lab:<id>"` convention.
    */
   lab?: RunLabProvenance;
@@ -435,7 +435,7 @@ export interface RunCostSummary {
   tokenUsage: { input?: number; output?: number; total?: number };
   /** Host-side create->teardown span in minutes; null when no sandbox was created. */
   desktopMinutes: number | null;
-  /** Honest "estimated; <x> unmeasured" statement. */
+  /** The "estimated; <x> unmeasured" statement. */
   note: string;
 }
 

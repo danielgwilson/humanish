@@ -23,8 +23,9 @@ import { verifyRun } from "../../../src/verify/verify.js";
 // branch, so this rung is a separately-authorized receipt run after this PR merges to main.
 //
 // The deterministic fake-substrate proof (the rendezvous latch) in
-// concurrent-shared-world-lab.test.ts is the merge gate at $0; it proves the plumbing + the honesty
-// contract, not "we ran many concurrent users at scale", which only this live receipt backs.
+// concurrent-shared-world-lab.test.ts is the merge gate at $0; it proves the plumbing + the
+// claims-match-mechanism contract, not "we ran many concurrent users at scale", which only this
+// live receipt backs.
 const LIVE =
   process.env.HUMANISH_LIVE_SHARED_WORLD === "1" &&
   Boolean(process.env.OPENAI_API_KEY) &&

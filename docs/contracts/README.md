@@ -16,6 +16,8 @@ disagree.
   GitHub.
 - [study-analysis.md](study-analysis.md): post-run analysis of retained participant evidence.
 - [study-costs.md](study-costs.md): what `humanish stats` counts as spend.
+- [errors.md](errors.md): the error code families, where each code appears, and the human
+  error shape on stderr.
 - [adapter-admission.md](adapter-admission.md): the admission limit a custom provider can raise
   before a request is sent.
 - [adapter-fixtures.md](adapter-fixtures.md): the committed adapter fixtures and the parity checks

@@ -187,14 +187,14 @@ export function validateExposure(
     if (!edgeAuthed && !request.safe) {
       return fail(
         "EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE",
-        "--expose opens a public URL to local run bundles; require edge auth (--oauth google with --tunnel, or a --public-url you secure) OR --safe (share_ready runs only).",
+        "--expose opens a public URL to local run bundles, so it needs edge auth (--oauth google with --tunnel, or a --public-url you secure) or --safe (share_ready runs only).",
       );
     }
   }
 
   if (request.oauth && request.allowEmails.length === 0 && request.allowDomains.length === 0) {
     warnings.push(
-      "ngrok --oauth google with NO --allow-email/--allow-domain lets ANY Google account that reaches the URL in; add at least one allow rule to restrict who can watch.",
+      "ngrok --oauth google without --allow-email or --allow-domain lets in any Google account that reaches the URL. Add at least one allow rule to choose who can watch.",
     );
   }
 

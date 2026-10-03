@@ -15,6 +15,9 @@ import {
   RUN_OPTION_DESCRIPTION,
   wantsJson,
   writeResult,
+  type HumanOutput,
+  humanError,
+  writeHuman,
 } from "../io.js";
 
 export function registerFeedbackCommands(parent: Command, io: CliIo): void {
@@ -171,7 +174,7 @@ async function handleFeedbackIssue(
   } else if (result.ok && result.issueMarkdown) {
     io.writeOut(result.issueMarkdown);
   } else {
-    io.writeErr(formatFeedbackHuman(result));
+    writeHuman(command, io, formatFeedbackHuman(result));
   }
 
   io.setExitCode(result.ok ? 0 : 2);
@@ -202,16 +205,14 @@ async function handleFeedbackIssueUrl(
   } else if (result.ok && result.issueUrl) {
     io.writeOut(`${result.issueUrl}\n`);
   } else {
-    io.writeErr(formatFeedbackHuman(result));
+    writeHuman(command, io, formatFeedbackHuman(result));
   }
 
   io.setExitCode(result.ok ? 0 : 2);
 }
 
-function formatFeedbackHuman(result: FeedbackResult): string {
-  if (!result.ok) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+function formatFeedbackHuman(result: FeedbackResult): HumanOutput {
+  if (!result.ok) return humanError(result.error);
 
   const candidates = result.candidates ?? [];
   const noCandidates = result.candidates !== undefined && candidates.length === 0;

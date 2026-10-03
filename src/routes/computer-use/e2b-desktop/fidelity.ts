@@ -59,7 +59,8 @@ function cdpEndpoint(
  * observation. A request that cannot be applied fails the participant closed with the reason. Only
  * participants on a mobile preset are emulated: a run-wide flag must not hand a desktop or tablet
  * participant an iPhone user agent (the first live proof did exactly that to the desktop newcomer
- * beside the phone participant). Those participants carry no fidelity block, which is honest.
+ * beside the phone participant). Those participants carry no fidelity block, since nothing was
+ * emulated.
  */
 export async function applyParticipantMobileFidelity(args: {
   desktop: E2BDesktopSandbox;
@@ -163,7 +164,7 @@ export function participantBrowserStateObserver(args: {
 /**
  * The participant's final browser geometry, measured while the sandbox is alive. A final capture that
  * measured either field wins whole, so a partial final capture omits fields the launch-time capture
- * had (honest omission); only a final capture that measured nothing falls back to the launch-time
+ * had; only a final capture that measured nothing falls back to the launch-time
  * capture. Also reads the emulation holder's log into the fidelity block.
  */
 export async function finalParticipantGeometry(args: {

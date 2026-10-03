@@ -25,9 +25,9 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
   const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
   const { runId, paths: runPaths } = run;
   // A live run writes what it is doing as it does it, whether or not anyone is currently watching.
-  // This used to be gated on `options.onObserverReady` (the interactive Observer callback), so a
-  // run launched by an agent (`lab run --json`), detached, or from the terminal surface recorded
-  // nothing at all until it completed, and anything asking "what is this participant doing right
+  // This is not gated on `options.onObserverReady` (the interactive Observer callback): gated, a
+  // run launched by an agent (`lab run --json`), detached, or from the terminal surface records
+  // nothing at all until it completes, and anything asking "what is this participant doing right
   // now" got silence for the whole run. Who reads the evidence is not the run's business; the
   // callback below stays conditional, the writing does not.
   if (!dryRun) {

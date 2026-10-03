@@ -18,5 +18,74 @@
       "status": "string"
     },
     "warnings": []
+  },
+  "pinned": {
+    "checks": [
+      [
+        "run.json exists",
+        true
+      ],
+      [
+        "run schema",
+        true
+      ],
+      [
+        "run bundle shape",
+        true
+      ],
+      [
+        "redaction passed",
+        true
+      ],
+      [
+        "review artifacts exist",
+        true
+      ],
+      [
+        "public-safety scan",
+        true
+      ],
+      [
+        "local evidence artifacts exist",
+        true
+      ],
+      [
+        "terminal-product evidence",
+        true
+      ],
+      [
+        "codex app-server evidence",
+        true
+      ],
+      [
+        "actor engagement",
+        true
+      ],
+      [
+        "actor verdict consistency",
+        true
+      ],
+      [
+        "subject state provenance",
+        true
+      ],
+      [
+        "shared-world evidence",
+        true
+      ],
+      [
+        "cleanup receipt",
+        true
+      ],
+      [
+        "rerun lineage",
+        true
+      ],
+      [
+        "cost estimate labeling",
+        true
+      ]
+    ],
+    "shareSafety": "share_ready"
   }
 }

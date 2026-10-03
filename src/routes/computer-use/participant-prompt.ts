@@ -47,7 +47,7 @@ export function composeParticipantInstructions(args: {
   /** The compiled persona for `args.persona`, when its committed file resolved. Supplying it
    *  makes the persona shape behavior: its traits become directives in the prompt and land in
    *  traitsApplied, instead of appearing as a bare `Persona: <id>.` label. Absent (unsafe id,
-   *  no committed file, unparseable YAML) keeps the honest fallback: the bare line and an empty
+   *  no committed file, unparseable YAML) keeps the fallback: the bare line and an empty
    *  traitsApplied, never fabricated traits. Resolved by the caller so this stays pure. */
   resolvedPersona?: ResolvedPersona;
   /**

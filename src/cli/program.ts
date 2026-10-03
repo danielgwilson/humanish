@@ -344,9 +344,9 @@ export function createProgram(
   io: Partial<CliIo> & { tuiRuntime?: Partial<TuiRuntime> } = {},
 ): Command {
   const given: CliIo = { ...defaultIo, ...io };
-  // Telemetry's `ok` used to mean "the handler did not throw", which is true of nearly every
-  // failure: commands report failure through their envelope and setExitCode(2), not by throwing.
-  // 1,359 study events in two days and every one said ok. Record the exit code the command chose.
+  // Telemetry's `ok` is the exit code the command chose. "The handler did not throw" is true of
+  // nearly every failure: commands report failure through their envelope and setExitCode(2), not
+  // by throwing.
   const cliIo: CliIo = {
     ...given,
     setExitCode: (code) => {

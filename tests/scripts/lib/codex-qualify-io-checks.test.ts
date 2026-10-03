@@ -254,7 +254,7 @@ describe("codex:qualify live checks", () => {
   });
 });
 
-describe("codex:qualify exemptions an honest release or the harness could slip through", () => {
+describe("codex:qualify exemptions a new release or the harness could slip through", () => {
   const ev = (op: string, path: string, ok = true, resolved?: string) => ({
     op,
     paths: [path],

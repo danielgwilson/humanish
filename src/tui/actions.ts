@@ -56,7 +56,7 @@ export function createTuiObserverSession(
       if (closed)
         return result(
           false,
-          "this terminal session has closed — reopen humanish tui to view the run",
+          "this terminal session has closed; reopen `humanish tui` to view the run",
         );
       if (path.resolve(targetCwd) !== cwd)
         return result(false, "Observer can only open runs from this terminal session's project");
@@ -90,7 +90,7 @@ export function createTuiObserverSession(
       if (closed)
         return result(
           false,
-          "this terminal session has closed — reopen humanish tui to view the run",
+          "this terminal session has closed; reopen `humanish tui` to view the run",
         );
 
       try {
@@ -113,7 +113,7 @@ export function createTuiObserverSession(
         if (closed)
           return result(
             false,
-            "this terminal session has closed — reopen humanish tui to view the run",
+            "this terminal session has closed; reopen `humanish tui` to view the run",
           );
         const url = new URL(
           `_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`,
@@ -122,12 +122,12 @@ export function createTuiObserverSession(
         const opened = open(url);
         return result(
           true,
-          `${url} — follows saved captures; keep this TUI open.${opened.warning ? ` ${opened.warning}` : " If no browser appeared, open this URL on this machine or forward its port over SSH."}`,
+          `${url} follows saved captures while you keep this TUI open.${opened.warning ? ` ${opened.warning}` : " If no browser appeared, open this URL on this machine or forward its port over SSH."}`,
         );
       } catch {
         return result(
           false,
-          "Observer could not start — try humanish observe --run with this run's id in another terminal",
+          "Observer could not start; run `humanish observe --run <run id>` in another terminal",
         );
       }
     },
@@ -197,7 +197,7 @@ export async function stopRun(
       schema: TUI_ACTION_SCHEMA,
       ok: false,
       message:
-        "this run has no status record, so there is no pid to stop — it predates the contract or never started",
+        "this run has no status record, so there is no pid to stop; it predates status records or never started",
     };
   }
   if (!isRunStatusRecord(record)) {
@@ -239,7 +239,7 @@ export async function stopRun(
     return {
       schema: TUI_ACTION_SCHEMA,
       ok: false,
-      message: `nothing is running under pid ${pid} — it has already stopped, and its record will read as interrupted`,
+      message: `nothing is running under pid ${pid}; it has already stopped, and its record will read as interrupted`,
     };
   }
 

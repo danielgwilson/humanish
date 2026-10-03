@@ -253,7 +253,7 @@ function localTreeValidationReason(config: LabConfig): string | null {
 // desktop-cli route: a computer-use participant studies a CLI/TUI the way a person does: at a
 // desktop, in a terminal window, by looking at it. The sibling of terminal-product, and the
 // distinction is the population: terminal-product sends an autonomous agent
-// through a pipe with stdin disabled, which is the honest way to study what an agent meets and
+// through a pipe with stdin disabled, which matches what an agent meets and
 // structurally cannot study an interactive surface. This route sends someone who can see it.
 //
 // Fail-closed on the pairing: a hosted desktop and a computer-use actor, because
@@ -283,11 +283,11 @@ function desktopCliValidationReason(config: LabConfig): string | null {
   return null;
 }
 
-// terminal-product route: a real autonomous agent studies a CLI/product from public surfaces
-// inside an E2B shell. Fail-closed (claims match mechanism: a field that cannot act on this route is an
-// honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
-// (absent defaults to e2b-terminal, the only honest target for an in-sandbox agent), one
-// participant until fan-out lands.
+// terminal-product route: a real autonomous agent studies a CLI/product from public surfaces inside
+// an E2B shell. Fail-closed (claims match mechanism: a field that cannot act on this route is a
+// parse error): a registered terminal actor only, execution.target e2b-terminal or absent (absent
+// defaults to e2b-terminal, the only target where an in-sandbox agent runs), one participant until
+// fan-out lands.
 function terminalValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "terminal-product") {
     const type = config.actors[0]?.type ?? "";

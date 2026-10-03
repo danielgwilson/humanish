@@ -1,0 +1,17 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.serve-result.v1",
+  "ok": false,
+  "cwd": "[cwd]",
+  "mode": "loopback",
+  "safe": false,
+  "host": "127.0.0.1",
+  "runsListed": 0,
+  "warnings": [],
+  "error": {
+    "code": "HUMANISH_INVALID_PORT",
+    "message": "--port must be an integer between 0 and 65535."
+  }
+}

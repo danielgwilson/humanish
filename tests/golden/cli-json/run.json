@@ -30,5 +30,8 @@
     "simCount": "number",
     "studyId": "string",
     "warnings": []
+  },
+  "pinned": {
+    "mode": "dry-run"
   }
 }

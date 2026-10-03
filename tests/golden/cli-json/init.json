@@ -19,5 +19,13 @@
     "warnings": [
       "string"
     ]
+  },
+  "pinned": {
+    "mode": "applied",
+    "actions": [
+      "create",
+      "mkdir",
+      "skip"
+    ]
   }
 }

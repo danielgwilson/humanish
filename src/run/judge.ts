@@ -126,6 +126,16 @@ export function participantStatus(
   return status;
 }
 
+/**
+ * A verdict as review.md prints it. The schema keeps `contract_proof_only`, which a dry run always
+ * gets and a live run gets while it is in progress or when no participant result came back, so
+ * the reader sees "dry run" or "no verdict" by the run's mode.
+ */
+export function verdictText(verdict: Verdict, mode: "dry-run" | "live"): string {
+  if (verdict !== "contract_proof_only") return verdict;
+  return mode === "dry-run" ? "dry run" : "no verdict";
+}
+
 /** The review verdict for one participant's status. */
 export function verdictForStatus(status: ActorStatus): Verdict {
   switch (status) {

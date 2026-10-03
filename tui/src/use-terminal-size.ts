@@ -7,7 +7,7 @@ export interface TerminalSize {
 }
 
 /**
- * A terminal size that stays honest.
+ * A terminal size that stays current.
  *
  * Two things go wrong if you just read `stdout.columns` once. Under tmux and over a freshly
  * attached SSH session the first value can be a placeholder (commonly 80x24) that is replaced

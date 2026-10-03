@@ -158,8 +158,9 @@ describe("humanish stats", () => {
 
   it("reads as a short report, with the unpriced count next to the sum", async () => {
     const result = await computeStats(cwd, { nowMs: NOW });
+    if (!result.ok) throw new Error(result.error.message);
     const text = formatStatsHuman(result);
-    expect(text).toContain("live runs: 4 (1 still running)\npreviews: 1\n");
+    expect(text).toContain("live runs: 4 (1 still running)\ndry runs: 1\n");
     expect(text).toContain("known estimated spend: $0.33");
     expect(text).toContain("analysis: none recorded");
     expect(text).toContain("analysis history: 5 runs missing or uncertain");
@@ -168,7 +169,7 @@ describe("humanish stats", () => {
       "- try-live: 4 runs, 4 live; 2 of 3 passed; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced runs, 0 unpriced analyses",
     );
     expect(text).not.toContain("(s)");
-    expect(text.trimEnd().split("\n").at(-1)).toBe(result.ok ? result.note : "");
+    expect(text.trimEnd().split("\n").at(-1)).toBe(result.note);
   });
 
   it("an empty project is an empty report, not an error", async () => {
@@ -186,7 +187,7 @@ describe("humanish stats", () => {
     }
   });
 
-  it("prints one line for previews alone and counts a preview with no cost record as $0", async () => {
+  it("prints one line for dry runs alone and counts a dry run with no cost record as $0", async () => {
     const previews = await mkdtemp(path.join(tmpdir(), "humanish-stats-previews-"));
     try {
       await writeFixtureRuns(
@@ -205,13 +206,13 @@ describe("humanish stats", () => {
       if (!result.ok) throw new Error(result.error.message);
       expect(result.totals).toMatchObject({ unpricedRuns: 0, estimatedSpendUsd: 0 });
       expect(result.totals.costs).toMatchObject({ runEstimatedUsd: 0, incompleteRunEstimates: 0 });
-      expect(formatStatsHuman(result)).toBe("humanish stats\n2 previews ($0); no live runs yet\n");
+      expect(formatStatsHuman(result)).toBe("humanish stats\n2 dry runs ($0); no live runs yet\n");
     } finally {
       await rm(previews, { recursive: true, force: true });
     }
   });
 
-  it("keeps a preview that records an unknown cost unpriced, with the full report", async () => {
+  it("keeps a dry run that records an unknown cost unpriced, with the full report", async () => {
     const previews = await mkdtemp(path.join(tmpdir(), "humanish-stats-unknown-preview-"));
     try {
       await writeFixtureRuns(
@@ -235,7 +236,7 @@ describe("humanish stats", () => {
       expect(result.totals.unpricedRuns).toBe(1);
       expect(result.totals.costs.incompleteRunEstimates).toBe(1);
       const text = formatStatsHuman(result);
-      expect(text).toContain("live runs: 0\npreviews: 2\n");
+      expect(text).toContain("live runs: 0\ndry runs: 2\n");
       expect(text).toContain("participants and desktops: $0.00; 1 run with incomplete accounting");
     } finally {
       await rm(previews, { recursive: true, force: true });

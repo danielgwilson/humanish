@@ -265,8 +265,8 @@ describe("catch script: persona-facing routes", () => {
           stdio: "ignore",
         },
       );
-      // Sleep on every failed attempt, not only on a thrown one: a non-ok response used to retry
-      // instantly, burning all 50 attempts inside a few milliseconds.
+      // Sleep on every failed attempt, not only on a thrown one: a non-ok response that retried
+      // instantly would burn all 50 attempts inside a few milliseconds.
       for (let i = 0; i < 50; i += 1) {
         try {
           if ((await fetch(`http://127.0.0.1:${candidate}/health`)).ok) return true;
@@ -288,8 +288,8 @@ describe("catch script: persona-facing routes", () => {
       capabilities: ["recipient-inbox-v1", "captured-inline-images-v1"],
     });
 
-    // GET / used to return that same health JSON, which personas who trimmed the /inbox path read as
-    // breakage. It now points them where they meant to go.
+    // GET / does not return that same health JSON, which personas who trimmed the /inbox path read
+    // as breakage. It points them where they meant to go.
     const root = await fetch(`${base}/`);
     expect(root.status).toBe(200);
     expect(root.headers.get("content-type")).toContain("text/html");

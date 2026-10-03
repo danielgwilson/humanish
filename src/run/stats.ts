@@ -327,10 +327,10 @@ function minutes(ms: number): string {
 }
 
 /**
- * Whether every selected run is a preview whose accounting is a complete $0: no recorded figure,
+ * Whether every selected run is a dry run whose accounting is a complete $0: no recorded figure,
  * no incomplete estimate and no analysis attempt. Only then does the one-line report hold.
  */
-function onlyFreePreviews(t: StatsResult["totals"]): boolean {
+function onlyFreeDryRuns(t: StatsResult["totals"]): boolean {
   return (
     t.runs > 0 &&
     t.runs === t.dryRun &&
@@ -340,12 +340,12 @@ function onlyFreePreviews(t: StatsResult["totals"]): boolean {
   );
 }
 
-/** The run counts, with previews on their own line. */
+/** The run counts, with dry runs on their own line. */
 function runCountLines(t: StatsResult["totals"]): string[] {
   if (t.runs === 0) return ["no runs yet; start one with humanish run first-run"];
-  if (onlyFreePreviews(t)) return [`${plural(t.dryRun, "preview")} ($0); no live runs yet`];
+  if (onlyFreeDryRuns(t)) return [`${plural(t.dryRun, "dry run")} ($0); no live runs yet`];
   const running = t.running > 0 ? ` (${t.running} still running)` : "";
-  return [`live runs: ${t.live}${running}`, ...(t.dryRun > 0 ? [`previews: ${t.dryRun}`] : [])];
+  return [`live runs: ${t.live}${running}`, ...(t.dryRun > 0 ? [`dry runs: ${t.dryRun}`] : [])];
 }
 
 /** Spend, analysis, participants and verdicts across the selected live runs. */
@@ -390,8 +390,15 @@ function unpricedTail(runs: number, analyses: number): string {
   return `; ${plural(runs, "unpriced run")}, ${plural(analyses, "unpriced analysis", "unpriced analyses")}`;
 }
 
-export function formatStatsHuman(result: StatsResult | StatsFailure): string {
-  if (!result.ok) return `${result.error.code}: ${result.error.message}\n`;
+/** Human output; a failure is an error the CLI prints on stderr (HumanOutput in src/cli/io.ts). */
+export function formatStatsHuman(result: StatsResult): string;
+export function formatStatsHuman(
+  result: StatsResult | StatsFailure,
+): string | { error: StatsFailure["error"] };
+export function formatStatsHuman(
+  result: StatsResult | StatsFailure,
+): string | { error: StatsFailure["error"] } {
+  if (!result.ok) return { error: result.error };
   const t = result.totals;
   const scope = [
     result.lab === undefined ? undefined : `lab ${result.lab}`,
@@ -401,9 +408,9 @@ export function formatStatsHuman(result: StatsResult | StatsFailure): string {
     `humanish stats${scope.length === 0 ? "" : ` (${scope.join(", ")})`}`,
     ...runCountLines(t),
   ];
-  // Free previews alone have no spend, outcome or duration to report. Anything else, an unreadable
-  // directory or a preview that records a cost included, gets the full report.
-  const reportable = t.runs > 0 && !onlyFreePreviews(t);
+  // Free dry runs alone have no spend, outcome or duration to report. Anything else, an unreadable
+  // directory or a dry run that records a cost included, gets the full report.
+  const reportable = t.runs > 0 && !onlyFreeDryRuns(t);
   if (reportable) {
     lines.push(...totalsLines(t));
     if (result.labs.length > 0)

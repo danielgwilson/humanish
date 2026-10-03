@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createProgram } from "../../src/cli/program.js";
 
 // When the route returns, the run under test is swapped for a same-id copy that holds a valid
-// bundle and no observer/index.html. The CLI used to render the Observer again by run id at that
-// point, which cannot tell the copy from the run just written, so it rendered the copy. A command
+// bundle and no observer/index.html. Rendering the Observer again by run id at that point cannot
+// tell the copy from the run just written, so it would render the copy. A command
 // that shows the Observer its route rendered through FinishedRun renders nothing more.
 const RUN_ID = "swapped";
 const swap = vi.hoisted(() => ({ cwd: "", done: false }));

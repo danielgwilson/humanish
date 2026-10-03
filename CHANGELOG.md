@@ -83,6 +83,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   - `humanish run` with no study, `observe`, and a refusal a command makes before it picks a route
     keep `humanish.run-result.v1`.
 
+- Human-mode errors print on stderr in one shape: `<command> failed: <message>`, `code: <CODE>`,
+  and `next: humanish lab list` for `HUMANISH_STUDY_NOT_FOUND`. `keys` and the `comms` connection
+  commands, whose results carry no code, print the first line only. Before, most commands printed
+  `CODE: message` on stdout. A script that greps stdout for `HUMANISH_` codes has to read stderr or
+  switch to `--json`. `--json` output and exit codes do not change; tests/golden/cli-errors/ pins
+  16 failing commands' JSON byte for byte. A failed run still prints its run id, route and
+  participants on stdout, and a failed `verify` its failing checks. docs/contracts/errors.md lists
+  the code families and where each appears.
 - Error codes name the study or the route where they said lab. Only the prefix changes.
   - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
   - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
@@ -141,6 +149,30 @@ The Unreleased section holds the full notes for the next version until it is tag
   longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
   em dash and its all-caps word. A test now runs init and holds these files to zero of each
   (#1440).
+- A keyless run is called a dry run everywhere a person reads it. Before, the same run was "contract
+  proof", "contract evidence", "harness contracts", "artifact plumbing" or "preview".
+  - `run`, `watch` and `lab run` share one `--dry-run` help line: "Do a dry run: a synthetic run
+    with no browser, keys or provider spend." in place of "Generate contract proof without browser,
+    keys, or provider spend.".
+  - `humanish review` prints "no verdict; no product behavior was tested" in place of "preview
+    only; no product behavior was tested". `contract_proof_only` also marks a live run with no
+    participant result, and review's result does not carry the mode. `humanish stats` prints "2 dry runs ($0); no live runs yet"
+    and "dry runs: 2" in place of "previews".
+  - review.md's verdict line reads "dry run" in place of `contract_proof_only` on a dry run, and
+    "no verdict" on a live run with no participant result, on every route.
+  - The review summary in a dry-run bundle reads "Dry run: humanish wrote a synthetic run bundle.
+    No product behavior was tested.", and the redaction note "Dry-run bundle: synthetic data only,
+    nothing from a product.".
+  - The Observer labels a dry-run participant "Dry run" in place of "Contract proof" ("No verdict"
+    for a live participant with no result), and its
+    warning reads "This is a dry run: its participants are synthetic and no product behavior was
+    tested.".
+  - `humanish analyze` refuses a dry run with "A dry run has no participant behavior to analyze.
+    Select a completed live run." (`ANALYSIS_REQUIRES_LIVE_RUN`, unchanged).
+  - Bare `humanish`, `init`'s next step and the AGENTS.md section call `humanish run first-run` "a
+    dry run" in place of "an evidence preview".
+  - `contract_proof_only` stays the value of `streams[].status` and `review.verdict` in `run.json`.
+    CONTEXT.md maps it to dry run. "preview" now names only the route.
 - `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
   passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
   as what verify found, such as "redaction did not pass (status: pending)" or "review.md is

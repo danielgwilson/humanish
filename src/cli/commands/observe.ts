@@ -18,6 +18,7 @@ import {
   RUN_OPTION_DESCRIPTION,
   wantsJson,
   writeResult,
+  type HumanOutput,
 } from "../io.js";
 import {
   exitCodeForSignal,
@@ -529,15 +530,10 @@ function hiddenRunLines(groups: readonly HiddenRunGroup[]): string[] {
   return lines;
 }
 
-function formatServeHuman(result: ServeResult): string {
+function formatServeHuman(result: ServeResult): HumanOutput {
   if (!result.ok) {
-    return (
-      [
-        "humanish observe --all failed",
-        ...(result.error ? [`error: ${result.error.code} ${result.error.message}`] : []),
-        ...result.warnings.map((warning) => `warning: ${warning}`),
-      ].join("\n") + "\n"
-    );
+    const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
+    return { ...(warnings ? { stdout: warnings } : {}), error: result.error };
   }
 
   const modeSuffix = result.safe ? " (share_ready only)" : "";
@@ -557,7 +553,7 @@ function formatServeHuman(result: ServeResult): string {
   if (result.oauth) {
     const rules = [...result.oauth.allowEmails, ...result.oauth.allowDomains];
     lines.push(
-      `edge auth: ${result.oauth.provider} oauth${rules.length > 0 ? ` (allow: ${rules.join(", ")})` : " (no allow rule — any Google account)"}`,
+      `edge auth: ${result.oauth.provider} oauth${rules.length > 0 ? ` (allow: ${rules.join(", ")})` : " (no allow rule: any Google account can sign in)"}`,
     );
   }
   if (result.entryRunId) {

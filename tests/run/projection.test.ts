@@ -63,7 +63,7 @@ describe("what a lab may claim about itself", () => {
     expect(expectationLine(expectation)).toBe("1m–4m · ~$2.00 median · 3 runs");
   });
 
-  it("a declared-absent cost is excluded from the median and counted, so the sample stays honest", () => {
+  it("a declared-absent cost is excluded from the median and counted, so the sample stays accurate", () => {
     const expectation = expectationFor([
       run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1 }),
       run({ runId: "2", durationMs: 60_000, estimatedCostUsd: null }),
@@ -88,7 +88,7 @@ describe("what a lab may claim about itself", () => {
   });
 
   it("runs that recorded nothing at all say exactly that", () => {
-    // No duration and no cost on either run: the honest line claims neither, and does not report
+    // No duration and no cost on either run: the line claims neither, and does not report
     // "2 unpriced" as though a median existed for the rest of the sample.
     const line = expectationLine(expectationFor([run({ runId: "1" }), run({ runId: "2" })]));
     expect(line).toBe("2 runs, nothing recorded");

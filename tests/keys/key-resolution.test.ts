@@ -104,7 +104,9 @@ describe("provider-key discovery", () => {
     expect(env.NODE_OPTIONS).toBeUndefined();
     expect(env.LD_PRELOAD).toBeUndefined();
     expect(fills.map((f) => f.name)).toEqual(["OPENAI_API_KEY"]);
-    expect(announced.join("\n")).toContain("ignored non-provider name NODE_OPTIONS");
+    expect(announced.join("\n")).toContain(
+      "ignored NODE_OPTIONS (.humanish/local/provider.env), which is not a provider key",
+    );
     expect(announced.join("\n")).not.toContain("payload.js"); // names, never values
   });
 

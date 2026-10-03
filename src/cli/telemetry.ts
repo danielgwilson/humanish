@@ -2,8 +2,7 @@
 // default, disclosed the first time it happens, trivially switched off, and inspectable.
 //
 // Why it exists: humanish shipped 61 releases without being able to answer "does anyone get to a
-// working first run". The funnel was broken at the first live run for months and we learned it from
-// an adoption post-mortem, not from data. A tool that cannot see its own activation is guessing.
+// working first run". A tool that cannot see its own activation is guessing.
 //
 // What it will never send, and this is stricter than the convention because of what humanish is:
 // no paths, no cwd, no repo names, no URLs, no lab titles or ids that are not our own starter labs,
@@ -206,7 +205,7 @@ export interface TelemetryPayload {
 /**
  * The exact document that would be sent. Built separately from sending so that
  * `HUMANISH_TELEMETRY_DEBUG=1` can show it and so tests can assert on it. "You can read exactly
- * what we collect" is the part of this convention that makes it honest rather than merely legal.
+ * what we collect" is the part of this convention that lets a person check the collection.
  */
 export function buildPayload(args: {
   event: TelemetryEvent;

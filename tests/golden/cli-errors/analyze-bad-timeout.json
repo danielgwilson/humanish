@@ -1,0 +1,15 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.analyze-result.v1",
+  "ok": false,
+  "run": "latest",
+  "dryRun": false,
+  "reused": false,
+  "warnings": [],
+  "error": {
+    "code": "ANALYSIS_CONFIG_INVALID",
+    "message": "review.analysis requires a positive maxCostUsd up to 1000, a supported analysis model, timeoutMs 1–600000, maxOutputTokens 256–32768, and an optional question of at most 4000 characters."
+  }
+}
