@@ -7,15 +7,15 @@ import { resolveCover } from "@/lib/covers";
 import { prefersReducedMotion } from "@/lib/theme";
 
 /**
- * PinnedReplay — the 7-step scroll walkthrough of one real run, ported
- * verbatim from the POC: a tall track pins a rail + stage; scroll advances
+ * PinnedReplay: the 7-step scroll walkthrough of one real run, ported
+ * verbatim from the prototype: a tall track pins a rail + stage; scroll advances
  * discrete steps; rail items are clickable; a 420ms idle-snap centers the
  * nearest step (cancelled by any fresh input; disabled for reduced motion);
- * lane covers resolve as their step activates. Below 1024px — or without
- * JS — CSS stacks the panels as a readable list and covers resolve via IO.
+ * participant covers resolve as their step activates. Below 1024px (or without
+ * JS), CSS stacks the panels as a readable list and covers resolve via IO.
  */
 
-// Injected as HTML for its token spans — keep it a literal, never
+// Injected as HTML for its token spans: keep it a literal, never
 // interpolate untrusted text into it.
 const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">cua-2026-08-07T17-44-48-760Z-87389419</span>
 <span class="cy">date:</span> <span class="cv">2026-08-07</span>

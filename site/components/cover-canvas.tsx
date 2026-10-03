@@ -5,11 +5,11 @@ import { registerCover, resolveCover } from "@/lib/covers";
 import { prefersReducedMotion } from "@/lib/theme";
 
 /**
- * CoverCanvas — one resolve-cover veil over a screenshot. Registers itself
+ * CoverCanvas: one resolve-cover veil over a screenshot. Registers itself
  * with the shared cover engine on mount; reduced motion removes it (finished
- * state = the plain screenshot), exactly like the POC.
+ * state = the plain screenshot), exactly like the prototype.
  *
- * `resolveAfter` (ms) self-resolves after mount — used by the hero tile
+ * `resolveAfter` (ms) self-resolves after mount; the hero tile uses it
  * (1100ms). Panels inside PinnedReplay omit it; the replay triggers them.
  */
 export default function CoverCanvas({ n, resolveAfter }: { n: string; resolveAfter?: number }) {

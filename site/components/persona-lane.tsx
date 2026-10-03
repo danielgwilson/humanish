@@ -1,26 +1,26 @@
 import CoverCanvas from "./cover-canvas";
 
 /**
- * PersonaLane — one lane of a run: the keyframe a persona saw, its verbatim
- * final report, and a status chip. Failed lanes render as muted
+ * PersonaLane: one participant of a run: the keyframe a persona saw, its verbatim
+ * final report, and a status chip. Failed participants render as muted
  * "gave up" states and stay visible. The screenshot sits under a resolve-cover
- * veil that dissolves when the lane activates (reduced motion sees the
+ * veil that dissolves when the card activates (reduced motion sees the
  * finished screenshot).
  *
- * The keyframe loads lazily: lanes live below the fold (in a replay track, or
+ * The keyframe loads lazily: participant cards live below the fold (in a replay track, or
  * stacked as a list on narrow screens), and eager keyframes otherwise get
  * hoisted into <head> as image preloads that compete with the first screen.
  */
 
 export interface PersonaLaneProps {
-  /** Two-digit lane index, e.g. "01" — also the cover-canvas glyph. */
+  /** Two-digit participant index, e.g. "01", also the cover-canvas glyph. */
   idx: string;
-  /** Lane name as declared in the lab, e.g. "sticky-notes". */
+  /** Participant name as declared in the study, e.g. "sticky-notes". */
   name: string;
-  /** Keyframe screenshot for this lane. */
+  /** Keyframe screenshot for this participant. */
   img: string;
   alt: string;
-  /** Caption label, e.g. "Final report — verbatim". */
+  /** Caption label, e.g. `Final report — verbatim`. */
   reportLabel: string;
   /** The persona's report, quoted verbatim. */
   report: string;

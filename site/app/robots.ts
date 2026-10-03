@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 
 /**
- * Everyone is welcome, and the AI crawlers are welcome by name — the site's
- * own audience is coding agents (SPEC §5 agent parity).
+ * Everyone is welcome, and the AI crawlers are welcome by name: the site's
+ * own audience is coding agents.
  */
 export default function robots(): MetadataRoute.Robots {
   return {

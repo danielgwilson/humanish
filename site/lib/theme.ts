@@ -3,7 +3,7 @@
 /**
  * Theme plumbing shared by every canvas island.
  *
- * Ported from the POC's theme block: canvases paint with the resolved values
+ * Ported from the prototype's theme block: canvases paint with the resolved values
  * of --crowd-ink / --accent-canvas / --cover-bg, so on any theme change they
  * re-read the tokens and repaint. The toggle writes data-theme on <html>
  * (persisted to localStorage by the toggle itself); the OS-level

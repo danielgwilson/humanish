@@ -22,12 +22,12 @@ const KINDS = [
   "series-codes",
   "name-refs",
 ] as const;
-const ROOTS = ["src", "tests", "scripts", "tui", "observer"] as const;
+const ROOTS = ["src", "tests", "scripts", "tui", "observer", "site-code"] as const;
 /** The labs root counts every kind but the two test-name kinds, each capped at 0 here. */
 const LAB_CAPS = Object.fromEntries(
   KINDS.filter((kind) => kind !== "series-codes" && kind !== "name-refs").map((kind) => [kind, 0]),
 );
-const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui", "-observer"] as const;
+const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui", "-observer", "-site-code"] as const;
 /** Kinds counted in src string literals only. */
 const STRING_KINDS = [
   "string-em-dashes",
