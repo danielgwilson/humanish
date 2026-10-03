@@ -69,7 +69,7 @@ export async function liveCuaRejection(args: {
   if (unsetSubjectEnv.length > 0) {
     return {
       code: "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING",
-      message: `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
+      message: `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
     };
   }
   // Fail-closed cap: a maxUsd cap needs a measurable per-turn estimate.

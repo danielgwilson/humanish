@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   probeKeySources,
   type KeyResolutionDeps,
+  type DotenvLoad,
   type KeySourceProbe,
 } from "../keys/key-resolution.js";
 import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
@@ -115,6 +116,8 @@ export async function doctor(
     keyDeps?: KeyResolutionDeps;
     /** The hosted Codex participant's operator handshake; tests replace it. */
     codexParticipantReadiness?: StudySetupCheckArgs["codexParticipantReadiness"];
+    /** What `--dotenv` loaded, so a key row names the file that supplied it. */
+    dotenv?: DotenvLoad;
   } = {},
 ): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
@@ -142,7 +145,13 @@ export async function doctor(
 
   const env = options.env ?? process.env;
   const agents = await detectLocalAgents({ ...options.localAgents, env });
-  const { probes, receivingKey } = await probeDoctorKeys(cwd, env, options.study, options.keyDeps);
+  const { probes, receivingKey } = await probeDoctorKeys(
+    cwd,
+    env,
+    options.study,
+    options.keyDeps,
+    options.dotenv,
+  );
   const keyPresent = (name: string) =>
     probes.some((probe) => probe.name === name && probe.source !== null);
   const setup = options.study
@@ -332,6 +341,7 @@ async function probeDoctorKeys(
   env: NodeJS.ProcessEnv,
   study: string | undefined,
   keyDeps: KeyResolutionDeps | undefined,
+  dotenv: DotenvLoad | undefined,
 ): Promise<{ probes: KeySourceProbe[]; receivingKey: string | null }> {
   const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
   let receivingKey: string | null = null;
@@ -348,6 +358,7 @@ async function probeDoctorKeys(
     cwd,
     env,
     ...(keyDeps === undefined ? {} : { deps: keyDeps }),
+    ...(dotenv === undefined ? {} : { dotenv }),
   });
   return { probes, receivingKey };
 }
@@ -378,7 +389,7 @@ function studyList(studies: readonly string[]): string {
 
 /**
  * Provider-key discovery: which source supplies each live-run key, through the same
- * chain a live command resolves (env/--env-file, project overlay, vendor stores, the
+ * chain a live command resolves (env/--dotenv, project overlay, vendor stores, the
  * humanish user store). Values never appear; sources and fill commands do.
  *
  * With --study, a key the selected route requires fails when missing. Without it, `keyUsers` maps
@@ -395,7 +406,7 @@ function keyChecks(
     const present = probe.source !== null;
     const hint =
       probe.name === receivingKey
-        ? `provide ${probe.name} through process env or --env-file`
+        ? `provide ${probe.name} through process env or --dotenv`
         : probe.hint;
     if (!setup) {
       const users = keyUsers?.get(probe.name) ?? [];

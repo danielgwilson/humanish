@@ -182,7 +182,7 @@ For private/local dogfood, author an ignored lab manifest under
 ignored env file:
 
 ```bash
-pnpm humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
+pnpm humanish watch .humanish/labs/local-dogfood.yaml --dotenv .humanish/local/provider.env
 ```
 
 ## How To Pick Work

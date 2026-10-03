@@ -234,7 +234,7 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
           },
         }),
       });
-      const result = await runCli(["tui", "--cwd", cwd, "--env-file", "provider.env"], runtime);
+      const result = await runCli(["tui", "--cwd", cwd, "--dotenv", "provider.env"], runtime);
       expect(result.exitCode).toBe(0);
       const summaryEnv = summary.mock.calls[0]?.[2]?.env;
       const launchEnv = start.mock.calls[0]?.[0].env;
@@ -260,7 +260,7 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
       const env: NodeJS.ProcessEnv = { HUMANISH_STRICT_KEYS: "1" };
       const runtime = workingRuntime({ env });
       const result = await runCli(
-        ["tui", "--cwd", cwd, "--env-file", "provider.env", "--json"],
+        ["tui", "--cwd", cwd, "--dotenv", "provider.env", "--json"],
         runtime,
       );
       expect(result.exitCode).toBe(2);

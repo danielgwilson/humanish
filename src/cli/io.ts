@@ -9,10 +9,10 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command, Option } from "commander";
 import { loadEnvFile } from "../keys/env-file.js";
-import { discoverProviderKeys } from "../keys/key-resolution.js";
+import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
-import { withQueuedWarnings } from "./deprecations.js";
+import { warnAndQueue, withQueuedWarnings } from "./deprecations.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
 import type { RunResult } from "../run/results.js";
 
@@ -46,8 +46,29 @@ export interface CliIo {
 export const JSON_OPTION_DESCRIPTION = "Print a machine-readable JSON response.";
 export const CWD_OPTION_DESCRIPTION = "Project directory.";
 export const RUN_OPTION_DESCRIPTION = "Run id, or latest.";
-export const ENV_FILE_OPTION_DESCRIPTION =
-  "Load unset variables from this env file. Values are never printed or saved.";
+export const DOTENV_OPTION_DESCRIPTION =
+  "Load unset variables from this dotenv file. Values are never printed or saved.";
+const ENV_FILE_RENAMED = "`--env-file` is now `--dotenv`; `--env-file` is removed in 0.111.0.";
+
+/**
+ * The hidden `--env-file <path>` that `--dotenv` replaced. Node scans the whole argv for
+ * `--env-file` before a script runs, and stops only at `--` (src/node_dotenv.cc), so a missing file
+ * exits 9 through Node and never reaches humanish. `--dotenv` does not collide. Removed in 0.111.0.
+ */
+export function envFileAliasOption(): Option {
+  return new Option("--env-file <path>").hideHelp().conflicts("dotenv");
+}
+
+/** The dotenv path a command was given: `--dotenv`, or the `--env-file` alias with its warning. */
+export function dotenvPathOf(
+  options: { dotenv?: string | undefined; envFile?: string | undefined },
+  command: Command,
+  io: CliIo,
+): string | undefined {
+  if (options.envFile === undefined) return options.dotenv;
+  warnAndQueue(command, io, ENV_FILE_RENAMED);
+  return options.envFile;
+}
 export const PORT_OPTION_DESCRIPTION = "Port to listen on at 127.0.0.1.";
 
 /** `--port` for a loopback server whose default, 0, lets the OS pick a free port. */
@@ -60,6 +81,7 @@ export interface StudyCommandOptions {
   cwd: string;
   detach?: boolean | undefined;
   dryRun?: boolean | undefined;
+  dotenv?: string | undefined;
   envFile?: string | undefined;
   json?: boolean | undefined;
   open?: boolean | undefined;
@@ -128,6 +150,8 @@ export async function applyEnvFileOption(args: {
   io: CliIo;
   env?: NodeJS.ProcessEnv;
   onDiscovered?: (names: string[]) => void;
+  /** Called with the dotenv path and the names it set, which were unset before. */
+  onLoaded?: (load: DotenvLoad) => void;
   /** False for the study-running commands, which discover only once the study resolves to live. */
   discoverKeys?: boolean;
 }): Promise<boolean> {
@@ -141,6 +165,7 @@ export async function applyEnvFileOption(args: {
       return false;
     }
     for (const name of result.loaded) env[name] = stagedEnv[name];
+    args.onLoaded?.({ path: args.envFile, names: result.loaded });
   }
 
   if (args.discoverKeys !== false) {
@@ -157,7 +182,7 @@ export async function applyEnvFileOption(args: {
 /**
  * Provider-key discovery: fill still-missing keys from the documented project overlay, the
  * owning vendors' native stores, and the humanish user store. It is fill-only (an explicit
- * --env-file or process env always wins), and each fill is announced by name and source on
+ * --dotenv or process env always wins), and each fill is announced by name and source on
  * stderr, never by value. HUMANISH_STRICT_KEYS=1 restores env-only behavior.
  */
 export async function discoverCliKeys(args: {

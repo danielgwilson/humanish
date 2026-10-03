@@ -19,7 +19,9 @@ import {
   applyEnvFileOption,
   type CliIo,
   CWD_OPTION_DESCRIPTION,
-  ENV_FILE_OPTION_DESCRIPTION,
+  DOTENV_OPTION_DESCRIPTION,
+  dotenvPathOf,
+  envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
   RUN_OPTION_DESCRIPTION,
   writeResult,
@@ -245,7 +247,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
   parent
     .command("reclaim")
     .description(
-      "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --env-file.",
+      "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --dotenv.",
     )
     .summary("Stop an interrupted run's leftover sandboxes.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
@@ -256,7 +258,8 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
         "Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's.",
       ).conflicts("run"),
     )
-    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
+    .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
+    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
@@ -264,6 +267,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
           cwd: string;
           run: string;
           preflight?: boolean;
+          dotenv?: string;
           envFile?: string;
           json?: boolean;
         },
@@ -271,7 +275,12 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
       ) => {
         // The kill calls read E2B_API_KEY from the environment: the env file, then discovered keys.
         if (
-          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
+          !(await applyEnvFileOption({
+            command,
+            cwd: options.cwd,
+            envFile: dotenvPathOf(options, command, io),
+            io,
+          }))
         )
           return;
         const result = options.preflight

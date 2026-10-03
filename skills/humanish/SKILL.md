@@ -16,7 +16,7 @@ patient data, or private upstream artifacts.
 
 Do not edit `.env` or secret files. Do not paste credential values. Use env var
 names only, usually `OPENAI_API_KEY` and `E2B_API_KEY`. For live local runs,
-prefer an explicit ignored env file passed with `--env-file <path>`; do not
+prefer an explicit ignored env file passed with `--dotenv <path>`; do not
 assume broad inherited job env is safe. Stop before live provider spend,
 hosted execution, deploys, public tunnels, or GitHub mutation unless the user
 explicitly approves that exact action.
@@ -442,7 +442,7 @@ Do not paste values into files, prompts, run bundles, issue drafts, or logs.
 Load local values only at invocation time:
 
 ```bash
-npx humanish watch .humanish/studies/local-live.yaml --env-file .humanish/local/provider.env
+npx humanish watch .humanish/studies/local-live.yaml --dotenv .humanish/local/provider.env
 ```
 
 When choosing dogfood targets, prefer apps, CLIs, or agent-facing tools with a

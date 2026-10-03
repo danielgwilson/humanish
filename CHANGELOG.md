@@ -8,6 +8,32 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `--env-file <path>` is now `--dotenv <path>` on `run`, `watch`, `doctor`, `study check`, `tui`,
+  `reclaim`, `comms check`, `comms recover` and `comms connections list`. Node reads `--env-file`
+  anywhere in its argv before humanish starts, and stops looking only at `--`. With a missing file,
+  Node exits 9 with `node: <path>: not found` and humanish never runs; with a file that exists, Node
+  skips it and humanish loads it. `--dotenv` is not a Node option, so a missing file reaches
+  humanish's `HUMANISH_ENV_FILE_NOT_FOUND` result with exit 2. Refusals that said
+  `pass via --env-file` now say `pass via --dotenv`, and the starter study's comment names
+  `--dotenv`.
+
+### Deprecated
+
+- `--env-file <path>` stays as a hidden alias of `--dotenv` and is removed in 0.111.0. It prints
+  ``warning: `--env-file` is now `--dotenv`; `--env-file` is removed in 0.111.0.`` on stderr, and
+  `--json` adds the same text to `warnings`. A missing file through the alias still exits 9 from
+  Node before humanish starts; use `--dotenv` to get humanish's exit 2 result. Passing both options
+  is an error.
+
+### Fixes
+
+- `humanish doctor --dotenv <path>` reports a key the file supplied as
+  `supplied by --dotenv <path>`. It said `supplied by process env`, because the loader copies the
+  file's values into the process environment before doctor reads it. A key that was already in the
+  environment still reads `process env`, since the loader never overrides one.
+
 ## 0.109.1: Current option names in messages, reclaim --env-file (2026-10-03)
 
 humanish 0.109.1 is a patch. Library refusals and warnings name `RunStudyOptions`, which 0.109.0

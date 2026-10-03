@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CWD_OPTION_DESCRIPTION,
-  ENV_FILE_OPTION_DESCRIPTION,
+  DOTENV_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
   PORT_OPTION_DESCRIPTION,
   RUN_OPTION_DESCRIPTION,
@@ -12,7 +12,7 @@ import { createProgram } from "../../src/cli/program.js";
 
 const SHARED = new Map([
   ["--cwd", CWD_OPTION_DESCRIPTION],
-  ["--env-file", ENV_FILE_OPTION_DESCRIPTION],
+  ["--dotenv", DOTENV_OPTION_DESCRIPTION],
   ["--json", JSON_OPTION_DESCRIPTION],
   ["--port", PORT_OPTION_DESCRIPTION],
   ["--run", RUN_OPTION_DESCRIPTION],

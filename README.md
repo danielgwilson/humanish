@@ -285,7 +285,7 @@ why. A hosted participant on a release humanish has not tested records a warning
 the first of these sources that has it. It prints the name and source of a key it
 fills from sources 2 to 4, never the value:
 
-1. the process environment, including a file passed with `--env-file`;
+1. the process environment, including a file passed with `--dotenv`;
 2. `.humanish/local/provider.env`;
 3. the vendor's own store: `~/.e2b/config.json` for `E2B_API_KEY`, and
    `gh auth token` for `GH_TOKEN`;

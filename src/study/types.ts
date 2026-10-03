@@ -259,7 +259,7 @@ export interface StudySubject {
   serve?: StudySubjectServe;
   /**
    * Env var names the subject app needs, provisioned into the sandbox from the caller's
-   * environment (--env-file). Names are recorded in evidence; values never are. Consumed
+   * environment (--dotenv). Names are recorded in evidence; values never are. Consumed
    * on the computer-use clone route.
    */
   env?: string[];

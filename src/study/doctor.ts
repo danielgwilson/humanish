@@ -337,7 +337,7 @@ async function realEmailCheck(
       name === null
         ? "The selected email connection is missing or invalid. Open Connections in the TUI."
         : !args.keyPresent(name)
-          ? `Missing ${name} for the selected email connection. Provide it through process env or --env-file. Authentication has not been checked.`
+          ? `Missing ${name} for the selected email connection. Provide it through process env or --dotenv. Authentication has not been checked.`
           : "Fresh hosted inbox per participant. Local presence only; run humanish comms check --online to authenticate. Provider permissions/capacity and delivery remain untested.",
   };
 }
@@ -435,7 +435,7 @@ function subjectEnvChecks(names: readonly string[], args: StudySetupCheckArgs): 
     message:
       args.env[name]?.trim() || args.keyPresent(name)
         ? "present; value not shown"
-        : "missing declared subject environment variable; provide it with --env-file",
+        : "missing declared subject environment variable; provide it with --dotenv",
   }));
 }
 

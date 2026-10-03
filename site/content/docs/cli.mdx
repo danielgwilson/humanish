@@ -75,7 +75,7 @@ humanish doctor [options]
 | --- | --- |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--study <study>` | Check the study's desktop, participant authentication and separate analysis requirements; no provider calls. |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -103,7 +103,7 @@ humanish run [options] [study]
 | `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The study's participants decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
 | `--scorer <path>` | Score with this .mjs module, a path inside the repo, in place of review.scorer.ref. It runs as code, so review it first. Terminal, computer-use and shared-world studies only. |
 | `--cwd <path>` | Project directory. (default: ".") |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
@@ -133,7 +133,7 @@ humanish watch [options] [study]
 | `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The study's participants decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
 | `--scorer <path>` | Score with this .mjs module, a path inside the repo, in place of review.scorer.ref. It runs as code, so review it first. Terminal, computer-use and shared-world studies only. |
 | `--cwd <path>` | Project directory. (default: ".") |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--json` | Print a machine-readable JSON response. |
 | `--expose` | Computer-use studies only: share the live run through an authenticated tunnel, to watch from a phone. Requires --oauth or --public-url. |
@@ -490,7 +490,7 @@ humanish study check [options] <study>
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--reachability <mode>` | Reachability mode. (choices: "metadata", "public-preview", "sandbox-loopback", "prepared-host", default: "metadata") |
 | `--timeout-ms <ms>` | Target reachability timeout. (default: "30000") |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -557,7 +557,7 @@ humanish comms connections list [options]
 | Option | Description |
 | --- | --- |
 | `--cwd <path>` | Project directory. (default: ".") |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -595,7 +595,7 @@ humanish comms check [options]
 | `--connection <name>` | Saved connection name. (default: "agentmail") |
 | `--study <path>` | Check the connection this study selects. |
 | `--online` | Make a read-only provider authentication request. |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -630,7 +630,7 @@ humanish comms recover [options]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--run <id>` | One run to inspect or recover. |
 | `--apply` | Recover the selected inactive run and verify mailbox deletion. |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -694,7 +694,7 @@ humanish runtime setup [options]
 
 ## humanish reclaim
 
-Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --env-file.
+Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --dotenv.
 
 ```text
 humanish reclaim [options]
@@ -705,7 +705,7 @@ humanish reclaim [options]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--run <id>` | Run id, or latest. (default: "latest") |
 | `--preflight` | Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's. |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -844,7 +844,7 @@ humanish tui [options]
 | Option | Description |
 | --- | --- |
 | `--cwd <path>` | Project directory. (default: ".") |
-| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--force` | Open it anyway in a session that looks like an agent's. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
