@@ -37,8 +37,8 @@ export interface LabDeps {
    */
   readonly subjectPhaseSink?: (event: SubjectPhaseEvent, participant?: ParticipantRef) => void;
   /**
-   * Shared world: runs each seat's computer-use session in place of the actor's own. The planner
-   * reads whether it is set: a custom runner cannot enforce actors[0].maxOutputTokens.
+   * Shared world: runs each participant's computer-use session in place of the actor's own. The
+   * planner reads whether it is set: a custom runner cannot enforce actors[0].maxOutputTokens.
    */
   readonly runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /**
@@ -53,13 +53,13 @@ export interface LabDeps {
   /** Shared world: the background stateSeries prober's cadence in milliseconds. Defaults to 1000. */
   readonly proberCadenceMs?: number;
   /**
-   * Shared world, external-public plane: how long the host seat has to surface a /lobby/CODE URL
+   * Shared world, external-public plane: how long the host has to surface a /lobby/CODE URL
    * before the run fails closed. Defaults to 120000, capped by execution.timeoutMs.
    */
   readonly handoffDeadlineMs?: number;
   /**
-   * Shared world, external-public plane: reads a /lobby/CODE off a seat's screenshot. Defaults to
-   * the single-frame OpenAI read.
+   * Shared world, external-public plane: reads a /lobby/CODE off a participant's screenshot.
+   * Defaults to the single-frame OpenAI read.
    */
   readonly readLobbyCodeFromFrame?: (frame: Buffer, apiKey: string) => Promise<string | undefined>;
   /**

@@ -155,7 +155,7 @@ export interface Judgment {
   readonly verdict: Verdict;
   /**
    * The run met its route's pass rule: every expected participant passed and, on shared-world,
-   * the seats showed the concurrency verify requires. A dry run passes as a contract.
+   * the participants showed the concurrency verify requires. A dry run passes as a contract.
    */
   readonly passed: boolean;
   /** A type-only mark that judgmentOf made this judgment; it does not exist at runtime. */
@@ -239,13 +239,13 @@ export const OUTCOME_POLICIES: Readonly<Record<JudgedRoute, OutcomePolicy>> = {
   preview: { participants: "evidence", sandboxCleanup: "warns", evidence: "warns" },
 };
 
-/** What a shared-world run observed about its one world, beside how each seat ended. */
+/** What a shared-world run observed about its one world, beside how each participant ended. */
 export interface SharedWorldFacts {
-  /** Two or more seats were live at the same time. */
+  /** Two or more participants were live at the same time. */
   overlap: boolean;
   /** Provisioned plane only: the shared state changed at or after the first overlap started. */
   stateChangedUnderOverlap?: boolean;
-  /** External-public plane only: every seat reached one lobby. */
+  /** External-public plane only: every participant reached one lobby. */
   lobbyConvergence?: boolean;
 }
 
@@ -297,9 +297,9 @@ export function judgeParticipants(args: {
 }
 
 /**
- * Why a shared-world run whose seats all passed still fails, or undefined when its world facts
- * meet what verify's shared-world check requires of a pass: two seats live at the same time and,
- * on the provisioned plane, a shared-state change at or after the first overlap started.
+ * Why a shared-world run whose participants all passed still fails, or undefined when its world
+ * facts meet what verify's shared-world check requires of a pass: two participants live at the same
+ * time and, on the provisioned plane, a shared-state change at or after the first overlap started.
  */
 export function sharedWorldShortfall(world: SharedWorldFacts): string | undefined {
   if (!world.overlap) {
@@ -312,9 +312,9 @@ export function sharedWorldShortfall(world: SharedWorldFacts): string | undefine
 }
 
 /**
- * A shared-world run: it passes only when every expected seat passed and the world facts have no
- * shortfall, and otherwise fails (this route has no timed_out verdict). A dry run and a run still
- * in progress are contracts. Lobby convergence is recorded but not read.
+ * A shared-world run: it passes only when every expected participant passed and the world facts
+ * have no shortfall, and otherwise fails (this route has no timed_out verdict). A dry run and a run
+ * still in progress are contracts. Lobby convergence is recorded but not read.
  */
 export function judgeSharedWorld(args: {
   dryRun: boolean;

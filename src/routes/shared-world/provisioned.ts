@@ -1,7 +1,7 @@
 // The provisioned-getHost plane: the harness provisions one subject sandbox (clone or local-tree,
 // install/build, seed, serve on 0.0.0.0), exposes it through getHost, probes its state on a
-// cadence, and runs every seat against that one shared plane. All sandboxes are torn down by exact
-// id in the plane's finally, never through Sandbox.list.
+// cadence, and runs every participant against that one shared plane. All sandboxes are torn down by
+// exact id in the plane's finally, never through Sandbox.list.
 
 import { buildOriginMap, type OriginMap } from "../../comms/capture-surface.js";
 import {
@@ -189,8 +189,8 @@ class SubjectPlane {
     const { plan, deps, env, requestTimeoutMs, timeoutMs } = this.ctx;
     const { subjectEnvNames, commsEnv } = this.setup;
     const subjectModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
-    // The one subject sandbox: headless service host (no GUI seat). The subject env is provisioned
-    // here; the actor sandboxes get none of it. A custom desktop template (image) is
+    // The one subject sandbox: headless service host (no GUI participant). The subject env is
+    // provisioned here; the actor sandboxes get none of it. A custom desktop template (image) is
     // honored on both the subject sandbox (here) and every actor sandbox (via runCuaParticipant, which
     // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default. The
     // receipt is on disk before any work, so `humanish reclaim` can kill it by exact id.
@@ -473,7 +473,8 @@ class SubjectPlane {
   }
 }
 
-/** Writes the in-progress bundle, runs the caller's Observer gate and starts the seat flush. */
+/** Writes the in-progress bundle, runs the caller's Observer gate and starts the participants'
+ *  flush. */
 async function publishInProgress(
   plane: SubjectPlane,
   ctx: PlaneContext,

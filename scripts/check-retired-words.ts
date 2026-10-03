@@ -1,9 +1,9 @@
 /**
- * Counts the retired words (lane, seat, role, sim, lab) in src/ identifiers and file names
- * outside the exempt paths (see lib/retired-words.ts), and the removed `backend` and `routesTo`
- * API names in the docs docs:check covers (doc-backend). Each count is held to its cap in
- * scripts/caps.json, at `vocabulary.<word>`, by the rules in lib/caps.mjs: a count above or below
- * its cap fails, and so does a count with no cap.
+ * Counts the retired words (`lane`, `seat`, `role`, `sim`, `lab`) in src/ identifiers and file
+ * names outside the exempt paths (see lib/retired-words.ts), and the removed `backend` and
+ * `routesTo` API names in the docs docs:check covers (doc-backend). Each count is held to its cap
+ * in scripts/caps.json, at `vocabulary.<word>`, by the rules in lib/caps.mjs: a count above or
+ * below its cap fails, and so does a count with no cap.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
