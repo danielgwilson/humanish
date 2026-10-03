@@ -26,6 +26,7 @@ import type {
   CuaSubjectProvenanceArg,
   ParticipantRunOutcome,
 } from "./types.js";
+import { plural } from "../../run/text.js";
 
 /** What every bundle of one run shares, in progress or final. */
 export interface CuaRunBundleBase {
@@ -221,11 +222,12 @@ export function renderCuaReviewMarkdown(bundle: RunBundle): string {
           `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,
           // Name the trace's actual screenshot mode ("raw" | "blurred"); say
           // nothing when no frames exist ("n/a") rather than claim a redaction that never ran.
-          `- evidence: ${trace.items.length} trace item(s), ${trace.counts.screenshots ?? 0} ${
+          `- evidence: ${plural(trace.items.length, "trace item")}, ${plural(
+            trace.counts.screenshots ?? 0,
             trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"
-              ? `${trace.redaction.screenshots} screenshot(s)`
-              : "screenshot(s)"
-          }`,
+              ? `${trace.redaction.screenshots} screenshot`
+              : "screenshot",
+          )}`,
         ]
       : []),
     ...(bundle.review.gaps.length > 0

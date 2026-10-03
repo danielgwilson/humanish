@@ -65,7 +65,7 @@
             "lifecycle": "completed",
             "status": "matched",
             "title": "dwell window complete",
-            "text": "2 frame(s) over 103ms; no model turn was requested during the window",
+            "text": "2 frames over 103ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.113Z"
           },
           {

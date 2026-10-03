@@ -961,7 +961,7 @@ describe("review.summary is external-public plane-aware", () => {
     expect(summary).not.toContain("public sandbox URL");
   });
 
-  it("live summary reports lobby convergence and drops the 'state delta(s) under load' clause", async () => {
+  it("live summary reports lobby convergence and drops the state-delta clause", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }));
     const result = await runConcurrentSharedWorld({
@@ -976,7 +976,7 @@ describe("review.summary is external-public plane-aware", () => {
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     const summary = bundle.review.summary;
-    expect(summary).not.toContain("state delta(s) under load");
+    expect(summary).not.toMatch(/state deltas? under load/);
     expect(summary).toContain("participants converged on one lobby");
   });
 
@@ -1006,7 +1006,7 @@ describe("review.summary is external-public plane-aware", () => {
 
     expect(bundle.review.verdict).toBe("pass");
     const expectedSummary =
-      "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
+      "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
     expect(bundle.review.summary).toBe(expectedSummary);
     expect(bundle.review.summary).not.toContain("reached their goal");
     expect(reviewMarkdown).toContain("- verdict: pass");

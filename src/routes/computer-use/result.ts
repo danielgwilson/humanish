@@ -42,6 +42,7 @@ import {
 } from "./types.js";
 import { plannedAppUrl } from "./plan.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { plural } from "../../run/text.js";
 
 /** Aggregate participant counts for the result projection. */
 function buildParticipantSummary(
@@ -199,7 +200,7 @@ function cuaStudyResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${summary.passed}/${participantCount} participant(s) passed (${summary.skipped} skipped, ${summary.harnessErrors} harness error(s), ${summary.hollow} without engagement)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.execution.failures[0] !== undefined ? `; ${args.execution.failures[0].message}` : ""}.`
+        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.execution.failures[0] !== undefined ? `; ${args.execution.failures[0].message}` : ""}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();

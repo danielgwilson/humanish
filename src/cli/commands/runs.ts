@@ -25,6 +25,7 @@ import {
   humanError,
   type HumanOutput,
 } from "../io.js";
+import { plural } from "../../run/text.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
   addRunOptions(
@@ -277,7 +278,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
 function formatReclaimHuman(result: ReclaimResult): HumanOutput {
   const lines: string[] = [];
   lines.push(
-    `Reclaim ${result.runId}: ${result.ok ? "ok" : "FAILED"} — ${result.receiptCount} sandbox receipt(s).`,
+    `Reclaim ${result.runId}: ${result.ok ? "ok" : "failed"}, ${plural(result.receiptCount, "sandbox receipt")}.`,
   );
   for (const outcome of result.outcomes) {
     lines.push(

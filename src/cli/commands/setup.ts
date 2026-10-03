@@ -32,6 +32,7 @@ import {
   formatCliError,
   type HumanOutput,
 } from "../io.js";
+import { plural } from "../../run/text.js";
 
 export function registerInitCommand(parent: Command, io: CliIo): void {
   parent
@@ -348,7 +349,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
         message:
           names.length === 0
             ? "The store is empty. Add a key with `humanish keys set <vendor>`."
-            : `${names.length} key name(s) stored. Values are never printed.`,
+            : `${plural(names.length, "key name")} stored. Values are never printed.`,
       };
       writeResult(command, io, result, formatKeysHuman);
       io.setExitCode(0);

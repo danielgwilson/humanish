@@ -785,7 +785,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
           if (result.ok) return;
           expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
           expect(result.error.message).toContain(
-            "Unknown study field(s) in `actors[0].lanes[0]`: " + key,
+            "Unknown study field in `actors[0].lanes[0]`: " + key,
           );
         },
       );
@@ -807,7 +807,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         if (result.ok) return;
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(result.error.message).toContain(
-          "Unknown study field(s) in `actors[0].roster[1]`: misson, runtme",
+          "Unknown study fields in `actors[0].roster[1]`: misson, runtme",
         );
         expect(result.error.message).not.toContain("lanes[2]");
       });

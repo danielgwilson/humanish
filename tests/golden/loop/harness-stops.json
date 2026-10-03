@@ -20,7 +20,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "3 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "3 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:19.000Z",
@@ -157,7 +157,7 @@
     "result": {
       "status": "blocked",
       "completionReason": "blocked_approval",
-      "reason": "paused on model safety check(s): malicious_instructions; not acknowledged",
+      "reason": "paused on a model safety check: malicious_instructions; not acknowledged",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -174,14 +174,14 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "1 unblurred screenshot kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:07.000Z",
         "durationMs": 6000,
         "status": "blocked",
         "completionReason": "blocked_approval",
-        "reason": "paused on model safety check(s): malicious_instructions; not acknowledged",
+        "reason": "paused on a model safety check: malicious_instructions; not acknowledged",
         "ids": {
           "model": "golden-1"
         },
@@ -348,7 +348,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:12.000Z",
@@ -486,7 +486,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "6 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "6 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.123Z",
@@ -588,7 +588,7 @@
             "lifecycle": "completed",
             "status": "ok",
             "title": "dwell window complete",
-            "text": "3 frame(s) over 104ms; no model turn was requested during the window",
+            "text": "3 frames over 104ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.116Z"
           },
           {
@@ -695,7 +695,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "4 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "4 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.074Z",
@@ -764,7 +764,7 @@
             "lifecycle": "completed",
             "status": "matched",
             "title": "dwell window complete",
-            "text": "2 frame(s) over 64ms; no model turn was requested during the window",
+            "text": "2 frames over 64ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.070Z"
           },
           {
@@ -849,7 +849,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "1 unblurred screenshot kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.010Z",
@@ -945,7 +945,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "3 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "3 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.032Z",
@@ -1014,7 +1014,7 @@
             "lifecycle": "completed",
             "status": "ok",
             "title": "dwell window complete",
-            "text": "2 frame(s) over 24ms; no model turn was requested during the window",
+            "text": "2 frames over 24ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.030Z"
           }
         ],
@@ -1107,7 +1107,7 @@
             "lifecycle": "completed",
             "status": "ok",
             "title": "dwell window complete",
-            "text": "2 frame(s) over 23ms; no model turn was requested during the window",
+            "text": "2 frames over 23ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.028Z"
           },
           {
@@ -1212,7 +1212,7 @@
             "lifecycle": "completed",
             "status": "ok",
             "title": "dwell window complete",
-            "text": "2 frame(s) over 23ms; no model turn was requested during the window",
+            "text": "2 frames over 23ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.028Z"
           },
           {
@@ -1281,7 +1281,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "6 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "6 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.049Z",
@@ -1394,7 +1394,7 @@
             "lifecycle": "completed",
             "status": "ok",
             "title": "dwell window complete",
-            "text": "2 frame(s) over 24ms; no model turn was requested during the window",
+            "text": "2 frames over 24ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.042Z"
           },
           {

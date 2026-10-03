@@ -46,6 +46,7 @@ import {
   type ActorRunResult,
   type ConcurrentBundleArgs,
 } from "./types.js";
+import { plural } from "../../run/text.js";
 
 /** Max windows live at the same instant (sweep over start/end points). The simultaneity
  *  count: the participant count says how many existed; this says how many ever ran at once. */
@@ -137,7 +138,7 @@ function formatSharedWorldActorOutcomes(
     .map(([reason, count]) => `${reason} ${count}/${expectedCount}`)
     .join(", ");
 
-  return `${passedSessions}/${expectedCount} actor session(s) passed credibility checks; mission endpoint: ${goalSatisfiedSessions}/${expectedCount} ended goal_satisfied; completion reasons: ${completionReasons}`;
+  return `${passedSessions}/${plural(expectedCount, "actor session")} passed credibility checks; mission endpoint: ${goalSatisfiedSessions}/${expectedCount} ended goal_satisfied; completion reasons: ${completionReasons}`;
 }
 
 /** The run's first two events: its creation and the shared plane's provenance. */
@@ -155,7 +156,7 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.run.created",
-    message: `Created a concurrent shared-world run for ${plan.studyId} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) on one shared app, at most ${plan.concurrency} at once).`,
+    message: `Created a concurrent shared-world run for ${plan.studyId} (actor ${descriptor.id}, ${plural(actorSpecs.length, "persona")} on one shared app, at most ${plan.concurrency} at once).`,
   });
   // Human-readable plane label, byte-stable for the clone route. local-tree has no repo slug: it
   // labels the packed archive instead (archiveSha256 + dirty/clean when the packed root was a git
@@ -355,7 +356,7 @@ function concurrencyReview(
   ).length;
   const stateSeriesLabel = external
     ? "stateSeries omitted (no authoritative shared-state proof on the external-public plane)"
-    : `stateSeries ${(stateSeries ?? []).length} snapshot(s), ${deltas} delta(s)`;
+    : `stateSeries ${plural((stateSeries ?? []).length, "snapshot")}, ${plural(deltas, "delta")}`;
   const convergenceLabel = external
     ? `; lobby convergence ${args.lobbyConvergenceDigest ? "shown (all participants reached one /lobby/CODE)" : "not observed"}`
     : "";
@@ -368,7 +369,7 @@ function concurrencyReview(
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.concurrency",
-    message: `Concurrency: ${windows.length} participant(s)${dryRun ? " (dry run; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "shown" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This dry run proves nothing about live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
+    message: `Concurrency: ${plural(windows.length, "participant")}${dryRun ? " (dry run; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "shown" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This dry run proves nothing about live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
   });
 
   // The judge's verdict (judgeSharedWorld): every participant produced a terminal, engaged, passed
@@ -385,13 +386,13 @@ function concurrencyReview(
     // report "state delta(s) under load" (live). It reports lobby convergence instead.
     summary: dryRun
       ? external
-        ? `Concurrent shared-world dry run: ${actorSpecs.length} persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.`
-        : `Concurrent shared-world dry run: ${actorSpecs.length} persona(s) declared against one app served at a public sandbox URL (${descriptor.id}); no sandboxes launched, $0 spent.`
+        ? `Concurrent shared-world dry run: ${plural(actorSpecs.length, "persona")} declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.`
+        : `Concurrent shared-world dry run: ${plural(actorSpecs.length, "persona")} declared against one app served at a public sandbox URL (${descriptor.id}); no sandboxes launched, $0 spent.`
       : inProgress
-        ? `In-progress concurrent shared-world Observer snapshot: ${actorSpecs.length} persona(s) running against one shared app; final verification is pending.`
+        ? `In-progress concurrent shared-world Observer snapshot: ${plural(actorSpecs.length, "persona")} running against one shared app; final verification is pending.`
         : external
           ? `Concurrent shared-world (one public deployment, ${actorSpecs.length} personas at once): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} participants converged on one lobby` : "lobby convergence not observed"}.`
-          : `Concurrent shared-world (one shared app, ${actorSpecs.length} personas at once): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
+          : `Concurrent shared-world (one shared app, ${actorSpecs.length} personas at once): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${plural(deltas, "state delta")} under load.`,
     gaps: dryRun
       ? [
           "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.",

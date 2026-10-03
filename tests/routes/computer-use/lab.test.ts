@@ -2826,7 +2826,7 @@ describe("runCuaActorLab", () => {
     expect(screenshotLabels.every((label: string) => label.endsWith("(raw)"))).toBe(true);
     expect(bundle.redaction.notes).toContain("Screenshots are unblurred");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
-    expect(reviewMd).toMatch(/\d+ raw screenshot\(s\)/);
+    expect(reviewMd).toMatch(/\d+ raw screenshots?/);
     for (const text of [JSON.stringify(bundle), reviewMd]) {
       expect(text).not.toContain("(redacted)");
       expect(text).not.toContain("redacted screenshot");
@@ -2880,7 +2880,7 @@ describe("runCuaActorLab", () => {
     expect(screenshotLabels.every((label: string) => label.endsWith("(blurred)"))).toBe(true);
     expect(bundle.redaction.notes).toContain("blurred at capture");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
-    expect(reviewMd).toMatch(/\d+ blurred screenshot\(s\)/);
+    expect(reviewMd).toMatch(/\d+ blurred screenshots?/);
     expect(reviewMd).not.toContain("redacted screenshot");
   });
 
@@ -5209,7 +5209,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const provenance = bundle.events.find(
       (event: { type: string }) => event.type === "cua-lab.subject.provenance",
     );
-    expect(provenance?.message).toContain("state: seeded (3 step(s): prebuild, db-up, admin-user)");
+    expect(provenance?.message).toContain("state: seeded (3 steps: prebuild, db-up, admin-user)");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
     expect(reviewMd).toContain("state: seeded");
     for (const file of ["run.json", "review.md", "events.ndjson"]) {

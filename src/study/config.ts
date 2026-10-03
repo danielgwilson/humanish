@@ -89,6 +89,7 @@ import {
   taskProtocolValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
+import { plural } from "../run/text.js";
 
 /**
  * Validate a parsed YAML object into a StudyConfig. Pure: the caller owns file IO. Structural
@@ -259,7 +260,7 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
       );
       if (unknown.length > 0) {
         return invalid(
-          `comms.email.recipients name participant(s) that do not exist: ${unknown.map((r) => `"${recipientParticipantId(r)}"`).join(", ")}. This study's participant ids are: ${participantIds.join(", ")}. A recipient's \`lane\` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant.`,
+          `comms.email.recipients name ${plural(unknown.length, "participant")} that ${unknown.length === 1 ? "does" : "do"} not exist: ${unknown.map((r) => `"${recipientParticipantId(r)}"`).join(", ")}. This study's participant ids are: ${participantIds.join(", ")}. A recipient's \`lane\` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant.`,
         );
       }
       if (!email.recipients.some((recipient) => recipient.address !== undefined)) {

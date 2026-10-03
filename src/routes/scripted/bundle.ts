@@ -25,6 +25,7 @@ import {
 import { type RunStream } from "../../run/streams.js";
 import { participantEvent, recordIdOf } from "../../run/participant-records.js";
 import { scriptedSurfaceIds, scriptedSurfaceRecords } from "./surface-records.js";
+import { plural } from "../../run/text.js";
 
 /** What the scripted lab's bundle is built from. */
 interface ScriptedBundleArgs {
@@ -269,7 +270,7 @@ export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
     ...(spend ? [`- spend: ${spend.message}`] : []),
     ...traces.map(
       ({ stream, trace }) =>
-        `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${trace.counts.actions ?? 0} step action(s), ${trace.counts.screenshots ?? 0} raw screenshot(s)`,
+        `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${plural(trace.counts.actions ?? 0, "step action")}, ${plural(trace.counts.screenshots ?? 0, "raw screenshot")}`,
     ),
     ...(bundle.review.gaps.length > 0
       ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
