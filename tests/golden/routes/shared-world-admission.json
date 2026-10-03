@@ -178,7 +178,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
+      "message": "An external-public shared-world study needs `subject.publicTarget: { owner, authorized: true }` to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -528,7 +528,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
+      "message": "An external-public shared-world study needs `subject.publicTarget: { owner, authorized: true }` to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

@@ -333,7 +333,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.warnings.length).toBe(1);
-    expect(result.warnings[0]).toContain("not yet consumed");
+    expect(result.warnings[0]).toContain("no route reads them yet");
     expect(result.warnings[0]).toContain("actors[0].mission");
     expect(result.warnings[0]).toContain("review");
   });
@@ -534,7 +534,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       if (!result.ok) return;
       const commsWarning = result.warnings.find((warning) => warning.includes("comms.email"));
       expect(commsWarning).toBeDefined();
-      expect(commsWarning).toContain("clone or local-tree");
+      expect(commsWarning).toContain("`subject.source: clone` or `local-tree`");
     });
 
     it("does not warn about comms.email on a clone subject, which the catch can host", () => {
@@ -1646,7 +1646,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
             },
           },
         },
-        "do not allow `subject.state.external`",
+        "cannot use `subject.state.external`",
       ],
       [
         "loopback-only start",
@@ -2507,7 +2507,7 @@ describe("shared-world topology routing + cross-validation", () => {
       }),
     );
     expect(oneRole.ok).toBe(false);
-    if (!oneRole.ok) expect(oneRole.error.message).toContain("at least 2 roles");
+    if (!oneRole.ok) expect(oneRole.error.message).toContain("roster of at least 2");
     const noCheckpoint = parseLabConfig(
       validSharedWorld({
         subject: { state: { seed: [{ name: "migrate", command: "pnpm db:migrate" }] } },
@@ -2981,7 +2981,7 @@ describe("parseLabConfig (local-tree subject)", () => {
       expect(sharedWorldOnBareLocalTree.error.message).not.toContain(
         "requires `subject.source: clone` or `subject.source: local-tree`",
       );
-      expect(sharedWorldOnBareLocalTree.error.message).toContain("at least 2 roles");
+      expect(sharedWorldOnBareLocalTree.error.message).toContain("roster of at least 2");
     }
 
     const badExclude = parseLabConfig({
@@ -3030,7 +3030,7 @@ describe("parseLabConfig (local-tree subject)", () => {
 // planes before the concurrency rule can, so no single-participant exception to that rule is
 // reachable.
 describe("shared-world one-participant rosters and the concurrency rule", () => {
-  const PROVISIONED_FLOOR = "requires an `actors[0].lanes` roster of at least 2 roles";
+  const PROVISIONED_FLOOR = "needs an `actors[0].lanes` roster of at least 2 participants";
   const EXTERNAL_FLOOR = "a single-participant shared world proves no shared session";
   const CONCURRENCY_RULE = "need `execution.concurrency` of at least 2";
 

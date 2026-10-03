@@ -138,7 +138,7 @@ export async function loadAdapterScorer(args: {
   if (!SCORER_CAPABLE_ROUTES.has(route)) {
     return fail(
       "HUMANISH_STUDY_SCORER_UNSUPPORTED_BACKEND",
-      `review.scorer.ref is declared but this lab resolves to the ${route} route, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, computer-use or shared-world lab.`,
+      `review.scorer.ref is set, but this study runs on the ${route} route, which cannot run a scorer. The run stops here so the scorer is not silently skipped. Use it with a terminal, computer-use or shared-world study, or remove review.scorer.ref.`,
     );
   }
 
@@ -154,7 +154,7 @@ export async function loadAdapterScorer(args: {
   if (path.isAbsolute(trimmed)) {
     return fail(
       "HUMANISH_STUDY_SCORER_BAD_REF",
-      `review.scorer.ref "${trimmed}" must be a repo-relative path, not absolute — provenance is recorded repo-relative.`,
+      `review.scorer.ref "${trimmed}" must be a path relative to the project, not an absolute path, because the run records it relative to the project.`,
     );
   }
   const ext = path.extname(trimmed).toLowerCase();
@@ -167,7 +167,7 @@ export async function loadAdapterScorer(args: {
   if (!SCORER_EXTENSIONS.has(ext)) {
     return fail(
       "HUMANISH_STUDY_SCORER_BAD_REF",
-      `review.scorer.ref "${trimmed}" must be a repo-relative PATH ending in .mjs (recommended), .js, or .cjs — an id-style ref is not supported.`,
+      `review.scorer.ref "${trimmed}" must be a path relative to the project ending in .mjs (recommended), .js or .cjs.`,
     );
   }
 
@@ -181,7 +181,7 @@ export async function loadAdapterScorer(args: {
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
     return fail(
       "HUMANISH_STUDY_SCORER_BAD_REF",
-      `review.scorer.ref "${trimmed}" must stay inside the target cwd — provenance is recorded repo-relative and an escaping/absolute path (a cwd parent, node_modules above cwd, an absolute path) cannot be.`,
+      `review.scorer.ref "${trimmed}" must stay inside the project directory, because the run records it relative to the project; a path into a parent directory cannot be recorded that way.`,
     );
   }
   const relPosix = relative.split(path.sep).join("/");
@@ -192,7 +192,7 @@ export async function loadAdapterScorer(args: {
   if (!bytes) {
     return fail(
       "HUMANISH_STUDY_SCORER_NOT_FOUND",
-      `review.scorer.ref "${trimmed}" could not be read as a contained regular file (${relPosix}). A scorer must be a regular file inside the target cwd — no symlink, no hardlink, no realpath escape.`,
+      `review.scorer.ref "${trimmed}" could not be read as a regular file inside the project (${relPosix}). Use a plain file there: not a symlink or a hard link, and not a path that resolves outside the project.`,
     );
   }
   const digest = digestText(bytes.toString("utf8"));
@@ -250,7 +250,7 @@ export async function loadAdapterScorer(args: {
       "HUMANISH_STUDY_SCORER_NO_HOOKS",
       artifactsOnly
         ? `review.scorer.ref "${trimmed}" exported only deriveArtifacts, which is browser-only and inert on the terminal route. Export score and/or deriveFeedback for a terminal-product scorer.`
-        : `review.scorer.ref "${trimmed}" loaded but exported none of the adopter-scorer hooks (score, deriveFeedback, deriveArtifacts). Export at least one (named, or on a single default object). costProbe is intentionally NOT loadable.`,
+        : `review.scorer.ref "${trimmed}" loaded but exports none of score, deriveFeedback or deriveArtifacts. Export at least one, as a named export or on a default object. costProbe cannot be loaded from a scorer file.`,
     );
   }
 

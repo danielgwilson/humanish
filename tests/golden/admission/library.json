@@ -386,7 +386,7 @@
   "local-app on e2b-desktop": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "local-app subjects drive an in-process LOCAL dev server with NO E2B desktop — set `execution.target: local` or omit it (absent means local); `e2b-desktop` is rejected (use an app-url subject for the hosted-desktop route)."
+      "message": "A local-app subject drives a local dev server in this process, with no E2B desktop. Set `execution.target: local` or omit it. To run on a hosted desktop, use an app-url subject with `execution.target: e2b-desktop`."
     },
     "runLab": {
       "runs": false,
@@ -550,7 +550,7 @@
   "local-app public targets": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow."
+      "message": "`policies.allowPublicTargets` does not apply to a local-app subject: it is always a loopback dev server, so there is no public target to allow. Remove the setting."
     },
     "runLab": {
       "runs": false,
@@ -591,7 +591,7 @@
   "scripted app-url on e2b-desktop": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice."
+      "message": "A scripted-browser actor on an app-url subject runs on this machine. Set `execution.target: local` or omit it. To run scripted steps on a hosted desktop, use a clone subject."
     },
     "runLab": {
       "runs": true,
@@ -608,7 +608,7 @@
   "scripted app-url without ref": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
     },
     "runLab": {
       "runs": false,
@@ -649,7 +649,7 @@
   "scripted app-url count 3": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice."
+      "message": "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
     },
     "runLab": {
       "runs": true,
@@ -666,7 +666,7 @@
   "scripted app-url redacted screenshots": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected."
+      "message": "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them."
     },
     "runLab": {
       "runs": true,
@@ -683,7 +683,7 @@
   "scripted app-url public targets": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`policies.allowPublicTargets` is not supported on the scripted-browser route — the scripted step driver enforces loopback at every navigation; public targets on this route are a later slice."
+      "message": "`policies.allowPublicTargets` is not supported on the scripted-browser route: the step driver allows only loopback URLs at every navigation. Remove the setting, or drive the public URL with a computer-use actor."
     },
     "runLab": {
       "runs": true,
@@ -848,7 +848,7 @@
   "cu app-url public url without policy": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own."
+      "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
     },
     "runLab": {
       "runs": false,
@@ -930,7 +930,7 @@
   "scripted clone on local": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects with scripted-browser actors require `execution.target: e2b-desktop` — the lab provisions the clone in E2B, exposes it with getHost, then drives deterministic browser steps."
+      "message": "A clone subject with a scripted-browser actor needs `execution.target: e2b-desktop`: humanish builds the clone in an E2B sandbox, opens it at a public sandbox URL and runs the scenario's browser steps against it."
     },
     "runLab": {
       "runs": false,
@@ -971,7 +971,7 @@
   "scripted clone without serve": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects with scripted-browser actors require `subject.serve` (start + url) — the lab serves the app in-sandbox before the scripted browser drives it."
+      "message": "A clone subject with a scripted-browser actor needs `subject.serve` (start and url): humanish starts the app in the sandbox before the browser steps run."
     },
     "runLab": {
       "runs": false,
@@ -1029,7 +1029,7 @@
   "scripted clone topology": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone scripted-browser labs do not support `subject.topology` yet — this slice provisions one synthetic subject and one deterministic scripted actor roster, not a shared-world run."
+      "message": "A clone scripted-browser study does not support `subject.topology` yet: it runs one synthetic subject for its scripted actor. Remove `subject.topology`."
     },
     "runLab": {
       "runs": true,
@@ -1046,7 +1046,7 @@
   "scripted clone keep": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone scripted-browser labs do not support `subject.clone.fanout` or `subject.clone.keep` yet — the provisioned subject is always a single disposable E2B sandbox."
+      "message": "A clone scripted-browser study does not support `subject.clone.fanout` or `subject.clone.keep` yet: its subject is always one sandbox, removed after the run."
     },
     "runLab": {
       "runs": true,
@@ -1063,7 +1063,7 @@
   "scripted clone without ref": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
     },
     "runLab": {
       "runs": false,
@@ -1104,7 +1104,7 @@
   "scripted clone count 3": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice."
+      "message": "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
     },
     "runLab": {
       "runs": true,
@@ -1121,7 +1121,7 @@
   "scripted clone lanes": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster."
+      "message": "`actors[0].lanes` is not supported on the scripted-browser route yet. Use `actors[0].count` to choose the desktop and mobile surfaces."
     },
     "runLab": {
       "runs": true,
@@ -1138,7 +1138,7 @@
   "scripted clone redacted screenshots": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected."
+      "message": "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them."
     },
     "runLab": {
       "runs": true,
@@ -1155,7 +1155,7 @@
   "scripted clone public targets": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`policies.allowPublicTargets` is not supported on the clone scripted-browser route — the only external host is the harness-minted getHost URL for a provisioned synthetic subject."
+      "message": "`policies.allowPublicTargets` does not apply to a clone scripted-browser study: its only public URL is the sandbox URL humanish opens for its synthetic subject. Remove the setting."
     },
     "runLab": {
       "runs": true,
@@ -1172,7 +1172,7 @@
   "scripted clone without exposure": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone scripted-browser labs require `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data."
+      "message": "A clone scripted-browser study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic."
     },
     "runLab": {
       "runs": true,
@@ -1189,7 +1189,7 @@
   "scripted clone without seed": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone scripted-browser labs require `subject.state.seed` and do not allow `subject.state.external` — getHost-exposed subjects must be synthetic seeded data, not external/unpinned state."
+      "message": "A clone scripted-browser study needs `subject.state.seed` and cannot use `subject.state.external`: a subject at a public sandbox URL may hold only seeded synthetic data."
     },
     "runLab": {
       "runs": true,
@@ -1206,7 +1206,7 @@
   "scripted clone loopback bind": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone scripted-browser labs require `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; the readiness probe stays loopback."
+      "message": "A clone scripted-browser study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0. The readiness probe still uses loopback."
     },
     "runLab": {
       "runs": true,
@@ -1264,7 +1264,7 @@
   "cu clone without serve": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it."
+      "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
     },
     "runLab": {
       "runs": false,
@@ -1494,7 +1494,7 @@
   "lanes and count": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
+      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
     },
     "runLab": {
       "runs": false,
@@ -1518,7 +1518,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
+          "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1617,7 +1617,7 @@
   "lane target on clone": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism."
+      "message": "`actors[0].lanes[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`."
     },
     "runLab": {
       "runs": false,
@@ -1641,7 +1641,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism."
+          "message": "`actors[0].lanes[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1740,7 +1740,7 @@
   "seventeen lanes": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "Computer-use fan-out is capped at 16 participants (declared 17); N concurrent paid desktops is real spend, and there is no override above the cap this slice."
+      "message": "A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
     },
     "runLab": {
       "runs": false,
@@ -1764,7 +1764,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "Computer-use fan-out is capped at 16 participants (declared 17); N concurrent paid desktops is real spend, and there is no override above the cap this slice."
+          "message": "A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1781,7 +1781,7 @@
   "public target fan-out": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "policies.allowPublicTargets cannot be combined with fan-out to more than one participant (N>1): N participants against one declared public target is the SHARED-WORLD topology (layer 7, #164), not `per-lane-worlds`. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target participant."
+      "message": "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant."
     },
     "runLab": {
       "runs": false,
@@ -1805,7 +1805,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "policies.allowPublicTargets cannot be combined with fan-out to more than one participant (N>1): N participants against one declared public target is the SHARED-WORLD topology (layer 7, #164), not `per-lane-worlds`. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target participant."
+          "message": "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1945,7 +1945,7 @@
   "shared world without serve": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it."
+      "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
     },
     "runLab": {
       "runs": false,
@@ -1972,7 +1972,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`subject.topology: shared-world` requires `subject.serve` (start + url) — the lab serves ONE shared app in-sandbox that every role drives."
+          "message": "`subject.topology: shared-world` needs `subject.serve` (start and url): humanish starts one copy of the app in the sandbox, and every participant uses it."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1989,7 +1989,7 @@
   "shared world one seat": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
+      "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
     },
     "runLab": {
       "runs": false,
@@ -2016,7 +2016,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
+          "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2033,7 +2033,7 @@
   "shared world without checkpoint": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app."
+      "message": "`subject.topology: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
     },
     "runLab": {
       "runs": false,
@@ -2060,7 +2060,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app."
+          "message": "`subject.topology: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2165,7 +2165,7 @@
   "shared world without exposure": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL)."
+      "message": "A shared-world study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic and seeded."
     },
     "runLab": {
       "runs": false,
@@ -2192,7 +2192,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL)."
+          "message": "A shared-world study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic and seeded."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2209,7 +2209,7 @@
   "shared world loopback bind": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)"
+      "message": "A shared-world study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0, and a loopback-only server answers 502. The readiness probe still uses loopback."
     },
     "runLab": {
       "runs": false,
@@ -2236,7 +2236,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)"
+          "message": "A shared-world study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0, and a loopback-only server answers 502. The readiness probe still uses loopback."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2297,7 +2297,7 @@
   "external without public-target policy": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own."
+      "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
     },
     "runLab": {
       "runs": false,
@@ -2338,7 +2338,7 @@
   "external loopback url": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "the external-public shared-world route requires a non-loopback http(s) `subject.appUrl` — a loopback URL is not a shared public plane (use the getHost provisioned route for a local subject)."
+      "message": "An external-public shared-world study needs a public http(s) `subject.appUrl`, not a loopback URL. For an app you run locally, use a clone or local-tree subject, which humanish serves itself."
     },
     "runLab": {
       "runs": false,
@@ -2365,7 +2365,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "the external-public shared-world route requires a non-loopback http(s) `subject.appUrl` — a loopback URL is not a shared public plane (use the getHost provisioned route for a local subject)."
+          "message": "An external-public shared-world study needs a public http(s) `subject.appUrl`, not a loopback URL. For an app you run locally, use a clone or local-tree subject, which humanish serves itself."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2382,7 +2382,7 @@
   "external without ownership": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
+      "message": "An external-public shared-world study needs `subject.publicTarget: { owner, authorized: true }` to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it."
     },
     "runLab": {
       "runs": false,
@@ -2409,7 +2409,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
+          "message": "An external-public shared-world study needs `subject.publicTarget: { owner, authorized: true }` to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2426,7 +2426,7 @@
   "external with exposure": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.exposure: synthetic` is forbidden on the external-public shared-world route — you cannot attest a real public deployment is synthetic seeded data; use `subject.publicTarget` to attest ownership instead."
+      "message": "`subject.exposure: synthetic` does not apply to an external-public shared-world study: a real public deployment is not seeded synthetic data. Declare ownership with `subject.publicTarget` instead."
     },
     "runLab": {
       "runs": false,
@@ -2453,7 +2453,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`subject.exposure: synthetic` is forbidden on the external-public shared-world route — you cannot attest a real public deployment is synthetic seeded data; use `subject.publicTarget` to attest ownership instead."
+          "message": "`subject.exposure: synthetic` does not apply to an external-public shared-world study: a real public deployment is not seeded synthetic data. Declare ownership with `subject.publicTarget` instead."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2514,7 +2514,7 @@
   "external without host": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "the external-public shared-world route requires EXACTLY ONE `host: true` participant (the designated host that creates the shared session; got 0). The other ≥1 participants are followers that join it."
+      "message": "An external-public shared-world study needs exactly one `host: true` participant, the one who creates the shared session, and this study has 0. Every other participant joins that session."
     },
     "runLab": {
       "runs": false,
@@ -2541,7 +2541,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "the external-public shared-world route requires EXACTLY ONE `host: true` participant (the designated host that creates the shared session; got 0). The other ≥1 participants are followers that join it."
+          "message": "An external-public shared-world study needs exactly one `host: true` participant, the one who creates the shared session, and this study has 0. Every other participant joins that session."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2626,7 +2626,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+          "message": "A desktop-cli subject needs `subject.product.name`: the CLI the participant is asked to use."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2643,7 +2643,7 @@
   "desktop-cli on local": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "desktop-cli subjects are studied at a hosted desktop — set `execution.target: e2b-desktop` or omit it."
+      "message": "A desktop-cli subject runs on a hosted desktop. Set `execution.target: e2b-desktop` or omit it."
     },
     "runLab": {
       "runs": true,
@@ -2734,7 +2734,7 @@
   "terminal on e2b-desktop": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "terminal-product subjects run the agent inside an E2B shell — set `execution.target: e2b-terminal` or omit it (absent means e2b-terminal); `local`/`e2b-desktop` are rejected."
+      "message": "A terminal-product subject runs its agent in an E2B shell. Set `execution.target: e2b-terminal` or omit it; `local` and `e2b-desktop` are not supported."
     },
     "runLab": {
       "runs": true,
@@ -4189,7 +4189,7 @@
   "overlap shared world: tasks and one seat": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
+      "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
     },
     "runLab": {
       "runs": false,
