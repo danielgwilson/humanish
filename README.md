@@ -369,7 +369,7 @@ Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
 ## Find more guides
 
 - [Study files](https://humanish.dev/docs/study-files): source directories, route selection,
-  ignored private labs and
+  ignored private studies and
   [scripted browser scenarios](https://humanish.dev/docs/study-files#scripted-browser-scenarios).
 - [Computer use](https://humanish.dev/docs/computer-use): subjects, screenshots, devices, mobile
   emulation, stop rules, dwell windows and reruns of failed participants. The
