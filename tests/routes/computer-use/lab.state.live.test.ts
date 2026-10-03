@@ -6,8 +6,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
-import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -42,8 +42,8 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (live, spend-gated)", () => 
     "seeds in-sandbox state that the readiness probe and the real actor both depend on",
     { timeout: 420_000 },
     async () => {
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "cua-clone-seeded-live-proof",
         title: "Clone subject with seeded state (live proof)",
         subject: {

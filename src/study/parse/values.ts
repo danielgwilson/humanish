@@ -1,11 +1,11 @@
-import type { LabConfigParseFailure } from "../types.js";
+import type { StudyParseFailure } from "../types.js";
 
 // The slug interpolates into an in-sandbox shell command, so its shape is strict.
 export const REPO_SLUG_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 export const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
-export function invalid(message: string): LabConfigParseFailure {
+export function invalid(message: string): StudyParseFailure {
   return { ok: false, error: { code: "HUMANISH_STUDY_INVALID", message } };
 }
 

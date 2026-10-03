@@ -5,18 +5,18 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
-import { normalizeRunLabOptions } from "../../src/study/run-study-options.js";
-import type { LabConfig } from "../../src/study/types.js";
+import { normalizeRunStudyOptions } from "../../src/study/run-study-options.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import { runPackageLab, type RunLabOptions } from "../../src/run-lab.js";
 import { lab } from "../admission/fixtures.js";
 
 // The package's runLab refuses the RunLabOptions fields it no longer has, and the typed options
 // emit no deprecation warning. Only tests set the internal options.
 
-function config(): LabConfig {
-  const parsed = parseLabConfig(lab("cuAppUrl"));
+function config(): StudyConfig {
+  const parsed = parseStudy(lab("cuAppUrl"));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -34,7 +34,7 @@ describe("the typed options", () => {
     const emitWarning = vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
     try {
       const labConfig = config();
-      normalizeRunLabOptions(labConfig, routeOf(labConfig), {
+      normalizeRunStudyOptions(labConfig, routeOf(labConfig), {
         cwd: "/tmp/x",
         env: {},
         prepareDesktop: async () => undefined,

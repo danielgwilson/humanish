@@ -1,5 +1,5 @@
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
-import type { LabScenarioCaps, LabRuntimeAuth } from "../../study/types.js";
+import type { StudyScenarioCaps, StudyRuntimeAuth } from "../../study/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import {
@@ -47,7 +47,7 @@ export function buildTerminalProductBundle(args: {
   persona: ActorPersonaRef;
   productName: string;
   publicSurfaces: string[];
-  caps?: LabScenarioCaps;
+  caps?: StudyScenarioCaps;
   runtimeAuth?: string;
   stdin: "disabled" | "planned" | "sent";
   policies: {
@@ -170,9 +170,9 @@ export function buildLiveTerminalProductBundle(args: {
   persona: ActorPersonaRef;
   productName: string;
   publicSurfaces: string[];
-  caps?: LabScenarioCaps;
+  caps?: StudyScenarioCaps;
   runtimeAuthKeyName: string;
-  runtimeAuth?: LabRuntimeAuth;
+  runtimeAuth?: StudyRuntimeAuth;
   policies: {
     allowPrivateRepoAccess: boolean;
     allowProviderCredentials: boolean;
@@ -394,7 +394,7 @@ function terminalRunBundle(
   };
 }
 
-function describeCaps(caps: LabScenarioCaps | undefined): string {
+function describeCaps(caps: StudyScenarioCaps | undefined): string {
   if (!caps) return "none declared (a live run requires caps)";
   const parts: string[] = [];
   if (caps.maxUsd !== undefined) parts.push(`maxUsd=${caps.maxUsd}`);

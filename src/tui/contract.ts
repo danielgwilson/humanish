@@ -13,8 +13,8 @@
 // It also makes the UI testable without a terminal: a test hands `startTui` a fake index and reads
 // the frames back.
 
-import type { LabListResult } from "../study/discover.js";
-import type { LabSummary, ReadLabSummaryOptions } from "../study/summary.js";
+import type { StudyListResult } from "../study/discover.js";
+import type { StudySummary, ReadStudySummaryOptions } from "../study/summary.js";
 import type { RunDetail } from "../run/detail.js";
 import type { ReclaimResult } from "../run/reclaim.js";
 import type { TuiActionResult } from "./actions.js";
@@ -54,7 +54,7 @@ export interface TuiCapabilities {
    * the whole truth: a fresh project has manifests and no runs, and a long-lived one has runs from
    * manifests since renamed or deleted.
    */
-  listLabs(cwd: string): Promise<LabListResult>;
+  listLabs(cwd: string): Promise<StudyListResult>;
   /**
    * Start a run and return once it is running. The run is detached: it outlives this surface, so
    * quitting the TUI (or losing the connection it runs over) does not kill a study that costs
@@ -77,8 +77,8 @@ export interface TuiCapabilities {
   readLabSummary(
     cwd: string,
     lab: string,
-    options?: ReadLabSummaryOptions,
-  ): Promise<LabSummary | null>;
+    options?: ReadStudySummaryOptions,
+  ): Promise<StudySummary | null>;
   /** Whether this directory is a humanish project: an empty project and a wrong directory are
    *  different problems and must not share a screen. */
   readProjectState(cwd: string): TuiProjectState;

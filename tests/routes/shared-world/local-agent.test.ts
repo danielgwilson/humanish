@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../../../src/study/config.js";
-import { planLab } from "../../../src/study/plan.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { planStudy } from "../../../src/study/plan.js";
 import { runLab } from "../../../src/run-lab.js";
 import { participantRunDeps } from "../../../src/routes/shared-world/participant-specs.js";
 import type { PlaneContext } from "../../../src/routes/shared-world/types.js";
@@ -35,7 +35,7 @@ async function projectDir(): Promise<string> {
 }
 
 function config(base: "sharedProvisioned" | "sharedExternal", actor?: Record<string, unknown>) {
-  const parsed = parseLabConfig(lab(base, live, actor));
+  const parsed = parseStudy(lab(base, live, actor));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -74,7 +74,7 @@ describe("shared world with a local-agent brain", () => {
   it("declares OPENAI_API_KEY only for the external-public plane's lobby-code reader", async () => {
     const cwd = await projectDir();
     const keysOf = (base: "sharedProvisioned" | "sharedExternal") => {
-      const planned = planLab(config(base, localAgent), { cwd });
+      const planned = planStudy(config(base, localAgent), { cwd });
       if (!planned.ok) throw new Error(planned.refusal.message);
       return planned.planned.plan.requirements.flatMap((requirement) =>
         requirement.kind === "key" ? [requirement.name] : [],
@@ -132,7 +132,7 @@ describe("shared world with a local-agent brain", () => {
     const base = lab("sharedProvisioned", live, localAgent);
     const raw =
       caps === undefined ? base : { ...base, execution: { ...(base.execution as object), caps } };
-    const parsed = parseLabConfig(raw);
+    const parsed = parseStudy(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(
       parsed.config,

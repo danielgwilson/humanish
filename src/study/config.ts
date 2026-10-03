@@ -24,7 +24,7 @@
 // presets belong to the computer-use route; scripted surfaces are the driver's own desktop/mobile
 // viewports where isMobile/DSF genuinely render via playwright emulation).
 // On the other routes those fields remain forward-declared and are not yet consumed:
-// parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
+// parseStudy emits a warning listing any such field that is set, so `lab inspect` shows
 // the truth.
 //
 // NOTE on actors[0].count: it carries route-specific meanings. Preview route: simCount;
@@ -57,7 +57,7 @@ import {
 } from "../substrates/local/runtime-config.js";
 import { isRecord } from "../run/type-guards.js";
 import { compositionReason } from "./composition-rules.js";
-import { findUnknownLabKey } from "./keys.js";
+import { findUnknownV2Key } from "./keys.js";
 import { parseActors, rosterOf } from "./parse/actors.js";
 import { parseComms, recipientParticipantId } from "./parse/comms.js";
 import {
@@ -75,10 +75,10 @@ import { isComputerUseComposition, isSharedWorldComposition, routeOf } from "./r
 import { declaredParticipantIds } from "./plan-participants.js";
 import {
   ID_PATTERN,
-  LAB_CONFIG_SCHEMA,
+  V2_SCHEMA,
   STUDY_SCHEMA,
-  type LabConfig,
-  type LabConfigParseResult,
+  type StudyConfig,
+  type StudyParseResult,
 } from "./types.js";
 import {
   automaticAnalysisRouteReason,
@@ -91,17 +91,17 @@ import {
 import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
 
 /**
- * Validate a parsed YAML object into a LabConfig. Pure: the caller owns file IO. Structural
+ * Validate a parsed YAML object into a StudyConfig. Pure: the caller owns file IO. Structural
  * validation only. Fields the engine does not yet consume are accepted but reported in
  * `warnings` so `lab inspect` never silently swallows a setting that does nothing.
  */
-export function parseLabConfig(raw: unknown): LabConfigParseResult {
+export function parseStudy(raw: unknown): StudyParseResult {
   if (!isRecord(raw)) {
     return invalid("Lab manifest must be a YAML object.");
   }
-  if (raw.schema === STUDY_SCHEMA) return parseStudy(raw);
-  if (raw.schema !== LAB_CONFIG_SCHEMA) {
-    return invalid(`Lab schema must be ${STUDY_SCHEMA} or ${LAB_CONFIG_SCHEMA}.`);
+  if (raw.schema === STUDY_SCHEMA) return parseV3(raw);
+  if (raw.schema !== V2_SCHEMA) {
+    return invalid(`Lab schema must be ${STUDY_SCHEMA} or ${V2_SCHEMA}.`);
   }
   return parseV2(raw);
 }
@@ -110,7 +110,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
  * A v3 study parses through the v2 parser, then must take the route it declares and set no field
  * that route does not read. A v2 file gets those fields as a warning instead.
  */
-function parseStudy(raw: Record<string, unknown>): LabConfigParseResult {
+function parseV3(raw: Record<string, unknown>): StudyParseResult {
   const document = studyToV2(raw);
   if (!document.ok) return document;
   const { route, v2, participantSource } = document.value;
@@ -138,8 +138,8 @@ function parseStudy(raw: Record<string, unknown>): LabConfigParseResult {
   };
 }
 
-function parseV2(raw: Record<string, unknown>): LabConfigParseResult {
-  const unknownKey = findUnknownLabKey(raw);
+function parseV2(raw: Record<string, unknown>): StudyParseResult {
+  const unknownKey = findUnknownV2Key(raw);
   if (unknownKey) return invalid(unknownKey);
 
   const id = str(raw.id);
@@ -164,8 +164,8 @@ function parseV2(raw: Record<string, unknown>): LabConfigParseResult {
     return executionResult;
   }
 
-  const config: LabConfig = {
-    schema: LAB_CONFIG_SCHEMA,
+  const config: StudyConfig = {
+    schema: V2_SCHEMA,
     id,
     ...optionalStr("title", raw.title),
     ...optionalStr("description", raw.description),

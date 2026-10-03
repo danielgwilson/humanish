@@ -52,7 +52,7 @@ import type { SharedWorldPlan } from "../../study/plan-types.js";
 import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
 import { withLateScorer } from "../../study/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import {
   type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
@@ -129,7 +129,7 @@ export function sharedWorldLabRefusal(
 export async function admitSharedWorldPlan(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
-  config: LabConfig,
+  config: StudyConfig,
 ): Promise<AdmittedPlan<"shared-world">> {
   const refused = await admitSharedWorldRun(plan, input);
   if (refused) return { ok: false, outcome: sharedWorldOutcome(refused) };
@@ -154,7 +154,7 @@ function sharedWorldOutcome(result: ConcurrentSharedWorldLabResult) {
 export async function runSharedWorldPlan(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
-  config: LabConfig,
+  config: StudyConfig,
 ): Promise<ConcurrentSharedWorldLabResult> {
   const refused = await admitSharedWorldRun(plan, input);
   return refused ?? runAdmittedSharedWorldRun(plan, input, config);
@@ -212,7 +212,7 @@ async function admitSharedWorldRun(
 function runAdmittedSharedWorldRun(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
-  config: LabConfig,
+  config: StudyConfig,
 ): Promise<ConcurrentSharedWorldLabResult> {
   return withTransientCommsSecrets(async () => {
     const { result, finished } = await runScope((scope) =>
@@ -250,7 +250,7 @@ function sharedWorldFailure(plan: SharedWorldPlan, input: SharedWorldRunInput) {
 async function runPlanInScope(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
-  config: LabConfig,
+  config: StudyConfig,
   scope: RunScope,
 ): Promise<ConcurrentSharedWorldLabResult> {
   const { dryRun } = plan;

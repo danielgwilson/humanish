@@ -20,7 +20,7 @@ import {
 } from "../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../comms/types.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import type { LabCommsEmail, LabConfig } from "../../study/types.js";
+import type { StudyCommsEmail, StudyConfig } from "../../study/types.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import type { Shell } from "../../substrates/shell.js";
 import type {
@@ -32,7 +32,7 @@ import { addressedRecipients } from "../../study/parse/comms.js";
 
 /** The in-sandbox email catch a provisioned plane deploys, when the lab declares one. */
 export interface SubjectComms {
-  email: LabCommsEmail | undefined;
+  email: StudyCommsEmail | undefined;
   port: number | undefined;
   /** The catch's base URL, injected into the subject sandbox's env at create. */
   env: Record<string, string>;
@@ -45,7 +45,7 @@ export interface SubjectComms {
 // evidence run at subject teardown, then register run-level in the bundle. Unavailable on the
 // external-public plane (the app is an operator-owned deployment the harness never provisions).
 export function subjectCommsOf(
-  config: Pick<LabConfig, "comms">,
+  config: Pick<StudyConfig, "comms">,
   planeClass: ConcurrentSharedWorldPlaneClass,
 ): SubjectComms {
   const commsEmail =
@@ -71,7 +71,7 @@ export function subjectCommsOf(
  * does not answer as a humanish catch.
  */
 export async function prepareExternalComms(
-  config: Pick<LabConfig, "comms">,
+  config: Pick<StudyConfig, "comms">,
   planeClass: ConcurrentSharedWorldPlaneClass,
   dryRun: boolean,
   warnings: string[],
@@ -129,7 +129,7 @@ export async function prepareExternalComms(
  */
 export async function drainSubjectComms(
   ctx: PlaneContext,
-  commsEmail: LabCommsEmail,
+  commsEmail: StudyCommsEmail,
   subjectShell: Shell,
   deployedComms: DeployedCommsCatch,
 ): Promise<string | undefined> {

@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import type { PreviewStudyResult } from "../../routes/preview.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 import {
@@ -16,7 +16,7 @@ interface PreviewRouteArgs {
   command: Command;
   io: CliIo;
   lab: string;
-  config: LabConfig;
+  config: StudyConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }

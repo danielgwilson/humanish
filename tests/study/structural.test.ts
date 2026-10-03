@@ -5,11 +5,11 @@ import path from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { parse as parseYaml } from "yaml";
 
-import { parseLabConfig } from "../../src/study/config.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
 import { runLab } from "../../src/run-lab.js";
 import { routeOf } from "../../src/study/plan.js";
-import { resolveLabManifest } from "../../src/study/discover.js";
+import { resolveStudyManifest } from "../../src/study/discover.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
 import { digestText } from "../../src/evidence/redaction.js";
 
@@ -61,8 +61,8 @@ describe("lab refactor structural necessity (rung 1)", () => {
 // engine would pass an expressiveness test that never executes).
 describe("lab config expressiveness (rung 3)", () => {
   it("a clone+e2b composition with a free-form actor label is refused at parse", () => {
-    const result = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const result = parseStudy({
+      schema: V2_SCHEMA,
       id: "migration-rehearsal",
       title: "bespoke-sim to humanish migration",
       subject: {
@@ -87,7 +87,7 @@ describe("lab config expressiveness (rung 3)", () => {
   });
 
   it("the committed scripted-demo study parses with zero warnings, routes to the scripted backend, and its scenario.ref resolves to executable committed steps", async () => {
-    const resolved = await resolveLabManifest(ROOT, "scripted-demo");
+    const resolved = await resolveStudyManifest(ROOT, "scripted-demo");
     expect(resolved.ok).toBe(true);
     if (!resolved.ok) return;
     // Every field in the committed example is consumed on this route: zero warnings.
@@ -111,8 +111,8 @@ describe("lab config expressiveness (rung 3)", () => {
 
   it("synthetic behavior is a function of config (actor count -> simCount), not just a parsed label", async () => {
     const base = (count: number) =>
-      parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+      parseStudy({
+        schema: V2_SCHEMA,
         id: "behavioral",
         subject: { source: "this-repo" },
         actors: [{ type: "synthetic-persona", count }],

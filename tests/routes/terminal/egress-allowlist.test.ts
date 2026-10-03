@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 
 // The terminal route injects the operator's runtime LLM key command-scoped, and codex spawns
 // the participant's shell as a child, so the participant inherits that key. Two participants in a
@@ -11,8 +11,8 @@ import { parseLabConfig } from "../../../src/study/config.js";
 // cooperation: it cannot reach a host that is not on the list.
 
 function parse(execution: Record<string, unknown>) {
-  return parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  return parseStudy({
+    schema: V2_SCHEMA,
     id: "egress-test",
     title: "Egress test",
     subject: {

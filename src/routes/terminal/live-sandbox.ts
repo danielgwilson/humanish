@@ -7,7 +7,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
 import { digestText, toErrorMessage } from "../../evidence/redaction.js";
-import type { LabRuntimeAuth } from "../../study/types.js";
+import type { StudyRuntimeAuth } from "../../study/types.js";
 import { desktopSpanToMinutes, type DesktopUsage } from "../../run/cost-summary.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import type { RunScope } from "../../run/run.js";
@@ -49,7 +49,7 @@ import {
   type TerminalLedgers,
 } from "./types.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";
-import type { LabDeps } from "../../study/study-deps.js";
+import type { StudyDeps } from "../../study/study-deps.js";
 
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
@@ -57,7 +57,7 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface LiveSandboxInputs {
   plan: LiveTerminalPlan;
   cwd: string;
-  deps: LabDeps;
+  deps: StudyDeps;
   now: () => number;
   nowIso: () => string;
   sanitize: (text: string) => string;
@@ -555,7 +555,7 @@ export class LiveTerminalSandbox {
 function buildCodexExecCommand(args: {
   workdir: string;
   prompt: string;
-  runtimeAuth: LabRuntimeAuth;
+  runtimeAuth: StudyRuntimeAuth;
   version: string;
   model: string;
   reasoningEffort?: import("../../actors/reasoning-effort.js").ReasoningEffort;

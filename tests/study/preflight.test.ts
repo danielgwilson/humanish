@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
-import { runLabPreflight, type LabPreflightResult } from "../../src/study/preflight.js";
+import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 
@@ -54,7 +54,7 @@ describe("lab preflight", () => {
       async (cwd) => {
         let created = 0;
         let killed = 0;
-        const result = await runLabPreflight({
+        const result = await runStudyPreflight({
           cwd,
           lab: "preview",
           reachability: "public-preview",
@@ -91,7 +91,7 @@ describe("lab preflight", () => {
       },
       async (cwd) => {
         let created = 0;
-        const result = await runLabPreflight({
+        const result = await runStudyPreflight({
           cwd,
           lab: "loopback",
           reachability: "public-preview",
@@ -141,7 +141,7 @@ describe("lab preflight", () => {
       },
       async (cwd) => {
         let created = 0;
-        const result = await runLabPreflight({
+        const result = await runStudyPreflight({
           cwd,
           lab: "target-roster",
           reachability: "public-preview",
@@ -189,7 +189,7 @@ describe("lab preflight", () => {
         ].join("\n"),
       },
       async (cwd) => {
-        const result = await runLabPreflight({
+        const result = await runStudyPreflight({
           cwd,
           lab: "no-policy",
           reachability: "public-preview",
@@ -218,7 +218,7 @@ describe("lab preflight", () => {
       },
       async (cwd) => {
         const result = await runCli(["study", "check", "first-run", "--cwd", cwd, "--json"]);
-        const envelope = JSON.parse(result.stdout) as LabPreflightResult;
+        const envelope = JSON.parse(result.stdout) as StudyPreflightResult;
 
         expect(result.exitCode).toBe(0);
         expect(result.stderr).toBe("");

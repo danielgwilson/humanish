@@ -1,5 +1,5 @@
 import { collectExternalCommsEvidence } from "../../comms/external-evidence.js";
-import type { LabCommsEmail, LabCommsExternal } from "../../study/types.js";
+import type { StudyCommsEmail, StudyCommsExternal } from "../../study/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
 import { participantHasInboxRecipient } from "./participant-desktop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
@@ -13,8 +13,8 @@ import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
  * Returns the warnings the drain produced; participants that received mail get `commsArtifactPath`.
  */
 export async function drainExternalComms(args: {
-  externalCommsConfig: LabCommsExternal;
-  externalCommsEmail: LabCommsEmail;
+  externalCommsConfig: StudyCommsExternal;
+  externalCommsEmail: StudyCommsEmail;
   env: Record<string, string | undefined>;
   runPaths: PreparedRunArtifactPaths;
   participantRuns: readonly DesktopParticipantRun[];

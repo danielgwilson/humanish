@@ -1,16 +1,16 @@
-// Every mapping key parseLabConfig reads, by path. A key that is not listed fails the lab as
+// Every mapping key parseStudy reads, by path. A key that is not listed fails the lab as
 // unknown, so a typo stops the run instead of being dropped. `true` marks a leaf: its parser
 // checks the value (scalars, lists, and mappings that check their own keys). Each level satisfies
 // the parsed type's keys, so a field added to a Lab* interface must be added here too.
 
 import type { DwellWindow, StopWhen, StopWhenRule } from "../actors/stop-conditions.js";
-import type { LabTask } from "./tasks.js";
+import type { StudyTask } from "./tasks.js";
 import type {
-  LabActor,
-  LabParticipantEntry,
-  LabActorRosterGroup,
-  LabConfig,
-  LabSubject,
+  StudyActor,
+  StudyParticipantEntry,
+  StudyActorRosterGroup,
+  StudyConfig,
+  StudySubject,
 } from "./types.js";
 
 type KeyShape = { readonly [key: string]: true | KeyShape };
@@ -19,10 +19,10 @@ type KeyShape = { readonly [key: string]: true | KeyShape };
 type Keys<T> = { readonly [K in keyof Required<T>]: true | KeyShape };
 type Field<T, K extends keyof T> = NonNullable<T[K]>;
 
-type Execution = Field<LabConfig, "execution">;
+type Execution = Field<StudyConfig, "execution">;
 type Desktop = Field<Execution, "desktop">;
-type Email = Field<Field<LabConfig, "comms">, "email">;
-type State = Field<LabSubject, "state">;
+type Email = Field<Field<StudyConfig, "comms">, "email">;
+type State = Field<StudySubject, "state">;
 
 const STOP_WHEN = {
   any: {
@@ -66,7 +66,7 @@ const PARTICIPANT_ENTRY = {
   reasoningEffort: true,
   stopWhen: STOP_WHEN,
   dwell: DWELL,
-} satisfies Keys<LabParticipantEntry>;
+} satisfies Keys<StudyParticipantEntry>;
 
 const SUBJECT = {
   source: true,
@@ -76,20 +76,22 @@ const SUBJECT = {
   repos: true,
   env: true,
   envValues: true,
-  clone: { depth: true, fanout: true, keep: true } satisfies Keys<Field<LabSubject, "clone">>,
+  clone: { depth: true, fanout: true, keep: true } satisfies Keys<Field<StudySubject, "clone">>,
   localTree: {
     exclude: true,
     keep: true,
     maxArchiveBytes: true,
-  } satisfies Keys<Field<LabSubject, "localTree">>,
+  } satisfies Keys<Field<StudySubject, "localTree">>,
   product: {
     name: true,
     install: true,
     workdir: true,
     upload: true,
     publicSurfaces: true,
-  } satisfies Keys<Field<LabSubject, "product">>,
-  publicTarget: { owner: true, authorized: true } satisfies Keys<Field<LabSubject, "publicTarget">>,
+  } satisfies Keys<Field<StudySubject, "product">>,
+  publicTarget: { owner: true, authorized: true } satisfies Keys<
+    Field<StudySubject, "publicTarget">
+  >,
   serve: {
     install: true,
     installTimeoutMs: true,
@@ -98,7 +100,7 @@ const SUBJECT = {
     start: true,
     url: true,
     readyTimeoutMs: true,
-  } satisfies Keys<Field<LabSubject, "serve">>,
+  } satisfies Keys<Field<StudySubject, "serve">>,
   state: {
     seed: {
       name: true,
@@ -113,7 +115,7 @@ const SUBJECT = {
       redact: true,
     } satisfies Keys<Field<State, "checkpoint">[number]>,
   } satisfies Keys<State>,
-} satisfies Keys<LabSubject>;
+} satisfies Keys<StudySubject>;
 
 const ACTOR = {
   type: true,
@@ -123,7 +125,7 @@ const ACTOR = {
   roster: {
     ...PARTICIPANT_ENTRY,
     count: true,
-  } satisfies Keys<LabActorRosterGroup>,
+  } satisfies Keys<StudyActorRosterGroup>,
   persona: true,
   mission: true,
   model: true,
@@ -132,13 +134,13 @@ const ACTOR = {
   reasoningEffort: true,
   stopWhen: STOP_WHEN,
   dwell: DWELL,
-  tasks: { id: true, goal: true, success: STOP_WHEN } satisfies Keys<LabTask>,
+  tasks: { id: true, goal: true, success: STOP_WHEN } satisfies Keys<StudyTask>,
   laneFocus: {
     id: true,
     label: true,
     instruction: true,
-  } satisfies Keys<Field<LabActor, "laneFocus">>,
-} satisfies Keys<LabActor & { roster: unknown }>;
+  } satisfies Keys<Field<StudyActor, "laneFocus">>,
+} satisfies Keys<StudyActor & { roster: unknown }>;
 
 const EXECUTION = {
   target: true,
@@ -196,7 +198,7 @@ const EMAIL = {
   recipients: { lane: true, address: true } satisfies Keys<Field<Email, "recipients">[number]>,
 } satisfies Keys<Email>;
 
-const LAB_KEYS = {
+const V2_KEYS = {
   schema: true,
   id: true,
   title: true,
@@ -211,7 +213,7 @@ const LAB_KEYS = {
     mode: true,
     inline: true,
     caps: CAPS,
-  } satisfies Keys<Field<LabConfig, "scenario">>,
+  } satisfies Keys<Field<StudyConfig, "scenario">>,
   policies: {
     redactRepos: true,
     redactScreenshots: true,
@@ -221,18 +223,18 @@ const LAB_KEYS = {
     allowProviderCredentials: true,
     allowPaymentCredentials: true,
     allowGitHubMutation: true,
-  } satisfies Keys<Field<LabConfig, "policies">>,
+  } satisfies Keys<Field<StudyConfig, "policies">>,
   review: {
     scoring: true,
     milestones: true,
     vocabulary: true,
-    scorer: { ref: true } satisfies Keys<Field<Field<LabConfig, "review">, "scorer">>,
+    scorer: { ref: true } satisfies Keys<Field<Field<StudyConfig, "review">, "scorer">>,
     // resolveAutomaticAnalysis checks its own keys.
     analysis: true,
-  } satisfies Keys<Field<LabConfig, "review">>,
-  defaults: { open: true } satisfies Keys<Field<LabConfig, "defaults">>,
-  comms: { email: EMAIL } satisfies Keys<Field<LabConfig, "comms">>,
-} satisfies Keys<LabConfig>;
+  } satisfies Keys<Field<StudyConfig, "review">>,
+  defaults: { open: true } satisfies Keys<Field<StudyConfig, "defaults">>,
+  comms: { email: EMAIL } satisfies Keys<Field<StudyConfig, "comms">>,
+} satisfies Keys<StudyConfig>;
 
 function without(shape: KeyShape, ...keys: string[]): KeyShape {
   return Object.fromEntries(Object.entries(shape).filter(([key]) => !keys.includes(key)));
@@ -257,15 +259,15 @@ const STUDY_KEYS: KeyShape = {
   caps: CAPS,
   execution: without(EXECUTION, "caps"),
   scenario: true,
-  policies: LAB_KEYS.policies,
-  review: LAB_KEYS.review,
-  defaults: LAB_KEYS.defaults,
-  comms: LAB_KEYS.comms,
+  policies: V2_KEYS.policies,
+  review: V2_KEYS.review,
+  defaults: V2_KEYS.defaults,
+  comms: V2_KEYS.comms,
 };
 
-/** The first key in `raw` that LAB_KEYS does not list, as an error message; undefined if none. */
-export function findUnknownLabKey(raw: unknown): string | undefined {
-  return walk(raw, LAB_KEYS, "", "lab");
+/** The first key in `raw` that V2_KEYS does not list, as an error message; undefined if none. */
+export function findUnknownV2Key(raw: unknown): string | undefined {
+  return walk(raw, V2_KEYS, "", "lab");
 }
 
 /** The first key in a humanish.study.v3 document that the format does not have; undefined if none. */

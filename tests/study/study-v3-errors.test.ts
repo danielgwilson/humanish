@@ -7,10 +7,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 
-import { parseLabConfig } from "../../src/study/config.js";
-import { resolveLabManifest } from "../../src/study/discover.js";
-import { planLab, resolveLabDryRun } from "../../src/study/plan.js";
-import { LAB_CONFIG_SCHEMA, STUDY_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { resolveStudyManifest } from "../../src/study/discover.js";
+import { planStudy, resolveStudyDryRun } from "../../src/study/plan.js";
+import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 
 type Raw = Record<string, unknown>;
 
@@ -34,27 +34,27 @@ const scripted: Raw = {
 
 // The same file in the v2 spelling: `changes` holds its v2 keys.
 function asV2(raw: Raw, changes: Raw): Raw {
-  const copy: Raw = { ...raw, schema: LAB_CONFIG_SCHEMA, ...changes };
+  const copy: Raw = { ...raw, schema: V2_SCHEMA, ...changes };
   for (const key of ["route", "actor", "participants", "surfaces", "mode", "caps"])
     delete copy[key];
   return copy;
 }
 
-function config(raw: Raw): LabConfig {
-  const result = parseLabConfig(raw);
+function config(raw: Raw): StudyConfig {
+  const result = parseStudy(raw);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 
 function refusal(raw: Raw): string {
-  const result = parseLabConfig(raw);
+  const result = parseStudy(raw);
   if (result.ok) throw new Error("parsed");
   expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   return result.error.message;
 }
 
 function participantCount(raw: Raw, count?: number): number {
-  const result = planLab(config(raw), {
+  const result = planStudy(config(raw), {
     cwd: process.cwd(),
     dryRun: true,
     ...(count === undefined ? {} : { count }),
@@ -108,7 +108,7 @@ describe("participants", () => {
         ],
       }),
     );
-    expect({ ...config(homogeneous), schema: LAB_CONFIG_SCHEMA }).toEqual(v2);
+    expect({ ...config(homogeneous), schema: V2_SCHEMA }).toEqual(v2);
     expect(participantCount(homogeneous)).toBe(3);
     expect(participantCount(homogeneous, 5)).toBe(5);
     expect(participantCount({ ...study, participants: 2 })).toBe(2);
@@ -157,7 +157,7 @@ describe("surfaces", () => {
           actors: [{ type: "scripted-browser", ...(count === undefined ? {} : { count }) }],
         }),
       );
-    const v3 = (raw: Raw) => ({ ...config(raw), schema: LAB_CONFIG_SCHEMA });
+    const v3 = (raw: Raw) => ({ ...config(raw), schema: V2_SCHEMA });
     expect(v3(scripted)).toEqual(v2());
     expect(v3({ ...scripted, surfaces: ["desktop"] })).toEqual(v2(1));
     expect(v3({ ...scripted, surfaces: ["desktop", "mobile"] })).toEqual(v2(2));
@@ -214,8 +214,8 @@ describe("route, mode and the keys a route does not read", () => {
   });
 
   it("reads mode as v2's scenario.mode and refuses other values", () => {
-    expect(resolveLabDryRun(config({ ...study, mode: "live" }), undefined, true)).toBe(false);
-    expect(resolveLabDryRun(config(study), undefined, true)).toBe(true);
+    expect(resolveStudyDryRun(config({ ...study, mode: "live" }), undefined, true)).toBe(false);
+    expect(resolveStudyDryRun(config(study), undefined, true)).toBe(true);
     expect(refusal({ ...study, mode: "livee" })).toBe(
       "`mode` must be `dry-run` or `live`. Leave it out for a dry run.",
     );
@@ -275,7 +275,7 @@ describe("discovery", () => {
       await mkdir(path.join(root, "humanish", "labs"), { recursive: true });
       const file = path.join("humanish", "labs", "study-v3.yaml");
       await writeFile(path.join(root, file), stringify({ ...study, participants: 2 }));
-      const resolved = await resolveLabManifest(root, file);
+      const resolved = await resolveStudyManifest(root, file);
       if (!resolved.ok) throw new Error(resolved.error.message);
       expect(resolved.config.schema).toBe(STUDY_SCHEMA);
       expect(resolved.config.actors[0]?.count).toBe(2);

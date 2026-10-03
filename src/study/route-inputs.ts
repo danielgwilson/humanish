@@ -8,8 +8,8 @@ import {
   terminalRouteScorer,
   type AdapterScorerModule,
 } from "./adapter-scorer-loader.js";
-import type { LabDeps } from "./study-deps.js";
-import type { LabEvent } from "./run-study-events.js";
+import type { StudyDeps } from "./study-deps.js";
+import type { StudyEvent } from "./run-study-events.js";
 import type { ComputerUseRunInput } from "../routes/computer-use/types.js";
 import type { ScriptedRunInput } from "../routes/scripted/types.js";
 import type { SharedWorldRunInput } from "../routes/shared-world/types.js";
@@ -17,8 +17,8 @@ import type { TerminalRunInput } from "../routes/terminal/types.js";
 
 export function computerUseInput(
   options: InternalRunLabOptions,
-  deps: LabDeps,
-  emit: LabEmit | undefined,
+  deps: StudyDeps,
+  emit: StudyEmit | undefined,
 ): ComputerUseRunInput {
   return {
     ...analysisOf(options),
@@ -42,8 +42,8 @@ export function computerUseInput(
 
 export function scriptedInput(
   options: InternalRunLabOptions,
-  deps: LabDeps,
-  emit: LabEmit | undefined,
+  deps: StudyDeps,
+  emit: StudyEmit | undefined,
 ): ScriptedRunInput {
   return {
     ...analysisOf(options),
@@ -59,8 +59,8 @@ export function scriptedInput(
 
 export function terminalInput(
   options: InternalRunLabOptions,
-  deps: LabDeps,
-  emit: LabEmit | undefined,
+  deps: StudyDeps,
+  emit: StudyEmit | undefined,
 ): TerminalRunInput {
   return {
     ...analysisOf(options),
@@ -76,8 +76,8 @@ export function terminalInput(
 
 export function sharedWorldInput(
   options: InternalRunLabOptions,
-  deps: LabDeps,
-  emit: LabEmit | undefined,
+  deps: StudyDeps,
+  emit: StudyEmit | undefined,
 ): SharedWorldRunInput {
   return {
     ...analysisOf(options),
@@ -116,11 +116,11 @@ export function withLateScorer<S, I extends { scorer?: S; scorerProvenance?: Run
   };
 }
 
-/** Reports a LabEvent to onEvent without waiting (normalizeRunLabOptions builds it). */
-type LabEmit = (event: LabEvent) => void;
+/** Reports a StudyEvent to onEvent without waiting (normalizeRunStudyOptions builds it). */
+type StudyEmit = (event: StudyEvent) => void;
 
 /** The caller's stream callback and the run's event emitter, for the routes that report them. */
-function observersOf(options: InternalRunLabOptions, emit: LabEmit | undefined) {
+function observersOf(options: InternalRunLabOptions, emit: StudyEmit | undefined) {
   return {
     ...(options.onStream === undefined ? {} : { onStream: options.onStream }),
     ...(emit === undefined ? {} : { emit }),

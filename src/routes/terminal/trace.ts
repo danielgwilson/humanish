@@ -8,7 +8,7 @@ import type {
   ActorTraceItem,
 } from "../../actors/contract.js";
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "../../actors/contract.js";
-import type { LabRuntimeAuth } from "../../study/types.js";
+import type { StudyRuntimeAuth } from "../../study/types.js";
 import { redactedTail } from "../../evidence/redaction.js";
 import type { TerminalParticipantText } from "./participant-text.js";
 import { type CommandLogRecord, TAIL_CHARS, type TerminalEventRecord } from "./types.js";
@@ -85,7 +85,7 @@ export function buildTerminalActorTrace(args: {
   terminalEvents: TerminalEventRecord[];
   commandLog: CommandLogRecord[];
   transcriptTail: string;
-  runtimeAuth: LabRuntimeAuth;
+  runtimeAuth: StudyRuntimeAuth;
   runtime: ActorRuntimeProvenance;
   /** Runtime-turn aggregate usage parsed from the exec stream. Absent when the stream
    *  carried no usage record, which stays distinct from a measured zero. */

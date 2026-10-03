@@ -27,14 +27,14 @@ import {
 // The ledgers reach an adapter through its scoring context; the type needs no export of its own.
 type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 
-// Reuse the slice-2/3 fake-E2B-module + mock-CLI pattern. (parseLabConfig + runTerminalProductLab +
+// Reuse the slice-2/3 fake-E2B-module + mock-CLI pattern. (parseStudy + runTerminalProductLab +
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
 // harness in-test: the adapter itself uses the barrel exclusively, asserted below.)
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import type { TerminalScorer } from "../../../src/routes/terminal/types.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
@@ -182,9 +182,9 @@ function nonceFrom(command: string): string {
   return /HUMANISH_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command)?.[1] ?? "unknown-nonce";
 }
 
-function liveConfig(): LabConfig {
+function liveConfig(): StudyConfig {
   const raw: Record<string, unknown> = {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "terminal-adapter-seam-proof",
     title: "Terminal adapter-seam proof",
     subject: {
@@ -212,7 +212,7 @@ function liveConfig(): LabConfig {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseLabConfig(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -226,7 +226,7 @@ function baseEnv(): Record<string, string | undefined> {
 
 /** A passing run's inputs. `extra` sets the scorer's functions, or swaps the E2B module. */
 function passingRun(
-  extra: TerminalScorer & { desktopModule?: LabDeps["desktopModule"] },
+  extra: TerminalScorer & { desktopModule?: StudyDeps["desktopModule"] },
 ): TerminalTestInputs {
   const killed: string[] = [];
   const { desktopModule, ...scorer } = extra;

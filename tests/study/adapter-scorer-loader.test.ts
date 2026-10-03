@@ -14,8 +14,8 @@ import {
   DECLARED_SCORER_MALFORMED,
 } from "../../src/study/adapter-extension.js";
 import { foldScorerFailures } from "../../src/run/judge.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import type { RunAdapterScore, RunBundle } from "../../src/index.js";
@@ -765,8 +765,8 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
 
 describe("parser: review.scorer consumed on scorer-capable routes, typos rejected", () => {
   it("a terminal study declaring review.scorer emits no unread-field warning for scorer", () => {
-    const result = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const result = parseStudy({
+      schema: V2_SCHEMA,
       id: "terminal-scorer",
       subject: {
         source: "terminal-product",
@@ -794,8 +794,8 @@ describe("parser: review.scorer consumed on scorer-capable routes, typos rejecte
   });
 
   it("a scripted study declaring review.scorer warns inert (the scripted actor has no scorer seam)", () => {
-    const result = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const result = parseStudy({
+      schema: V2_SCHEMA,
       id: "scripted-scorer",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
       actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 2 }],
@@ -809,8 +809,8 @@ describe("parser: review.scorer consumed on scorer-capable routes, typos rejecte
   });
 
   it("a typo'd review.scorrer is rejected (a declared gate must not vanish silently)", () => {
-    const result = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const result = parseStudy({
+      schema: V2_SCHEMA,
       id: "typo-scorer",
       subject: {
         source: "terminal-product",

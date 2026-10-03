@@ -24,7 +24,7 @@ this preflight does not certify arbitrary hook behavior.
 
 The parser reports `HUMANISH_STUDY_INVALID` with the unsupported field path. `runStudy`
 reports `HUMANISH_STUDY_TASKS_UNSUPPORTED` in the route's failure envelope, from
-`planLab` (`src/study/plan.ts`) and each route's plan.
+`planStudy` (`src/study/plan.ts`) and each route's plan.
 Refusal precedes run storage, source preparation, user hooks, local processes,
 sandbox allocation, and model calls. No task content appears in the error.
 

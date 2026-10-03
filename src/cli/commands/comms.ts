@@ -6,7 +6,7 @@ import { readCommsSetup } from "../../comms/setup.js";
 import { checkCommsConnection, configureCommsLab } from "../../comms/setup.js";
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
-import { resolveLabManifest } from "../../study/discover.js";
+import { resolveStudyManifest } from "../../study/discover.js";
 import { oldStudyOption, studyOptionValue } from "../deprecations.js";
 import { runCommsCatchHost } from "../../comms/catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "../../comms/sandbox-catch.js";
@@ -208,7 +208,7 @@ async function handleCommsCheck(
   let connection = options.connection;
   const study = studyOptionValue(command, io, options);
   if (study) {
-    const resolved = await resolveLabManifest(options.cwd, study);
+    const resolved = await resolveStudyManifest(options.cwd, study);
     if (!resolved.ok || resolved.config.comms?.email?.kind !== "real") {
       const result = {
         ok: false,

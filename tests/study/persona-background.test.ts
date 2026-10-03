@@ -14,7 +14,7 @@ import {
   composeParticipantInstructions,
   withInboxMission,
 } from "../../src/routes/computer-use/participant-prompt.js";
-import { inspectLabManifest } from "../../src/study/discover.js";
+import { inspectStudyManifest } from "../../src/study/discover.js";
 import { buildInitialRequest } from "../../src/actors/computer-use/openai-wire.js";
 import { DEVICE_PRESETS } from "../../src/study/device-presets.js";
 
@@ -84,7 +84,7 @@ describe("rich participant backgrounds", () => {
     expect(composed.persona.brief?.text).toContain(background);
     expect(composed.persona.brief?.sourceDigest).toBeTruthy();
     expect(composed.persona.brief?.text).not.toContain("Organize Saturday's event.");
-    const inspected = await inspectLabManifest(root, "study");
+    const inspected = await inspectStudyManifest(root, "study");
     expect(inspected.ok).toBe(true);
     expect(inspected.personas?.[0]?.brief).toEqual(composed.persona.brief);
   });
@@ -95,7 +95,7 @@ describe("rich participant backgrounds", () => {
       await expect(resolveCommittedPersonasForCwd(root, ["organizer"])).rejects.toThrow(
         "background",
       );
-      expect(await inspectLabManifest(root, "study")).toMatchObject({
+      expect(await inspectStudyManifest(root, "study")).toMatchObject({
         ok: false,
         error: { code: "HUMANISH_STUDY_INVALID" },
       });

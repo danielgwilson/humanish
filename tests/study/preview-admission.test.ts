@@ -1,5 +1,5 @@
 // What runLab returns for a preview (this-repo) config it refuses, and which refusal wins when two
-// apply. Written against the engine's own admission before the preview route moved onto planLab;
+// apply. Written against the engine's own admission before the preview route moved onto planStudy;
 // the move must keep every envelope.
 
 import { mkdtemp, readdir, rm } from "node:fs/promises";
@@ -8,21 +8,21 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { runLab } from "../../src/run-lab.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
   await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-function preview(extra: Record<string, unknown>): LabConfig {
+function preview(extra: Record<string, unknown>): StudyConfig {
   return {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "preview-admission",
     subject: { source: "this-repo" },
     actors: [{ type: "synthetic-persona" }],
     ...extra,
-  } as unknown as LabConfig;
+  } as unknown as StudyConfig;
 }
 
 const receiving = { comms: { email: { kind: "real", connection: "team-inbox" } } };

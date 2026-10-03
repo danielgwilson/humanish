@@ -21,7 +21,7 @@ import type { LocalTreeArchive } from "../subject/local-tree-archive.js";
 import type { SubjectPhaseEvent } from "../subject/steps.js";
 import type { ParticipantRef } from "./run-study-events.js";
 
-export interface LabDeps {
+export interface StudyDeps {
   /** Loads the E2B SDK. Defaults to loadE2BDesktopModule. */
   readonly desktopModule?: () => Promise<E2BDesktopModule>;
   /** Renders the Observer. Defaults to renderObserver. */

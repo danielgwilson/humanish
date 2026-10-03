@@ -1,7 +1,7 @@
 import type { ActorCapabilities } from "../actors/contract.js";
 import { actorRegistry } from "../actors/registry.js";
 import { isLoopbackUrl } from "./parse/subject.js";
-import type { LabConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 
 // Hard cap on computer-use participants. No setting raises it: each participant is a paid desktop,
 // and they all run at once.
@@ -68,7 +68,7 @@ export function registeredTerminalActors(): string[] {
  * a homogeneous `count`, else 1. The single source of truth shared by the parser, the engine,
  * and the pre-flight plan so the participant count is computed the same way everywhere.
  */
-export function computerUseParticipantCount(config: LabConfig): number {
+export function computerUseParticipantCount(config: StudyConfig): number {
   const actor = config.actors[0];
   if (actor?.lanes !== undefined) {
     return actor.lanes.length;
@@ -98,7 +98,7 @@ export function participantIdAt(
  * bare app-url fallback to the computer-use route so library-API configs with unknown actors still
  * hit its fail-closed ACTOR_UNSUPPORTED.)
  */
-export function isComputerUseComposition(config: LabConfig): boolean {
+export function isComputerUseComposition(config: StudyConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
   // routes to the computer-use route exactly like an app-url subject with a computer-use actor.
   if (config.subject.source === "app-url" || config.subject.source === "local-app") {
@@ -132,14 +132,14 @@ export function isComputerUseComposition(config: LabConfig): boolean {
  * clone/local-tree × e2b-desktop × computer-use composition without `topology: shared-world` stays per-lane-worlds
  * (the computer-use route); the topology declaration is the override switch.
  */
-export function isSharedWorldComposition(config: LabConfig): boolean {
+export function isSharedWorldComposition(config: StudyConfig): boolean {
   return (
     isProvisionedSharedWorldComposition(config) || isExternalPublicSharedWorldComposition(config)
   );
 }
 
 /** The getHost provisioned-subject shared-world shape (clone/local-tree served + exposed in-sandbox). */
-export function isProvisionedSharedWorldComposition(config: LabConfig): boolean {
+export function isProvisionedSharedWorldComposition(config: StudyConfig): boolean {
   return (
     (config.subject.source === "clone" || config.subject.source === "local-tree") &&
     config.subject.topology === "shared-world" &&
@@ -157,7 +157,7 @@ export function isProvisionedSharedWorldComposition(config: LabConfig): boolean 
  * half-declared external-public config still routes here to get its precise fail-closed reason
  * rather than silently downgrading to the per-participant computer-use route).
  */
-export function isExternalPublicSharedWorldComposition(config: LabConfig): boolean {
+export function isExternalPublicSharedWorldComposition(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.subject.topology === "shared-world" &&
@@ -197,19 +197,19 @@ export function resolveEntryUrl(serveUrl: string, entry: string | undefined): st
  * absent; the parse layer enforces that pairing). Mirror of isComputerUseComposition; the single
  * source of truth for routeOf and the warning logic.
  */
-export function isScriptedBrowserComposition(config: LabConfig): boolean {
+export function isScriptedBrowserComposition(config: StudyConfig): boolean {
   return (
     isLocalScriptedBrowserComposition(config) || isProvisionedScriptedBrowserComposition(config)
   );
 }
 
-function isLocalScriptedBrowserComposition(config: LabConfig): boolean {
+function isLocalScriptedBrowserComposition(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" && actorResolvesToScriptedBrowser(config.actors[0]?.type)
   );
 }
 
-export function isProvisionedScriptedBrowserComposition(config: LabConfig): boolean {
+export function isProvisionedScriptedBrowserComposition(config: StudyConfig): boolean {
   return (
     config.subject.source === "clone" &&
     config.execution?.target === "e2b-desktop" &&
@@ -223,20 +223,20 @@ export function isProvisionedScriptedBrowserComposition(config: LabConfig): bool
  * the parse layer enforces that pairing). Mirror of isComputerUseComposition/isScriptedBrowserComposition;
  * the single source of truth for routeOf and the warning logic.
  */
-export function isTerminalProductComposition(config: LabConfig): boolean {
+export function isTerminalProductComposition(config: StudyConfig): boolean {
   return (
     config.subject.source === "terminal-product" && actorResolvesToTerminal(config.actors[0]?.type)
   );
 }
 
 /** The five execution paths a lab can take. */
-export type LabRoute = "preview" | "computer-use" | "shared-world" | "terminal" | "scripted";
+export type StudyRoute = "preview" | "computer-use" | "shared-world" | "terminal" | "scripted";
 
 /**
  * The route a config takes. It never refuses: a config no route can run still gets the route
  * whose own checks refuse it with the most precise reason.
  */
-export function routeOf(config: LabConfig): LabRoute {
+export function routeOf(config: StudyConfig): StudyRoute {
   const source = config.subject.source;
   // A scripted-browser actor on a loopback app or a provisioned clone replays committed steps.
   if (isScriptedBrowserComposition(config)) return "scripted";

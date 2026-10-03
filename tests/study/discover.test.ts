@@ -5,9 +5,9 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import {
-  inspectLabManifest,
-  listLabManifests,
-  resolveLabManifest,
+  inspectStudyManifest,
+  listStudyManifests,
+  resolveStudyManifest,
 } from "../../src/study/discover.js";
 
 import { makeTestTempDir } from "../helpers/temp-dir.js";
@@ -55,10 +55,10 @@ describe("lab manifest resolution", () => {
       ].join("\n"),
     );
 
-    const committed = await resolveLabManifest(cwd, "first-run");
-    const ignored = await resolveLabManifest(cwd, "private");
-    const explicit = await resolveLabManifest(cwd, ".humanish/local/labs/private.yaml");
-    const list = await listLabManifests(cwd);
+    const committed = await resolveStudyManifest(cwd, "first-run");
+    const ignored = await resolveStudyManifest(cwd, "private");
+    const explicit = await resolveStudyManifest(cwd, ".humanish/local/labs/private.yaml");
+    const list = await listStudyManifests(cwd);
 
     expect(committed.ok && committed.origin).toBe("committed");
     expect(committed.ok && committed.config.actors[0]?.count).toBe(3);
@@ -91,8 +91,8 @@ describe("lab manifest resolution", () => {
       ["schema: nope", "id: bad", "subject:", "  source: this-repo"].join("\n"),
     );
 
-    const compat = await inspectLabManifest(cwd, "compat");
-    const bad = await inspectLabManifest(cwd, "bad");
+    const compat = await inspectStudyManifest(cwd, "compat");
+    const bad = await inspectStudyManifest(cwd, "bad");
 
     expect(compat.ok).toBe(true);
     expect(compat.warnings.join("\n")).toContain("Prefer .yaml");
@@ -126,11 +126,11 @@ describe("lab manifest resolution", () => {
       }
 
       const resolved = await withinOneSecond(
-        resolveLabManifest(cwd, "priority"),
+        resolveStudyManifest(cwd, "priority"),
         `named resolution hung on a managed ${kind} manifest`,
       );
       const listed = await withinOneSecond(
-        listLabManifests(cwd),
+        listStudyManifests(cwd),
         `lab listing hung on a managed ${kind} manifest`,
       );
 
@@ -164,11 +164,11 @@ describe("lab manifest resolution", () => {
       }
 
       const resolved = await withinOneSecond(
-        resolveLabManifest(cwd, "priority"),
+        resolveStudyManifest(cwd, "priority"),
         `named resolution hung on a managed ${kind} directory`,
       );
       const listed = await withinOneSecond(
-        listLabManifests(cwd),
+        listStudyManifests(cwd),
         `lab listing hung on a managed ${kind} directory`,
       );
 
@@ -190,7 +190,7 @@ describe("lab manifest resolution", () => {
     await writeLab(root, "outside/selected.yaml", labYaml("explicit-alias"));
     await symlink(target, alias);
 
-    const resolved = await resolveLabManifest(cwd, "aliases/selected.yaml");
+    const resolved = await resolveStudyManifest(cwd, "aliases/selected.yaml");
 
     expect(resolved.ok).toBe(true);
     expect(resolved.ok && resolved.origin).toBe("explicit");
@@ -221,7 +221,7 @@ describe("lab manifest resolution", () => {
       }
 
       const resolved = await withinOneSecond(
-        resolveLabManifest(cwd, path.basename(selected)),
+        resolveStudyManifest(cwd, path.basename(selected)),
         `explicit resolution hung on a ${kind} manifest`,
       );
 
@@ -238,8 +238,8 @@ describe("lab manifest resolution", () => {
     await writeLab(physicalCwd, "humanish/labs/aliased.yaml", labYaml("aliased"));
     await symlink(physicalCwd, aliasCwd);
 
-    const resolved = await resolveLabManifest(aliasCwd, "aliased");
-    const listed = await listLabManifests(aliasCwd);
+    const resolved = await resolveStudyManifest(aliasCwd, "aliased");
+    const listed = await listStudyManifests(aliasCwd);
 
     expect(resolved.ok).toBe(true);
     expect(resolved.ok && resolved.path).toBe("humanish/labs/aliased.yaml");

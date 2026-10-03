@@ -7,10 +7,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../../src/study/config.js";
-import { planLab } from "../../src/study/plan.js";
+import { parseStudy } from "../../src/study/config.js";
+import { planStudy } from "../../src/study/plan.js";
 import type { Requirement } from "../../src/study/plan-types.js";
-import type { LabDeps } from "../../src/study/study-deps.js";
+import type { StudyDeps } from "../../src/study/study-deps.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
@@ -67,7 +67,7 @@ function options(cwd: string, env: Record<string, string>) {
 }
 
 /** The terminal and scripted routes' seams: an E2B module load or a browser launch counts too. */
-function deps(loads: { count: number }): LabDeps {
+function deps(loads: { count: number }): StudyDeps {
   return {
     desktopModule: async (): Promise<never> => {
       loads.count += 1;
@@ -84,10 +84,10 @@ describe("plan.requirements keys", () => {
   it.each(Object.entries(shapes))(
     "%s refuses a live run without each required key",
     async (_name, raw) => {
-      const parsed = parseLabConfig(raw);
+      const parsed = parseStudy(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
       const cwd = await projectDir();
-      const planned = planLab(parsed.config, options(cwd, ALL_KEYS));
+      const planned = planStudy(parsed.config, options(cwd, ALL_KEYS));
       if (!planned.ok) throw new Error(planned.refusal.message);
       const required = planned.planned.plan.requirements
         .map(keyNames)
@@ -116,10 +116,10 @@ describe("plan.requirements keys", () => {
   it.each(Object.entries(shapes))(
     "%s refuses no live run that has every declared key for a missing key",
     async (_name, raw) => {
-      const parsed = parseLabConfig(raw);
+      const parsed = parseStudy(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
       const cwd = await projectDir();
-      const planned = planLab(parsed.config, options(cwd, ALL_KEYS));
+      const planned = planStudy(parsed.config, options(cwd, ALL_KEYS));
       if (!planned.ok) throw new Error(planned.refusal.message);
       const requirements = planned.planned.plan.requirements;
       // Only what the plan declares: its keys and its subject env names.
@@ -216,7 +216,7 @@ const obligations: Record<
 
 /** Runs `raw` live with `env` and returns its refusal code, run directories and module loads. */
 async function liveRun(raw: RawLab, env: Record<string, string>) {
-  const parsed = parseLabConfig(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   const cwd = await projectDir();
   const loads = { count: 0 };
@@ -284,9 +284,9 @@ describe("route obligations, independent of plan.requirements", () => {
   it.each(Object.entries(obligations))(
     "%s lists exactly its obligations in plan.requirements",
     async (_name, { raw, keys, subjectEnv }) => {
-      const parsed = parseLabConfig(raw);
+      const parsed = parseStudy(raw);
       if (!parsed.ok) throw new Error(parsed.error.message);
-      const planned = planLab(parsed.config, options(await projectDir(), ALL_KEYS));
+      const planned = planStudy(parsed.config, options(await projectDir(), ALL_KEYS));
       if (!planned.ok) throw new Error(planned.refusal.message);
       const { requirements } = planned.planned.plan;
       expect(requirements.map(keyNames).filter((names) => names.length > 0)).toEqual(
@@ -306,7 +306,7 @@ describe("requirements with a local study's desktop and a caller's provider", ()
   // A local browser lab runs on the local VM study's desktop, so it needs no E2B_API_KEY, and a
   // caller's createProvider drives it, so it needs no OPENAI_API_KEY.
   it("lists neither key, and preflight refuses neither", async () => {
-    const parsed = parseLabConfig(lab("cuAppUrl", { ...live, execution: { target: "local" } }));
+    const parsed = parseStudy(lab("cuAppUrl", { ...live, execution: { target: "local" } }));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const cwd = await projectDir();
     let desktopReached = false;

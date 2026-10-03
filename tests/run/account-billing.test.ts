@@ -9,7 +9,7 @@ import type {
   RestrictedCodexRequest,
   RestrictedCodexResult,
 } from "../../src/actors/codex/restricted-policy.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runLab } from "../../src/run-lab.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { estimateActorCost, estimateActorCostForExecution } from "../../src/run/pricing.js";
@@ -37,7 +37,7 @@ afterEach(async () => {
 });
 
 function accountBilledConfig() {
-  const parsed = parseLabConfig({
+  const parsed = parseStudy({
     schema: "humanish.lab.v2",
     id: "synthetic-account",
     title: "Synthetic account study",

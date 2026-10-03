@@ -1,4 +1,4 @@
-import type { LabTask } from "../tasks.js";
+import type { StudyTask } from "../tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "../device-presets.js";
 import type {
   DwellWindow,
@@ -16,10 +16,10 @@ import {
 } from "../routing.js";
 import { invalid, posInt, str } from "./values.js";
 import type {
-  LabActor,
-  LabParticipantEntry,
-  LabParticipantFocus,
-  LabConfigParseFailure,
+  StudyActor,
+  StudyParticipantEntry,
+  StudyParticipantFocus,
+  StudyParseFailure,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
@@ -33,7 +33,7 @@ const METADATA_MAX_CHARS = 80;
 
 /** The participant entries an actor declares, after roster groups expand into them. The manifest
  *  spells them `actors[].lanes`. Undefined when the actor declares none. */
-export function rosterOf<Entry = LabParticipantEntry>(
+export function rosterOf<Entry = StudyParticipantEntry>(
   actor: { readonly lanes?: readonly Entry[] } | undefined,
 ): readonly Entry[] | undefined {
   return actor?.lanes;
@@ -41,8 +41,8 @@ export function rosterOf<Entry = LabParticipantEntry>(
 
 /** An actor's per-participant focus on the app-url route. The manifest spells it `laneFocus`. */
 export function focusOf(
-  actor: Pick<LabActor, "laneFocus"> | undefined,
-): LabParticipantFocus | undefined {
+  actor: Pick<StudyActor, "laneFocus"> | undefined,
+): StudyParticipantFocus | undefined {
   return actor?.laneFocus;
 }
 
@@ -60,7 +60,7 @@ function routableActorTypes(): string[] {
   ];
 }
 
-export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigParseFailure {
+export function parseActors(raw: unknown): { ok: true; value: StudyActor[] } | StudyParseFailure {
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid("Lab `actors` must be a non-empty array.");
   }
@@ -71,7 +71,7 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
       "Multiple actors are not supported yet (only the first actor runs); declare a single actor.",
     );
   }
-  const actors: LabActor[] = [];
+  const actors: StudyActor[] = [];
   for (const [index, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(`actors[${index}] must be an object.`);
@@ -85,7 +85,7 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
         `actors[${index}].type "${type}" is no longer a humanish actor. Use an actor a lab route runs (one of: ${routableActorTypes().join(", ")}). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude.`,
       );
     }
-    const actor: LabActor = { type };
+    const actor: StudyActor = { type };
     const count = posInt(entry.count);
     if (count !== undefined) actor.count = count;
     if (entry.lanes !== undefined && entry.roster !== undefined) {
@@ -155,11 +155,11 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
   return { ok: true, value: actors };
 }
 
-function parseFocus(raw: unknown): LabParticipantFocus | undefined {
+function parseFocus(raw: unknown): StudyParticipantFocus | undefined {
   if (!isRecord(raw)) {
     return undefined;
   }
-  const focus: LabParticipantFocus = {};
+  const focus: StudyParticipantFocus = {};
   const id = str(raw.id);
   if (id) focus.id = id;
   const label = str(raw.label);
@@ -176,7 +176,7 @@ function parseFocus(raw: unknown): LabParticipantFocus | undefined {
 function parseRosterGroups(
   raw: unknown,
   actorIndex: number,
-): { ok: true; value: LabParticipantEntry[] | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyParticipantEntry[] | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -186,7 +186,7 @@ function parseRosterGroups(
     );
   }
 
-  const expanded: LabParticipantEntry[] = [];
+  const expanded: StudyParticipantEntry[] = [];
   const seenGroupIds = new Set<string>();
   for (const [groupIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
@@ -238,12 +238,12 @@ function parseRosterGroups(
  * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
  * must be public-safe tokens; a device must be a known preset name. The
  * route-scoped cross-validation (`lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap 16)
- * runs in parseLabConfig where the route is known.
+ * runs in parseStudy where the route is known.
  */
 function parseParticipantEntries(
   raw: unknown,
   actorIndex: number,
-): { ok: true; value: LabParticipantEntry[] | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyParticipantEntry[] | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -252,7 +252,7 @@ function parseParticipantEntries(
       `actors[${actorIndex}].lanes must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
     );
   }
-  const entries: LabParticipantEntry[] = [];
+  const entries: StudyParticipantEntry[] = [];
   const seenIds = new Set<string>();
   for (const [entryIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
@@ -260,7 +260,7 @@ function parseParticipantEntries(
         `actors[${actorIndex}].lanes[${entryIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
       );
     }
-    const parsedEntry: LabParticipantEntry = {};
+    const parsedEntry: StudyParticipantEntry = {};
     const id = str(entry.id);
     if (id !== undefined) {
       if (!PARTICIPANT_ID_PATTERN.test(id) || id.length > PARTICIPANT_ID_MAX_CHARS) {
@@ -362,12 +362,12 @@ function parseParticipantEntries(
 function parseTasks(
   raw: unknown,
   field: string,
-): { ok: true; value: LabTask[] | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyTask[] | undefined } | StudyParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(`\`${field}\` must be a non-empty list of tasks when set.`);
   }
-  const tasks: LabTask[] = [];
+  const tasks: StudyTask[] = [];
   const seen = new Set<string>();
   for (const [index, entry] of raw.entries()) {
     if (!isRecord(entry)) return invalid(`each \`${field}\` entry must be a mapping.`);
@@ -407,7 +407,7 @@ const DWELL_DEFAULT_EVERY_MS = 10_000;
 function parseDwell(
   raw: unknown,
   field: string,
-): { ok: true; value: DwellWindow | undefined } | LabConfigParseFailure {
+): { ok: true; value: DwellWindow | undefined } | StudyParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     return invalid(`${field} must be an object with ms (and optional when, everyMs, then).`);
@@ -447,7 +447,7 @@ function parseDwell(
 function parseStopWhen(
   raw: unknown,
   field: string,
-): { ok: true; value: StopWhen | undefined } | LabConfigParseFailure {
+): { ok: true; value: StopWhen | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -519,7 +519,7 @@ function parseStopWhen(
 function parseStopWhenAppStatePathEquals(
   raw: unknown,
   field: string,
-): { ok: true; value: { path: string; equals: StopConditionPrimitive } } | LabConfigParseFailure {
+): { ok: true; value: { path: string; equals: StopConditionPrimitive } } | StudyParseFailure {
   if (!isRecord(raw)) {
     return invalid(`${field} must be an object ({ path, equals }).`);
   }
@@ -548,7 +548,7 @@ function parseStopWhenAppStatePathEquals(
 function parseEntryMetadata(
   raw: unknown,
   field: string,
-): { ok: true; value: string | undefined } | LabConfigParseFailure {
+): { ok: true; value: string | undefined } | StudyParseFailure {
   const value = str(raw);
   if (value === undefined) {
     return { ok: true, value: undefined };

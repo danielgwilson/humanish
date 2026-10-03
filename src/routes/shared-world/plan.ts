@@ -26,7 +26,7 @@ import type {
 } from "../../study/plan-types.js";
 import { PUBLIC_TARGET_OWNER_PATTERN } from "../../study/parse/subject.js";
 import { REPO_SLUG_PATTERN } from "../../study/parse/values.js";
-import type { LabConfig, LabSubjectState } from "../../study/types.js";
+import type { StudyConfig, StudySubjectState } from "../../study/types.js";
 import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
@@ -63,7 +63,7 @@ export function sharedWorldDescriptorOf(actorType: string): CuaActorDescriptor {
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planSharedWorldLab(
-  config: LabConfig,
+  config: StudyConfig,
   input: {
     readonly dryRun: boolean;
     /** Whether deps.runSession is set: a caller's session runner cannot enforce maxOutputTokens. */
@@ -186,7 +186,7 @@ export function planSharedWorldLab(
 }
 
 /** The provisioned plane's declared subject state. The external-public plane declares none. */
-export function planeStateOf(plan: SharedWorldPlan): LabSubjectState | undefined {
+export function planeStateOf(plan: SharedWorldPlan): StudySubjectState | undefined {
   return plan.plane.kind === "provisioned" ? plan.plane.subject.state : undefined;
 }
 
@@ -194,7 +194,7 @@ export function planeStateOf(plan: SharedWorldPlan): LabSubjectState | undefined
  * The shared plane and its participants. The validation above guarantees two or more, and on the
  * provisioned plane a clone or local tree with `serve` and at least one checkpoint.
  */
-function planeOf(config: LabConfig): SharedWorldPlane | undefined {
+function planeOf(config: StudyConfig): SharedWorldPlane | undefined {
   const roster = sharedWorldParticipants(config);
   if (roster.plane === "external-public") {
     const [first, second, ...rest] = roster.participants;

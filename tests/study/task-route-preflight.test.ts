@@ -2,8 +2,8 @@ import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseLabConfig } from "../../src/study/config.js";
-import { type LabConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { type StudyConfig } from "../../src/study/types.js";
 import { runLab } from "../../src/run-lab.js";
 import { routeOf } from "../../src/study/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
@@ -16,7 +16,7 @@ const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
 ) as Array<{
   name: string;
-  config: LabConfig;
+  config: StudyConfig;
   supported: boolean;
   route: string;
 }>;
@@ -27,8 +27,8 @@ const tasks = [
     success: { any: [{ textIncludes: "HIDDEN_SUCCESS_SENTINEL" }] },
   },
 ];
-function validConfig(raw: LabConfig): LabConfig {
-  const parsed = parseLabConfig(raw);
+function validConfig(raw: StudyConfig): StudyConfig {
+  const parsed = parseStudy(raw);
   expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -50,7 +50,7 @@ describe("declared task protocol admission", () => {
       expect(routeOf(validConfig(config))).toBe(route);
       const declared = structuredClone(config);
       declared.actors[0]!.tasks = tasks;
-      const result = parseLabConfig(declared);
+      const result = parseStudy(declared);
       expect(result.ok, JSON.stringify(result)).toBe(supported);
       if (result.ok) expect(result.config.actors[0]!.tasks).toEqual(tasks);
       else {
@@ -116,7 +116,7 @@ describe("declared task protocol admission", () => {
   it("rejects ignored later-actor tasks at parse and direct CUA admission", async () => {
     const config = validConfig(fixtures.find((row) => row.supported)!.config);
     config.actors.push({ type: "openai-computer-use", tasks });
-    const parsed = parseLabConfig(config);
+    const parsed = parseStudy(config);
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error.message).toContain("Multiple actors are not supported");
     const result = await runCuaActorLab({

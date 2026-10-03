@@ -1,7 +1,7 @@
 import type { Brain, ComputerUsePlan } from "../../study/plan-types.js";
 import { pricedModel } from "../../study/plan-base.js";
 import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
-import type { LabCommsExternal } from "../../study/types.js";
+import type { StudyCommsExternal } from "../../study/types.js";
 import { detectLocalAgents } from "../../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
@@ -31,7 +31,7 @@ export async function liveCuaRejection(args: {
   env: Record<string, string | undefined>;
   /** The plan's requirements: which keys and subject env names this run needs. */
   requirements: ComputerUsePlan["requirements"];
-  externalCommsConfig: LabCommsExternal | undefined;
+  externalCommsConfig: StudyCommsExternal | undefined;
 }): Promise<{ code: CuaActorLabErrorCode; message: string } | undefined> {
   const { caps, brain, env, requirements, externalCommsConfig } = args;
   // The plan lists OPENAI_API_KEY only for an openai brain (a signed-in local agent or the

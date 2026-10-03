@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { resolveLabManifest } from "../../src/study/discover.js";
+import { resolveStudyManifest } from "../../src/study/discover.js";
 import { runLab } from "../../src/run-lab.js";
 import { renderObserver } from "../../src/observer/render.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -117,7 +117,7 @@ describe("every producer refuses a run id that is in use", () => {
   ] as const)("%s (%s)", async (_name, labId, route) => {
     // The labs read their personas and scenarios from the project they run in.
     await cp(path.resolve("humanish"), path.join(cwd, "humanish"), { recursive: true });
-    const resolved = await resolveLabManifest(cwd, labId);
+    const resolved = await resolveStudyManifest(cwd, labId);
     if (!resolved.ok) throw new Error(`lab ${labId} did not resolve`);
     const runDir = path.join(cwd, ".humanish", "runs", "in-use");
 

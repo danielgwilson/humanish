@@ -6,8 +6,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolveCommittedPersona } from "../../../src/study/persona-resolve.js";
-import { parseLabConfig } from "../../../src/study/config.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 
 // The dry run takes no hook between resolving the project and starting the run, so the alias is
@@ -17,9 +17,9 @@ vi.mock("../../../src/study/persona-resolve.js", async (importOriginal) => {
   return { ...actual, resolveCommittedPersona: vi.fn(actual.resolveCommittedPersona) };
 });
 
-function dryConfig(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function dryConfig(): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "terminal-physical-cwd",
     title: "Terminal physical cwd",
     subject: {

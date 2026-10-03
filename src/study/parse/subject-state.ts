@@ -1,10 +1,10 @@
 // The state and env channels of a served subject (clone or local-tree): `subject.envValues`,
 // the structural parse of `subject.state`, and subjectStateInvalidReason, the semantic check
-// parseLabConfig and the computer-use route share.
+// parseStudy and the computer-use route share.
 
 import { containsSensitive } from "../../evidence/redaction.js";
 import { ENV_NAME_PATTERN, invalid, posInt, str, strList } from "./values.js";
-import type { LabConfigParseFailure, LabStateStepWhen, LabSubjectState } from "../types.js";
+import type { StudyParseFailure, StudyStateStepWhen, StudySubjectState } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
 /**
@@ -17,7 +17,7 @@ import { isRecord } from "../../run/type-guards.js";
  */
 export function parseEnvValues(
   raw: unknown,
-): { ok: true; value?: Record<string, string> } | LabConfigParseFailure {
+): { ok: true; value?: Record<string, string> } | StudyParseFailure {
   if (raw === undefined) return { ok: true };
   if (!isRecord(raw)) {
     return invalid(
@@ -51,21 +51,21 @@ export function parseEnvValues(
 }
 
 /**
- * Structural parse of `subject.state` into a candidate LabSubjectState. Deliberately keeps
+ * Structural parse of `subject.state` into a candidate StudySubjectState. Deliberately keeps
  * unrecognized `when`/`timeoutMs` values in the candidate (instead of silently dropping
  * them) so subjectStateInvalidReason rejects them: a state declaration that silently does
  * less than it says would claim more than its mechanism does.
  */
 export function parseState(
   raw: unknown,
-): { ok: true; value: LabSubjectState | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudySubjectState | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
     return invalid("`subject.state` must be an object ({ seed?, external? }).");
   }
-  const state: LabSubjectState = {};
+  const state: StudySubjectState = {};
   if (raw.seed !== undefined) {
     if (!Array.isArray(raw.seed) || !raw.seed.every(isRecord)) {
       return invalid(
@@ -75,7 +75,7 @@ export function parseState(
     state.seed = raw.seed.map((entry) => ({
       name: typeof entry.name === "string" ? entry.name.trim() : "",
       command: typeof entry.command === "string" ? entry.command.trim() : "",
-      ...(entry.when === undefined ? {} : { when: entry.when as LabStateStepWhen }),
+      ...(entry.when === undefined ? {} : { when: entry.when as StudyStateStepWhen }),
       ...(entry.timeoutMs === undefined
         ? {}
         : { timeoutMs: (posInt(entry.timeoutMs) ?? entry.timeoutMs) as number }),
@@ -113,20 +113,20 @@ const STATE_STEP_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 const STATE_STEP_NAME_MAX_CHARS = 40;
 
-const STATE_STEP_WHENS: readonly LabStateStepWhen[] = [
+const STATE_STEP_WHENS: readonly StudyStateStepWhen[] = [
   "before-build",
   "before-start",
   "after-ready",
 ];
 
 /**
- * Semantic validation for `subject.state`, shared by parseLabConfig and the engine
+ * Semantic validation for `subject.state`, shared by parseStudy and the engine
  * (the route re-enforces it on configs that arrive through runLab). Returns
  * the failure message, or null when the declaration is valid. Reads the candidate
  * defensively: library callers can hand the engine arbitrarily-shaped objects.
  */
 export function subjectStateInvalidReason(
-  state: LabSubjectState,
+  state: StudySubjectState,
   env: readonly string[] | undefined,
 ): string | null {
   const seed = state.seed;

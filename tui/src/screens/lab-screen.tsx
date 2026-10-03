@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import React from "react";
 
-import type { LabSummary } from "../../../src/study/summary.js";
+import type { StudySummary } from "../../../src/study/summary.js";
 import type { RunDetail } from "../../../src/run/detail.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import type { LabRow } from "../../../src/run/projection.js";
@@ -47,7 +47,7 @@ export function labItems(runs: readonly RunIndexEntry[], canStart: boolean): Lab
 
 export interface LabScreenProps {
   row: LabRow;
-  summary: LabSummary | null | undefined;
+  summary: StudySummary | null | undefined;
   runs: RunIndexEntry[];
   /** Detail for the live or latest run, including post-run analysis. */
   liveDetail: RunDetail | null | undefined;
@@ -296,7 +296,7 @@ const START_GAP = 2;
 function startRowText(
   mode: LabRunMode,
   row: LabRow,
-  summary: LabSummary | null | undefined,
+  summary: StudySummary | null | undefined,
 ): { label: string; value: string; blocked: boolean } {
   if (mode === "dry-run")
     return { label: "Start a dry run", value: "free · no keys, no spend", blocked: false };
@@ -320,7 +320,7 @@ function startRowText(
 function startRowsStack(
   columns: number,
   row: LabRow,
-  summary: LabSummary | null | undefined,
+  summary: StudySummary | null | undefined,
 ): boolean {
   return (["dry-run", "live"] as const).some((mode) => {
     const { label, value } = startRowText(mode, row, summary);
@@ -330,7 +330,7 @@ function startRowsStack(
 }
 
 /** Why the live row is blocked, the most basic reason first. */
-function blocker(summary: LabSummary | null | undefined): string {
+function blocker(summary: StudySummary | null | undefined): string {
   if (summary?.planRefusal !== undefined) return "refused";
   if (summary?.keysReady === false) return "needs keys";
   if (summary?.runtime?.ok === false) return "needs runtime setup";
@@ -509,7 +509,7 @@ function PastRun({
   );
 }
 
-function capsLine(summary: LabSummary | null | undefined): string {
+function capsLine(summary: StudySummary | null | undefined): string {
   const lane = summary?.caps.laneUsd;
   const study = summary?.caps.studyUsd;
   if (lane === undefined && study === undefined) return "";

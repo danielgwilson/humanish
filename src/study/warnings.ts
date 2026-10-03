@@ -4,7 +4,7 @@ import {
   isSharedWorldComposition,
   isTerminalProductComposition,
 } from "./routing.js";
-import type { LabConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 import { declaredParticipantIds } from "./plan-participants.js";
 import { addressedRecipients } from "./parse/comms.js";
 import { focusOf, rosterOf } from "./parse/actors.js";
@@ -32,7 +32,7 @@ interface InertRow<T> {
   applies: (value: T, routes: Routes) => boolean;
 }
 
-type LabActor = LabConfig["actors"][number];
+type StudyActor = StudyConfig["actors"][number];
 
 // The computer-use and terminal routes consume mission/persona/model and laneFocus.instruction (they
 // compose the agent prompt and bundle provenance); laneFocus.id/label stay inert. On the computer-use
@@ -44,7 +44,7 @@ const scriptedRoute = (routes: Routes): boolean => !promptRoute(routes) && route
 const otherRoute = (routes: Routes): boolean => !promptRoute(routes) && !routes.scripted;
 
 /** Rows for each actor, reported as `actors[<index>].<field>`, in this order per actor. */
-const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
+const ACTOR_ROWS: readonly InertRow<StudyActor>[] = [
   // Shared-world-only fields on the roster: a participant's `entry` is inert anywhere else
   // (claims match mechanism).
   {
@@ -111,7 +111,7 @@ const TERMINAL_ONLY = "needs subject.source: terminal-product + a registered ter
 const RESERVED = "reserved; no route reads it yet";
 
 /** Rows for the rest of the config, reported after the actor rows, in this order. */
-const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
+const CONFIG_ROWS: readonly InertRow<StudyConfig>[] = [
   // The computer-use routes consume (clone) subject.{serve,env,state,clone.depth}, and so does the
   // scripted-browser route; on every other route they are inert.
   {
@@ -341,7 +341,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   { field: "personas", applies: (config) => Boolean(config.personas) },
 ];
 
-function routesOf(config: LabConfig): Routes {
+function routesOf(config: StudyConfig): Routes {
   const cua = isComputerUseComposition(config);
   const scripted = isScriptedBrowserComposition(config);
   const shared = isSharedWorldComposition(config);
@@ -368,7 +368,7 @@ function rowLabel(row: InertRow<never>, prefix = ""): string {
  * The fields a config sets that its route does not read, each as `field` or `field (reason)`. A v2
  * file gets them as one warning; a v3 study is refused for any of them.
  */
-export function inertFieldLabels(config: LabConfig): string[] {
+export function inertFieldLabels(config: StudyConfig): string[] {
   const routes = routesOf(config);
   const inert: string[] = [];
   for (const [index, actor] of config.actors.entries()) {
@@ -383,7 +383,7 @@ export function inertFieldLabels(config: LabConfig): string[] {
  * The same fields as `inertFieldLabels`, as paths without their reasons, such as
  * `actors[0].lanes[].entry` or `execution.timeoutMs`. `humanish migrate` drops each one.
  */
-export function inertFieldPaths(config: LabConfig): string[] {
+export function inertFieldPaths(config: StudyConfig): string[] {
   const routes = routesOf(config);
   const paths: string[] = [];
   for (const [index, actor] of config.actors.entries()) {
@@ -396,7 +396,7 @@ export function inertFieldPaths(config: LabConfig): string[] {
 
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
 // setting that silently does nothing.
-export function forwardDeclaredWarnings(config: LabConfig): string[] {
+export function forwardDeclaredWarnings(config: StudyConfig): string[] {
   const routes = routesOf(config);
   const inert = inertFieldLabels(config);
   const warnings =

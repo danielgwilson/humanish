@@ -6,14 +6,14 @@ import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
 } from "../../src/study/validation.js";
-import { parseLabConfig } from "../../src/study/config.js";
-import { type LabConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { type StudyConfig } from "../../src/study/types.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 
-const base: LabConfig = {
+const base: StudyConfig = {
   schema: "humanish.lab.v2",
   id: "camera-route",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -25,7 +25,7 @@ const base: LabConfig = {
   scenario: { mode: "live" },
   review: { analysis: false },
 };
-const cases: Array<[string, (config: LabConfig) => void, string]> = [
+const cases: Array<[string, (config: StudyConfig) => void, string]> = [
   [
     "shared world",
     (c) => {
@@ -99,10 +99,10 @@ describe("declared camera capabilities must reach an implemented route", () => {
     change(config);
     const withoutMedia = structuredClone(config);
     delete withoutMedia.execution!.desktop!.media;
-    const baseline = parseLabConfig(withoutMedia);
+    const baseline = parseStudy(withoutMedia);
     expect(baseline.ok, baseline.ok ? undefined : baseline.error.message).toBe(true);
     expect(desktopMediaValidationReason(config)).toContain(reason);
-    const parsed = parseLabConfig(config);
+    const parsed = parseStudy(config);
     expect(parsed.ok).toBe(false);
     expect(parsed.ok ? undefined : parsed.error.message).toContain(reason);
   });
@@ -117,7 +117,7 @@ describe("declared camera capabilities must reach an implemented route", () => {
     }
     const config = structuredClone(base);
     config.execution!.desktop!.browser = "chromium";
-    expect(parseLabConfig(config).ok).toBe(true);
+    expect(parseStudy(config).ok).toBe(true);
   });
 
   it("rechecks direct backend calls before desktop creation or participant dispatch", async () => {

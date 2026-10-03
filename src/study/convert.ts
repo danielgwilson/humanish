@@ -17,13 +17,12 @@ import {
   YAMLSeq,
   type Document,
 } from "yaml";
-import { parseLabConfig } from "./config.js";
+import { parseStudy } from "./config.js";
 import { focusOf } from "./parse/actors.js";
 import { posInt } from "./parse/values.js";
-import { planLab } from "./plan.js";
-import type { StudyRoute } from "./parse/study-v3.js";
-import { routeOf } from "./routing.js";
-import { LAB_CONFIG_SCHEMA, STUDY_SCHEMA, type LabConfig } from "./types.js";
+import { planStudy } from "./plan.js";
+import { routeOf, type StudyRoute } from "./routing.js";
+import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "./types.js";
 import { inertFieldPaths } from "./warnings.js";
 import {
   deleteNodeFieldPath,
@@ -87,8 +86,8 @@ export function convertStudyText(text: string, cwd: string): StudyConversionResu
   }
   const raw: unknown = doc.toJS();
   if (!isPlainRecord(raw) || !isMap(doc.contents)) return refuse("it is not a YAML mapping.");
-  if (raw.schema !== LAB_CONFIG_SCHEMA) return refuse(`its schema is not ${LAB_CONFIG_SCHEMA}.`);
-  const source = parseLabConfig(raw);
+  if (raw.schema !== V2_SCHEMA) return refuse(`its schema is not ${V2_SCHEMA}.`);
+  const source = parseStudy(raw);
   if (!source.ok) return refuse(`it does not parse: ${source.error.message}`);
   const route = routeOf(source.config);
 
@@ -170,7 +169,7 @@ function lostComment(
 // The inert-field table's paths for the route, plus terminal `execution.timeoutMs`, which no
 // terminal code reads. Parents come before their children, so a child under a dropped parent is
 // reported with the parent.
-function droppedPaths(config: LabConfig, route: StudyRoute, raw: PlainRecord): string[] {
+function droppedPaths(config: StudyConfig, route: StudyRoute, raw: PlainRecord): string[] {
   const paths = inertFieldPaths(config);
   if (route === "terminal" && readFieldPath(raw, "execution.timeoutMs") !== undefined)
     paths.push("execution.timeoutMs");
@@ -495,21 +494,21 @@ function samePlans(
 ): { ok: true } | { ok: false; reason: string } {
   const projected = structuredClone(raw);
   for (const path of dropped) deletePlainFieldPath(projected, path);
-  const before = parseLabConfig(projected);
+  const before = parseStudy(projected);
   if (!before.ok) {
     return refuse(`it does not parse once the unread keys are dropped: ${before.error.message}`);
   }
-  const after = parseLabConfig(parseDocument(text).toJS());
+  const after = parseStudy(parseDocument(text).toJS());
   if (!after.ok) return refuse(`its v3 form does not parse: ${after.error.message}`);
   if (
-    JSON.stringify(plain({ ...after.config, schema: LAB_CONFIG_SCHEMA })) !==
+    JSON.stringify(plain({ ...after.config, schema: V2_SCHEMA })) !==
     JSON.stringify(plain(before.config))
   ) {
     return refuse("its v3 form parses to a different study.");
   }
   for (const dryRun of [true, false]) {
-    const v2 = plain(planLab(before.config, { cwd, dryRun }));
-    const v3 = plain(planLab(after.config, { cwd, dryRun }));
+    const v2 = plain(planStudy(before.config, { cwd, dryRun }));
+    const v3 = plain(planStudy(after.config, { cwd, dryRun }));
     if (JSON.stringify(v2) !== JSON.stringify(v3)) {
       return refuse(`its v3 form plans a different ${dryRun ? "dry" : "live"} run.`);
     }

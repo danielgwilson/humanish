@@ -5,8 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../../../src/run/sandbox-receipts.js";
@@ -20,7 +20,7 @@ import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/sub
 const RUN_ID = "run-acquisition-boundary";
 
 const labInput = {
-  schema: LAB_CONFIG_SCHEMA,
+  schema: V2_SCHEMA,
   id: "terminal-acquisition-boundary",
   subject: {
     source: "terminal-product",
@@ -42,8 +42,8 @@ const labInput = {
   },
 };
 
-function labConfig(): LabConfig {
-  const parsed = parseLabConfig(labInput);
+function labConfig(): StudyConfig {
+  const parsed = parseStudy(labInput);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -105,8 +105,8 @@ async function killRouteAfterReceipt(
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const script = `
     const { runTerminalProductLab } = await import(${JSON.stringify(path.join(root, "src/routes/terminal/route.ts"))});
-    const { parseLabConfig } = await import(${JSON.stringify(path.join(root, "src/study/config.ts"))});
-    const parsed = parseLabConfig(JSON.parse(process.env.BOUNDARY_LAB));
+    const { parseStudy } = await import(${JSON.stringify(path.join(root, "src/study/config.ts"))});
+    const parsed = parseStudy(JSON.parse(process.env.BOUNDARY_LAB));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const module = {
       Sandbox: {

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 
 const dirs: string[] = [];
@@ -16,7 +16,7 @@ afterAll(async () => {
 });
 
 function lab(id: string, title: string): string {
-  return `schema: ${LAB_CONFIG_SCHEMA}
+  return `schema: ${V2_SCHEMA}
 id: ${id}
 title: ${title}
 subject:

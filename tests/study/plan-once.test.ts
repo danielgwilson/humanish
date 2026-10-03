@@ -1,4 +1,4 @@
-// runLab plans each lab once: one planLab call per run, and one call of the route's own planner,
+// runLab plans each lab once: one planStudy call per run, and one call of the route's own planner,
 // on every route and on a local browser study, whose desktop and provider are bound first.
 
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -6,15 +6,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const counts = vi.hoisted(() => ({ planLab: 0, route: 0 }));
+const counts = vi.hoisted(() => ({ planStudy: 0, route: 0 }));
 
 vi.mock("../../src/study/plan.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/study/plan.js")>();
   return {
     ...actual,
-    planLab: (...args: Parameters<typeof actual.planLab>) => {
-      counts.planLab += 1;
-      return actual.planLab(...args);
+    planStudy: (...args: Parameters<typeof actual.planStudy>) => {
+      counts.planStudy += 1;
+      return actual.planStudy(...args);
     },
   };
 });
@@ -61,17 +61,17 @@ vi.mock("../../src/routes/computer-use/plan.js", async (importOriginal) => {
 
 import { runLab } from "../../src/run-lab.js";
 import { routeOf } from "../../src/study/plan.js";
-import { parseLabConfig } from "../../src/study/config.js";
-import type { LabConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import { lab, SCENARIO_YAML, type BaseName, type Patch } from "../admission/fixtures.js";
 
-function parsed(base: BaseName, patch: Patch = {}): LabConfig {
-  const result = parseLabConfig(lab(base, patch));
+function parsed(base: BaseName, patch: Patch = {}): StudyConfig {
+  const result = parseStudy(lab(base, patch));
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 
-const runs: readonly (readonly [string, () => LabConfig, string, number])[] = [
+const runs: readonly (readonly [string, () => StudyConfig, string, number])[] = [
   ["preview", () => parsed("preview"), "synthetic", 0],
   ["computer use", () => parsed("cuAppUrl"), "cua", 1],
   ["scripted", () => parsed("scriptedAppUrl"), "scripted", 1],
@@ -86,7 +86,7 @@ describe("runLab plans each lab once", () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-plan-once-"));
     await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
-    counts.planLab = 0;
+    counts.planStudy = 0;
     counts.route = 0;
   });
   afterEach(async () => {
@@ -99,7 +99,7 @@ describe("runLab plans each lab once", () => {
       const outcome = await runLab(config(), { cwd, dryRun: true, open: false });
       expect(outcome.route).toBe(routeOf(config()));
       expect((outcome.result as { ok?: boolean }).ok).toBe(true);
-      expect(counts.planLab).toBe(1);
+      expect(counts.planStudy).toBe(1);
       expect(counts.route).toBe(routePlans);
     },
   );

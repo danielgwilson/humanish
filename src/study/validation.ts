@@ -18,7 +18,7 @@ import {
   isSharedWorldComposition,
   isTerminalProductComposition,
 } from "./routing.js";
-import type { LabConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
@@ -26,7 +26,7 @@ import type { LabConfig } from "./types.js";
  * that skipped the parser. It runs rosterStructuralValidationReason (id and device
  * validity, unique ids) first, then the route-scoped XOR, cap and policy checks.
  */
-export function computerUseValidationReason(config: LabConfig): string | null {
+export function computerUseValidationReason(config: StudyConfig): string | null {
   const actor = config.actors[0];
   const roster = rosterOf(actor);
   const structuralReason = rosterStructuralValidationReason(config);
@@ -88,9 +88,9 @@ export function computerUseValidationReason(config: LabConfig): string | null {
 
 /**
  * Engine-level path-token validation for configs supplied directly through the
- * public TypeScript/JavaScript API instead of parseLabConfig.
+ * public TypeScript/JavaScript API instead of parseStudy.
  */
-function rosterStructuralValidationReason(config: LabConfig): string | null {
+function rosterStructuralValidationReason(config: StudyConfig): string | null {
   const roster = rosterOf(config.actors[0]);
   const seenIds = new Set<string>();
   if (roster !== undefined) {
@@ -127,7 +127,7 @@ function rosterStructuralValidationReason(config: LabConfig): string | null {
  * subject, the provisioned checks otherwise. Enforced at parse and again by the route, since
  * runLab takes a config that skipped the parser.
  */
-export function sharedWorldValidationReason(config: LabConfig): string | null {
+export function sharedWorldValidationReason(config: StudyConfig): string | null {
   return config.subject.source === "app-url"
     ? externalPublicSharedWorldValidationReason(config)
     : concurrentSharedWorldValidationReason(config);
@@ -140,7 +140,7 @@ export function sharedWorldValidationReason(config: LabConfig): string | null {
  * same-origin (loopback) with serve.url. Fail-closed: a half-declared shared-world is rejected,
  * never silently downgraded.
  */
-function provisionedSharedWorldStructureReason(config: LabConfig): string | null {
+function provisionedSharedWorldStructureReason(config: StudyConfig): string | null {
   const structuralReason = rosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
@@ -179,7 +179,7 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
  * topology may not identify the backend that is actually executing.
  */
 export function desktopMediaValidationReason(
-  config: LabConfig,
+  config: StudyConfig,
   supportsMedia = isComputerUseComposition(config),
 ): string | undefined {
   if (
@@ -226,7 +226,7 @@ export function desktopMediaValidationReason(
 }
 
 /** Reused by direct library runners so unsupported receiving never becomes inert configuration. */
-export function receivingEmailValidationReason(config: LabConfig): string | undefined {
+export function receivingEmailValidationReason(config: StudyConfig): string | undefined {
   if (config.comms?.email?.kind !== "real") return undefined;
   if (
     !isComputerUseComposition(config) ||
@@ -243,7 +243,7 @@ export function receivingEmailValidationReason(config: LabConfig): string | unde
 /** Refuse task declarations that the selected execution path would discard.
  * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
 export function taskProtocolValidationReason(
-  config: LabConfig,
+  config: StudyConfig,
   supportsTasks = isComputerUseComposition(config) && !isSharedWorldComposition(config),
 ): string | null {
   for (const [index, actor] of config.actors.entries()) {
@@ -265,7 +265,7 @@ export function taskProtocolValidationReason(
  * also means the parser's clone checks, which run only on e2b-desktop, cannot be skipped. Enforced
  * at parse and again on the computer-use and scripted-browser routes for library callers.
  */
-export function cloneTargetValidationReason(config: LabConfig): string | null {
+export function cloneTargetValidationReason(config: StudyConfig): string | null {
   const target = config.execution?.target;
   if (config.subject.source !== "clone" || target === "e2b-desktop") return null;
   const got = target === undefined ? "it is absent" : `got "${target}"`;
@@ -279,7 +279,7 @@ export function cloneTargetValidationReason(config: LabConfig): string | null {
  * either way and stays a warning. Enforced at parse and again on the computer-use routes for
  * library callers.
  */
-export function scenarioCapsValidationReason(config: LabConfig): string | null {
+export function scenarioCapsValidationReason(config: StudyConfig): string | null {
   if (!isComputerUseComposition(config)) return null;
   for (const key of ["maxUsd", "maxTotalUsd"] as const) {
     const value = config.scenario?.caps?.[key];
@@ -290,7 +290,7 @@ export function scenarioCapsValidationReason(config: LabConfig): string | null {
 }
 
 /** Refuse a claimed output bound when the route cannot pass it to the first-party provider. */
-export function outputTokenLimitValidationReason(config: LabConfig): string | null {
+export function outputTokenLimitValidationReason(config: StudyConfig): string | null {
   const actor = config.actors[0];
   if (actor?.maxOutputTokens === undefined) return null;
   if (!isMaxOutputTokens(actor.maxOutputTokens))
@@ -312,7 +312,7 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
  * two-participant roster floor, so a one-participant roster gets the roster refusal, never this
  * one.
  */
-function sharedWorldConcurrencyReason(config: LabConfig): string | null {
+function sharedWorldConcurrencyReason(config: StudyConfig): string | null {
   // Direct library callers skip the parser, so an omitted value defaults here exactly as the
   // route does: to the participant count. A missing roster reads as 0 and is refused.
   const participants = rosterOf(config.actors[0])?.length ?? 0;
@@ -329,7 +329,7 @@ function sharedWorldConcurrencyReason(config: LabConfig): string | null {
  * orphan actor sandboxes). Enforced at parse and re-enforced in the engine (runLab
  * takes a config that skipped the parser).
  */
-export function concurrentSharedWorldValidationReason(config: LabConfig): string | null {
+export function concurrentSharedWorldValidationReason(config: StudyConfig): string | null {
   const base = provisionedSharedWorldStructureReason(config);
   if (base) {
     return base;
@@ -362,7 +362,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
  * Enforced at parse and re-enforced in the engine (runLab takes a config that skipped the parser).
  */
-export function externalPublicSharedWorldValidationReason(config: LabConfig): string | null {
+export function externalPublicSharedWorldValidationReason(config: StudyConfig): string | null {
   const structuralReason = rosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
@@ -424,7 +424,7 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
 }
 
 /** Analysis requires a live recording producer, including supported dry-run previews. */
-export function automaticAnalysisRouteReason(config: LabConfig): string | undefined {
+export function automaticAnalysisRouteReason(config: StudyConfig): string | undefined {
   if (config.review?.analysis === undefined || config.review.analysis === false) return undefined;
   if (
     isComputerUseComposition(config) ||

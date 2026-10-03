@@ -6,10 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
 import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runInit } from "../../src/study/init.js";
 import { starterFilesFor } from "../../src/study/init-templates.js";
-import { resolveLabManifest, listLabManifests } from "../../src/study/discover.js";
+import { resolveStudyManifest, listStudyManifests } from "../../src/study/discover.js";
 import { runLab } from "../../src/run-lab.js";
 import { routeOf } from "../../src/study/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
@@ -46,11 +46,11 @@ describe("every lab `humanish init` writes is runnable", () => {
     const init = await runInit({ cwd, yes: true });
     expect(init.ok).toBe(true);
 
-    const listed = await listLabManifests(cwd);
+    const listed = await listStudyManifests(cwd);
     expect(listed.studies.length).toBeGreaterThan(0);
 
     for (const lab of listed.studies) {
-      const resolved = await resolveLabManifest(cwd, lab.id);
+      const resolved = await resolveStudyManifest(cwd, lab.id);
       expect(resolved.ok, `${lab.id} should resolve`).toBe(true);
       if (!resolved.ok) continue;
 
@@ -106,7 +106,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     const labs = files.filter((file) => file.path.startsWith("humanish/studies/"));
     expect(labs.map((file) => file.path)).toContain("humanish/studies/try-live.yaml");
     for (const file of labs) {
-      const parsed = parseLabConfig(parse(file.contents));
+      const parsed = parseStudy(parse(file.contents));
       expect(parsed.ok, `${file.path} should parse`).toBe(true);
       if (!parsed.ok) continue;
       const config = parsed.config;
@@ -158,7 +158,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     const tryLive = starterFilesFor(actor).find(
       (file) => file.path === "humanish/studies/try-live.yaml",
     )!;
-    const parsed = parseLabConfig(parse(tryLive.contents));
+    const parsed = parseStudy(parse(tryLive.contents));
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.config.actors[0]?.type).toBe(actor);

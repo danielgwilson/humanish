@@ -1,6 +1,6 @@
 // The serve pipeline the clone and local-tree subjects share once their source is in place.
 import { failureTail } from "../evidence/redaction.js";
-import type { LabStateStepWhen, LabSubjectServe, LabSubjectState } from "../study/types.js";
+import type { StudyStateStepWhen, StudySubjectServe, StudySubjectState } from "../study/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
 import { NODE_BOOTSTRAP_COMMAND, NODE_BOOTSTRAP_TIMEOUT_MS } from "./node-bootstrap.js";
 import { corepackCommandFor, needsNodeRuntime } from "./runtime.js";
@@ -98,8 +98,8 @@ async function runProvisioningStepWithOneRetry(
  * wait. Detached-step polling adds seconds on top.
  */
 export function serveProvisioningBudgetMs(
-  serve: LabSubjectServe,
-  state: LabSubjectState | undefined,
+  serve: StudySubjectServe,
+  state: StudySubjectState | undefined,
 ): number {
   const installMs = serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS;
   const commands = [serve.install, serve.build, serve.start];
@@ -133,9 +133,9 @@ export function serveProvisioningBudgetMs(
 export async function runSubjectServePipeline(
   shell: Shell,
   args: {
-    serve: LabSubjectServe;
+    serve: StudySubjectServe;
     /** Declared subject state (seed steps; external declaration is provenance-only). */
-    state?: LabSubjectState;
+    state?: StudySubjectState;
     requestTimeoutMs: number;
     /** Literal scrubber for known provisioned values, applied to log tails pre-truncation. */
     scrub: (text: string) => string;
@@ -153,7 +153,7 @@ export async function runSubjectServePipeline(
   const timers = detachedTimersOf(args);
   const now = args.now ?? Date.now;
   const refresh = args.onPhaseComplete ?? ((): Promise<void> => Promise.resolve());
-  const runState = (when: LabStateStepWhen): Promise<void> =>
+  const runState = (when: StudyStateStepWhen): Promise<void> =>
     runStateSteps(shell, when, {
       ...(args.state === undefined ? {} : { state: args.state }),
       requestTimeoutMs: args.requestTimeoutMs,
@@ -209,7 +209,7 @@ export async function runSubjectServePipeline(
 /** What every serve step needs: the sandbox shell, the serve block, timers and the phase sink. */
 interface ServeStep {
   shell: Shell;
-  serve: LabSubjectServe;
+  serve: StudySubjectServe;
   requestTimeoutMs: number;
   scrub: (text: string) => string;
   onPhase: ((event: SubjectPhaseEvent) => void) | undefined;

@@ -1,8 +1,8 @@
 import path from "node:path";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
-import type { LabConfig } from "./types.js";
-import type { LabRoute } from "./plan.js";
+import type { StudyConfig } from "./types.js";
+import type { StudyRoute } from "./plan.js";
 import type { PlanResult } from "./plan-types.js";
 import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
@@ -190,20 +190,20 @@ export async function localCodexParticipantCheck(args: {
 
 /**
  * The discovery and planning functions doctor's study checks use, loaded on first use as
- * labSetupChecks always loaded them, so they stay out of this module's static imports.
+ * studySetupChecks always loaded them, so they stay out of this module's static imports.
  */
 async function studyLoaders() {
   const discover = await import("./discover.js");
   const plan = await import("./plan.js");
   return {
-    listStudies: discover.listLabManifests,
-    resolveStudy: discover.resolveLabManifest,
-    resolveDryRun: plan.resolveLabDryRun,
+    listStudies: discover.listStudyManifests,
+    resolveStudy: discover.resolveStudyManifest,
+    resolveDryRun: plan.resolveStudyDryRun,
     routeOf: plan.routeOf,
   };
 }
 
-export interface LabSetupCheckArgs {
+export interface StudySetupCheckArgs {
   cwd: string;
   lab: string;
   env: NodeJS.ProcessEnv;
@@ -225,7 +225,7 @@ type AnalysisBudget = NonNullable<ReturnType<typeof automaticAnalysisBudget>>;
  * required or not; it is undefined when that is unknown: the lab does not plan, or a declared
  * scorer's host code may read any key.
  */
-export async function labSetupChecks(args: LabSetupCheckArgs): Promise<{
+export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
   desktop: boolean;
   keys: string[];
   reads?: ReadonlySet<string>;
@@ -292,7 +292,10 @@ export async function labSetupChecks(args: LabSetupCheckArgs): Promise<{
 }
 
 /** A local browser study's runtime and, with an external catch, its captured inbox. */
-async function localBrowserChecks(config: LabConfig, args: LabSetupCheckArgs): Promise<Check[]> {
+async function localBrowserChecks(
+  config: StudyConfig,
+  args: StudySetupCheckArgs,
+): Promise<Check[]> {
   const checks: Check[] = [];
   const runtime = await (
     args.localRuntimeReadiness ??
@@ -323,7 +326,7 @@ async function localBrowserChecks(config: LabConfig, args: LabSetupCheckArgs): P
 async function realEmailCheck(
   connection: string,
   keys: string[],
-  args: LabSetupCheckArgs,
+  args: StudySetupCheckArgs,
 ): Promise<Check> {
   const name = await receivingRequiredKey(args.cwd, connection);
   if (name) keys.push(name);
@@ -341,11 +344,11 @@ async function realEmailCheck(
 
 /** How the participant authenticates: the terminal model key, or a local agent's login. */
 async function participantChecks(
-  config: LabConfig,
-  route: LabRoute,
+  config: StudyConfig,
+  route: StudyRoute,
   keys: string[],
   local: boolean,
-  args: LabSetupCheckArgs,
+  args: StudySetupCheckArgs,
   checkAccount: AccountReadiness,
 ): Promise<Check[]> {
   if (route === "terminal") {
@@ -387,7 +390,7 @@ async function participantChecks(
 
 /** The hosted Codex participant row: what the operator handshake admitted, or how to fix it. */
 async function hostedCodexParticipantCheck(
-  args: LabSetupCheckArgs,
+  args: StudySetupCheckArgs,
   actor: { model?: string; reasoningEffort?: ReasoningEffort } | undefined,
 ): Promise<Check> {
   const declared = {
@@ -425,7 +428,7 @@ async function scriptedBrowserCheck(): Promise<Check> {
 }
 
 /** One row per subject env name the plan requires: present or missing, never the value. */
-function subjectEnvChecks(names: readonly string[], args: LabSetupCheckArgs): Check[] {
+function subjectEnvChecks(names: readonly string[], args: StudySetupCheckArgs): Check[] {
   return names.map((name) => ({
     name: `subject env ${name}`,
     ok: !!args.env[name]?.trim() || args.keyPresent(name),
@@ -439,7 +442,7 @@ function subjectEnvChecks(names: readonly string[], args: LabSetupCheckArgs): Ch
 /** The post-run analysis: the Codex account, or the OpenAI key and the analysis cost limit. */
 async function analysisCheck(
   analysis: AnalysisBudget,
-  args: LabSetupCheckArgs,
+  args: StudySetupCheckArgs,
   checkAccount: AccountReadiness,
 ): Promise<Check> {
   if (analysis.provider === "codex") {
@@ -512,11 +515,11 @@ export async function studiesByRequiredKey(
  * The lab planned with no run options, so its own scenario mode decides dry or live. Doctor and the
  * TUI read a live run's keys and subject env from this plan's requirements.
  */
-export async function planCliRun(config: LabConfig, cwd: string): Promise<PlanResult> {
-  return (await import("./plan.js")).planLab(config, { cwd });
+export async function planCliRun(config: StudyConfig, cwd: string): Promise<PlanResult> {
+  return (await import("./plan.js")).planStudy(config, { cwd });
 }
 
-function unsupportedCliRoute(config: LabConfig, route: LabRoute): string | undefined {
+function unsupportedCliRoute(config: StudyConfig, route: StudyRoute): string | undefined {
   if (config.subject.source === "local-app")
     return "local-app needs a caller-supplied executor and provider through the library API; the plain CLI cannot run it.";
   if (route === "preview")

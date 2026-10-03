@@ -1,7 +1,7 @@
 // Valid raw manifests, one per route shape. Admission cases mutate a deep copy of one of these, so
 // every case differs from a runnable lab by the one rule it exercises.
 
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
 
 export type RawLab = Record<string, unknown>;
 
@@ -135,7 +135,7 @@ function merge(target: unknown, patch: unknown): unknown {
  */
 export function lab(base: BaseName, patch: Patch = {}, actorPatch?: Patch): RawLab {
   const raw = merge(
-    { schema: LAB_CONFIG_SCHEMA, id: `adm-${base.toLowerCase()}`, ...structuredClone(bases[base]) },
+    { schema: V2_SCHEMA, id: `adm-${base.toLowerCase()}`, ...structuredClone(bases[base]) },
     patch,
   ) as RawLab;
   if (actorPatch !== undefined) {

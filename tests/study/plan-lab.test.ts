@@ -1,4 +1,4 @@
-// planLab builds the plan a lab would run under, without running anything. These tests pin the
+// planStudy builds the plan a lab would run under, without running anything. These tests pin the
 // plan of every committed lab, compare the plan's derived numbers with what the routes compute
 // today, and check that each combination the plan types cannot hold is refused with its route's
 // own code. `lab doctor` reads its keys from this plan (tests/study/doctor.test.ts).
@@ -8,23 +8,23 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
-import { planLab, type LabRoute } from "../../src/study/plan.js";
-import type { LabPlan, PlanResult } from "../../src/study/plan-types.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { planStudy, type StudyRoute } from "../../src/study/plan.js";
+import type { StudyPlan, PlanResult } from "../../src/study/plan-types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { resolveCuaParticipantPlan } from "../../src/routes/computer-use/participant-runs.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
-function planOf(result: PlanResult): LabPlan {
+function planOf(result: PlanResult): StudyPlan {
   if (!result.ok) throw new Error(`refused on ${result.refusal.route}`);
   return result.planned.plan;
 }
 
-function parsed(raw: Record<string, unknown>): LabConfig {
-  const result = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "plan-lab", ...raw });
+function parsed(raw: Record<string, unknown>): StudyConfig {
+  const result = parseStudy({ schema: V2_SCHEMA, id: "plan-lab", ...raw });
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
@@ -45,8 +45,8 @@ describe("planLab", () => {
   it("pins the dry and live plan of every committed lab", async () => {
     const plans: Record<string, unknown> = {};
     for (const [id, config] of await committedLabs(ROOT)) {
-      const dry = planLab(config, { cwd: ROOT, dryRun: true });
-      const live = planLab(config, { cwd: ROOT, dryRun: false });
+      const dry = planStudy(config, { cwd: ROOT, dryRun: true });
+      const live = planStudy(config, { cwd: ROOT, dryRun: false });
       plans[id] = {
         dry: dry.ok ? dry.planned.plan : { refusal: dry.refusal },
         live: live.ok
@@ -60,10 +60,10 @@ describe("planLab", () => {
   });
 
   it("derives computer-use concurrency, session budget and sandbox time as the participant plan does", async () => {
-    const configs: [string, LabConfig, number | undefined][] = [
+    const configs: [string, StudyConfig, number | undefined][] = [
       ...(await committedLabs(ROOT))
         .filter(([, config]) => routeOf(config) === "computer-use")
-        .map(([id, config]) => [id, config, undefined] as [string, LabConfig, undefined]),
+        .map(([id, config]) => [id, config, undefined] as [string, StudyConfig, undefined]),
       [
         "declared concurrency",
         parsed({
@@ -81,7 +81,7 @@ describe("planLab", () => {
     ];
     for (const [name, config, count] of configs) {
       const plan = planOf(
-        planLab(config, { cwd: ROOT, dryRun: true, ...(count === undefined ? {} : { count }) }),
+        planStudy(config, { cwd: ROOT, dryRun: true, ...(count === undefined ? {} : { count }) }),
       );
       if (plan.route !== "computer-use") throw new Error(`${name} planned ${plan.route}`);
       const lanes = resolveCuaParticipantPlan(config, {
@@ -113,11 +113,11 @@ describe("planLab", () => {
       throw new Error("not called");
     };
     const gap = (
-      config: LabConfig,
-      options: Parameters<typeof planLab>[1],
-      deps?: Parameters<typeof planLab>[2],
+      config: StudyConfig,
+      options: Parameters<typeof planStudy>[1],
+      deps?: Parameters<typeof planStudy>[2],
     ) => {
-      const result = planLab(config, options, deps);
+      const result = planStudy(config, options, deps);
       if (result.ok) return "planned";
       const { refusal } = result;
       return `${refusal.route} ${refusal.code}`;
@@ -129,7 +129,7 @@ describe("planLab", () => {
     });
     // The type pairs inProcess with createProvider; a JavaScript caller can still omit it.
     const executorOnly = { cwd: ROOT, inProcess: { executor } } as unknown as Parameters<
-      typeof planLab
+      typeof planStudy
     >[1];
     expect(gap(parsed(cuApp), executorOnly)).toBe(
       "computer-use HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
@@ -174,7 +174,7 @@ describe("planLab", () => {
       ...terminal,
       comms: { email: { kind: "real", connection: "team-inbox" } },
       review: { analysis: "yes" },
-    } as unknown as LabConfig;
+    } as unknown as StudyConfig;
     expect(gap(receivingTerminal, { cwd: ROOT })).toBe(
       "terminal HUMANISH_TERMINAL_SUBJECT_INVALID",
     );
@@ -189,13 +189,13 @@ describe("planLab", () => {
     const publicScripted = {
       ...parsed(scriptedApp),
       subject: { source: "app-url", appUrl: "https://example.com/" },
-    } as LabConfig;
+    } as StudyConfig;
     expect(gap(publicScripted, { cwd: ROOT })).toBe("scripted HUMANISH_SCRIPTED_SUBJECT_UNSAFE");
-    const unknownActor = { ...parsed(cuApp), actors: [{ type: "not-an-actor" }] } as LabConfig;
+    const unknownActor = { ...parsed(cuApp), actors: [{ type: "not-an-actor" }] } as StudyConfig;
     expect(gap(unknownActor, { cwd: ROOT })).toBe(
       "computer-use HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
     );
-    const badAnalysis = { ...parsed(cuApp), review: { analysis: "yes" } } as unknown as LabConfig;
+    const badAnalysis = { ...parsed(cuApp), review: { analysis: "yes" } } as unknown as StudyConfig;
     expect(gap(badAnalysis, { cwd: ROOT })).toBe("computer-use HUMANISH_STUDY_ANALYSIS_INVALID");
   });
 
@@ -213,8 +213,8 @@ describe("planLab", () => {
       scenario: { ref: "scripted-first-run" },
       execution: { target: "e2b-desktop" },
     });
-    const requirements = (config: LabConfig, deps: Parameters<typeof planLab>[2]) =>
-      planOf(planLab(config, { cwd: ROOT, dryRun: false }, deps)).requirements;
+    const requirements = (config: StudyConfig, deps: Parameters<typeof planStudy>[2]) =>
+      planOf(planStudy(config, { cwd: ROOT, dryRun: false }, deps)).requirements;
     expect(requirements(parsed(scriptedApp), {})).toEqual([{ kind: "host-browser" }]);
     expect(requirements(clone, {})).toEqual([
       { kind: "key", name: "E2B_API_KEY" },
@@ -231,7 +231,7 @@ describe("planLab", () => {
     const createProvider = async (): Promise<never> => {
       throw new Error("not called");
     };
-    const result = planLab(
+    const result = planStudy(
       parsed({
         ...cuApp,
         comms: { email: { kind: "fake", external: { catchBaseUrl: "http://127.0.0.1:9/" } } },
@@ -253,12 +253,12 @@ describe("planLab on the preview route", () => {
   });
 
   it("plans a dry run with the checked count", () => {
-    const plan = planOf(planLab(thisRepo, { cwd: ROOT, dryRun: true, count: 3 }));
+    const plan = planOf(planStudy(thisRepo, { cwd: ROOT, dryRun: true, count: 3 }));
     expect(plan).toMatchObject({ route: "preview", dryRun: true, participantCount: 3 });
   });
 
   it.each([0, -1, 1.5, Number.NaN])("refuses a count of %s before the run starts", (count) => {
-    const result = planLab(thisRepo, { cwd: ROOT, dryRun: true, count });
+    const result = planStudy(thisRepo, { cwd: ROOT, dryRun: true, count });
     expect(result).toEqual({
       ok: false,
       refusal: {
@@ -270,7 +270,7 @@ describe("planLab on the preview route", () => {
   });
 
   it("refuses a live request with the parser's this-repo message", () => {
-    const result = planLab(thisRepo, { cwd: ROOT, dryRun: false });
+    const result = planStudy(thisRepo, { cwd: ROOT, dryRun: false });
     expect(result).toEqual({
       ok: false,
       refusal: {
@@ -282,14 +282,14 @@ describe("planLab on the preview route", () => {
   });
 
   it("refuses a bad count before a live request, as runDryRun ordered them", () => {
-    const result = planLab(thisRepo, { cwd: ROOT, dryRun: false, count: 0 });
+    const result = planStudy(thisRepo, { cwd: ROOT, dryRun: false, count: 0 });
     expect(result.ok ? undefined : result.refusal.code).toBe("HUMANISH_INVALID_PARTICIPANT_COUNT");
   });
 });
 
 // Architecture.md's invariant "Goldens pin route output": every route has a dry-run run-directory
 // golden from runDirSnapshot (tests/helpers/run-golden.ts). The record fails typecheck when a route
-// is added to LabRoute without an entry here, and the test fails when the golden file is missing.
+// is added to StudyRoute without an entry here, and the test fails when the golden file is missing.
 describe("route goldens", () => {
   const dryRunGoldens = {
     preview: ["preview-dry-run.json"],
@@ -300,7 +300,7 @@ describe("route goldens", () => {
       "shared-world-concurrent-dry-run.json",
       "shared-world-external-public-dry-run.json",
     ],
-  } satisfies Record<LabRoute, readonly string[]>;
+  } satisfies Record<StudyRoute, readonly string[]>;
 
   it.each(Object.entries(dryRunGoldens))(
     "%s has a dry-run run-directory golden",

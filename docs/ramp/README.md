@@ -128,7 +128,7 @@ Still not good enough:
 
 ## Check which compositions a lab can declare
 
-`parseLabConfig` (`src/study/config.ts`) enforces this matrix through `compositionReason`
+`parseStudy` (`src/study/config.ts`) enforces this matrix through `compositionReason`
 (`src/study/composition-rules.ts`), which uses the predicates in `src/study/routing.ts` and the reasons
 in `src/study/validation.ts`. The route entries check it again
 for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 
 // With a `lanes` roster present, participant persona resolution once read only `lane.persona`. Every
@@ -13,8 +13,8 @@ import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/part
 // declared, so this is a fidelity bug, not a cosmetic one.
 
 function planFor(actor: Record<string, unknown>) {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "lane-persona-fallback",
     title: "Lane persona fallback",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:8000/" },

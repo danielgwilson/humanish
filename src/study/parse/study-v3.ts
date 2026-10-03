@@ -1,12 +1,12 @@
 // humanish.study.v3, the study format. A study declares its route, one `actor`, its `participants`
 // and one `caps` block. studyToV2 rewrites a v3 document into the v2 spelling, so both formats run
-// through one parser and parse into the same LabConfig. parseLabConfig then checks the declared
+// through one parser and parse into the same StudyConfig. parseStudy then checks the declared
 // route against the one the config takes, and refuses any field that route does not read.
 
 import { isRecord } from "../../run/type-guards.js";
 import { findUnknownStudyKey } from "../keys.js";
-import type { LabRoute } from "../routing.js";
-import { LAB_CONFIG_SCHEMA, type LabConfigParseFailure } from "../types.js";
+import type { StudyRoute } from "../routing.js";
+import { V2_SCHEMA, type StudyParseFailure } from "../types.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./actors.js";
 import { invalid, posInt } from "./values.js";
 
@@ -17,10 +17,7 @@ const ROUTES = [
   "shared-world",
   "terminal",
   "scripted",
-] as const satisfies readonly LabRoute[];
-
-/** A route a study declares. */
-export type StudyRoute = (typeof ROUTES)[number];
+] as const satisfies readonly StudyRoute[];
 
 // The caps keys each route reads. Computer use and shared world stop on estimated model spend;
 // the terminal route checks its spend ledger, product jobs and the command deadline.
@@ -47,7 +44,7 @@ interface Participants {
   source: number[];
 }
 
-type Parsed<T> = { ok: true; value: T } | LabConfigParseFailure;
+type Parsed<T> = { ok: true; value: T } | StudyParseFailure;
 
 /** Rewrite a humanish.study.v3 document into humanish.lab.v2, or refuse it. */
 export function studyToV2(raw: Record<string, unknown>): Parsed<StudyDocument> {
@@ -105,7 +102,7 @@ export function studyToV2(raw: Record<string, unknown>): Parsed<StudyDocument> {
   const subject =
     route === "shared-world" ? withKey(raw.subject, "topology", "shared-world") : raw.subject;
 
-  const v2: Record<string, unknown> = { schema: LAB_CONFIG_SCHEMA };
+  const v2: Record<string, unknown> = { schema: V2_SCHEMA };
   const fields: [string, unknown][] = [
     ["id", raw.id],
     ["title", raw.title],

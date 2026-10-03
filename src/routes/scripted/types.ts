@@ -1,13 +1,13 @@
 // The scripted-browser lab's schema constant, options and result types.
 
 import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
-import type { LabEvent } from "../../study/run-study-events.js";
+import type { StudyEvent } from "../../study/run-study-events.js";
 import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
-import type { LabDeps } from "../../study/study-deps.js";
-import type { RunLabHomes } from "../../study/run-study-homes.js";
+import type { StudyDeps } from "../../study/study-deps.js";
+import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
 /** What a scripted run takes besides its plan. The plan carries the config, dry run and lab. */
@@ -16,10 +16,10 @@ export type ScriptedRunInput = Omit<RunScriptedBrowserLabOptions, "config" | "dr
 export interface RunScriptedBrowserLabOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
-  /** Reports the analysis window to onEvent; built by normalizeRunLabOptions. */
-  emit?: (event: LabEvent) => void;
+  /** Reports the analysis window to onEvent; built by normalizeRunStudyOptions. */
+  emit?: (event: StudyEvent) => void;
   cwd: string;
-  config: LabConfig;
+  config: StudyConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
   dryRun: boolean;
   open?: boolean;
@@ -27,9 +27,9 @@ export interface RunScriptedBrowserLabOptions {
   /** Keys and subject env for the run. Defaults to process.env. Values are scrubbed; names persist. */
   env?: Readonly<Record<string, string | undefined>>;
   /** Runs after a clone subject's sandbox exists and before provisioning. */
-  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
+  prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
   /** Test seams: the browser, the session, the E2B module, timers, the renderer and the clock. */
-  deps?: LabDeps;
+  deps?: StudyDeps;
 }
 
 interface ScriptedBrowserLabSession {

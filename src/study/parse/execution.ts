@@ -3,30 +3,30 @@ import { DEVICE_PRESET_NAMES, isDevicePresetName } from "../device-presets.js";
 import { isExactRuntimeVersion } from "../../routes/terminal/runtime.js";
 import { invalid, nonNegNumber, posInt, str } from "./values.js";
 import type {
-  LabConfigParseFailure,
-  LabDefaults,
-  LabDesktopFidelity,
-  LabDesktopMedia,
-  LabExecution,
-  LabExecutionDesktop,
-  LabExecutionTerminal,
-  LabPolicies,
-  LabReview,
-  LabScenario,
-  LabScenarioCaps,
+  StudyParseFailure,
+  StudyDefaults,
+  StudyDesktopFidelity,
+  StudyDesktopMedia,
+  StudyExecution,
+  StudyExecutionDesktop,
+  StudyExecutionTerminal,
+  StudyPolicies,
+  StudyReview,
+  StudyScenario,
+  StudyScenarioCaps,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
 export function parseExecution(
   raw: unknown,
-): { ok: true; value: LabExecution | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyExecution | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
     return invalid("`execution` must be an object.");
   }
-  const execution: LabExecution = {};
+  const execution: StudyExecution = {};
   if (raw.target !== undefined) {
     const target = str(raw.target);
     if (target !== "local" && target !== "e2b-desktop" && target !== "e2b-terminal") {
@@ -99,14 +99,14 @@ export function parseExecution(
 
 function parseTerminal(
   raw: unknown,
-): { ok: true; value: LabExecutionTerminal | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyExecutionTerminal | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
     return invalid("`execution.terminal` must be an object ({ transport?, stdin? }).");
   }
-  const terminal: LabExecutionTerminal = {};
+  const terminal: StudyExecutionTerminal = {};
   if (raw.transport !== undefined) {
     const transport = str(raw.transport);
     if (transport !== "exec-stream") {
@@ -139,11 +139,11 @@ function parseTerminal(
 
 function parseDesktop(
   raw: unknown,
-): { ok: true; value: LabExecutionDesktop | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyExecutionDesktop | undefined } | StudyParseFailure {
   if (!isRecord(raw)) {
     return { ok: true, value: undefined };
   }
-  const desktop: LabExecutionDesktop = {};
+  const desktop: StudyExecutionDesktop = {};
   if (raw.recording !== undefined) {
     if (
       !isRecord(raw.recording) ||
@@ -211,7 +211,7 @@ function parseDesktop(
         "`execution.desktop.fidelity` must be an object with `mobileEmulation: true|false` (optional deviceScaleFactor, touch, userAgent).",
       );
     }
-    const fidelity: LabDesktopFidelity = { mobileEmulation: raw.fidelity.mobileEmulation };
+    const fidelity: StudyDesktopFidelity = { mobileEmulation: raw.fidelity.mobileEmulation };
     if (raw.fidelity.deviceScaleFactor !== undefined) {
       const scale = raw.fidelity.deviceScaleFactor;
       if (typeof scale !== "number" || !Number.isFinite(scale) || scale <= 0 || scale > 4) {
@@ -244,7 +244,7 @@ function parseDesktop(
         "`execution.desktop.media` must be an object with `camera` and/or `microphone` ({ source }).",
       );
     }
-    const media: LabDesktopMedia = {};
+    const media: StudyDesktopMedia = {};
     if (raw.media.camera !== undefined) {
       const source = isRecord(raw.media.camera) ? str(raw.media.camera.source) : undefined;
       if (source === undefined || (source !== "synthetic" && !source.endsWith(".y4m"))) {
@@ -280,11 +280,11 @@ export function parsePersonas(raw: unknown): Record<string, unknown>[] | undefin
 
 export function parseScenario(
   raw: unknown,
-): { ok: true; value: LabScenario | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyScenario | undefined } | StudyParseFailure {
   if (!isRecord(raw)) {
     return { ok: true, value: undefined };
   }
-  const scenario: LabScenario = {};
+  const scenario: StudyScenario = {};
   const ref = str(raw.ref);
   if (ref) scenario.ref = ref;
   if (isRecord(raw.inline)) scenario.inline = raw.inline;
@@ -305,7 +305,7 @@ export function parseScenario(
  */
 function parseCaps(
   raw: unknown,
-): { ok: true; value: LabScenarioCaps | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyScenarioCaps | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -314,7 +314,7 @@ function parseCaps(
       "`scenario.caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).",
     );
   }
-  const caps: LabScenarioCaps = {};
+  const caps: StudyScenarioCaps = {};
   for (const key of ["maxUsd", "maxTotalUsd", "maxJobs", "maxMinutes"] as const) {
     if (raw[key] === undefined) continue;
     const value = nonNegNumber(raw[key]);
@@ -338,7 +338,7 @@ const POLICY_FLAGS = [
 
 export function parsePolicies(
   raw: unknown,
-): { ok: true; value: LabPolicies | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyPolicies | undefined } | StudyParseFailure {
   if (!isRecord(raw)) {
     return { ok: true, value: undefined };
   }
@@ -347,7 +347,7 @@ export function parsePolicies(
     if (raw[flag] !== undefined && typeof raw[flag] !== "boolean")
       return invalid(`\`policies.${flag}\` must be true or false (unquoted).`);
   }
-  const policies: LabPolicies = {};
+  const policies: StudyPolicies = {};
   if (typeof raw.redactRepos === "boolean") policies.redactRepos = raw.redactRepos;
   if (typeof raw.redactScreenshots === "boolean")
     policies.redactScreenshots = raw.redactScreenshots;
@@ -368,12 +368,12 @@ export function parsePolicies(
 
 export function parseReview(
   raw: unknown,
-): { ok: true; value: LabReview | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyReview | undefined } | StudyParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`review` must be a mapping.");
   const analysis = resolveAutomaticAnalysis(raw.analysis);
   if (!analysis.ok) return invalid(analysis.message);
-  const review: LabReview = {};
+  const review: StudyReview = {};
   if (raw.analysis !== undefined)
     review.analysis = raw.analysis === false ? false : { ...(raw.analysis as LabAnalysis) };
   const scoring = str(raw.scoring);
@@ -390,9 +390,7 @@ export function parseReview(
   return { ok: true, value: Object.keys(review).length > 0 ? review : undefined };
 }
 
-function parseReviewScorer(
-  raw: unknown,
-): { ok: true; value: { ref: string } } | LabConfigParseFailure {
+function parseReviewScorer(raw: unknown): { ok: true; value: { ref: string } } | StudyParseFailure {
   if (!isRecord(raw))
     return invalid(
       "`review.scorer` must be a mapping with a `ref` path (e.g. { ref: scorers/product.mjs }).",
@@ -411,11 +409,11 @@ function parseReviewScorer(
   return { ok: true, value: { ref } };
 }
 
-export function parseDefaults(raw: unknown): LabDefaults | undefined {
+export function parseDefaults(raw: unknown): StudyDefaults | undefined {
   if (!isRecord(raw)) {
     return undefined;
   }
-  const defaults: LabDefaults = {};
+  const defaults: StudyDefaults = {};
   if (typeof raw.open === "boolean") defaults.open = raw.open;
   return Object.keys(defaults).length > 0 ? defaults : undefined;
 }

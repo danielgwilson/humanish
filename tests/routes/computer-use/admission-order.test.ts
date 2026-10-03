@@ -7,9 +7,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { RunCuaActorLabOptions } from "../../../src/routes/computer-use/types.js";
 import { lab } from "../../admission/fixtures.js";
 
@@ -190,8 +190,8 @@ const pairs: [string, string][] = [
 ];
 
 function caseOf(names: readonly string[]): {
-  config: LabConfig;
-  deps: LabDeps;
+  config: StudyConfig;
+  deps: StudyDeps;
   driving: Pick<RunCuaActorLabOptions, "inProcess" | "createProvider">;
   countOverride?: number;
 } {
@@ -202,14 +202,14 @@ function caseOf(names: readonly string[]): {
   const never = async (): Promise<never> => {
     throw new Error("admission cases must not reach a caller hook");
   };
-  const deps: LabDeps = { desktopModule: never };
+  const deps: StudyDeps = { desktopModule: never };
   const driving = {
     ...(selected.some((rule) => rule.executor) ? { inProcess: { executor: never } } : {}),
     ...(selected.some((rule) => rule.provider) ? { createProvider: never } : {}),
   };
   const countOverride = selected.find((rule) => rule.countOverride !== undefined)?.countOverride;
   return {
-    config: config as unknown as LabConfig,
+    config: config as unknown as StudyConfig,
     deps,
     driving,
     ...(countOverride === undefined ? {} : { countOverride }),

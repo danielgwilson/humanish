@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LabConfig } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
 
 const participant = vi.hoisted(() => ({
   provider: { id: "restricted-codex-participant" },
@@ -17,7 +17,7 @@ vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOrig
 import { prepareLocalVmRun } from "../../../src/routes/computer-use/local-vm.js";
 import { closeParticipantModel } from "../../../src/routes/computer-use/participant-model.js";
 
-const config: LabConfig = {
+const config: StudyConfig = {
   schema: "humanish.lab.v2",
   id: "local-codex-close",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:4173/" },

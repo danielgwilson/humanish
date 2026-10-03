@@ -19,8 +19,8 @@ import {
 import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/sandbox.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
-import type { LabDeps } from "../../study/study-deps.js";
-import type { RunLabHomes } from "../../study/run-study-homes.js";
+import type { StudyDeps } from "../../study/study-deps.js";
+import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import {
   e2bRequestTimeoutMs,
   SANDBOX_TIMEOUT_BUFFER_MS,
@@ -57,9 +57,9 @@ type ScriptedCloneSubject = Extract<ScriptedPlan["subject"], { readonly kind: "c
 export interface ScriptedSubjectInputs {
   plan: ScriptedPlan;
   clone: ScriptedCloneSubject;
-  deps: LabDeps;
+  deps: StudyDeps;
   /** Runs after the subject sandbox exists and before provisioning. */
-  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
+  prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
   env: Readonly<Record<string, string | undefined>>;
   e2bApiKey: string;
   runPaths: PreparedRunArtifactPaths;

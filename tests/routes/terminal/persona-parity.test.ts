@@ -11,7 +11,7 @@ import type { ActorPersonaRef } from "../../../src/actors/contract.js";
 import { digestText } from "../../../src/evidence/redaction.js";
 import { renderPersonaPromptSection } from "../../../src/study/persona.js";
 import { resolveCommittedPersonasForCwd } from "../../../src/study/persona-resolve.js";
-import type { LabConfig } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
 import {
   buildLiveTerminalProductBundle,
   buildTerminalProductBundle,
@@ -43,7 +43,7 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
-function config(persona: string | undefined): LabConfig {
+function config(persona: string | undefined): StudyConfig {
   return terminalConfig({
     actors: [{ type: "codex-exec", mission: MISSION, ...(persona ? { persona } : {}) }],
     review: { analysis: false },
@@ -81,7 +81,7 @@ const personaWarnings = (warnings: readonly string[]) =>
   warnings.filter((warning) => warning.startsWith("Persona "));
 
 /** Runs the lab dry, then live, and checks that both resolved the same persona. */
-async function expectSamePersona(lab: LabConfig) {
+async function expectSamePersona(lab: StudyConfig) {
   const dry = await runTerminalProductLab({ cwd, config: lab, dryRun: true, open: false });
   const commands: string[] = [];
   const live = await runTerminalProductLab({

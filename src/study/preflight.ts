@@ -2,28 +2,28 @@ import path from "node:path";
 import type { AutomaticAnalysisBudget } from "../analysis/automatic-config.js";
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import { isLoopbackUrl } from "./parse/subject.js";
-import { type LabConfig } from "./types.js";
+import { type StudyConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
 import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
-import { type LabRoute, routeOf } from "./plan.js";
-import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
+import { type StudyRoute, routeOf } from "./plan.js";
+import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
 import { rosterOf } from "./parse/actors.js";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
 
-export type LabPreflightReachabilityMode =
+export type StudyPreflightReachabilityMode =
   | "metadata"
   | "public-preview"
   | "sandbox-loopback"
   | "prepared-host";
 
-export interface LabPreflightCheck {
+export interface StudyPreflightCheck {
   name: string;
   ok: boolean;
   message: string;
 }
 
-export interface LabPreflightTarget {
+export interface StudyPreflightTarget {
   label: string;
   kind:
     | "subject.appUrl"
@@ -41,7 +41,7 @@ export interface LabPreflightTarget {
   message: string;
 }
 
-interface LabPreflightSandbox {
+interface StudyPreflightSandbox {
   created: boolean;
   killed?: boolean;
   /** The probe's server-side timeout, after which the provider kills it. */
@@ -50,12 +50,12 @@ interface LabPreflightSandbox {
   template?: string;
 }
 
-interface LabPreflightSpend {
+interface StudyPreflightSpend {
   e2bDesktop: boolean;
   model: false;
 }
 
-export interface LabPreflightResult {
+export interface StudyPreflightResult {
   /** The separate budget for a future live run, never spend by preflight itself. */
   analysis?: AutomaticAnalysisBudget;
   schema: typeof STUDY_CHECK_SCHEMA;
@@ -67,16 +67,16 @@ export interface LabPreflightResult {
   studyId?: string;
   origin?: string;
   path?: string;
-  route?: LabRoute;
-  reachability: LabPreflightReachabilityMode;
-  checks: LabPreflightCheck[];
-  targets: LabPreflightTarget[];
-  sandbox: LabPreflightSandbox;
-  spend: LabPreflightSpend;
+  route?: StudyRoute;
+  reachability: StudyPreflightReachabilityMode;
+  checks: StudyPreflightCheck[];
+  targets: StudyPreflightTarget[];
+  sandbox: StudyPreflightSandbox;
+  spend: StudyPreflightSpend;
   warnings: string[];
   error?: {
     code:
-      | LabResolveFailure["error"]["code"]
+      | StudyResolveFailure["error"]["code"]
       | "HUMANISH_STUDY_PREFLIGHT_INVALID_OPTION"
       | "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE"
       | "HUMANISH_STUDY_PREFLIGHT_TARGET_POLICY"
@@ -89,19 +89,19 @@ export interface LabPreflightResult {
   };
 }
 
-interface LabPreflightHooks {
+interface StudyPreflightHooks {
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
 }
 
-export interface RunLabPreflightOptions {
+export interface RunStudyPreflightOptions {
   cwd: string;
   lab: string;
-  reachability?: LabPreflightReachabilityMode;
+  reachability?: StudyPreflightReachabilityMode;
   timeoutMs?: number;
   env?: NodeJS.ProcessEnv;
-  hooks?: LabPreflightHooks;
+  hooks?: StudyPreflightHooks;
 }
 
 /** A preflight run's state; the probes in preflight-probes.ts read and extend it. */
@@ -111,25 +111,25 @@ export interface PreflightContext {
   labId: string;
   origin: string;
   path: string;
-  config: LabConfig;
-  route: LabRoute;
-  reachability: LabPreflightReachabilityMode;
+  config: StudyConfig;
+  route: StudyRoute;
+  reachability: StudyPreflightReachabilityMode;
   timeoutMs: number;
   env: NodeJS.ProcessEnv;
-  hooks: LabPreflightHooks;
-  checks: LabPreflightCheck[];
-  targets: LabPreflightTarget[];
-  sandbox: LabPreflightSandbox;
+  hooks: StudyPreflightHooks;
+  checks: StudyPreflightCheck[];
+  targets: StudyPreflightTarget[];
+  sandbox: StudyPreflightSandbox;
   warnings: string[];
 }
 
-export async function runLabPreflight(
-  options: RunLabPreflightOptions,
-): Promise<LabPreflightResult> {
+export async function runStudyPreflight(
+  options: RunStudyPreflightOptions,
+): Promise<StudyPreflightResult> {
   const cwd = path.resolve(options.cwd);
   const reachability = options.reachability ?? "metadata";
   const timeoutMs = options.timeoutMs ?? DEFAULT_PREFLIGHT_TIMEOUT_MS;
-  const resolved = await resolveLabManifest(cwd, options.lab);
+  const resolved = await resolveStudyManifest(cwd, options.lab);
 
   if (!resolved.ok) {
     return {
@@ -205,8 +205,8 @@ export async function runLabPreflight(
   }
 }
 
-function collectTargets(config: LabConfig): LabPreflightTarget[] {
-  const targets: LabPreflightTarget[] = [];
+function collectTargets(config: StudyConfig): StudyPreflightTarget[] {
+  const targets: StudyPreflightTarget[] = [];
   if (config.subject.appUrl) {
     targets.push(makeTarget("subject.appUrl", "subject.appUrl", config.subject.appUrl));
   }
@@ -233,10 +233,10 @@ function collectTargets(config: LabConfig): LabPreflightTarget[] {
 }
 
 function makeTarget(
-  label: LabPreflightTarget["label"],
-  kind: LabPreflightTarget["kind"],
+  label: StudyPreflightTarget["label"],
+  kind: StudyPreflightTarget["kind"],
   url: string,
-): LabPreflightTarget {
+): StudyPreflightTarget {
   return {
     label,
     kind,

@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { parseLabConfig } from "../../src/study/config.js";
-import { type LabConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { type StudyConfig } from "../../src/study/types.js";
 import {
   automaticAnalysisBudget,
   resolveAutomaticAnalysis,
@@ -20,8 +20,8 @@ import { asLiveRecording, publishRun } from "../helpers/finished-run.js";
 import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
 import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
 import { createProgram } from "../../src/cli/program.js";
-import { readLabSummary } from "../../src/study/summary.js";
-import { runLabPreflight } from "../../src/study/preflight.js";
+import { readStudySummary } from "../../src/study/summary.js";
+import { runStudyPreflight } from "../../src/study/preflight.js";
 import { parse as parseYaml } from "yaml";
 import { runLab } from "../../src/run-lab.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
@@ -40,7 +40,7 @@ import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
-) as Array<{ name: string; config: LabConfig; route: string }>;
+) as Array<{ name: string; config: StudyConfig; route: string }>;
 const resolved = resolveAutomaticAnalysis({ maxCostUsd: 5 });
 if (!resolved.ok || !resolved.config || resolved.config.provider === "codex")
   throw new Error("invalid synthetic test config");
@@ -93,7 +93,7 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(resolveAutomaticAnalysis(raw).ok).toBe(false);
   });
   it.each(fixtures)("preserves explicit opt-out on every route: $name", ({ config: base }) => {
-    const parsed = parseLabConfig({ ...base, review: { analysis: false } });
+    const parsed = parseStudy({ ...base, review: { analysis: false } });
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.review?.analysis).toBe(false);
   });
@@ -171,7 +171,7 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     expect(raw.review.analysis).toBe(false);
     expect(raw.execution.runtimeAuth).toBe("openai-egress");
-    expect(parseLabConfig(raw).ok).toBe(true);
+    expect(parseStudy(raw).ok).toBe(true);
     expect(await readFile(path.resolve("scripts/release-dogfood.mjs"), "utf8")).toContain(
       "must explicitly disable automatic analysis",
     );
@@ -181,7 +181,7 @@ describe("automatic analysis admission and producer boundary", () => {
       await readFile(path.resolve("humanish/studies/scripted-demo.yaml"), "utf8"),
     );
     expect(raw.review.analysis).toBe(false);
-    expect(parseLabConfig(raw).ok).toBe(true);
+    expect(parseStudy(raw).ok).toBe(true);
   });
   it.each([undefined, false, { maxCostUsd: 7 }])(
     "metadata preflight and TUI summary disclose resolved budget %j without dispatch",
@@ -193,10 +193,10 @@ describe("automatic analysis admission and producer boundary", () => {
         ...(setting === undefined ? {} : { review: { analysis: setting } }),
       };
       await writeFile(path.join(cwd, "humanish", "labs", "budget.yaml"), JSON.stringify(manifest));
-      const preflight = await runLabPreflight({ cwd, lab: "budget", env: {} });
+      const preflight = await runStudyPreflight({ cwd, lab: "budget", env: {} });
       expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
       expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "computer-use"));
-      expect((await readLabSummary(cwd, "budget"))?.analysis).toEqual(preflight.analysis);
+      expect((await readStudySummary(cwd, "budget"))?.analysis).toEqual(preflight.analysis);
       let stdout = "";
       const program = createProgram({
         writeOut: (text) => {
@@ -215,7 +215,7 @@ describe("automatic analysis admission and producer boundary", () => {
     },
   );
   it.each(fixtures)("parses opt-in only on eligible producer routes: $name", ({ config: base }) => {
-    const parsed = parseLabConfig({ ...base, review: { analysis: { maxCostUsd: 5 } } });
+    const parsed = parseStudy({ ...base, review: { analysis: { maxCostUsd: 5 } } });
     expect(parsed.ok, JSON.stringify(parsed)).toBe(routeOf(base) !== "preview");
     if (parsed.ok) expect(parsed.config.review?.analysis).toEqual({ maxCostUsd: 5 });
   });

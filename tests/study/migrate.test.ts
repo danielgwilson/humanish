@@ -25,8 +25,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { parseLabConfig } from "../../src/study/config.js";
-import { planLab } from "../../src/study/plan.js";
+import { parseStudy } from "../../src/study/config.js";
+import { planStudy } from "../../src/study/plan.js";
 import { migrateStudies } from "../../src/study/migrate.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
@@ -684,17 +684,17 @@ describe("every committed lab", () => {
     const result = await migrateStudies({ cwd });
     expect(result.ok).toBe(true);
     for (const name of names) {
-      const before = parseLabConfig(
+      const before = parseStudy(
         parse(await readFile(path.join(ROOT, "tests/fixtures/labs-v2", name), "utf8")),
       );
-      const after = parseLabConfig(
+      const after = parseStudy(
         parse(await readFile(path.join(cwd, "humanish/studies", name), "utf8")),
       );
       if (!before.ok || !after.ok) throw new Error(`${name} did not parse`);
       expect(after.config.schema, name).toBe("humanish.study.v3");
       for (const dryRun of [true, false]) {
-        expect(plain(planLab(after.config, { cwd: ROOT, dryRun })), name).toEqual(
-          plain(planLab(before.config, { cwd: ROOT, dryRun })),
+        expect(plain(planStudy(after.config, { cwd: ROOT, dryRun })), name).toEqual(
+          plain(planStudy(before.config, { cwd: ROOT, dryRun })),
         );
       }
     }

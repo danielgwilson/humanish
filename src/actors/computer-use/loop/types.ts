@@ -14,7 +14,7 @@ import type {
 } from "../../contract.js";
 import type { RedactionHooks } from "../../../evidence/redaction.js";
 import type { DwellWindow, StopWhen } from "../../stop-conditions.js";
-import type { LabTask } from "../../../study/tasks.js";
+import type { StudyTask } from "../../../study/tasks.js";
 import type { ReasoningEffort } from "../../reasoning-effort.js";
 
 // The ports of the computer-use loop: the model behind CuaProvider, the desktop behind
@@ -328,7 +328,7 @@ export interface CuaLoopOptions {
    * already in `instructions` (composed upstream); the loop reads only the `success` criteria,
    * which never reach the prompt.
    */
-  tasks?: readonly LabTask[];
+  tasks?: readonly StudyTask[];
   /**
    * Spend cap in USD. When set, the loop stops with budget_reached as soon as the running
    * estimated spend crosses it, before the next provider turn. Absent means uncapped. maxUsd: 0

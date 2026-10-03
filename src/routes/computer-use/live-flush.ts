@@ -3,7 +3,7 @@ import type { CuaLiveMetadata } from "../../actors/computer-use/loop.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import { type ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type { RunBundle } from "../../run/bundle.js";
-import type { RunLabHomes } from "../../study/run-study-homes.js";
+import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import type { DesktopParticipantRun } from "./types.js";
 
 export interface LiveTraceFlush {
@@ -143,9 +143,9 @@ export function startLiveTraceFlush(args: {
  * the run. The URLs carry auth, so they live in memory and on the Observer result, never in run
  * artifacts.
  */
-export function trackRuntimeStreams(onStream: RunLabHomes["onStream"] | undefined): {
+export function trackRuntimeStreams(onStream: RunStudyHomes["onStream"] | undefined): {
   /** Records each stream for the Observer, after the caller's onStream. */
-  onStream: NonNullable<RunLabHomes["onStream"]>;
+  onStream: NonNullable<RunStudyHomes["onStream"]>;
   /** From now on, keep this live Observer's stream list current. */
   showIn: (observer: ObserverResult & { ok: true }) => void;
   /** Give the final Observer every stream the run reported. */

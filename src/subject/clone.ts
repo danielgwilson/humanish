@@ -1,5 +1,5 @@
 import { failureTail } from "../evidence/redaction.js";
-import type { LabSubjectServe, LabSubjectState } from "../study/types.js";
+import type { StudySubjectServe, StudySubjectState } from "../study/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
 import { detachedTimersOf, runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
 import { runOrThrow, type Shell } from "../substrates/shell.js";
@@ -14,8 +14,8 @@ import {
 
 /** The longest provisionCloneSubject can take with the lab's budgets: the clone, then serving. */
 export function cloneProvisioningBudgetMs(
-  serve: LabSubjectServe,
-  state: LabSubjectState | undefined,
+  serve: StudySubjectServe,
+  state: StudySubjectState | undefined,
 ): number {
   return SOURCE_TIMEOUT_MS + serveProvisioningBudgetMs(serve, state);
 }
@@ -37,9 +37,9 @@ export async function provisionCloneSubject(
   args: {
     repo: string;
     depth: number;
-    serve: LabSubjectServe;
+    serve: StudySubjectServe;
     /** Declared subject state (seed steps; external declaration is provenance-only). */
-    state?: LabSubjectState;
+    state?: StudySubjectState;
     hasGithubToken: boolean;
     requestTimeoutMs: number;
     /** Literal scrubber for known provisioned values, applied to log tails pre-truncation. */

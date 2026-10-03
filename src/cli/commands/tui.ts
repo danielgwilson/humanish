@@ -13,10 +13,10 @@ import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receivi
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { promptSecret } from "../secret-prompt.js";
 import { runInit } from "../../study/init.js";
-import { listLabManifests } from "../../study/discover.js";
+import { listStudyManifests } from "../../study/discover.js";
 import { reclaimRunSandboxes } from "../../run/reclaim.js";
 import { RunIndexCache, readRunIndex } from "../../run/run-index.js";
-import { readLabSummary } from "../../study/summary.js";
+import { readStudySummary } from "../../study/summary.js";
 import { readProjectState } from "../../tui/project.js";
 import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "../../tui/actions.js";
 import { readRunDetail } from "../../run/detail.js";
@@ -300,7 +300,7 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
         return session.connectionCheck;
       },
       labs: async () =>
-        (await listLabManifests(cwd)).studies.map((lab) => ({
+        (await listStudyManifests(cwd)).studies.map((lab) => ({
           title: lab.title ?? lab.id,
           path: lab.path,
         })),
@@ -339,12 +339,12 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
     // run tree each tick is the cost this index exists to avoid.
     readRunIndex: (target, readOptions) =>
       readRunIndex(target, { ...readOptions, cache: runIndexCache }),
-    listLabs: listLabManifests,
+    listLabs: listStudyManifests,
     startRun: (launchOptions) => launchRun({ ...launchOptions, env: sessionEnv }),
     readLaunchLog: readLaunchLogTail,
     readRunDetail,
     readLabSummary: (target, lab, readOptions) =>
-      readLabSummary(target, lab, { ...readOptions, env: sessionEnv }),
+      readStudySummary(target, lab, { ...readOptions, env: sessionEnv }),
     readProjectState,
     openObserver: (target, observerPath) => observerSession.open(target, observerPath),
     reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),

@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/study/types.js";
-import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
+import { V2_SCHEMA } from "../../../src/study/types.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 
 const dirs: string[] = [];
@@ -16,7 +16,7 @@ afterAll(async () => {
 });
 
 const valid = {
-  schema: LAB_CONFIG_SCHEMA,
+  schema: V2_SCHEMA,
   id: "terminal-admission",
   subject: {
     source: "terminal-product",
@@ -52,14 +52,14 @@ const rules: [string, Patch][] = [
   ],
 ];
 
-function configWith(patches: Patch[]): LabConfig {
+function configWith(patches: Patch[]): StudyConfig {
   const config = structuredClone(valid) as Record<string, unknown>;
   for (const patch of patches) patch(config);
-  return config as unknown as LabConfig;
+  return config as unknown as StudyConfig;
 }
 
-const cases: [string, LabConfig][] = [
-  ...rules.map(([name, patch]) => [name, configWith([patch])] as [string, LabConfig]),
+const cases: [string, StudyConfig][] = [
+  ...rules.map(([name, patch]) => [name, configWith([patch])] as [string, StudyConfig]),
   // Missing caps and a positive maxUsd cannot both hold, so the last rule is not paired.
   ...rules.slice(0, -2).map(([name, patch], index) => {
     const [next, nextPatch] = rules[index + 1]!;
@@ -72,7 +72,7 @@ const cases: [string, LabConfig][] = [
               (c.actors = [{ type: "not-an-actor", tasks: [{ id: "t", goal: "g" }] }]),
           ]
         : [nextPatch, patch];
-    return [`${name} and ${next}`, configWith(patches)] as [string, LabConfig];
+    return [`${name} and ${next}`, configWith(patches)] as [string, StudyConfig];
   }),
 ];
 

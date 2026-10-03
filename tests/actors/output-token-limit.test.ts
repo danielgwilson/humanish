@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import {
   createOpenAiResponsesProvider,
   type FetchLike,
@@ -35,14 +35,14 @@ const ok = (value: unknown) => ({
 
 describe("declared per-response output limit", () => {
   it.each([16, 1024, 128000])("parses positive integer %s", (maxOutputTokens) => {
-    const parsed = parseLabConfig(lab({ maxOutputTokens }));
+    const parsed = parseStudy(lab({ maxOutputTokens }));
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.actors[0]?.maxOutputTokens).toBe(maxOutputTokens);
   });
   it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, null, "16"])(
     "rejects invalid value %s before a provider can be built",
     (maxOutputTokens) => {
-      const parsed = parseLabConfig(lab({ maxOutputTokens }));
+      const parsed = parseStudy(lab({ maxOutputTokens }));
       expect(parsed.ok).toBe(false);
       if (!parsed.ok) expect(parsed.error.message).toContain("maxOutputTokens");
       expect(() =>
@@ -56,7 +56,7 @@ describe("declared per-response output limit", () => {
   it.each(["local-agent", "scripted-browser", "codex-exec", "synthetic-persona"])(
     "refuses unsupported actor %s",
     (type) => {
-      const result = parseLabConfig(lab({ type }));
+      const result = parseStudy(lab({ type }));
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.message).toContain("maxOutputTokens");
     },
@@ -67,7 +67,7 @@ describe("declared per-response output limit", () => {
       lab({ lanes: [{ id: "one", maxOutputTokens: 32 }] }),
       lab({ roster: [{ id: "one", count: 2, maxOutputTokens: 32 }] }),
     ])
-      expect(parseLabConfig(raw).ok).toBe(false);
+      expect(parseStudy(raw).ok).toBe(false);
   });
   it("keeps the field on initial, continuation, policy fallback and HTTP retry requests", async () => {
     const bodies: Record<string, unknown>[] = [];

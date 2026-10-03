@@ -8,7 +8,7 @@ import { isReasoningEffort } from "../../actors/reasoning-effort.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
 import { isNonEmpty, planBase } from "../../study/plan-base.js";
 import type { RoutePlanResult, RouteRefusal, TerminalPlan } from "../../study/plan-types.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import {
   desktopMediaValidationReason,
   taskProtocolValidationReason,
@@ -38,7 +38,7 @@ export type TerminalPlanResult = RoutePlanResult<TerminalPlan, TerminalRefusal>;
  * only one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planTerminalLab(
-  config: LabConfig,
+  config: StudyConfig,
   input: {
     readonly dryRun: boolean;
     /** A test's costProbe can measure spend lines, so a positive maxUsd can trip. */

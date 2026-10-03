@@ -1,8 +1,8 @@
 // A compact fake @e2b/desktop module and mock codex CLI, so the live terminal route runs
 // deterministically at $0. Shared by the scorer loader and RunLabOptions equivalence tests.
 
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import type { RunTerminalProductLabOptions } from "../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -68,9 +68,9 @@ function nonceFrom(command: string): string {
   return /HUMANISH_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command)?.[1] ?? "unknown-nonce";
 }
 
-export function terminalConfig(extra?: Record<string, unknown>): LabConfig {
+export function terminalConfig(extra?: Record<string, unknown>): StudyConfig {
   const raw: Record<string, unknown> = {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "terminal-scorer-proof",
     title: "Terminal scorer proof",
     subject: {
@@ -99,7 +99,7 @@ export function terminalConfig(extra?: Record<string, unknown>): LabConfig {
     },
     ...extra,
   };
-  const parsed = parseLabConfig(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

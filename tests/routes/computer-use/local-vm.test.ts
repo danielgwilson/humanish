@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LabConfig } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { participantRun } from "../../helpers/participant-run.js";
@@ -30,7 +30,7 @@ import { prepareLocalVmRun } from "../../../src/routes/computer-use/local-vm.js"
 const appUrl = "http://127.0.0.1:4173/";
 const assets = { image: "synthetic-image", runtimeRevision: "synthetic-revision" };
 
-function localLab(type: "openai-computer-use" | "local-agent"): LabConfig {
+function localLab(type: "openai-computer-use" | "local-agent"): StudyConfig {
   return {
     schema: "humanish.lab.v2",
     id: "local-hooks",

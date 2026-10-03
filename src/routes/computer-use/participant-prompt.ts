@@ -12,7 +12,7 @@ import {
   renderPersonaPromptSection,
   type ResolvedPersona,
 } from "../../study/persona.js";
-import { renderTaskPrompt, type LabTask } from "../../study/tasks.js";
+import { renderTaskPrompt, type StudyTask } from "../../study/tasks.js";
 import type { DesktopParticipantRun } from "./types.js";
 
 export const DEFAULT_MISSION =
@@ -42,7 +42,7 @@ export function composeParticipantInstructions(args: {
   instruction?: string;
   /** The lab's declared protocol. Only the participant-facing `goal` halves are rendered
    *  into the prompt; the `success` criteria never appear here. */
-  tasks?: readonly LabTask[];
+  tasks?: readonly StudyTask[];
   device: { name: string; preset: DevicePreset };
   /** The compiled persona for `args.persona`, when its committed file resolved. Supplying it
    *  makes the persona shape behavior: its traits become directives in the prompt and land in

@@ -6,14 +6,14 @@ import { stringify } from "yaml";
 import { saveCommsConnection } from "../../src/comms/connections.js";
 import { checkCommsConnection, configureCommsLab } from "../../src/comms/setup.js";
 import { AGENTMAIL_RECEIVING_CODES, AgentMailReceivingError } from "../../src/comms/agentmail.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
-import { resolveLabManifest } from "../../src/study/discover.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { resolveStudyManifest } from "../../src/study/discover.js";
 import { launchRun } from "../../src/tui/launch.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
 import type { ReceivingAdapter } from "../../src/comms/receiving-types.js";
 const lab = {
-  schema: LAB_CONFIG_SCHEMA,
+  schema: V2_SCHEMA,
   id: "signup",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
   actors: [{ type: "openai-computer-use", mission: "Create an account." }],
@@ -156,7 +156,7 @@ describe("receiving lab selection", () => {
         planToken: plan.planToken!,
       }),
     ).toMatchObject({ ok: true, applied: true });
-    const selected = await resolveLabManifest(cwd, plan.path!);
+    const selected = await resolveStudyManifest(cwd, plan.path!);
     expect(selected.ok && selected.config.comms?.email).toEqual({
       kind: "real",
       connection: "agentmail",
@@ -199,7 +199,7 @@ describe("receiving lab selection", () => {
       apply: true,
     });
     expect(result).toMatchObject({ ok: true, applied: true });
-    const selected = await resolveLabManifest(cwd, result.path!);
+    const selected = await resolveStudyManifest(cwd, result.path!);
     expect(selected.ok && selected.config.comms?.email).toEqual({ kind: "real", ...email });
     expect(await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8")).toBe(original);
   });
@@ -249,15 +249,15 @@ describe("receiving lab selection", () => {
       { connection: "agentmail", recipients: [] },
       { connection: "agentmail", allowedOrigins: ["https://target.test/path"] },
     ])
-      expect(parseLabConfig({ ...lab, comms: { email } }).ok).toBe(false);
+      expect(parseStudy({ ...lab, comms: { email } }).ok).toBe(false);
     expect(
-      parseLabConfig({
+      parseStudy({
         ...lab,
         actors: [{ type: "local-agent", mission: "Sign up" }],
         comms: { email: { connection: "agentmail" } },
       }).ok,
     ).toBe(false);
-    const real = parseLabConfig({
+    const real = parseStudy({
       ...lab,
       actors: [{ type: "openai-computer-use", count: 2, mission: "Sign up" }],
       comms: { email: { connection: "agentmail" } },

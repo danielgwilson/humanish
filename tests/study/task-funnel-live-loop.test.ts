@@ -23,7 +23,7 @@ import { composeParticipantInstructions } from "../../src/routes/computer-use/pa
 import { DEVICE_PRESETS } from "../../src/study/device-presets.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
 import { aggregateTaskFunnels, formatRunTaskFunnel } from "../../src/run/outcomes.js";
-import type { LabTask, TaskFunnel } from "../../src/study/tasks.js";
+import type { StudyTask, TaskFunnel } from "../../src/study/tasks.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -90,7 +90,7 @@ function monotonicClock(step = 1000): () => number {
 // A three-task signup protocol. The criterion values ("/register", "check your email",
 // "/dashboard") are the researcher's instrument: the tests below assert they appear in neither
 // the prompt nor the persisted trace.
-const PROTOCOL: LabTask[] = [
+const PROTOCOL: StudyTask[] = [
   {
     id: "reach-signup",
     goal: "Create an account with your email address.",

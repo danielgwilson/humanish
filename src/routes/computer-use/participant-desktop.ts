@@ -1,6 +1,6 @@
 import type { CuaExecutor } from "../../actors/computer-use/loop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
-import type { LabCommsEmail, LabCommsRecipient } from "../../study/types.js";
+import type { StudyCommsEmail, StudyCommsRecipient } from "../../study/types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import { recipientParticipantId } from "../../study/parse/comms.js";
 
@@ -61,9 +61,9 @@ export type ParticipantDesktopFactory = (
  *  inbox instruction. A participant told to check an inbox it can never receive into would stall,
  *  so no addressed recipient means no instruction. */
 export function inboxRecipientFor(
-  commsEmail: LabCommsEmail,
+  commsEmail: StudyCommsEmail,
   participantId: string,
-): LabCommsRecipient | undefined {
+): StudyCommsRecipient | undefined {
   return (commsEmail.recipients ?? []).find(
     (recipient) =>
       recipientParticipantId(recipient) === participantId && recipient.address !== undefined,
@@ -74,7 +74,7 @@ export function inboxRecipientFor(
  *  mail the persona will be told to read. Gates the inbox instruction to participants that can receive
  *  mail; a participant told to check an inbox it can never receive into would just stall. */
 export function participantHasInboxRecipient(
-  commsEmail: LabCommsEmail,
+  commsEmail: StudyCommsEmail,
   participantId: string,
 ): boolean {
   return inboxRecipientFor(commsEmail, participantId) !== undefined;

@@ -5,8 +5,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseLabConfig } from "../../../src/study/config.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 
 let cwd: string;
@@ -18,9 +18,9 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
-function cloneLab(extra: Record<string, unknown>): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function cloneLab(extra: Record<string, unknown>): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "subject-kind-clone",
     subject: {
       source: "clone",

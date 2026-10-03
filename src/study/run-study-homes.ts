@@ -5,12 +5,12 @@ import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
 import { withDeprecatedFields } from "./deprecated-fields.js";
-import type { LabEvent, ParticipantRef, SetupTarget } from "./run-study-events.js";
-import type { LabConfig } from "./types.js";
+import type { StudyEvent, ParticipantRef, SetupTarget } from "./run-study-events.js";
+import type { StudyConfig } from "./types.js";
 
 /** What `createProvider` receives for each participant. */
 export interface ProviderContext {
-  readonly config: LabConfig;
+  readonly config: StudyConfig;
   readonly participant: ParticipantRef;
   readonly executor: CuaExecutor;
 }
@@ -19,7 +19,7 @@ export type ProviderFactory = (ctx: ProviderContext) => Promise<CuaProvider>;
 
 /** The caller's executor for an in-process run, built once for the run's single participant. */
 export interface InProcessDriver {
-  executor: (ctx: { config: LabConfig; appUrl: string }) => Promise<CuaExecutor>;
+  executor: (ctx: { config: StudyConfig; appUrl: string }) => Promise<CuaExecutor>;
 }
 
 interface StreamEventIds {
@@ -59,7 +59,7 @@ export function streamEvent(fields: StreamEventFields): StreamEvent {
 }
 
 /** The options with a typed home, common to every route. */
-export interface RunLabHomes {
+export interface RunStudyHomes {
   /** Keys and subject env for the run. Defaults to process.env. */
   env?: Readonly<Record<string, string | undefined>>;
   /**
@@ -74,7 +74,7 @@ export interface RunLabHomes {
    * Passive. Never awaited; a throw or a rejected promise becomes a run warning. It observes and
    * changes no output: subject phases still go to stderr.
    */
-  onEvent?: (event: LabEvent) => void | Promise<void>;
+  onEvent?: (event: StudyEvent) => void | Promise<void>;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
   onStream?: (event: StreamEvent) => Promise<void> | void;
   /** Cancels post-run analysis only. */
@@ -82,7 +82,7 @@ export interface RunLabHomes {
 }
 
 /** Brain and in-process driving. An in-process executor needs a provider: it returns no frame. */
-export type RunLabDriving =
+export type RunStudyDriving =
   | { inProcess?: undefined; createProvider?: ProviderFactory }
   | {
       inProcess: InProcessDriver;

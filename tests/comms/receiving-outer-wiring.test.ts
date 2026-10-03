@@ -7,9 +7,9 @@ import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import type { LabDeps } from "../../src/study/study-deps.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import type { StudyDeps } from "../../src/study/study-deps.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -42,11 +42,11 @@ vi.mock("../../src/comms/receiving-runtime.js", async (importOriginal) => ({
 }));
 
 type Route = "cua-clone" | "cua-local-tree" | "concurrent-provisioned" | "concurrent-external";
-function configuration(route: Route): LabConfig {
+function configuration(route: Route): StudyConfig {
   const concurrent = route.startsWith("concurrent-");
   const external = route === "concurrent-external";
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: `receiving-${route}`,
     title: "Receiving orchestration proof",
     subject: external
@@ -377,7 +377,7 @@ describe("configured receiving through exported study runners", () => {
       AGENTMAIL_API_KEY: "synthetic-management-key-canary",
     };
     // Both routes take the same fakes; the shared-world plane reads its own three as well.
-    const deps: LabDeps = {
+    const deps: StudyDeps = {
       ...quietPhases,
       desktopModule: async () => sandbox.module,
       runSession,

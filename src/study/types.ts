@@ -1,9 +1,9 @@
 import { type LabAnalysis } from "../analysis/automatic-config.js";
-import type { LabTask } from "./tasks.js";
+import type { StudyTask } from "./tasks.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import { type ReasoningEffort } from "../actors/reasoning-effort.js";
 
-export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
+export const V2_SCHEMA = "humanish.lab.v2";
 
 /** The study format: it declares its route, one actor, its participants and one caps block. */
 export const STUDY_SCHEMA = "humanish.study.v3";
@@ -22,7 +22,7 @@ export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * fails closed (HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
-type LabSubjectSource =
+type StudySubjectSource =
   | "this-repo"
   | "clone"
   | "app-url"
@@ -40,9 +40,9 @@ type LabSubjectSource =
  * external-public app-url plane) with a computer-use actor; inert/warned everywhere else
  * (claims match mechanism).
  */
-type LabSubjectTopology = "per-lane-worlds" | "shared-world";
+type StudySubjectTopology = "per-lane-worlds" | "shared-world";
 
-export interface LabSubjectClone {
+export interface StudySubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
   depth?: number;
   /** how many participants to fan out, each with its own clone (one sandbox/desktop each). */
@@ -53,9 +53,9 @@ export interface LabSubjectClone {
 
 /**
  * `local-tree`: how the operator's own working tree is packed and provisioned in-sandbox in
- * place of a clone. Internal shape (not re-exported from src/index.ts, same as LabSubjectClone).
+ * place of a clone. Internal shape (not re-exported from src/index.ts, same as StudySubjectClone).
  */
-export interface LabSubjectLocalTree {
+export interface StudySubjectLocalTree {
   /** extra archive excludes (path prefixes/basenames) added on top of the always-on denylist. */
   exclude?: string[];
   /** keep the disposable sandbox on failure for debugging (mirrors subject.clone.keep). */
@@ -65,7 +65,7 @@ export interface LabSubjectLocalTree {
 }
 
 /** How a cloned subject is installed/built/started inside the sandbox (computer-use route). */
-export interface LabSubjectServe {
+export interface StudySubjectServe {
   /** Optional bounded install step (e.g. "pnpm install --frozen-lockfile"). */
   install?: string;
   /** Optional bounded build step. */
@@ -85,9 +85,9 @@ export interface LabSubjectServe {
 }
 
 /** When a state step runs, relative to the serve sequence (clone subjects, computer-use route). */
-export type LabStateStepWhen = "before-build" | "before-start" | "after-ready";
+export type StudyStateStepWhen = "before-build" | "before-start" | "after-ready";
 
-interface LabSubjectStateStep {
+interface StudySubjectStateStep {
   /**
    * [a-z0-9-] step label (must start alphanumeric), <=40 chars, unique across steps; becomes
    * the detached-step name `subject-state-<name>` (interpolates into in-sandbox file paths, so
@@ -107,7 +107,7 @@ interface LabSubjectStateStep {
    * an in-sandbox `service postgresql start`), after-ready (after the readiness probe:
    * fixtures loaded through the running app's API). Default: before-start.
    */
-  when?: LabStateStepWhen;
+  when?: StudyStateStepWhen;
   /** Wall-clock budget per step. Default 300000. */
   timeoutMs?: number;
 }
@@ -119,7 +119,7 @@ interface LabSubjectStateStep {
  * (only sha256-16(scrub+redact(stdout)) ever lands, never the raw value), same lockdown as the
  * seed surface. Consumed only on the shared-world route; inert/warned elsewhere.
  */
-export interface LabSubjectStateCheckpoint {
+export interface StudySubjectStateCheckpoint {
   /**
    * [a-z0-9-] probe label (must start alphanumeric), <=40 chars, unique across checkpoints;
    * names the detached step (`checkpoint-<snapshot>-<name>`), a shape validated at
@@ -141,9 +141,9 @@ export interface LabSubjectStateCheckpoint {
 }
 
 /** The subject's state story (clone subjects): seeded in-sandbox, or declared external. */
-export interface LabSubjectState {
+export interface StudySubjectState {
   /** Ordered seed/migration/fixture steps. Order within a phase is declaration order. */
-  seed?: LabSubjectStateStep[];
+  seed?: StudySubjectStateStep[];
   /**
    * Env var names whose values point at state the lab does not control (e.g. a shared dev
    * DB). Must be a subset of subject.env (so the declaration is mechanically backed by a
@@ -155,7 +155,7 @@ export interface LabSubjectState {
    * role's turn to produce the harness-clocked interaction timeline. Consumed only on the
    * shared-world route; inert/warned elsewhere. Shape-validated everywhere.
    */
-  checkpoint?: LabSubjectStateCheckpoint[];
+  checkpoint?: StudySubjectStateCheckpoint[];
 }
 
 /**
@@ -164,7 +164,7 @@ export interface LabSubjectState {
  * the agent drives the declared public surfaces, so provenance is declared unpinned. The
  * concrete product name + surfaces are operator data; committed fixtures use a neutral mock name.
  */
-export interface LabSubjectProduct {
+export interface StudySubjectProduct {
   /** Public-safe product label (shape-validated like a lab id; interpolates into evidence). */
   name: string;
   /**
@@ -209,8 +209,8 @@ export interface LabSubjectProduct {
   upload?: string;
 }
 
-export interface LabSubject {
-  source: LabSubjectSource;
+export interface StudySubject {
+  source: StudySubjectSource;
   /**
    * World topology across participants. Absent == `per-lane-worlds` (the isolation default; every
    * existing study is byte-stable). `shared-world` is the declared override: one mutable service
@@ -218,7 +218,7 @@ export interface LabSubject {
    * provisioned clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2
    * participants); inert/warned elsewhere.
    */
-  topology?: LabSubjectTopology;
+  topology?: StudySubjectTopology;
   /**
    * Concurrent shared-world route only: the author's required attestation that the
    * subject behind the internet-reachable `getHost` URL is synthetic seeded data. The concurrent
@@ -243,7 +243,7 @@ export interface LabSubject {
   publicTarget?: { owner: string; authorized: boolean };
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
   repos?: string[];
-  clone?: LabSubjectClone;
+  clone?: StudySubjectClone;
   /**
    * `app-url`: a loopback http(s) URL the computer-use actor drives (127.0.0.1/localhost
    * only; driving arbitrary public sites is not allowed). The URL must be reachable from
@@ -256,7 +256,7 @@ export interface LabSubject {
    */
   appUrl?: string;
   /** `clone` (computer-use route): how the cloned app is served in-sandbox. */
-  serve?: LabSubjectServe;
+  serve?: StudySubjectServe;
   /**
    * Env var names the subject app needs, provisioned into the sandbox from the caller's
    * environment (--env-file). Names are recorded in evidence; values never are. Consumed
@@ -280,12 +280,12 @@ export interface LabSubject {
    * in the run bundle as structured provenance: seeded with command digests,
    * unpinned for external state, declared-not-run for dry-run/failed provisioning.
    */
-  state?: LabSubjectState;
+  state?: StudySubjectState;
   /**
    * `terminal-product` (terminal route): the product the terminal agent discovers + uses from
    * public surfaces only. Consumed on the terminal route; rejected on every other source.
    */
-  product?: LabSubjectProduct;
+  product?: StudySubjectProduct;
   /**
    * `local-tree` (computer-use route): local-tree packs the lab resolution cwd (the project
    * directory humanish runs from) instead of cloning a repo. `exclude` adds extra archive excludes
@@ -293,10 +293,10 @@ export interface LabSubject {
    * `maxArchiveBytes` caps the upload. Consumed on the local-tree route; rejected on every other
    * source.
    */
-  localTree?: LabSubjectLocalTree;
+  localTree?: StudySubjectLocalTree;
 }
 
-export interface LabParticipantFocus {
+export interface StudyParticipantFocus {
   id?: string;
   label?: string;
   /** Per-participant steer appended to the actor's mission. Consumed on the app-url route. */
@@ -310,7 +310,7 @@ export interface LabParticipantFocus {
  * defaults to `lane-01`..`lane-NN` and must be a public-safe token (it names per-participant evidence
  * paths). Consumed only on the computer-use E2B route (inert/warned elsewhere).
  */
-export interface LabParticipantEntry {
+export interface StudyParticipantEntry {
   /** Public-safe participant id (interpolates into its evidence paths). Default `lane-NN`. */
   id?: string;
   /**
@@ -372,14 +372,14 @@ export interface LabParticipantEntry {
  * `lanes[]` with deterministic ids (`<group.id>-01`, `<group.id>-02`, ...). The runtime never
  * consumes this shape directly; it always sees ordinary `LabActorLane` entries.
  */
-export interface LabActorRosterGroup extends Omit<LabParticipantEntry, "id"> {
+export interface StudyActorRosterGroup extends Omit<StudyParticipantEntry, "id"> {
   /** Public-safe group id; prefixes generated participant ids. */
   id: string;
   /** Number of participants to generate for this group. */
   count: number;
 }
 
-export interface LabActor {
+export interface StudyActor {
   /**
    * The actor label. On computer-use (including shared-world), scripted-browser, and
    * terminal-product routes this is a real dispatch key resolved against the closed first-party
@@ -395,11 +395,11 @@ export interface LabActor {
   /** Computer-use E2B route: a differentiated fan-out roster (`per-lane-worlds`). XOR `count`,
    *  `roster`, and `laneFocus`. Cap 16 participants. Consumed only on the cua E2B route
    *  (inert/warned elsewhere). */
-  lanes?: LabParticipantEntry[];
+  lanes?: StudyParticipantEntry[];
   /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
   persona?: string;
   /** Consumed on the app-url route (laneFocus.instruction appended to the mission). XOR `lanes`. */
-  laneFocus?: LabParticipantFocus;
+  laneFocus?: StudyParticipantFocus;
   /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. A mission on
    *  its own is a complete, valid lab; `tasks` is additive, never required. */
   mission?: string;
@@ -413,7 +413,7 @@ export interface LabActor {
    * Supported only on the first actor of per-participant computer-use routes; other routes fail
    * preflight.
    */
-  tasks?: LabTask[];
+  tasks?: StudyTask[];
   /** Provider model override. Consumed on the app-url route. */
   model?: string;
   /** First-party OpenAI CUA only: per-response output limit including reasoning, not a dollar cap. */
@@ -456,24 +456,24 @@ export interface LabActor {
   dwell?: DwellWindow;
 }
 
-type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
+type StudyExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). It is not an
  *  interactive duplex PTY; labeling captured exec output "pty" would be a claim/mechanism
  *  mismatch, so this route uses "exec-stream". */
-type LabTerminalTransport = "exec-stream";
+type StudyTerminalTransport = "exec-stream";
 
 /** Whether operator stdin reaches the in-sandbox agent. Disabled by default (the run is
  *  autonomous + comparable to an unassisted baseline). "planned" records intent but sends no
  *  input; "sent" is rejected because assisted-input capture and a non-comparable marker do not
  *  ship (the safety contract forbids an assisted run masquerading as green). */
-type LabTerminalStdin = "disabled" | "planned" | "sent";
+type StudyTerminalStdin = "disabled" | "planned" | "sent";
 
-export interface LabExecutionTerminal {
+export interface StudyExecutionTerminal {
   /** Transport label. Default and only shipped value is "exec-stream". */
-  transport?: LabTerminalTransport;
+  transport?: StudyTerminalTransport;
   /** Operator stdin posture. Default "disabled". */
-  stdin?: LabTerminalStdin;
+  stdin?: StudyTerminalStdin;
 }
 
 /**
@@ -482,11 +482,11 @@ export interface LabExecutionTerminal {
  * OpenAI endpoint and passes an inert placeholder to Codex. The latter still gives every sandbox
  * process a spendable OpenAI proxy capability; it is not a spend cap or an egress restriction.
  */
-export type LabRuntimeAuth = "openai-env" | "openai-egress";
+export type StudyRuntimeAuth = "openai-env" | "openai-egress";
 
-export type LabDesktopBrowser = "default" | "chrome" | "chromium" | "firefox";
+export type StudyDesktopBrowser = "default" | "chrome" | "chromium" | "firefox";
 
-export interface LabExecutionDesktop {
+export interface StudyExecutionDesktop {
   /**
    * Named device preset (mobile / small-mobile / narrow-mobile / tablet / desktop / wide) the
    * run renders at. Consumed on the computer-use route; default `desktop` (1440x950). On that
@@ -501,7 +501,7 @@ export interface LabExecutionDesktop {
    * historical desktop opener behavior. A concrete value means "launch this browser or fail"
    * instead of silently accepting the template's default URL opener.
    */
-  browser?: LabDesktopBrowser;
+  browser?: StudyDesktopBrowser;
   /** Sandbox server-side timeout. Consumed on the app-url route. */
   sandboxTimeoutMs?: number;
   /**
@@ -530,9 +530,9 @@ export interface LabExecutionDesktop {
    * A held CDP session also applies the overrides to later page targets. Their first observed
    * viewport and touch read-back is recorded separately; missing or different values warn.
    */
-  fidelity?: LabDesktopFidelity;
+  fidelity?: StudyDesktopFidelity;
   /** Synthetic media devices behind the browser's own permission prompt. */
-  media?: LabDesktopMedia;
+  media?: StudyDesktopMedia;
   /** Optional retained screen video. Capture is independent of participant media input. */
   recording?: { audio: boolean };
 }
@@ -544,12 +544,12 @@ export interface LabExecutionDesktop {
  * uploaded instead on hosted desktops. `microphone.source: speech` enables the participant's
  * own spoken replies and listening through native audio devices. File microphones are unsupported.
  */
-export interface LabDesktopMedia {
+export interface StudyDesktopMedia {
   camera?: { source: string };
   microphone?: { source: string };
 }
 
-export interface LabDesktopFidelity {
+export interface StudyDesktopFidelity {
   mobileEmulation: boolean;
   /** Emulated devicePixelRatio; default: the device preset's. */
   deviceScaleFactor?: number;
@@ -559,8 +559,8 @@ export interface LabDesktopFidelity {
   userAgent?: string;
 }
 
-export interface LabExecution {
-  target?: LabExecutionTarget;
+export interface StudyExecution {
+  target?: StudyExecutionTarget;
   /** Actor session wall-clock budget. Consumed on the app-url route. */
   timeoutMs?: number;
   /** Forward-declared: no route reads it yet, so a set value warns. */
@@ -570,7 +570,7 @@ export interface LabExecution {
    * defaults to the participant count. Inert (warned) elsewhere.
    */
   concurrency?: number;
-  desktop?: LabExecutionDesktop;
+  desktop?: StudyExecutionDesktop;
   /**
    * Blast-radius budget for each computer-use participant. Consumed on the computer-use route:
    * `caps.maxUsd`, when set, is a fail-closed abort: the session stops the moment its running
@@ -581,15 +581,15 @@ export interface LabExecution {
    * `caps.maxTotalUsd` is the shared study budget: one ledger across every participant, the knob a
    * researcher actually reasons with. Absent = uncapped (the historical CUA behavior); maxUsd: 0
    * still permits a request before reported usage trips it. Inert (warned) on non-computer-use
-   * routes. Reuses the same LabScenarioCaps shape as the terminal route's `scenario.caps` (not a
+   * routes. Reuses the same StudyScenarioCaps shape as the terminal route's `scenario.caps` (not a
    * fork).
    */
-  caps?: LabScenarioCaps;
+  caps?: StudyScenarioCaps;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
-  terminal?: LabExecutionTerminal;
+  terminal?: StudyExecutionTerminal;
   /** `terminal-product` route: runtime key placement, defaulting to openai-env. openai-egress
    *  uses an external header transform; dry-runs record declarations only. Inert on other routes. */
-  runtimeAuth?: LabRuntimeAuth;
+  runtimeAuth?: StudyRuntimeAuth;
   /** Terminal Codex package pin. Omit to resolve latest once, observe it, then execute that version. */
   runtime?: { version: string };
   /**
@@ -608,7 +608,7 @@ export interface LabExecution {
   egressAllow?: string[];
 }
 
-type LabScenarioMode = "dry-run" | "live";
+type StudyScenarioMode = "dry-run" | "live";
 
 /**
  * The blast-radius budget for a route that passes a live key to an in-sandbox command.
@@ -618,7 +618,7 @@ type LabScenarioMode = "dry-run" | "live";
  * and maxMinutes is enforced as the command wall clock. Codex tokens are unpriced, so a live run
  * refuses a positive maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_UNPRICED_CAP).
  */
-export interface LabScenarioCaps {
+export interface StudyScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
   maxUsd?: number;
   /**
@@ -640,20 +640,20 @@ export interface LabScenarioCaps {
   maxMinutes?: number;
 }
 
-export interface LabScenario {
+export interface StudyScenario {
   /** Reference a committed scenario by id (humanish/scenarios/<ref>.yaml) or path. Consumed
    *  (and required) on the scripted-browser route; forward-declared elsewhere. */
   ref?: string;
   /** Or inline the scenario body. Forward-declared: no route reads it yet, so a set value warns. */
   inline?: Record<string, unknown>;
   /** dry-run = a synthetic bundle with no provider spend; live = real run. Consumed. */
-  mode?: LabScenarioMode;
+  mode?: StudyScenarioMode;
   /** Spend/job/time caps. Consumed (recorded in the bundle) on the terminal-product route;
    *  inert (warned) elsewhere. */
-  caps?: LabScenarioCaps;
+  caps?: StudyScenarioCaps;
 }
 
-export interface LabPolicies {
+export interface StudyPolicies {
   /**
    * Redact target repo labels in durable artifacts. Consumed on the computer-use,
    * scripted-browser and shared-world clone routes (provenance), where it defaults to true when
@@ -697,7 +697,7 @@ export interface LabPolicies {
   allowGitHubMutation?: boolean;
 }
 
-export interface LabReview {
+export interface StudyReview {
   /** Analysis defaults on for eligible live recordings; false disables the separate request. */
   analysis?: LabAnalysis | false;
   /** Forward-declared: no route reads it yet, so a set value warns. */
@@ -715,16 +715,16 @@ export interface LabReview {
   scorer?: { ref: string };
 }
 
-export interface LabDefaults {
+export interface StudyDefaults {
   open?: boolean;
 }
 
 /** Off-app comms (email/SMS the persona lives in) the harness provides for the run. */
-export interface LabComms {
-  email?: LabCommsEmail;
+export interface StudyComms {
+  email?: StudyCommsEmail;
 }
 
-export interface LabCommsSmtp {
+export interface StudyCommsSmtp {
   /** Fixed in-sandbox loopback SMTP port (default 2525). Known before sandbox create, like `port`. */
   port?: number;
   /** The subject-env var carrying the SMTP host. The harness sets it to 127.0.0.1. */
@@ -740,9 +740,9 @@ export interface LabCommsSmtp {
   password?: string;
 }
 
-export type LabCommsEmail = LabCommsCaptureEmail | LabCommsReceivingEmail;
+export type StudyCommsEmail = StudyCommsCaptureEmail | StudyCommsReceivingEmail;
 
-export interface LabCommsReceivingEmail {
+export interface StudyCommsReceivingEmail {
   kind: "real";
   connection: string;
   /** Additional exact first-hop destinations; automatic remote email assets remain blocked. */
@@ -755,13 +755,13 @@ export interface LabCommsReceivingEmail {
   external?: never;
 }
 
-interface LabCommsCaptureEmail {
+interface StudyCommsCaptureEmail {
   connection?: never;
   allowedOrigins?: never;
   /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
    *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense: an in-sandbox
    *  catch captures the app's sends. Provider-backed receiving uses the separate
-   *  LabCommsReceivingEmail configuration selected by a saved connection. */
+   *  StudyCommsReceivingEmail configuration selected by a saved connection. */
   kind: "fake";
   /**
    * The subject-env var the harness sets to the in-sandbox catch's base URL. The adopter names it (an app
@@ -782,7 +782,7 @@ interface LabCommsCaptureEmail {
    * `hostEnv` and `portEnv` are adopter-named, exactly like `injectEnv`: the harness sets them to
    * its own loopback and the chosen port. Declare the pair your app actually reads.
    */
-  smtp?: LabCommsSmtp;
+  smtp?: StudyCommsSmtp;
   /** Optional escape hatch: the exact absolute origin the app-under-test bakes into its email verify
    *  links, when that differs from the serve origin (e.g. an app configured with an absolute
    *  APP_URL/NEXT_PUBLIC_BASE_URL). The harness cannot infer it, so the operator declares it; it is
@@ -799,7 +799,7 @@ interface LabCommsCaptureEmail {
    * not match it,  and its participant gets no inbox instruction; captured mail to an undeclared
    * address is warned,
    *  never silently dropped. */
-  recipients?: LabCommsRecipient[];
+  recipients?: StudyCommsRecipient[];
   /**
    * adopter-hosted ingress. Declaring this says: the operator runs the catch and the inbox
    * themselves, so humanish neither provisions the subject nor injects `injectEnv`. It points the
@@ -808,10 +808,10 @@ interface LabCommsCaptureEmail {
    * plane, where humanish holds no sandbox handle to host a catch in and the block was previously
    * warned inert. Run the same implementation with `humanish comms catch`.
    */
-  external?: LabCommsExternal;
+  external?: StudyCommsExternal;
 }
 
-export interface LabCommsExternal {
+export interface StudyCommsExternal {
   /** Where the adopter's app POSTs its email sends, and where humanish reads GET /deliveries. */
   catchBaseUrl: string;
   /** Where the persona opens its inbox. Defaults to catchBaseUrl (one server serves both). */
@@ -821,40 +821,40 @@ export interface LabCommsExternal {
   authTokenEnv?: string;
 }
 
-export interface LabCommsRecipient {
+export interface StudyCommsRecipient {
   lane: string;
   /** The literal address the app sends to, which the evidence drain matches. Omit to reserve the participant
    *  for the persona surface's default address (not drain-matched). */
   address?: string;
 }
 
-export interface LabConfig {
+export interface StudyConfig {
   /** The format the file was written in. Both parse into this one shape. */
-  schema: typeof LAB_CONFIG_SCHEMA | typeof STUDY_SCHEMA;
+  schema: typeof V2_SCHEMA | typeof STUDY_SCHEMA;
   id: string;
   title?: string;
   description?: string;
-  subject: LabSubject;
-  actors: LabActor[];
-  execution?: LabExecution;
+  subject: StudySubject;
+  actors: StudyActor[];
+  execution?: StudyExecution;
   /** Forward-declared: no route reads it yet, so a set value warns. */
   personas?: Record<string, unknown>[];
-  scenario?: LabScenario;
-  policies?: LabPolicies;
-  review?: LabReview;
-  defaults?: LabDefaults;
-  comms?: LabComms;
+  scenario?: StudyScenario;
+  policies?: StudyPolicies;
+  review?: StudyReview;
+  defaults?: StudyDefaults;
+  comms?: StudyComms;
 }
 
-interface LabConfigParseSuccess {
+interface StudyParseSuccess {
   ok: true;
-  config: LabConfig;
+  config: StudyConfig;
   warnings: string[];
 }
 
-export interface LabConfigParseFailure {
+export interface StudyParseFailure {
   ok: false;
   error: { code: "HUMANISH_STUDY_INVALID"; message: string };
 }
 
-export type LabConfigParseResult = LabConfigParseSuccess | LabConfigParseFailure;
+export type StudyParseResult = StudyParseSuccess | StudyParseFailure;

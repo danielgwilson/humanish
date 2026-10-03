@@ -1,12 +1,12 @@
 import { invalid, posInt, str } from "./values.js";
 import type {
-  LabComms,
-  LabCommsEmail,
-  LabCommsExternal,
-  LabCommsReceivingEmail,
-  LabCommsRecipient,
-  LabCommsSmtp,
-  LabConfigParseFailure,
+  StudyComms,
+  StudyCommsEmail,
+  StudyCommsExternal,
+  StudyCommsReceivingEmail,
+  StudyCommsRecipient,
+  StudyCommsSmtp,
+  StudyParseFailure,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
@@ -14,10 +14,10 @@ import { isRecord } from "../../run/type-guards.js";
 // failure rather than being dropped.
 export function parseComms(
   raw: unknown,
-): { ok: true; value: LabComms | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudyComms | undefined } | StudyParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`comms` must be a mapping.");
-  const comms: LabComms = {};
+  const comms: StudyComms = {};
   if (raw.email !== undefined) {
     const email = parseCommsEmail(raw.email);
     if (!email.ok) return email;
@@ -27,9 +27,9 @@ export function parseComms(
 }
 
 /** A parsed optional field: its value when set, or a parse failure. */
-type Parsed<T> = { ok: true; value: T | undefined } | LabConfigParseFailure;
+type Parsed<T> = { ok: true; value: T | undefined } | StudyParseFailure;
 
-function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | LabConfigParseFailure {
+function parseCommsEmail(raw: unknown): { ok: true; value: StudyCommsEmail } | StudyParseFailure {
   if (!isRecord(raw)) return invalid("`comms.email` must be a mapping.");
   if (raw.connection !== undefined) return parseEmailConnection(raw);
   const unknown = Object.keys(raw).filter(
@@ -65,7 +65,7 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
   if (injectEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
     return invalid(`\`comms.email.injectEnv\` must be a valid env var name (got "${injectEnv}").`);
   }
-  const email: LabCommsEmail = {
+  const email: StudyCommsEmail = {
     kind: "fake",
     ...(injectEnv === undefined ? {} : { injectEnv }),
     ...(smtp.value === undefined ? {} : { smtp: smtp.value }),
@@ -95,7 +95,7 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
 /** A real inbox: a saved connection, with optional link and allowed origins and nothing else. */
 function parseEmailConnection(
   raw: Record<string, unknown>,
-): { ok: true; value: LabCommsReceivingEmail } | LabConfigParseFailure {
+): { ok: true; value: StudyCommsReceivingEmail } | StudyParseFailure {
   const unsupported = Object.keys(raw).filter(
     (key) => !["connection", "linkOrigin", "allowedOrigins"].includes(key),
   );
@@ -107,7 +107,7 @@ function parseEmailConnection(
     return invalid(
       "`comms.email.connection` must name a saved connection (lowercase letters, digits and hyphens; at most 48 characters).",
     );
-  const value: LabCommsReceivingEmail = { kind: "real", connection: raw.connection };
+  const value: StudyCommsReceivingEmail = { kind: "real", connection: raw.connection };
   if (raw.linkOrigin !== undefined) {
     const parsed = exactOrigin(raw.linkOrigin);
     if (!parsed)
@@ -148,7 +148,7 @@ function exactOrigin(input: unknown): string | undefined {
 }
 
 /** `comms.email.external`: the catch the adopter runs, its inbox and the env var holding its token. */
-function parseExternalCatch(raw: unknown): Parsed<LabCommsExternal> {
+function parseExternalCatch(raw: unknown): Parsed<StudyCommsExternal> {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`comms.email.external` must be a mapping.");
   const catchBaseUrl = str(raw.catchBaseUrl);
@@ -194,7 +194,7 @@ function parseExternalCatch(raw: unknown): Parsed<LabCommsExternal> {
 }
 
 /** SMTP transport, for apps that send mail through SMTP rather than a provider's HTTP API. */
-function parseSmtp(raw: unknown): Parsed<LabCommsSmtp> {
+function parseSmtp(raw: unknown): Parsed<StudyCommsSmtp> {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`comms.email.smtp` must be a mapping.");
   const envName = (value: unknown, field: string): string | undefined => {
@@ -252,13 +252,13 @@ function parseCatchPort(raw: unknown): Parsed<number> {
 }
 
 /** The participant a declared inbox recipient belongs to. The manifest spells it `lane`. */
-export function recipientParticipantId(recipient: LabCommsRecipient): string {
+export function recipientParticipantId(recipient: StudyCommsRecipient): string {
   return recipient.lane;
 }
 
 /** The declared recipients that name an address, in declaration order, by participant id. */
 export function addressedRecipients(
-  email: Pick<LabCommsEmail, "recipients">,
+  email: Pick<StudyCommsEmail, "recipients">,
 ): { participantId: string; address: string }[] {
   return (email.recipients ?? []).flatMap((recipient) =>
     recipient.address === undefined
@@ -268,10 +268,10 @@ export function addressedRecipients(
 }
 
 /** `comms.email.recipients`: which participant each captured address belongs to. */
-function parseRecipients(raw: unknown): Parsed<LabCommsRecipient[]> {
+function parseRecipients(raw: unknown): Parsed<StudyCommsRecipient[]> {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!Array.isArray(raw)) return invalid("`comms.email.recipients` must be a list.");
-  const recipients: LabCommsRecipient[] = [];
+  const recipients: StudyCommsRecipient[] = [];
   for (const entry of raw) {
     if (!isRecord(entry)) return invalid("each `comms.email.recipients` entry must be a mapping.");
     const lane = str(entry.lane);

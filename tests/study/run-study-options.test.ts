@@ -6,24 +6,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CuaExecutor, CuaProvider } from "../../src/actors/computer-use/loop.js";
 import type { AdapterScorerModule } from "../../src/study/adapter-scorer-loader.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { routeOf } from "../../src/study/plan.js";
-import { phaseEvent, planEvent, type LabEvent } from "../../src/study/run-study-events.js";
+import { phaseEvent, planEvent, type StudyEvent } from "../../src/study/run-study-events.js";
 import { streamEvent, type StreamEvent } from "../../src/study/run-study-homes.js";
-import { normalizeRunLabOptions } from "../../src/study/run-study-options.js";
-import type { LabConfig } from "../../src/study/types.js";
+import { normalizeRunStudyOptions } from "../../src/study/run-study-options.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 
-function config(base: BaseName, patch?: Patch): LabConfig {
-  const parsed = parseLabConfig(lab(base, patch));
+function config(base: BaseName, patch?: Patch): StudyConfig {
+  const parsed = parseStudy(lab(base, patch));
   if (!parsed.ok) throw new Error(`${base}: ${parsed.error.message}`);
   return parsed.config;
 }
 
-const localVm = (): LabConfig => config("cuAppUrl", { execution: { target: "local" } });
+const localVm = (): StudyConfig => config("cuAppUrl", { execution: { target: "local" } });
 const provider = {} as CuaProvider;
 const executor = {} as CuaExecutor;
 const createProvider = async (): Promise<CuaProvider> => provider;
@@ -39,17 +39,17 @@ const scorer: AdapterScorerModule = {
 };
 const prepareDesktop = async (): Promise<void> => undefined;
 /** A fresh plan event with no participants: a poisoning test redefines its fields. */
-const emptyPlan = (): LabEvent => ({ type: "plan", route: "computer-use", participants: [] });
+const emptyPlan = (): StudyEvent => ({ type: "plan", route: "computer-use", participants: [] });
 
-function normalize(labConfig: LabConfig, options: Partial<InternalRunLabOptions>) {
-  return normalizeRunLabOptions(labConfig, routeOf(labConfig), {
+function normalize(labConfig: StudyConfig, options: Partial<InternalRunLabOptions>) {
+  return normalizeRunStudyOptions(labConfig, routeOf(labConfig), {
     cwd: "/tmp/unused",
     ...options,
   } as InternalRunLabOptions);
 }
 
 function normalized(
-  labConfig: LabConfig,
+  labConfig: StudyConfig,
   options: Partial<InternalRunLabOptions>,
 ): InternalRunLabOptions {
   const result = normalize(labConfig, options);
@@ -58,7 +58,7 @@ function normalized(
 }
 
 describe("an option the route cannot honor is refused before anything runs", () => {
-  const cases: [string, () => LabConfig, Partial<InternalRunLabOptions>, string | undefined][] = [
+  const cases: [string, () => StudyConfig, Partial<InternalRunLabOptions>, string | undefined][] = [
     ["preview scorer", () => config("preview"), { scorer }, "scorer"],
     ["preview createProvider", () => config("preview"), { createProvider }, "createProvider"],
     ["preview inProcess", () => config("preview"), { inProcess, createProvider }, "createProvider"],
@@ -343,7 +343,7 @@ describe("onEvent is passive", () => {
   };
 
   it("emits the plan, subject phases and the analysis window, in order", () => {
-    const events: LabEvent[] = [];
+    const events: StudyEvent[] = [];
     const result = normalize(config("cuAppUrl"), { onEvent: (event) => void events.push(event) });
     if (!result.ok) throw new Error(result.message);
     result.emit!(planEvent(plan));
@@ -431,7 +431,7 @@ describe("a computer-use dry run through runLab", () => {
   });
 
   it("reports its plan and carries a failed handler's warning on the result", async () => {
-    const events: LabEvent[] = [];
+    const events: StudyEvent[] = [];
     const outcome = await runLab(config("cuAppUrl"), {
       cwd,
       dryRun: true,
@@ -509,7 +509,7 @@ describe("an in-process run has no desktop to prepare", () => {
 });
 
 describe("an onEvent callback that rewrites its event", () => {
-  const poison = (event: LabEvent): void => {
+  const poison = (event: StudyEvent): void => {
     Object.defineProperty(event, "type", {
       get() {
         throw new Error("event.type getter escaped");

@@ -1,6 +1,6 @@
 // Pins what the CLI does today when a lab run is refused before any run starts: stdout, stderr,
 // exit code, whether a run directory appeared, how many processes started, and whether a
-// declared scorer's host code ran. The planLab migration must keep this golden byte-identical
+// declared scorer's host code ran. The planStudy migration must keep this golden byte-identical
 // except for changes its compatibility contract lists.
 
 import { access, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";

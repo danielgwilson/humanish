@@ -1,7 +1,7 @@
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import path from "node:path";
 import type { InternalRunLabOptions } from "../../run-lab.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import type { ProviderFactory } from "../../study/run-study-homes.js";
 import {
   inboxRecipientFor,
@@ -29,7 +29,7 @@ import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-ty
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 
 type LocalVmRunOptions = InternalRunLabOptions & {
-  config: LabConfig;
+  config: StudyConfig;
   assets?: LocalFirecrackerAssets;
   signal?: AbortSignal;
 };
@@ -43,7 +43,7 @@ interface LocalVmRunState {
 
 /** The inputs every participant of one local study reads. */
 interface LocalParticipantContext {
-  readonly config: LabConfig;
+  readonly config: StudyConfig;
   readonly cwd: string;
   readonly signal: AbortSignal | undefined;
   readonly media: GuestMediaConfig | undefined;
@@ -52,7 +52,7 @@ interface LocalParticipantContext {
   readonly state: LocalVmRunState;
 }
 
-function guestMedia(config: LabConfig): GuestMediaConfig | undefined {
+function guestMedia(config: StudyConfig): GuestMediaConfig | undefined {
   const declaredMedia = config.execution?.desktop?.media;
   return declaredMedia === undefined
     ? undefined

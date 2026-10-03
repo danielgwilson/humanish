@@ -9,8 +9,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../src/actors/computer-use/openai-provider.js";
@@ -24,8 +24,8 @@ describe("real inbox wiring through the actual computer-use route", () => {
     async (failFinalization) => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-receiving-wiring-"));
       try {
-        const parsed = parseLabConfig({
-          schema: LAB_CONFIG_SCHEMA,
+        const parsed = parseStudy({
+          schema: V2_SCHEMA,
           id: "mail-wiring",
           title: "Receiving wiring",
           subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

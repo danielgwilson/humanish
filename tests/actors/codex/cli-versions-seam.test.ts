@@ -5,8 +5,8 @@ import { parseSync } from "oxc-parser";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createProgram } from "../../../src/cli/program.js";
 import type { RunLabOptions } from "../../../src/run-lab.js";
-import { parseLabConfig } from "../../../src/study/config.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import { parseStudy } from "../../../src/study/config.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 
 // `RestrictedCodexSessionOptions.cliVersions` bypasses per-host qualification for
 // scripts/codex-qualify.mjs. These tests prove no public path can set it.
@@ -142,7 +142,7 @@ describe("the cliVersions qualification bypass", () => {
       { ...base, execution: { ...base.execution, ...smuggled } },
       { ...base, review: { analysis: { provider: "codex", ...smuggled } } },
     ])
-      expect(parseLabConfig(raw).ok).toBe(false);
+      expect(parseStudy(raw).ok).toBe(false);
   });
 
   it("has no CLI flag and no RunLabOptions or LabDeps field", () => {
@@ -155,6 +155,6 @@ describe("the cliVersions qualification bypass", () => {
     expect(flags.length).toBeGreaterThan(0);
     expect(flags.filter((flag) => /cli-?version/i.test(flag))).toEqual([]);
     expectTypeOf<RunLabOptions>().not.toHaveProperty("cliVersions");
-    expectTypeOf<LabDeps>().not.toHaveProperty("cliVersions");
+    expectTypeOf<StudyDeps>().not.toHaveProperty("cliVersions");
   });
 });

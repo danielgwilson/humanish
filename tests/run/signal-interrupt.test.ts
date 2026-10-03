@@ -26,8 +26,8 @@ function screenshot(): string {
 const CHILD = `
   const root = process.env.REPO_ROOT;
   const { runLab } = await import(root + "/src/run-lab.ts");
-  const { parseLabConfig } = await import(root + "/src/study/config.ts");
-  const { LAB_CONFIG_SCHEMA } = await import(root + "/src/study/types.ts");
+  const { parseStudy } = await import(root + "/src/study/config.ts");
+  const { V2_SCHEMA } = await import(root + "/src/study/types.ts");
   const frame = Buffer.from(process.env.PROBE_PNG, "base64");
   const noop = async () => undefined;
   const sandbox = {
@@ -47,8 +47,8 @@ const CHILD = `
       kill: async () => { process.stdout.write("killed\\n"); return true; },
     },
   };
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "signal-probe",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
     actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore." }],

@@ -9,9 +9,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runRoute } from "../../src/cli/commands/lab-route-run.js";
 import { sharedWorldRouteRun } from "../../src/cli/commands/lab-route-shared-world.js";
 import type { CliIo } from "../../src/cli/io.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { prepareLab, type RunLabOptions } from "../../src/run-lab.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { liveObserverResult } from "../../src/observer/live.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { freePort } from "../helpers/free-port.js";
@@ -38,10 +38,10 @@ function gatedRun(
   }));
 }
 
-function liveConcurrentConfig(): LabConfig {
+function liveConcurrentConfig(): StudyConfig {
   const lanes = [1, 2].map((n) => ({ id: `persona-0${n}`, persona: `persona-${n}` }));
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "concurrent-observer-gate",
     subject: {
       source: "clone",

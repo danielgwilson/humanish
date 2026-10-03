@@ -2,7 +2,7 @@
 // its order and with its codes, then the plan the run uses. What stays in the route reads external
 // state: the scenario file, the E2B key, subject env values and the host browser.
 
-import type { LabDeps } from "../../study/study-deps.js";
+import type { StudyDeps } from "../../study/study-deps.js";
 import { actorRegistry, isScriptedBrowserActorDescriptor } from "../../actors/registry.js";
 import { normalizeLocalAppUrl } from "../../actors/scripted-browser/steps.js";
 import { browserSurfaces } from "../../actors/scripted-browser/types.js";
@@ -14,7 +14,7 @@ import type {
   RouteRefusal,
   ScriptedPlan,
 } from "../../study/plan-types.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import {
   cloneTargetValidationReason,
   desktopMediaValidationReason,
@@ -52,7 +52,7 @@ export function evidenceAppUrlOf(subject: ScriptedPlan["subject"]): string {
 }
 
 /** Whether a test injected the browser, so a live run needs no host browser. */
-export function injectedBrowser(deps: LabDeps | undefined): boolean {
+export function injectedBrowser(deps: StudyDeps | undefined): boolean {
   return Boolean(deps?.launchBrowser || deps?.browserCommand);
 }
 
@@ -61,7 +61,7 @@ export function injectedBrowser(deps: LabDeps | undefined): boolean {
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planScriptedLab(
-  config: LabConfig,
+  config: StudyConfig,
   input: {
     readonly dryRun: boolean;
     /** A test's injected browser means a live run needs no host browser. */

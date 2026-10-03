@@ -5,13 +5,13 @@ import {
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { deriveRunFacts } from "../telemetry.js";
-import { resolveLabManifest } from "../../study/discover.js";
+import { resolveStudyManifest } from "../../study/discover.js";
 import { warnAndQueue } from "../deprecations.js";
-import type { LabResolveFailure } from "../../study/discover.js";
-import { planLab, resolveLabDryRun } from "../../study/plan.js";
+import type { StudyResolveFailure } from "../../study/discover.js";
+import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import { keyNamesOf } from "../../study/requirements.js";
-import { type LabRoute, routeOf } from "../../study/plan.js";
-import type { LabConfig } from "../../study/types.js";
+import { type StudyRoute, routeOf } from "../../study/plan.js";
+import type { StudyConfig } from "../../study/types.js";
 import type { RunStudyProvenance } from "../../run/study-provenance.js";
 import type { RunResult } from "../../run/results.js";
 import { computerUseRouteRun } from "./lab-route-computer-use.js";
@@ -41,7 +41,7 @@ export async function runLabCommand(args: {
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
-  const resolved = await resolveLabManifest(args.options.cwd, args.lab);
+  const resolved = await resolveStudyManifest(args.options.cwd, args.lab);
   if (!resolved.ok) {
     writeResult(args.command, args.io, resolved, formatLabResolveFailureHuman);
     args.io.setExitCode(2);
@@ -106,7 +106,7 @@ export async function runLabCommand(args: {
   // login, overlay or key store. A live run fills every key it finds and prints a line only for
   // the keys its plan reads. This comes after the option refusals above, which read no key, and
   // before the route's CLI setup and prepareLab, which do.
-  if (resolveLabDryRun(config, args.options.dryRun, true) === false) {
+  if (resolveStudyDryRun(config, args.options.dryRun, true) === false) {
     const announced = announcedKeyNames(config, args.options);
     await discoverCliKeys({
       io: args.io,
@@ -161,7 +161,7 @@ export async function runLabCommand(args: {
           );
         }
         const analysisBudget = automaticAnalysisBudget(config.review?.analysis, route);
-        if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
+        if (analysisBudget && resolveStudyDryRun(config, args.options.dryRun, true) === false) {
           args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
         }
         return scorer === undefined ? {} : { scorer };
@@ -181,22 +181,22 @@ export async function runLabCommand(args: {
  * since its host code may read any key, and when the lab does not plan.
  */
 function announcedKeyNames(
-  config: LabConfig,
+  config: StudyConfig,
   options: LabCommandOptions,
 ): ReadonlySet<string> | undefined {
   if (options.scorer !== undefined || config.review?.scorer !== undefined) return undefined;
-  const planned = planLab(config, { cwd: options.cwd, dryRun: false });
+  const planned = planStudy(config, { cwd: options.cwd, dryRun: false });
   return planned.ok ? keyNamesOf(planned.planned.plan) : undefined;
 }
 
 /** The route's CLI setup. Undefined when the setup has already written its own result. */
 function routeRunFor(
-  route: LabRoute,
+  route: StudyRoute,
   args: {
     command: Command;
     io: CliIo;
     lab: string;
-    config: LabConfig;
+    config: StudyConfig;
     mode: "run" | "watch";
     options: LabCommandOptions;
   },
@@ -228,7 +228,7 @@ function writeUnsupportedRerunFlagsResult(
     io: CliIo;
     options: LabCommandOptions;
   },
-  route: LabRoute,
+  route: StudyRoute,
 ): void {
   const result: RunResult = {
     schema: "humanish.run-result.v1",
@@ -244,7 +244,7 @@ function writeUnsupportedRerunFlagsResult(
   args.io.setExitCode(2);
 }
 
-function formatLabResolveFailureHuman(result: LabResolveFailure): HumanOutput {
+function formatLabResolveFailureHuman(result: StudyResolveFailure): HumanOutput {
   const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
   return { ...(warnings ? { stdout: warnings } : {}), error: result.error };
 }

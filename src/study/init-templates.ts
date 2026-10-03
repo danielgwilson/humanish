@@ -23,7 +23,7 @@ export const DEFAULT_LOCAL_BROWSER_STARTER: LocalBrowserStarter = {
     "Use the app's primary flow. Explain anything confusing and stop when the task is complete or you are stuck.",
 };
 
-function localBrowserLab(
+function localBrowserStudy(
   starter: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER,
 ): StarterFile {
   return {
@@ -64,7 +64,7 @@ type StarterActor = "openai-computer-use" | "local-agent";
  * refuses a dollar cap on it (HUMANISH_COMPUTER_USE_UNPRICED_CAP); that variant is bounded by the
  * session timeout instead of a cap it could never enforce.
  */
-function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): StarterFile {
+function tryLiveStudy(actor: StarterActor, localAgent: LocalAgentId = "codex"): StarterFile {
   const account = actor === "local-agent";
   const needs = account
     ? `  Needs E2B_API_KEY and the coding agent signed in on this machine. Cost: one small task, a few
@@ -260,8 +260,8 @@ defaults:
   open: true
 `,
   },
-  tryLiveLab("openai-computer-use"),
-  localBrowserLab(),
+  tryLiveStudy("openai-computer-use"),
+  localBrowserStudy(),
   {
     path: "humanish/studies/cua-browser.yaml",
     plane: "source",
@@ -448,9 +448,9 @@ export function starterFilesFor(
 ): StarterFile[] {
   return starterFiles.map((file) =>
     file.path === "humanish/studies/local-browser.yaml"
-      ? localBrowserLab(localBrowser)
+      ? localBrowserStudy(localBrowser)
       : file.path === "humanish/studies/try-live.yaml"
-        ? tryLiveLab(actor, localAgent)
+        ? tryLiveStudy(actor, localAgent)
         : file,
   );
 }

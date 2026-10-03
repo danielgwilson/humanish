@@ -3,7 +3,7 @@
 
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import { redactText } from "../../evidence/redaction.js";
-import type { LabSubjectState } from "../../study/types.js";
+import type { StudySubjectState } from "../../study/types.js";
 import { planeStateOf } from "./plan.js";
 import {
   REVIEW_SCHEMA,
@@ -551,7 +551,7 @@ function concurrentCostSummary(
 }
 
 /** The declared (dry-run) state digest: the probe recipe (command digests), no run. */
-function declaredStateDigest(state: LabSubjectState | undefined): string {
+function declaredStateDigest(state: StudySubjectState | undefined): string {
   const probes = state?.checkpoint ?? [];
   return combineCheckpointDigest(
     probes.map((probe) => `${probe.name}=${commandDigestOf(probe.command)}`),

@@ -12,13 +12,13 @@ import {
 } from "../../../src/actors/computer-use/actor.js";
 import type { CuaExecutor, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan } from "../../../src/routes/computer-use/route.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { provisionParticipantSubject } from "../../../src/routes/computer-use/e2b-desktop/prepare.js";
 import {
@@ -39,9 +39,9 @@ afterEach(async () => {
 
 const KEYS = { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" };
 
-function appUrlLab(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function appUrlLab(): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "config-lab",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
     actors: [
@@ -55,7 +55,7 @@ function appUrlLab(): LabConfig {
   return parsed.config;
 }
 
-function planOf(config: LabConfig, deps: LabDeps): ComputerUsePlan {
+function planOf(config: StudyConfig, deps: StudyDeps): ComputerUsePlan {
   const planned = planComputerUseLab(config, {
     dryRun: false,
     hasRunSession: deps.runSession !== undefined,
@@ -83,7 +83,7 @@ function recordingModule() {
 const optionsOf = (args: unknown[]) =>
   args[args.length - 1] as { metadata?: Record<string, string>; envs?: Record<string, string> };
 
-async function runAndCapture(plan: ComputerUsePlan, config: LabConfig, deps: LabDeps) {
+async function runAndCapture(plan: ComputerUsePlan, config: StudyConfig, deps: StudyDeps) {
   await runComputerUsePlan(plan, { cwd, env: KEYS, deps }, config).catch(() => undefined);
 }
 
@@ -91,7 +91,7 @@ describe("computer-use run reads the plan's residual fields", () => {
   it("names the plan's lab id in the sandbox metadata", async () => {
     const config = appUrlLab();
     const { module, creates } = recordingModule();
-    const deps: LabDeps = { desktopModule: async () => module };
+    const deps: StudyDeps = { desktopModule: async () => module };
     const plan = { ...planOf(config, deps), labId: "plan-lab" };
     await runAndCapture(plan, config, deps);
     expect(creates).toHaveLength(1);
@@ -101,7 +101,7 @@ describe("computer-use run reads the plan's residual fields", () => {
   it("creates the desktop from the plan's template and with its subject env values", async () => {
     const config = appUrlLab();
     const { module, creates } = recordingModule();
-    const deps: LabDeps = { desktopModule: async () => module };
+    const deps: StudyDeps = { desktopModule: async () => module };
     const planned = planOf(config, deps);
     const plan: ComputerUsePlan = {
       ...planned,
@@ -118,8 +118,8 @@ describe("computer-use run reads the plan's residual fields", () => {
   });
 
   it("injects the plan's fake-email catch env into a clone's sandbox", async () => {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "config-lab",
       subject: {
         source: "clone",
@@ -135,7 +135,7 @@ describe("computer-use run reads the plan's residual fields", () => {
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const { module, creates } = recordingModule();
-    const deps: LabDeps = { desktopModule: async () => module };
+    const deps: StudyDeps = { desktopModule: async () => module };
     const planned = planOf(parsed.config, deps);
     const plan: ComputerUsePlan = {
       ...planned,
@@ -150,8 +150,8 @@ describe("computer-use run reads the plan's residual fields", () => {
   });
 
   it("warns about the plan's per-participant cap on a fan-out", async () => {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "config-lab",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [
@@ -178,7 +178,7 @@ describe("computer-use run reads the plan's residual fields", () => {
   it("caps each participant's spend at the plan's maxUsd", async () => {
     // The test supplies the desktop as a local study's, on the local target.
     const declared = appUrlLab();
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...declared,
       execution: { ...declared.execution, target: "local" },
     };
@@ -194,7 +194,7 @@ describe("computer-use run reads the plan's residual fields", () => {
         done: true,
       }),
     };
-    const deps: LabDeps = {
+    const deps: StudyDeps = {
       runSession: async (options) => {
         sessions.push(options);
         return runCuaActorSession({ ...options, provider });
