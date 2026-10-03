@@ -219,7 +219,7 @@ function formatLabListHuman(result: LabListResult): string {
     return (
       [
         `No humanish labs found in ${result.cwd}`,
-        "Create one under humanish/labs/*.yaml, .humanish/labs/*.yaml, or pass a .yaml path.",
+        "Create one under humanish/studies/*.yaml or humanish/labs/*.yaml, or pass a .yaml path.",
         ...result.warnings.map((warning) => `warning: ${warning}`),
       ].join("\n") + "\n"
     );
@@ -230,7 +230,7 @@ function formatLabListHuman(result: LabListResult): string {
       "humanish labs",
       ...result.labs.map(
         (lab) =>
-          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`,
+          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}${lab.error ? `\n  error: ${lab.error}` : ""}`,
       ),
       ...result.warnings.map((warning) => `warning: ${warning}`),
     ].join("\n") + "\n"

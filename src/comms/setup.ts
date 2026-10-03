@@ -27,6 +27,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
+import { otherStudyFiles } from "../study/files.js";
 
 export interface CommsCheckResult {
   schema: "humanish.comms-check.v1";
@@ -233,6 +234,24 @@ export async function configureCommsLab(args: {
         ...base,
         message:
           "This is already the local receiving copy. Select its original lab to configure a separate copy, or edit this manifest directly.",
+      };
+    // A second file with this name in another study directory would make discovery refuse both.
+    const stem = filename.replace(/\.yaml$/, "");
+    const others = await otherStudyFiles(
+      stem,
+      async (candidate) => {
+        try {
+          return (await readContainedRegularFile(root, candidate.replace(/\\/g, "/"))) !== null;
+        } catch {
+          return true;
+        }
+      },
+      destination,
+    );
+    if (others.length > 0)
+      return {
+        ...base,
+        message: `${others.join(", ")} already uses the name ${stem}. Rename or remove it before configuring email, so \`run ${stem}\` reads one file.`,
       };
     let prior: Buffer | null;
     try {

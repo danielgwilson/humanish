@@ -10,6 +10,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
+- Study files can live in `humanish/studies/`, `.humanish/studies/` and `.humanish/local/studies/`.
+  - `run <name>` and `lab list` read those three directories first, then the three `labs/`
+    directories.
+  - A name with a file in both a `studies/` and a `labs/` directory fails with
+    `HUMANISH_STUDY_AMBIGUOUS`, naming both files. `lab list --json` marks both entries with `error`.
+    Pass the path of one to run it.
+  - `init` skips a starter whose name another study directory already uses. `comms configure`
+    refuses to write when its destination name is in use.
 - Study files can use the format `schema: humanish.study.v3`.
   - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
     `scripted`) and `mode:` (`dry-run` or `live`).
@@ -19,8 +27,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   - The scripted route takes `surfaces: [desktop]` or `surfaces: [desktop, mobile]`.
   - A field the declared route does not read is an error that names the route. So is a route the
     subject and actor do not take.
-  - A v3 file goes where a lab file goes today, under `humanish/labs/`. `humanish.lab.v2` files
-    parse as before, with the same warnings.
+  - A v3 file can live in a `studies/` or a `labs/` directory. `humanish.lab.v2` files parse as
+    before, with the same warnings.
   - `LabConfig.schema` holds the file's schema, so its type is now
     `"humanish.lab.v2" | "humanish.study.v3"`.
 
