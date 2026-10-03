@@ -10,6 +10,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
+- `humanish verify` warns when a live participant's context did not grow: its prompt stayed about
+  the same size from turn 2 on, so it likely answered each turn without the earlier ones. The
+  warning names the participant and the token count it stayed near. It needs six turns with
+  recorded usage, and fires when the last three turns' median prompt is under 1.1 times that of
+  turns 2 to 4. Across 113 distinct live participant traces the lowest was 1.21; a zero-data-retention
+  computer-use participant that kept about 3,100 tokens for 527 turns is near 1.0. The warning does
+  not change share safety.
 - `humanish migrate [--dry-run] [--json] [path…]` converts `humanish.lab.v2` study files to
   `humanish.study.v3`.
   - Without paths it converts every v2 file in the six study directories. A file under a `labs/`
