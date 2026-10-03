@@ -15,7 +15,6 @@ import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
-import { oldStudyOption, studyOptionValue } from "../deprecations.js";
 import {
   type CliIo,
   CWD_OPTION_DESCRIPTION,
@@ -167,18 +166,13 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
     )
     .summary("Show cost, outcomes and durations across runs.")
     .option("--study <id>", "Only runs of this study id.")
-    .addOption(oldStudyOption("id"))
     .option("--since <date>", "Only runs that started on or after this ISO date or datetime.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
-      async (
-        options: { cwd: string; json?: boolean; study?: string; lab?: string; since?: string },
-        command,
-      ) => {
-        const study = studyOptionValue(command, io, options);
+      async (options: { cwd: string; json?: boolean; study?: string; since?: string }, command) => {
         const result = await computeStats(options.cwd, {
-          ...(study === undefined ? {} : { lab: study }),
+          ...(options.study === undefined ? {} : { lab: options.study }),
           ...(options.since === undefined ? {} : { since: options.since }),
         });
         writeResult(command, io, result, formatStatsHuman);

@@ -35,7 +35,6 @@ it("passes the selected participants to the rerun check without a warning", asyn
       "--import",
       import.meta.resolve("tsx"),
       path.resolve("src/cli.ts"),
-      "lab",
       "run",
       "fanout",
       "--cwd",

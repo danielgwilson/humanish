@@ -18,7 +18,6 @@ import {
 import type { InitChange, InitResult } from "../../study/init.js";
 import { doctor } from "../doctor.js";
 import type { DoctorResult } from "../doctor.js";
-import { oldStudyOption, studyOptionValue } from "../deprecations.js";
 import {
   applyEnvFileOption,
   CLI_VERSION,
@@ -97,21 +96,19 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
       "--study <study>",
       "Check the study's desktop, participant authentication and separate analysis requirements; no provider calls.",
     )
-    .addOption(oldStudyOption("study"))
     .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
-        options: { cwd: string; study?: string; lab?: string; envFile?: string; json?: boolean },
+        options: { cwd: string; study?: string; envFile?: string; json?: boolean },
         command,
       ) => {
-        const study = studyOptionValue(command, io, options);
         if (
           options.envFile &&
           !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
         )
           return;
-        const result = await doctor(options.cwd, study ? { lab: study } : {});
+        const result = await doctor(options.cwd, options.study ? { lab: options.study } : {});
         writeResult(command, io, result, formatDoctorHuman);
         // Behavioral change: was exit 1, every other structured command uses 2.
         io.setExitCode(result.ok ? 0 : 2);

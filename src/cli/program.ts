@@ -21,7 +21,7 @@ import { registerCommsCommands } from "./commands/comms.js";
 import { registerFeedbackCommands } from "./commands/feedback.js";
 import { registerStudyCommands } from "./commands/study.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
-import { registerObserveCommand, registerServeCommand } from "./commands/observe.js";
+import { registerObserveCommand } from "./commands/observe.js";
 import {
   registerCleanupCommand,
   registerExportCommand,
@@ -459,7 +459,6 @@ export function createProgram(
   registerCleanupCommand(program, cliIo);
   registerKeysCommand(program, cliIo);
   registerTelemetryCommand(program, cliIo);
-  registerServeCommand(program, cliIo);
   registerTuiCommand(program, cliIo, { ...defaultTuiRuntime, ...io.tuiRuntime });
   registerCodexCommands(program, cliIo);
   // Only the root takes a stray word, so the action above can name the command it meant. Set after

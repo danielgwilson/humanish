@@ -1438,7 +1438,6 @@ describe("humanish lab run scripted-demo (CLI)", () => {
 
   it("dry-run --json emits the structured scripted lab result", async () => {
     const result = await runCli([
-      "lab",
       "run",
       "scripted-demo",
       "--cwd",
@@ -1476,7 +1475,6 @@ describe("humanish lab run scripted-demo (CLI)", () => {
 
   it("dry-run human output names run/lab/actor/subject/scenario", async () => {
     const result = await runCli([
-      "lab",
       "run",
       "scripted-demo",
       "--cwd",

@@ -7,7 +7,6 @@ import { startExposedObserver, validateExposure } from "../../observer/exposure.
 import type { ExposurePlan, ExposureResult } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { RunResult } from "../../run/results.js";
-import { deprecationMessage, warnAndQueue } from "../deprecations.js";
 import {
   type CliIo,
   collectRepeated,
@@ -270,23 +269,6 @@ async function serveObserveUntilSignal(
       handlers.set(signal, handler);
       process.once(signal, handler);
     }
-  });
-}
-
-// Removed in 0.109.0: `serve` stays one minor as a hidden alias of `observe --all`.
-export function registerServeCommand(parent: Command, io: CliIo): void {
-  addLibraryOptions(
-    parent
-      .command("serve", { hidden: true })
-      .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
-      .addOption(freePortOption())
-      .option("--run <id>", RUN_OPTION_DESCRIPTION)
-      .option("--open", "Open the library in the default browser.")
-      .option("--no-open", "Serve without opening a browser.")
-      .option("--json", JSON_OPTION_DESCRIPTION),
-  ).action((options: ServeOptions, command: Command) => {
-    warnAndQueue(command, io, deprecationMessage("humanish serve", "humanish observe --all"));
-    return handleServe(io, options, command);
   });
 }
 

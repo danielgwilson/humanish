@@ -1,17 +1,11 @@
 import { Command, Option } from "commander";
-import { renderObserver, serveObserver } from "../../observer/render.js";
+import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
 import { runStudyCommand } from "./study-run.js";
 import { addRunOptions, studyOnlyFlags } from "./run-command.js";
-import {
-  deprecationMessage,
-  oldStudyOption,
-  studyOptionValue,
-  warnAndQueue,
-} from "../deprecations.js";
 import {
   applyEnvFileOption,
   type CliIo,
@@ -33,12 +27,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
       .argument("[study]", "Study id or .yaml path to run and observe.")
       .description("Run a study, open its Observer and keep the shell attached.")
       .summary("Run a study and follow it in the Observer.")
-      .option("--study <id-or-path>", "Study id or .yaml path, in place of the argument.")
-      .addOption(oldStudyOption("id-or-path"))
-      // Removed in 0.109.0: watch --run stays one minor, hidden; observe --run shows a saved run.
-      .addOption(
-        new Option("--run <id>", "Deprecated: use humanish observe --run <id>.").hideHelp(),
-      ),
+      .option("--study <id-or-path>", "Study id or .yaml path, in place of the argument."),
   )
     .option(
       "--expose",
@@ -102,8 +91,6 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
 interface WatchOptions extends StudyCommandOptions {
   port: string;
   study?: string;
-  lab?: string;
-  run?: string;
   expose?: boolean;
   tunnel?: "ngrok";
   tunnelDomain?: string;
@@ -123,14 +110,7 @@ async function handleWatch(
   command: Command,
 ): Promise<void> {
   const options = parsed;
-  if (options.run !== undefined) {
-    warnAndQueue(
-      command,
-      io,
-      deprecationMessage("humanish watch --run", "humanish observe --run <id>"),
-    );
-  }
-  const option = studyOptionValue(command, io, options);
+  const option = options.study;
   const study = option ?? named;
   if (option !== undefined && named !== undefined) {
     refuseWatch(command, io, options.cwd, {
@@ -146,7 +126,7 @@ async function handleWatch(
       cwd: options.cwd,
       envFile: options.envFile,
       io,
-      // runStudyCommand discovers keys for a live lab; a preview or a saved run needs none.
+      // runStudyCommand discovers keys for a live study; a preview run needs none.
       discoverKeys: false,
     }))
   ) {
@@ -167,9 +147,9 @@ async function handleWatch(
     return;
   }
 
-  // Exposure is only meaningful for a live computer-use study run (it serves the live desktop). The
-  // non-lab watch path (existing evidence, or a fresh synthetic run) has no live desktop to
-  // stream, so exposure flags there are refused rather than silently ignored; use `observe --all`.
+  // Exposure is only meaningful for a live computer-use study run (it serves the live desktop). A
+  // watch without a study starts a fresh synthetic run with no live desktop to stream, so exposure
+  // flags there are refused rather than silently ignored; use `observe --all`.
   if (watchExposeRequested(options)) {
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
@@ -187,7 +167,7 @@ async function handleWatch(
     return;
   }
 
-  const target = resolveWatchTarget(options, command);
+  const target = resolveWatchTarget(options);
   if ("code" in target) {
     refuseWatch(command, io, options.cwd, target);
     return;
@@ -230,36 +210,21 @@ function refuseWatch(command: Command, io: CliIo, cwd: string, refusal: WatchRef
   io.setExitCode(2);
 }
 
-/** A study argument starts that study under watch; `--run` would name other evidence. */
+/** A study argument starts that study under watch. */
 async function watchStudy(
   io: CliIo,
   command: Command,
   study: string,
   options: WatchOptions,
 ): Promise<void> {
-  if (options.run !== undefined) {
-    refuseWatch(command, io, options.cwd, {
-      code: "HUMANISH_WATCH_OPTION_CONFLICT",
-      message:
-        "Use either a study to start evidence or --run to watch existing evidence, not both.",
-    });
-    return;
-  }
-
   // Forwarded wholesale, as `run` forwards its options, so a run flag reaches the lab either way.
   await runStudyCommand({ command, io, lab: study, mode: "watch", options });
 }
 
-/** Without a study, watch shows existing evidence (`--run`) or a fresh synthetic run (`--count`). */
+/** Without a study, watch starts a fresh synthetic run of `--count` participants, 4 by default. */
 function resolveWatchTarget(
   options: WatchOptions,
-  command: Command,
-): WatchRefusal | { requestedParticipantCount: number | null | undefined; port: number } {
-  const runOptionSource =
-    typeof command.getOptionValueSource === "function"
-      ? command.getOptionValueSource("run")
-      : undefined;
-  const runWasOmitted = runOptionSource === undefined || runOptionSource === "default";
+): WatchRefusal | { requestedParticipantCount: number; port: number } {
   const participantCount =
     options.count === undefined ? undefined : parsePositiveInteger(options.count);
   const port = parseObserverPort(options.port);
@@ -269,57 +234,38 @@ function resolveWatchTarget(
       message: "--count must be a positive integer.",
     };
   }
-  if (!runWasOmitted && participantCount !== undefined) {
-    return {
-      code: "HUMANISH_WATCH_OPTION_CONFLICT",
-      message:
-        "Use either --run to watch existing evidence or --count to start a fresh run, not both.",
-    };
-  }
-  if (!runWasOmitted && options.runId !== undefined) {
-    return {
-      code: "HUMANISH_WATCH_OPTION_CONFLICT",
-      message: "--run-id only applies to fresh watch runs; remove --run or remove --run-id.",
-    };
-  }
   if (port === null) {
     return {
       code: "HUMANISH_INVALID_PORT",
       message: "--port must be an integer between 0 and 65535.",
     };
   }
-  return { requestedParticipantCount: participantCount ?? (runWasOmitted ? 4 : undefined), port };
+  return { requestedParticipantCount: participantCount ?? 4, port };
 }
 
-/** Render the evidence to show; undefined when a fresh run failed and its result was written. */
+/** Render the fresh run; undefined when it failed and its result was written. */
 async function renderWatchEvidence(
   io: CliIo,
   command: Command,
   options: WatchOptions,
-  requestedParticipantCount: number | null | undefined,
+  requestedParticipantCount: number,
   staticOpen: boolean,
 ): Promise<ObserverResult | undefined> {
-  if (requestedParticipantCount !== undefined && requestedParticipantCount !== null) {
-    // A fresh run renders through its finished run, so the page shown is the run just
-    // written, never a directory swapped in under its id.
-    const runResult = await runDryRun({
-      cwd: options.cwd,
-      dryRun: true,
-      participantCount: requestedParticipantCount,
-      ...(options.runId === undefined ? {} : { runId: options.runId }),
-      observer: { open: staticOpen },
-    });
-
-    if (!runResult.ok || runResult.observer === undefined) {
-      writeResult(command, io, runResult, formatRunHuman);
-      io.setExitCode(2);
-      return undefined;
-    }
-    return runResult.observer;
-  }
-  return renderObserver(options.cwd, options.run ?? "latest", {
-    open: staticOpen,
+  // A fresh run renders through its finished run, so the page shown is the run just written,
+  // never a directory swapped in under its id.
+  const runResult = await runDryRun({
+    cwd: options.cwd,
+    dryRun: true,
+    participantCount: requestedParticipantCount,
+    ...(options.runId === undefined ? {} : { runId: options.runId }),
+    observer: { open: staticOpen },
   });
+  if (!runResult.ok || runResult.observer === undefined) {
+    writeResult(command, io, runResult, formatRunHuman);
+    io.setExitCode(2);
+    return undefined;
+  }
+  return runResult.observer;
 }
 
 /** Write the result, then keep a live server attached when following. */

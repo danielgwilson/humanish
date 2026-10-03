@@ -112,7 +112,7 @@ describe("a CLI command shows the Observer its run rendered", () => {
     ["computer use", "fanout-demo", "watch"],
     ["concurrent shared world", "shared-world-concurrent-demo", "watch"],
   ] as const)("%s (%s), lab %s", async (_route, labId, mode) => {
-    const command = mode === "run" ? ["lab", "run", labId, "--json"] : ["watch", labId, "--detach"];
+    const command = mode === "run" ? ["run", labId, "--json"] : ["watch", labId, "--detach"];
     const { exitCode } = await runCli([...command, "--dry-run", "--run-id", RUN_ID, "--cwd", cwd]);
 
     expect(exitCode).toBe(0);
