@@ -70,7 +70,7 @@ describe("retained study cost accounting", () => {
       error: "analysis_validation_failed",
     });
     const result = await stats();
-    expect(result.schema).toBe("humanish.stats.v1");
+    expect(result.schema).toBe("humanish.stats.v2");
     expect(result.totals.estimatedSpendUsd).toBe(0.25);
     expect(result.totals.costs).toMatchObject({
       estimatedTotalUsd: 1.5,
@@ -80,7 +80,7 @@ describe("retained study cost accounting", () => {
       analysisDispatchedAttempts: 2,
       analysisUnpricedAttempts: 0,
     });
-    expect(result.labs[0]?.costs).toEqual(result.totals.costs);
+    expect(result.studies[0]?.costs).toEqual(result.totals.costs);
     expect(result.days[0]?.costs).toEqual(result.totals.costs);
     expect(formatStatsHuman(result)).toContain("known estimated spend: $1.50");
   });
@@ -310,7 +310,7 @@ describe("retained study cost accounting", () => {
       incompleteRunEstimates: 1,
     });
     expect(result.days[0]?.day).toBe("(undated)");
-    expect(result.labs[0]?.lab).toBe("(no lab)");
+    expect(result.studies[0]?.study).toBe("(no lab)");
     for (const options of [{ lab: "sample-lab" }, { since: "2026-09-01" }]) {
       const filtered = await computeStats(cwd, options);
       expect(filtered.ok && filtered.totals.runs).toBe(0);

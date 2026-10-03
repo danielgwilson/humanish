@@ -5,7 +5,8 @@ import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { digestText } from "../evidence/redaction.js";
 import type { LabPreflightCheck, LabPreflightResult, PreflightContext } from "./preflight.js";
 
-export const LAB_PREFLIGHT_SCHEMA = "humanish.lab-preflight-result.v1";
+/** The schema of `lab preflight` results: whether a study is ready to run on this machine. */
+export const STUDY_CHECK_SCHEMA = "humanish.study-check.v1";
 
 export function finalize(
   ctx: PreflightContext,
@@ -14,14 +15,14 @@ export function finalize(
   const checks = args?.check ? [...ctx.checks, args.check] : ctx.checks;
   const analysis = automaticAnalysisBudget(ctx.config.review?.analysis, ctx.route);
   return {
-    schema: LAB_PREFLIGHT_SCHEMA,
+    schema: STUDY_CHECK_SCHEMA,
     ...(analysis ? { analysis } : {}),
     ok:
       checks.every((check) => check.ok) &&
       ctx.targets.every((target) => target.status !== "failed" && target.status !== "blocked"),
     cwd: ctx.cwd,
-    lab: ctx.lab,
-    labId: ctx.labId,
+    study: ctx.lab,
+    studyId: ctx.labId,
     origin: ctx.origin,
     path: ctx.path,
     route: ctx.route,

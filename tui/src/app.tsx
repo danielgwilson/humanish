@@ -141,7 +141,7 @@ export function App({
         ]);
         if (cancelled) return;
         setError(undefined);
-        setData(project(index, labs.labs));
+        setData(project(index, labs.studies));
       } catch (cause) {
         if (cancelled) return;
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -240,7 +240,7 @@ export function App({
           // up in a map that does not contain it and reports the run it just started as "no longer
           // on disk": on every single start.
           const labs = await options.capabilities.listLabs(options.cwd);
-          setData(project(index, labs.labs));
+          setData(project(index, labs.studies));
           setLaunchNote(undefined);
           // Only follow the run if the operator is still where they launched from. This resolves up
           // to LAUNCH_RECORD_TIMEOUT_MS later, by which time they may have gone somewhere else, and

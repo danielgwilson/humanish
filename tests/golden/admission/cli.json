@@ -440,7 +440,7 @@
     "stdout": {
       "ok": false,
       "cwd": "[cwd]",
-      "lab": "adm-clone-codex-app-server",
+      "study": "adm-clone-codex-app-server",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
         "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); the lab clones and serves the app for that participant to drive. Got \"codex-app-server\"."
@@ -455,10 +455,10 @@
   "lab inspect adm-clone-codex-app-server --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.lab-inspect.v1",
+      "schema": "humanish.study-show.v1",
       "ok": false,
       "cwd": "[cwd]",
-      "lab": "adm-clone-codex-app-server",
+      "study": "adm-clone-codex-app-server",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
         "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); the lab clones and serves the app for that participant to drive. Got \"codex-app-server\"."
@@ -475,7 +475,7 @@
     "stdout": {
       "ok": false,
       "cwd": "[cwd]",
-      "lab": "adm-clone-no-serve",
+      "study": "adm-clone-no-serve",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
         "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."

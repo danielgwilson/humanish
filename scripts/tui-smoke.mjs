@@ -61,10 +61,10 @@ try {
         unreadable: [],
       }),
       listLabs: async () => ({
-        schema: "humanish.lab-list.v1",
+        schema: "humanish.study-list.v1",
         ok: true,
         cwd,
-        labs: [],
+        studies: [],
         warnings: [],
       }),
       readRunDetail: async () => null,

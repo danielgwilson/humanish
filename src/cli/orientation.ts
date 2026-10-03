@@ -53,7 +53,7 @@ export async function readOrientation(
     listRuns(cwd).catch(() => undefined),
   ]);
 
-  const labIds = (labs?.labs ?? [])
+  const labIds = (labs?.studies ?? [])
     .map((lab) => lab.id)
     .filter((id): id is string => typeof id === "string");
   const runIds = (runs?.runs ?? [])
@@ -61,7 +61,7 @@ export async function readOrientation(
     .filter((id): id is string => typeof id === "string");
   const latest = typeof runs?.latest === "string" ? runs.latest : runIds[0];
   const initialized =
-    (labs?.labs ?? []).some((lab) => lab.origin === "committed") || labIds.length > 0;
+    (labs?.studies ?? []).some((lab) => lab.origin === "committed") || labIds.length > 0;
 
   return {
     schema: ORIENTATION_SCHEMA,

@@ -146,7 +146,7 @@ const PINS: Readonly<Record<string, (json: Json) => unknown>> = {
   review: (json) => ({ verdict: json.verdict }),
   runs: (json) => ({ modes: rows(json.runs).map((run) => run.mode) }),
   export: (json) => ({ shareSafety: (json.shareSafety as Json).status }),
-  "lab-list": (json) => ({ ids: rows(json.labs).map((lab) => lab.id) }),
+  "lab-list": (json) => ({ ids: rows(json.studies).map((study) => study.id) }),
   "lab-preflight": (json) => ({
     route: json.route,
     reachability: json.reachability,

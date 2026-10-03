@@ -69,6 +69,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- The `--json` results that list, show, check and count studies say study where they said lab.
+  - `lab list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
+  - `lab inspect`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.
+  - `lab preflight`: `humanish.lab-preflight-result.v1` is `humanish.study-check.v1`, and `lab`
+    and `labId` are `study` and `studyId`.
+  - `stats`: `humanish.stats.v1` is `humanish.stats.v2`. `lab` is `study`, `labs` is `studies`,
+    and each row's `lab` is `study`.
+  - A study that cannot be found or parsed reports `study` where it reported `lab`.
+  - The summary the TUI reads is `humanish.study-summary.v1`, with `studyId`.
+
 - A study's result names its route and its study the same way on every route.
   - Computer-use, scripted, terminal and shared-world results carry
     `schema: "humanish.study-result.v1"`, `route` and `studyId`. So does a study's preview result.

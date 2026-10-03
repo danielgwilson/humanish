@@ -300,7 +300,7 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
         return session.connectionCheck;
       },
       labs: async () =>
-        (await listLabManifests(cwd)).labs.map((lab) => ({
+        (await listLabManifests(cwd)).studies.map((lab) => ({
           title: lab.title ?? lab.id,
           path: lab.path,
         })),

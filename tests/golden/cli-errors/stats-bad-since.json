@@ -2,7 +2,7 @@
   "exitCode": 2
 }
 {
-  "schema": "humanish.stats.v1",
+  "schema": "humanish.stats.v2",
   "ok": false,
   "cwd": "[cwd]",
   "error": {
