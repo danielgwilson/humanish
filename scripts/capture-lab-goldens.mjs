@@ -30,18 +30,7 @@ for (const lab of LABS) {
   rmSync(path.join(root, ".humanish", "runs", lab.runId), { recursive: true, force: true });
   execFileSync(
     "pnpm",
-    [
-      "humanish",
-      "--",
-      "lab",
-      "run",
-      lab.id,
-      ...lab.extra,
-      "--run-id",
-      lab.runId,
-      "--json",
-      "--no-open",
-    ],
+    ["humanish", "--", "run", lab.id, ...lab.extra, "--run-id", lab.runId, "--json", "--no-open"],
     {
       cwd: root,
       stdio: "inherit",

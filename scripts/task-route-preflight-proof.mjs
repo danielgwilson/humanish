@@ -26,9 +26,9 @@ for (const fixture of fixtures.filter(({ supported }) => !supported)) {
     ];
     await writeFile(join(cwd, "lab.yaml"), JSON.stringify(config));
     for (const [label, command, flags] of [
-      ["inspect", "inspect", []],
-      ["declared-mode", "run", ["--no-open"]],
-      ["dry-run", "run", ["--dry-run", "--no-open"]],
+      ["inspect", ["study", "show"], []],
+      ["declared-mode", ["run"], ["--no-open"]],
+      ["dry-run", ["run"], ["--dry-run", "--no-open"]],
     ]) {
       const proofPath = join(cwd, `${label}-proof.json`);
       const child = spawnSync(
@@ -38,8 +38,7 @@ for (const fixture of fixtures.filter(({ supported }) => !supported)) {
           "--import",
           preload,
           cli,
-          "lab",
-          command,
+          ...command,
           "lab.yaml",
           "--cwd",
           cwd,
