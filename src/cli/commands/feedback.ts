@@ -10,7 +10,9 @@ import type { FeedbackResult } from "../../feedback/feedback.js";
 import {
   candidateOption,
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
+  RUN_OPTION_DESCRIPTION,
   wantsJson,
   writeResult,
 } from "../io.js";
@@ -30,16 +32,16 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
       "after",
       "\nWith no candidates, feedback draft and feedback issue write a run-summary follow-up for a live run that verifies share_ready. A dry run gets no draft.\n",
     )
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleFeedbackList(io, options, command));
 
   feedback
     .command("draft")
     .description("Generate a public-safe feedback draft from verified evidence.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
     .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
     .option(
@@ -52,8 +54,8 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
   feedback
     .command("verify")
     .description("Verify the feedback draft for public issue eligibility.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
     .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
     .option(
@@ -66,8 +68,8 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
   feedback
     .command("issue")
     .description("Print Markdown for a public GitHub issue. Does not mutate GitHub.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in rendered filing instructions.")
     .option("--format <format>", "Output format.", "markdown")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
@@ -82,8 +84,8 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
   feedback
     .command("issue-url")
     .description("Print a prefilled public issue URL. Does not mutate GitHub.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in the generated URL.")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
     .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")

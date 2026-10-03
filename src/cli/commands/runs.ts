@@ -15,7 +15,13 @@ import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
-import { type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
+import {
+  type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  JSON_OPTION_DESCRIPTION,
+  RUN_OPTION_DESCRIPTION,
+  writeResult,
+} from "../io.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
   addRunOptions(
@@ -35,8 +41,8 @@ export function registerVerifyCommand(parent: Command, io: CliIo): void {
   parent
     .command("verify")
     .description("Check a run's evidence and share safety.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--verbose", "Print every check, passing ones included.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
@@ -57,8 +63,8 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
       "Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.",
     )
     .summary("Check that a run's resources were stopped.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await cleanupRun(options.cwd, options.run);
@@ -72,8 +78,8 @@ export function registerReviewCommand(parent: Command, io: CliIo): void {
     .command("review")
     .description("Show a run's review: verdict, summary and gaps.")
     .summary("Build a review packet from verified run evidence.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await readReview(options.cwd, options.run);
@@ -89,7 +95,7 @@ export function registerExportCommand(parent: Command, io: CliIo): void {
       "Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.",
     )
     .summary("Export a run as an Observer page or a redacted bundle.")
-    .option("--run <id>", "Run id or 'latest'.", "latest")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .addOption(
       new Option("--format <format>", "Output format; bundle creates a new standalone workspace.")
         .choices(["html", "bundle"])
@@ -107,12 +113,13 @@ export function registerExportCommand(parent: Command, io: CliIo): void {
       "--local-only",
       "Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file.",
     )
-    .option(
-      "--max-bytes <n>",
-      "Refuse an export larger than this.",
-      String(DEFAULT_EXPORT_MAX_BYTES),
+    .addOption(
+      new Option("--max-bytes <n>", "Refuse an export larger than this many bytes.").default(
+        String(DEFAULT_EXPORT_MAX_BYTES),
+        `${DEFAULT_EXPORT_MAX_BYTES / 1024 / 1024} MB`,
+      ),
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
@@ -158,7 +165,7 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
     .summary("Show cost, outcomes and durations across runs.")
     .option("--lab <id>", "Only runs from this lab id.")
     .option("--since <date>", "Only runs that started on or after this ISO date or datetime.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (options: { cwd: string; json?: boolean; lab?: string; since?: string }, command) => {
@@ -176,7 +183,7 @@ export function registerRunsCommand(parent: Command, io: CliIo): void {
   parent
     .command("runs")
     .description("List this project's runs and which one is latest.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
       const result = await listRuns(options.cwd);
@@ -236,8 +243,8 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
       "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.",
     )
     .summary("Stop an interrupted run's leftover sandboxes.")
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--run <id>", "Run id, or 'latest'.", "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .addOption(
       new Option(
         "--preflight",

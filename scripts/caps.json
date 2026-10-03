@@ -20,7 +20,8 @@
       "string-slice": 1,
       "string-rationale": 16,
       "string-plural-s": 54,
-      "string-caps": 216,
+      "string-caps": 215,
+      "string-cua": 5,
       "prompt-markers": 0
     },
     "tests": {

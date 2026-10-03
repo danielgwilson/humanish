@@ -10,9 +10,12 @@ import type { RunResult } from "../../run/results.js";
 import {
   type CliIo,
   collectRepeated,
+  CWD_OPTION_DESCRIPTION,
   formatRunHuman,
+  freePortOption,
   JSON_OPTION_DESCRIPTION,
   parseObserverPort,
+  RUN_OPTION_DESCRIPTION,
   wantsJson,
   writeResult,
 } from "../io.js";
@@ -27,21 +30,14 @@ export function registerObserveCommand(parent: Command, io: CliIo): void {
     parent
       .command("observe")
       .description(
-        "Open a saved run in the Observer, served on http://127.0.0.1. With --all, serve the run library.",
+        "Open a saved run in the Observer, served on http://127.0.0.1; without --run, the latest. With --all, serve the run library, opening on --run when given.",
       )
       .summary("Open a saved run in the Observer.")
-      .option(
-        "--run <id>",
-        "Run id or latest pointer; latest when omitted. With --all, the run the library opens on.",
-      )
+      .option("--run <id>", RUN_OPTION_DESCRIPTION)
       .option("--all", "Serve the whole run library, with optional tunnel-edge exposure.")
-      .option(
-        "--port <port>",
-        "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.",
-        "0",
-      )
-      .option("--cwd <path>", "Target project directory.", ".")
-      .option("--open", "Open the observer in the default browser.")
+      .addOption(freePortOption())
+      .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+      .option("--open", "Open the Observer in the default browser.")
       .option("--no-open", "Serve without opening a browser.")
       .option("--json", JSON_OPTION_DESCRIPTION),
   )
@@ -82,7 +78,7 @@ function addLibraryOptions(command: Command): Command {
     )
     .option(
       "--expose",
-      "Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe.",
+      "Share the library beyond this machine. Requires --oauth or --public-url, or --safe.",
     )
     .addOption(
       new Option(
@@ -103,13 +99,11 @@ function addLibraryOptions(command: Command): Command {
       "--allow-email <addr>",
       "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.",
       collectRepeated,
-      [],
     )
     .option(
       "--allow-domain <domain>",
       "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.",
       collectRepeated,
-      [],
     )
     .option(
       "--public-url <origin>",
@@ -130,8 +124,8 @@ function libraryOnlyFlags(options: ObserveOptions): string[] {
     options.tunnel === undefined ? [] : ["--tunnel"],
     options.tunnelDomain === undefined ? [] : ["--tunnel-domain"],
     options.oauth === undefined ? [] : ["--oauth"],
-    options.allowEmail.length === 0 ? [] : ["--allow-email"],
-    options.allowDomain.length === 0 ? [] : ["--allow-domain"],
+    (options.allowEmail?.length ?? 0) === 0 ? [] : ["--allow-email"],
+    (options.allowDomain?.length ?? 0) === 0 ? [] : ["--allow-domain"],
     options.publicUrl === undefined ? [] : ["--public-url"],
   ].flat();
 }
@@ -282,13 +276,9 @@ export function registerServeCommand(parent: Command, io: CliIo): void {
   addLibraryOptions(
     parent
       .command("serve", { hidden: true })
-      .option("--cwd <path>", "Target project directory.", ".")
-      .option(
-        "--port <port>",
-        "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.",
-        "0",
-      )
-      .option("--run <id>", "Land on this run id (or latest) instead of the library index.")
+      .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+      .addOption(freePortOption())
+      .option("--run <id>", RUN_OPTION_DESCRIPTION)
       .option("--open", "Open the library in the default browser.")
       .option("--no-open", "Serve without opening a browser.")
       .option("--json", JSON_OPTION_DESCRIPTION),
@@ -313,8 +303,8 @@ interface ServeOptions {
   tunnel?: "ngrok";
   tunnelDomain?: string;
   oauth?: "google";
-  allowEmail: string[];
-  allowDomain: string[];
+  allowEmail?: string[];
+  allowDomain?: string[];
 }
 
 type ServeFail = (code: ServeErrorCode, message: string) => void;
@@ -335,8 +325,8 @@ async function handleServe(io: CliIo, options: ServeOptions, command: Command): 
     ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
     ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
     ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
-    allowEmails: options.allowEmail,
-    allowDomains: options.allowDomain,
+    allowEmails: options.allowEmail ?? [],
+    allowDomains: options.allowDomain ?? [],
     ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
     safe: options.safe === true,
   });

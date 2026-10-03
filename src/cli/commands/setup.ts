@@ -22,6 +22,8 @@ import {
   applyEnvFileOption,
   CLI_VERSION,
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
   markInvocationEnvelopeWritten,
   wantsJson,
@@ -40,7 +42,7 @@ export function registerInitCommand(parent: Command, io: CliIo): void {
       "Set the local-browser starter to this loopback app URL (explicit port above 1023).",
     )
     .option("--local-mission <text>", "Set the local-browser participant mission.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
@@ -87,15 +89,12 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
     .command("doctor")
     .description("Explain project readiness and missing humanish setup.")
     .summary("Check what this project and machine need before a run.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option(
       "--lab <lab>",
       "Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls.",
     )
-    .option(
-      "--env-file <path>",
-      "Load a local env file for these setup checks without printing values.",
-    )
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (options: { cwd: string; lab?: string; envFile?: string; json?: boolean }, command) => {

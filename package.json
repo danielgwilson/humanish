@@ -6,8 +6,10 @@
     "cli",
     "computer-use",
     "synthetic-users",
+    "ui-testing",
     "usability-testing",
-    "user-research"
+    "user-research",
+    "ux-research"
   ],
   "homepage": "https://github.com/danielgwilson/humanish#readme",
   "bugs": {
