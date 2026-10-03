@@ -1,18 +1,24 @@
 #!/usr/bin/env node
-// Counts two kinds of drift in the site stylesheet. Each count is held to its cap in
-// scripts/caps.json, at `site.<kind>`, by the rules in lib/caps.mjs: a count above or below its cap
-// fails, and so does a count with no cap.
+// Counts kinds of drift in the site and Observer stylesheets. Each count is held to its cap in
+// scripts/caps.json, at `site.<kind>` or `observer.<kind>`, by the rules in lib/caps.mjs: a count
+// above or below its cap fails, and so does a count with no cap.
 //
-// - `css-hex-literals`: a hex color written into a rule. Colors are custom properties, defined in
-//   the token blocks at the top of the stylesheet, and rules read them with var().
-// - `unused-classes`: a class the stylesheet styles that no file under `SOURCES` names. A class
+// - `site.css-hex-literals`: a hex color written into a rule. Colors are custom properties, defined
+//   in the token blocks at the top of the stylesheet, and rules read them with var().
+// - `site.unused-classes`: a class the stylesheet styles that no file under `SOURCES` names. A class
 //   built from a template (`chip-${kind}`) is named when its prefix is.
+// - `site.literal-sizes`, `observer.literal-sizes`: a px font size, gap, padding, margin or radius
+//   written into a rule instead of read from the scale's --text-*, --space-* and --radius-* tokens.
+//   0, a 1px hairline and terms inside calc(), clamp(), min() and max() are not counted.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
 
 const STYLESHEET = "site/app/globals.css";
+const SITE_STYLESHEETS = [STYLESHEET, "site/app/docs/docs.css"];
+// styles/humanish/ is vendored from the component registry, which site/app/globals.css generates.
+const OBSERVER_STYLES = "observer/styles";
 const SOURCES = ["site/app", "site/components", "site/lib", "site/content"];
 // Shiki puts this class on the docs' highlighted code blocks.
 const LIBRARY_CLASSES = new Set(["shiki"]);
@@ -69,16 +75,46 @@ const unusedClasses = [...styled]
   )
   .map(([name, line]) => `${STYLESHEET}:${line} .${name}`);
 
+const SIZE_PROPERTY =
+  /^(font-size|gap|row-gap|column-gap|padding(-[a-z]+)*|margin(-[a-z]+)*|border(-[a-z]+)*-radius)$/;
+
+/** Every px size written into a rule of `file`, as "file:line value". */
+function literalSizes(file) {
+  const text = readFileSync(join(values.root, file), "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    (comment) => comment.replace(/[^\n]/g, " "),
+  );
+  const hits = [];
+  for (const match of text.matchAll(/([^;{}]*)([;{}])/g)) {
+    if (match[2] === "{") continue;
+    const declaration = /^\s*([a-z-]+)\s*:\s*([\s\S]*)$/.exec(match[1]);
+    if (!declaration || !SIZE_PROPERTY.test(declaration[1])) continue;
+    if (/\b(calc|clamp|min|max)\(/.test(declaration[2])) continue;
+    for (const px of declaration[2].matchAll(/(?<![\w.-])-?(\d+(?:\.\d+)?)px\b/g)) {
+      if (Number(px[1]) <= 1) continue;
+      const line =
+        text.slice(0, match.index).split("\n").length + (match[1].match(/^\s*\n/g)?.length ?? 0);
+      hits.push(`${file}:${line} ${declaration[1]}: ${px[0]}`);
+    }
+  }
+  return hits;
+}
+const observerStylesheets = readdirSync(join(values.root, OBSERVER_STYLES))
+  .filter((name) => name.endsWith(".css"))
+  .map((name) => join(OBSERVER_STYLES, name));
+
 const { flat, invalid } = flattenCaps(readCaps(values.caps));
 if (invalid.length > 0) {
   process.stderr.write(`${values.caps}: not a whole number at ${invalid.join(", ")}.\n`);
   process.exit(2);
 }
 const { ok, rose } = holdToCaps({
-  caps: new Map([...flat].filter(([path]) => path.startsWith("site."))),
+  caps: new Map([...flat].filter(([path]) => /^(site|observer)\./.test(path))),
   counts: new Map([
     ["site.css-hex-literals", hexLiterals],
     ["site.unused-classes", unusedClasses],
+    ["site.literal-sizes", SITE_STYLESHEETS.flatMap(literalSizes)],
+    ["observer.literal-sizes", observerStylesheets.flatMap(literalSizes)],
   ]),
   list: values.list,
   file: values.caps,

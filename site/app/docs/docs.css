@@ -20,7 +20,7 @@
   font-family: var(--sans);
 }
 .humanish-docs .prose {
-  font-size: 15px;
+  font-size: var(--text-15);
   line-height: 1.8;
   color: var(--body-c);
 }
@@ -33,13 +33,13 @@
 }
 .humanish-docs .prose :is(pre, code) {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--text-12);
 }
 .humanish-docs .prose pre {
   line-height: 1.75;
 }
 .humanish-docs .prose table {
-  font-size: 13px;
+  font-size: var(--text-13);
 }
 .humanish-docs .docs-edit {
   color: var(--muted);
@@ -49,5 +49,5 @@
   color: var(--accent);
 }
 .humanish-docs .tbtn {
-  margin-inline: 4px;
+  margin-inline: var(--space-4);
 }
