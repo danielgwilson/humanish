@@ -198,7 +198,7 @@ function costNote(args: CostArgs, totals: ReturnType<typeof costTotals>): string
   const { estimatedTotalUsd, anyNull, placeholder, minRatesAsOf } = totals;
   const estimateNote =
     estimatedTotalUsd === null
-      ? `No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. ${args.participants.some((participant) => participant.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/run/pricing.ts to estimate this model."}`
+      ? `No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. ${args.participants.some((participant) => participant.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Each line's reason says what is missing."}`
       : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (a lower bound: some lines are unmeasured or unpriced)" : ""}${placeholder ? "; it uses a placeholder rate, so confirm the rate before relying on the amount" : ""}. Every figure multiplies usage by a rate table (rates as of ${minRatesAsOf}, the oldest rate used), so it is an estimate and not the provider's charge.`;
   return (
     estimateNote +

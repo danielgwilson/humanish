@@ -152,6 +152,11 @@ The Unreleased section holds the full notes for the next version until it is tag
     `.humanish/runs/<id>/` prefix; the YAML block keeps the full paths.
 - `humanish cleanup` ends with "To stop leftover sandboxes, run humanish reclaim --run <id>." when
   an E2B sandbox in the run is not recorded as stopped. It adds `--cwd` when cleanup was given one.
+- A spend cap on a model humanish cannot price is refused with a message that lists the priced
+  models and says to remove `maxUsd` and `maxTotalUsd`. Before, the computer-use route said to add
+  a rate to `src/run/pricing.ts`, which the npm package does not ship, and the shared-world route
+  named no fix. The run cost note and the terminal ledger note no longer name that file; the cost
+  note says each line's reason names what is missing.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
