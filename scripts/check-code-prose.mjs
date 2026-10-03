@@ -30,15 +30,29 @@
 //   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
 //   verb phrases (`## Read the results`).
 // - `string-*`: em dashes, issue references and caps, plus `a later slice`, harness rationale words
-//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`) and `(s)` plurals, counted
-//   in src string literals and template text: what a person reads in an error, a warning or
-//   command output. Model prompts and the terminal's transcoding table are not counted
+//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`), `(s)` plurals and `CUA`
+//   (say computer-use), counted in src string literals and template text: what a person reads in
+//   an error, a warning or command output. Model prompts and the terminal's transcoding table are not counted
 //   (`STRING_EXCLUDED`), nor is the statement after a `prose-check: model prompt` comment, nor a
 //   string literal type.
+// - `prompt-markers`: each `prose-check: model prompt` comment in src. The marker exempts the
+//   statement after it, so a new one raises this cap where a reviewer sees it.
+//
+// The current docs are read too, by lib/doc-prose.mjs, under the roots `docs`, `site` and
+// `evidence`, for the kinds `issue-refs`, `caps`, `em-dashes`, `invariant-refs`, `authority`,
+// `honest`, `archaeology` (which adds `SLICE 2` and `phase 2` for docs) and `contrast` (`not
+// just`, `not merely`, `rather than`).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
+import {
+  DOC_WORD_KINDS,
+  ROOT_GUIDES,
+  docProse,
+  docRootOf,
+  isDocCapsEmphasis,
+} from "./lib/doc-prose.mjs";
 import { parseSync } from "oxc-parser";
 import { parse as parseYaml } from "yaml";
 import {
@@ -53,8 +67,9 @@ import {
   isCapsEmphasis,
 } from "./lib/prose-rules.mjs";
 
-// Each root is read recursively; node_modules and dist are skipped. src keeps the bare flag names.
-const ROOTS = ["src", "tests", "scripts", "tui"];
+// Each root is read recursively; node_modules and dist are skipped. A root's caps are under
+// `prose.<root>` in scripts/caps.json.
+const ROOTS = ["src", "tests", "scripts", "tui", "observer"];
 const SOURCE_FILE = /\.(?:ts|tsx|mts|mjs|js)$/;
 const SKIPPED_DIR = /(?:^|\/)(?:node_modules|dist)(?:\/|$)/;
 
@@ -108,8 +123,9 @@ const STRING_KINDS = {
   "string-rationale":
     /\b(?:fails? closed|fail-closed|by construction|hollow|honest(?:ly|y)?|safety lie)\b/gi,
   "string-plural-s": /[a-z](?<!\bhttp)\(s\)/g,
+  "string-cua": /\bCUA\b/g,
 };
-const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps"];
+const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps", "prompt-markers"];
 
 // The title and description of each committed lab, which `lab list`, `lab inspect` and the TUI
 // show. They are held to the comment rules; the test-name kinds do not apply.
@@ -247,6 +263,15 @@ for (const root of ROOTS) {
       const at = (match) => `${file}:${lineOf(comment.start + 2 + match.index)} ${match[0]}`;
       scan(comment.value, root, at, { testName: false });
     }
+    if (root === "src") {
+      for (const comment of parsed.comments) {
+        if (PROMPT_MARK.test(comment.value)) {
+          hits
+            .get("prose.src.prompt-markers")
+            .push(`${file}:${lineOf(comment.start)} model prompt`);
+        }
+      }
+    }
     if (root === "src" && !STRING_EXCLUDED.has(file)) {
       const prompts = promptRanges(parsed, text);
       for (const string of stringsOf(parsed.program)) {
@@ -293,6 +318,42 @@ for (const file of readdirSync(".")
       else if (!fenced && TITLE_CASE_HEADER.test(line))
         hits.get("prose.markdown.title-case-headers").push(`${file}:${index + 1} ${line}`);
     });
+}
+
+// The docs roots, counted over the pages docRootOf names.
+const DOC_ROOTS = ["docs", "site", "evidence"];
+const DOC_KINDS = ["issue-refs", "caps", "em-dashes", ...Object.keys(DOC_WORD_KINDS)];
+for (const root of DOC_ROOTS) {
+  for (const kind of DOC_KINDS) hits.set(`prose.${root}.${kind}`, []);
+}
+/** Every page under `dir`, recursively, with node_modules and dist skipped. */
+const pagesUnder = (dir) =>
+  existsSync(dir)
+    ? readdirSync(dir, { recursive: true, encoding: "utf8" })
+        .map((file) => `${dir}/${file.split("\\").join("/")}`)
+        .filter((file) => !SKIPPED_DIR.test(file))
+    : [];
+const docPages = [
+  ...ROOT_GUIDES.filter((file) => existsSync(file)),
+  ...pagesUnder("docs"),
+  ...pagesUnder("site/content/docs"),
+]
+  .filter((file) => docRootOf(file) !== undefined)
+  .sort();
+for (const file of docPages) {
+  const root = docRootOf(file);
+  const text = readFileSync(file, "utf8");
+  const prose = docProse(text);
+  const add = (kind, match) =>
+    hits
+      .get(`prose.${root}.${kind}`)
+      .push(`${file}:${text.slice(0, match.index).split("\n").length} ${match[0]}`);
+  for (const match of prose.matchAll(ISSUE_REF)) add("issue-refs", match);
+  for (const match of prose.matchAll(CAPS_RUN)) if (isDocCapsEmphasis(match[0])) add("caps", match);
+  for (const match of prose.matchAll(EM_DASH)) add("em-dashes", match);
+  for (const [kind, pattern] of Object.entries(DOC_WORD_KINDS)) {
+    for (const match of prose.matchAll(pattern)) add(kind, match);
+  }
 }
 
 const { flat, invalid } = flattenCaps(readCaps(values.caps));

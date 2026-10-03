@@ -90,12 +90,12 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
     if (count !== undefined) actor.count = count;
     if (entry.lanes !== undefined && entry.roster !== undefined) {
       return invalid(
-        `actors[${index}].lanes and actors[${index}].roster are mutually exclusive: declare participants in \`lanes\` OR in compact \`roster\` groups, not both.`,
+        `Set either actors[${index}].lanes or actors[${index}].roster, not both: list participants one by one in \`lanes\`, or in groups in \`roster\`.`,
       );
     }
     if (entry.roster !== undefined && count !== undefined) {
       return invalid(
-        `actors[${index}].roster and actors[${index}].count are mutually exclusive — use compact differentiated groups OR a homogeneous count, not both.`,
+        `Set either actors[${index}].roster or actors[${index}].count, not both: \`roster\` declares groups of distinct participants, and \`count\` declares identical ones.`,
       );
     }
     if (entry.roster !== undefined && entry.laneFocus !== undefined) {
@@ -202,7 +202,7 @@ function parseRosterGroups(
     }
     if (!PARTICIPANT_ID_PATTERN.test(groupId) || groupId.length > PARTICIPANT_ID_MAX_CHARS - 3) {
       return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS - 3} chars (generated participant ids use <id>-NN); got "${groupId}".`,
+        `actors[${actorIndex}].roster[${groupIndex}].id must match ${PARTICIPANT_ID_PATTERN} and be at most ${PARTICIPANT_ID_MAX_CHARS - 3} characters, because each generated participant id adds a suffix like "-01"; "${groupId}" is not.`,
       );
     }
     if (seenGroupIds.has(groupId)) {
@@ -383,7 +383,7 @@ function parseTasks(
     const goal = str(entry.goal);
     if (goal === undefined) {
       return invalid(
-        `\`${field}[${index}].goal\` is required — what the PARTICIPANT is asked to do, in their language.`,
+        `\`${field}[${index}].goal\` is required: what the participant is asked to do, in their own words.`,
       );
     }
     const successResult = parseStopWhen(entry.success, `${field}[${index}].success`);

@@ -6,17 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/check-docs-highlighting.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "registry:build": "node scripts/extract-registry-css.mjs && shadcn build registry.json -o public/r",
     "registry:check": "pnpm registry:build && git add -N -- registry/css public/r && git diff --exit-code -- registry/css public/r"
   },
   "dependencies": {
-    "@flags-sdk/posthog": "^1.1.0",
     "@types/mdx": "^2.0.14",
     "@vercel/analytics": "^2.0.1",
-    "flags": "^4.3.1",
     "fumadocs-core": "16.15.15",
     "fumadocs-mdx": "15.4.5",
     "fumadocs-ui": "16.15.15",

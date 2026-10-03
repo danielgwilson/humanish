@@ -60,10 +60,10 @@ import {
   type LiveTerminalPlan,
   type RunLiveTerminalSessionArgs,
   type RunTerminalProductLabOptions,
-  TERMINAL_PRODUCT_LAB_SCHEMA,
   type TerminalProductLabResult,
   type TerminalRunInput,
 } from "./types.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /**
  * The config-taking entry point. It plans, returns a refusal with the same envelope and analysis
@@ -88,10 +88,9 @@ export function terminalLabRefusal(
 ): Promise<TerminalProductLabResult> {
   const { config, dryRun } = options;
   const refused: TerminalProductLabResult = {
-    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+    ...studyResultIdentity("terminal", config.id),
     ok: false,
     cwd: path.resolve(options.cwd),
-    labId: config.id,
     actor: refusal.actor ?? config.actors[0]?.type ?? "",
     product: config.subject.product?.name ?? "",
     dryRun,
@@ -211,10 +210,9 @@ function terminalFailure(
 ): RunLiveTerminalSessionArgs["failed"] {
   const cwd = path.resolve(input.cwd);
   return (code, message) => ({
-    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+    ...studyResultIdentity("terminal", plan.labId),
     ok: false,
     cwd,
-    labId: plan.labId,
     actor: plan.actor,
     product: plan.product.name,
     dryRun: plan.dryRun,

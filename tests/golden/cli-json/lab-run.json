@@ -4,6 +4,7 @@
     "artifactRoot": "string",
     "bundlePath": "string",
     "cwd": "string",
+    "labId": "string",
     "latestPath": "string",
     "mode": "string",
     "observer": {
@@ -23,9 +24,11 @@
     },
     "ok": "boolean",
     "reviewPath": "string",
+    "route": "string",
     "runId": "string",
     "schema": "string",
     "simCount": "number",
+    "studyId": "string",
     "warnings": []
   }
 }

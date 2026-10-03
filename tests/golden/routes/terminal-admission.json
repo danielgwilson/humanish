@@ -1,9 +1,11 @@
 {
   "real receiving": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -20,10 +22,12 @@
     }
   },
   "media": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -40,10 +44,12 @@
     }
   },
   "invalid analysis": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -55,10 +61,12 @@
     }
   },
   "tasks": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -75,10 +83,12 @@
     }
   },
   "unregistered actor": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "not-an-actor",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -95,10 +105,12 @@
     }
   },
   "runtime version": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -115,10 +127,12 @@
     }
   },
   "product without surfaces": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "w",
     "dryRun": true,
@@ -135,10 +149,12 @@
     }
   },
   "live without caps": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": false,
@@ -155,10 +171,12 @@
     }
   },
   "live positive maxUsd": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": false,
@@ -175,10 +193,12 @@
     }
   },
   "real receiving and media": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -195,10 +215,12 @@
     }
   },
   "media and invalid analysis": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -210,10 +232,12 @@
     }
   },
   "invalid analysis and tasks": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -225,10 +249,12 @@
     }
   },
   "tasks and unregistered actor": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "not-an-actor",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -245,10 +271,12 @@
     }
   },
   "unregistered actor and runtime version": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "not-an-actor",
     "product": "widgetsmith-cli",
     "dryRun": true,
@@ -265,10 +293,12 @@
     }
   },
   "runtime version and product without surfaces": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "w",
     "dryRun": true,
@@ -285,10 +315,12 @@
     }
   },
   "product without surfaces and live without caps": {
-    "schema": "humanish.terminal-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "terminal",
+    "studyId": "terminal-admission",
+    "labId": "terminal-admission",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "terminal-admission",
     "actor": "codex-exec",
     "product": "w",
     "dryRun": false,

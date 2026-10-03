@@ -1,39 +1,11 @@
 {
-  "exitCode": 0,
+  "exitCode": 2,
   "shape": {
-    "candidates": [],
     "cwd": "string",
-    "draft": {
-      "acceptance_proof": [
-        "string"
-      ],
-      "actor": "string",
-      "actual": "string",
-      "adapter_id": "string",
-      "evidence": [
-        {
-          "kind": "string",
-          "note": "string",
-          "path": "string"
-        }
-      ],
-      "expected": "string",
-      "failure_owner": "string",
-      "idempotency_key": "string",
-      "persona_id": "string",
-      "proposed_next_state": "string",
-      "redaction": {
-        "notes": "string",
-        "status": "string"
-      },
-      "run_id": "string",
-      "scenario_id": "string",
-      "schema": "string",
-      "source_bundle": "string",
-      "substrate": "string",
-      "summary": "string"
+    "error": {
+      "code": "string",
+      "message": "string"
     },
-    "draftPath": "string",
     "ok": "boolean",
     "run": "string",
     "schema": "string"

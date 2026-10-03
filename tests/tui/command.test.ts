@@ -104,7 +104,7 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
     expect(parsed.ok).toBe(false);
     expect(parsed.error.code).toBe("HUMANISH_TUI_REQUIRES_TTY");
     expect(parsed.error.message).toContain("humanish runs --json");
-    expect(parsed.error.message).toContain("humanish lab run --json");
+    expect(parsed.error.message).toContain("humanish run <lab> --json");
     expect(result.exitCode).toBe(2);
   });
 

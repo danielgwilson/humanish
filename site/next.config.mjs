@@ -54,6 +54,8 @@ const nextConfig = {
       { source: "/docs/known-limits", destination: "/failure-modes", permanent: false },
       // The 2026-09-16 run was published here before the 2026-09-27 run replaced it on /demo.
       { source: "/runs/lobby-0916-full/:path*", destination: "/demo", permanent: true },
+      // The 2026-09-14 homepage was kept here for review until the homepage experiment ended.
+      { source: "/legacy", destination: "/", permanent: true },
     ];
   },
   async headers() {

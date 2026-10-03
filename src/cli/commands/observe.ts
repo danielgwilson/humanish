@@ -10,9 +10,12 @@ import type { RunResult } from "../../run/results.js";
 import {
   type CliIo,
   collectRepeated,
+  CWD_OPTION_DESCRIPTION,
   formatRunHuman,
+  freePortOption,
   JSON_OPTION_DESCRIPTION,
   parseObserverPort,
+  RUN_OPTION_DESCRIPTION,
   wantsJson,
   writeResult,
 } from "../io.js";
@@ -23,20 +26,21 @@ import {
 } from "../observer-follow.js";
 
 export function registerObserveCommand(parent: Command, io: CliIo): void {
-  parent
-    .command("observe")
-    .description("Follow a run's saved evidence in Observer over loopback http://127.0.0.1.")
-    .summary("Follow a run's saved evidence over loopback http.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option(
-      "--port <port>",
-      "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.",
-      "0",
-    )
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--open", "Open the observer in the default browser.")
-    .option("--no-open", "Serve without opening a browser.")
-    .option("--json", JSON_OPTION_DESCRIPTION)
+  addLibraryOptions(
+    parent
+      .command("observe")
+      .description(
+        "Open a saved run in the Observer, served on http://127.0.0.1; without --run, the latest. With --all, serve the run library, opening on --run when given.",
+      )
+      .summary("Open a saved run in the Observer.")
+      .option("--run <id>", RUN_OPTION_DESCRIPTION)
+      .option("--all", "Serve the whole run library, with optional tunnel-edge exposure.")
+      .addOption(freePortOption())
+      .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+      .option("--open", "Open the Observer in the default browser.")
+      .option("--no-open", "Serve without opening a browser.")
+      .option("--json", JSON_OPTION_DESCRIPTION),
+  )
     .addHelpText(
       "after",
       [
@@ -46,81 +50,177 @@ export function registerObserveCommand(parent: Command, io: CliIo): void {
         "  humanish observe --run latest",
         "  humanish observe --run <runId> --port 8732",
         "  humanish observe --no-open --json",
+        "  humanish observe --all",
+        "  humanish observe --all --expose --tunnel ngrok --oauth google --allow-email you@example.com",
+        "  humanish observe --all --safe --expose --tunnel ngrok",
+        "  humanish observe --all --expose --public-url https://observer.example.com",
         "",
-        "The server binds 127.0.0.1 only and exposes just the run's bundle directory.",
-        "It stays attached until Ctrl-C; file:// security policy and live refresh are why",
-        "loopback http is preferred over opening the index.html path directly.",
+        "The server binds 127.0.0.1 only. One run exposes just that run's bundle directory; --all",
+        "serves the run library. It stays attached until Ctrl-C; file:// security policy and live",
+        "refresh are why loopback http is preferred over opening the index.html path directly.",
+        "",
+        "--safe, --expose, --tunnel, --tunnel-domain, --oauth, --allow-email, --allow-domain and",
+        "--public-url need --all. Exposure only ever happens through an authenticated edge (ngrok",
+        "--oauth google, or an operator --public-url you secure) forwarding to the loopback port;",
+        "the server carries no in-process auth. Live desktop stream URLs are never served; remote",
+        "viewers see persisted evidence only. --safe composes with any exposure.",
       ].join("\n"),
     )
-    .action(
-      async (
-        options: {
-          cwd: string;
-          json?: boolean;
-          open?: boolean;
-          port: string;
-          run: string;
-        },
-        command,
-      ) => {
-        const port = parseObserverPort(options.port);
-        if (port === null) {
-          const result: RunResult = {
-            schema: "humanish.run-result.v1",
-            ok: false,
-            cwd: options.cwd,
-            warnings: [],
-            error: {
-              code: "HUMANISH_INVALID_PORT",
-              message: "--port must be an integer between 0 and 65535.",
-            },
-          };
-          writeResult(command, io, result, formatRunHuman);
-          io.setExitCode(2);
-          return;
-        }
+    .action((options: ObserveOptions, command: Command) => handleObserve(io, options, command));
+}
 
-        const rendered = await renderObserver(options.cwd, options.run, { open: false });
-        if (!rendered.ok || !rendered.observerPath) {
-          writeResult(command, io, rendered, formatObserverHuman);
-          io.setExitCode(2);
-          return;
-        }
-
-        // Reuse the contained current-data projection, scoped to this run. A raw static
-        // server would miss runtime status and could replay stored iframe grants.
-        const wantsMachine = wantsJson(command);
-        const shouldOpen =
-          options.open === false
-            ? false
-            : options.open === true
-              ? true
-              : !wantsMachine && process.stdout.isTTY === true;
-
-        const server = await serveObserver(rendered, { open: false, port, scope: "run" });
-        const openResult: { opened: boolean; command?: string; warning?: string } = shouldOpen
-          ? openTarget(server.url)
-          : { opened: false };
-
-        const result: ObserverResult = {
-          ...rendered,
-          observerUrl: server.url,
-          serverUrl: server.url,
-          opened: openResult.opened,
-          ...(openResult.command ? { openCommand: openResult.command } : {}),
-          warnings: [
-            ...rendered.warnings,
-            "Observer is served read-only over loopback http on 127.0.0.1; only this run's bundle directory is exposed.",
-            ...(openResult.warning ? [openResult.warning] : []),
-          ],
-        };
-
-        writeResult(command, io, result, formatObserverHuman);
-        io.setExitCode(0);
-
-        await serveObserveUntilSignal(io, server, { json: wantsMachine });
-      },
+/** The run library's flags, on `observe --all` and the hidden `serve` alias. */
+function addLibraryOptions(command: Command): Command {
+  return command
+    .option(
+      "--safe",
+      "Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed).",
+    )
+    .option(
+      "--expose",
+      "Share the library beyond this machine. Requires --oauth or --public-url, or --safe.",
+    )
+    .addOption(
+      new Option(
+        "--tunnel <provider>",
+        "Spawn the external tunnel binary against the loopback port.",
+      ).choices(["ngrok"]),
+    )
+    .option(
+      "--tunnel-domain <domain>",
+      "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.",
+    )
+    .addOption(
+      new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices([
+        "google",
+      ]),
+    )
+    .option(
+      "--allow-email <addr>",
+      "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.",
+      collectRepeated,
+    )
+    .option(
+      "--allow-domain <domain>",
+      "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.",
+      collectRepeated,
+    )
+    .option(
+      "--public-url <origin>",
+      "Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding.",
     );
+}
+
+interface ObserveOptions extends Omit<ServeOptions, "run"> {
+  all?: boolean;
+  run?: string;
+}
+
+/** The library flags set on a one-run observe, as typed on the command line. */
+function libraryOnlyFlags(options: ObserveOptions): string[] {
+  return [
+    options.safe === true ? ["--safe"] : [],
+    options.expose === true ? ["--expose"] : [],
+    options.tunnel === undefined ? [] : ["--tunnel"],
+    options.tunnelDomain === undefined ? [] : ["--tunnel-domain"],
+    options.oauth === undefined ? [] : ["--oauth"],
+    (options.allowEmail?.length ?? 0) === 0 ? [] : ["--allow-email"],
+    (options.allowDomain?.length ?? 0) === 0 ? [] : ["--allow-domain"],
+    options.publicUrl === undefined ? [] : ["--public-url"],
+  ].flat();
+}
+
+function refuseObserve(command: Command, io: CliIo, cwd: string, error: RunResult["error"]): void {
+  const result: RunResult = {
+    schema: "humanish.run-result.v1",
+    ok: false,
+    cwd,
+    warnings: [],
+    ...(error === undefined ? {} : { error }),
+  };
+  writeResult(command, io, result, formatRunHuman);
+  io.setExitCode(2);
+}
+
+/** `observe` shows one run (default latest); `observe --all` serves the run library. */
+async function handleObserve(io: CliIo, options: ObserveOptions, command: Command): Promise<void> {
+  if (options.all === true) {
+    await handleServe(io, options, command);
+    return;
+  }
+  const libraryOnly = libraryOnlyFlags(options);
+  if (libraryOnly.length > 0) {
+    refuseObserve(command, io, options.cwd, {
+      code: "HUMANISH_OBSERVE_OPTION_CONFLICT",
+      message: `${libraryOnly.join(", ")} ${libraryOnly.length === 1 ? "needs" : "need"} --all: humanish observe --all ${libraryOnly.join(" ")}.`,
+    });
+    return;
+  }
+  await observeRun(io, { ...options, run: options.run ?? "latest" }, command);
+}
+
+/** One run's Observer over loopback, until a signal stops it. */
+async function observeRun(
+  io: CliIo,
+  options: { cwd: string; open?: boolean; port: string; run: string },
+  command: Command,
+): Promise<void> {
+  const port = parseObserverPort(options.port);
+  if (port === null) {
+    const result: RunResult = {
+      schema: "humanish.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings: [],
+      error: {
+        code: "HUMANISH_INVALID_PORT",
+        message: "--port must be an integer between 0 and 65535.",
+      },
+    };
+    writeResult(command, io, result, formatRunHuman);
+    io.setExitCode(2);
+    return;
+  }
+
+  const rendered = await renderObserver(options.cwd, options.run, { open: false });
+  if (!rendered.ok || !rendered.observerPath) {
+    writeResult(command, io, rendered, formatObserverHuman);
+    io.setExitCode(2);
+    return;
+  }
+
+  // Reuse the contained current-data projection, scoped to this run. A raw static
+  // server would miss runtime status and could replay stored iframe grants.
+  const wantsMachine = wantsJson(command);
+  const shouldOpen =
+    options.open === false
+      ? false
+      : options.open === true
+        ? true
+        : !wantsMachine && process.stdout.isTTY === true;
+
+  const server = await serveObserver(rendered, { open: false, port, scope: "run" });
+  const openResult: { opened: boolean; command?: string; warning?: string } = shouldOpen
+    ? openTarget(server.url)
+    : { opened: false };
+
+  const result: ObserverResult = {
+    ...rendered,
+    observerUrl: server.url,
+    serverUrl: server.url,
+    opened: openResult.opened,
+    ...(openResult.command ? { openCommand: openResult.command } : {}),
+    warnings: [
+      ...rendered.warnings,
+      "Observer is served read-only over loopback http on 127.0.0.1; only this run's bundle directory is exposed.",
+      ...(openResult.warning ? [openResult.warning] : []),
+    ],
+  };
+
+  writeResult(command, io, result, formatObserverHuman);
+  io.setExitCode(0);
+
+  await serveObserveUntilSignal(io, server, { json: wantsMachine });
 }
 
 async function serveObserveUntilSignal(
@@ -171,84 +271,25 @@ async function serveObserveUntilSignal(
   });
 }
 
+// Removed in 0.109.0: `serve` stays one minor as a hidden alias of `observe --all`.
 export function registerServeCommand(parent: Command, io: CliIo): void {
-  parent
-    .command("serve")
-    .description(
-      "Serve the local run library over loopback http, with optional tunnel-edge authenticated exposure.",
-    )
-    .summary("Serve the run library; optional tunnel-edge exposure.")
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option(
-      "--port <port>",
-      "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.",
-      "0",
-    )
-    .option("--run <id>", "Land on this run id (or latest) instead of the library index.")
-    .option(
-      "--safe",
-      "Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed).",
-    )
-    .option(
-      "--expose",
-      "Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe.",
-    )
-    .addOption(
-      new Option(
-        "--tunnel <provider>",
-        "Spawn the external tunnel binary against the loopback port.",
-      ).choices(["ngrok"]),
-    )
-    .option(
-      "--tunnel-domain <domain>",
-      "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.",
-    )
-    .addOption(
-      new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices([
-        "google",
-      ]),
-    )
-    .option(
-      "--allow-email <addr>",
-      "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.",
-      collectRepeated,
-      [],
-    )
-    .option(
-      "--allow-domain <domain>",
-      "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.",
-      collectRepeated,
-      [],
-    )
-    .option(
-      "--public-url <origin>",
-      "Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding.",
-    )
-    .option("--open", "Open the library in the default browser.")
-    .option("--no-open", "Serve without opening a browser.")
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .addHelpText(
-      "after",
-      [
-        "",
-        "Happy path:",
-        "  humanish serve",
-        "  humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com",
-        "  humanish serve --safe --expose --tunnel ngrok",
-        "  humanish serve --expose --public-url https://observer.example.com",
-        "",
-        "Agent/CI path:",
-        "  humanish serve --json --no-open",
-        "",
-        "The server always binds 127.0.0.1; exposure only ever happens through an authenticated",
-        "edge (ngrok --oauth google, or an operator --public-url you secure) forwarding to the",
-        "loopback port. The server carries no in-process auth; the gate lives at the edge. Live",
-        "desktop stream URLs are never served here; remote viewers see persisted evidence only.",
-        "--safe composes with any exposure for defense in depth.",
-      ].join("\n"),
-    )
-    .action((options, command) => handleServe(io, options, command));
+  addLibraryOptions(
+    parent
+      .command("serve", { hidden: true })
+      .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+      .addOption(freePortOption())
+      .option("--run <id>", RUN_OPTION_DESCRIPTION)
+      .option("--open", "Open the library in the default browser.")
+      .option("--no-open", "Serve without opening a browser.")
+      .option("--json", JSON_OPTION_DESCRIPTION),
+  ).action((options: ServeOptions, command: Command) => {
+    io.writeErr(SERVE_DEPRECATION);
+    return handleServe(io, options, command);
+  });
 }
+
+const SERVE_DEPRECATION =
+  "warning: humanish serve is deprecated and is removed in the next minor. Use humanish observe --all.\n";
 
 interface ServeOptions {
   cwd: string;
@@ -262,8 +303,8 @@ interface ServeOptions {
   tunnel?: "ngrok";
   tunnelDomain?: string;
   oauth?: "google";
-  allowEmail: string[];
-  allowDomain: string[];
+  allowEmail?: string[];
+  allowDomain?: string[];
 }
 
 type ServeFail = (code: ServeErrorCode, message: string) => void;
@@ -284,8 +325,8 @@ async function handleServe(io: CliIo, options: ServeOptions, command: Command): 
     ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
     ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
     ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
-    allowEmails: options.allowEmail,
-    allowDomains: options.allowDomain,
+    allowEmails: options.allowEmail ?? [],
+    allowDomains: options.allowDomain ?? [],
     ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
     safe: options.safe === true,
   });
@@ -482,7 +523,7 @@ function hiddenRunLines(groups: readonly HiddenRunGroup[]): string[] {
   }
   if (groups.some((group) => group.reasons.join(",") === "RAW_SCREENSHOTS"))
     lines.push(
-      "share: a run held back only for RAW_SCREENSHOTS can be copied with blurred screenshots: `humanish export --run <id> --format bundle --redact-screenshots --out <dir>`, then `humanish serve --safe --cwd <dir>`",
+      "share: a run held back only for RAW_SCREENSHOTS can be copied with blurred screenshots: `humanish export --run <id> --format bundle --redact-screenshots --out <dir>`, then `humanish observe --all --safe --cwd <dir>`",
     );
   lines.push("why: `humanish verify --run <id>` explains each reason");
   return lines;
@@ -492,7 +533,7 @@ function formatServeHuman(result: ServeResult): string {
   if (!result.ok) {
     return (
       [
-        "humanish serve failed",
+        "humanish observe --all failed",
         ...(result.error ? [`error: ${result.error.code} ${result.error.message}`] : []),
         ...result.warnings.map((warning) => `warning: ${warning}`),
       ].join("\n") + "\n"
@@ -501,7 +542,7 @@ function formatServeHuman(result: ServeResult): string {
 
   const modeSuffix = result.safe ? " (share_ready only)" : "";
   const lines = [
-    "humanish serve",
+    "humanish observe --all",
     `mode: ${result.mode}${modeSuffix}`,
     `library: ${result.url ?? ""}`,
     `runs: ${result.runsListed}`,

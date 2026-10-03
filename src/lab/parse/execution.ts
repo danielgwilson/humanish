@@ -114,7 +114,7 @@ function parseTerminal(
       // exec stream, and an interactive-PTY label would overstate the mechanism. True duplex PTY
       // does not ship.
       return invalid(
-        "`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; true duplex PTY transport is not supported.",
+        "`execution.terminal.transport` must be exec-stream: the route captures the agent's output with stdin closed, and an interactive terminal (pty) is not supported.",
       );
     }
     terminal.transport = transport;
@@ -129,7 +129,7 @@ function parseTerminal(
       // check exist (the terminal route's stdin rule); shipping it now would let an assisted run
       // pose as autonomous green proof.
       return invalid(
-        "`execution.terminal.stdin: sent` (assisted input) is not supported — the current route cannot capture assisted input with a non-comparable marker. stdin is disabled by default.",
+        "`execution.terminal.stdin: sent` (assisted input) is not supported: the route cannot yet mark a run that received typed help as different from an unassisted one. Remove the setting; stdin stays closed.",
       );
     }
     terminal.stdin = stdin;
@@ -199,7 +199,7 @@ function parseDesktop(
     const template = str(raw.template);
     if (template === undefined) {
       return invalid(
-        "`execution.desktop.template` must be a non-empty E2B desktop template NAME or ID when set (any string is accepted; there is no allowlist).",
+        "`execution.desktop.template` must be a non-empty E2B desktop template name or ID when it is set. Any name is accepted.",
       );
     }
     desktop.template = template;
@@ -400,7 +400,7 @@ function parseReviewScorer(
   const unknownKeys = Object.keys(raw).filter((key) => key !== "ref");
   if (unknownKeys.length > 0) {
     return invalid(
-      `Unknown \`review.scorer\` field(s): ${unknownKeys.join(", ")}. review.scorer accepts only \`ref\` (a repo-relative scorer-module path).`,
+      `\`review.scorer\` accepts only \`ref\` (a scorer module path relative to the project), and these fields are unknown: ${unknownKeys.join(", ")}.`,
     );
   }
   const ref = str(raw.ref);

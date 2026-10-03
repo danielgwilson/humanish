@@ -72,7 +72,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
   },
   {
     field: "lanes",
-    reason: "fan-out is a computer-use route capability; terminal fan-out is a later slice",
+    reason: "only the computer-use route runs more than one participant",
     applies: (actor, routes) => routes.terminal && Boolean(rosterOf(actor)),
   },
   {
@@ -108,7 +108,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
 ];
 
 const TERMINAL_ONLY = "needs subject.source: terminal-product + a registered terminal actor";
-const RESERVED = "reserved for a later slice; not yet consumed";
+const RESERVED = "reserved; no route reads it yet";
 
 /** Rows for the rest of the config, reported after the actor rows, in this order. */
 const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
@@ -159,7 +159,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   {
     field: "subject.exposure",
     reason:
-      "the synthetic-subject attestation for a getHost-exposed plane; needs shared-world or clone × e2b-desktop × scripted-browser",
+      "the statement that a subject served on a public sandbox URL holds only synthetic data; needs shared-world or clone × e2b-desktop × scripted-browser",
     applies: (config, routes) =>
       config.subject.exposure !== undefined &&
       !routes.shared &&
@@ -172,7 +172,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   {
     field: "comms.email",
     reason:
-      "the in-sandbox email/SMS catch needs a harness-provisioned subject to host it — subject.source: clone or local-tree; on an app-url or operator-provided subject humanish holds no sandbox handle. Declare `comms.email.external` to run the catch yourself: humanish then points the persona at your inbox, drains your catch, and writes the same evidence — see #328",
+      "the email catch runs in a sandbox humanish provisions, which needs `subject.source: clone` or `local-tree`, and an app-url subject has none. To use email here, run the catch yourself with `humanish comms catch` and declare `comms.email.external`: humanish then points each persona at your inbox, reads your catch and records the same evidence",
     applies: (config) =>
       config.comms?.email?.kind === "fake" &&
       config.comms.email.external === undefined &&
@@ -216,8 +216,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   // cannot.
   {
     field: "execution.caps",
-    reason:
-      "the fail-closed spend abort is a computer-use route capability; needs a computer-use actor on e2b-desktop",
+    reason: "only the computer-use route enforces it, with a computer-use actor on e2b-desktop",
     applies: (config, routes) => Boolean(config.execution?.caps) && !routes.cua,
   },
   // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}:
@@ -389,7 +388,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
     inert.length === 0
       ? []
       : [
-          `Forward-declared fields are set but not yet consumed by the engine (planned for a later slice): ${inert.join(", ")}.`,
+          `These fields are set, but no route reads them yet, so they have no effect: ${inert.join(", ")}.`,
         ];
   // A declared cap below the participant count is legal but loud: the roster promises N live actors
   // and the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in
@@ -413,7 +412,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
     const uncovered = participantIds.filter((id) => !covered.has(id));
     if (covered.size > 0 && uncovered.length > 0 && participantIds.length > 1) {
       warnings.push(
-        `comms.email covers ${covered.size} of ${participantIds.length} participants; the uncovered participant(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`,
+        `comms.email covers ${covered.size} of ${participantIds.length} participants. These get no inbox and are never told one exists: ${uncovered.join(", ")}. Add a recipient with an address for each one whose flow needs email.`,
       );
     }
   }

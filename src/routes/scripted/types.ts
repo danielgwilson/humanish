@@ -8,8 +8,7 @@ import type { ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import type { LabDeps } from "../../lab/lab-deps.js";
 import type { RunLabHomes } from "../../lab/run-lab-homes.js";
-
-export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
+import { type StudyResultIdentity } from "../../run/study-result.js";
 
 /** What a scripted run takes besides its plan. The plan carries the config, dry run and lab. */
 export type ScriptedRunInput = Omit<RunScriptedBrowserLabOptions, "config" | "dryRun" | "lab">;
@@ -41,14 +40,13 @@ interface ScriptedBrowserLabSession {
   screenshots: number;
 }
 
-export interface ScriptedBrowserLabResult extends AutomaticAnalysisResult {
-  schema: typeof SCRIPTED_BROWSER_LAB_SCHEMA;
+export interface ScriptedBrowserLabResult
+  extends AutomaticAnalysisResult, StudyResultIdentity<"scripted"> {
   /** True when the bundle verified and (dry-run, or every session reached a terminal verdict
    * without a harness error). The subject failing the script is successful evidence, and the lab
    * does not fail for it. */
   ok: boolean;
   cwd: string;
-  labId: string;
   /** The registry-resolved actor id that ran (or would run) the sessions. */
   actor: string;
   appUrl: string;

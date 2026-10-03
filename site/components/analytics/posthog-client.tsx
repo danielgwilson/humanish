@@ -9,22 +9,6 @@ declare global {
   }
 }
 
-/**
- * Loads posthog-js after the page is idle (never on the critical path) and initialises it
- * once, bootstrapped with the visitor id the proxy assigned (cookie `hm_vid`) and the flag
- * values the page was rendered with, so the client never re-evaluates flags and the
- * exposure it reports (`$feature_flag_called`) names the variant the visitor saw.
- * Session recording and surveys stay off: a landing page has no business recording its
- * visitors, and their scripts were a third of the page's unused JavaScript.
- * Without NEXT_PUBLIC_POSTHOG_KEY this renders nothing and captures nothing.
- */
-const VISITOR_COOKIE = "hm_vid";
-
-function readVisitorId(): string | null {
-  const m = document.cookie.match(new RegExp(`(?:^|; )${VISITOR_COOKIE}=([^;]+)`));
-  return m?.[1] ? decodeURIComponent(m[1]) : null;
-}
-
 // A long timeout: the 4 s one forced posthog-js to initialise while a throttled phone was still
 // busy hydrating (a 470 ms task in the trace), which is exactly the window it should stay out of.
 // On an idle main thread the callback still runs within a second of load.
@@ -37,7 +21,13 @@ function whenIdle(task: () => void): () => void {
   return () => window.clearTimeout(id);
 }
 
-export default function PostHogClient({ flags }: { flags: Record<string, string> }) {
+/**
+ * Loads posthog-js after the page is idle (never on the critical path) and initialises it once.
+ * Session recording and surveys stay off: a landing page has no business recording its
+ * visitors, and their scripts were a third of the page's unused JavaScript.
+ * Without NEXT_PUBLIC_POSTHOG_KEY this renders nothing and captures nothing.
+ */
+export default function PostHogClient() {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     if (!key || window.__hmPosthog) return;
@@ -46,7 +36,6 @@ export default function PostHogClient({ flags }: { flags: Record<string, string>
     const cancel = whenIdle(() => {
       void import("posthog-js").then(({ default: posthog }) => {
         if (cancelled) return;
-        const distinctId = readVisitorId();
         posthog.init(key, {
           api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
           person_profiles: "identified_only",
@@ -56,18 +45,17 @@ export default function PostHogClient({ flags }: { flags: Record<string, string>
           respect_dnt: true,
           disable_session_recording: true,
           disable_surveys: true,
-          bootstrap: { ...(distinctId ? { distinctID: distinctId } : {}), featureFlags: flags },
+          // The site reads no feature flags, so it does not ask PostHog to evaluate them.
+          advanced_disable_feature_flags_on_first_load: true,
         });
         window.__hmPosthog = posthog;
-        // Reading the flag is what emits the exposure event the experiment counts.
-        for (const flag of Object.keys(flags)) posthog.getFeatureFlag(flag);
       });
     });
     return () => {
       cancelled = true;
       cancel();
     };
-  }, [flags]);
+  }, []);
   return null;
 }
 

@@ -83,7 +83,7 @@ describe("Whole-grid recorded capture clock", () => {
     ["invalid", [capture("first", 0), capture("invalid", "not-a-timestamp")]],
     ["descending", [capture("first", 2000), capture("earlier", 1000)]],
   ] as const)(
-    "keeps %s timestamp lanes unavailable without manufacturing shared coverage",
+    "keeps %s timestamp streams unavailable without manufacturing shared coverage",
     (_name, items) => {
       const stream = lane("unavailable", [...items]);
       const recording = buildGridRecording([stream, lane("valid", [capture("valid", 10_000)])]);

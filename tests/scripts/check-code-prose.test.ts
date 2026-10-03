@@ -22,12 +22,12 @@ const KINDS = [
   "series-codes",
   "name-refs",
 ] as const;
-const ROOTS = ["src", "tests", "scripts", "tui"] as const;
+const ROOTS = ["src", "tests", "scripts", "tui", "observer"] as const;
 /** The labs root counts every kind but the two test-name kinds, each capped at 0 here. */
 const LAB_CAPS = Object.fromEntries(
   KINDS.filter((kind) => kind !== "series-codes" && kind !== "name-refs").map((kind) => [kind, 0]),
 );
-const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui"] as const;
+const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui", "-observer"] as const;
 /** Kinds counted in src string literals only. */
 const STRING_KINDS = [
   "string-em-dashes",
@@ -35,7 +35,9 @@ const STRING_KINDS = [
   "string-slice",
   "string-rationale",
   "string-plural-s",
+  "string-cua",
   "string-caps",
+  "prompt-markers",
 ] as const;
 /** A count named for its kind and root suffix: `caps` for src, `caps-tests` for the tests root. */
 type Count =
@@ -43,10 +45,24 @@ type Count =
   | (typeof STRING_KINDS)[number]
   | "title-case-headers";
 
+// The docs roots and their kinds, capped at 0 in every fixture here; check-doc-prose.test.ts
+// covers what they count.
+const DOC_ROOTS = ["docs", "site", "evidence"] as const;
+const DOC_KINDS = [
+  "issue-refs",
+  "caps",
+  "em-dashes",
+  "invariant-refs",
+  "authority",
+  "honest",
+  "archaeology",
+  "contrast",
+] as const;
+
 /** A fixture scripts/caps.json: every count capped at 0 except the ones given, minus `omit`. */
 function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = []): string {
-  const prose = Object.fromEntries(
-    ROOTS.map((root, index) => [
+  const prose = Object.fromEntries([
+    ...ROOTS.map((root, index) => [
       root,
       Object.fromEntries(
         [...KINDS, ...(root === "src" ? STRING_KINDS : [])].flatMap((kind) => {
@@ -55,7 +71,8 @@ function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = [])
         }),
       ),
     ]),
-  );
+    ...DOC_ROOTS.map((root) => [root, Object.fromEntries(DOC_KINDS.map((kind) => [kind, 0]))]),
+  ]);
   const titleCase: Count = "title-case-headers";
   const markdown = omit.includes(titleCase) ? {} : { [titleCase]: caps[titleCase] ?? 0 };
   return `${JSON.stringify({ prose: { ...prose, labs: LAB_CAPS, markdown } }, null, 2)}\n`;
@@ -409,6 +426,17 @@ describe("prose:check counts prose in src strings apart from comments", () => {
     expect(plural.count).toBe(0);
   });
 
+  it("counts CUA as a word in strings, outside identifiers and code spans", async () => {
+    const strings = [
+      'const label = "CUA desktop";',
+      'const code = "HUMANISH_CUA_LAB_FANOUT_INVALID";',
+      'const help = "See `CUA` in the glossary.";',
+      "",
+    ].join("\n");
+    const hits = await hitsOf("string-cua", strings);
+    expect(hits.words).toEqual(["CUA"]);
+  });
+
   it("counts strings only under src", async () => {
     const hits = await hitsOf("string-em-dashes", 'const a = "x \u2014 y";\n', "tests/fixture.ts");
     expect(hits.count).toBe(0);
@@ -428,6 +456,18 @@ describe("prose:check counts prose in src strings apart from comments", () => {
 
     expect(dashes.count).toBe(1);
     expect(caps.count).toBe(0);
+  });
+
+  it("counts each prompt marker, so a new exemption raises a cap", async () => {
+    const marked = [
+      "// prose-check: model prompt (the participant model reads this)",
+      'const prompt = "Reply with JSON only.";',
+      "",
+    ].join("\n");
+    const hits = await hitsOf("prompt-markers", marked);
+    expect(hits.count).toBe(1);
+    expect(await exitWith({ "prompt-markers": 1 }, marked)).toBe(0);
+    expect(await exitWith({ "prompt-markers": 0 }, marked)).toBe(1);
   });
 
   it("does not count string literal types", async () => {

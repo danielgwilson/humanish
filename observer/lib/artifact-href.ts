@@ -2,7 +2,7 @@ import type { ObserverStream } from "./observer-data";
 import { exportScreenshotHref } from "./export-assets";
 
 // Relative artifact hrefs resolve from observer/index.html, which sits one level under
-// the run root — the same containment rule the legacy client applies: run-root-relative
+// the run root, under the containment rule the legacy client applies: run-root-relative
 // paths only; nothing absolute, no traversal, no URL schemes.
 export function runArtifactHref(artifactPath: string): string | null {
   if (!safePath(artifactPath)) return null;
@@ -74,15 +74,15 @@ export function screenshotHref(screenshotPath: string): string | null {
   return runArtifactHref(screenshotPath);
 }
 
-/** A lane's recorded trace items: the finished actor's, else the mid-run `liveActor`
- *  partial's (#441 incremental flush) — one accessor so every reader grows live. */
+/** A stream's recorded trace items: the finished actor's, else the mid-run `liveActor`
+ *  partial's (the incremental flush): one accessor so every reader grows live. */
 export function traceItems(
   stream: ObserverStream,
 ): NonNullable<NonNullable<ObserverStream["actor"]>["items"]> {
   return stream.actor?.items ?? stream.liveActor?.items ?? [];
 }
 
-/** The lane's keyframe: its last recorded screenshot (the state the persona left behind). */
+/** The stream's keyframe: its last recorded screenshot (the state the persona left behind). */
 export function keyframeHref(stream: ObserverStream): string | null {
   const items = traceItems(stream);
   for (let i = items.length - 1; i >= 0; i -= 1) {

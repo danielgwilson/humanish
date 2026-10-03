@@ -154,7 +154,7 @@ function parseExternalCatch(raw: unknown): Parsed<LabCommsExternal> {
   const catchBaseUrl = str(raw.catchBaseUrl);
   if (catchBaseUrl === undefined) {
     return invalid(
-      "`comms.email.external.catchBaseUrl` is required — the base URL of the catch YOU run (humanish reads its GET /deliveries and your app POSTs its sends to it).",
+      "`comms.email.external.catchBaseUrl` is required: the base URL of the catch you run. Your app sends its mail to it, and humanish reads GET /deliveries from it.",
     );
   }
   for (const [field, value] of [
@@ -179,7 +179,7 @@ function parseExternalCatch(raw: unknown): Parsed<LabCommsExternal> {
   const authTokenEnv = str(raw.authTokenEnv);
   if (authTokenEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(authTokenEnv)) {
     return invalid(
-      `\`comms.email.external.authTokenEnv\` must be a valid env var NAME (got "${authTokenEnv}"); the value is read at runtime and never persisted.`,
+      `\`comms.email.external.authTokenEnv\` must be an environment variable name, and "${authTokenEnv}" is not one. Its value is read when the run starts and never stored.`,
     );
   }
   const inboxBaseUrl = str(raw.inboxBaseUrl);
@@ -206,7 +206,7 @@ function parseSmtp(raw: unknown): Parsed<LabCommsSmtp> {
   const portEnv = envName(raw.portEnv, "portEnv");
   if (hostEnv === undefined || portEnv === undefined) {
     return invalid(
-      "`comms.email.smtp` needs both `hostEnv` and `portEnv` — the subject-env vars your app reads for its SMTP host and port. The harness sets them to its own loopback listener.",
+      "`comms.email.smtp` needs both `hostEnv` and `portEnv`: the environment variables your app reads for its SMTP host and port. humanish sets them to its own loopback listener.",
     );
   }
   if (hostEnv.startsWith("__invalid__") || portEnv.startsWith("__invalid__")) {

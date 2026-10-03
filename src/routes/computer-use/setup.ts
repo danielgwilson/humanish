@@ -36,7 +36,6 @@ import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
 import { projectParticipantSubjects, subjectProvenanceArg } from "./subject-projection.js";
 import {
-  CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabErrorCode,
   type CuaActorLabResult,
   type CuaParticipantDeps,
@@ -49,6 +48,7 @@ import {
   participantSubjectEnv,
 } from "./types.js";
 import { labPersonaIds } from "../../lab/persona-resolve.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /** The physical project, bound before any caller hook runs. */
 async function bindProject(cwd: string) {
@@ -73,10 +73,9 @@ export async function refuseCuaLab(
   if (refusal.stage === "after-personas")
     await compileParticipantPersonas(projectRoot, labPersonaIds(config));
   return {
-    schema: CUA_ACTOR_LAB_SCHEMA,
+    ...studyResultIdentity("computer-use", config.id),
     ok: false,
     cwd: projectRoot.physicalPath,
-    labId: config.id,
     actor: refusal.actor ?? config.actors[0]?.type ?? "",
     appUrl: declaredAppUrl(config),
     dryRun,
@@ -168,10 +167,9 @@ export async function admitCuaRun(
     message: string,
     actorLabel?: string,
   ): CuaActorLabResult => ({
-    schema: CUA_ACTOR_LAB_SCHEMA,
+    ...studyResultIdentity("computer-use", plan.labId),
     ok: false,
     cwd,
-    labId: plan.labId,
     actor: actorLabel ?? plan.actor,
     appUrl,
     dryRun,

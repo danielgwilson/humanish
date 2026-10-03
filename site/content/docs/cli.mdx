@@ -19,32 +19,30 @@ humanish [options] [command]
 
 | Option | Description |
 | --- | --- |
-| `-V, --version` | output the version number |
+| `-v, --version` | Print the version. |
 | `--json` | Print machine-readable JSON responses where supported. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-- [humanish init](#humanish-init): Set up humanish/ source and .humanish/ runtime state.
-- [humanish doctor](#humanish-doctor): Explain project readiness and missing setup.
-- [humanish tui](#humanish-tui): Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect &lt;lab&gt; --json, humanish runs --json.
-- [humanish telemetry](#humanish-telemetry): Show or change anonymous usage collection.
-- [humanish keys](#humanish-keys): Manage the user-level provider key store.
-- [humanish run](#humanish-run): Run a persona/scenario simulation or dry-run bundle.
-- [humanish verify](#humanish-verify): Validate a run bundle and public-safety gates.
-- [humanish cleanup](#humanish-cleanup): Write a resource cleanup inspection receipt.
+- [humanish init](#humanish-init): Set up starter studies and personas in this project.
+- [humanish doctor](#humanish-doctor): Check what this project and machine need before a run.
+- [humanish run](#humanish-run): Run a study, as a dry run or with live participants.
+- [humanish watch](#humanish-watch): Run a study and follow it in the Observer.
+- [humanish observe](#humanish-observe): Open a saved run in the Observer.
+- [humanish verify](#humanish-verify): Check a run's evidence and share safety.
 - [humanish review](#humanish-review): Build a review packet from verified run evidence.
-- [humanish analyze](#humanish-analyze): Generate evidence-linked study findings.
-- [humanish runs](#humanish-runs): List local humanish runs and latest pointers.
-- [humanish stats](#humanish-stats): Roll up cost, outcomes, and durations across runs.
-- [humanish export](#humanish-export): Export Observer HTML or a redacted bundle workspace.
-- [humanish comms](#humanish-comms): Off-app comms surfaces.
+- [humanish analyze](#humanish-analyze): Analyze a live run and write evidence-linked findings.
+- [humanish feedback](#humanish-feedback): Draft public-safe feedback issues from a run.
+- [humanish export](#humanish-export): Export a run as an Observer page or a redacted bundle.
+- [humanish runs](#humanish-runs): List this project's runs and which one is latest.
+- [humanish stats](#humanish-stats): Show cost, outcomes and durations across runs.
+- [humanish lab](#humanish-lab): List, inspect and check the studies in humanish/labs/.
+- [humanish comms](#humanish-comms): Catch the email an app sends, for email-gated flows.
 - [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
-- [humanish reclaim](#humanish-reclaim): Reclaim an interrupted run's sandboxes by recorded id.
-- [humanish watch](#humanish-watch): Run participants, open the observer, stay attached.
-- [humanish observe](#humanish-observe): Follow a run's saved evidence over loopback http.
-- [humanish serve](#humanish-serve): Serve the run library; optional tunnel-edge exposure.
-- [humanish codex](#humanish-codex): Run Codex-native humanish integration surfaces.
-- [humanish lab](#humanish-lab): List, inspect, and run humanish lab manifests.
-- [humanish feedback](#humanish-feedback): Create public-safe feedback drafts, no GitHub API.
+- [humanish reclaim](#humanish-reclaim): Stop an interrupted run's leftover sandboxes.
+- [humanish cleanup](#humanish-cleanup): Check that a run's resources were stopped.
+- [humanish keys](#humanish-keys): Store and manage your provider keys.
+- [humanish telemetry](#humanish-telemetry): Show or change anonymous usage collection.
+- [humanish tui](#humanish-tui): Browse studies and runs in a terminal UI for people.
 
 ## humanish init
 
@@ -60,9 +58,9 @@ humanish init [options]
 | `--yes` | Apply safe generated changes without prompting. |
 | `--local-browser <url>` | Set the local-browser starter to this loopback app URL (explicit port above 1023). |
 | `--local-mission <text>` | Set the local-browser participant mission. |
-| `--cwd <path>` | Target project directory. (default: ".") |
+| `--cwd <path>` | Project directory. (default: ".") |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
 ## humanish doctor
 
@@ -74,76 +72,640 @@ humanish doctor [options]
 
 | Option | Description |
 | --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
+| `--cwd <path>` | Project directory. (default: ".") |
 | `--lab <lab>` | Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls. |
-| `--env-file <path>` | Load a local env file for these setup checks without printing values. |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-## humanish tui
+## humanish run
 
-Open the interactive terminal surface for browsing labs and runs (humans only).
+Run a study, as a dry run or with live participants. This is the everyday command.
 
 ```text
-humanish tui [options]
+humanish run [options] [lab]
 ```
+
+| Argument | Description |
+| --- | --- |
+| `lab` | Optional lab id or .yaml path. |
 
 | Option | Description |
 | --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--env-file <path>` | Load a local env file for this terminal session and its runs without printing values. |
-| `--force` | Open it anyway in a session that looks like an agent's. |
+| `--dry-run` | Generate contract proof without browser, keys, or provider spend. |
+| `--open` | Open the Observer in the default browser. |
+| `--no-open` | Render without opening a browser. |
+| `--detach` | Render/open once and exit without an attached watch server. |
+| `--port <port>` | Port to listen on at 127.0.0.1. (default: a free port) |
+| `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
+| `--rerun-failed-from <run>` | Computer-use studies only: start a new run for the failed participants of a prior run. |
+| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The lab's actors[0].lanes[] decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
+| `--scorer <path>` | Score with this .mjs module, a path inside the repo, in place of review.scorer.ref. It runs as code, so review it first. Terminal, computer-use and shared-world studies only. |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-## humanish telemetry
+## humanish watch
 
-Show or change anonymous usage collection.
+Run a study, open its Observer and keep the shell attached.
 
 ```text
-humanish telemetry [options] [command]
+humanish watch [options] [lab]
+```
+
+| Argument | Description |
+| --- | --- |
+| `lab` | Optional lab id or .yaml path to run and observe. |
+
+| Option | Description |
+| --- | --- |
+| `--lab <id-or-path>` | Explicit lab id or .yaml path. |
+| `--dry-run` | Generate contract proof without browser, keys, or provider spend. |
+| `--open` | Open the Observer in the default browser. |
+| `--no-open` | Render without opening a browser. |
+| `--detach` | Render/open once and exit without an attached watch server. |
+| `--port <port>` | Port to listen on at 127.0.0.1. (default: a free port) |
+| `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
+| `--rerun-failed-from <run>` | Computer-use studies only: start a new run for the failed participants of a prior run. |
+| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The lab's actors[0].lanes[] decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
+| `--scorer <path>` | Score with this .mjs module, a path inside the repo, in place of review.scorer.ref. It runs as code, so review it first. Terminal, computer-use and shared-world studies only. |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
+| `--json` | Print a machine-readable JSON response. |
+| `--expose` | Computer-use studies only: share the live run through an authenticated tunnel, to watch from a phone. Requires --oauth or --public-url. |
+| `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
+| `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
+| `--oauth <provider>` | Turn on ngrok edge OAuth. Requires --tunnel. (choices: "google") |
+| `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. |
+| `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. |
+| `--public-url <origin>` | Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose. |
+| `-h, --help` | Show help for this command. |
+
+## humanish observe
+
+Open a saved run in the Observer, served on http://127.0.0.1; without --run, the latest. With --all, serve the run library, opening on --run when given.
+
+```text
+humanish observe [options]
 ```
 
 | Option | Description |
 | --- | --- |
-| `-h, --help` | display help for command |
+| `--run <id>` | Run id, or latest. |
+| `--all` | Serve the whole run library, with optional tunnel-edge exposure. |
+| `--port <port>` | Port to listen on at 127.0.0.1. (default: a free port) |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--open` | Open the Observer in the default browser. |
+| `--no-open` | Serve without opening a browser. |
+| `--json` | Print a machine-readable JSON response. |
+| `--safe` | Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed). |
+| `--expose` | Share the library beyond this machine. Requires --oauth or --public-url, or --safe. |
+| `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
+| `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
+| `--oauth <provider>` | Turn on ngrok edge OAuth. Requires --tunnel. (choices: "google") |
+| `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. |
+| `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. |
+| `--public-url <origin>` | Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding. |
+| `-h, --help` | Show help for this command. |
 
-### humanish telemetry status
+## humanish verify
 
-What is collected, and whether it is on.
+Check a run's evidence and share safety.
 
 ```text
-humanish telemetry status [options]
+humanish verify [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--verbose` | Print every check, passing ones included. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish review
+
+Show a run's review: verdict, summary and gaps.
+
+```text
+humanish review [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish analyze
+
+Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.
+
+```text
+humanish analyze [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--provider <name>` | Analyst: openai (default) or restricted codex account. No provider fallback. |
+| `--max-cost <usd>` | Required for OpenAI, also with --dry-run: send nothing when the estimated cost in USD is above this. The estimate is not a billing cap. Unsupported for Codex. |
+| `--model <id>` | Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort. (default: "gpt-6-astra") |
+| `--question <text>` | Additional reviewer question; does not change participant instructions. |
+| `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "600000") |
+| `--max-output-tokens <n>` | OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex. |
+| `--dry-run` | Capture and validate local input and estimate admission; no request or analysis artifact. |
+| `--rerun` | Create a new immutable version even when the same input and configuration were analyzed. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish analyze list
+
+List immutable analysis versions, including failed attempts.
+
+```text
+humanish analyze list [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish analyze show
+
+Read validated analysis and correction history. Defaults to the latest usable version.
+
+```text
+humanish analyze show [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--id <id>` | Exact analysis version. |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish analyze correct
+
+Append a human review note bound to one exact finding version; original claims remain intact.
+
+```text
+humanish analyze correct [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--analysis <id>` | Analysis version to review. |
+| `--finding <id>` | Finding to review. |
+| `--status <status>` | Review disposition. (choices: "confirmed", "dismissed", "amended") |
+| `--reason <text>` | Why this disposition is supported. |
+| `--claim <text>` | Replacement claim, required only for amended findings. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish feedback
+
+Draft public-safe feedback issues from a run. humanish never calls the GitHub API.
+
+```text
+humanish feedback [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `-h, --help` | Show help for this command. |
+
+### humanish feedback list
+
+List recorded feedback candidates and any saved draft.
+
+```text
+humanish feedback list [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish feedback draft
+
+Generate a public-safe feedback draft from verified evidence.
+
+```text
+humanish feedback draft [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
+| `--candidate <id>` | Which finding to draft (ids from `feedback list`); default: the first. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish feedback verify
+
+Verify the feedback draft for public issue eligibility.
+
+```text
+humanish feedback verify [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
+| `--candidate <id>` | Which finding to verify (ids from `feedback list`); default: the first. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish feedback issue
+
+Print Markdown for a public GitHub issue. Does not mutate GitHub.
+
+```text
+humanish feedback issue [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--repo <owner/repo>` | Repository slug used in rendered filing instructions. |
+| `--format <format>` | Output format. (default: "markdown") |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
+| `--candidate <id>` | Which finding to file (ids from `feedback list`); default: the first. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish feedback issue-url
+
+Print a prefilled public issue URL. Does not mutate GitHub.
+
+```text
+humanish feedback issue-url [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--repo <owner/repo>` | Repository slug used in the generated URL. |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
+| `--candidate <id>` | Which finding to link (ids from `feedback list`); default: the first. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish export
+
+Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.
+
+```text
+humanish export [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--format <format>` | Output format; bundle creates a new standalone workspace. (choices: "html", "bundle", default: "html") |
+| `--redact-screenshots` | Bundle only: blur PNG screenshots in a verified copy; keep original evidence unchanged. |
+| `--out <path>` | HTML file or new bundle workspace. Default: .humanish/exports/&lt;runId&gt;.html or &lt;runId&gt;-redacted/. |
+| `--local-only` | Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file. |
+| `--max-bytes <n>` | Refuse an export larger than this many bytes. (default: 25 MB) |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish runs
+
+List this project's runs and which one is latest.
+
+```text
+humanish runs [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish stats
+
+Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.
+
+```text
+humanish stats [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--lab <id>` | Only runs from this lab id. |
+| `--since <date>` | Only runs that started on or after this ISO date or datetime. |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish lab
+
+List, inspect and check the studies in humanish/labs/.
+
+```text
+humanish lab [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `-h, --help` | Show help for this command. |
+
+### humanish lab list
+
+List committed and ignored humanish lab manifests.
+
+```text
+humanish lab list [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish lab inspect
+
+Inspect a humanish lab manifest without running it.
+
+```text
+humanish lab inspect [options] <lab>
+```
+
+| Argument | Description |
+| --- | --- |
+| `lab` | Lab id or .yaml path. |
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish lab preflight
+
+Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab &lt;lab&gt; first.
+
+```text
+humanish lab preflight [options] <lab>
+```
+
+| Argument | Description |
+| --- | --- |
+| `lab` | Lab id or .yaml path. |
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--reachability <mode>` | Reachability mode. (choices: "metadata", "public-preview", "sandbox-loopback", "prepared-host", default: "metadata") |
+| `--timeout-ms <ms>` | Target reachability timeout. (default: "30000") |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish comms
+
+Local email capture, real receiving connections, checks and cleanup recovery.
+
+```text
+humanish comms [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `-h, --help` | Show help for this command. |
+
+### humanish comms providers
+
+List installed communication provider capabilities. No network requests.
+
+```text
+humanish comms providers [options]
 ```
 
 | Option | Description |
 | --- | --- |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-### humanish telemetry enable
+### humanish comms connections
 
-Turn anonymous usage collection on.
+Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.
 
 ```text
-humanish telemetry enable [options]
+humanish comms connections [options] [command]
 ```
 
 | Option | Description |
 | --- | --- |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-### humanish telemetry disable
+### humanish comms connections list
 
-Turn anonymous usage collection off.
+Show saved connections and local credential status; does not authenticate with a provider.
 
 ```text
-humanish telemetry disable [options]
+humanish comms connections list [options]
 ```
 
 | Option | Description |
 | --- | --- |
-| `-h, --help` | display help for command |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish comms connections add
+
+Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.
+
+```text
+humanish comms connections add [options] [name]
+```
+
+| Argument | Description |
+| --- | --- |
+| `name` | Project connection name. (default: "agentmail") |
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--provider <id>` | Installed provider id. (default: "agentmail") |
+| `--api-key-env <name>` | Environment variable NAME, never its value. (default: "AGENTMAIL_API_KEY") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish comms check
+
+Check connection and credential presence; --online authenticates without creating inboxes.
+
+```text
+humanish comms check [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--connection <name>` | Saved connection name. (default: "agentmail") |
+| `--lab <path>` | Check the connection selected by this exact lab. |
+| `--online` | Make a read-only provider authentication request. |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish comms configure
+
+Preview or save a local receiving-enabled copy of a supported lab. No provider requests.
+
+```text
+humanish comms configure [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--lab <path>` | Exact source lab path or handle. |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--connection <name>` | Saved connection name. (default: "agentmail") |
+| `--apply` | Save the local copy; original lab remains unchanged. |
+| `--plan-token <digest>` | Require the source and destination to match a previous preview. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish comms recover
+
+Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.
+
+```text
+humanish comms recover [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--run <id>` | One run to inspect or recover. |
+| `--apply` | Recover the selected inactive run and verify mailbox deletion. |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish comms catch
+
+Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.
+
+```text
+humanish comms catch [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--port <port>` | Port to listen on at 127.0.0.1. (default: "8025") |
+| `--dir <path>` | Directory for the deliveries log and rendered inbox. (default: ".humanish/comms-catch") |
+| `--token <value>` | Require this bearer token, at least 16 characters, on GET /deliveries (recommended when reachable off-host). |
+| `--smtp-port <port>` | Also capture SMTP mail on 127.0.0.1:&lt;port&gt;. Point your app's SMTP transport here. |
+| `--inbox-port <port>` | Also serve a READ-ONLY inbox listener on 0.0.0.0:&lt;port&gt;, so a persona on another machine can open /inbox. Without it the catch stays loopback-only. |
+| `--recipient <address>` | Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed. |
+| `-h, --help` | Show help for this command. |
+
+## humanish runtime
+
+Prepare or inspect the local browser runtime.
+
+```text
+humanish runtime [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `-h, --help` | Show help for this command. |
+
+### humanish runtime status
+
+Check local Docker, virtualization and the cached browser image without downloads.
+
+```text
+humanish runtime status [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--json` | Print a machine-readable JSON response. |
+| `--media` | Prepare or inspect the optional camera and speech runtime. |
+| `-h, --help` | Show help for this command. |
+
+### humanish runtime setup
+
+Download and install the local browser image. Does not start a study or use model quota.
+
+```text
+humanish runtime setup [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--json` | Print a machine-readable JSON response. |
+| `--media` | Prepare or inspect the optional camera and speech runtime. |
+| `-h, --help` | Show help for this command. |
+
+## humanish reclaim
+
+Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.
+
+```text
+humanish reclaim [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--preflight` | Reclaim sandboxes left by interrupted `humanish lab preflight` probes (journaled in .humanish/preflight) instead of a run's. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish cleanup
+
+Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.
+
+```text
+humanish cleanup [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id, or latest. (default: "latest") |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
 
 ## humanish keys
 
@@ -155,7 +717,7 @@ humanish keys [options] [command]
 
 | Option | Description |
 | --- | --- |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
 ### humanish keys set
 
@@ -173,7 +735,7 @@ humanish keys set [options] <vendor-or-name>
 | --- | --- |
 | `--stdin` | Read the value from stdin instead of prompting (for agents/pipes). |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
 ### humanish keys unset
 
@@ -190,7 +752,7 @@ humanish keys unset [options] <vendor-or-name>
 | Option | Description |
 | --- | --- |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
 ### humanish keys list
 
@@ -203,712 +765,69 @@ humanish keys list [options]
 | Option | Description |
 | --- | --- |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-## humanish run
+## humanish telemetry
 
-Run a lab (or a synthetic dry-run bundle). The everyday command.
-
-```text
-humanish run [options] [lab]
-```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Optional lab id or .yaml path. |
-
-| Option | Description |
-| --- | --- |
-| `--dry-run` | Generate contract proof without browser, keys, or provider spend. |
-| `--open` | Open the observer in the default browser. |
-| `--no-open` | Render without opening a browser. |
-| `--detach` | Render/open once and exit without an attached watch server. |
-| `--port <port>` | Local observer server port when following. (default: "0") |
-| `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--env-file <path>` | Load a local env file for this run without persisting values. |
-| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish verify
-
-Validate a run bundle and public-safety gates.
+Show or change anonymous usage collection.
 
 ```text
-humanish verify [options]
+humanish telemetry [options] [command]
 ```
 
 | Option | Description |
 | --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--verbose` | Print every check, passing ones included. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-## humanish cleanup
+### humanish telemetry status
 
-Inspect recorded resource evidence and write cleanup.json; stored ids do not authorize provider mutation.
+What is collected, and whether it is on.
 
 ```text
-humanish cleanup [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish review
-
-Show a run's review: verdict, summary and gaps.
-
-```text
-humanish review [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish analyze
-
-Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.
-
-```text
-humanish analyze [options] [command]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Completed run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--provider <name>` | Analyst: openai (default) or restricted codex account. No provider fallback. |
-| `--max-cost <usd>` | Required for OpenAI, including dry-run: USD admission estimate ceiling, not a billing cap. Unsupported for Codex. |
-| `--model <id>` | Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort. (default: "gpt-6-astra") |
-| `--question <text>` | Additional reviewer question; does not change participant instructions. |
-| `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "600000") |
-| `--max-output-tokens <n>` | OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex. |
-| `--dry-run` | Capture and validate local input and estimate admission; no request or analysis artifact. |
-| `--rerun` | Create a new immutable version even when the same input and configuration were analyzed. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish analyze list
-
-List immutable analysis versions, including failed attempts.
-
-```text
-humanish analyze list [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish analyze show
-
-Read validated analysis and correction history. Defaults to the latest usable version.
-
-```text
-humanish analyze show [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--id <id>` | Exact analysis version. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish analyze correct
-
-Append a human review note bound to one exact finding version; original claims remain intact.
-
-```text
-humanish analyze correct [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--analysis <id>` | Analysis version to review. |
-| `--finding <id>` | Finding to review. |
-| `--status <status>` | Review disposition. (choices: "confirmed", "dismissed", "amended") |
-| `--reason <text>` | Why this disposition is supported. |
-| `--claim <text>` | Replacement claim, required only for amended findings. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish runs
-
-List local humanish runs and latest pointers.
-
-```text
-humanish runs [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish stats
-
-Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.
-
-```text
-humanish stats [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--lab <id>` | Only runs from this lab id. |
-| `--since <date>` | Only runs that started on or after this ISO date or datetime. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish export
-
-Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.
-
-```text
-humanish export [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or 'latest'. (default: "latest") |
-| `--format <format>` | Output format; bundle creates a new standalone workspace. (choices: "html", "bundle", default: "html") |
-| `--redact-screenshots` | Bundle only: blur PNG screenshots in a verified copy; keep original evidence unchanged. |
-| `--out <path>` | HTML file or new bundle workspace. Default: .humanish/exports/&lt;runId&gt;.html or &lt;runId&gt;-redacted/. |
-| `--local-only` | Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file. |
-| `--max-bytes <n>` | Refuse an export larger than this. (default: "26214400") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish comms
-
-Local email capture, real receiving connections, checks and cleanup recovery.
-
-```text
-humanish comms [options] [command]
-```
-
-| Option | Description |
-| --- | --- |
-| `-h, --help` | display help for command |
-
-### humanish comms providers
-
-List installed communication provider capabilities. No network requests.
-
-```text
-humanish comms providers [options]
+humanish telemetry status [options]
 ```
 
 | Option | Description |
 | --- | --- |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-### humanish comms connections
+### humanish telemetry enable
 
-Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.
+Turn anonymous usage collection on.
 
 ```text
-humanish comms connections [options] [command]
+humanish telemetry enable [options]
 ```
 
 | Option | Description |
 | --- | --- |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |
 
-### humanish comms connections list
+### humanish telemetry disable
 
-Show saved connections and local credential status; does not authenticate with a provider.
+Turn anonymous usage collection off.
 
 ```text
-humanish comms connections list [options]
+humanish telemetry disable [options]
 ```
 
 | Option | Description |
 | --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--env-file <path>` | Load credentials for local status without printing values. |
+| `-h, --help` | Show help for this command. |
+
+## humanish tui
+
+Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect &lt;lab&gt; --json and humanish runs --json.
+
+```text
+humanish tui [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
+| `--force` | Open it anyway in a session that looks like an agent's. |
 | `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish comms connections add
-
-Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.
-
-```text
-humanish comms connections add [options] [name]
-```
-
-| Argument | Description |
-| --- | --- |
-| `name` | Project connection name. (default: "agentmail") |
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--provider <id>` | Installed provider id. (default: "agentmail") |
-| `--api-key-env <name>` | Environment variable NAME, never its value. (default: "AGENTMAIL_API_KEY") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish comms check
-
-Check connection and credential presence; --online authenticates without creating inboxes.
-
-```text
-humanish comms check [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--connection <name>` | Saved connection name. (default: "agentmail") |
-| `--lab <path>` | Check the connection selected by this exact lab. |
-| `--online` | Make a read-only provider authentication request. |
-| `--env-file <path>` | Load credentials without printing values. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish comms configure
-
-Preview or save a local receiving-enabled copy of a supported lab. No provider requests.
-
-```text
-humanish comms configure [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--lab <path>` | Exact source lab path or handle. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--connection <name>` | Saved connection name. (default: "agentmail") |
-| `--apply` | Save the local copy; original lab remains unchanged. |
-| `--plan-token <digest>` | Require the source and destination to match a previous preview. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish comms recover
-
-Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.
-
-```text
-humanish comms recover [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--run <id>` | One run to inspect or recover. |
-| `--apply` | Recover the selected inactive run and verify mailbox deletion. |
-| `--env-file <path>` | Load credentials without printing values. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish comms catch
-
-Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.
-
-```text
-humanish comms catch [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--port <port>` | Port for capture + inbox (default 8025). (default: "8025") |
-| `--dir <path>` | Directory for the deliveries log and rendered inbox. (default: ".humanish/comms-catch") |
-| `--token <value>` | Require this bearer token, at least 16 characters, on GET /deliveries (recommended when reachable off-host). |
-| `--smtp-port <port>` | Also capture SMTP mail on 127.0.0.1:&lt;port&gt;. Point your app's SMTP transport here. |
-| `--inbox-port <port>` | Also serve a READ-ONLY inbox listener on 0.0.0.0:&lt;port&gt;, so a persona on another machine can open /inbox. Without it the catch stays loopback-only. |
-| `--recipient <address>` | Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed. |
-| `-h, --help` | display help for command |
-
-## humanish runtime
-
-Prepare or inspect the local browser runtime.
-
-```text
-humanish runtime [options] [command]
-```
-
-| Option | Description |
-| --- | --- |
-| `-h, --help` | display help for command |
-
-### humanish runtime status
-
-Check local Docker, virtualization and the cached browser image without downloads.
-
-```text
-humanish runtime status [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--json` | Print a machine-readable JSON response. |
-| `--media` | Prepare or inspect the optional camera and speech runtime. |
-| `-h, --help` | display help for command |
-
-### humanish runtime setup
-
-Download and install the local browser image. Does not start a study or use model quota.
-
-```text
-humanish runtime setup [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--json` | Print a machine-readable JSON response. |
-| `--media` | Prepare or inspect the optional camera and speech runtime. |
-| `-h, --help` | display help for command |
-
-## humanish reclaim
-
-Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.
-
-```text
-humanish reclaim [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--run <id>` | Run id, or 'latest'. (default: "latest") |
-| `--preflight` | Reclaim sandboxes left by interrupted `humanish lab preflight` probes (journaled in .humanish/preflight) instead of a run's. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish watch
-
-Run synthetic participants, open the observer, and keep the shell attached.
-
-```text
-humanish watch [options] [lab]
-```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Optional lab id or .yaml path to run and observe. |
-
-| Option | Description |
-| --- | --- |
-| `--lab <id-or-path>` | Explicit lab id or .yaml path. |
-| `--run <id>` | Watch an existing run id or latest pointer. |
-| `--dry-run` | Lab only: render contract evidence without live provider spend. |
-| `--count <count>` | With a lab, override a preview or computer-use lab's participant count. Without one, start a fresh synthetic run with this many participants; 4 when --run is omitted. |
-| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
-| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--env-file <path>` | Load a local env file for this watch without persisting values. |
-| `--open` | Open the observer in the default browser. |
-| `--no-open` | Render without opening a browser. |
-| `--detach` | Render/open once and exit without attached watch server. |
-| `--port <port>` | Local observer server port when following. (default: "0") |
-| `--expose` | CUA lab only: expose the live run through an authenticated edge so you can watch from a phone. Requires edge auth. |
-| `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
-| `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
-| `--oauth <provider>` | Turn on ngrok edge OAuth. Requires --tunnel. (choices: "google") |
-| `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. (default: []) |
-| `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. (default: []) |
-| `--public-url <origin>` | Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose. |
-| `--safe` | Not applicable to watch: a live run is never share_ready, so --safe (a `serve` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain). |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish observe
-
-Follow a run's saved evidence in Observer over loopback http://127.0.0.1.
-
-```text
-humanish observe [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--port <port>` | Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port. (default: "0") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--open` | Open the observer in the default browser. |
-| `--no-open` | Serve without opening a browser. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish serve
-
-Serve the local run library over loopback http, with optional tunnel-edge authenticated exposure.
-
-```text
-humanish serve [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--port <port>` | Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port. (default: "0") |
-| `--run <id>` | Land on this run id (or latest) instead of the library index. |
-| `--safe` | Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed). |
-| `--expose` | Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe. |
-| `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
-| `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
-| `--oauth <provider>` | Turn on ngrok edge OAuth. Requires --tunnel. (choices: "google") |
-| `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. (default: []) |
-| `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. (default: []) |
-| `--public-url <origin>` | Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding. |
-| `--open` | Open the library in the default browser. |
-| `--no-open` | Serve without opening a browser. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish codex
-
-Run Codex-native humanish integration surfaces.
-
-```text
-humanish codex [options] [command]
-```
-
-| Option | Description |
-| --- | --- |
-| `-h, --help` | display help for command |
-
-### humanish codex app-server
-
-Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.
-
-```text
-humanish codex app-server [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--prompt <text>` | Prompt to submit to Codex app-server. |
-| `--prompt-file <path>` | Read the Codex app-server prompt from a file. |
-| `--run-root <path>` | Artifact directory for redacted app-server evidence. |
-| `--state-file <path>` | State JSON file for external observers. |
-| `--timeout-ms <ms>` | Actor timeout in milliseconds. (default: "900000") |
-| `--port <port>` | Local browser UI port. (default: "0") |
-| `--model <model>` | Optional Codex model override. |
-| `--sandbox <mode>` | Turn sandbox policy. (choices: "read-only", "workspace-write", "danger-full-access", default: "read-only") |
-| `--actor-command <command>` | Override app-server command. Defaults to codex app-server --listen stdio://. |
-| `--keep-open` | Keep the browser UI process alive after the actor finishes. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish lab
-
-List, inspect, and run humanish lab manifests.
-
-```text
-humanish lab [options] [command]
-```
-
-| Option | Description |
-| --- | --- |
-| `-h, --help` | display help for command |
-
-### humanish lab list
-
-List committed and ignored humanish lab manifests.
-
-```text
-humanish lab list [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish lab inspect
-
-Inspect a humanish lab manifest without running it.
-
-```text
-humanish lab inspect [options] <lab>
-```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Lab id or .yaml path. |
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish lab preflight
-
-Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab &lt;lab&gt; first.
-
-```text
-humanish lab preflight [options] <lab>
-```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Lab id or .yaml path. |
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--reachability <mode>` | Reachability mode. (choices: "metadata", "public-preview", "sandbox-loopback", "prepared-host", default: "metadata") |
-| `--timeout-ms <ms>` | Target reachability timeout. (default: "30000") |
-| `--env-file <path>` | Load a local env file for this preflight without persisting values. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish lab run
-
-Run a humanish lab manifest. Same as `humanish run &lt;lab&gt;`, grouped under `lab`.
-
-```text
-humanish lab run [options] <lab>
-```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Lab id or .yaml path. |
-
-| Option | Description |
-| --- | --- |
-| `--env-file <path>` | Load a local env file for this lab without persisting values. |
-| `--dry-run` | Render contract evidence without live provider spend. |
-| `--open` | Open the observer in the default browser. |
-| `--no-open` | Render without opening a browser. |
-| `--detach` | Render/open once and exit without attached watch server. |
-| `--port <port>` | Local observer server port when following. (default: "0") |
-| `--count <count>` | Override the participant count of a preview or computer-use lab. |
-| `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed participants from a prior run. |
-| `--participants <ids>` | CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position. |
-| `--run-id <id>` | Explicit lab run id; refused when that run already exists. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-## humanish feedback
-
-Create public-safe feedback drafts without GitHub API mutation.
-
-```text
-humanish feedback [options] [command]
-```
-
-| Option | Description |
-| --- | --- |
-| `-h, --help` | display help for command |
-
-### humanish feedback list
-
-List recorded feedback candidates and any saved draft.
-
-```text
-humanish feedback list [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish feedback draft
-
-Generate a public-safe feedback draft from verified evidence.
-
-```text
-humanish feedback draft [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--analysis <id>` | Independent analysis version; use with --finding. |
-| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
-| `--candidate <id>` | Which finding to draft (ids from `feedback list`); default: the first. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish feedback verify
-
-Verify the feedback draft for public issue eligibility.
-
-```text
-humanish feedback verify [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--analysis <id>` | Independent analysis version; use with --finding. |
-| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
-| `--candidate <id>` | Which finding to verify (ids from `feedback list`); default: the first. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish feedback issue
-
-Print Markdown for a public GitHub issue. Does not mutate GitHub.
-
-```text
-humanish feedback issue [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--repo <owner/repo>` | Repository slug used in rendered filing instructions. |
-| `--format <format>` | Output format. (default: "markdown") |
-| `--analysis <id>` | Independent analysis version; use with --finding. |
-| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
-| `--candidate <id>` | Which finding to file (ids from `feedback list`); default: the first. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish feedback issue-url
-
-Print a prefilled public issue URL. Does not mutate GitHub.
-
-```text
-humanish feedback issue-url [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--repo <owner/repo>` | Repository slug used in the generated URL. |
-| `--analysis <id>` | Independent analysis version; use with --finding. |
-| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
-| `--candidate <id>` | Which finding to link (ids from `feedback list`); default: the first. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
+| `-h, --help` | Show help for this command. |

@@ -1,10 +1,13 @@
+// A loopback static file server for one run's bundle directory. Only the Observer iframe proof
+// (scripts/observer-iframe-proof.mjs) and its test use it, so it lives here, outside the shipped
+// src/observer, which keeps two HTTP servers: the run Observer and the run library.
 import { constants as fsConstants } from "node:fs";
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { buildArtifactSecurityHeaders } from "./http.js";
+import { buildArtifactSecurityHeaders } from "../../src/observer/http.js";
 
 // Loopback-only host for the Observer static server. We never bind 0.0.0.0:
 // the Observer surfaces local run evidence and must stay reachable only from
@@ -42,7 +45,7 @@ export interface ObserverStaticHandlerOptions {
   indexPath?: string;
   /**
    * When set, an exact `/` request returns a 302 to `/<redirectRootTo>` instead
-   * of serving a file. Used to land visitors on `observer/index.html` so the
+   * of serving a file. The proof sets it to `observer/index.html`, so the
    * Observer's relative artifact links (`../run.json`, ...) resolve.
    */
   redirectRootTo?: string;

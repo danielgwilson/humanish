@@ -42,7 +42,7 @@ export function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
     return concurrentSharedWorldFindings(bundle, sw);
   }
   return [
-    'sharedWorld.topologyMode must be "sequential" or "concurrent" (missing/unknown → fail closed)',
+    'sharedWorld.topologyMode must be "sequential" or "concurrent"; a missing or unknown value fails verification',
   ];
 }
 
@@ -270,7 +270,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   }
   if (Array.isArray((sw as { laneWindows?: unknown }).laneWindows)) {
     findings.push(
-      "a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch)",
+      "a sequential shared-world bundle must not carry concurrent laneWindows (topologyMode mismatch)",
     );
   }
   const sequence = Array.isArray(sw.sequence) ? sw.sequence : [];
@@ -280,7 +280,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   for (const required of MANDATORY_ATTRIBUTION_LIMITS) {
     if (!limits.includes(required)) {
       findings.push(
-        `attributionLimits is missing the mandatory disclosure "${required}" — an absent ceiling overclaims`,
+        `attributionLimits is missing the required disclosure "${required}"; without it the bundle claims more than the run can show`,
       );
     }
   }
@@ -356,7 +356,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
     for (const key of Object.keys(checkpoint)) {
       if (!SHARED_WORLD_CHECKPOINT_KEYS.has(key)) {
         findings.push(
-          `checkpoint "${name}" carries an unexpected field "${key}" — checkpoints persist digest-only`,
+          `checkpoint "${name}" carries an unexpected field "${key}": checkpoints store digests only`,
         );
       }
     }
@@ -392,7 +392,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
     !checkpoints.some((checkpoint) => checkpoint.deltaFromPrev === true)
   ) {
     findings.push(
-      "review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)",
+      "the review verdict is pass, but no checkpoint shows deltaFromPrev, so no change to the shared app was observed",
     );
   }
 

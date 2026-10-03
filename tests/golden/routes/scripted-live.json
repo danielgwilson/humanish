@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.scripted-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "scripted",
+    "studyId": "scripted-routing-proof",
+    "labId": "scripted-routing-proof",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "scripted-routing-proof",
     "actor": "scripted-browser",
     "appUrl": "[app-url]/",
     "dryRun": false,
@@ -585,7 +587,7 @@
         "total": 0
       },
       "desktopMinutes": null,
-      "note": "No model request and no hosted desktop: this run spent $0 by construction."
+      "note": "This run made no model request and used no hosted desktop, so it cost $0."
     }
   },
   "screenshots/desktop-step-01-load.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",

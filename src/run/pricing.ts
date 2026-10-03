@@ -184,7 +184,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     outputUsdPerToken: 30e-6,
     cachedInputUsdPerToken: 0.5e-6,
     asOf: "2026-08-05",
-    source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)",
+    source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 is no longer listed on openai.com/api/pricing)",
   },
   // The gpt-5.6 family (live sheet 2026-08-18, standard tier, short-context base rates;
   // the longContext block prices the >272K re-tier when per-request turns are recorded).
@@ -223,6 +223,14 @@ const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
 // 2026-09-05 had 8 vCPU / 8 GiB. This is the largest CPU/RAM combination on that public sheet, not
 // a provider billing ceiling or a claim about custom/enterprise templates. Runtime CUA estimates
 // use observed allocation resources through estimateAllocatedDesktopCost instead of this fallback.
+/**
+ * The refusal for a spend cap on a model this table cannot price. It names the priced models,
+ * since an npm install cannot edit this file.
+ */
+export function unpricedCapMessage(model: string): string {
+  return `execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model "${model}", so it cannot enforce the cap and refuses to start. Priced models: ${Object.keys(MODEL_RATES).sort().join(", ")}. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap.`;
+}
+
 export const DESKTOP_RATE: DesktopRate = {
   usdPerMinute: 0.00888,
   asOf: "2026-09-05",

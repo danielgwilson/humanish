@@ -32,16 +32,16 @@ temporary project, compares its export names with `tests/golden/public-api.json`
 `examples/`. After an intended export change, run `pnpm api:proof --update` and review the golden
 diff.
 
-Four counts are held to caps: oxlint warnings (`lint`, `--max-warnings` in package.json), comment
-prose (`prose:check`), words in `src/` identifiers and file names (`vocabulary:check`), and raw hex
-colors and unstyled classes in `site/app/globals.css` (`site-css:check`). The last three read their
-caps from `scripts/caps.json`. The retired participant words are lane, seat, role and
-sim. `lab` is retired too: a study is what a user designs and runs, and a run is one execution of
-it. Each checker fails when a count is above its cap or below it, so the
-PR that reduces a count lowers its cap to the new count; the failure names the cap and the value. A
-count with no cap fails too, naming the cap to add. CI's `caps` workflow fails a PR that raises or
-removes a cap against the base branch, unless the PR has the `raise-cap` label and a `Cap raise:`
-line in its body that says why.
+Four counts are held to caps: oxlint warnings (`lint`, `--max-warnings` in package.json), prose in
+comments, test names and docs (`prose:check`), words in `src/` identifiers and file names
+(`vocabulary:check`), and raw hex colors and unstyled classes in `site/app/globals.css`
+(`site-css:check`). The last three read their caps from `scripts/caps.json`. The retired participant
+words are lane, seat, role and sim. `lab` is retired too: a study is what a user designs and runs,
+and a run is one execution of it. Each checker fails when a count is above its cap or below it, so
+the PR that reduces a count lowers its cap to the new count; the failure names the cap and the
+value. A count with no cap fails too, naming the cap to add. CI's `caps` workflow fails a PR that
+raises or removes a cap against the base branch, unless the PR has the `raise-cap` label and a
+`Cap raise:` line in its body that says why.
 
 ## Layout
 
@@ -63,12 +63,12 @@ the file to read first. Keep these layout rules:
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
   PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis,
   and no em dashes (`—`, or two hyphens between spaces): use a colon, a comma or two sentences.
-  `prose:check` counts violations in comments and test names under `src/`, `tests/`, `scripts/`
-  and `tui/`.
+  `prose:check` counts violations in comments and test names under `src/`, `tests/`, `scripts/`,
+  `tui/` and `observer/`.
 - Messages a person reads (errors, warnings, command output) say what happened, why, and what to
   do next, in plain words. `prose:check` also counts em dashes, issue references, all-caps
-  emphasis, "a later slice", harness rationale words ("fail closed", "by construction", "hollow",
-  "honest") and "(s)" plurals in `src/` string literals, apart from model prompts.
+  emphasis, `a later slice`, harness rationale words (`fail closed`, `by construction`, `hollow`,
+  `honest`) and `(s)` plurals in `src/` string literals, apart from model prompts.
 - Tests assert behavior. Do not pin prose in docs or comments with `toContain`. The default test
   timeout is 20 s. Provider-API fixtures come from captured wire shapes.
 - New dependencies go in the pnpm catalog (`pnpm-workspace.yaml`) when more than one workspace

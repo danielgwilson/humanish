@@ -99,7 +99,7 @@ afterEach(async () => {
 });
 
 describe("One study playback clock across views", () => {
-  it("opens halfway without snapping to the held capture, then returns every lane at one-third", async () => {
+  it("opens halfway without snapping to the held capture, then returns every participant at one-third", async () => {
     await render();
     await seek(4500);
     expect(scrub().value).toBe("4500");
@@ -168,7 +168,7 @@ describe("One study playback clock across views", () => {
     expect(window.location.hash).toBe("#/lane/early/f/2/e/action");
   });
 
-  it("shows no future capture before a lane starts and leaves untimed playback independent", async () => {
+  it("shows no future capture before a participant starts and leaves untimed playback independent", async () => {
     await render(
       study([lane("early", [0, 9000]), lane("late", [6000, 9000]), lane("old", [null, null])]),
     );
@@ -298,7 +298,7 @@ describe("One study playback clock across views", () => {
     expect(window.location.hash).toBe("#/lane/active/f/999");
   });
 
-  it("applies an addressed frame when a queued lane receives its first recording", async () => {
+  it("applies an addressed frame when a queued participant receives its first recording", async () => {
     window.history.replaceState(null, "", "#/lane/queued/f/2");
     const queued = lane("queued", []);
     queued.kind = "browser";

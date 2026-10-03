@@ -1,10 +1,10 @@
 # site/: humanish.dev
 
 The humanish.dev site is a Next.js 16 app (App Router, Turbopack). Its marketing routes are the
-homepage, `/failure-modes` (the cited limits page, built from the same band vocabulary), `/demo`
-(a saved eight-participant run replayed in the Observer) and `/legacy` (the previous homepage,
-not indexed). Fumadocs 16 serves `/docs`. `robots.txt`, `sitemap.xml`, an OG image route,
-`public/llms.txt` and its markdown twin `/llms.md` sit alongside.
+homepage, `/failure-modes` (the cited limits page, built from the same band vocabulary) and
+`/demo` (a saved eight-participant run replayed in the Observer). Fumadocs 16 serves `/docs`.
+`robots.txt`, `sitemap.xml`, an OG image route, `public/llms.txt` and its markdown twin `/llms.md`
+sit alongside.
 
 ## Commands
 
@@ -12,7 +12,8 @@ From the repo root (pnpm workspace):
 
 - `pnpm install` installs the site workspace too.
 - `pnpm --filter humanish-site dev` runs the dev server on http://localhost:3000.
-- `pnpm --filter humanish-site build` makes a production build.
+- `pnpm --filter humanish-site build` makes a production build, then
+  `scripts/check-docs-highlighting.mjs` fails it if a docs page lost its syntax colors in one theme.
 - `pnpm --filter humanish-site start` serves the production build.
 - `pnpm --filter humanish-site typecheck` runs TypeScript only.
 - `pnpm --filter humanish-site registry:build` regenerates the component registry: it extracts
@@ -32,10 +33,9 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
   docs:check fails on a GitHub link to main, except for `docs/evidence/` records and
   `SECURITY.md`, and on a `repo:` path missing here or at that tag.
 - `app/`: root layout (fonts via next/font, theme-init inline script, JSON-LD), `page.tsx` (the
-  fallback homepage when the proxy does not run), `failure-modes/page.tsx`, `docs/`,
-  `api/search/`, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `icon.svg`.
+  homepage), `failure-modes/page.tsx`, `docs/`, `api/search/`, `robots.ts`, `sitemap.ts`,
+  `opengraph-image.tsx`, `icon.svg`.
 - `app/demo/`: the saved-run replay page, with its own OG image.
-- `app/legacy/`: the homepage as it shipped before 2026-09-27, marked `noindex`.
 - `app/llms.md/route.ts`: serves `public/llms.txt` as `text/markdown`.
 - `app/fonts/`: three display-face subsets that `app/layout.tsx` preloads ahead of the full
   faces. Regenerate them with `scripts/subset-display-fonts.py`.
@@ -56,24 +56,13 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
 - `pnpm docs:generate` / `pnpm docs:check` (repo root) generate and check the CLI reference and
   llms command coverage. CI rejects drift.
 
-## Serve the homepage through a flag
+## Serve the homepage and its analytics
 
-Requests for `/` pass through a proxy and a feature flag before a page renders:
-
-- `proxy.ts` runs on `/` only. A request with `Accept: text/markdown` is rewritten to `/llms.md`.
-  Every other request gets a one-year visitor cookie (`hm_vid`) and is rewritten to `/<code>`,
-  where the code encodes that visitor's flag values.
-- `flags.ts` declares the homepage variant flag with the `flags` SDK. The released design is
-  the default value. The PostHog adapter (`@flags-sdk/posthog`) decides only when
-  `POSTHOG_PROJECT_API_KEY` is set; without it every visitor gets the default, which is how CI
-  builds.
-- `app/[code]/` prerenders one static homepage per flag permutation. The page renders
-  `components/home.tsx` or `components/home-legacy.tsx` for its variant. Codes are signed with
-  `FLAGS_SECRET`; a build without it uses a throwaway value, and a path the decoder rejects is a 404.
-- `components/analytics/posthog-client.tsx` loads `posthog-js` once the page is idle,
-  bootstrapped with the visitor id and the flag values the page rendered, and reports the
-  exposure. Session recording and surveys stay off. Without `NEXT_PUBLIC_POSTHOG_KEY` it renders
-  nothing and captures nothing.
+- `proxy.ts` runs on `/` only. A request with `Accept: text/markdown` is rewritten to `/llms.md`;
+  every other request passes through to `app/page.tsx`.
+- `components/analytics/posthog-client.tsx` loads `posthog-js` once the page is idle. Session
+  recording and surveys stay off. Without `NEXT_PUBLIC_POSTHOG_KEY` it renders nothing and
+  captures nothing.
 
 ## Rules
 
@@ -84,9 +73,8 @@ Requests for `/` pass through a proxy and a feature flag before a page renders:
   keeps them out of the registry's token export. Rules read colors from tokens;
   `pnpm site-css:check` counts the hex colors still written into rules.
 - Keep dependencies minimal: Next, React, Tailwind, Vercel Analytics, Fumadocs UI/Core/MDX (docs
-  only) with its `zod` schema peer, the homepage flag stack (`flags`, `@flags-sdk/posthog`,
-  `posthog-js`), and `shadcn` as a dev dependency. No motion libraries. The only committed font
-  binaries are the three subsets in `app/fonts/`.
+  only) with its `zod` schema peer, `posthog-js`, and `shadcn` as a dev dependency. No motion
+  libraries. The only committed font binaries are the three subsets in `app/fonts/`.
 - `app/globals.css` stays the single source of truth for all styling. The registry's per-item
   stylesheets are extracted from it by `scripts/extract-registry-css.mjs`; if a style change
   touches registry classes, run `registry:build` and commit the regenerated output, or CI fails.

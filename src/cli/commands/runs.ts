@@ -1,164 +1,48 @@
 import path from "node:path";
 import { Command, Option } from "commander";
+import { shellQuote } from "../../substrates/shell.js";
 import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
 import { cleanupRun, listRuns, readReview } from "../../run/stored-runs.js";
-import { runDryRun } from "../../run/dry-run.js";
 import { verifyRun } from "../../verify/verify.js";
 import {
   reclaimPreflightSandboxes,
   reclaimRunSandboxes,
   type ReclaimResult,
 } from "../../run/reclaim.js";
-import type { CleanupResult, RunResult } from "../../run/results.js";
+import type { CleanupResult } from "../../run/results.js";
 import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
-import { runLabCommand } from "./lab-run.js";
-import { countOption } from "../renamed-options.js";
+import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
 import {
-  applyEnvFileOption,
   type CliIo,
-  formatRunHuman,
+  CWD_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
-  type LabCommandOptions,
-  parsePositiveInteger,
+  RUN_OPTION_DESCRIPTION,
   writeResult,
 } from "../io.js";
 
-const SCRIPTED_BROWSER_DOCS_URL =
-  "https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios";
-
 export function registerRunCommand(parent: Command, io: CliIo): void {
-  parent
-    .command("run")
-    .argument("[lab]", "Optional lab id or .yaml path.")
-    .description("Run a lab (or a synthetic dry-run bundle). The everyday command.")
-    .summary("Run a persona/scenario simulation or dry-run bundle.")
-    .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
-    // `humanish run <lab>` and `humanish lab run <lab>` are the same operation on the same
-    // dispatcher, but this one used to forward four options while its sibling forwarded all of
-    // them, so `humanish run first-run --no-open` failed while `lab run` accepted it. A
-    // participant hit exactly that and filed it as a documentation mismatch. Same command, same
-    // flags (clig.dev: "be consistent across subcommands").
-    .option("--open", "Open the observer in the default browser.")
-    .option("--no-open", "Render without opening a browser.")
-    .option("--detach", "Render/open once and exit without an attached watch server.")
-    .option("--port <port>", "Local observer server port when following.", "0")
-    .option(
-      "--count <count>",
-      "Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab.",
-    )
-    // The older spelling of --count, hidden and noted on stderr (renamed-options.ts).
-    .addOption(new Option("--sims <count>").hideHelp())
-    // Agents with an older installed skill still send --app-url. Accepting it hidden lets the
-    // refusal name the replacement; commander's bare unknown-option error names nothing. Delete
-    // after 0.106.x.
-    .addOption(new Option("--app-url <url>").hideHelp())
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--env-file <path>", "Load a local env file for this run without persisting values.")
-    .option(
-      "--run-id <id>",
-      "Explicit run id for deterministic fixture tests; refused when that run already exists.",
-    )
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        lab: string | undefined,
-        options: {
-          appUrl?: string;
-          count?: string;
-          cwd: string;
-          dryRun?: boolean;
-          envFile?: string;
-          json?: boolean;
-          runId?: string;
-          sims?: string;
-        },
-        command,
-      ) => {
-        const count = countOption(io, options);
-        if (options.appUrl !== undefined) {
-          const result: RunResult = {
-            schema: "humanish.run-result.v1",
-            ok: false,
-            cwd: options.cwd,
-            warnings: [],
-            error: {
-              code: "HUMANISH_APP_URL_REMOVED",
-              message: `--app-url was removed. To drive an app on a loopback URL, write a scripted-browser lab and run \`humanish run <lab>\`: ${SCRIPTED_BROWSER_DOCS_URL}`,
-            },
-          };
-          writeResult(command, io, result, formatRunHuman);
-          io.setExitCode(2);
-          return;
-        }
-
-        if (
-          !(await applyEnvFileOption({
-            command,
-            cwd: options.cwd,
-            envFile: options.envFile,
-            io,
-            // runLabCommand discovers keys for a live lab; the lab-less preview needs none.
-            discoverKeys: false,
-          }))
-        ) {
-          return;
-        }
-
-        if (lab) {
-          await runLabCommand({
-            command,
-            io,
-            lab,
-            mode: "run",
-            // Forwarded wholesale, exactly as `lab run` does. Cherry-picking a subset here is what
-            // made the two commands disagree in the first place.
-            options: { ...options, count } as LabCommandOptions,
-          });
-          return;
-        }
-
-        const participantCount = count === undefined ? undefined : parsePositiveInteger(count);
-        if (participantCount === null) {
-          const result: RunResult = {
-            schema: "humanish.run-result.v1",
-            ok: false,
-            cwd: options.cwd,
-            warnings: [],
-            error: {
-              code: "HUMANISH_INVALID_SIM_COUNT",
-              message: "--count must be a positive integer.",
-            },
-          };
-          writeResult(command, io, result, formatRunHuman);
-          io.setExitCode(2);
-          return;
-        }
-
-        const result = await runDryRun({
-          cwd: options.cwd,
-          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-          ...(options.runId === undefined ? {} : { runId: options.runId }),
-          ...(participantCount === undefined ? {} : { participantCount }),
-          // Rendered the way `watch` renders it, so a bundle is the same bundle whichever command
-          // produced it. A render failure is a warning on the result.
-          observer: { open: false },
-        });
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+  addRunOptions(
+    parent
+      .command("run")
+      .argument("[lab]", "Optional lab id or .yaml path.")
+      .description(
+        "Run a study, as a dry run or with live participants. This is the everyday command.",
+      )
+      .summary("Run a study, as a dry run or with live participants."),
+  ).action((study: string | undefined, options: RunOptions, command: Command) =>
+    handleRun(io, study, options, command),
+  );
 }
 
 export function registerVerifyCommand(parent: Command, io: CliIo): void {
   parent
     .command("verify")
-    .description("Validate a run bundle and public-safety gates.")
-    .summary("Validate a run bundle and public-safety gates.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .description("Check a run's evidence and share safety.")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--verbose", "Print every check, passing ones included.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
@@ -176,15 +60,15 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
   parent
     .command("cleanup")
     .description(
-      "Inspect recorded resource evidence and write cleanup.json; stored ids do not authorize provider mutation.",
+      "Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.",
     )
-    .summary("Write a resource cleanup inspection receipt.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .summary("Check that a run's resources were stopped.")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await cleanupRun(options.cwd, options.run);
-      writeResult(command, io, result, formatCleanupHuman);
+      writeResult(command, io, result, (value) => formatCleanupHuman(value, options.cwd));
       io.setExitCode(result.ok ? 0 : 2);
     });
 }
@@ -194,8 +78,8 @@ export function registerReviewCommand(parent: Command, io: CliIo): void {
     .command("review")
     .description("Show a run's review: verdict, summary and gaps.")
     .summary("Build a review packet from verified run evidence.")
-    .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await readReview(options.cwd, options.run);
@@ -210,8 +94,8 @@ export function registerExportCommand(parent: Command, io: CliIo): void {
     .description(
       "Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.",
     )
-    .summary("Export Observer HTML or a redacted bundle workspace.")
-    .option("--run <id>", "Run id or 'latest'.", "latest")
+    .summary("Export a run as an Observer page or a redacted bundle.")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .addOption(
       new Option("--format <format>", "Output format; bundle creates a new standalone workspace.")
         .choices(["html", "bundle"])
@@ -229,12 +113,13 @@ export function registerExportCommand(parent: Command, io: CliIo): void {
       "--local-only",
       "Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file.",
     )
-    .option(
-      "--max-bytes <n>",
-      "Refuse an export larger than this.",
-      String(DEFAULT_EXPORT_MAX_BYTES),
+    .addOption(
+      new Option("--max-bytes <n>", "Refuse an export larger than this many bytes.").default(
+        String(DEFAULT_EXPORT_MAX_BYTES),
+        `${DEFAULT_EXPORT_MAX_BYTES / 1024 / 1024} MB`,
+      ),
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
@@ -277,10 +162,10 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
     .description(
       "Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.",
     )
-    .summary("Roll up cost, outcomes, and durations across runs.")
+    .summary("Show cost, outcomes and durations across runs.")
     .option("--lab <id>", "Only runs from this lab id.")
     .option("--since <date>", "Only runs that started on or after this ISO date or datetime.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (options: { cwd: string; json?: boolean; lab?: string; since?: string }, command) => {
@@ -297,9 +182,8 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
 export function registerRunsCommand(parent: Command, io: CliIo): void {
   parent
     .command("runs")
-    .description("List local humanish runs and latest pointers.")
-    .summary("List local humanish runs and latest pointers.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .description("List this project's runs and which one is latest.")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
       const result = await listRuns(options.cwd);
@@ -358,9 +242,9 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
     .description(
       "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.",
     )
-    .summary("Reclaim an interrupted run's sandboxes by recorded id.")
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--run <id>", "Run id, or 'latest'.", "latest")
+    .summary("Stop an interrupted run's leftover sandboxes.")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .addOption(
       new Option(
         "--preflight",
@@ -483,7 +367,26 @@ function formatVerifyVerbose(result: VerifyResult): string {
   );
 }
 
-function formatCleanupHuman(result: CleanupResult): string {
+/** A command-line argument, single-quoted only when the shell would split or expand it. */
+function shellArg(value: string): string {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : shellQuote(value);
+}
+
+/**
+ * Cleanup only reads evidence and never stops a sandbox. A failed resource is an E2B sandbox not
+ * recorded as stopped, which reclaim can stop from the run's sandbox receipts, so the last line
+ * names it. A skipped resource is a provider reclaim does not handle, so it gets no line. `cwd` is
+ * the --cwd the command was given, since cleanup's result masks it.
+ */
+function reclaimPointer(result: CleanupResult, cwd: string): string[] {
+  if (result.runId === undefined || result.summary.failed === 0) return [];
+  const cwdFlag = cwd === "." ? "" : ` --cwd ${shellArg(cwd)}`;
+  return [
+    `To stop leftover sandboxes, run humanish reclaim --run ${shellArg(result.runId)}${cwdFlag}.`,
+  ];
+}
+
+function formatCleanupHuman(result: CleanupResult, cwd: string): string {
   if (!result.ok && result.error) {
     return `${result.error.code}: ${result.error.message}\n`;
   }
@@ -495,6 +398,7 @@ function formatCleanupHuman(result: CleanupResult): string {
       `resources: already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
       ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
       ...result.warnings.map((warning) => `warning: ${warning}`),
+      ...reclaimPointer(result, cwd),
     ].join("\n") + "\n"
   );
 }

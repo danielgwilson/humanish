@@ -67,7 +67,7 @@ export type ExposureValidation =
 
 /** Why `watch` refuses `--safe`, on every watch path. */
 export const WATCH_SAFE_NOT_APPLICABLE_MESSAGE =
-  "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain.";
+  "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain.";
 
 function code(surface: ExposureSurface, suffix: string): ExposureErrorCode {
   return `HUMANISH_${surface.toUpperCase()}_${suffix}` as ExposureErrorCode;

@@ -159,16 +159,11 @@ describe("runLab returns an option refusal in the route's own envelope and write
   });
 
   it.each([
-    ["preview", "preview", "humanish.run-result.v1", { scorer }],
-    ["cuClone", "computer-use", "humanish.cua-lab-result.v2", { inProcess, createProvider }],
-    ["scriptedAppUrl", "scripted", "humanish.scripted-lab-result.v1", { scorer }],
-    ["terminal", "terminal", "humanish.terminal-lab-result.v1", { prepareDesktop }],
-    [
-      "sharedProvisioned",
-      "shared-world",
-      "humanish.concurrent-shared-world-lab-result.v1",
-      { createProvider },
-    ],
+    ["preview", "preview", "humanish.study-result.v1", { scorer }],
+    ["cuClone", "computer-use", "humanish.study-result.v1", { inProcess, createProvider }],
+    ["scriptedAppUrl", "scripted", "humanish.study-result.v1", { scorer }],
+    ["terminal", "terminal", "humanish.study-result.v1", { prepareDesktop }],
+    ["sharedProvisioned", "shared-world", "humanish.study-result.v1", { createProvider }],
   ] as const)("%s", async (base, route, schema, options) => {
     let desktopLoads = 0;
     const outcome = await runLab(
@@ -185,9 +180,13 @@ describe("runLab returns an option refusal in the route's own envelope and write
     expect(outcome.route).toBe(route);
     expect(outcome.result).toMatchObject({
       schema,
+      route,
+      studyId: config(base).id,
       ok: false,
       error: { code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" },
     });
+    // The deprecated spelling carries the same value until the next minor removes it.
+    expect(outcome.result).toHaveProperty("labId", config(base).id);
     expect(desktopLoads).toBe(0);
     expect(await readdir(cwd)).toEqual([]);
   });
