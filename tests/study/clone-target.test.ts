@@ -8,7 +8,7 @@ import { parse } from "yaml";
 import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
+import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
@@ -107,7 +107,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-target-scripted-"));
     const desktop = countingDesktopModule();
     try {
-      const result = await runScriptedBrowserLab({
+      const result = await runScriptedBrowserStudy({
         cwd,
         config: unparsedCloneLab("scripted-browser", "local"),
         dryRun: false,

@@ -1,4 +1,4 @@
-import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
+import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 // What a lab is, for the surface that has to describe it before you spend money.
 //
@@ -202,7 +202,7 @@ export async function readStudySummary(
   const subject = subjectOf(config);
   const participants = participantsOf(config);
   const runtime =
-    options.checkKeys === true && isLocalBrowserLab(inspected.config)
+    options.checkKeys === true && isLocalBrowserStudy(inspected.config)
       ? await localRuntimeStatus({
           ...(options.env ? { env: options.env } : {}),
           media:
@@ -212,7 +212,7 @@ export async function readStudySummary(
       : undefined;
   const participantReadiness =
     options.checkKeys === true &&
-    isLocalBrowserLab(inspected.config) &&
+    isLocalBrowserStudy(inspected.config) &&
     inspected.config.actors[0]?.type === "local-agent"
       ? await localCodexParticipantCheck({ env: options.env ?? process.env })
       : undefined;

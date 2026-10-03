@@ -5,7 +5,7 @@ import { rosterOf } from "../../study/parse/actors.js";
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;
 const MAX_SESSION_MS = 20 * 60_000;
 
-export function isLocalBrowserLab(config: StudyConfig): boolean {
+export function isLocalBrowserStudy(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
@@ -15,7 +15,7 @@ export function isLocalBrowserLab(config: StudyConfig): boolean {
 
 /** Defaults for the explicitly selected local substrate; hosted configurations are untouched. */
 export function localBrowserDefaults(config: StudyConfig): StudyConfig {
-  if (!isLocalBrowserLab(config)) return config;
+  if (!isLocalBrowserStudy(config)) return config;
   return {
     ...config,
     actors: config.actors.map((actor) => ({

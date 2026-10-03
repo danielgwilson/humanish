@@ -64,7 +64,7 @@ export interface ScriptedBrowserActorDescriptor extends ActorDescriptorBase {
   runSession(options: ScriptedBrowserSessionOptions): Promise<ScriptedBrowserSessionResult>;
 }
 
-// The terminal descriptor has no runSession. The terminal agent runs inside runTerminalProductLab
+// The terminal descriptor has no runSession. The terminal agent runs inside runTerminalProductStudy
 // (src/routes/terminal/route.ts), which creates the sandbox, enforces command-scoped runtime auth
 // and caps, captures evidence and destroys the sandbox by id as one lifecycle. The registry holds
 // its capabilities, which route selection and key-placement enforcement read.
@@ -156,7 +156,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   },
   // The ActorId names the terminal-product dispatch slot; the live route records the concrete
   // provider as "codex". keyPlacement "in-sandbox-command-scoped" is registry-declared and
-  // enforced by runTerminalProductLab before it creates a sandbox, which is where this actor runs.
+  // enforced by runTerminalProductStudy before it creates a sandbox, which is where this actor runs.
   "codex-exec": {
     id: "codex-exec",
     label: "Codex Exec (autonomous terminal agent, in-sandbox)",

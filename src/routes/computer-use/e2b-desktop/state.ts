@@ -23,7 +23,7 @@ import type { ParticipantDesktopEvidence } from "../participant-desktop.js";
 import type { ParticipantComms, RunningCommsCatch } from "./comms.js";
 import type { ParticipantFidelity } from "./fidelity.js";
 import type {
-  CuaActorLabErrorCode,
+  CuaActorStudyErrorCode,
   E2BDesktopDeps,
   DesktopParticipantRun,
   SandboxReleaseFact,
@@ -55,7 +55,7 @@ export interface E2BParticipantState {
   desktopResources: DesktopResourceObservation | undefined;
   released: boolean;
   sandboxRelease: SandboxReleaseFact | undefined;
-  failureCode: CuaActorLabErrorCode | undefined;
+  failureCode: CuaActorStudyErrorCode | undefined;
   commsCatch: RunningCommsCatch | undefined;
   commsArtifactPath: string | undefined;
   receivingInboxUrl: string | undefined;

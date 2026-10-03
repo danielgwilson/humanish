@@ -16,7 +16,7 @@ import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
  * Runs the participants (a dry run runs none). Returns the refusal when real email setup fails, or
  * the participant outcomes and the warnings the finish records.
  */
-export async function runLabParticipants(setup: CuaRunSetup, participants: CuaParticipantsSetup) {
+export async function runStudyParticipants(setup: CuaRunSetup, participants: CuaParticipantsSetup) {
   const { plan, input, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, bundleBase } = setup;
   const { env, knownSecretValues, deps, liveTrace, externalComms, inProgress, fail } = participants;

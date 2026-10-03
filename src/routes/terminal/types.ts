@@ -21,8 +21,8 @@ import {
 } from "../../run/bundle.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
-/** Provider-neutral metadata constant: the route's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
-export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
+/** Provider-neutral metadata constant: the route's non-secret tag (mirrors CUA_ACTOR_STUDY_PROVIDER_METADATA). */
+export const TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA = {
   mode: "terminal-product-lab",
   tool: "humanish",
 } as const;
@@ -132,7 +132,7 @@ export interface TerminalScorer {
   ) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
 }
 
-export interface RunTerminalProductLabOptions {
+export interface RunTerminalProductStudyOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   /** Reports the analysis window to onEvent; built by normalizeRunStudyOptions. */
@@ -163,7 +163,7 @@ export interface RunTerminalProductLabOptions {
   scorerProvenance?: RunScorerProvenance;
 }
 
-export interface TerminalProductLabResult
+export interface TerminalProductStudyResult
   extends AutomaticAnalysisResult, StudyResultIdentity<"terminal"> {
   /** True when the bundle verified and (dry-run, or the live session reached a terminal verdict
    *  without a harness error + cleanup was proven). The agent's pass/fail is evidence, not the
@@ -380,12 +380,14 @@ export interface TerminalLedgers {
 }
 
 /** What a terminal run takes besides its plan. The plan carries the config, dry run and lab. */
-export type TerminalRunInput = Omit<RunTerminalProductLabOptions, "config" | "dryRun" | "lab">;
+export type TerminalRunInput = Omit<RunTerminalProductStudyOptions, "config" | "dryRun" | "lab">;
 
-/** A live terminal plan: its caps are the fail-closed ones planTerminalLab required. */
+/** A live terminal plan: its caps are the fail-closed ones planTerminalStudy required. */
 export type LiveTerminalPlan = Extract<TerminalPlan, { readonly dryRun: false }>;
 
-export type TerminalProductLabErrorCode = NonNullable<TerminalProductLabResult["error"]>["code"];
+export type TerminalProductStudyErrorCode = NonNullable<
+  TerminalProductStudyResult["error"]
+>["code"];
 
 /** The runtime key's command-scoped placement, built by a live run's checks of this machine. */
 export type LiveTerminalAuth = Extract<ReturnType<typeof buildRuntimeAuth>, { ok: true }>;
@@ -395,7 +397,7 @@ export interface RunLiveTerminalSessionArgs {
   input: TerminalRunInput;
   cwd: string;
   warnings: string[];
-  failed: (code: TerminalProductLabErrorCode, message: string) => TerminalProductLabResult;
+  failed: (code: TerminalProductStudyErrorCode, message: string) => TerminalProductStudyResult;
   /** The lab's run scope; the live session starts its run in it. */
   scope: RunScope;
   runtimeEnv: LiveTerminalAuth;

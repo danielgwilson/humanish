@@ -36,15 +36,15 @@ import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
 import { projectParticipantSubjects, subjectProvenanceArg } from "./subject-projection.js";
 import {
-  type CuaActorLabErrorCode,
-  type CuaActorLabResult,
+  type CuaActorStudyErrorCode,
+  type CuaActorStudyResult,
   type CuaParticipantDeps,
   type CuaParticipantPlan,
   type DesktopParticipantRun,
   type CuaSubjectProjection,
   type CuaSubjectProvenanceArg,
   type ComputerUseRunInput,
-  type RunCuaActorLabOptions,
+  type RunCuaActorStudyOptions,
   participantSubjectEnv,
 } from "./types.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
@@ -63,10 +63,10 @@ async function bindProject(cwd: string) {
  * The envelope of a refusal the plan left for after the cwd checks. The participant cap and
  * in-process fan-out refusals come after the committed personas are read, so a persona-file error still wins.
  */
-export async function refuseCuaLab(
-  options: RunCuaActorLabOptions,
+export async function refuseCuaStudy(
+  options: RunCuaActorStudyOptions,
   refusal: ComputerUseRefusal,
-): Promise<CuaActorLabResult> {
+): Promise<CuaActorStudyResult> {
   const { config, dryRun } = options;
   const projectRoot = await bindProject(options.cwd);
   // The committed personas are read before the refusal returns, so a persona-file error wins.
@@ -92,7 +92,7 @@ export type AdmittedCuaRun = Extract<
 >["admitted"];
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
-/** What runLabParticipants and finishCuaRun both read. */
+/** What runStudyParticipants and finishCuaRun both read. */
 export interface CuaRunSetup {
   plan: ComputerUsePlan;
   input: ComputerUseRunInput;
@@ -107,14 +107,14 @@ export interface CuaRunSetup {
   bundleBase: CuaRunBundleBase;
 }
 
-/** What only runLabParticipants reads. */
+/** What only runStudyParticipants reads. */
 export interface CuaParticipantsSetup {
   env: Record<string, string | undefined>;
   /** The array scrubKnownValues reads at each call. Email receiving appends the values it
    *  provisions before the participants run. */
   knownSecretValues: string[];
   deps: Omit<CuaParticipantDeps, "signalProvisioned">;
-  /** Filled by runLabParticipants on a live run; deps.onTrace reads it. */
+  /** Filled by runStudyParticipants on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
   /** The operator-hosted inbox on the app-url route, when declared. */
   externalComms: { config: StudyCommsExternal; email: StudyCommsEmail } | undefined;
@@ -125,7 +125,7 @@ export interface CuaParticipantsSetup {
     provenance: CuaSubjectProvenanceArg | undefined;
   };
   /** The refusal envelope, for a run that stops before its bundle. */
-  fail: (code: CuaActorLabErrorCode, message: string, actorLabel?: string) => CuaActorLabResult;
+  fail: (code: CuaActorStudyErrorCode, message: string, actorLabel?: string) => CuaActorStudyResult;
 }
 
 /** What only finishCuaRun reads besides the participants' outcomes. */
@@ -136,7 +136,7 @@ export interface CuaFinishFacts {
 }
 
 type PreparedCuaRun =
-  | { ok: false; result: CuaActorLabResult }
+  | { ok: false; result: CuaActorStudyResult }
   | { ok: true; setup: CuaRunSetup; participants: CuaParticipantsSetup; finish: CuaFinishFacts };
 
 /**
@@ -163,11 +163,11 @@ export async function admitCuaRun(
   const subjectEnvNames = [...participantSubjectEnv(subject)];
 
   const fail = (
-    code: CuaActorLabErrorCode,
+    code: CuaActorStudyErrorCode,
     message: string,
     actorLabel?: string,
-  ): CuaActorLabResult => ({
-    ...studyResultIdentity("computer-use", plan.labId),
+  ): CuaActorStudyResult => ({
+    ...studyResultIdentity("computer-use", plan.studyId),
     ok: false,
     cwd,
     actor: actorLabel ?? plan.actor,
@@ -227,7 +227,7 @@ export async function admitCuaRun(
   // every N; the stderr table prints for fan-out (N>1) so single-participant runs stay as quiet as they
   // always were.
   if (participantCount > 1) {
-    emitPreflightPlan(participantPlan, plan.labId);
+    emitPreflightPlan(participantPlan, plan.studyId);
   }
   input.emit?.(planEvent(participantPlan));
   await assertPreparedSelectedOutputDirectory(projectRoot);
@@ -349,7 +349,7 @@ export async function startCuaRun(
     packageName: "humanish",
   });
 
-  // Live-trace flush seam: runLabParticipants fills it when a live run has an in-progress bundle
+  // Live-trace flush seam: runStudyParticipants fills it when a live run has an in-progress bundle
   // to grow; participants call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};
@@ -451,7 +451,7 @@ function cuaParticipantDeps(
       liveTrace.flush?.(participantId, items, usage, metadata),
     ...callerDriving(input, config),
     residual: plan.residual,
-    labId: plan.labId,
+    labId: plan.studyId,
     caps: plan.caps,
     appUrl,
     brain: plan.runner.brain,

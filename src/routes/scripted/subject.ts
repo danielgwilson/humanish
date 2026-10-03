@@ -119,7 +119,7 @@ export class ScriptedSubject {
         metadata: {
           mode: "scripted-browser-lab",
           tool: "humanish",
-          labId: plan.labId,
+          labId: plan.studyId,
           kind: "subject",
           actor: plan.actor,
         },

@@ -6,8 +6,8 @@ import { parseStudy } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
+import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
+import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
 import * as synthetic from "../../src/run/dry-run.js";
 
 const fixtures = JSON.parse(
@@ -75,8 +75,8 @@ describe("real receiving admission on non-receiving backends", () => {
   );
 
   it.each([
-    ["terminal", runTerminalProductLab, "HUMANISH_TERMINAL_SUBJECT_INVALID"],
-    ["scripted", runScriptedBrowserLab, "HUMANISH_SCRIPTED_SCENARIO_INVALID"],
+    ["terminal", runTerminalProductStudy, "HUMANISH_TERMINAL_SUBJECT_INVALID"],
+    ["scripted", runScriptedBrowserStudy, "HUMANISH_SCRIPTED_SCENARIO_INVALID"],
   ] as const)(
     "refuses direct %s even when the config describes a supported computer-use route",
     async (_name, runner, code) => {

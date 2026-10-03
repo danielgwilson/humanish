@@ -5,7 +5,7 @@
 
 import path from "node:path";
 
-import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
+import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
 import type { InternalRunStudyOptions, StudyOutcome, RunStudyOptions } from "../run-study.js";
 import { resolveStudyDryRun, type StudyRoute } from "./plan.js";
 import type { StudyConfig } from "./types.js";
@@ -97,7 +97,7 @@ function unsupportedOption(
         return unsupported("inProcess", route, "it drives an app-url or local-app subject.");
     }
     if (prepareDesktop !== undefined) {
-      if (isLocalBrowserLab(config))
+      if (isLocalBrowserStudy(config))
         return unsupported("prepareDesktop", route, "a local VM study has no E2B desktop.");
       // An in-process run has no desktop to prepare.
       if (inProcess !== undefined || source === "local-app")

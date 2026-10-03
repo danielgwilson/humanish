@@ -33,7 +33,7 @@ import {
   runConcurrentSharedWorld,
   runSharedWorldPlan,
 } from "../../../src/routes/shared-world/route.js";
-import { planSharedWorldLab } from "../../../src/routes/shared-world/plan.js";
+import { planSharedWorldStudy } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
@@ -916,12 +916,12 @@ describe("observed-origin convergence (redirect tolerated)", () => {
 describe("runSharedWorldPlan", () => {
   it("runs a plan alone: the bundle records the plan's lab id, title and owner", async () => {
     const config = parseExternal();
-    const planned = planSharedWorldLab(config, { dryRun: true });
+    const planned = planSharedWorldStudy(config, { dryRun: true });
     if (!planned.ok || planned.plan.plane.kind !== "external-public")
       throw new Error("expected an external-public shared-world plan");
     const plan = {
       ...planned.plan,
-      labId: "planned-lab",
+      studyId: "planned-lab",
       title: "Planned title",
       plane: { ...planned.plan.plane, owner: "planned/owner" },
     };

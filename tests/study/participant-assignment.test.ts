@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";
 import { participantAssignment } from "../../src/study/participant-assignment.js";
@@ -75,7 +75,7 @@ describe("participant assignment evidence", () => {
         execution: { target: "e2b-desktop" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
-      const result = await runCuaActorLab({
+      const result = await runCuaActorStudy({
         cwd,
         config: parsed.config,
         dryRun: true,
@@ -140,7 +140,7 @@ describe("participant assignment evidence", () => {
       execution: { target: "e2b-desktop" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       cwd,
       config: parsed.config,
       dryRun: true,

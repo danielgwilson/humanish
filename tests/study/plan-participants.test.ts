@@ -20,7 +20,7 @@ import {
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { FALLBACK_PERSONA_ID } from "../../src/routes/computer-use/participant-prompt.js";
 import { loadCuaParticipants } from "../../src/routes/computer-use/participant-runs.js";
-import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
+import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
@@ -176,7 +176,7 @@ describe("computerUseParticipants", () => {
     expect(configs.length).toBeGreaterThan(cuVariants.length);
     for (const [name, config, countOverride] of configs) {
       const cwd = await tempProject();
-      const planned = planComputerUseLab(config, {
+      const planned = planComputerUseStudy(config, {
         dryRun: true,
         ...(countOverride === undefined ? {} : { countOverride }),
       });

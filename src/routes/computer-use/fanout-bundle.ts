@@ -38,7 +38,7 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
     at: args.run.createdAt,
     level: "info",
     type: "cua-lab.run.created",
-    message: `Created computer-use fan-out run for ${plan.labId} (actor ${args.descriptor.id}, ${specs.length} participants, one world each).`,
+    message: `Created computer-use fan-out run for ${plan.studyId} (actor ${args.descriptor.id}, ${specs.length} participants, one world each).`,
   });
   events.push({
     id: "event-001-fanout-plan",
@@ -184,8 +184,8 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
     ? []
     : participantFeedbackCandidates({
         runId: args.run.runId,
-        scenarioId: `cua-${plan.labId}`,
-        adapterId: plan.labId,
+        scenarioId: `cua-${plan.studyId}`,
+        adapterId: plan.studyId,
         goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
         substrate: plan.residual.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
         participants: specs.map((spec, index) => {
@@ -282,12 +282,12 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     persona: {
       id: specs[0]!.persona.id,
       name: `Computer-use fan-out (${specs.length} participants)`,
-      source: `study:${plan.labId}`,
+      source: `study:${plan.studyId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },
     scenario: {
-      id: `cua-${plan.labId}`,
-      title: plan.title ?? `Computer-use fan-out: ${plan.labId}`,
+      id: `cua-${plan.studyId}`,
+      title: plan.title ?? `Computer-use fan-out: ${plan.studyId}`,
       // Redacted at write time, like every other raw-text surface in the bundle. Participant records are
       // digest-only by design, but scenario.goal keeps one participant's composed instructions verbatim,
       // and an adopter whose authored participant text must name a runtime world URL (an inbox on a route
@@ -297,7 +297,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       //
       // The instructions the model actually receives are untouched; only the persisted copy changes.
       goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
-      source: `study:${plan.labId}`,
+      source: `study:${plan.studyId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },
     lifecycle: [

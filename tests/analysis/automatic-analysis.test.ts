@@ -24,10 +24,10 @@ import { readStudySummary } from "../../src/study/summary.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import { parse as parseYaml } from "yaml";
 import { runStudyWith } from "../../src/run-study.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
+import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
+import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
 import { claimAutomaticAnalysis } from "../../src/analysis/job.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -230,31 +230,33 @@ describe("automatic analysis admission and producer boundary", () => {
       expect(await readdir(cwd)).toEqual([]);
     },
   );
-  it.each([runCuaActorLab, runScriptedBrowserLab, runTerminalProductLab, runConcurrentSharedWorld])(
-    "validates direct producer config before hooks",
-    async (runner) => {
-      const base = fixtures.find((row) => row.route === "computer-use")!.config;
-      const forbidden = vi.fn(async () => {
-        throw new Error("forbidden hook");
-      });
-      const result = await runner({
-        cwd: path.join(cwd, "absent"),
-        config: { ...base, review: { analysis: { maxCostUsd: 0 } } },
-        dryRun: false,
-        env: {},
-        deps: {
-          desktopModule: forbidden,
-          runSession: forbidden,
-          renderObserver: forbidden,
-        },
-        inProcess: { executor: forbidden },
-        createProvider: forbidden,
-      });
-      expect(result.error?.code).toBe("HUMANISH_STUDY_ANALYSIS_INVALID");
-      expect(forbidden).not.toHaveBeenCalled();
-      await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
-    },
-  );
+  it.each([
+    runCuaActorStudy,
+    runScriptedBrowserStudy,
+    runTerminalProductStudy,
+    runConcurrentSharedWorld,
+  ])("validates direct producer config before hooks", async (runner) => {
+    const base = fixtures.find((row) => row.route === "computer-use")!.config;
+    const forbidden = vi.fn(async () => {
+      throw new Error("forbidden hook");
+    });
+    const result = await runner({
+      cwd: path.join(cwd, "absent"),
+      config: { ...base, review: { analysis: { maxCostUsd: 0 } } },
+      dryRun: false,
+      env: {},
+      deps: {
+        desktopModule: forbidden,
+        runSession: forbidden,
+        renderObserver: forbidden,
+      },
+      inProcess: { executor: forbidden },
+      createProvider: forbidden,
+    });
+    expect(result.error?.code).toBe("HUMANISH_STUDY_ANALYSIS_INVALID");
+    expect(forbidden).not.toHaveBeenCalled();
+    await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
   it.each(["computer-use", "scripted", "terminal", "shared-world"])(
     "runLab %s dry-run skips post-run spend exactly once",
     async (route) => {
@@ -406,7 +408,7 @@ describe("automatic analysis admission and producer boundary", () => {
   });
   it("an early producer refusal cannot spend on an existing supplied run ID", async () => {
     const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
-    const prior = await runCuaActorLab({
+    const prior = await runCuaActorStudy({
       cwd,
       config: base,
       dryRun: true,
@@ -419,7 +421,7 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     const run = vi.fn();
     const emit = vi.fn();
-    const refused = await runCuaActorLab({
+    const refused = await runCuaActorStudy({
       cwd,
       config: {
         ...base,
@@ -688,7 +690,7 @@ describe("automatic analysis admission and producer boundary", () => {
   );
   it("TUI cancellation of finished source only writes the safe marker, never signals a PID", async () => {
     const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
-    const prior = await runCuaActorLab({
+    const prior = await runCuaActorStudy({
       cwd,
       config: base,
       dryRun: true,
@@ -709,7 +711,7 @@ describe("automatic analysis admission and producer boundary", () => {
     "analysis cancellation never signals after source status becomes %s",
     async (state) => {
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
-      await runCuaActorLab({
+      await runCuaActorStudy({
         cwd,
         config: base,
         dryRun: true,

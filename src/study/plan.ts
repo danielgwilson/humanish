@@ -3,10 +3,10 @@
 // declared kind. This is the only function that decides it.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
-import { callerDrivingOf, planComputerUseLab } from "../routes/computer-use/plan.js";
-import { injectedBrowser, planScriptedLab } from "../routes/scripted/plan.js";
-import { planSharedWorldLab } from "../routes/shared-world/plan.js";
-import { planTerminalLab } from "../routes/terminal/plan.js";
+import { callerDrivingOf, planComputerUseStudy } from "../routes/computer-use/plan.js";
+import { injectedBrowser, planScriptedStudy } from "../routes/scripted/plan.js";
+import { planSharedWorldStudy } from "../routes/shared-world/plan.js";
+import { planTerminalStudy } from "../routes/terminal/plan.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { InternalRunStudyOptions } from "../run-study.js";
 import type { StudyDeps } from "./study-deps.js";
@@ -111,7 +111,7 @@ function planRoute(
     case "preview":
       return planPreview(lab, options, input);
     case "computer-use":
-      return planComputerUseLab(lab, {
+      return planComputerUseStudy(lab, {
         ...input,
         hasRunSession: deps.runSession !== undefined,
         driving: callerDrivingOf(options),
@@ -119,13 +119,13 @@ function planRoute(
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
       });
     case "shared-world":
-      return planSharedWorldLab(lab, {
+      return planSharedWorldStudy(lab, {
         ...input,
         hasRunSession: deps.runSession !== undefined,
       });
     case "terminal":
-      return planTerminalLab(lab, { ...input, hasCostProbe: deps.costProbe !== undefined });
+      return planTerminalStudy(lab, { ...input, hasCostProbe: deps.costProbe !== undefined });
     case "scripted":
-      return planScriptedLab(lab, { ...input, injectedBrowser: injectedBrowser(deps) });
+      return planScriptedStudy(lab, { ...input, injectedBrowser: injectedBrowser(deps) });
   }
 }

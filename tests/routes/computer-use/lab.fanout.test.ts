@@ -27,8 +27,8 @@ import {
   resolveParticipantDevice,
 } from "../../../src/study/device-presets.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
-import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
+import { runComputerUsePlan, runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
+import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
 import { runCuaParticipants } from "../../../src/routes/computer-use/participant-execution.js";
@@ -346,7 +346,7 @@ describe("computer-use participants come from the plan", () => {
 
   it("runs the plan's participants, bound and budgets", async () => {
     const config = fanoutConfig({ concurrency: 2 });
-    const planned = planComputerUseLab(config, { dryRun: true });
+    const planned = planComputerUseStudy(config, { dryRun: true });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const [first, second] = planned.plan.runner.participants;
     if (first === undefined || second === undefined) throw new Error("expected four participants");
@@ -605,7 +605,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
 
 /** The computer-use plan a fixture config makes; the bundle reads the lab's identity from it. */
 function planOf(config: StudyConfig): ComputerUsePlan {
-  const planned = planComputerUseLab(config, { dryRun: true });
+  const planned = planComputerUseStudy(config, { dryRun: true });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return planned.plan;
 }
@@ -2266,7 +2266,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
 
   it("rejects multi-participant fan-out on the in-process route (inProcess): single participant only", async () => {
     const handle = makeFanoutModule();
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       cwd,
       config: fanoutConfig({ concurrency: 2 }),
       dryRun: false,
@@ -2305,7 +2305,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
   it("re-enforces clone.fanout rejection at the engine even if a config bypasses the parser", async () => {
     const base = fanoutConfig({ concurrency: 2 });
     const tampered = { ...base, subject: { ...base.subject, clone: { fanout: 2 } } } as StudyConfig;
-    const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
+    const result = await runCuaActorStudy({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
   });

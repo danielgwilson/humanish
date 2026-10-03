@@ -94,7 +94,7 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
  * What a computer-use run takes besides its plan and config. The count override and rerun go to
  * participant building with the config.
  */
-export type ComputerUseRunInput = Omit<RunCuaActorLabOptions, "config" | "dryRun" | "lab">;
+export type ComputerUseRunInput = Omit<RunCuaActorStudyOptions, "config" | "dryRun" | "lab">;
 
 /**
  * What runStudyWith's local VM study gives a computer-use run: the desktop each participant runs on, the
@@ -108,7 +108,7 @@ export interface LocalVmInput {
   readonly signal?: AbortSignal;
 }
 
-export interface RunCuaActorLabOptions {
+export interface RunCuaActorStudyOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   cwd: string;
@@ -225,7 +225,7 @@ export interface CuaParticipantResult {
   diagnostics?: CuaDiagnostics;
   /** Set when the participant was skipped (pinned reason string). */
   skippedReason?: string;
-  error?: { code: CuaActorLabErrorCode; message: string };
+  error?: { code: CuaActorStudyErrorCode; message: string };
 }
 
 /** Aggregate counts across participants. */
@@ -244,7 +244,7 @@ export interface CuaParticipantSummary {
   waves: number;
 }
 
-export type CuaActorLabErrorCode =
+export type CuaActorStudyErrorCode =
   | "HUMANISH_STUDY_ANALYSIS_INVALID"
   | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
   | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
@@ -333,7 +333,7 @@ export type CuaSubjectProvenanceArg =
       state: RunSubjectProvenance["state"];
     };
 
-export interface CuaActorLabResult
+export interface CuaActorStudyResult
   extends AutomaticAnalysisResult, StudyResultIdentity<"computer-use"> {
   /** True when the Observer verified the bundle, all live participants passed credibility checks
    * (or this is a dry-run), and no declared adapter/scorer verdict failed. */
@@ -374,7 +374,7 @@ export interface CuaActorLabResult
   diagnostics?: CuaDiagnostics;
   warnings: string[];
   error?: {
-    code: CuaActorLabErrorCode;
+    code: CuaActorStudyErrorCode;
     message: string;
   };
 }
@@ -603,7 +603,7 @@ export interface ParticipantRunOutcome {
    *  external outcome constructors (shared-world, test fakes) stay valid; absent counts as false. */
   reportedFriction?: boolean;
   harnessError: boolean;
-  failureCode?: CuaActorLabErrorCode;
+  failureCode?: CuaActorStudyErrorCode;
   /** Relative run-dir path of the digest-only comms-thread evidence artifact this participant wrote
    *  (humanish.comms-thread.v1), when a comms lab captured mail into its in-sandbox catch. Registered
    *  in the participant's stream artifacts. Absent when no comms lab ran or nothing was captured. */

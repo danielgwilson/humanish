@@ -11,7 +11,7 @@
 import type { RunIndexEntry } from "./run-index.js";
 
 /** One lab as the labs list shows it. */
-export interface LabRollup {
+export interface StudyRollup {
   labId: string;
   /** Total runs attributed to this lab. */
   runs: number;
@@ -28,8 +28,8 @@ export interface LabRollup {
  * attribution are collected under `unattributed` rather than invented into a study. That is the
  * home for pre-contract runs and library callers.
  */
-export function groupRunsByLab(entries: readonly RunIndexEntry[]): {
-  labs: LabRollup[];
+export function groupRunsByStudy(entries: readonly RunIndexEntry[]): {
+  labs: StudyRollup[];
   unattributed: RunIndexEntry[];
 } {
   const byLab = new Map<string, RunIndexEntry[]>();
@@ -44,7 +44,7 @@ export function groupRunsByLab(entries: readonly RunIndexEntry[]): {
     if (bucket === undefined) byLab.set(labId, [entry]);
     else bucket.push(entry);
   }
-  const labs: LabRollup[] = [...byLab.entries()].map(([labId, runs]) => {
+  const labs: StudyRollup[] = [...byLab.entries()].map(([labId, runs]) => {
     const liveRuns = runs.filter((run) => run.liveness === "running");
     return {
       labId,
@@ -77,7 +77,7 @@ function recencyOf(entry: RunIndexEntry | undefined): number {
  * number of runs it came from; `sample: 0` means there is nothing to claim and the caller must
  * say so rather than showing an empty number.
  */
-export interface LabExpectation {
+export interface StudyExpectation {
   /** How many completed runs of this lab the figures are drawn from. */
   sample: number;
   medianDurationMs?: number;
@@ -102,7 +102,7 @@ export interface LabExpectation {
 export function expectationFor(
   entries: readonly RunIndexEntry[],
   mode?: "dry-run" | "live",
-): LabExpectation {
+): StudyExpectation {
   const scoped = mode === undefined ? entries : entries.filter((entry) => entry.mode === mode);
   const finished = scoped.filter((entry) => entry.liveness === "finished");
   const durations = finished
@@ -146,7 +146,7 @@ function median(sorted: readonly number[]): number {
  * A lab with no history says so plainly instead of borrowing another lab's numbers or inventing
  * a range. "No runs yet" is information, and the operator can still press Start.
  */
-export function expectationLine(expectation: LabExpectation): string {
+export function expectationLine(expectation: StudyExpectation): string {
   if (expectation.sample === 0) return "no runs yet";
   const parts: string[] = [];
   if (expectation.durationRangeMs !== undefined) {
@@ -180,8 +180,8 @@ export function expectationLine(expectation: LabExpectation): string {
  * live history it reports the count and claims nothing about time or money. That is why this is
  * shared rather than reimplemented per surface, since the two disagreeing is the whole failure.
  */
-export function labSummaryLine(
-  row: Pick<LabRow, "runs" | "declared" | "expectation" | "liveExpectation">,
+export function studySummaryLine(
+  row: Pick<StudyRow, "runs" | "declared" | "expectation" | "liveExpectation">,
 ): string {
   if (row.runs === 0) return row.declared ? "never run" : "no runs";
   if (row.liveExpectation.sample > 0) return expectationLine(row.liveExpectation);
@@ -299,7 +299,7 @@ export function livenessLabel(entry: Pick<RunIndexEntry, "liveness" | "verdict">
 }
 
 /** A lab as the labs list shows it: what is declared, joined to what actually happened. */
-export interface LabRow {
+export interface StudyRow {
   /**
    * Stable identity for this row. A manifest's path when it has one, else the lab id, because two
    * manifests can declare the same id, and keying rows by id makes them collapse into a pair of
@@ -345,18 +345,18 @@ export interface LabRow {
   latest?: RunIndexEntry;
   liveRuns: RunIndexEntry[];
   /** Across every finished run, whatever its mode. A summary, never attached to a spend decision. */
-  expectation: LabExpectation;
+  expectation: StudyExpectation;
   /** Live runs only: the figure that belongs beside anything that spends money. */
-  liveExpectation: LabExpectation;
+  liveExpectation: StudyExpectation;
 }
 
 /** The addressable handle for a manifest: its filename without directory or extension. */
-function labNameFromPath(manifestPath: string): string {
+function studyNameFromPath(manifestPath: string): string {
   const base = manifestPath.split("/").pop() ?? manifestPath;
   return base.replace(/\.(ya?ml)$/i, "");
 }
 
-export interface DeclaredLab {
+export interface DeclaredStudy {
   id: string;
   title?: string;
   /** The manifest's own description, so a list of studies can say what each one is. */
@@ -383,11 +383,11 @@ export interface DeclaredLab {
  * labs that have never run (alphabetically by the displayed label, so the order on screen is the
  * order a reader can predict), then labs known only from history.
  */
-export function labRows(
-  declared: readonly DeclaredLab[],
+export function studyRows(
+  declared: readonly DeclaredStudy[],
   entries: readonly RunIndexEntry[],
-): { rows: LabRow[]; unattributed: RunIndexEntry[] } {
-  const { labs, unattributed } = groupRunsByLab(entries);
+): { rows: StudyRow[]; unattributed: RunIndexEntry[] } {
+  const { labs, unattributed } = groupRunsByStudy(entries);
   const byId = new Map(labs.map((lab) => [lab.labId, lab]));
   const runsOf = new Map<string, RunIndexEntry[]>();
   for (const entry of entries) {
@@ -401,13 +401,17 @@ export function labRows(
   const idCounts = new Map<string, number>();
   for (const lab of declared) idCounts.set(lab.id, (idCounts.get(lab.id) ?? 0) + 1);
 
-  const build = (labId: string, manifest: DeclaredLab | undefined, isDeclared: boolean): LabRow => {
+  const build = (
+    labId: string,
+    manifest: DeclaredStudy | undefined,
+    isDeclared: boolean,
+  ): StudyRow => {
     const rollup = byId.get(labId);
     const manifestPath = manifest?.path;
     return {
       key: manifestPath ?? `id:${labId}`,
       labId,
-      name: manifestPath === undefined ? labId : labNameFromPath(manifestPath),
+      name: manifestPath === undefined ? labId : studyNameFromPath(manifestPath),
       ...(manifest?.title === undefined ? {} : { title: manifest.title }),
       ...(manifestPath === undefined ? {} : { path: manifestPath }),
       ...(manifest?.origin === undefined ? {} : { origin: manifest.origin }),
@@ -415,7 +419,7 @@ export function labRows(
       // Replaced by assignLabels once the whole set is known; a label is only meaningful relative
       // to the rows it sits beside.
       label:
-        manifest?.title ?? (manifestPath === undefined ? labId : labNameFromPath(manifestPath)),
+        manifest?.title ?? (manifestPath === undefined ? labId : studyNameFromPath(manifestPath)),
       ...(manifest?.description === undefined ? {} : { description: manifest.description }),
       sharesIdWith: Math.max(0, (idCounts.get(labId) ?? 0) - 1),
       runs: rollup?.runs ?? 0,
@@ -438,10 +442,10 @@ export function labRows(
   // Resolve each row's label before sorting, so the list is ordered by what a reader actually sees.
   assignLabels(rows);
 
-  const label = (row: LabRow): string => row.label;
+  const label = (row: StudyRow): string => row.label;
   rows.sort((left, right) => {
     if (left.live !== right.live) return right.live - left.live;
-    const rank = (row: LabRow): number => (row.runs > 0 ? 0 : row.declared ? 1 : 2);
+    const rank = (row: StudyRow): number => (row.runs > 0 ? 0 : row.declared ? 1 : 2);
     if (rank(left) !== rank(right)) return rank(left) - rank(right);
     if (left.runs > 0 && right.runs > 0) {
       const recency = recencyOf(right.latest) - recencyOf(left.latest);
@@ -461,7 +465,7 @@ export function labRows(
  * duplicate with a suffix, keeps the label something the operator can act on, because the filename
  * is exactly what `humanish lab run` takes.
  */
-function assignLabels(rows: LabRow[]): void {
+function assignLabels(rows: StudyRow[]): void {
   const count = (values: readonly string[]): Map<string, number> => {
     const counts = new Map<string, number>();
     for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);

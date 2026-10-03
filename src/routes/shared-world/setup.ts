@@ -28,8 +28,8 @@ import { packSubjectTree, type ProvisionedPlaneSetup } from "./provisioned.js";
 import { emptyPlaneResults } from "./result.js";
 import { buildParticipantSpecs, defaultSessionTimeoutMs } from "./participant-specs.js";
 import type {
-  ConcurrentSharedWorldLabErrorCode,
-  ConcurrentSharedWorldLabResult,
+  ConcurrentSharedWorldStudyErrorCode,
+  ConcurrentSharedWorldStudyResult,
   ConcurrentSharedWorldPlaneClass,
   FinishFacts,
   LiveParticipants,
@@ -53,7 +53,7 @@ function makeRunId(): string {
 }
 
 /** What validation derived from the lab, which setup reads. */
-interface AdmittedLab {
+interface AdmittedStudy {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
   /** Read for the subject's serve URL, which each participant's subject names. Participants, their
@@ -78,15 +78,15 @@ interface AdmittedLab {
   publicRepo: string;
   hasGithubToken: boolean;
   fail: (
-    code: ConcurrentSharedWorldLabErrorCode,
+    code: ConcurrentSharedWorldStudyErrorCode,
     message: string,
     actorLabel?: string,
-  ) => ConcurrentSharedWorldLabResult;
+  ) => ConcurrentSharedWorldStudyResult;
 }
 
 /** The provisioned plane's setup, or undefined when the lab declares no `subject.serve`. */
 function provisionedSetup(
-  lab: AdmittedLab,
+  lab: AdmittedStudy,
   prepared: Pick<
     ProvisionedPlaneSetup,
     | "localTreeArchive"
@@ -126,7 +126,7 @@ async function bindPhysicalProject(requestedCwd: string): Promise<string> {
 }
 
 function startConcurrentRun(
-  lab: AdmittedLab,
+  lab: AdmittedStudy,
   cwd: string,
   scope: RunScope,
 ): ReturnType<RunScope["startRun"]> {
@@ -147,10 +147,10 @@ function startConcurrentRun(
  * specs, comms, the packed tree and email receiving. Returns the refusal when one of them fails.
  */
 export async function prepareConcurrentRun(
-  lab: AdmittedLab,
+  lab: AdmittedStudy,
   scope: RunScope,
 ): Promise<
-  | { ok: false; result: ConcurrentSharedWorldLabResult }
+  | { ok: false; result: ConcurrentSharedWorldStudyResult }
   | {
       ok: true;
       ctx: PlaneContext;

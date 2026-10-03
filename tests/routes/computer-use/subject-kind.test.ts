@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseStudy } from "../../../src/study/config.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
+import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 
 let cwd: string;
 beforeEach(async () => {
@@ -45,7 +45,7 @@ describe("computer-use route reads of the planned subject", () => {
       fetched.push(String(input));
       return new Response("{}", { status: 503 });
     });
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       cwd,
       config: cloneLab({
         scenario: { mode: "live" },
@@ -64,7 +64,7 @@ describe("computer-use route reads of the planned subject", () => {
   });
 
   it("records each fan-out participant's clone provenance", async () => {
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       cwd,
       config: cloneLab({
         actors: [

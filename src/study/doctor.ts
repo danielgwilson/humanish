@@ -1,5 +1,5 @@
 import path from "node:path";
-import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
+import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 import type { StudyConfig } from "./types.js";
 import type { StudyRoute } from "./plan.js";
@@ -268,7 +268,7 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
   const keys = requiredKeys(requirements, args.keyPresent);
   // This flag controls the hosted desktop SDK check as well as its API key.
   const desktop = keys.includes("E2B_API_KEY");
-  const local = isLocalBrowserLab(config);
+  const local = isLocalBrowserStudy(config);
   // One account check, shared by the local participant row and the Codex analysis row.
   let accountReadiness: Promise<CodexReadiness> | undefined;
   const checkAccount: AccountReadiness = () =>

@@ -4,7 +4,7 @@
 // the lab and dispatches here.
 
 import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
-import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../routes/computer-use/e2b-desktop/prepare.js";
+import { CUA_ACTOR_STUDY_PROVIDER_METADATA } from "../routes/computer-use/e2b-desktop/prepare.js";
 import { MAX_SANDBOX_MS } from "../substrates/e2b/lifetime.js";
 import {
   abandonPreflightJournal,
@@ -247,7 +247,7 @@ async function withPreflightSandbox(
         timeoutMs,
         lifecycle: { onTimeout: "kill" },
         metadata: {
-          ...CUA_ACTOR_LAB_PROVIDER_METADATA,
+          ...CUA_ACTOR_STUDY_PROVIDER_METADATA,
           mode: "lab-preflight",
           labId: ctx.config.id,
           reachability: ctx.reachability,

@@ -23,7 +23,7 @@ interface StatsParticipants {
   reportedFriction: number;
 }
 
-interface StatsLabRow {
+interface StatsStudyRow {
   /** The study's `id`. */
   study: string;
   runs: number;
@@ -75,7 +75,7 @@ export interface StatsResult {
     verdicts: Record<string, number>;
     costs: CostTotals;
   };
-  studies: StatsLabRow[];
+  studies: StatsStudyRow[];
   days: StatsDayRow[];
   /** Same selected runs; individual accounting gaps are inspectable without reading private evidence. */
   costsByRun: CostRow[];
@@ -136,10 +136,10 @@ function entryTime(entry: RunIndexEntry): string | undefined {
   return entry.startedAt ?? entry.completedAt ?? entry.updatedAt;
 }
 
-type LabAccumulator = StatsLabRow & { durations: number[]; runCosts: number[] };
+type StudyAccumulator = StatsStudyRow & { durations: number[]; runCosts: number[] };
 
-function addToLabRow(
-  labs: Map<string, LabAccumulator>,
+function addToStudyRow(
+  labs: Map<string, StudyAccumulator>,
   entry: RunIndexEntry,
   runUsd: number | undefined,
   costs: CostTotals,
@@ -265,7 +265,7 @@ export async function computeStats(
     verdicts: {},
     costs: emptyCostTotals(),
   };
-  const labs = new Map<string, LabAccumulator>();
+  const labs = new Map<string, StudyAccumulator>();
   const days = new Map<string, StatsDayRow>();
   const costsByRun: CostRow[] = [];
 
@@ -284,11 +284,11 @@ export async function computeStats(
     if (entry.verdict !== undefined)
       totals.verdicts[entry.verdict] = (totals.verdicts[entry.verdict] ?? 0) + 1;
 
-    addToLabRow(labs, entry, runUsd, accounting.costs);
+    addToStudyRow(labs, entry, runUsd, accounting.costs);
     addToDayRow(days, entry, runUsd, accounting.costs);
   }
 
-  const labRows: StatsLabRow[] = [...labs.values()]
+  const labRows: StatsStudyRow[] = [...labs.values()]
     .map(({ durations, runCosts, ...row }) => ({
       ...row,
       ...(row.judged === 0 ? {} : { passRate: round6(row.passed / row.judged) }),

@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 
 import { saveCommsConnection } from "../../src/comms/connections.js";
-import { configureCommsLab } from "../../src/comms/setup.js";
+import { configureCommsStudy } from "../../src/comms/setup.js";
 import { listStudyManifests, resolveStudyManifest } from "../../src/study/discover.js";
 import { runInit } from "../../src/study/init.js";
 import { otherStudyFiles, studyFileCandidates } from "../../src/study/files.js";
@@ -198,7 +198,7 @@ describe("writers", () => {
     });
     await write("humanish/studies/signup-receiving.yaml", "signup-receiving");
 
-    const plan = await configureCommsLab({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({
       ok: false,
       message:
@@ -216,7 +216,7 @@ describe("writers", () => {
     });
     await symlink("missing.yaml", path.join(cwd, "humanish/labs/signup-receiving.yaml"));
 
-    const plan = await configureCommsLab({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({ ok: false });
     expect((plan as { message: string }).message).toContain(
       "humanish/labs/signup-receiving.yaml already uses the name signup-receiving.",

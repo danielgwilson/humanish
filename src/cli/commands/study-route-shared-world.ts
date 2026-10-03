@@ -1,7 +1,7 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { resolveStudyDryRun } from "../../study/plan.js";
-import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
+import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
 import type { StudyConfig } from "../../study/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
@@ -52,7 +52,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
     args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
   const port = parseObserverPort(args.options.port ?? "0");
   const failConcurrent = (message: string, runId?: string): void => {
-    const result: ConcurrentSharedWorldLabResult = {
+    const result: ConcurrentSharedWorldStudyResult = {
       ...studyResultIdentity("shared-world", args.config.id),
       ok: false,
       cwd: args.options.cwd,
@@ -131,7 +131,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
         throw new Error(`Expected the shared-world route, got ${outcome.route}.`);
       }
       const result = outcome.result;
-      let output: ConcurrentSharedWorldLabResult = result;
+      let output: ConcurrentSharedWorldStudyResult = result;
       if (server && attachedObserver) {
         output = {
           ...result,

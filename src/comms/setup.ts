@@ -184,7 +184,7 @@ export interface CommsConfigureResult {
   connection?: string;
 }
 /** Save a local copy, never rewrite a committed manifest or silently shadow it by handle. */
-export async function configureCommsLab(args: {
+export async function configureCommsStudy(args: {
   cwd: string;
   lab: string;
   connection: string;

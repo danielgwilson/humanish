@@ -11,9 +11,9 @@ import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
 /** What a scripted run takes besides its plan. The plan carries the config, dry run and lab. */
-export type ScriptedRunInput = Omit<RunScriptedBrowserLabOptions, "config" | "dryRun" | "lab">;
+export type ScriptedRunInput = Omit<RunScriptedBrowserStudyOptions, "config" | "dryRun" | "lab">;
 
-export interface RunScriptedBrowserLabOptions {
+export interface RunScriptedBrowserStudyOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   /** Reports the analysis window to onEvent; built by normalizeRunStudyOptions. */
@@ -32,7 +32,7 @@ export interface RunScriptedBrowserLabOptions {
   deps?: StudyDeps;
 }
 
-interface ScriptedBrowserLabSession {
+interface ScriptedBrowserStudySession {
   surface: string;
   status: ActorStatus;
   completionReason: ActorCompletionReason;
@@ -40,7 +40,7 @@ interface ScriptedBrowserLabSession {
   screenshots: number;
 }
 
-export interface ScriptedBrowserLabResult
+export interface ScriptedBrowserStudyResult
   extends AutomaticAnalysisResult, StudyResultIdentity<"scripted"> {
   /** True when the bundle verified and (dry-run, or every session reached a terminal verdict
    * without a harness error). The subject failing the script is successful evidence, and the lab
@@ -62,7 +62,7 @@ export interface ScriptedBrowserLabResult
     sourceDigest: string;
     steps: number;
   };
-  sessions: ScriptedBrowserLabSession[];
+  sessions: ScriptedBrowserStudySession[];
   observer?: ObserverResult;
   warnings: string[];
   error?: {

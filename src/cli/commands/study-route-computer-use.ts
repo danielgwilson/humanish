@@ -2,7 +2,10 @@ import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.
 import { Command } from "commander";
 import { type InternalRunStudyOptions } from "../../run-study.js";
 import { resolveStudyDryRun } from "../../study/plan.js";
-import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
+import type {
+  CuaActorStudyErrorCode,
+  CuaActorStudyResult,
+} from "../../routes/computer-use/types.js";
 import type { StudyConfig } from "../../study/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
@@ -108,10 +111,10 @@ interface CuaLiveAttachment {
 function refuseCua(
   args: ComputerUseRouteArgs,
   dryRun: boolean,
-  code: CuaActorLabErrorCode,
+  code: CuaActorStudyErrorCode,
   message: string,
 ): void {
-  const result: CuaActorLabResult = {
+  const result: CuaActorStudyResult = {
     ...studyResultIdentity("computer-use", args.config.id),
     ok: false,
     cwd: args.options.cwd,
@@ -180,7 +183,7 @@ function prepareCuaWatch(
     refuseCua(
       args,
       settings.dryRun,
-      exposeValidation.error.code as CuaActorLabErrorCode,
+      exposeValidation.error.code as CuaActorStudyErrorCode,
       exposeValidation.error.message,
     );
     return undefined;
@@ -319,14 +322,14 @@ async function attachLiveObserver(
 async function reportCuaRun(
   args: ComputerUseRouteArgs,
   prepared: CuaWatchPlan,
-  result: CuaActorLabResult,
+  result: CuaActorStudyResult,
   live: CuaLiveAttachment,
 ): Promise<void> {
   const { server, observer: attachedObserver } = live;
   const exposeRequested = prepared.exposure.exposed;
   // Serving is not gated on result.ok: a timed_out, incomplete or failed run still comes up so the
   // operator can inspect its evidence live (and, under --expose, from a phone).
-  let output: CuaActorLabResult = result;
+  let output: CuaActorStudyResult = result;
   if (server && attachedObserver) {
     const attachedResult = result.observer?.ok ? result.observer : attachedObserver;
     output = {

@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { COMMS_PROVIDERS, saveCommsConnection } from "../../comms/connections.js";
 import { catchTokenRefusal } from "../../comms/external-evidence.js";
 import { readCommsSetup } from "../../comms/setup.js";
-import { checkCommsConnection, configureCommsLab } from "../../comms/setup.js";
+import { checkCommsConnection, configureCommsStudy } from "../../comms/setup.js";
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { resolveStudyManifest } from "../../study/discover.js";
@@ -245,7 +245,7 @@ async function handleCommsConfigure(
   const study = studyOptionValue(command, io, options);
   // The preAction hook refuses a call without either option.
   if (study === undefined) return;
-  const result = await configureCommsLab({
+  const result = await configureCommsStudy({
     cwd: resolve(options.cwd),
     lab: study,
     connection: options.connection,

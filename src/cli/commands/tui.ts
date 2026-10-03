@@ -6,7 +6,7 @@ import { saveCommsConnection } from "../../comms/connections.js";
 import { readCommsSetup } from "../../comms/setup.js";
 import {
   checkCommsConnection,
-  configureCommsLab,
+  configureCommsStudy,
   type CommsCheckResult,
 } from "../../comms/setup.js";
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
@@ -305,7 +305,7 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
           path: lab.path,
         })),
       configure: (lab, apply, planToken) =>
-        configureCommsLab({
+        configureCommsStudy({
           cwd,
           lab,
           connection: "agentmail",

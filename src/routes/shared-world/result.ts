@@ -31,8 +31,8 @@ import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
 import {
   type ActorRunResult,
   type ConcurrentBundleArgs,
-  type ConcurrentSharedWorldLabErrorCode,
-  type ConcurrentSharedWorldLabResult,
+  type ConcurrentSharedWorldStudyErrorCode,
+  type ConcurrentSharedWorldStudyResult,
   type ConcurrentSharedWorldParticipantResult,
   type FinishFacts,
   type LiveParticipants,
@@ -118,7 +118,7 @@ function concurrentParticipantResults(
 }
 
 /** The error a run that did not pass reports, most specific cause first. */
-function concurrentLabError(args: {
+function concurrentStudyError(args: {
   ok: boolean;
   handoffTimedOut: boolean;
   hostHandoffFailure: string | undefined;
@@ -131,7 +131,7 @@ function concurrentLabError(args: {
   /** The first execution failure, named when every participant passed and the world had no
    *  shortfall. */
   executionFailure: string | undefined;
-}): ConcurrentSharedWorldLabResult["error"] | undefined {
+}): ConcurrentSharedWorldStudyResult["error"] | undefined {
   const { ok, handoffTimedOut, hostHandoffFailure, observer, runError, adapterFailure } = args;
   const { participantResults, participantCount } = args;
   if (ok) return undefined;
@@ -192,7 +192,7 @@ function concurrentLabError(args: {
  * The refusal envelope for a run that stops before it has results: the requested cwd, no roles,
  * and the run id the caller asked for, if any. `actor` is the label when a refusal names none.
  */
-export function concurrentLabFailure(envelope: {
+export function concurrentStudyFailure(envelope: {
   cwd: string;
   labId: string;
   actor: string;
@@ -201,10 +201,10 @@ export function concurrentLabFailure(envelope: {
   dryRun: boolean;
   runId: string | undefined;
 }): (
-  code: ConcurrentSharedWorldLabErrorCode,
+  code: ConcurrentSharedWorldStudyErrorCode,
   message: string,
   actorLabel?: string,
-) => ConcurrentSharedWorldLabResult {
+) => ConcurrentSharedWorldStudyResult {
   return (code, message, actorLabel) => ({
     ...studyResultIdentity("shared-world", envelope.labId),
     ok: false,
@@ -289,7 +289,7 @@ export async function finishConcurrentRun(
   live: LiveParticipants,
   results: PlaneResults,
   plane: FinishFacts,
-): Promise<ConcurrentSharedWorldLabResult> {
+): Promise<ConcurrentSharedWorldStudyResult> {
   const { plan, input, descriptor, actorSpecs, run, runId } = ctx;
   const participantCount = plan.plane.participants.length;
   const { cwd, concurrency, source, seedDigest, receiving, warnings, scrubKnownValues } = ctx;
@@ -357,7 +357,7 @@ export async function finishConcurrentRun(
     context: {
       bundle,
       runDir: physicalArtifactRoot,
-      labId: plan.labId,
+      labId: plan.studyId,
       runId,
       actor: descriptor.id,
       route: "shared-world",
@@ -394,7 +394,7 @@ export async function finishConcurrentRun(
 
   const participantResults = concurrentParticipantResults(actorSpecs, actorResults, dryRun);
 
-  const errorResult = concurrentLabError({
+  const errorResult = concurrentStudyError({
     ok,
     handoffTimedOut,
     hostHandoffFailure,
@@ -407,8 +407,8 @@ export async function finishConcurrentRun(
     executionFailure: execution.failures[0]?.message,
   });
 
-  const result: ConcurrentSharedWorldLabResult = {
-    ...studyResultIdentity("shared-world", plan.labId),
+  const result: ConcurrentSharedWorldStudyResult = {
+    ...studyResultIdentity("shared-world", plan.studyId),
     ok,
     cwd,
     actor: descriptor.id,

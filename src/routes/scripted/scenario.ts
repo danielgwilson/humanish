@@ -28,7 +28,7 @@ interface ResolvedScriptedScenario {
  * Resolve and consume `scenario.ref`. Path-style refs (contain a separator or end .yaml/.yml)
  * resolve against cwd and are clamped inside it: a ../../ escape is rejected, never recorded
  * as repo-relative provenance. Id-style refs must be public-safe tokens and resolve to
- * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed. planScriptedLab
+ * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed. planScriptedStudy
  * has already refused a missing or blank ref.
  */
 export async function resolveScriptedScenario(

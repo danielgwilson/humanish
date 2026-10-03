@@ -20,13 +20,13 @@ import { isExactRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./ru
 import {
   PRODUCT_SETUP_TIMEOUT_MS,
   TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS,
-  type TerminalProductLabResult,
+  type TerminalProductStudyResult,
 } from "./types.js";
 
 /** The error a terminal lab returns before a run starts. `actor` names the registered actor. */
 export interface TerminalRefusal extends RouteRefusal<
   "terminal",
-  NonNullable<TerminalProductLabResult["error"]>["code"]
+  NonNullable<TerminalProductStudyResult["error"]>["code"]
 > {
   readonly actor?: string;
 }
@@ -37,7 +37,7 @@ export type TerminalPlanResult = RoutePlanResult<TerminalPlan, TerminalRefusal>;
  * Plan a terminal-product lab. It is called for any config handed to the terminal runner, not
  * only one routeOf sends here, so a config for another route gets this route's refusal.
  */
-export function planTerminalLab(
+export function planTerminalStudy(
   config: StudyConfig,
   input: {
     readonly dryRun: boolean;

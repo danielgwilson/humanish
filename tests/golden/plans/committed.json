@@ -1,7 +1,7 @@
 {
   "comms-email-demo": {
     "dry": {
-      "labId": "comms-email-demo",
+      "studyId": "comms-email-demo",
       "title": "Email-gated signup with the in-sandbox mail catch (dry run)",
       "residual": {
         "comms": {
@@ -134,7 +134,7 @@
   },
   "detect-taskly-clean": {
     "dry": {
-      "labId": "detect-taskly-clean",
+      "studyId": "detect-taskly-clean",
       "title": "Taskly detection benchmark: clean build",
       "residual": {
         "policies": {
@@ -227,7 +227,7 @@
   },
   "detect-taskly-planted": {
     "dry": {
-      "labId": "detect-taskly-planted",
+      "studyId": "detect-taskly-planted",
       "title": "Taskly detection benchmark: planted build",
       "residual": {
         "policies": {
@@ -320,7 +320,7 @@
   },
   "detect-todomvc": {
     "dry": {
-      "labId": "detect-todomvc",
+      "studyId": "detect-todomvc",
       "title": "Detection benchmark on a third-party app: TodoMVC javascript-es6",
       "residual": {
         "policies": {
@@ -421,7 +421,7 @@
   },
   "dwell-window-todomvc": {
     "dry": {
-      "labId": "dwell-window-todomvc",
+      "studyId": "dwell-window-todomvc",
       "title": "A declared observation window on TodoMVC: hold for a minute after the first task, then continue",
       "residual": {
         "policies": {
@@ -565,7 +565,7 @@
   },
   "effort-contrast-demo": {
     "dry": {
-      "labId": "effort-contrast-demo",
+      "studyId": "effort-contrast-demo",
       "title": "Does reasoning effort change the participant? One persona, one mission, two efforts",
       "residual": {
         "defaults": {
@@ -694,7 +694,7 @@
   },
   "fanout-demo": {
     "dry": {
-      "labId": "fanout-demo",
+      "studyId": "fanout-demo",
       "title": "Computer-use fan-out: four participants in separate worlds (dry run)",
       "residual": {
         "execution": {
@@ -847,7 +847,7 @@
   },
   "first-contact": {
     "dry": {
-      "labId": "first-contact",
+      "studyId": "first-contact",
       "title": "A coding agent meets humanish for the first time (self-study, terminal route)",
       "residual": {
         "policies": {
@@ -907,7 +907,7 @@
   },
   "first-run": {
     "dry": {
-      "labId": "first-run",
+      "studyId": "first-run",
       "title": "First-run synthetic Observer",
       "residual": {
         "defaults": {
@@ -941,7 +941,7 @@
   },
   "handed-a-human-surface": {
     "dry": {
-      "labId": "handed-a-human-surface",
+      "studyId": "handed-a-human-surface",
       "title": "A person asks their coding agent to use a surface only a person can use",
       "residual": {
         "policies": {
@@ -1010,7 +1010,7 @@
   },
   "last-mile": {
     "dry": {
-      "labId": "last-mile",
+      "studyId": "last-mile",
       "title": "How far a coding agent gets toward a live study without keys (self-study, terminal route)",
       "residual": {
         "policies": {
@@ -1089,7 +1089,7 @@
   },
   "later-tab-emulation": {
     "dry": {
-      "labId": "later-tab-emulation",
+      "studyId": "later-tab-emulation",
       "title": "Mobile emulation follows the participant into a tab that opens later",
       "residual": {
         "policies": {
@@ -1207,7 +1207,7 @@
   },
   "lobby-trivia-3player": {
     "dry": {
-      "labId": "lobby-trivia-3player",
+      "studyId": "lobby-trivia-3player",
       "title": "Three mobile participants in one multiplayer lobby on a public app (shared world, dry run)",
       "residual": {
         "policies": {
@@ -1341,7 +1341,7 @@
   },
   "participant-camera": {
     "dry": {
-      "labId": "participant-camera",
+      "studyId": "participant-camera",
       "title": "A participant with a camera: the browser's own permission prompt, then a synthetic feed",
       "residual": {
         "policies": {
@@ -1461,7 +1461,7 @@
   },
   "persona-contrast-demo": {
     "dry": {
-      "labId": "persona-contrast-demo",
+      "studyId": "persona-contrast-demo",
       "title": "Does the persona change the participant? Two contrasting personas, one app, one mission",
       "residual": {
         "defaults": {
@@ -1588,7 +1588,7 @@
   },
   "scripted-demo": {
     "dry": {
-      "labId": "scripted-demo",
+      "studyId": "scripted-demo",
       "title": "Scripted browser journey (no model, no provider spend)",
       "residual": {
         "review": {
@@ -1643,7 +1643,7 @@
   },
   "shared-world-concurrent-demo": {
     "dry": {
-      "labId": "shared-world-concurrent-demo",
+      "studyId": "shared-world-concurrent-demo",
       "title": "Concurrent shared world: three participants on one service at once (dry run)",
       "residual": {
         "execution": {
@@ -1819,7 +1819,7 @@
   },
   "shared-world-concurrent-live": {
     "dry": {
-      "labId": "shared-world-concurrent-live",
+      "studyId": "shared-world-concurrent-live",
       "title": "Concurrent shared world, live: three participants on a synthetic task board",
       "residual": {
         "execution": {
@@ -1986,7 +1986,7 @@
   },
   "signup-email-verify": {
     "dry": {
-      "labId": "signup-email-verify",
+      "studyId": "signup-email-verify",
       "title": "Can a persona complete an email-gated signup end to end?",
       "residual": {
         "comms": {
@@ -2231,7 +2231,7 @@
   },
   "terminal-product-demo": {
     "dry": {
-      "labId": "terminal-product-demo",
+      "studyId": "terminal-product-demo",
       "title": "Terminal-product study with a mock CLI (dry run)",
       "residual": {
         "policies": {
@@ -2300,7 +2300,7 @@
   },
   "tui-self-study": {
     "dry": {
-      "labId": "tui-self-study",
+      "studyId": "tui-self-study",
       "title": "Can a developer get an answer out of the humanish TUI? (self-study, desktop)",
       "residual": {
         "defaults": {

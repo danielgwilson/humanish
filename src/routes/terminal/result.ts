@@ -13,7 +13,7 @@ import {
   type NoSpendProof,
   type TerminalCostLedger,
   type TerminalLedgers,
-  type TerminalProductLabResult,
+  type TerminalProductStudyResult,
 } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
@@ -74,7 +74,7 @@ export function terminalExecutionFailures(args: {
 }
 
 /** The terminal-product lab result for a live run, from its session, cleanup and cost ledger. */
-export function terminalLabResult(args: {
+export function terminalStudyResult(args: {
   cwd: string;
   labId: string;
   actorId: string;
@@ -97,7 +97,7 @@ export function terminalLabResult(args: {
   execution: ExecutionOutcome;
   observer: ObserverResult;
   warnings: string[];
-}): TerminalProductLabResult {
+}): TerminalProductStudyResult {
   const {
     cwd,
     labId,
@@ -174,7 +174,7 @@ export function terminalLabResult(args: {
               : capFailure !== undefined
                 ? "HUMANISH_TERMINAL_CAPS_EXCEEDED"
                 : "HUMANISH_TERMINAL_FAILED") as NonNullable<
-              TerminalProductLabResult["error"]
+              TerminalProductStudyResult["error"]
             >["code"],
             message: !cleanupProven
               ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove its sandbox was removed does not pass.${sessionError !== undefined ? ` Session failure: ${sessionError}` : ""}`

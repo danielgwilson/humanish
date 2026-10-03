@@ -11,8 +11,8 @@ import type {
   LiveTerminalAuth,
   LiveTerminalPlan,
   RunLiveTerminalSessionArgs,
-  TerminalProductLabErrorCode,
-  TerminalProductLabResult,
+  TerminalProductStudyErrorCode,
+  TerminalProductStudyResult,
   TerminalRunInput,
 } from "./types.js";
 import { createTerminalRecorder } from "./recorder.js";
@@ -30,10 +30,10 @@ export function checkLiveTerminalMachine(
   warnings: string[],
 ):
   | { readonly ok: true; readonly runtimeEnv: LiveTerminalAuth }
-  | { readonly ok: false; readonly code: TerminalProductLabErrorCode; readonly message: string } {
+  | { readonly ok: false; readonly code: TerminalProductStudyErrorCode; readonly message: string } {
   const env = input.env ?? process.env;
   const { maxUsd } = plan.caps;
-  // planTerminalLab refuses a positive maxUsd without a costProbe, so one is present here.
+  // planTerminalStudy refuses a positive maxUsd without a costProbe, so one is present here.
   if (maxUsd > 0) {
     warnings.push(
       `scenario.caps.maxUsd=${maxUsd} is checked after the session against the lines the costProbe measures; lines it leaves null (unmeasured) never trip it. scenario.caps.maxMinutes bounds the run while it runs.`,
@@ -56,7 +56,7 @@ export function checkLiveTerminalMachine(
 }
 
 /**
- * The live in-sandbox agent session orchestrator (mirror of runCuaActorLab's E2B branch). Enforces
+ * The live in-sandbox agent session orchestrator (mirror of runCuaActorStudy's E2B branch). Enforces
  * the 8-point safety contract by construction; fails closed before any sandbox/key/spend on any
  * precondition miss. Persists the substrate-lifecycle/command-log/interventions/cleanup ledgers,
  * the redacted terminal event stream + normalized transcript, the agent report, and the
@@ -64,7 +64,7 @@ export function checkLiveTerminalMachine(
  */
 export async function runLiveTerminalSession(
   args: RunLiveTerminalSessionArgs,
-): Promise<TerminalProductLabResult> {
+): Promise<TerminalProductStudyResult> {
   const { plan, input, cwd, warnings, failed, scope, runtimeEnv } = args;
   const { actor, product } = plan;
   const { maxUsd, maxMinutes } = plan.caps;
@@ -129,7 +129,7 @@ export async function runLiveTerminalSession(
     maxMinutes,
     e2bApiKey,
     runPaths,
-    metadata: buildSandboxMetadata({ labId: plan.labId, recordId: "sim-001", runId }),
+    metadata: buildSandboxMetadata({ labId: plan.studyId, recordId: "sim-001", runId }),
     warnings,
     recorder,
   });

@@ -8,7 +8,7 @@ import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { catchTokenOf, catchTokenRefusal } from "../../comms/external-evidence.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
-import type { CuaActorLabErrorCode } from "./types.js";
+import type { CuaActorStudyErrorCode } from "./types.js";
 
 /** The computer-use code for each local-agent refusal; shared-world keeps the same kinds. */
 const LOCAL_AGENT_REFUSAL_CODES = {
@@ -16,7 +16,7 @@ const LOCAL_AGENT_REFUSAL_CODES = {
   "signin-required": "HUMANISH_COMPUTER_USE_AGENT_SIGNIN_REQUIRED",
   unsupported: "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
   "unpriced-cap": "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
-} as const satisfies Record<LocalAgentRefusal["kind"], CuaActorLabErrorCode>;
+} as const satisfies Record<LocalAgentRefusal["kind"], CuaActorStudyErrorCode>;
 
 /**
  * The first reason a live computer-use run cannot start on this machine: missing keys, a missing
@@ -32,7 +32,7 @@ export async function liveCuaRejection(args: {
   /** The plan's requirements: which keys and subject env names this run needs. */
   requirements: ComputerUsePlan["requirements"];
   externalCommsConfig: StudyCommsExternal | undefined;
-}): Promise<{ code: CuaActorLabErrorCode; message: string } | undefined> {
+}): Promise<{ code: CuaActorStudyErrorCode; message: string } | undefined> {
   const { caps, brain, env, requirements, externalCommsConfig } = args;
   // The plan lists OPENAI_API_KEY only for an openai brain (a signed-in local agent or the
   // caller's provider needs none) and E2B_API_KEY only when this run creates hosted desktops.

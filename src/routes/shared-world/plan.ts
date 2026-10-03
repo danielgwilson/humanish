@@ -37,12 +37,12 @@ import {
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
-import type { ConcurrentSharedWorldLabErrorCode } from "./types.js";
+import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
 
 /** The error a shared-world lab returns before a run starts. */
 export interface SharedWorldRefusal extends RouteRefusal<
   "shared-world",
-  ConcurrentSharedWorldLabErrorCode
+  ConcurrentSharedWorldStudyErrorCode
 > {
   /** The registered actor id, once the registry check has passed. */
   readonly actor?: string;
@@ -50,7 +50,7 @@ export interface SharedWorldRefusal extends RouteRefusal<
 
 export type SharedWorldPlanResult = RoutePlanResult<SharedWorldPlan, SharedWorldRefusal>;
 
-/** The registered descriptor for a planned actor; planSharedWorldLab checked the registry. */
+/** The registered descriptor for a planned actor; planSharedWorldStudy checked the registry. */
 export function sharedWorldDescriptorOf(actorType: string): CuaActorDescriptor {
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor))
@@ -62,7 +62,7 @@ export function sharedWorldDescriptorOf(actorType: string): CuaActorDescriptor {
  * Plan a shared-world lab. It is called for any config handed to the shared-world runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
-export function planSharedWorldLab(
+export function planSharedWorldStudy(
   config: StudyConfig,
   input: {
     readonly dryRun: boolean;
@@ -71,7 +71,7 @@ export function planSharedWorldLab(
   },
 ): SharedWorldPlanResult {
   const refuse = (
-    code: ConcurrentSharedWorldLabErrorCode,
+    code: ConcurrentSharedWorldStudyErrorCode,
     message: string,
     actor?: string,
   ): SharedWorldPlanResult => ({
@@ -228,7 +228,7 @@ function planeOf(config: StudyConfig): SharedWorldPlane | undefined {
         ? { kind: "local-tree", serve, env, state: checkpointed }
         : {
             kind: "clone",
-            // planSharedWorldLab refused a clone without an owner/repo slug.
+            // planSharedWorldStudy refused a clone without an owner/repo slug.
             repo: config.subject.repos?.[0] ?? "",
             serve,
             env,

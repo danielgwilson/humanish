@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planTerminalLab } from "../../../src/routes/terminal/plan.js";
+import { planTerminalStudy } from "../../../src/routes/terminal/plan.js";
 import {
   terminalPreExecBudgetMs,
   terminalSandboxTimeoutMs,
@@ -29,7 +29,7 @@ describe("the terminal sandbox's lifetime", () => {
         scenario: { mode: "live", caps: { maxUsd: 0, maxJobs: 0, maxMinutes } },
       });
       if (install) config.subject.product!.install = "synthetic-product-install --yes";
-      return planTerminalLab(config, { dryRun: false });
+      return planTerminalStudy(config, { dryRun: false });
     };
     expect(planWith(largest).ok).toBe(true);
     const refused = planWith(largest + 1);

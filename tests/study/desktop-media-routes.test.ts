@@ -8,10 +8,10 @@ import {
 } from "../../src/study/validation.js";
 import { parseStudy } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
+import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
+import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 
 const base: StudyConfig = {
   schema: "humanish.lab.v2",
@@ -139,8 +139,8 @@ describe("declared camera capabilities must reach an implemented route", () => {
       const terminal = structuredClone(base);
       terminal.subject.source = "terminal-product";
       const outcomes = await Promise.all([
-        runCuaActorLab({ cwd, config: firefox, dryRun: false, env: {}, deps: seams }),
-        runCuaActorLab({
+        runCuaActorStudy({ cwd, config: firefox, dryRun: false, env: {}, deps: seams }),
+        runCuaActorStudy({
           cwd,
           config: base,
           dryRun: false,
@@ -159,14 +159,14 @@ describe("declared camera capabilities must reach an implemented route", () => {
           env: {},
           deps: { desktopModule: loadDesktopModule, runSession },
         }),
-        runScriptedBrowserLab({
+        runScriptedBrowserStudy({
           cwd,
           config: scripted,
           dryRun: false,
           env: {},
           deps: { desktopModule: loadDesktopModule },
         }),
-        runTerminalProductLab({
+        runTerminalProductStudy({
           cwd,
           config: terminal,
           dryRun: false,

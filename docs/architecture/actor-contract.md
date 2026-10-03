@@ -17,7 +17,7 @@ capture-vs-publish rule in
 
 `codex-exec` is a real dispatch key for terminal-product studies, but the exported
 descriptor `runSession` is a fail-closed compatibility entry. Live execution is
-owned by `runTerminalProductLab`, which coordinates sandbox creation,
+owned by `runTerminalProductStudy`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
 The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and the

@@ -138,7 +138,7 @@ function singleParticipantArgs(
       ? {}
       : { caseGroup: spec.planned.labels.caseGroup }),
     dryRun: state.dryRun,
-    labId: plan.labId,
+    labId: plan.studyId,
     ...(plan.title ? { labTitle: plan.title } : {}),
     mission: spec.evidenceInstructions ?? spec.instructions,
     ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),

@@ -118,7 +118,7 @@ function sharedWorldSimulation(
   const { taxonomy, outcome, session } = view;
   return participantRecord(spec, index + 1, {
     personaId: spec.persona.id,
-    scenarioId: `concurrent-shared-world-${args.plan.labId}`,
+    scenarioId: `concurrent-shared-world-${args.plan.studyId}`,
     status: view.status,
     streamKind: "browser",
     mode: "browser-sim",
@@ -149,7 +149,7 @@ function sharedWorldStream(
       ? {}
       : { assignment: participantAssignment(spec.evidenceAssignment) }),
     kind: "browser",
-    label: `Concurrent persona ${spec.planned.id}${taxonomy} · ${args.plan.labId}`,
+    label: `Concurrent persona ${spec.planned.id}${taxonomy} · ${args.plan.studyId}`,
     status: view.status,
     transport: "snapshot",
     updatedAt: args.run.createdAt,

@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import type { StudyConfig } from "../../../src/study/types.js";
-import { runScriptedBrowserLab } from "../../../src/routes/scripted/route.js";
+import { runScriptedBrowserStudy } from "../../../src/routes/scripted/route.js";
 import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];
@@ -92,7 +92,7 @@ describe("scripted admission order", () => {
       const loadDesktopModule = async (): Promise<never> => {
         throw new Error("admission cases must not load a desktop module");
       };
-      const result = await runScriptedBrowserLab({
+      const result = await runScriptedBrowserStudy({
         cwd,
         config,
         dryRun,

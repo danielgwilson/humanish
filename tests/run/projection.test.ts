@@ -5,7 +5,7 @@ import {
   expectationFor,
   expectationLine,
   formatDuration,
-  groupRunsByLab,
+  groupRunsByStudy,
   listWindow,
   livenessLabel,
   normalizeThought,
@@ -19,7 +19,7 @@ const run = (over: Partial<RunIndexEntry> & { runId: string }): RunIndexEntry =>
 
 describe("grouping runs by lab", () => {
   it("puts labs someone is working in first, then most recently used", () => {
-    const { labs } = groupRunsByLab([
+    const { labs } = groupRunsByStudy([
       run({ runId: "a1", study: { id: "alpha" }, completedAt: "2026-08-19T10:00:00.000Z" }),
       run({
         runId: "b1",
@@ -37,7 +37,7 @@ describe("grouping runs by lab", () => {
   });
 
   it("keeps unattributed runs separate rather than inventing a lab for them", () => {
-    const { labs, unattributed } = groupRunsByLab([
+    const { labs, unattributed } = groupRunsByStudy([
       run({ runId: "x" }),
       run({ runId: "y", study: { id: "alpha" } }),
     ]);

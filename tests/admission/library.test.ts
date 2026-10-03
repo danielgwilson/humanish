@@ -11,13 +11,13 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
-import type { RunCuaActorLabOptions } from "../../src/routes/computer-use/types.js";
+import type { RunCuaActorStudyOptions } from "../../src/routes/computer-use/types.js";
 import { resolveStudyDryRun, routeOf, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
+import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
+import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
+import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { lab, SCENARIO_YAML } from "./fixtures.js";
 import { parserCases, type AdmissionCase, type AdmissionOptions } from "./parser-cases.js";
 import { routeCases } from "./route-cases.js";
@@ -87,7 +87,7 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
           },
         }
       : {}),
-  } as Pick<RunCuaActorLabOptions, "inProcess" | "createProvider">;
+  } as Pick<RunCuaActorStudyOptions, "inProcess" | "createProvider">;
   return {
     driving,
     // The shared-world, terminal and scripted routes read env and their seams directly.
@@ -129,7 +129,7 @@ async function runEntry(
       );
       result = outcome.result;
     } else if (route === "computer-use") {
-      result = await runCuaActorLab({
+      result = await runCuaActorStudy({
         cwd,
         config,
         dryRun,
@@ -139,9 +139,9 @@ async function runEntry(
         ...rerun,
       });
     } else if (route === "scripted") {
-      result = await runScriptedBrowserLab({ cwd, config, dryRun, ...typed });
+      result = await runScriptedBrowserStudy({ cwd, config, dryRun, ...typed });
     } else if (route === "terminal") {
-      result = await runTerminalProductLab({ cwd, config, dryRun, ...typed });
+      result = await runTerminalProductStudy({ cwd, config, dryRun, ...typed });
     } else if (route === "shared-world") {
       result = await runConcurrentSharedWorld({ cwd, config, dryRun, ...typed });
     } else {

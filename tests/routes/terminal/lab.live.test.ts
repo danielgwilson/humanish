@@ -7,7 +7,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
+import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The live rung for the terminal-product route: a real E2B shell sandbox + a real
@@ -82,7 +82,7 @@ describe.skipIf(!LIVE)("terminal-product route (live, key-gated, E2B + Codex)", 
     "runs a real Codex agent in an E2B shell with a command-scoped key and a verified bundle",
     { timeout: 600_000 },
     async () => {
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config: liveConfig(),
         dryRun: false,

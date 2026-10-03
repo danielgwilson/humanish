@@ -28,15 +28,15 @@ import { buildRunSource } from "../../run/bundle.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { runScope, type RunScope } from "../../run/run.js";
 import { renderScriptedReviewMarkdown } from "./bundle.js";
-import { injectedBrowser, planScriptedLab, type ScriptedRefusal } from "./plan.js";
+import { injectedBrowser, planScriptedStudy, type ScriptedRefusal } from "./plan.js";
 import { finishScriptedRun } from "./result.js";
 import { UnsafeScriptedSessionResultError } from "./session-result.js";
 import { prepareScriptedRun } from "./setup.js";
 import { ScriptedSubject } from "./subject.js";
 import { runScriptedSessions, writeSurfaceTraces } from "./surface-sessions.js";
 import {
-  type RunScriptedBrowserLabOptions,
-  type ScriptedBrowserLabResult,
+  type RunScriptedBrowserStudyOptions,
+  type ScriptedBrowserStudyResult,
   type ScriptedRunInput,
 } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
@@ -45,27 +45,27 @@ import { studyResultIdentity } from "../../run/study-result.js";
  * The config-taking entry point. It plans, returns a refusal with the envelope the route has always
  * returned at that refusal's stage, and otherwise runs the plan.
  */
-export async function runScriptedBrowserLab(
-  options: RunScriptedBrowserLabOptions,
-): Promise<ScriptedBrowserLabResult> {
+export async function runScriptedBrowserStudy(
+  options: RunScriptedBrowserStudyOptions,
+): Promise<ScriptedBrowserStudyResult> {
   const { config, dryRun, ...input } = options;
-  // planScriptedLab makes every configuration refusal, in the order this route always has.
-  const planned = planScriptedLab(config, {
+  // planScriptedStudy makes every configuration refusal, in the order this route always has.
+  const planned = planScriptedStudy(config, {
     dryRun,
     injectedBrowser: injectedBrowser(input.deps),
   });
   if (planned.ok) return runScriptedPlan(planned.plan, input);
-  return scriptedLabRefusal(options, planned.refusal);
+  return scriptedStudyRefusal(options, planned.refusal);
 }
 
 /**
  * A refused scripted lab's result, at the refusal's stage: a before-scope refusal has its own field
  * order and no analysis record; the others come after the output directory checks.
  */
-export async function scriptedLabRefusal(
-  options: RunScriptedBrowserLabOptions,
+export async function scriptedStudyRefusal(
+  options: RunScriptedBrowserStudyOptions,
   refusal: ScriptedRefusal,
-): Promise<ScriptedBrowserLabResult> {
+): Promise<ScriptedBrowserStudyResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const actorType = config.actors[0]?.type ?? "";
@@ -85,7 +85,7 @@ export async function scriptedLabRefusal(
   // The other refusals come after the output directory checks and carry the analysis record.
   const physicalCwd = await realpath(cwd);
   await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const refused: ScriptedBrowserLabResult = {
+  const refused: ScriptedBrowserStudyResult = {
     ...studyResultIdentity("scripted", config.id),
     ok: false,
     cwd,
@@ -135,7 +135,7 @@ export function admitScriptedPlan(
 export async function runScriptedPlan(
   plan: ScriptedPlan,
   input: ScriptedRunInput,
-): Promise<ScriptedBrowserLabResult> {
+): Promise<ScriptedBrowserStudyResult> {
   const { result, finished } = await runScope((scope) =>
     runScriptedPlanInScope(plan, input, scope),
   );
@@ -149,7 +149,7 @@ async function runScriptedPlanInScope(
   plan: ScriptedPlan,
   input: ScriptedRunInput,
   scope: RunScope,
-): Promise<ScriptedBrowserLabResult> {
+): Promise<ScriptedBrowserStudyResult> {
   const prepared = await prepareScriptedRun(plan, input);
   if (!prepared.ok) return prepared.result;
   const { dryRun } = plan;

@@ -4,7 +4,7 @@ import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stringify } from "yaml";
 import { saveCommsConnection } from "../../src/comms/connections.js";
-import { checkCommsConnection, configureCommsLab } from "../../src/comms/setup.js";
+import { checkCommsConnection, configureCommsStudy } from "../../src/comms/setup.js";
 import { AGENTMAIL_RECEIVING_CODES, AgentMailReceivingError } from "../../src/comms/agentmail.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";
@@ -140,7 +140,7 @@ describe("receiving lab selection", () => {
   it("previews without mutation, then saves a resolvable local copy while preserving source", async () => {
     await source();
     const before = await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8");
-    const plan = await configureCommsLab({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({
       ok: true,
       applied: false,
@@ -148,7 +148,7 @@ describe("receiving lab selection", () => {
     });
     await expect(readFile(path.join(cwd, plan.path!))).rejects.toThrow();
     expect(
-      await configureCommsLab({
+      await configureCommsStudy({
         cwd,
         lab: "signup",
         connection: "agentmail",
@@ -167,13 +167,13 @@ describe("receiving lab selection", () => {
   });
   it("rejects stale preview when the source or destination changes", async () => {
     await source();
-    const plan = await configureCommsLab({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
     await writeFile(
       path.join(cwd, "humanish/labs/signup.yaml"),
       stringify({ ...lab, title: "Changed" }),
     );
     expect(
-      await configureCommsLab({
+      await configureCommsStudy({
         cwd,
         lab: "signup",
         connection: "agentmail",
@@ -192,7 +192,7 @@ describe("receiving lab selection", () => {
     };
     const original = stringify({ ...lab, comms: { email } });
     await writeFile(path.join(cwd, "humanish/labs/signup.yaml"), original);
-    const result = await configureCommsLab({
+    const result = await configureCommsStudy({
       cwd,
       lab: "signup",
       connection: "agentmail",
@@ -205,7 +205,7 @@ describe("receiving lab selection", () => {
   });
   it("never overwrites a selected manifest that is already the receiving destination", async () => {
     await source();
-    const first = await configureCommsLab({
+    const first = await configureCommsStudy({
       cwd,
       lab: "signup",
       connection: "agentmail",
@@ -213,7 +213,7 @@ describe("receiving lab selection", () => {
     });
     const original = await readFile(path.join(cwd, first.path!), "utf8");
     for (const apply of [false, true]) {
-      const result = await configureCommsLab({
+      const result = await configureCommsStudy({
         cwd,
         lab: first.path!,
         connection: "agentmail",

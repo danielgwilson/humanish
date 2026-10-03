@@ -16,7 +16,7 @@ import type { ScriptedPlan } from "../../study/plan-types.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
-import { type ScriptedBrowserLabResult, type ScriptedRunInput } from "./types.js";
+import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
 import type { StudyDeps } from "../../study/study-deps.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
@@ -31,9 +31,9 @@ export interface ScriptedRunSetup {
   deps: StudyDeps;
   warnings: string[];
   failed: (
-    code: NonNullable<ScriptedBrowserLabResult["error"]>["code"],
+    code: NonNullable<ScriptedBrowserStudyResult["error"]>["code"],
     message: string,
-  ) => ScriptedBrowserLabResult;
+  ) => ScriptedBrowserStudyResult;
   clone: Extract<ScriptedPlan["subject"], { readonly kind: "clone" }> | undefined;
   evidenceAppUrl: string;
   urlPolicy: ScriptedBrowserEvidenceUrlPolicy;
@@ -61,7 +61,7 @@ export async function prepareScriptedRun(
   plan: ScriptedPlan,
   input: ScriptedRunInput,
 ): Promise<
-  { ok: false; result: ScriptedBrowserLabResult } | { ok: true; setup: ScriptedRunSetup }
+  { ok: false; result: ScriptedBrowserStudyResult } | { ok: true; setup: ScriptedRunSetup }
 > {
   const { dryRun } = plan;
   const cwd = path.resolve(input.cwd);
@@ -72,10 +72,10 @@ export async function prepareScriptedRun(
   const clone = plan.subject.kind === "clone" ? plan.subject : undefined;
   const evidenceAppUrl = evidenceAppUrlOf(plan.subject);
   const failed = (
-    code: NonNullable<ScriptedBrowserLabResult["error"]>["code"],
+    code: NonNullable<ScriptedBrowserStudyResult["error"]>["code"],
     message: string,
-  ): ScriptedBrowserLabResult => ({
-    ...studyResultIdentity("scripted", plan.labId),
+  ): ScriptedBrowserStudyResult => ({
+    ...studyResultIdentity("scripted", plan.studyId),
     ok: false,
     cwd,
     actor: plan.actor,
