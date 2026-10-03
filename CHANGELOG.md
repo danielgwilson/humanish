@@ -72,6 +72,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Deprecated
 
+- `humanish.lab.v2` study files and the three `labs/` directories (`humanish/labs/`,
+  `.humanish/labs/`, `.humanish/local/labs/`). 0.109 reads neither.
+  - Resolving such a file, as `run <name>`, `lab inspect` and `lab preflight` do, prints a warning
+    with its path and the fix: `humanish migrate` for a v2 file, or a move to the matching
+    `studies/` directory for a v3 file under `labs/`.
+  - `lab list` prints one warning with the number of such files.
 - The library's lab and `Cua` names: `runLab`, `parseLabConfig`, `LAB_CONFIG_SCHEMA`, `LabConfig`,
   `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`, `RunLabOptions`, `BrowserLabScoringContext`,
   the nine `Cua*` loop types and `CuaAdmissionLimitError`. Each is the same function, class or type

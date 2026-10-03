@@ -1273,11 +1273,10 @@ describe("lobby-trivia-3player committed lab", () => {
   it("parses, routes to concurrent-shared-world, and dry-runs $0 with a verified bundle", async () => {
     const raw = parse(
       readFileSync(
-        path.join(process.cwd(), "humanish", "labs", "lobby-trivia-3player.yaml"),
+        path.join(process.cwd(), "humanish", "studies", "lobby-trivia-3player.yaml"),
         "utf8",
       ),
     ) as Record<string, unknown>;
-    raw.schema = LAB_CONFIG_SCHEMA;
     const parsed = parseLabConfig(raw);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;

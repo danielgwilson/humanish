@@ -124,7 +124,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
   });
 
   it("still parses every committed clone and local-tree lab", async () => {
-    const dir = path.join(repoRoot, "humanish", "labs");
+    const dir = path.join(repoRoot, "humanish", "studies");
     const checked: string[] = [];
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml")).sort()) {
       const raw = parse(await readFile(path.join(dir, file), "utf8")) as {

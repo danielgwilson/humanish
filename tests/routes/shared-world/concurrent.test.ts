@@ -2402,7 +2402,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
   function loadLiveLab(): LabConfig {
     const raw = parse(
       readFileSync(
-        path.join(process.cwd(), "humanish/labs/shared-world-concurrent-live.yaml"),
+        path.join(process.cwd(), "humanish/studies/shared-world-concurrent-live.yaml"),
         "utf8",
       ),
     );

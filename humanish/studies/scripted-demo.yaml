@@ -1,0 +1,25 @@
+schema: humanish.study.v3
+id: scripted-demo
+title: Scripted browser journey (no model, no provider spend)
+description: >-
+  The scripted-browser actor replays committed scenario steps against a loopback app with
+  Playwright, using no model and no provider spend. A dry run, the default, checks the lab and the
+  scenario without touching anything.
+route: scripted
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:5173
+actor:
+  type: scripted-browser # REAL dispatch key: resolves in the actor registry
+  persona: synthetic-new-user # trace/bundle provenance (no prompt exists — no model runs)
+surfaces: [desktop, mobile] # declared override: 2 = desktop + mobile surfaces (the default is 1, desktop only)
+scenario: scripted-first-run # CONSUMED: humanish/scenarios/scripted-first-run.yaml
+# mode: live # uncomment to actuate; spend stays $0 by mechanism —
+#            # the gate is for real browser actuation, not cost
+execution:
+  target: local # optional; absent defaults to local on this route
+  timeoutMs: 300000 # journey wall-clock budget per surface (zero model cost; sandbox-seconds are pennies)
+
+# This demo promises zero model requests, including after the recording finishes.
+review:
+  analysis: false

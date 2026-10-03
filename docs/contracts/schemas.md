@@ -1172,7 +1172,7 @@ only because it is asked for the one run being watched.
 check could not catch: `codex exec` allocates a PTY for the commands it runs, so
 both streams are terminals and the surface used to open. A study watched an
 agent move through the labs list and start a run it did not mean to start
-(humanish/labs/handed-a-human-surface.yaml). The refusal names the environment variable
+(humanish/studies/handed-a-human-surface.yaml). The refusal names the environment variable
 that identified the runner, so the reader can check the claim, and `--force` is
 the escape for a person who really is at that keyboard. Every other
 command is built for an agent to drive; this one takes the screen and waits for

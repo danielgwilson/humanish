@@ -32,13 +32,13 @@ async function plant(root: string, file: string, contents: string): Promise<void
 }
 
 describe("committedLabs", () => {
-  it("reads only humanish/labs when local labs share committed ids", async () => {
+  it("reads only humanish/studies when local studies share committed ids", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "humanish-committed-labs-"));
     dirs.push(root);
-    await plant(root, "humanish/labs/demo.yaml", lab("demo", "committed demo"));
+    await plant(root, "humanish/studies/demo.yaml", lab("demo", "committed demo"));
     // A committed lab whose file name is not its id: resolving it by id finds the local file.
-    await plant(root, "humanish/labs/second.yaml", lab("second-lab", "committed second"));
-    for (const dir of [".humanish/labs", ".humanish/local/labs"]) {
+    await plant(root, "humanish/studies/second.yaml", lab("second-lab", "committed second"));
+    for (const dir of [".humanish/studies", ".humanish/local/studies", ".humanish/labs"]) {
       await plant(root, `${dir}/demo.yaml`, lab("demo", "local demo"));
       await plant(root, `${dir}/second-lab.yaml`, lab("second-lab", "local second"));
       await plant(root, `${dir}/extra.yaml`, lab("extra", "local only"));

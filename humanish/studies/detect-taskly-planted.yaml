@@ -1,0 +1,39 @@
+schema: humanish.study.v3
+id: detect-taskly-planted
+title: "Taskly detection benchmark: planted build"
+description: >-
+  One arm of the planted-defect benchmark: does a persona doing ordinary work report defects it was never told about?
+  The two arms differ only in the build served. The planted build has the five defects listed in bench/DEFECTS.md: a
+  Clear completed button that does nothing, silent truncation past 30 characters, swapped Active and Completed filters,
+  an empty state that shows the text undefined, and a Save button in edit mode that does nothing. The clean build has
+  none. Recall comes from the planted arm and precision from the clean one, where any reported problem is a false
+  report. The mission describes ordinary use and never mentions defects, bugs or testing, because a persona told to hunt
+  for bugs finds them whether or not they exist. Committed as a dry run. A live run needs OPENAI_API_KEY and
+  E2B_API_KEY.
+route: computer-use
+mode: dry-run
+subject:
+  source: local-tree
+  serve:
+    start: python3 -m http.server 8000 --directory bench/taskly-planted
+    url: http://127.0.0.1:8000/
+actor:
+  type: openai-computer-use
+  maxOutputTokens: 8192
+  persona: synthetic-new-user
+  mission: >-
+    You are trying Taskly, a small web app for keeping a to-do list, for the first time. Use it the way you would
+    actually use a list app. Add a few tasks, including one long enough to describe something properly. Mark something
+    complete. Try the filters to see just what is left and just what is finished. Rename one of your tasks. Tidy up when
+    you are done. Report what worked, and describe anything that behaved differently from what you expected, in plain
+    terms, saying what you did and what you saw.
+caps:
+  maxUsd: 3
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+policies:
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
