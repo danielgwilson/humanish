@@ -258,14 +258,14 @@
       "persona": {
         "id": "cua-operator",
         "name": "Computer-use operator (cua-operator)",
-        "source": "lab:local-vm-golden",
+        "source": "study:local-vm-golden",
         "sourceDigest": "9cd5cf5309bc5e74"
       },
       "scenario": {
         "id": "cua-local-vm-golden",
         "title": "Computer-use lab: local-vm-golden",
         "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:local-vm-golden",
+        "source": "study:local-vm-golden",
         "sourceDigest": "9cd5cf5309bc5e74"
       },
       "packageName": "humanish",
@@ -421,14 +421,14 @@
     "persona": {
       "id": "cua-operator",
       "name": "Computer-use operator (cua-operator)",
-      "source": "lab:local-vm-golden",
+      "source": "study:local-vm-golden",
       "sourceDigest": "9cd5cf5309bc5e74"
     },
     "scenario": {
       "id": "cua-local-vm-golden",
       "title": "Computer-use lab: local-vm-golden",
       "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:local-vm-golden",
+      "source": "study:local-vm-golden",
       "sourceDigest": "9cd5cf5309bc5e74"
     },
     "lifecycle": [

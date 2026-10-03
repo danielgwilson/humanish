@@ -16,12 +16,11 @@ import {
   RUN_STATUS_TOUCH_MS,
   beginRunStatus,
   classifyRunStatus,
-  inferLegacyLabId,
   isRunStatusRecord,
   runStatusOutcome,
-  type RunLabProvenance,
   type RunStatusRecord,
 } from "../../src/run/status.js";
+import { inferLegacyStudyId, type RunStudyProvenance } from "../../src/run/study-provenance.js";
 
 describe("run status: identity + liveness on disk", () => {
   let cwd: string;
@@ -38,13 +37,13 @@ describe("run status: identity + liveness on disk", () => {
   const read = async (runId: string): Promise<RunStatusRecord> =>
     JSON.parse(await readFile(statusPath(runId), "utf8")) as RunStatusRecord;
 
-  const lab: RunLabProvenance = {
+  const lab: RunStudyProvenance = {
     id: "observer-live-check",
     path: ".humanish/labs/observer-live-check.yaml",
     origin: "ignored",
   };
 
-  async function startLive(scope: RunScope, runId: string, withLab?: RunLabProvenance) {
+  async function startLive(scope: RunScope, runId: string, withLab?: RunStudyProvenance) {
     const started = await scope.startRun({
       cwd,
       runId,
@@ -84,7 +83,7 @@ describe("run status: identity + liveness on disk", () => {
     }
   }
 
-  it("writes a running record with lab identity before startRun returns", async () => {
+  it("writes a running record with study identity, as study and lab, before startRun returns", async () => {
     await runScope(async (scope) => {
       await startLive(scope, "run-a", lab);
 
@@ -92,6 +91,7 @@ describe("run status: identity + liveness on disk", () => {
       expect(record.schema).toBe(RUN_STATUS_SCHEMA);
       expect(record.state).toBe("running");
       expect(record.mode).toBe("live");
+      expect(record.study).toEqual(lab);
       expect(record.lab).toEqual(lab);
       expect(record.pid).toBe(process.pid);
       expect(record.updatedAt).toBe(record.startedAt);
@@ -267,20 +267,25 @@ describe("run status: identity + liveness on disk", () => {
     expect(isRunStatusRecord({ ...base, state: "interrupted", signal: "SIGKILL" })).toBe(false);
     expect(isRunStatusRecord({ ...base, schema: "humanish.run-status.v2" })).toBe(false);
     expect(isRunStatusRecord({ ...base, lab: { path: "x" } })).toBe(false);
+    expect(isRunStatusRecord({ ...base, study: { path: "x" } })).toBe(false);
+    expect(isRunStatusRecord({ ...base, study: { id: "s" }, lab: { id: "s" } })).toBe(true);
     expect(isRunStatusRecord(null)).toBe(false);
   });
 
-  it("the legacy bridge reads the old lab:<id> convention, colons included, and nothing else", () => {
-    expect(inferLegacyLabId({ persona: { source: "lab:observer-live-check" } })).toBe(
+  it("the legacy bridge reads the study:<id> and lab:<id> conventions, colons included, and nothing else", () => {
+    expect(inferLegacyStudyId({ persona: { source: "study:observer-live-check" } })).toBe(
+      "observer-live-check",
+    );
+    expect(inferLegacyStudyId({ persona: { source: "lab:observer-live-check" } })).toBe(
       "observer-live-check",
     );
     // Ids may legitimately contain a colon (the removed OSS meta-lab wrote `oss:meta`).
-    expect(inferLegacyLabId({ scenario: { source: "lab:oss:meta" } })).toBe("oss:meta");
+    expect(inferLegacyStudyId({ scenario: { source: "lab:oss:meta" } })).toBe("oss:meta");
     // A plain persona path is not a `lab:` marker, so those runs get no study id.
     expect(
-      inferLegacyLabId({ persona: { source: "humanish/personas/synthetic-new-user.yaml" } }),
+      inferLegacyStudyId({ persona: { source: "humanish/personas/synthetic-new-user.yaml" } }),
     ).toBeUndefined();
-    expect(inferLegacyLabId({ persona: { source: "lab:" } })).toBeUndefined();
-    expect(inferLegacyLabId({})).toBeUndefined();
+    expect(inferLegacyStudyId({ persona: { source: "lab:" } })).toBeUndefined();
+    expect(inferLegacyStudyId({})).toBeUndefined();
   });
 });

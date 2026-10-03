@@ -92,14 +92,14 @@
       "persona": {
         "id": "party-host",
         "name": "Concurrent shared-world swarm (3 personas)",
-        "source": "lab:lobby-trivia-3player-test",
+        "source": "study:lobby-trivia-3player-test",
         "sourceDigest": "07e0454012db815d"
       },
       "scenario": {
         "id": "concurrent-shared-world-lobby-trivia-3player-test",
         "title": "the example multiplayer app 3-player external-public",
         "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nLane focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:lobby-trivia-3player-test",
+        "source": "study:lobby-trivia-3player-test",
         "sourceDigest": "07e0454012db815d"
       },
       "packageName": "humanish",
@@ -270,14 +270,14 @@
     "persona": {
       "id": "party-host",
       "name": "Concurrent shared-world swarm (3 personas)",
-      "source": "lab:lobby-trivia-3player-test",
+      "source": "study:lobby-trivia-3player-test",
       "sourceDigest": "07e0454012db815d"
     },
     "scenario": {
       "id": "concurrent-shared-world-lobby-trivia-3player-test",
       "title": "the example multiplayer app 3-player external-public",
       "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nLane focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:lobby-trivia-3player-test",
+      "source": "study:lobby-trivia-3player-test",
       "sourceDigest": "07e0454012db815d"
     },
     "lifecycle": [

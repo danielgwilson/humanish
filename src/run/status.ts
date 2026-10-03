@@ -11,6 +11,7 @@
 // operator may share the run directory, so a share-safety gate must have nothing to strip here.
 
 import type { RunBundle } from "./bundle.js";
+import { isProvenanceField, studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
 import type { ExecutionFailure, ExecutionOutcome } from "./judge.js";
 import { redactText } from "../evidence/redaction.js";
@@ -29,16 +30,6 @@ export const RUN_STATUS_TOUCH_MS = 5_000;
  * slack so an ordinary scheduling hiccup or a slow disk never mislabels a healthy run.
  */
 export const RUN_STATUS_STALE_MS = RUN_STATUS_TOUCH_MS * 3;
-
-/** Which manifest a run came from, when it came from one. */
-export interface RunLabProvenance {
-  /** The lab id as declared in its manifest (`config.id`). */
-  id: string;
-  /** Repo-relative manifest path, when the run came from a file on disk. */
-  path?: string;
-  /** `committed` = humanish/studies or humanish/labs, `ignored` = a local overlay, `explicit` = a path the operator passed. */
-  origin?: "committed" | "ignored" | "explicit";
-}
 
 type RunStatusState = "running" | "finished" | "interrupted";
 
@@ -91,8 +82,10 @@ export interface RunStatusRecord {
   runId: string;
   state: RunStatusState;
   mode: "dry-run" | "live";
-  /** Absent when the run did not come from a lab manifest (a library caller, a bare `run`). */
-  lab?: RunLabProvenance;
+  /** Absent when the run did not come from a study file (a library caller, a bare `run`). */
+  study?: RunStudyProvenance;
+  /** `study`'s value, written beside it until 0.109. Read either through studyProvenanceOf. */
+  lab?: RunStudyProvenance;
   /** The pid that owns the run, for local liveness checks. */
   pid: number;
   startedAt: string;
@@ -126,7 +119,7 @@ export interface RunStatusHandle {
 export interface BeginRunStatusOptions {
   runId: string;
   mode: "dry-run" | "live";
-  lab?: RunLabProvenance | undefined;
+  lab?: RunStudyProvenance | undefined;
 }
 
 /**
@@ -145,7 +138,7 @@ export function beginRunStatus(
     runId: options.runId,
     state: "running",
     mode: options.mode,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...studyFields(options.lab),
     pid: process.pid,
     startedAt,
     updatedAt: startedAt,
@@ -270,29 +263,6 @@ export function isRunStatusRecord(value: unknown): value is RunStatusRecord {
   if (record.mode !== "dry-run" && record.mode !== "live") return false;
   if (typeof record.pid !== "number") return false;
   if (typeof record.startedAt !== "string" || typeof record.updatedAt !== "string") return false;
-  if (record.lab !== undefined) {
-    if (record.lab === null || typeof record.lab !== "object") return false;
-    if (typeof (record.lab as Record<string, unknown>).id !== "string") return false;
-  }
+  if (!isProvenanceField(record.study) || !isProvenanceField(record.lab)) return false;
   return true;
-}
-
-/**
- * The legacy bridge: infer a lab id for a bundle written before this contract, where the only
- * attribution was the `lab:<id>` convention on persona/scenario source strings. Deliberately
- * conservative: it reads the convention and nothing else, and a `lab:` prefix with an empty
- * remainder is not an id. Ids may contain colons (the removed meta-lab wrote `oss:meta`), so
- * only the first segment is stripped. Returns undefined when the bundle carries no such marker.
- */
-export function inferLegacyLabId(bundle: {
-  persona?: { source?: string };
-  scenario?: { source?: string };
-}): string | undefined {
-  for (const source of [bundle.persona?.source, bundle.scenario?.source]) {
-    if (typeof source !== "string") continue;
-    if (!source.startsWith("lab:")) continue;
-    const id = source.slice("lab:".length).trim();
-    if (id !== "") return id;
-  }
-  return undefined;
 }

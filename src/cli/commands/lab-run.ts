@@ -12,7 +12,7 @@ import { planLab, resolveLabDryRun } from "../../lab/plan.js";
 import { keyNamesOf } from "../../lab/requirements.js";
 import { type LabRoute, routeOf } from "../../lab/plan.js";
 import type { LabConfig } from "../../lab/types.js";
-import type { RunLabProvenance } from "../../run/status.js";
+import type { RunStudyProvenance } from "../../run/study-provenance.js";
 import type { RunResult } from "../../run/results.js";
 import { computerUseRouteRun } from "./lab-route-computer-use.js";
 import { type RouteRun, runRoute } from "./lab-route-run.js";
@@ -58,7 +58,7 @@ export async function runLabCommand(args: {
   // local overlay, or an explicit path. Resolved once here (the only place that knows all three)
   // and carried into the run's status record and bundle so the filesystem can answer "which lab
   // produced this run" without the old `persona.source = "lab:<id>"` string convention.
-  const lab: RunLabProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
+  const lab: RunStudyProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
   // Named here, once, for every route: a preview or terminal result carries no labId, so the
   // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
   noteRunFacts(args.command, deriveRunFacts({ labId: config.id }));

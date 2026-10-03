@@ -3,13 +3,13 @@
 
 import type { ObserverResult } from "../observer/render.js";
 import type { RunProviderResource } from "./bundle.js";
-import type { RunLabProvenance } from "./status.js";
+import type { RunStudyProvenance } from "./study-provenance.js";
 
 export const CLEANUP_SCHEMA = "humanish.cleanup-result.v1";
 
 export interface RunOptions {
   /** Which manifest produced this run. */
-  lab?: RunLabProvenance;
+  lab?: RunStudyProvenance;
   cwd: string;
   dryRun?: boolean;
   runId?: string;

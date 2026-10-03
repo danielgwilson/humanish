@@ -1,0 +1,10 @@
+{
+  "schema": "humanish.review.v1",
+  "verdict": "contract_proof_only",
+  "summary": "Dry run: humanish wrote a synthetic run bundle. No product behavior was tested.",
+  "gaps": [
+    "No browser was launched.",
+    "No product state was verified.",
+    "No model, provider, or E2B substrate was used."
+  ]
+}

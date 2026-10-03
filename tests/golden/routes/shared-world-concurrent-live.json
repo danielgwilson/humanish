@@ -341,14 +341,14 @@
       "persona": {
         "id": "persona-1",
         "name": "Concurrent shared-world swarm (3 personas)",
-        "source": "lab:concurrent-shared-world-proof",
+        "source": "study:concurrent-shared-world-proof",
         "sourceDigest": "48b083174eecbf02"
       },
       "scenario": {
         "id": "concurrent-shared-world-concurrent-shared-world-proof",
         "title": "Concurrent shared-world proof",
         "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:concurrent-shared-world-proof",
+        "source": "study:concurrent-shared-world-proof",
         "sourceDigest": "48b083174eecbf02"
       },
       "packageName": "humanish",
@@ -525,14 +525,14 @@
     "persona": {
       "id": "persona-1",
       "name": "Concurrent shared-world swarm (3 personas)",
-      "source": "lab:concurrent-shared-world-proof",
+      "source": "study:concurrent-shared-world-proof",
       "sourceDigest": "48b083174eecbf02"
     },
     "scenario": {
       "id": "concurrent-shared-world-concurrent-shared-world-proof",
       "title": "Concurrent shared-world proof",
       "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:concurrent-shared-world-proof",
+      "source": "study:concurrent-shared-world-proof",
       "sourceDigest": "48b083174eecbf02"
     },
     "lifecycle": [

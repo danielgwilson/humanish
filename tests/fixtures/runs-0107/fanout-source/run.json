@@ -1,0 +1,1204 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "fanout-source",
+  "mode": "live",
+  "simCount": 4,
+  "createdAt": "2026-10-03T03:58:56.741Z",
+  "cwd": "[target-cwd]",
+  "artifactRoot": ".humanish/runs/fanout-source",
+  "lab": {
+    "id": "fanout-proof",
+    "path": "humanish/labs/fanout-proof.yaml",
+    "origin": "committed"
+  },
+  "source": {
+    "packageName": "humanish",
+    "humanishSource": "present",
+    "git": {
+      "schema": "humanish.git-state.v1",
+      "status": "missing",
+      "capturedAt": "2026-10-03T03:58:56.741Z",
+      "head": {
+        "shortSha": null,
+        "refState": "unknown"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "total": 0
+      },
+      "note": "No git work tree was detected."
+    }
+  },
+  "persona": {
+    "id": "first-time-visitor",
+    "name": "Computer-use fan-out (4 participants)",
+    "source": "lab:fanout-proof",
+    "sourceDigest": "9a12d26ecfc42242"
+  },
+  "scenario": {
+    "id": "cua-fanout-proof",
+    "title": "Fan-out proof",
+    "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nLane focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+    "source": "lab:fanout-proof",
+    "sourceDigest": "9a12d26ecfc42242"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-10-03T03:58:56.741Z",
+      "event": "cua-lab.run.created",
+      "message": "Created computer-use fan-out run with 4 participants, each in its own desktop browser (actor openai-computer-use)."
+    }
+  ],
+  "simulations": [
+    {
+      "id": "sim-001",
+      "index": 1,
+      "personaId": "first-time-visitor",
+      "scenarioId": "cua-fanout-proof",
+      "status": "passed",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Done.",
+      "summary": "Participant mobile-newcomer (first-time-visitor/mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+      "streamIds": [
+        "stream-001"
+      ],
+      "startedAt": "2026-10-03T03:58:56.741Z",
+      "updatedAt": "2026-10-03T03:58:56.741Z"
+    },
+    {
+      "id": "sim-002",
+      "index": 2,
+      "personaId": "impatient-skimmer",
+      "scenarioId": "cua-fanout-proof",
+      "status": "passed",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Done.",
+      "summary": "Participant small-skimmer (impatient-skimmer/small-mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+      "streamIds": [
+        "stream-002"
+      ],
+      "startedAt": "2026-10-03T03:58:56.741Z",
+      "updatedAt": "2026-10-03T03:58:56.741Z"
+    },
+    {
+      "id": "sim-003",
+      "index": 3,
+      "personaId": "power-user",
+      "scenarioId": "cua-fanout-proof",
+      "status": "failed",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "transient actor transport failed",
+      "summary": "Participant desktop-power failed before a terminal session verdict: transient actor transport failed",
+      "streamIds": [
+        "stream-003"
+      ],
+      "startedAt": "2026-10-03T03:58:56.741Z",
+      "updatedAt": "2026-10-03T03:58:56.741Z"
+    },
+    {
+      "id": "sim-004",
+      "index": 4,
+      "personaId": "comparison-shopper",
+      "scenarioId": "cua-fanout-proof",
+      "status": "passed",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Done.",
+      "summary": "Participant wide-researcher (comparison-shopper/wide): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+      "streamIds": [
+        "stream-004"
+      ],
+      "startedAt": "2026-10-03T03:58:56.741Z",
+      "updatedAt": "2026-10-03T03:58:56.741Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "stream-001",
+      "simId": "sim-001",
+      "laneId": "mobile-newcomer",
+      "assignment": {
+        "mission": "Explore the app and stop.",
+        "focus": "Sign up from a phone."
+      },
+      "kind": "browser",
+      "label": "mobile-newcomer · browser",
+      "status": "passed",
+      "judgedStatus": "passed",
+      "transport": "snapshot",
+      "updatedAt": "2026-10-03T03:58:56.741Z",
+      "embed": {
+        "kind": "screenshot",
+        "url": "screenshots/mobile-newcomer/turn-01.png",
+        "title": "Desktop (raw)"
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 500,
+            "height": 896
+          },
+          "declared": {
+            "width": 414,
+            "height": 896,
+            "preset": "mobile"
+          },
+          "verified": {
+            "width": 500,
+            "height": 896,
+            "source": "xdpyinfo"
+          }
+        },
+        "warnings": [
+          "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
+          "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+          "Browser outer bounds could not be measured for participant mobile-newcomer.",
+          "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution."
+        ]
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch participant mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
+        "state": "Done.",
+        "actorStatus": "passed",
+        "screenshotUrl": "screenshots/mobile-newcomer/turn-01.png"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "openai-responses-cu",
+        "providerVersion": "gpt-5.6-sol",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "first-time-visitor",
+          "traitsApplied": [],
+          "promptDigest": "9a12d26ecfc42242"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "2026-10-03T03:58:56.806Z",
+        "completedAt": "2026-10-03T03:58:56.852Z",
+        "durationMs": 46,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Done.",
+        "ids": {
+          "model": "gpt-5.6-sol",
+          "turnId": "resp_2"
+        },
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/mobile-newcomer/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:56.835Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (11, 22)",
+            "coord": {
+              "x": 11,
+              "y": 22
+            },
+            "at": "2026-10-03T03:58:56.839Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/mobile-newcomer/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:56.851Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Done.",
+            "at": "2026-10-03T03:58:56.852Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": false,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "proprietary"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "participant mobile-newcomer actor trace",
+          "path": "actors/stream-001.json",
+          "kind": "trace"
+        },
+        {
+          "label": "participant mobile-newcomer screenshot 01 (raw)",
+          "path": "screenshots/mobile-newcomer/turn-00-start.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "participant mobile-newcomer screenshot 02 (raw)",
+          "path": "screenshots/mobile-newcomer/turn-01.png",
+          "kind": "screenshot"
+        }
+      ]
+    },
+    {
+      "id": "stream-002",
+      "simId": "sim-002",
+      "laneId": "small-skimmer",
+      "assignment": {
+        "mission": "Explore the app and stop.",
+        "focus": "Skim and bounce."
+      },
+      "kind": "browser",
+      "label": "small-skimmer · browser",
+      "status": "passed",
+      "judgedStatus": "passed",
+      "transport": "snapshot",
+      "updatedAt": "2026-10-03T03:58:56.741Z",
+      "embed": {
+        "kind": "screenshot",
+        "url": "screenshots/small-skimmer/turn-01.png",
+        "title": "Desktop (raw)"
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 500,
+            "height": 740
+          },
+          "declared": {
+            "width": 360,
+            "height": 740,
+            "preset": "small-mobile"
+          },
+          "verified": {
+            "width": 500,
+            "height": 740,
+            "source": "xdpyinfo"
+          }
+        },
+        "warnings": [
+          "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
+          "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+          "Browser outer bounds could not be measured for participant small-skimmer.",
+          "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution."
+        ]
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch participant small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
+        "state": "Done.",
+        "actorStatus": "passed",
+        "screenshotUrl": "screenshots/small-skimmer/turn-01.png"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "openai-responses-cu",
+        "providerVersion": "gpt-5.6-sol",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "impatient-skimmer",
+          "traitsApplied": [],
+          "promptDigest": "79b0300d675f36b8"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "2026-10-03T03:58:56.821Z",
+        "completedAt": "2026-10-03T03:58:56.857Z",
+        "durationMs": 36,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Done.",
+        "ids": {
+          "model": "gpt-5.6-sol",
+          "turnId": "resp_2"
+        },
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/small-skimmer/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:56.842Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (11, 22)",
+            "coord": {
+              "x": 11,
+              "y": 22
+            },
+            "at": "2026-10-03T03:58:56.842Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/small-skimmer/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:56.856Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Done.",
+            "at": "2026-10-03T03:58:56.856Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": false,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "proprietary"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "participant small-skimmer actor trace",
+          "path": "actors/stream-002.json",
+          "kind": "trace"
+        },
+        {
+          "label": "participant small-skimmer screenshot 01 (raw)",
+          "path": "screenshots/small-skimmer/turn-00-start.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "participant small-skimmer screenshot 02 (raw)",
+          "path": "screenshots/small-skimmer/turn-01.png",
+          "kind": "screenshot"
+        }
+      ]
+    },
+    {
+      "id": "stream-003",
+      "simId": "sim-003",
+      "laneId": "desktop-power",
+      "assignment": {
+        "mission": "Explore the app and stop.",
+        "focus": "Open advanced settings."
+      },
+      "kind": "browser",
+      "label": "desktop-power · browser",
+      "status": "failed",
+      "judgedStatus": "failed",
+      "transport": "snapshot",
+      "updatedAt": "2026-10-03T03:58:56.741Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "Desktop"
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1440,
+            "height": 950
+          },
+          "verified": {
+            "width": 1440,
+            "height": 950,
+            "source": "xdpyinfo"
+          }
+        },
+        "warnings": [
+          "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
+          "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+          "Browser outer bounds could not be measured for participant desktop-power.",
+          "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution."
+        ]
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch participant desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
+        "state": "transient actor transport failed"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    },
+    {
+      "id": "stream-004",
+      "simId": "sim-004",
+      "laneId": "wide-researcher",
+      "assignment": {
+        "mission": "Explore the app and stop.",
+        "focus": "Compare the plans."
+      },
+      "kind": "browser",
+      "label": "wide-researcher · browser",
+      "status": "passed",
+      "judgedStatus": "passed",
+      "transport": "snapshot",
+      "updatedAt": "2026-10-03T03:58:56.741Z",
+      "embed": {
+        "kind": "screenshot",
+        "url": "screenshots/wide-researcher/turn-01.png",
+        "title": "Desktop (raw)"
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1920,
+            "height": 1080
+          },
+          "verified": {
+            "width": 1920,
+            "height": 1080,
+            "source": "xdpyinfo"
+          }
+        },
+        "warnings": [
+          "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
+          "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+          "Browser outer bounds could not be measured for participant wide-researcher.",
+          "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution."
+        ]
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch participant wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
+        "state": "Done.",
+        "actorStatus": "passed",
+        "screenshotUrl": "screenshots/wide-researcher/turn-01.png"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "openai-responses-cu",
+        "providerVersion": "gpt-5.6-sol",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "comparison-shopper",
+          "traitsApplied": [],
+          "promptDigest": "069b32833fd4b701"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "2026-10-03T03:58:56.824Z",
+        "completedAt": "2026-10-03T03:58:56.856Z",
+        "durationMs": 32,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Done.",
+        "ids": {
+          "model": "gpt-5.6-sol",
+          "turnId": "resp_2"
+        },
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/wide-researcher/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:56.844Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (11, 22)",
+            "coord": {
+              "x": 11,
+              "y": 22
+            },
+            "at": "2026-10-03T03:58:56.844Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/wide-researcher/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:56.856Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Done.",
+            "at": "2026-10-03T03:58:56.856Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": false,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "proprietary"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "participant wide-researcher actor trace",
+          "path": "actors/stream-004.json",
+          "kind": "trace"
+        },
+        {
+          "label": "participant wide-researcher screenshot 01 (raw)",
+          "path": "screenshots/wide-researcher/turn-00-start.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "participant wide-researcher screenshot 02 (raw)",
+          "path": "screenshots/wide-researcher/turn-01.png",
+          "kind": "screenshot"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000-created",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 participants, one world each)."
+    },
+    {
+      "id": "event-001-fanout-plan",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.fanout.plan",
+      "message": "Fan-out plan: 4 participant(s) (per-lane-worlds), concurrency 4, 1 wave(s); session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+    },
+    {
+      "id": "event-002-subject-mobile-newcomer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Participant mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-session-mobile-newcomer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "Participant mobile-newcomer passed: Done.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-geometry-warning-mobile-newcomer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-005-geometry-warning-mobile-newcomer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-006-geometry-warning-mobile-newcomer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser outer bounds could not be measured for participant mobile-newcomer.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-007-geometry-warning-mobile-newcomer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-008-subject-small-skimmer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Participant small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-009-session-small-skimmer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "Participant small-skimmer passed: Done.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-010-geometry-warning-small-skimmer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-011-geometry-warning-small-skimmer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-012-geometry-warning-small-skimmer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser outer bounds could not be measured for participant small-skimmer.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-013-geometry-warning-small-skimmer",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-014-subject-desktop-power",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Participant desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-015-session-error-desktop-power",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "error",
+      "type": "cua-lab.session.error",
+      "message": "Participant desktop-power: transient actor transport failed",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-016-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-017-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-018-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser outer bounds could not be measured for participant desktop-power.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-019-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-020-subject-wide-researcher",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Participant wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    },
+    {
+      "id": "event-021-session-wide-researcher",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "Participant wide-researcher passed: Done.",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    },
+    {
+      "id": "event-022-geometry-warning-wide-researcher",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    },
+    {
+      "id": "event-023-geometry-warning-wide-researcher",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    },
+    {
+      "id": "event-024-geometry-warning-wide-researcher",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser outer bounds could not be measured for participant wide-researcher.",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    },
+    {
+      "id": "event-025-geometry-warning-wide-researcher",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    },
+    {
+      "id": "event-026-fanout-fail-fast",
+      "at": "2026-10-03T03:58:56.741Z",
+      "level": "warn",
+      "type": "cua-lab.fanout.fail-fast",
+      "message": "Fan-out fail-fast: a prior participant (desktop-power) ended in a harness error (fail-fast). In-flight participants finished; queued participants were skipped (blocked); completed evidence is retained."
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Some participants captured FULL-FIDELITY (raw) screenshots, retained for local use and NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+  },
+  "artifacts": {
+    "run": "run.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "humanish.review.v1",
+    "verdict": "fail",
+    "participants": {
+      "total": 3,
+      "reachedGoal": 3,
+      "abandoned": 0,
+      "ranOut": 0,
+      "blocked": 0,
+      "harnessFailed": 0,
+      "reportedFriction": 0
+    },
+    "summary": "Run gate: fail. Participants: 3/3 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 3/4 participant(s) reached a terminal, engaged verdict: 3/3 reported reaching the goal.",
+    "gaps": [
+      "desktop-power: transient actor transport failed",
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+    ]
+  },
+  "feedbackCandidates": [],
+  "providerResources": [
+    {
+      "schema": "humanish.provider-resource.v1",
+      "provider": "e2b-desktop",
+      "kind": "sandbox",
+      "id": "fake-sandbox-01",
+      "owner": "humanish",
+      "status": "killed",
+      "simId": "sim-001",
+      "streamId": "stream-001",
+      "laneId": "mobile-newcomer",
+      "createdAt": "2026-10-03T03:58:56.741Z",
+      "cleanup": {
+        "killed": true,
+        "reason": "killed during normal participant teardown"
+      }
+    },
+    {
+      "schema": "humanish.provider-resource.v1",
+      "provider": "e2b-desktop",
+      "kind": "sandbox",
+      "id": "fake-sandbox-02",
+      "owner": "humanish",
+      "status": "killed",
+      "simId": "sim-002",
+      "streamId": "stream-002",
+      "laneId": "small-skimmer",
+      "createdAt": "2026-10-03T03:58:56.741Z",
+      "cleanup": {
+        "killed": true,
+        "reason": "killed during normal participant teardown"
+      }
+    },
+    {
+      "schema": "humanish.provider-resource.v1",
+      "provider": "e2b-desktop",
+      "kind": "sandbox",
+      "id": "fake-sandbox-03",
+      "owner": "humanish",
+      "status": "killed",
+      "simId": "sim-003",
+      "streamId": "stream-003",
+      "laneId": "desktop-power",
+      "createdAt": "2026-10-03T03:58:56.741Z",
+      "cleanup": {
+        "killed": true,
+        "reason": "killed during normal participant teardown"
+      }
+    },
+    {
+      "schema": "humanish.provider-resource.v1",
+      "provider": "e2b-desktop",
+      "kind": "sandbox",
+      "id": "fake-sandbox-04",
+      "owner": "humanish",
+      "status": "killed",
+      "simId": "sim-004",
+      "streamId": "stream-004",
+      "laneId": "wide-researcher",
+      "createdAt": "2026-10-03T03:58:56.741Z",
+      "cleanup": {
+        "killed": true,
+        "reason": "killed during normal participant teardown"
+      }
+    }
+  ],
+  "subject": {
+    "source": "app-url",
+    "state": {
+      "provenance": "undeclared"
+    }
+  },
+  "cost": {
+    "schema": "humanish.run-cost-summary.v1",
+    "currency": "usd",
+    "estimatedTotalUsd": 0.000018,
+    "ratesAsOf": "2026-09-05",
+    "fullyEstimated": false,
+    "placeholder": false,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "mobile-newcomer",
+        "estimatedCostUsd": null,
+        "reason": "no_token_usage",
+        "ratesAsOf": null
+      },
+      {
+        "kind": "model-tokens",
+        "laneId": "small-skimmer",
+        "estimatedCostUsd": null,
+        "reason": "no_token_usage",
+        "ratesAsOf": null
+      },
+      {
+        "kind": "model-tokens",
+        "laneId": "wide-researcher",
+        "estimatedCostUsd": null,
+        "reason": "no_token_usage",
+        "ratesAsOf": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "mobile-newcomer",
+        "estimatedCostUsd": 0.000008,
+        "ratesAsOf": "2026-09-05",
+        "source": "e2b.dev/pricing",
+        "desktop": {
+          "minutes": 0.00085,
+          "durationBasis": "host-acquired-to-cleanup",
+          "resources": {
+            "cpuCount": 8,
+            "memoryMiB": 8192
+          },
+          "resourceSource": "e2b.getInfo",
+          "usdPerSecond": 0.000148
+        }
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "small-skimmer",
+        "estimatedCostUsd": 0.000005,
+        "ratesAsOf": "2026-09-05",
+        "source": "e2b.dev/pricing",
+        "desktop": {
+          "minutes": 0.000617,
+          "durationBasis": "host-acquired-to-cleanup",
+          "resources": {
+            "cpuCount": 8,
+            "memoryMiB": 8192
+          },
+          "resourceSource": "e2b.getInfo",
+          "usdPerSecond": 0.000148
+        }
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "desktop-power",
+        "estimatedCostUsd": 0,
+        "ratesAsOf": "2026-09-05",
+        "source": "e2b.dev/pricing",
+        "desktop": {
+          "minutes": 0.000033,
+          "durationBasis": "host-acquired-to-cleanup",
+          "resources": {
+            "cpuCount": 8,
+            "memoryMiB": 8192
+          },
+          "resourceSource": "e2b.getInfo",
+          "usdPerSecond": 0.000148
+        }
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "wide-researcher",
+        "estimatedCostUsd": 0.000005,
+        "ratesAsOf": "2026-09-05",
+        "source": "e2b.dev/pricing",
+        "desktop": {
+          "minutes": 0.000533,
+          "durationBasis": "host-acquired-to-cleanup",
+          "resources": {
+            "cpuCount": 8,
+            "memoryMiB": 8192
+          },
+          "resourceSource": "e2b.getInfo",
+          "usdPerSecond": 0.000148
+        }
+      }
+    ],
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 0
+    },
+    "desktopMinutes": 0.002033,
+    "note": "Estimated 0.000018 USD total (a lower bound: some lines are unmeasured or unpriced). Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+  }
+}

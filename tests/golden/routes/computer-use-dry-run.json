@@ -125,14 +125,14 @@
       "persona": {
         "id": "first-time-visitor",
         "name": "Computer-use operator (first-time-visitor)",
-        "source": "lab:cua-routing-proof",
+        "source": "study:cua-routing-proof",
         "sourceDigest": "aef52cb8e81a1192"
       },
       "scenario": {
         "id": "cua-cua-routing-proof",
         "title": "CUA routing proof",
         "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nLane focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:cua-routing-proof",
+        "source": "study:cua-routing-proof",
         "sourceDigest": "aef52cb8e81a1192"
       },
       "packageName": "humanish",
@@ -266,14 +266,14 @@
     "persona": {
       "id": "first-time-visitor",
       "name": "Computer-use operator (first-time-visitor)",
-      "source": "lab:cua-routing-proof",
+      "source": "study:cua-routing-proof",
       "sourceDigest": "aef52cb8e81a1192"
     },
     "scenario": {
       "id": "cua-cua-routing-proof",
       "title": "CUA routing proof",
       "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nLane focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:cua-routing-proof",
+      "source": "study:cua-routing-proof",
       "sourceDigest": "aef52cb8e81a1192"
     },
     "lifecycle": [

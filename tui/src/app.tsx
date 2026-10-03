@@ -326,7 +326,7 @@ export function App({
         return;
       }
       // Run again: the same study, in the same mode it ran in, launched the same detached way.
-      const labId = run.lab?.id;
+      const labId = run.study?.id;
       const matching =
         labId === undefined
           ? []
@@ -709,7 +709,7 @@ function contextLine(
   if (screen.name === "run" && data !== undefined) {
     const run = data.runsById.get(screen.runId);
     const short = screen.runId.split("-").pop() ?? screen.runId;
-    return [run?.lab?.id, short].filter(Boolean).join(" · ");
+    return [run?.study?.id, short].filter(Boolean).join(" · ");
   }
   if (data === undefined) return project;
   const live = liveRunsOf(data).length;
@@ -792,7 +792,7 @@ function project(index: RunIndexResult, labs: readonly LabListEntry[]): ProjectD
   const runsById = new Map<string, RunIndexEntry>();
   for (const run of index.runs) {
     runsById.set(run.runId, run);
-    const labId = run.lab?.id;
+    const labId = run.study?.id;
     if (labId === undefined) continue;
     const bucket = runsByLab.get(labId);
     if (bucket === undefined) runsByLab.set(labId, [run]);
@@ -920,7 +920,7 @@ function openSelected(
       ? undefined
       : {
           name: "run",
-          ...(run.lab?.id === undefined ? {} : { labId: run.lab.id }),
+          ...(run.study?.id === undefined ? {} : { labId: run.study.id }),
           runId: run.runId,
         };
   }
@@ -1025,7 +1025,7 @@ function renderScreen(args: {
       <AllRunsScreen
         runs={live}
         details={liveDetails}
-        labels={new Map(live.map((run) => [run.runId, labelForLab(data, run.lab?.id)]))}
+        labels={new Map(live.map((run) => [run.runId, labelForLab(data, run.study?.id)]))}
         expected={
           new Map(
             data.rows

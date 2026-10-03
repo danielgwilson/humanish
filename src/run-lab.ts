@@ -35,7 +35,7 @@ import { type ConcurrentSharedWorldLabResult } from "./routes/shared-world/types
 import { admitTerminalPlan, terminalLabRefusal } from "./routes/terminal/route.js";
 import { type TerminalProductLabResult } from "./routes/terminal/types.js";
 import { type RunScorerProvenance } from "./run/bundle.js";
-import { type RunLabProvenance } from "./run/status.js";
+import type { RunStudyProvenance } from "./run/study-provenance.js";
 import { isLocalBrowserLab, localBrowserDefaults } from "./substrates/local/runtime-config.js";
 
 /**
@@ -246,7 +246,7 @@ interface RunLabInternals {
    * plan.lab for the run's status record and bundle. Absent for a library caller that passes a
    * LabConfig directly; that run records no lab.
    */
-  lab?: RunLabProvenance;
+  lab?: RunStudyProvenance;
   /**
    * Config-declared scorer provenance, forwarded alongside the
    * loaded scorer. Its presence is the "declared" marker the terminal route reads to flip a

@@ -1,0 +1,29 @@
+{
+  "schema": "humanish.run-status.v1",
+  "runId": "fanout-rerun",
+  "state": "finished",
+  "mode": "live",
+  "lab": {
+    "id": "fanout-proof",
+    "path": "humanish/labs/fanout-proof.yaml",
+    "origin": "committed"
+  },
+  "pid": 1613234,
+  "startedAt": "2026-10-03T03:58:57.463Z",
+  "updatedAt": "2026-10-03T03:58:57.585Z",
+  "completedAt": "2026-10-03T03:58:57.585Z",
+  "outcome": {
+    "verdict": "pass",
+    "participants": {
+      "total": 1,
+      "reachedGoal": 1,
+      "reportedFriction": 0
+    },
+    "estimatedCostUsd": 0.000005,
+    "ok": true,
+    "execution": {
+      "succeeded": true,
+      "failures": []
+    }
+  }
+}

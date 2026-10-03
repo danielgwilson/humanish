@@ -20,12 +20,11 @@ import path from "node:path";
 import {
   RUN_STATUS_FILE,
   classifyRunStatus,
-  inferLegacyLabId,
   isRunStatusRecord,
-  type RunLabProvenance,
   type RunLiveness,
   type RunStatusRecord,
 } from "./status.js";
+import { studyProvenanceOf, type RunStudyProvenance } from "./study-provenance.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
 
 const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
@@ -42,7 +41,7 @@ export interface RunIndexEntry {
    * one run's record carries that pid.
    */
   pid?: number;
-  lab?: RunLabProvenance;
+  study?: RunStudyProvenance;
   startedAt?: string;
   updatedAt?: string;
   completedAt?: string;
@@ -139,7 +138,7 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
     liveness: classifyRunStatus(record, nowMs),
     mode: record.mode,
     ...(typeof record.pid === "number" ? { pid: record.pid } : {}),
-    ...(record.lab === undefined ? {} : { lab: record.lab }),
+    ...studyEntry(studyProvenanceOf(record)),
     startedAt: record.startedAt,
     updatedAt: record.updatedAt,
     ...(record.completedAt === undefined ? {} : { completedAt: record.completedAt }),
@@ -159,7 +158,8 @@ interface BundleFacts {
   runId?: string;
   mode?: string;
   createdAt?: string;
-  lab?: RunLabProvenance;
+  study?: unknown;
+  lab?: unknown;
   persona?: { source?: string };
   scenario?: { source?: string };
   simulations?: { status?: string }[];
@@ -205,18 +205,17 @@ export function runLiveness(
     : { liveness: bundleLiveness(bundle) };
 }
 
+function studyEntry(study: RunStudyProvenance | undefined): { study?: RunStudyProvenance } {
+  return study === undefined ? {} : { study };
+}
+
 function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
-  const legacyLabId = bundle.lab === undefined ? inferLegacyLabId(bundle) : undefined;
   return {
     runId,
     derivedFrom: "bundle",
     liveness: bundleLiveness(bundle),
     ...(bundle.mode === "dry-run" || bundle.mode === "live" ? { mode: bundle.mode } : {}),
-    ...(bundle.lab !== undefined
-      ? { lab: bundle.lab }
-      : legacyLabId === undefined
-        ? {}
-        : { lab: { id: legacyLabId } }),
+    ...studyEntry(studyProvenanceOf(bundle)),
     ...(bundle.createdAt === undefined ? {} : { startedAt: bundle.createdAt }),
     ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
     ...(bundle.review?.participants === undefined

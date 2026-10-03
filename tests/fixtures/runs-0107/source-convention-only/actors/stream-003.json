@@ -1,0 +1,109 @@
+{
+  "schema": "humanish.actor-trace.v1",
+  "provider": "openai-responses-cu",
+  "providerVersion": "gpt-5.6-sol",
+  "protocol": "cua-loop",
+  "lane": "computer-use",
+  "persona": {
+    "id": "power-user",
+    "traitsApplied": [],
+    "promptDigest": "506fda1f5dc6abc7"
+  },
+  "redaction": {
+    "status": "passed",
+    "screenshots": "raw",
+    "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+  },
+  "startedAt": "2026-10-03T03:58:58.150Z",
+  "completedAt": "2026-10-03T03:58:58.191Z",
+  "durationMs": 41,
+  "status": "passed",
+  "completionReason": "goal_satisfied",
+  "reason": "Done.",
+  "ids": {
+    "model": "gpt-5.6-sol",
+    "turnId": "resp_2"
+  },
+  "modelSettings": {
+    "reasoningEffort": "medium"
+  },
+  "counts": {
+    "turns": 2,
+    "actions": 1,
+    "materialActions": 1,
+    "screenshots": 2,
+    "reasonings": 0,
+    "messages": 1,
+    "idleTurns": 0,
+    "noProgressTurns": 0
+  },
+  "items": [
+    {
+      "id": "screenshot-001",
+      "kind": "screenshot",
+      "lifecycle": "completed",
+      "title": "turn-00-start",
+      "screenshotRef": {
+        "path": "screenshots/desktop-power/turn-00-start.png",
+        "redaction": "none"
+      },
+      "at": "2026-10-03T03:58:58.175Z"
+    },
+    {
+      "id": "ui_action-002",
+      "kind": "ui_action",
+      "lifecycle": "completed",
+      "title": "click (11, 22)",
+      "coord": {
+        "x": 11,
+        "y": 22
+      },
+      "at": "2026-10-03T03:58:58.175Z"
+    },
+    {
+      "id": "screenshot-003",
+      "kind": "screenshot",
+      "lifecycle": "completed",
+      "title": "turn-01",
+      "screenshotRef": {
+        "path": "screenshots/desktop-power/turn-01.png",
+        "redaction": "none"
+      },
+      "at": "2026-10-03T03:58:58.190Z"
+    },
+    {
+      "id": "message-004",
+      "kind": "message",
+      "lifecycle": "completed",
+      "title": "message turn 2",
+      "text": "Done.",
+      "at": "2026-10-03T03:58:58.191Z"
+    }
+  ],
+  "affordanceUse": {
+    "schema": "humanish.affordance-use.v1",
+    "counts": {
+      "pointer": 1
+    },
+    "total": 1,
+    "shortcutTotal": 0
+  },
+  "capabilities": {
+    "headless": true,
+    "structuredTrace": true,
+    "lanes": [
+      "computer-use"
+    ],
+    "producesScreenshots": true,
+    "byoModel": false,
+    "preGrantableApprovals": false,
+    "inProcessTools": false,
+    "license": "proprietary"
+  },
+  "estimatedCost": {
+    "schema": "humanish.actor-estimated-cost.v1",
+    "estimatedCostUsd": null,
+    "reason": "no_token_usage",
+    "ratesAsOf": null
+  }
+}

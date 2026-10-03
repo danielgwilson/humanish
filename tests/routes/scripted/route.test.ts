@@ -616,7 +616,7 @@ describe("runScriptedBrowserLab", () => {
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
     expect(bundle.persona.id).toBe("planned-persona");
-    expect(bundle.persona.source).toBe("lab:planned-lab");
+    expect(bundle.persona.source).toBe("study:planned-lab");
     expect(bundle.simCount).toBe(1);
   });
 

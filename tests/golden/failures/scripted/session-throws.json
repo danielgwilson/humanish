@@ -89,7 +89,7 @@
       "persona": {
         "id": "synthetic-new-user",
         "name": "Scripted journey persona (synthetic-new-user)",
-        "source": "lab:scripted-routing-proof",
+        "source": "study:scripted-routing-proof",
         "sourceDigest": "41dea98c2dc4"
       },
       "scenario": {
@@ -233,7 +233,7 @@
     "persona": {
       "id": "synthetic-new-user",
       "name": "Scripted journey persona (synthetic-new-user)",
-      "source": "lab:scripted-routing-proof",
+      "source": "study:scripted-routing-proof",
       "sourceDigest": "41dea98c2dc4"
     },
     "scenario": {

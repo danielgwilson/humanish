@@ -10,7 +10,7 @@ import {
   disabledByEnvironment,
   durationBucket,
   readTelemetryState,
-  safeLabId,
+  safeStudyId,
   sendTelemetry,
   telemetryStatePath,
   writeTelemetryState,
@@ -32,7 +32,7 @@ describe("what telemetry can possibly contain", () => {
       env: {},
       properties: {
         command: "run",
-        lab: "try-live",
+        study: "try-live",
         mode: "live",
         outcome: "passed",
         durationBucket: "1-5m",
@@ -50,6 +50,7 @@ describe("what telemetry can possibly contain", () => {
         "command",
         "duration",
         "lab",
+        "study",
         "mode",
         "node",
         "ok",
@@ -61,6 +62,9 @@ describe("what telemetry can possibly contain", () => {
     );
     // No exact duration: a millisecond timing is a fingerprint.
     expect(JSON.stringify(payload)).not.toMatch(/\d{4,}/);
+    // Until 0.109, the study goes out as `study` and as `lab`, its 0.107 name, with one value.
+    expect(payload.properties.study).toBe("try-live");
+    expect(payload.properties.lab).toBe("try-live");
   });
 
   it("asks the receiver not to derive a location, on every event", () => {
@@ -108,11 +112,11 @@ describe("what telemetry can possibly contain", () => {
 
   it("never names a study that is not one of ours", () => {
     // An adopter's lab id can be the name of a product they have not announced.
-    expect(safeLabId("first-run")).toBe("first-run");
-    expect(safeLabId("try-live")).toBe("try-live");
-    expect(safeLabId("acme-secret-launch")).toBe("custom");
-    expect(safeLabId("checkout-v2-redesign")).toBe("custom");
-    expect(safeLabId(undefined)).toBeUndefined();
+    expect(safeStudyId("first-run")).toBe("first-run");
+    expect(safeStudyId("try-live")).toBe("try-live");
+    expect(safeStudyId("acme-secret-launch")).toBe("custom");
+    expect(safeStudyId("checkout-v2-redesign")).toBe("custom");
+    expect(safeStudyId(undefined)).toBeUndefined();
   });
 
   it("names every lab that humanish init writes", () => {
@@ -120,9 +124,9 @@ describe("what telemetry can possibly contain", () => {
       .filter((file) => file.path.startsWith("humanish/studies/"))
       .map((file) => /^id: (\S+)$/m.exec(file.contents)?.[1]);
     expect(initLabIds).toContain("local-browser");
-    for (const id of initLabIds) expect(safeLabId(id)).toBe(id);
+    for (const id of initLabIds) expect(safeStudyId(id)).toBe(id);
     // The removed OSS meta-lab's id is no longer ours.
-    expect(safeLabId("oss")).toBe("custom");
+    expect(safeStudyId("oss")).toBe("custom");
   });
 
   it("has no field that could carry a path, a subject, or a person", () => {
@@ -308,7 +312,7 @@ describe("what a study reports about itself", () => {
           screenshots: 12,
         },
       }),
-    ).toEqual({ mode: "live", lab: "try-live", outcome: "passed", brain: "provider-key" });
+    ).toEqual({ mode: "live", study: "try-live", outcome: "passed", brain: "provider-key" });
   });
 
   it("rolls a fan-out up to all/some/none passed, never per-participant detail", () => {
@@ -332,7 +336,7 @@ describe("what a study reports about itself", () => {
         dryRun: true,
         ok: true,
       }),
-    ).toEqual({ mode: "dry-run", lab: "first-run", outcome: "ok", brain: "none" });
+    ).toEqual({ mode: "dry-run", study: "first-run", outcome: "ok", brain: "none" });
   });
 
   it("names the failure by our own code, and only ours", () => {
@@ -345,7 +349,7 @@ describe("what a study reports about itself", () => {
       }),
     ).toEqual({
       mode: "live",
-      lab: "try-live",
+      study: "try-live",
       outcome: "error",
       errorCode: "HUMANISH_COMPUTER_USE_KEYS_MISSING",
     });
@@ -365,7 +369,7 @@ describe("what a study reports about itself", () => {
       ok: true,
       session: { status: "Finished after the user typed their password" },
     });
-    expect(facts.lab).toBe("custom");
+    expect(facts.study).toBe("custom");
     expect(facts.outcome).toBeUndefined();
     expect(JSON.stringify(facts)).not.toContain("acme");
     expect(JSON.stringify(facts)).not.toContain("password");
@@ -386,12 +390,12 @@ describe("what a study reports about itself", () => {
       deriveRunFacts({
         schema: "humanish.study-check.v1",
         ok: false,
-        lab: "try-live",
-        labId: "try-live",
+        study: "try-live",
+        studyId: "try-live",
         error: { code: "HUMANISH_STUDY_PREFLIGHT_E2B_REQUIRED", message: "m" },
       }),
     ).toEqual({
-      lab: "try-live",
+      study: "try-live",
       outcome: "error",
       errorCode: "HUMANISH_STUDY_PREFLIGHT_E2B_REQUIRED",
     });
@@ -462,10 +466,10 @@ describe("finite CUA diagnostics", () => {
 
   it("names the study from studyId, and from the deprecated labId when studyId is absent", () => {
     const result = { schema: "humanish.study-result.v1", route: "terminal", ok: true };
-    expect(deriveRunFacts({ ...result, studyId: "first-run", labId: "other" }).lab).toBe(
+    expect(deriveRunFacts({ ...result, studyId: "first-run", labId: "other" }).study).toBe(
       "first-run",
     );
-    expect(deriveRunFacts({ ...result, labId: "first-run" }).lab).toBe("first-run");
+    expect(deriveRunFacts({ ...result, labId: "first-run" }).study).toBe("first-run");
   });
 
   it("rejects injected values again at the final payload boundary", () => {

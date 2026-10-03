@@ -369,7 +369,7 @@ function terminalRunBundle(
     persona: {
       id: args.persona.id,
       name: `Autonomous terminal agent (${args.persona.id})`,
-      source: `lab:${args.labId}`,
+      source: `study:${args.labId}`,
       sourceDigest: args.persona.promptDigest,
     },
     scenario: {
@@ -379,7 +379,7 @@ function terminalRunBundle(
       // redacted defensively before persisting (it never carries a secret, but the harness never
       // trusts that). The full composed prompt is bound by digest, not text.
       goal: redactText(args.mission),
-      source: `lab:${args.labId}`,
+      source: `study:${args.labId}`,
       sourceDigest: args.persona.promptDigest,
     },
     lifecycle: parts.lifecycle,

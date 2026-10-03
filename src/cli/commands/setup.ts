@@ -141,8 +141,8 @@ export function registerTelemetryCommand(parent: Command, io: CliIo): void {
         anonymousId: state.anonymousId,
         version: CLI_VERSION,
         properties: {
-          command: "lab run",
-          lab: "try-live",
+          command: "run",
+          study: "try-live",
           mode: "live",
           outcome: "incomplete",
           brain: "provider-key",

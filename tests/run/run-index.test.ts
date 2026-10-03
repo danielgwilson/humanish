@@ -62,7 +62,7 @@ describe("run index: list and classify without parsing bundles", () => {
     expect(done?.verdict).toBe("pass");
     expect(done?.estimatedCostUsd).toBe(0.34);
     expect(done?.durationMs).toBe(109_000);
-    expect(done?.lab?.id).toBe("diagram");
+    expect(done?.study?.id).toBe("diagram");
     // Newest first.
     expect(index.runs[0]?.runId).toBe("r-live");
   });
@@ -79,7 +79,7 @@ describe("run index: list and classify without parsing bundles", () => {
     // A bundle on disk means the run reached its final write, whatever the verdict says.
     expect(entry?.liveness).toBe("finished");
     expect(entry?.verdict).toBe("fail");
-    expect(entry?.lab?.id).toBe("legacy-lab");
+    expect(entry?.study?.id).toBe("legacy-lab");
   });
 
   it("an in-progress bundle with no status record is interrupted, never finished", async () => {
@@ -117,7 +117,7 @@ describe("run index: list and classify without parsing bundles", () => {
   it("a run with no lab attribution stays lab-less rather than guessed", async () => {
     await writeFixtureRun(cwd, { runId: "r-nolab", state: "finished", verdict: "pass" }, NOW);
     const index = await readRunIndex(cwd, { nowMs: NOW });
-    expect(index.runs[0]?.lab).toBeUndefined();
+    expect(index.runs[0]?.study).toBeUndefined();
   });
 
   it("one malformed run degrades that run, never the listing", async () => {

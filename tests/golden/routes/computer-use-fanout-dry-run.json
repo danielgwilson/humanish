@@ -230,14 +230,14 @@
       "persona": {
         "id": "first-time-visitor",
         "name": "Computer-use fan-out (4 participants)",
-        "source": "lab:fanout-proof",
+        "source": "study:fanout-proof",
         "sourceDigest": "9a12d26ecfc42242"
       },
       "scenario": {
         "id": "cua-fanout-proof",
         "title": "Fan-out proof",
         "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nLane focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:fanout-proof",
+        "source": "study:fanout-proof",
         "sourceDigest": "9a12d26ecfc42242"
       },
       "packageName": "humanish",
@@ -398,14 +398,14 @@
     "persona": {
       "id": "first-time-visitor",
       "name": "Computer-use fan-out (4 participants)",
-      "source": "lab:fanout-proof",
+      "source": "study:fanout-proof",
       "sourceDigest": "9a12d26ecfc42242"
     },
     "scenario": {
       "id": "cua-fanout-proof",
       "title": "Fan-out proof",
       "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nLane focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:fanout-proof",
+      "source": "study:fanout-proof",
       "sourceDigest": "9a12d26ecfc42242"
     },
     "lifecycle": [

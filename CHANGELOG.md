@@ -89,6 +89,12 @@ The Unreleased section holds the full notes for the next version until it is tag
     with its path and the fix: `humanish migrate` for a v2 file, or a move to the matching
     `studies/` directory for a v3 file under `labs/`.
   - `lab list` prints one warning with the number of such files.
+- The telemetry property `lab`. Events send the study as `study`, and as `lab` with the same value
+  until the next minor removes `lab`.
+- `lab` in run.json and status.json. A run from a study file records its study as `study`, and as
+  `lab` with the same value until the next minor removes `lab`. Readers in humanish read `study`,
+  then `lab`, then a `study:<id>` or `lab:<id>` persona or scenario source, so runs saved by
+  0.107 and earlier keep their study.
 - The library's lab and `Cua` names: `runLab`, `parseLabConfig`, `LAB_CONFIG_SCHEMA`, `LabConfig`,
   `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`, `RunLabOptions`, `BrowserLabScoringContext`,
   the nine `Cua*` loop types and `CuaAdmissionLimitError`. Each is the same function, class or type
@@ -129,6 +135,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   (`humanish.study.v3`), `humanish study` commands, `--study`, `observe --all` and the
   `humanish/studies/` paths. `docs/contracts/schemas.md` documents the v3 study file, the
   participants and caps each route accepts, and the v2-to-v3 key map.
+- A run's persona and scenario `source` say `study:<id>` where they said `lab:<id>`.
+- `humanish stats` labels runs without a study `(no study)`, where it said `(no lab)`.
+- Telemetry names the starter study that ran as `study` (TELEMETRY.md). It still names only the
+  studies `humanish init` writes.
 - The `--json` results that list, show, check and count studies say study where they said lab.
   - `study list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
   - `study show`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.

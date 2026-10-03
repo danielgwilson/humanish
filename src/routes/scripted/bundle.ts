@@ -89,7 +89,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
     persona: {
       id: args.persona.id,
       name: `Scripted journey persona (${args.persona.id})`,
-      source: `lab:${args.labId}`,
+      source: `study:${args.labId}`,
       sourceDigest: args.persona.promptDigest,
     },
     scenario: {

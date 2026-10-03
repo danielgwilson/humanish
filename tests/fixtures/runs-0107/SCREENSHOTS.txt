@@ -1,0 +1,16 @@
+fanout-rerun/screenshots/desktop-power/turn-00-start.png
+fanout-rerun/screenshots/desktop-power/turn-01.png
+fanout-source/screenshots/mobile-newcomer/turn-00-start.png
+fanout-source/screenshots/mobile-newcomer/turn-01.png
+fanout-source/screenshots/small-skimmer/turn-00-start.png
+fanout-source/screenshots/small-skimmer/turn-01.png
+fanout-source/screenshots/wide-researcher/turn-00-start.png
+fanout-source/screenshots/wide-researcher/turn-01.png
+source-convention-only/screenshots/desktop-power/turn-00-start.png
+source-convention-only/screenshots/desktop-power/turn-01.png
+source-convention-only/screenshots/mobile-newcomer/turn-00-start.png
+source-convention-only/screenshots/mobile-newcomer/turn-01.png
+source-convention-only/screenshots/small-skimmer/turn-00-start.png
+source-convention-only/screenshots/small-skimmer/turn-01.png
+source-convention-only/screenshots/wide-researcher/turn-00-start.png
+source-convention-only/screenshots/wide-researcher/turn-01.png
