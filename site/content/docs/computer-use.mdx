@@ -18,7 +18,7 @@ Hosted browser studies support these sources:
 - **`subject.source: app-url`**: drive your reachable deployment with
   `policies.allowPublicTargets: true`. The standard independent-world route
   accepts one participant for this shared URL. Library callers can also provision
-  the target through `RunLabOptions.prepareDesktop`.
+  the target through `RunStudyOptions.prepareDesktop`.
 - **`subject.source: local-tree`**: package the study resolution directory, upload
   its content-pinned archive, and serve it like a clone. Declare `subject.serve`
   and use `subject.localTree.keep`, `exclude`, and `maxArchiveBytes` to control
@@ -300,11 +300,11 @@ needs.
 The computer-use loop is provider- and substrate-agnostic. You can point a study at an
 **already-running local dev server** (`subject.source: local-app`) and drive it
 through its in-process JS contract (`window.app.getState()` etc.) with a custom
-`CuaExecutor` (screenshot optional, `appState` as the progress signal) paired with a
-**non-vision** `CuaProvider` (`requiresFrame` falsey), keeping personas, the
+`ComputerUseExecutor` (screenshot optional, `appState` as the progress signal) paired with a
+**non-vision** `ComputerUseProvider` (`requiresFrame` falsey), keeping personas, the
 Observer, the evidence bundle, redaction, and the friction loop, with **no E2B
 desktop and no clone**. Supply `inProcess.executor` + `createProvider` to
-`runLab` (a config-only run without them fails closed with a structured error). See
+`runStudy` (a config-only run without them fails closed with a structured error). See
 [State-driven executor](repo:docs/architecture/state-driven-executor.md).
 
 The [complete npm example](repo:examples/participant/)
