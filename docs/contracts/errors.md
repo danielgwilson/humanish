@@ -15,7 +15,7 @@ release.
 - Human mode: two or three lines on stderr.
 
   ```text
-  humanish run failed: Lab not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.
+  humanish run failed: Study not found: nope. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.
   code: HUMANISH_STUDY_NOT_FOUND
   next: humanish study list
   ```
