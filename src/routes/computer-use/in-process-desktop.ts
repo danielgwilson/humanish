@@ -31,7 +31,7 @@ export function createInProcessDesktop(deps: InProcessDesktopDeps): ParticipantD
         );
       opened = true;
       if (deps.inProcessExecutor === undefined)
-        throw new Error("The in-process route needs RunLabOptions.inProcess.");
+        throw new Error("The in-process route needs RunStudyOptions.inProcess.");
       return { executor: await deps.inProcessExecutor(deps.appUrl) };
     },
     finalize() {

@@ -146,7 +146,7 @@ describe("in-process participant desktop", () => {
     const f = await fixture();
     const desktop = createInProcessDesktop({ appUrl: f.deps.appUrl });
     await desktop.prepare();
-    await expect(desktop.openSession()).rejects.toThrow("needs RunLabOptions.inProcess");
+    await expect(desktop.openSession()).rejects.toThrow("needs RunStudyOptions.inProcess");
   });
 
   it("runs a participant through the participant runner with one provider and no sandbox", async () => {

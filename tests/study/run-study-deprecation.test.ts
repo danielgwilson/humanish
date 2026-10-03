@@ -72,7 +72,7 @@ describe("the package's runStudy", () => {
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error).toEqual({
       code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
-      message: `RunLabOptions.${field} was removed. ${home} See docs/contracts/schemas.md, "Library options".`,
+      message: `\`${field}\` was removed. ${home} See docs/contracts/schemas.md, "Library options".`,
     });
     expect(await readdir(cwd)).toEqual([]);
   });
@@ -87,7 +87,7 @@ describe("the package's runStudy", () => {
     expect(outcome.result.error).toEqual({
       code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
       message:
-        'RunLabOptions.rerun.laneIds was removed. Use rerun.participantIds. See docs/contracts/schemas.md, "Library options".',
+        '`rerun.laneIds` was removed in 0.107.0. Use `rerun.participantIds`. See docs/contracts/schemas.md, "Library options".',
     });
     expect(await readdir(cwd)).toEqual([]);
   });

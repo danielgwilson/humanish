@@ -95,7 +95,7 @@ export function studyEventEmitter(
       } catch {
         detail = "the thrown value has no message";
       }
-      warnings.push(`RunLabOptions.onEvent failed on ${type}: ${detail}`);
+      warnings.push(`RunStudyOptions.onEvent failed on ${type}: ${detail}`);
     };
     try {
       const returned = onEvent(event);

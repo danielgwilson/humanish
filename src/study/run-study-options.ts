@@ -32,7 +32,7 @@ type Normalized = {
 const unsupported = (option: string, route: StudyRoute, reason: string): Refusal => ({
   ok: false,
   code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
-  message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
+  message: `RunStudyOptions.${option} is not supported on the ${route} route: ${reason}`,
 });
 
 // Fields RunStudyOptions no longer has, and where each one's job went.
@@ -56,14 +56,14 @@ export function removedOptionRefusal(options: RunStudyOptions): Refusal | undefi
       ok: false,
       code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
       message:
-        'RunLabOptions.rerun.laneIds was removed. Use rerun.participantIds. See docs/contracts/schemas.md, "Library options".',
+        '`rerun.laneIds` was removed in 0.107.0. Use `rerun.participantIds`. See docs/contracts/schemas.md, "Library options".',
     };
   const field = Object.keys(REMOVED_OPTIONS).find((key) => Reflect.get(options, key) !== undefined);
   if (field === undefined) return undefined;
   return {
     ok: false,
     code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
-    message: `RunLabOptions.${field} was removed. ${REMOVED_OPTIONS[field]} See docs/contracts/schemas.md, "Library options".`,
+    message: `\`${field}\` was removed. ${REMOVED_OPTIONS[field]} See docs/contracts/schemas.md, "Library options".`,
   };
 }
 
