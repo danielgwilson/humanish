@@ -73,7 +73,7 @@ describe("doctor checks the selected receiving credential without contacting its
       expect(key?.ok).toBe(present);
       expect(connection?.ok).toBe(present);
       expect(key?.message).toContain(
-        present ? "process env; presence only, validity not tested" : "--env-file",
+        present ? "process env; presence only, validity not tested" : "--dotenv",
       );
       expect(connection?.message).toContain(present ? "Local presence only" : `Missing ${name}`);
       if (!present) expect(connection?.message).not.toContain("Local presence only");

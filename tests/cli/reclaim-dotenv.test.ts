@@ -1,10 +1,10 @@
-// `humanish reclaim --env-file` loads the file the way `run` and `doctor` do, so the E2B_API_KEY in
+// `humanish reclaim --dotenv` loads the file the way `run` and `doctor` do, so the E2B_API_KEY in
 // it reaches the provider client that kills the run's sandboxes. The fake @e2b/desktop module is
 // kill-only, as in tests/run/reclaim.test.ts, and records the key it saw at each kill.
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { CommanderError } from "commander";
+import { type Command, CommanderError } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
@@ -68,7 +68,11 @@ async function runCli(args: string[]): Promise<{ exitCode: number; output: strin
     },
     keyDiscovery: async () => [],
   });
-  program.exitOverride();
+  const override = (command: Command): void => {
+    command.exitOverride();
+    command.commands.forEach(override);
+  };
+  override(program);
   try {
     await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   } catch (error) {
@@ -78,7 +82,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; output: strin
   return { exitCode, output: output.join("") };
 }
 
-describe("humanish reclaim --env-file", () => {
+describe("humanish reclaim --dotenv", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-reclaim-env-"));
@@ -108,15 +112,40 @@ describe("humanish reclaim --env-file", () => {
 
   it("passes the file's E2B_API_KEY to the provider client and never prints it", async () => {
     await writeFile(path.join(cwd, "local.env"), `E2B_API_KEY=${CANARY}\n`);
-    const result = await runCli(["reclaim", "--cwd", cwd, "--env-file", "local.env", "--json"]);
+    const result = await runCli(["reclaim", "--cwd", cwd, "--dotenv", "local.env", "--json"]);
     expect(seenKeys).toEqual([CANARY]);
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.output)).toMatchObject({ ok: true });
     expect(result.output).not.toContain(CANARY);
   });
 
+  it("still loads the file through the --env-file alias, and warns once that it is now --dotenv", async () => {
+    await writeFile(path.join(cwd, "local.env"), `E2B_API_KEY=${CANARY}\n`);
+    const result = await runCli(["reclaim", "--cwd", cwd, "--env-file", "local.env", "--json"]);
+    expect(seenKeys).toEqual([CANARY]);
+    const warning = "`--env-file` is now `--dotenv`; `--env-file` is removed in 0.111.0.";
+    expect(result.output).toContain(`warning: ${warning}\n`);
+    const json = JSON.parse(result.output.slice(result.output.indexOf("{")));
+    expect(json.warnings.filter((line: string) => line === warning)).toHaveLength(1);
+  });
+
+  it("refuses --dotenv and --env-file together", async () => {
+    await writeFile(path.join(cwd, "local.env"), `E2B_API_KEY=${CANARY}\n`);
+    const result = await runCli([
+      "reclaim",
+      "--cwd",
+      cwd,
+      "--dotenv",
+      "local.env",
+      "--env-file",
+      "local.env",
+    ]);
+    expect(result.exitCode).toBe(1);
+    expect(loadModule).not.toHaveBeenCalled();
+  });
+
   it("stops with exit 2 before loading the provider when the file is missing", async () => {
-    const result = await runCli(["reclaim", "--cwd", cwd, "--env-file", "missing.env", "--json"]);
+    const result = await runCli(["reclaim", "--cwd", cwd, "--dotenv", "missing.env", "--json"]);
     expect(result.exitCode).toBe(2);
     expect(loadModule).not.toHaveBeenCalled();
   });

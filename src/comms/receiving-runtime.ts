@@ -49,7 +49,7 @@ export async function resolveReceivingConnection(
   const apiKey = resolved[connection.apiKeyEnv]?.trim();
   if (!apiKey)
     throw new Error(
-      "Email connection credential is missing. Add it in Connections, or provide the configured key with --env-file.",
+      "Email connection credential is missing. Add it in Connections, or provide the configured key with --dotenv.",
     );
   return { connection, apiKey, adapter: createReceivingAdapter(connection, apiKey) };
 }

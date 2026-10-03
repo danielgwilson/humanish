@@ -12,7 +12,9 @@ import {
   applyEnvFileOption,
   type CliIo,
   CWD_OPTION_DESCRIPTION,
-  ENV_FILE_OPTION_DESCRIPTION,
+  DOTENV_OPTION_DESCRIPTION,
+  dotenvPathOf,
+  envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
   parsePositiveInteger,
   writeResult,
@@ -63,7 +65,8 @@ function checkCommand(command: Command, io: CliIo): void {
         .default("metadata"),
     )
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
-    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
+    .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
+    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((name: string, options: StudyCheckOptions, command: Command) =>
       handleStudyCheck(io, name, options, command),
@@ -72,6 +75,7 @@ function checkCommand(command: Command, io: CliIo): void {
 
 interface StudyCheckOptions {
   cwd: string;
+  dotenv?: string;
   envFile?: string;
   json?: boolean;
   reachability: StudyPreflightReachabilityMode;
@@ -109,7 +113,7 @@ async function handleStudyCheck(
     !(await applyEnvFileOption({
       command,
       cwd: options.cwd,
-      envFile: options.envFile,
+      envFile: dotenvPathOf(options, command, io),
       io,
     }))
   ) {

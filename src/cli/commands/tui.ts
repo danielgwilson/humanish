@@ -34,7 +34,9 @@ import {
   CLI_VERSION,
   type CliIo,
   CWD_OPTION_DESCRIPTION,
-  ENV_FILE_OPTION_DESCRIPTION,
+  DOTENV_OPTION_DESCRIPTION,
+  dotenvPathOf,
+  envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
   markInvocationEnvelopeWritten,
   wantsJson,
@@ -116,7 +118,8 @@ export function registerTuiCommand(
     )
     .summary("Browse studies and runs in a terminal UI for people.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
-    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
+    .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
+    .addOption(envFileAliasOption())
     .option("--force", "Open it anyway in a session that looks like an agent's.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleTui(io, runtime, options, command));
@@ -125,7 +128,7 @@ export function registerTuiCommand(
 async function handleTui(
   io: CliIo,
   runtime: TuiRuntime,
-  options: { cwd: string; envFile?: string; force?: boolean; json?: boolean },
+  options: { cwd: string; dotenv?: string; envFile?: string; force?: boolean; json?: boolean },
   command: Command,
 ): Promise<void> {
   const refusal = checkTuiSession(runtime, options.force === true);
@@ -155,7 +158,7 @@ async function handleTui(
     !(await applyEnvFileOption({
       command,
       cwd: options.cwd,
-      envFile: options.envFile,
+      envFile: dotenvPathOf(options, command, io),
       io,
       env: runtime.env,
       onDiscovered: (names) => names.forEach((name) => discoveredKeys.add(name)),

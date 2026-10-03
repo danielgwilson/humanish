@@ -271,9 +271,9 @@ title: Computer-use browser study
 description: >-
   A computer-use participant drives your app in a hosted desktop browser and writes its evidence
   to gitignored .humanish/. Starts as a dry run. For a live session, set mode to live
-  and pass OPENAI_API_KEY and E2B_API_KEY with --env-file. The clone subject below serves your
+  and pass OPENAI_API_KEY and E2B_API_KEY with --dotenv. The clone subject below serves your
   repo inside the sandbox, and the env names declared under subject get their values from
-  --env-file without the values being saved. Screenshots keep full fidelity by default; set
+  --dotenv without the values being saved. Screenshots keep full fidelity by default; set
   policies.redactScreenshots: true to blur them at capture for a bundle you can share as is.
   Typed text is recorded as its length only.
 route: computer-use

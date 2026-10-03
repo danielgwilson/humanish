@@ -198,7 +198,7 @@ async function admitSharedWorldRun(
   if (unsetSubjectEnv.length > 0) {
     return fail(
       "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING",
-      `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
+      `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
     );
   }
   return undefined;

@@ -18,12 +18,15 @@ import {
 import type { InitChange, InitResult } from "../../study/init.js";
 import { doctor } from "../doctor.js";
 import type { DoctorResult } from "../doctor.js";
+import type { DotenvLoad } from "../../keys/key-resolution.js";
 import {
   applyEnvFileOption,
   CLI_VERSION,
   type CliIo,
   CWD_OPTION_DESCRIPTION,
-  ENV_FILE_OPTION_DESCRIPTION,
+  DOTENV_OPTION_DESCRIPTION,
+  dotenvPathOf,
+  envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
   markInvocationEnvelopeWritten,
   wantsJson,
@@ -97,19 +100,39 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
       "--study <study>",
       "Check the study's desktop, participant authentication and separate analysis requirements; no provider calls.",
     )
-    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
+    .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
+    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
-        options: { cwd: string; study?: string; envFile?: string; json?: boolean },
+        options: {
+          cwd: string;
+          study?: string;
+          dotenv?: string;
+          envFile?: string;
+          json?: boolean;
+        },
         command,
       ) => {
+        const dotenv = dotenvPathOf(options, command, io);
+        let loaded: DotenvLoad | undefined;
         if (
-          options.envFile &&
-          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
+          dotenv &&
+          !(await applyEnvFileOption({
+            command,
+            cwd: options.cwd,
+            envFile: dotenv,
+            io,
+            onLoaded: (load) => {
+              loaded = load;
+            },
+          }))
         )
           return;
-        const result = await doctor(options.cwd, options.study ? { study: options.study } : {});
+        const result = await doctor(options.cwd, {
+          ...(options.study ? { study: options.study } : {}),
+          ...(loaded === undefined ? {} : { dotenv: loaded }),
+        });
         writeResult(command, io, result, formatDoctorHuman);
         // Behavioral change: was exit 1, every other structured command uses 2.
         io.setExitCode(result.ok ? 0 : 2);

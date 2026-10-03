@@ -110,7 +110,7 @@ export async function checkCommsConnection(args: {
         ready: false,
         code: "credential_missing",
         message:
-          "The configured credential is missing. Add it in Connections or provide it with --env-file.",
+          "The configured credential is missing. Add it in Connections or provide it with --dotenv.",
       };
     base.credentialPresent = true;
     if (!args.online)

@@ -176,7 +176,7 @@ the following, on Linux x64:
    runs this check; see "The qualifier" below.
 3. One hosted participant study with the candidate first on `PATH` (for example
    `PATH=<evidence>/npm-<version>/node_modules/.bin:$PATH pnpm humanish run <study>
---env-file <file with E2B_API_KEY only>`) reached its goal in the final capture, with a
+--dotenv <file with E2B_API_KEY only>`) reached its goal in the final capture, with a
    verified request receipt, `humanish verify --run <id>` passing and the automatic Codex
    analysis recording the release. Keep `OPENAI_API_KEY` out of that environment so the
    participant stays on ChatGPT-account billing.

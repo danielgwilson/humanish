@@ -1,8 +1,8 @@
 // Provider-key discovery: resolve the keys a live run needs through each vendor's
-// native chain instead of demanding a per-repo --env-file that operators hand-copy keys into.
+// native chain instead of demanding a per-repo --dotenv that operators hand-copy keys into.
 //
 // The chain, per key, fill-only (a rung never overrides anything already present):
-//   1. process env, including whatever --env-file just loaded (explicit always wins);
+//   1. process env, including whatever --dotenv just loaded (explicit always wins);
 //   2. `.humanish/local/provider.env`, the project-local overlay this CLI's own --help
 //      examples document;
 //   3. the owning vendor's native store, where one exists:
@@ -38,7 +38,7 @@ import { loadEnvFile } from "./env-file.js";
 /** The only names implicit discovery may fill (and `humanish keys set` may store). Everything
  *  else in an overlay/store file is ignored-and-named: a repo-planted NODE_OPTIONS/LD_PRELOAD
  *  must never enter process env off a file the operator did not explicitly pass (an explicit
- *  --env-file remains the operator's own full-file load). */
+ *  --dotenv remains the operator's own full-file load). */
 const KNOWN_PROVIDER_KEYS = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
@@ -261,7 +261,7 @@ export async function discoverProviderKeys(args: {
       announce(`humanish keys: ${fill_.name} from ${fill_.source}`);
   for (const name of ignored)
     announce(
-      `humanish keys: ignored ${name}, which is not a provider key. Discovery loads provider keys only; pass the file with --env-file to load every name in it.`,
+      `humanish keys: ignored ${name}, which is not a provider key. Discovery loads provider keys only; pass the file with --dotenv to load every name in it.`,
     );
   return fills;
 }
@@ -279,6 +279,12 @@ function dirIsSymlink(filePath: string): boolean {
 function storeLabel(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps): string {
   const home = deps.homeDir ?? homedir();
   return userKeyStorePath(env, deps).replace(home, "~");
+}
+
+/** What `--dotenv` loaded: the path as given, and the names it set because they were unset. */
+export interface DotenvLoad {
+  path: string;
+  names: readonly string[];
 }
 
 export interface KeySourceProbe {
@@ -313,7 +319,7 @@ export function describeMissingKeys(names: string[], env: NodeJS.ProcessEnv): st
   const hints = names.map((name) => `${name}: ${missingKeyHint(name)}`).join("; ");
   const strict = env.HUMANISH_STRICT_KEYS?.trim() === "1";
   const chain = strict
-    ? "key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read"
+    ? "key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --dotenv are read"
     : `also checked ${PROJECT_OVERLAY_RELATIVE}, ~/.e2b/config.json, gh auth token, and ${path.join("~", ".config", "humanish", "keys.env")}`;
   return `${chain}. Fill: ${hints}.`;
 }
@@ -324,7 +330,13 @@ export function describeMissingKeys(names: string[], env: NodeJS.ProcessEnv): st
  */
 export async function probeKeySources(
   names: readonly string[],
-  args: { cwd: string; env: NodeJS.ProcessEnv; deps?: KeyResolutionDeps },
+  args: {
+    cwd: string;
+    env: NodeJS.ProcessEnv;
+    deps?: KeyResolutionDeps;
+    /** The names `--dotenv` put into `env`, so their rows name the file, not the process env. */
+    dotenv?: DotenvLoad;
+  },
 ): Promise<KeySourceProbe[]> {
   const scratch: NodeJS.ProcessEnv = { ...args.env };
   const fills = await discoverProviderKeys({
@@ -343,7 +355,9 @@ export async function probeKeySources(
       args.env.GITHUB_TOKEN !== undefined &&
       args.env.GITHUB_TOKEN.trim() !== "";
     const source = inEnv
-      ? "process env"
+      ? args.dotenv?.names.includes(name)
+        ? `--dotenv ${args.dotenv.path}`
+        : "process env"
       : aliasInEnv
         ? "process env (GITHUB_TOKEN)"
         : (bySource.get(name) ?? null);
@@ -380,7 +394,7 @@ export function setUserKey(
   }
   if (!PROVIDER_KEY_SET.has(name)) {
     throw new Error(
-      `The store holds provider keys only (${[...PROVIDER_KEY_SET].join(", ")}). For anything else, use an explicit --env-file.`,
+      `The store holds provider keys only (${[...PROVIDER_KEY_SET].join(", ")}). For anything else, use an explicit --dotenv.`,
     );
   }
   const storePath = userKeyStorePath(env, deps);
@@ -400,7 +414,7 @@ export function setUserKey(
   const roundTrip = parseStoreLine(`${name}=${trimmed}`);
   if (roundTrip === null || roundTrip[0] !== name || roundTrip[1] !== trimmed) {
     throw new Error(
-      "The value does not round-trip the store format (avoid leading quotes and '#'); pass it via --env-file instead.",
+      "The value does not round-trip the store format (avoid leading quotes and '#'); pass it via --dotenv instead.",
     );
   }
   writeStore(storePath, entries);
