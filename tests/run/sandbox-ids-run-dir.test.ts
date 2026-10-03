@@ -2,13 +2,14 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { parse as parseYaml } from "yaml";
 
 import { sandboxIdDigest } from "../../src/evidence/redaction.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
-import { appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
+import type { PreparedOutputRoot } from "../../src/run/contained-output.js";
+import { holdsKeyedSandboxId } from "../../src/run/sandbox-ids.js";
+import { appendedSandboxIds, appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
 
 // A finished run names its sandboxes by digest in every file but sandbox-receipts.ndjson, including
 // files a route wrote itself, such as a participant's actor.json quoting an SDK error.
@@ -64,7 +65,7 @@ async function finishRun(runId: string, during: (run: Run) => Promise<void>) {
 const receipt = (sandboxId: string) => ({ at: "t", laneId: "lane-01", sandboxId });
 
 describe("a finished run's directory", () => {
-  it("names each sandbox by digest in files the route wrote, YAML values keeping their type", async () => {
+  it("names each sandbox by digest in the text files the route wrote, and leaves other files", async () => {
     const { dir } = await finishRun("route-files", async (run) => {
       await appendSandboxReceipt(run.paths, receipt(RAW));
       const actorDir = path.join(run.paths.physicalRunRoot, "participants", "lane-01");
@@ -75,19 +76,23 @@ describe("a finished run's directory", () => {
       );
       await writeFile(
         path.join(run.paths.physicalRunRoot, "comms.yaml"),
-        `# lease for ${RAW}\nsandboxId: ${RAW}\nnote: kill(${RAW}) returned true\n`,
+        `# lease for ${RAW}\nsandboxId: ${RAW}\nnote: kill(${RAW}) returned true\n---\nid: 9007199254740993\n`,
       );
+      // Not text verify or export reads as such: a NUL byte, and an extension the sweep skips.
+      await writeFile(path.join(run.paths.physicalRunRoot, "notes.log"), `\0${RAW}\n`);
+      await writeFile(path.join(run.paths.physicalRunRoot, "state.tar"), `${RAW}\n`);
     });
     const actor = JSON.parse(
       await readFile(path.join(dir, "participants", "lane-01", "actor.json"), "utf8"),
     );
     expect(actor.reason).toBe(`screenshot failed: sandbox ${label(RAW)} is not running`);
-    const yamlText = await readFile(path.join(dir, "comms.yaml"), "utf8");
-    expect(yamlText).not.toContain(RAW);
-    expect(parseYaml(yamlText)).toEqual({
-      sandboxId: label(RAW),
-      note: `kill(${label(RAW)}) returned true`,
-    });
+    // Plain replacement: the second document and the large integer stay as written.
+    const yamlLabel = `redacted-sandbox-id-${sandboxIdDigest(RAW)}`;
+    expect(await readFile(path.join(dir, "comms.yaml"), "utf8")).toBe(
+      `# lease for ${yamlLabel}\nsandboxId: ${yamlLabel}\nnote: kill(${yamlLabel}) returned true\n---\nid: 9007199254740993\n`,
+    );
+    expect(await readFile(path.join(dir, "notes.log"), "utf8")).toBe(`\0${RAW}\n`);
+    expect(await readFile(path.join(dir, "state.tar"), "utf8")).toBe(`${RAW}\n`);
     expect(await readFile(path.join(dir, "sandbox-receipts.ndjson"), "utf8")).toContain(RAW);
   });
 
@@ -116,5 +121,40 @@ describe("a finished run's directory", () => {
     expect(JSON.parse(status).outcome.execution.failures[0].message).toBe(
       `kill(${label(UNJOURNALED)}) timed out`,
     );
+  });
+
+  it("gives a run created later at a deleted run's path none of its ids", async () => {
+    const first = await finishRun("reused", async (run) => {
+      await mkdir(path.join(run.paths.physicalRunRoot, "sandbox-receipts.ndjson"));
+      await appendSandboxReceipt(run.paths, receipt(UNJOURNALED));
+    });
+    await rm(first.dir, { recursive: true });
+    const { dir } = await finishRun("reused", async (run) => {
+      await writeFile(path.join(run.paths.physicalRunRoot, "notes.txt"), `${UNJOURNALED}\n`);
+    });
+    expect(await readFile(path.join(dir, "notes.txt"), "utf8")).toBe(`${UNJOURNALED}\n`);
+  });
+});
+
+describe("the ids a run's records hold", () => {
+  it("reads a sandbox-id key spelled with an escape", () => {
+    const text = `{"sandbox\\u0049d": "${RAW}"}`;
+    expect(JSON.parse(text)).toEqual({ ["sandbox" + "Id"]: RAW });
+    expect(holdsKeyedSandboxId("lease.json", text)).toBe(true);
+    expect(holdsKeyedSandboxId("lease.json", `{"note": "${RAW}"}`)).toBe(false);
+  });
+
+  it("keeps unjournaled ids for the latest 64 run directories only", async () => {
+    // Roots that cannot be written, so every append fails and only the memory holds the id.
+    const root = (index: number) =>
+      ({
+        physicalPath: path.join(cwd, "missing", String(index)),
+        requestedPath: path.join(cwd, "missing", String(index)),
+        identity: { dev: 1n, ino: BigInt(index), birthtimeNs: 1n },
+      }) as PreparedOutputRoot;
+    for (let index = 0; index <= 64; index += 1)
+      await appendSandboxReceipt(root(index), receipt(`${UNJOURNALED}-${index}`));
+    expect(appendedSandboxIds(root(0))).toEqual([]);
+    expect(appendedSandboxIds(root(64))).toEqual([`${UNJOURNALED}-64`]);
   });
 });

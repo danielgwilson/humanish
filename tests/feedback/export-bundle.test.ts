@@ -346,7 +346,8 @@ describe("redacted bundle export", () => {
       expect(shared.resources).toMatchObject([
         { id: REDACTED_SANDBOX_ID, idDigest: sandboxIdDigest(raw) },
       ]);
-      const label = `[redacted-sandbox-id ${sandboxIdDigest(raw)}]`;
+      // YAML drops the brackets, which would turn the value into a list.
+      const label = `redacted-sandbox-id-${sandboxIdDigest(raw)}`;
       expect(parseYaml(await readFile(path.join(copy, "lease.yaml"), "utf8"))).toEqual({
         sandboxId: label,
       });

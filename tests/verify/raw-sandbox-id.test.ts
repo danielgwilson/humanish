@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { cleanupRun } from "../../src/run/stored-runs.js";
 import { verifyRun } from "../../src/verify/verify.js";
 
 const RUN = "sandbox-id-run";
@@ -65,6 +66,27 @@ describe("verify on a run's sandbox ids", () => {
     const result = await verifyRun(cwd, RUN);
     expect(result.shareSafety.status).toBe("local_only");
     expect(await rawIdReason()).toMatchObject({ message: expect.stringContaining("run.json") });
+  });
+
+  it("finds an older run's ids with no receipts, from run.json, in review.md", async () => {
+    await rm(path.join(runDir, "sandbox-receipts.ndjson"));
+    await withResource(RAW);
+    const review = path.join(runDir, "review.md");
+    await writeFile(review, `${await readFile(review, "utf8")}\nSandbox ${RAW} reclaimed.\n`);
+    expect((await rawIdReason())?.message).toContain("review.md, run.json");
+  });
+
+  it("grades an export copy from 0.109.1 local_only: no receipts, a raw id in cleanup.json", async () => {
+    await rm(path.join(runDir, "sandbox-receipts.ndjson"));
+    await withResource(REDACTED_SANDBOX_ID, sandboxIdDigest(RAW));
+    await cleanupRun(cwd, RUN);
+    const file = path.join(runDir, "cleanup.json");
+    const cleanup = JSON.parse(await readFile(file, "utf8")) as { resources: { id: string }[] };
+    cleanup.resources[0]!.id = RAW;
+    await writeFile(file, JSON.stringify(cleanup, null, 2));
+    const result = await verifyRun(cwd, RUN);
+    expect(result.shareSafety.status).toBe("local_only");
+    expect((await rawIdReason())?.message).toContain("Raw sandbox ids appear in cleanup.json.");
   });
 
   it("names any other file that holds a receipt's id, such as review.md", async () => {

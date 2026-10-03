@@ -31,9 +31,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   - `run.json`: each `providerResources[].id` reads `[redacted-sandbox-id]`, with `idDigest`, and
     lifecycle and event messages name the sandbox by digest, as do `events.ndjson`, the Observer's
     data, `review.md` and the terminal route's ledgers, events, transcript and `actor.json`. When
-    the run finishes, any other file in its directory that quotes an id, such as a participant's
-    `actor.json` holding an SDK error, names the sandbox by digest, and so does an error in
-    `status.json`'s settled outcome.
+    the run finishes, any other text file in its directory that quotes an id, such as a
+    participant's `actor.json` holding an SDK error, names the sandbox by digest, and so does an
+    error in `status.json`'s settled outcome.
   - `humanish reclaim`: each outcome, in its result, `--json` and `reclaim-receipt.json`, reads
     `[redacted-sandbox-id]` with `sandboxIdDigest`, and its lines name the sandbox by digest.
   - `humanish cleanup`: each resource, in its result, `--json` and `cleanup.json`, reads
@@ -42,11 +42,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   - `humanish export --format bundle` also reads `[redacted-sandbox-id]` at cleanup.json's
     `resources[].id`, which runs before 0.110 left raw. It replaces each id the run names in every
     text file it copies, `review.md`, logs and YAML included: the ids in its receipts, and any raw
-    id at a sandbox-id key, so a run from before 0.110 with no receipts is covered. A YAML value
-    keeps its type. `pnpm public-surface:scan` checks `resources[].id` too.
+    id at a sandbox-id key, so a run from before 0.110 with no receipts is covered. In YAML the label
+    is `redacted-sandbox-id-<digest>`, without brackets, so a value keeps its type.
+    `pnpm public-surface:scan` checks `resources[].id` too.
 
 - `humanish verify` grades a run `local_only` with `RAW_SANDBOX_ID` when a file other than
-  `sandbox-receipts.ndjson` names one of its raw sandbox ids. Runs recorded before 0.110 hold raw
+  `sandbox-receipts.ndjson` names one of its raw sandbox ids, or a JSON file holds a raw id at a
+  sandbox-id key, as cleanup.json in a 0.109 export copy can. Runs recorded before 0.110 hold raw
   ids in `run.json`, so they grade `local_only` until `humanish export --format bundle
 --redact-screenshots` writes a copy without them; `humanish observe --all --safe` hides them
   until then.

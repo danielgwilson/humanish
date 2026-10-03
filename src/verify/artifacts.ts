@@ -12,6 +12,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { openContainedRegularFile } from "../run/contained-output.js";
+import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
@@ -460,9 +461,12 @@ async function scanRunPublicSafetyDirectory(
       unscanned.push(relativePath);
       continue;
     }
+    // A receipt's id in any other file, or a raw id at a sandbox-id key, which an older run or
+    // export copy can hold with no receipt to name it.
     if (
       relativePath !== SANDBOX_RECEIPTS_ARTIFACT &&
-      media.sandboxIds?.some((id) => decoded.text.includes(id))
+      (media.sandboxIds?.some((id) => decoded.text.includes(id)) ||
+        holdsKeyedSandboxId(relativePath, decoded.text))
     )
       media.sandboxIdFiles?.push(relativePath);
     // serve renders observer/index.html from run.json and export regenerates it, so the on-disk

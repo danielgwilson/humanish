@@ -32,12 +32,19 @@ export interface ParsedSandboxReceipt extends Omit<SandboxReceipt, "provider"> {
 
 /**
  * The ids this process has receipted for each run directory, kept even when the append fails, so
- * the run's other records can still be scrubbed of them. A few strings per run.
+ * the run's other records can still be scrubbed of them. Keyed by the directory's identity, so a
+ * run created later at a deleted run's path starts empty, and only the latest runs are kept.
  */
 const appended = new Map<string, Set<string>>();
+const MAX_REMEMBERED_RUNS = 64;
 
-const rootKey = (root: PreparedOutputRoot): string =>
-  "physicalRunRoot" in root ? root.physicalRunRoot : root.physicalPath;
+function rootKey(root: PreparedOutputRoot): string {
+  const [where, { dev, ino, birthtimeNs }] =
+    "physicalRunRoot" in root
+      ? [root.physicalRunRoot, root.runRootIdentity]
+      : [root.physicalPath, root.identity];
+  return `${where}\0${dev}:${ino}:${birthtimeNs}`;
+}
 
 /** The ids this process has receipted for `root`, whether or not the journal write landed. */
 export function appendedSandboxIds(root: PreparedOutputRoot): string[] {
@@ -54,8 +61,14 @@ export async function appendSandboxReceipt(
   root: PreparedOutputRoot,
   receipt: SandboxReceipt,
 ): Promise<void> {
-  const ids = appended.get(rootKey(root)) ?? new Set<string>();
-  appended.set(rootKey(root), ids.add(receipt.sandboxId));
+  const key = rootKey(root);
+  const ids = appended.get(key) ?? new Set<string>();
+  appended.delete(key);
+  appended.set(key, ids.add(receipt.sandboxId));
+  for (const oldest of appended.keys()) {
+    if (appended.size <= MAX_REMEMBERED_RUNS) break;
+    appended.delete(oldest);
+  }
   try {
     const filePath = await prepareContainedOutputFile(root, SANDBOX_RECEIPTS_ARTIFACT);
     await appendFile(filePath, `${JSON.stringify(receipt)}\n`, "utf8");

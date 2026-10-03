@@ -3,11 +3,10 @@
 // cleanup and reclaim receipts) and every result or CLI line names a sandbox by marker and digest,
 // so output an agent pastes into an issue never carries an id.
 
-import { readdir } from "node:fs/promises";
+import { opendir, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { Scalar, parseDocument, visit } from "yaml";
-
+import { readPlainText } from "../evidence/plain-text.js";
 import {
   collectSandboxIds,
   redactSandboxIds,
@@ -22,6 +21,7 @@ import {
 import {
   bindExistingRunArtifactPaths,
   isSafeRunIdSegment,
+  validatePreparedRunRootIdentity,
   type PreparedRunArtifactPaths,
 } from "./paths.js";
 import {
@@ -35,37 +35,23 @@ function sandboxIdLabel(id: string): string {
   return `${REDACTED_SANDBOX_ID.slice(0, -1)} ${sandboxIdDigest(id)}]`;
 }
 
+/**
+ * How YAML names a sandbox: the label without its brackets, since a plain scalar that starts with
+ * `[` reads as a list. Every other byte of the file stays as written.
+ */
+function yamlSandboxIdLabel(id: string): string {
+  return `redacted-sandbox-id-${sandboxIdDigest(id)}`;
+}
+
 /** `text` with every occurrence of each raw id replaced by its label, longest id first. */
-export function scrubSandboxIds(text: string, ids: Iterable<string>): string {
+export function scrubSandboxIds(
+  text: string,
+  ids: Iterable<string>,
+  label: (id: string) => string = sandboxIdLabel,
+): string {
   const unique = [...new Set(ids)].filter((id) => id.length > 0);
   unique.sort((left, right) => right.length - left.length);
-  return unique.reduce((current, id) => current.split(id).join(sandboxIdLabel(id)), text);
-}
-
-/**
- * YAML `text` scrubbed with each value keeping its type: a plain scalar that would start with the
- * label's `[` would read as a list, so a changed scalar is written double-quoted.
- */
-function scrubYamlSandboxIds(text: string, ids: readonly string[]): string {
-  const document = parseDocument(text, { logLevel: "silent" });
-  if (document.errors.length > 0) return scrubSandboxIds(text, ids);
-  visit(document, {
-    Scalar(_key, node) {
-      if (typeof node.value !== "string") return;
-      const scrubbed = scrubSandboxIds(node.value, ids);
-      if (scrubbed === node.value) return;
-      node.value = scrubbed;
-      node.type = Scalar.QUOTE_DOUBLE;
-    },
-  });
-  // Comments are not values; the plain scrub covers an id named in one.
-  return scrubSandboxIds(document.toString(), ids);
-}
-
-/** The text of `file` scrubbed of `ids`, by its format. */
-function scrubSandboxIdText(file: string, text: string, ids: readonly string[]): string {
-  if (!ids.some((id) => id.length > 0 && text.includes(id))) return text;
-  return /\.ya?ml$/i.test(file) ? scrubYamlSandboxIds(text, ids) : scrubSandboxIds(text, ids);
+  return unique.reduce((current, id) => current.split(id).join(label(id)), text);
 }
 
 /**
@@ -97,6 +83,9 @@ export function keyedSandboxIds(value: unknown): string[] {
 
 /** The JSON records in one file's text: one document, or one per NDJSON line. */
 function jsonRecords(file: string, text: string): unknown[] {
+  // Most run files name no sandbox key, and parsing each one would slow verify on large runs. A
+  // key spelled with an escape only shows once parsed.
+  if (!/"(?:sandboxId|subjectSandboxId|providerResources|resources)"|\\u/.test(text)) return [];
   const parse = (part: string): unknown[] => {
     try {
       return [JSON.parse(part)];
@@ -126,6 +115,11 @@ export function inventorySandboxIds(files: readonly { path: string; bytes: Buffe
   return [...ids];
 }
 
+/** Whether a run file's JSON holds a raw id at a sandbox-id key, which no receipt may name. */
+export function holdsKeyedSandboxId(file: string, text: string): boolean {
+  return jsonRecords(file, text).some((record) => collectSandboxIds(record).size > 0);
+}
+
 /**
  * The raw sandbox ids a run's receipts journal, with any this process receipted whose append
  * failed; empty when there are none or the journal cannot be read.
@@ -151,18 +145,21 @@ export async function withPublicSandboxIds<T>(root: PreparedOutputRoot, value: T
 
 /**
  * The bytes of `file` with each raw id replaced by its label: the same buffer when none occurs, or
- * when the bytes are not UTF-8 text a replacement could keep intact.
+ * when the bytes are not the plain text verify and export read as text.
  */
 export function scrubSandboxIdBytes(file: string, bytes: Buffer, ids: readonly string[]): Buffer {
   if (!ids.some((id) => id.length > 0 && bytes.includes(id))) return bytes;
-  const text = bytes.toString("utf8");
-  if (!Buffer.from(text, "utf8").equals(bytes)) return bytes;
-  const scrubbed = scrubSandboxIdText(file, text, ids);
-  return scrubbed === text ? bytes : Buffer.from(scrubbed);
+  const decoded = readPlainText(bytes);
+  if (!decoded.ok) return bytes;
+  const label = /\.ya?ml$/i.test(file) ? yamlSandboxIdLabel : sandboxIdLabel;
+  return Buffer.from(scrubSandboxIds(decoded.text, ids, label));
 }
 
-/** Media a run records: never text, and too large to read for a scrub. */
-const MEDIA = /\.(?:png|jpe?g|webp|gif|mp4|webm)$/i;
+/** The run files the sweep rewrites: the text formats export copies, and the Observer page. */
+const TEXT_FILE = /\.(?:json|ndjson|jsonl|md|txt|log|yaml|yml|csv|html)$/i;
+
+/** Enough for any run directory; a sweep stops there rather than hold up the run's finish. */
+const MAX_SWEPT_ENTRIES = 10_000;
 
 /**
  * Rewrite each file of a finished run that names one of its raw sandbox ids, apart from the
@@ -173,24 +170,37 @@ const MEDIA = /\.(?:png|jpe?g|webp|gif|mp4|webm)$/i;
 export async function scrubRunSandboxIds(paths: PreparedRunArtifactPaths): Promise<void> {
   const ids = await readRunSandboxIds(paths);
   if (ids.length === 0) return;
+  const valid = await validatePreparedRunRootIdentity(paths).then(
+    () => true,
+    () => false,
+  );
+  if (!valid) return;
   const scrub = async (file: string): Promise<void> => {
     const bytes = await readContainedRegularFile(paths, file);
     if (bytes === null) return;
     const scrubbed = scrubSandboxIdBytes(file, bytes, ids);
     if (scrubbed !== bytes) await writeContainedOutputFile(paths, file, scrubbed);
   };
+  let seen = 0;
   const walk = async (relative: string): Promise<void> => {
     const directory = path.join(paths.physicalRunRoot, relative);
-    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
-    for (const entry of entries) {
+    // A directory replaced by a link after it was listed resolves elsewhere and is not walked.
+    if ((await realpath(directory).catch(() => null)) !== directory) return;
+    const listing = await opendir(directory).catch(() => null);
+    if (listing === null) return;
+    for await (const entry of listing) {
+      // Returning from the loop closes the listing.
+      if (++seen > MAX_SWEPT_ENTRIES) return;
       const file = relative ? `${relative}/${entry.name}` : entry.name;
       if (entry.isDirectory()) await walk(file);
-      else if (entry.isFile() && file !== SANDBOX_RECEIPTS_ARTIFACT && !MEDIA.test(file))
+      else if (entry.isFile() && file !== SANDBOX_RECEIPTS_ARTIFACT && TEXT_FILE.test(file))
         // A file that cannot be scrubbed stays as written; verify names it.
         await scrub(file).catch(() => {});
     }
   };
-  await walk("");
+  await walk("").catch(() => {
+    // A directory that changed while it was listed ends the sweep; verify names what it missed.
+  });
 }
 
 /**

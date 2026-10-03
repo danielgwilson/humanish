@@ -527,7 +527,7 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 - `local_only`: keep the run local; only supported redaction-only cases can produce a shareable derivative;
   `RAW_SANDBOX_ID` is one: a file other than `sandbox-receipts.ndjson` names one of the run's raw
   sandbox ids, which verify reads from the receipts and from any raw `providerResources[].id` in
-  `run.json`. Runs from 0.110 keep raw ids only in the receipts, so it fires on runs recorded
+  `run.json`, or a JSON file holds a raw id at a sandbox-id key. Runs from 0.110 keep raw ids only in the receipts, so it fires on runs recorded
   before 0.110, whose `run.json` holds them, until they are exported;
 - `blocked`: fix the verification or public-safety failure first.
 
@@ -646,7 +646,8 @@ beside them. In every text file it copies, Markdown, logs and YAML included, eac
 id the source names becomes `[redacted-sandbox-id <digest>]`: the ids in its
 `sandbox-receipts.ndjson`, and any raw id at one of those keys, which is where a
 run recorded before 0.110 with no receipts names them. Only those exact ids are
-replaced, so the rest of each file is unchanged, and a YAML value keeps its type.
+replaced, so the rest of each file is unchanged. In YAML the label is
+`redacted-sandbox-id-<digest>`, without brackets, so a value keeps its type.
 An id that appears only in free text, in a run with no receipts, is not known to
 export. `sandbox-receipts.ndjson` is omitted, and the source keeps its raw ids,
 which reclaim reads.
