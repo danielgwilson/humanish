@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createProgram } from "../../src/cli/program.js";
 
 // Clig.dev, "Subcommands": be consistent across subcommands, and do not have ambiguous or
-// similarly-named commands. `humanish lab run <lab>` is a hidden alias of `humanish run <lab>` for
-// one minor; both register their flags through one helper (src/cli/commands/run-command.ts).
+// similarly-named commands.
 
 function flagsOf(argv: readonly string[]): string[] {
   let command: any = createProgram({
@@ -21,12 +20,6 @@ function flagsOf(argv: readonly string[]): string[] {
     .filter(Boolean)
     .sort();
 }
-
-describe("the hidden lab run alias", () => {
-  it("takes exactly the flags of humanish run", () => {
-    expect(flagsOf(["lab", "run"])).toEqual(flagsOf(["run"]));
-  });
-});
 
 describe("every command a program might drive answers in JSON", () => {
   it("carries --json wherever there is a result to parse", () => {
@@ -54,8 +47,7 @@ describe("every command a program might drive answers in JSON", () => {
       ["review"],
       ["doctor"],
       ["init"],
-      ["lab", "run"],
-      ["lab", "list"],
+      ["study", "list"],
     ]) {
       expect(flagsOf(argv), `${argv.join(" ")} has no --cwd`).toContain("--cwd");
     }

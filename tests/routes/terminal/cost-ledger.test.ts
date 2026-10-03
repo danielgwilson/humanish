@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
@@ -121,7 +121,7 @@ function liveConfig(caps: Record<string, number>): StudyConfig {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseStudy(raw);
+  const parsed = parseStudyDocument(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { planCliRun } from "../../../src/study/doctor.js";
 import { requiredKeys } from "../../../src/study/requirements.js";
 import type { StudyConfig } from "../../../src/study/types.js";
@@ -22,7 +22,7 @@ async function liveKeys(config: StudyConfig): Promise<string[]> {
 
 describe("local browser lab configuration", () => {
   it("uses account analysis and the supported desktop without provider keys", async () => {
-    const parsed = parseStudy(base);
+    const parsed = parseStudyDocument(base);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config).toMatchObject({
@@ -33,13 +33,13 @@ describe("local browser lab configuration", () => {
     expect(await liveKeys(parsed.config)).toEqual([]);
   });
   it("requires only the model API key for local API participants", async () => {
-    const parsed = parseStudy({ ...base, actors: [{ type: "openai-computer-use" }] });
+    const parsed = parseStudyDocument({ ...base, actors: [{ type: "openai-computer-use" }] });
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(await liveKeys(parsed.config)).toEqual(["OPENAI_API_KEY"]);
     expect(parsed.config.review?.analysis).toBeUndefined();
   });
   it("admits an external captured inbox without mailbox-provider credentials", async () => {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       ...base,
       comms: { email: { external: { catchBaseUrl: "http://127.0.0.1:8025" } } },
     });
@@ -50,12 +50,15 @@ describe("local browser lab configuration", () => {
       { injectEnv: "MAIL_BASE_URL" },
       { kind: "real", connection: "agentmail" },
     ]) {
-      expect(parseStudy({ ...base, comms: { email } }).ok).toBe(false);
+      expect(parseStudyDocument({ ...base, comms: { email } }).ok).toBe(false);
     }
   });
   it("admits optional native camera and conversation without adding provider keys", async () => {
     const media = { camera: { source: "synthetic" }, microphone: { source: "speech" } };
-    const parsed = parseStudy({ ...base, execution: { target: "local", desktop: { media } } });
+    const parsed = parseStudyDocument({
+      ...base,
+      execution: { target: "local", desktop: { media } },
+    });
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config.execution?.desktop?.media).toEqual(media);
     expect(await liveKeys(parsed.config)).toEqual([]);
@@ -65,11 +68,11 @@ describe("local browser lab configuration", () => {
       { camera: { source: "camera.y4m" } },
       { microphone: { source: "voice.wav" } },
     ]) {
-      expect(parseStudy({ ...base, execution: { target: "local", desktop: { media } } }).ok).toBe(
-        false,
-      );
+      expect(
+        parseStudyDocument({ ...base, execution: { target: "local", desktop: { media } } }).ok,
+      ).toBe(false);
     }
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       ...base,
       actors: [{ type: "openai-computer-use" }],
       execution: { target: "local", desktop: { media: { microphone: { source: "speech" } } } },
@@ -90,17 +93,17 @@ describe("local browser lab configuration", () => {
         },
       ],
     });
-    expect(parseStudy(roster("http://localhost:3002/")).ok).toBe(true);
-    const parsed = parseStudy(roster("http://127.0.0.1:80/"));
+    expect(parseStudyDocument(roster("http://localhost:3002/")).ok).toBe(true);
+    const parsed = parseStudyDocument(roster("http://127.0.0.1:80/"));
     expect(parsed.ok).toBe(false);
     expect(!parsed.ok && parsed.error.message).toBe(
       "Local browser targets must use localhost or 127.0.0.1 on a port above 1023.",
     );
   });
   it("preserves explicit analysis opt-out and hosted routing", async () => {
-    const local = parseStudy({ ...base, review: { analysis: false } });
+    const local = parseStudyDocument({ ...base, review: { analysis: false } });
     expect(local.ok && local.config.review?.analysis).toBe(false);
-    const hosted = parseStudy({ ...base, execution: { target: "e2b-desktop" } });
+    const hosted = parseStudyDocument({ ...base, execution: { target: "e2b-desktop" } });
     if (!hosted.ok) throw new Error(hosted.error.message);
     expect(hosted.config.review?.analysis).toBeUndefined();
     expect(hosted.config.execution?.desktop).toBeUndefined();
@@ -112,6 +115,6 @@ describe("local browser lab configuration", () => {
     { subject: { source: "app-url", appUrl: "http://localhost/" } },
     { actors: [{ type: "local-agent", localAgent: "claude" }] },
   ])("refuses unsupported local declarations before a run", (change) => {
-    expect(parseStudy({ ...base, ...change }).ok).toBe(false);
+    expect(parseStudyDocument({ ...base, ...change }).ok).toBe(false);
   });
 });

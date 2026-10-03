@@ -17,7 +17,7 @@ import {
   YAMLSeq,
   type Document,
 } from "yaml";
-import { parseStudy } from "./config.js";
+import { parseStudyDocument } from "./config.js";
 import { focusOf } from "./parse/actors.js";
 import { posInt } from "./parse/values.js";
 import { planStudy } from "./plan.js";
@@ -87,7 +87,7 @@ export function convertStudyText(text: string, cwd: string): StudyConversionResu
   const raw: unknown = doc.toJS();
   if (!isPlainRecord(raw) || !isMap(doc.contents)) return refuse("it is not a YAML mapping.");
   if (raw.schema !== V2_SCHEMA) return refuse(`its schema is not ${V2_SCHEMA}.`);
-  const source = parseStudy(raw);
+  const source = parseStudyDocument(raw);
   if (!source.ok) return refuse(`it does not parse: ${source.error.message}`);
   const route = routeOf(source.config);
 
@@ -494,11 +494,11 @@ function samePlans(
 ): { ok: true } | { ok: false; reason: string } {
   const projected = structuredClone(raw);
   for (const path of dropped) deletePlainFieldPath(projected, path);
-  const before = parseStudy(projected);
+  const before = parseStudyDocument(projected);
   if (!before.ok) {
     return refuse(`it does not parse once the unread keys are dropped: ${before.error.message}`);
   }
-  const after = parseStudy(parseDocument(text).toJS());
+  const after = parseStudyDocument(parseDocument(text).toJS());
   if (!after.ok) return refuse(`its v3 form does not parse: ${after.error.message}`);
   if (
     JSON.stringify(plain({ ...after.config, schema: V2_SCHEMA })) !==

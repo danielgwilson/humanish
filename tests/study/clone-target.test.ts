@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
@@ -55,7 +55,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
     { target: "e2b-terminal", got: 'got "e2b-terminal"' },
     { target: undefined, got: "it is absent" },
   ])("rejects a computer-use clone lab with target $target at parse", ({ target, got }) => {
-    const result = parseStudy(cloneLab("openai-computer-use", target));
+    const result = parseStudyDocument(cloneLab("openai-computer-use", target));
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
@@ -66,12 +66,12 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
   it("no longer lets an absent target skip the clone serve check", () => {
     const lab = cloneLab("openai-computer-use", undefined);
     const { serve: _serve, ...subject } = lab.subject as Record<string, unknown>;
-    const result = parseStudy({ ...lab, subject });
+    const result = parseStudyDocument({ ...lab, subject });
     expect(result.ok).toBe(false);
   });
 
   it("accepts a computer-use clone lab on e2b-desktop", () => {
-    expect(parseStudy(cloneLab("openai-computer-use", "e2b-desktop")).ok).toBe(true);
+    expect(parseStudyDocument(cloneLab("openai-computer-use", "e2b-desktop")).ok).toBe(true);
   });
 
   it.each(["local", undefined])(
@@ -132,7 +132,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
       };
       const source = raw.subject?.source;
       if (source !== "clone" && source !== "local-tree") continue;
-      const result = parseStudy(raw);
+      const result = parseStudyDocument(raw);
       expect(result.ok ? "ok" : result.error.message, file).toBe("ok");
       checked.push(file);
     }

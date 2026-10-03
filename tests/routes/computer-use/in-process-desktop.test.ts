@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import type { CuaExecutor, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
 import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
@@ -22,7 +22,7 @@ afterEach(async () => {
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-in-process-desktop-"));
   temporary.push(cwd);
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "in-process-desktop",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

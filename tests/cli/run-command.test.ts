@@ -1,18 +1,16 @@
-// `run` is the one runner. `watch` takes the same run flags through one helper, `lab run` is a
-// hidden alias for one minor, and --sims, --lanes and watch --follow are gone.
+// `run` is the one runner, and `watch` takes the same run flags through one helper. --sims, --lanes,
+// watch --follow and `lab run` are gone.
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { CommanderError, type Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { lab } from "../admission/fixtures.js";
+import { studyFileText } from "../helpers/study-file.js";
 
-const LAB_RUN_NOTE =
-  "warning: humanish lab run is deprecated and is removed in the next minor. Use humanish run <study>.\n";
 const RUN_FLAGS = ["--scorer", "--rerun-failed-from", "--participants"];
 
 interface CliRun {
@@ -94,7 +92,6 @@ describe("--count on every command that starts a run", () => {
   it.each([
     ["run without a lab", ["run", "--dry-run"]],
     ["run <lab>", ["run", "first-run"]],
-    ["lab run", ["lab", "run", "first-run"]],
     ["watch without a lab", ["watch", "--detach", "--no-open"]],
     ["watch <lab>", ["watch", "first-run", "--detach", "--no-open"]],
   ])("%s sets the participant count", async (_name, command) => {
@@ -118,7 +115,7 @@ describe("--count on every command that starts a run", () => {
     [["watch", "--sims", "2"]],
     [["watch", "--follow"]],
     [["run", "--app-url", "http://127.0.0.1:3000"]],
-    [["lab", "run", "first-run", "--lanes", "lane-01"]],
+    [["run", "first-run", "--lanes", "lane-01"]],
   ])("%j is an unknown option now", async (args) => {
     const result = await runCli([...args, "--cwd", cwd, "--json"]);
     expect(result.exitCode).toBe(1);
@@ -126,23 +123,23 @@ describe("--count on every command that starts a run", () => {
   });
 });
 
-describe("run takes the rerun and scorer flags lab run had", () => {
+describe("run takes the rerun and scorer flags", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-command-"));
     await writeFile(path.join(cwd, "package.json"), '{ "name": "run-command-fixture" }\n');
-    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     const raw = lab("cuAppUrl", {}, { lanes: [{ id: "lane-01" }, { id: "lane-02" }] });
     await writeFile(
-      path.join(cwd, "humanish", "labs", "fanout.yaml"),
-      stringify({ ...raw, id: "fanout" }),
+      path.join(cwd, "humanish", "studies", "fanout.yaml"),
+      studyFileText({ ...raw, id: "fanout" }, cwd),
     );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it.each([[["run"]], [["lab", "run"]]])(
+  it.each([[["run"]]])(
     "%j reaches the rerun check with --rerun-failed-from and --participants",
     async (names) => {
       const result = await runCli([
@@ -180,20 +177,9 @@ describe("run takes the rerun and scorer flags lab run had", () => {
       message: "--scorer, --participants need a study: humanish run <study>.",
     });
   });
-
-  it("prints the lab run deprecation once, on stderr", async () => {
-    const result = await runCli(["lab", "run", "fanout", "--dry-run", "--cwd", cwd, "--json"]);
-    expect(result.stderr.split(LAB_RUN_NOTE)).toHaveLength(2);
-    expect(JSON.parse(result.stdout).schema).toBeTypeOf("string");
-  });
 });
 
 describe("one runner", () => {
-  it("hides lab run from lab --help", () => {
-    expect(subcommand(["lab"]).helpInformation()).not.toMatch(/^\s+run\b/m);
-    expect(isHidden(subcommand(["lab", "run"]))).toBe(true);
-  });
-
   it("gives run and watch the same run flags, with the same help text", () => {
     const flags = (names: string[]) =>
       new Map(subcommand(names).options.map((option) => [option.flags, option.description]));

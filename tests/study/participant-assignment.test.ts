@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { participantAssignment } from "../../src/study/participant-assignment.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
@@ -47,7 +47,7 @@ describe("participant assignment evidence", () => {
     "persists exact declarative assignments and only task goals for %i computer-use participants",
     async (count) => {
       const secret = "synthetic-task-known-secret";
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "assignment-proof",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -124,7 +124,7 @@ describe("participant assignment evidence", () => {
 
   it("redacts a second participant's known values and retains the runner's default mission", async () => {
     const secret = "synthetic-opaque-assignment-secret";
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "assignment-default",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

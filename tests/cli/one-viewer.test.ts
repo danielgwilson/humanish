@@ -1,5 +1,5 @@
-// `observe` is the one viewer: one run by default, the run library with --all. `serve` is a hidden
-// alias of `observe --all` for one minor, and `watch --run` a hidden, deprecated option.
+// `observe` is the one viewer: one run by default, the run library with --all. 0.109.0 removed
+// `serve` and `watch --run`, which 0.108.0 kept as deprecated aliases.
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,11 +8,6 @@ import { CommanderError, type Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
-
-const SERVE_NOTE =
-  "warning: humanish serve is deprecated and is removed in the next minor. Use humanish observe --all.\n";
-const WATCH_RUN_NOTE =
-  "warning: humanish watch --run is deprecated and is removed in the next minor. Use humanish observe --run <id>.\n";
 
 async function runCli(
   args: string[],
@@ -55,20 +50,15 @@ describe("one viewer", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  // An invalid port fails before any server binds, so these calls return.
-  it("runs serve as observe --all, with one note on stderr and in warnings", async () => {
-    const args = ["--port", "99999", "--cwd", cwd, "--json"];
-    const observe = await runCli(["observe", "--all", ...args]);
-    const serve = await runCli(["serve", ...args]);
-    expect(observe.exitCode).toBe(2);
-    const expected = JSON.parse(observe.stdout) as { error: { code: string }; warnings: string[] };
-    expect(expected.error.code).toBe("HUMANISH_INVALID_PORT");
-    expect(serve.exitCode).toBe(observe.exitCode);
-    expect(serve.stderr).toBe(SERVE_NOTE);
-    expect(JSON.parse(serve.stdout)).toEqual({
-      ...expected,
-      warnings: [SERVE_NOTE.slice("warning: ".length, -1), ...expected.warnings],
-    });
+  it("refuses serve and watch --run, and points serve at observe", async () => {
+    const serve = await runCli(["serve", "--cwd", cwd, "--json"]);
+    expect(serve.exitCode).toBe(1);
+    expect(serve.stderr).toContain("error: unknown command 'serve'. Did you mean 'observe'?");
+    expect(serve.stdout).toBe("");
+    const watch = await runCli(["watch", "--run", "latest", "--cwd", cwd, "--json"]);
+    expect(watch.exitCode).toBe(1);
+    expect(watch.stderr).toContain("error: unknown option '--run'");
+    expect(watch.stdout).toBe("");
   });
 
   it("refuses the library flags on a one-run observe", async () => {
@@ -78,21 +68,6 @@ describe("one viewer", () => {
       code: "HUMANISH_OBSERVE_OPTION_CONFLICT",
       message: "--safe, --expose need --all: humanish observe --all --safe --expose.",
     });
-  });
-
-  it("prints the watch --run deprecation once", async () => {
-    const result = await runCli([
-      "watch",
-      "--run",
-      "latest",
-      "--port",
-      "99999",
-      "--cwd",
-      cwd,
-      "--json",
-    ]);
-    expect(result.stderr).toBe(WATCH_RUN_NOTE);
-    expect(JSON.parse(result.stdout).error.code).toBe("HUMANISH_INVALID_PORT");
   });
 
   it("keeps serve and watch --run out of help, and lists observe --all", () => {

@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runRoute } from "../../src/cli/commands/study-route-run.js";
 import { sharedWorldRouteRun } from "../../src/cli/commands/study-route-shared-world.js";
 import type { CliIo } from "../../src/cli/io.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { prepareStudy, type RunStudyOptions } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { liveObserverResult } from "../../src/observer/live.js";
@@ -40,7 +40,7 @@ function gatedRun(
 
 function liveConcurrentConfig(): StudyConfig {
   const lanes = [1, 2].map((n) => ({ id: `persona-0${n}`, persona: `persona-${n}` }));
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "concurrent-observer-gate",
     subject: {

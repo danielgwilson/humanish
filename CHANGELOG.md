@@ -18,6 +18,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Removed
 
+- The `humanish lab` commands, deprecated in 0.108.0: `lab list`, `lab inspect`, `lab preflight` and
+  `lab run`. Use `humanish study list`, `study show <study>`, `study check <study>` and
+  `humanish run <study>`. `humanish lab` now fails with "error: unknown command 'lab'" and exit 1.
+- `--lab` on `doctor`, `stats`, `watch`, `comms check` and `comms configure`, deprecated in
+  0.108.0. Use `--study`. `--lab` now fails with "error: unknown option '--lab'" and exit 1.
+- `humanish serve`, deprecated in 0.108.0. Use `humanish observe --all`. `serve` now fails with
+  "error: unknown command 'serve'. Did you mean 'observe'?" and exit 1.
+- `humanish watch --run <id>`, deprecated in 0.108.0. Use `humanish observe --run <id>` to show a
+  saved run. `watch` without a study still starts a fresh preview run.
+
 - The library's 0.107 names, deprecated in 0.108.0: `runLab`, `parseLabConfig`,
   `LAB_CONFIG_SCHEMA`, `LabConfig`, `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`,
   `RunLabOptions`, `BrowserLabScoringContext`, the nine `Cua*` loop types and

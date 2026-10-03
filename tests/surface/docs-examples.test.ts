@@ -3,7 +3,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
 
 const root = resolve(import.meta.dirname, "..", "..");
@@ -77,7 +77,7 @@ describe("website documentation examples", () => {
   it("accepts the complete own-app example as a live study with a study budget, including the isolated two-participant variant", () => {
     const page = pages.find(({ name }) => name === "your-app")!;
     const yaml = page.text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!;
-    const result = parseStudy(parse(yaml));
+    const result = parseStudyDocument(parse(yaml));
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
     expect(result.config.actors[0]?.count).toBe(1);
@@ -91,7 +91,7 @@ describe("website documentation examples", () => {
       .find((block) => block.subject?.source === "clone").subject;
     isolated.participants = 2;
     delete isolated.policies.allowPublicTargets;
-    const panel = parseStudy(isolated);
+    const panel = parseStudyDocument(isolated);
     expect(panel.ok, JSON.stringify(panel)).toBe(true);
   });
 
@@ -107,7 +107,7 @@ describe("website documentation examples", () => {
         const fragment = parse(block[1]!);
         const combined = { ...structuredClone(ownApp), ...fragment };
         if (fragment.subject?.source === "clone") delete combined.policies.allowPublicTargets;
-        const result = parseStudy(combined);
+        const result = parseStudyDocument(combined);
         expect(result.ok, `${name}: ${JSON.stringify(result)}`).toBe(true);
       }
     }

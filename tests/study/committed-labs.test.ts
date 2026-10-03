@@ -9,6 +9,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { V2_SCHEMA } from "../../src/study/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -16,14 +17,14 @@ afterAll(async () => {
 });
 
 function lab(id: string, title: string): string {
-  return `schema: ${V2_SCHEMA}
+  return studyFileText(`schema: ${V2_SCHEMA}
 id: ${id}
 title: ${title}
 subject:
   source: this-repo
 actors:
   - type: synthetic-persona
-`;
+`);
 }
 
 async function plant(root: string, file: string, contents: string): Promise<void> {

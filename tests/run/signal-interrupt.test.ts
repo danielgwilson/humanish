@@ -26,7 +26,7 @@ function screenshot(): string {
 const CHILD = `
   const root = process.env.REPO_ROOT;
   const { runStudyWith } = await import(root + "/src/run-study.ts");
-  const { parseStudy } = await import(root + "/src/study/config.ts");
+  const { parseStudyDocument } = await import(root + "/src/study/config.ts");
   const { V2_SCHEMA } = await import(root + "/src/study/types.ts");
   const frame = Buffer.from(process.env.PROBE_PNG, "base64");
   const noop = async () => undefined;
@@ -47,7 +47,7 @@ const CHILD = `
       kill: async () => { process.stdout.write("killed\\n"); return true; },
     },
   };
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "signal-probe",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

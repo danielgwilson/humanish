@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 import { planStudy, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyPlan, PlanResult } from "../../src/study/plan-types.js";
@@ -24,7 +24,7 @@ function planOf(result: PlanResult): StudyPlan {
 }
 
 function parsed(raw: Record<string, unknown>): StudyConfig {
-  const result = parseStudy({ schema: V2_SCHEMA, id: "plan-lab", ...raw });
+  const result = parseStudyDocument({ schema: V2_SCHEMA, id: "plan-lab", ...raw });
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }

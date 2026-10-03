@@ -8,15 +8,12 @@ import {
   type StudyPreflightReachabilityMode,
   type StudyPreflightResult,
 } from "../../study/preflight.js";
-import { addRunOptions, handleRun } from "./run-command.js";
-import { deprecationMessage, warnAndQueue } from "../deprecations.js";
 import {
   applyEnvFileOption,
   type CliIo,
   CWD_OPTION_DESCRIPTION,
   ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
-  type StudyCommandOptions,
   parsePositiveInteger,
   writeResult,
   type HumanOutput,
@@ -30,54 +27,30 @@ export function registerStudyCommands(parent: Command, io: CliIo): void {
   listCommand(study.command("list"), io);
   showCommand(study.command("show"), io);
   checkCommand(study.command("check"), io);
-
-  // Removed in 0.109.0: the `lab` group stays one minor, hidden. Its list, inspect and preflight
-  // run as study list, show and check, and `lab run` runs as `run`, each after a warning.
-  const lab = parent
-    .command("lab", { hidden: true })
-    .description("Deprecated: use humanish study.");
-  listCommand(lab.command("list"), io, "humanish study list");
-  showCommand(lab.command("inspect"), io, "humanish study show <study>");
-  checkCommand(lab.command("preflight"), io, "humanish study check <study>");
-  addRunOptions(
-    lab.command("run", { hidden: true }).argument("<study>", "Study id or .yaml path."),
-  ).action((name: string, options: StudyCommandOptions, command: Command) => {
-    warnOldCommand(command, io, "humanish run <study>");
-    return handleRun(io, name, options, command);
-  });
 }
 
-/** The warning for a `lab` subcommand, naming its replacement. */
-function warnOldCommand(command: Command, io: CliIo, replacement: string): void {
-  warnAndQueue(command, io, deprecationMessage(`humanish lab ${command.name()}`, replacement));
-}
-
-function listCommand(command: Command, io: CliIo, replacement?: string): void {
+function listCommand(command: Command, io: CliIo): void {
   command
     .description("List the studies in this project, committed and local.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action((options: { cwd: string; json?: boolean }, command: Command) => {
-      if (replacement !== undefined) warnOldCommand(command, io, replacement);
-      return handleStudyList(io, options, command);
-    });
-  if (replacement !== undefined) command.description(`Deprecated: use ${replacement}.`);
+    .action((options: { cwd: string; json?: boolean }, command: Command) =>
+      handleStudyList(io, options, command),
+    );
 }
 
-function showCommand(command: Command, io: CliIo, replacement?: string): void {
+function showCommand(command: Command, io: CliIo): void {
   command
     .argument("<study>", "Study id or .yaml path.")
     .description("Show a study's parsed file and its warnings without running it.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action((name: string, options: { cwd: string; json?: boolean }, command: Command) => {
-      if (replacement !== undefined) warnOldCommand(command, io, replacement);
-      return handleStudyShow(io, name, options, command);
-    });
-  if (replacement !== undefined) command.description(`Deprecated: use ${replacement}.`);
+    .action((name: string, options: { cwd: string; json?: boolean }, command: Command) =>
+      handleStudyShow(io, name, options, command),
+    );
 }
 
-function checkCommand(command: Command, io: CliIo, replacement?: string): void {
+function checkCommand(command: Command, io: CliIo): void {
   command
     .argument("<study>", "Study id or .yaml path.")
     .description(
@@ -92,11 +65,9 @@ function checkCommand(command: Command, io: CliIo, replacement?: string): void {
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
     .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action((name: string, options: StudyCheckOptions, command: Command) => {
-      if (replacement !== undefined) warnOldCommand(command, io, replacement);
-      return handleStudyCheck(io, name, options, command);
-    });
-  if (replacement !== undefined) command.description(`Deprecated: use ${replacement}.`);
+    .action((name: string, options: StudyCheckOptions, command: Command) =>
+      handleStudyCheck(io, name, options, command),
+    );
 }
 
 interface StudyCheckOptions {

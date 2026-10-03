@@ -15,6 +15,7 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 // The lab preflight probe journals its sandbox under .humanish/preflight/<probe-id>/ before any
 // work, removes the journal after a confirmed kill, and `humanish reclaim --preflight` kills
@@ -25,52 +26,56 @@ const PROBE_TIMEOUT_MS = 30_000;
 const LEASE_BUFFER_MS = 5 * 60_000;
 
 function previewLab(extra: string[] = []): string {
-  return [
-    "schema: humanish.lab.v2",
-    "id: preview",
-    "subject:",
-    "  source: app-url",
-    "  appUrl: https://preview.example.test/start",
-    "execution:",
-    "  target: e2b-desktop",
-    ...extra,
-    "actors:",
-    "  - type: openai-computer-use",
-    "scenario:",
-    "  mode: live",
-    "policies:",
-    "  allowPublicTargets: true",
-  ].join("\n");
+  return studyFileText(
+    [
+      "schema: humanish.lab.v2",
+      "id: preview",
+      "subject:",
+      "  source: app-url",
+      "  appUrl: https://preview.example.test/start",
+      "execution:",
+      "  target: e2b-desktop",
+      ...extra,
+      "actors:",
+      "  - type: openai-computer-use",
+      "scenario:",
+      "  mode: live",
+      "policies:",
+      "  allowPublicTargets: true",
+    ].join("\n"),
+  );
 }
 
 function cloneLab(options: { serve?: string[]; seed?: boolean; desktop?: string[] } = {}): string {
-  return [
-    "schema: humanish.lab.v2",
-    "id: clone-probe",
-    "subject:",
-    "  source: clone",
-    "  repos:",
-    "    - example/notes",
-    "  serve:",
-    ...(options.serve ?? ["    install: npm ci", "    start: npm start"]),
-    "    url: http://127.0.0.1:3000/",
-    ...(options.seed === false
-      ? []
-      : [
-          "  state:",
-          "    seed:",
-          "      - name: seed-notes",
-          "        command: npm run seed",
-          "        timeoutMs: 120000",
-        ]),
-    "execution:",
-    "  target: e2b-desktop",
-    ...(options.desktop ?? []),
-    "actors:",
-    "  - type: openai-computer-use",
-    "scenario:",
-    "  mode: live",
-  ].join("\n");
+  return studyFileText(
+    [
+      "schema: humanish.lab.v2",
+      "id: clone-probe",
+      "subject:",
+      "  source: clone",
+      "  repos:",
+      "    - example/notes",
+      "  serve:",
+      ...(options.serve ?? ["    install: npm ci", "    start: npm start"]),
+      "    url: http://127.0.0.1:3000/",
+      ...(options.seed === false
+        ? []
+        : [
+            "  state:",
+            "    seed:",
+            "      - name: seed-notes",
+            "        command: npm run seed",
+            "        timeoutMs: 120000",
+          ]),
+      "execution:",
+      "  target: e2b-desktop",
+      ...(options.desktop ?? []),
+      "actors:",
+      "  - type: openai-computer-use",
+      "scenario:",
+      "  mode: live",
+    ].join("\n"),
+  );
 }
 
 interface FakeProvider {
@@ -184,7 +189,7 @@ describe("lab preflight receipts", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-preflight-receipt-"));
-    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
   });
   afterEach(async () => {
     vi.unstubAllEnvs();
@@ -192,7 +197,7 @@ describe("lab preflight receipts", () => {
   });
 
   it("journals the probe before its first command and removes the journal after the kill", async () => {
-    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), previewLab());
     let journalAtFirstCommand = "";
     const provider = fakeProvider({
       onFirstCommand: async () => {
@@ -224,10 +229,10 @@ describe("lab preflight receipts", () => {
 
   it("sizes the lease to the probe, capped by a declared sandbox timeout", async () => {
     await writeFile(
-      path.join(cwd, "humanish/labs/preview.yaml"),
+      path.join(cwd, "humanish/studies/preview.yaml"),
       previewLab(["  desktop:", "    sandboxTimeoutMs: 3600000"]),
     );
-    await writeFile(path.join(cwd, "humanish/labs/clone-probe.yaml"), cloneLab());
+    await writeFile(path.join(cwd, "humanish/studies/clone-probe.yaml"), cloneLab());
     const preview = fakeProvider({});
     const clone = fakeProvider({});
 
@@ -256,7 +261,7 @@ describe("lab preflight receipts", () => {
     expect(clone.created[0]?.timeoutMs).toBe((5 + 10 + 20 + 2 + 3) * 60_000 + LEASE_BUFFER_MS);
 
     await writeFile(
-      path.join(cwd, "humanish/labs/preview.yaml"),
+      path.join(cwd, "humanish/studies/preview.yaml"),
       previewLab(["  desktop:", "    sandboxTimeoutMs: 120000"]),
     );
     const capped = fakeProvider({});
@@ -274,7 +279,7 @@ describe("lab preflight receipts", () => {
     // A 50-minute build under a declared 60-minute sandbox: the run may provision for the full
     // hour, so the probe must not be cut off earlier.
     await writeFile(
-      path.join(cwd, "humanish/labs/clone-probe.yaml"),
+      path.join(cwd, "humanish/studies/clone-probe.yaml"),
       cloneLab({
         serve: [
           "    install: npm ci",
@@ -298,7 +303,7 @@ describe("lab preflight receipts", () => {
 
     // A clone served as-is needs only the clone and readiness budgets.
     await writeFile(
-      path.join(cwd, "humanish/labs/clone-probe.yaml"),
+      path.join(cwd, "humanish/studies/clone-probe.yaml"),
       cloneLab({ serve: ["    start: python3 -m http.server 3000"], seed: false }),
     );
     const quick = fakeProvider({});
@@ -313,7 +318,7 @@ describe("lab preflight receipts", () => {
   });
 
   it("reads a not-found kill error as already gone: no teardown failure, journal removed", async () => {
-    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), previewLab());
     const gone = fakeProvider({ killNotFound: true });
 
     const result = await runStudyPreflight({
@@ -330,7 +335,7 @@ describe("lab preflight receipts", () => {
   });
 
   it("does not count a non-boolean kill answer as proof: teardown fails, journal kept", async () => {
-    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), previewLab());
     const odd = fakeProvider({ killAnswer: "ok" });
 
     const result = await runStudyPreflight({
@@ -347,7 +352,7 @@ describe("lab preflight receipts", () => {
   });
 
   it("keeps the journal when the kill fails, and reclaim --preflight kills it by id", async () => {
-    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), previewLab());
     const failing = fakeProvider({ killThrows: true });
 
     const result = await runStudyPreflight({
@@ -504,7 +509,7 @@ describe("lab preflight receipts", () => {
   });
 
   it("reclaims the sandbox of a probe whose process was killed mid-preflight", async () => {
-    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), previewLab());
     const root = fileURLToPath(new URL("../../", import.meta.url));
     const script = `
       const { runStudyPreflight } = await import(${JSON.stringify(path.join(root, "src/study/preflight.ts"))});

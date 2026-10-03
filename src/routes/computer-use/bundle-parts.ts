@@ -132,7 +132,7 @@ export function participantFeedbackCandidates(args: {
       proposed_next_state: "study-quality-review",
       acceptance_proof: [
         feedbackProofCommands(args.runId).verify,
-        feedbackProofCommands(args.runId).watch,
+        feedbackProofCommands(args.runId).observe,
       ],
     });
   }

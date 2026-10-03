@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CuaExecutor, CuaProvider } from "../../src/actors/computer-use/loop.js";
 import type { AdapterScorerModule } from "../../src/study/adapter-scorer-loader.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { phaseEvent, planEvent, type StudyEvent } from "../../src/study/run-study-events.js";
@@ -18,7 +18,7 @@ import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 
 function config(base: BaseName, patch?: Patch): StudyConfig {
-  const parsed = parseStudy(lab(base, patch));
+  const parsed = parseStudyDocument(lab(base, patch));
   if (!parsed.ok) throw new Error(`${base}: ${parsed.error.message}`);
   return parsed.config;
 }

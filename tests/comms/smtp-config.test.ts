@@ -3,10 +3,10 @@
 import { describe, expect, it } from "vitest";
 
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 
 function cloneLab(email: unknown) {
-  return parseStudy({
+  return parseStudyDocument({
     schema: V2_SCHEMA,
     id: "smtp-lab",
     subject: {

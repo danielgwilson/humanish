@@ -44,7 +44,7 @@ import type {
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -281,7 +281,7 @@ function fanoutConfig(overrides?: {
   template?: string;
   reasoningEffort?: string;
 }): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "fanout-proof",
     title: "Fan-out proof",
@@ -2000,7 +2000,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   describe("clone subject across two participants", () => {
     const cloneFanoutConfig = (): StudyConfig => {
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "clone-fanout-proof",
         title: "Clone fan-out proof",
@@ -2188,7 +2188,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   it("geometry mismatch ⇒ DEVICE_GEOMETRY (the per-participant device claim is verified in-sandbox)", async () => {
     // Single participant whose desktop reports the wrong dimensions.
     const handle = makeFanoutModule({ geometryOverride: () => [800, 600] });
-    const config = parseStudy({
+    const config = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "geometry-proof",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -2405,7 +2405,7 @@ describe("cua fan-out: cost estimate (sum participant token lines + one aggregat
 
 describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome window minimum (no clip)", () => {
   const cfg = (device?: string, rawResolution?: [number, number]): StudyConfig => {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "floor-probe",
       title: "floor probe",

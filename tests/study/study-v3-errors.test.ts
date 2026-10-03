@@ -7,7 +7,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
 import { planStudy, resolveStudyDryRun } from "../../src/study/plan.js";
 import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
@@ -41,13 +41,13 @@ function asV2(raw: Raw, changes: Raw): Raw {
 }
 
 function config(raw: Raw): StudyConfig {
-  const result = parseStudy(raw);
+  const result = parseStudyDocument(raw);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 
 function refusal(raw: Raw): string {
-  const result = parseStudy(raw);
+  const result = parseStudyDocument(raw);
   if (result.ok) throw new Error("parsed");
   expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   return result.error.message;
@@ -272,8 +272,8 @@ describe("discovery", () => {
   it("resolves a v3 file by path and keeps its schema in the config", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "humanish-study-v3-"));
     try {
-      await mkdir(path.join(root, "humanish", "labs"), { recursive: true });
-      const file = path.join("humanish", "labs", "study-v3.yaml");
+      await mkdir(path.join(root, "humanish", "studies"), { recursive: true });
+      const file = path.join("humanish", "studies", "study-v3.yaml");
       await writeFile(path.join(root, file), stringify({ ...study, participants: 2 }));
       const resolved = await resolveStudyManifest(root, file);
       if (!resolved.ok) throw new Error(resolved.error.message);

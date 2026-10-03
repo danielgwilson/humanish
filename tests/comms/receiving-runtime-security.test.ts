@@ -9,7 +9,7 @@ import { inspectCommsRecovery } from "../../src/comms/receiving-recovery.js";
 import { prepareReceivingRun } from "../../src/comms/receiving-runtime.js";
 import type { ReceivingSurfaceFile } from "../../src/comms/receiving-types.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 
 // Synthetic canaries and explicit mutations of the sanitized, live-derived wire fixtures.
@@ -35,7 +35,7 @@ function response(wire: Wire): Response {
   });
 }
 function config(): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "receiving-security",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },

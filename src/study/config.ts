@@ -92,11 +92,20 @@ import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
 import { plural } from "../run/text.js";
 
 /**
- * Validate a parsed YAML object into a StudyConfig. Pure: the caller owns file IO. Structural
- * validation only. Fields the engine does not yet consume are accepted but reported in
- * `warnings` so `lab inspect` never silently swallows a setting that does nothing.
+ * The package's study parser (src/index.ts) and the one discovery uses. It reads what
+ * parseStudyDocument reads.
  */
 export function parseStudy(raw: unknown): StudyParseResult {
+  return parseStudyDocument(raw);
+}
+
+/**
+ * Validate a parsed YAML object, humanish.study.v3 or humanish.lab.v2, into a StudyConfig. Pure:
+ * the caller owns file IO. Structural validation only. Fields the engine does not yet consume are
+ * accepted but reported in `warnings` so `study show` never silently swallows a setting that does
+ * nothing. migrate and comms configure call it directly, since they read v2 files to convert them.
+ */
+export function parseStudyDocument(raw: unknown): StudyParseResult {
   if (!isRecord(raw)) {
     return invalid("A study file must be a YAML object.");
   }

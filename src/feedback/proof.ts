@@ -2,12 +2,12 @@ import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
 import { shellQuote } from "../substrates/shell.js";
 
 /** Commands run from the evidence workspace using an installed humanish CLI. */
-export function feedbackProofCommands(runId: string): { verify: string; watch: string } {
+export function feedbackProofCommands(runId: string): { verify: string; observe: string } {
   // A plain id stays bare so the printed command reads naturally.
   const argument = /^[a-z0-9][a-z0-9._-]*$/i.test(runId) ? runId : shellQuote(runId);
   return {
     verify: `humanish verify --run ${argument} --json`,
-    watch: `humanish watch --run ${argument} --no-open`,
+    observe: `humanish observe --run ${argument} --no-open`,
   };
 }
 
@@ -22,7 +22,7 @@ export function projectFeedbackAcceptanceProof(
     if (instruction === `pnpm humanish -- verify --run ${bundle.runId} --json`)
       return commands.verify;
     if (instruction === `pnpm humanish -- watch --run ${bundle.runId} --no-open`)
-      return commands.watch;
+      return commands.observe;
     return instruction;
   });
 }

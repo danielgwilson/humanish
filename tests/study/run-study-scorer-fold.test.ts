@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
@@ -44,7 +44,7 @@ const provenance: RunScorerProvenance = {
 };
 
 function parsed(base: "cuAppUrl" | "sharedProvisioned"): StudyConfig {
-  const result = parseStudy(lab(base));
+  const result = parseStudyDocument(lab(base));
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }

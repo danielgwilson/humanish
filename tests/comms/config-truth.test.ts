@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 
 const base = {
   schema: V2_SCHEMA,
@@ -21,18 +21,20 @@ describe("communication declarations fail explicitly", () => {
     { sms: {}, email: { injectEnv: "MAIL_API_URL" } },
     { emali: { injectEnv: "MAIL_API_URL" } },
   ])("rejects unsupported channels instead of running without them: %j", (comms) => {
-    const result = parseStudy({ ...base, comms });
+    const result = parseStudyDocument({ ...base, comms });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toContain("Unknown study field in `comms`");
   });
 
   it("retains supported email capture and absence of communications", () => {
-    expect(parseStudy(base).ok).toBe(true);
-    expect(parseStudy({ ...base, comms: { email: { injectEnv: "MAIL_API_URL" } } }).ok).toBe(true);
+    expect(parseStudyDocument(base).ok).toBe(true);
+    expect(
+      parseStudyDocument({ ...base, comms: { email: { injectEnv: "MAIL_API_URL" } } }).ok,
+    ).toBe(true);
   });
 
   it("rejects mixing real receiving and local capture", () => {
-    const result = parseStudy({
+    const result = parseStudyDocument({
       ...base,
       comms: { email: { connection: "agentmail", injectEnv: "MAIL_API_URL" } },
     });
@@ -43,7 +45,7 @@ describe("communication declarations fail explicitly", () => {
   it.each([undefined, "MAIL_API_URL"])(
     "rejects shared-world SMTP even when HTTP is also declared (%s)",
     (injectEnv) => {
-      const result = parseStudy({
+      const result = parseStudyDocument({
         ...base,
         subject: { ...base.subject, topology: "shared-world" },
         comms: {

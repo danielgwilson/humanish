@@ -2,9 +2,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { stringify } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
 import { lab } from "../admission/fixtures.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 // Provider-key discovery spawns `gh auth token` and reads the e2b login, the project overlay and
 // the user key store. Only a live run reads keys, so each command that can start one must still
@@ -25,14 +25,18 @@ async function project(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-key-discovery-"));
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "key-discovery-fixture" }\n');
-  await mkdir(path.join(dir, "humanish", "labs"), { recursive: true });
+  await mkdir(path.join(dir, "humanish", "studies"), { recursive: true });
   const labs = {
     "kd-live": lab("cuAppUrl", { scenario: { mode: "live" }, execution: { caps: { maxUsd: 1 } } }),
     "kd-dry": lab("cuAppUrl"),
     "kd-terminal-live": lab("terminal", { scenario: { mode: "live" } }),
   };
   for (const [id, raw] of Object.entries(labs))
-    await writeFile(path.join(dir, "humanish", "labs", `${id}.yaml`), stringify({ ...raw, id }));
+    await writeFile(
+      path.join(dir, "humanish", "studies", `${id}.yaml`),
+      // The terminal fixture's execution.timeoutMs is a key that route never reads.
+      studyFileText({ ...raw, id }, dir, id === "kd-terminal-live" ? ["execution.timeoutMs"] : []),
+    );
   return dir;
 }
 
@@ -55,10 +59,9 @@ async function discoveryCalls(args: readonly string[], stdout: string[] = []): P
 
 describe("provider-key discovery runs for live runs only", () => {
   it.each([
-    ["run <live lab>", ["run", "kd-live"]],
-    ["lab run <live lab> (also the TUI's start)", ["lab", "run", "kd-live"]],
+    ["run <live lab> (also the TUI's start)", ["run", "kd-live"]],
     ["watch <live lab>", ["watch", "kd-live", "--detach"]],
-    ["lab preflight", ["lab", "preflight", "kd-live"]],
+    ["study check", ["study", "check", "kd-live"]],
   ])("%s discovers once", async (_name, args) => {
     const cwd = await project();
     expect(
@@ -69,7 +72,6 @@ describe("provider-key discovery runs for live runs only", () => {
   it.each([
     ["run <dry lab>", ["run", "kd-dry"]],
     ["run <live lab> --dry-run", ["run", "kd-live", "--dry-run"]],
-    ["lab run <live lab> --dry-run", ["lab", "run", "kd-live", "--dry-run"]],
     ["watch <live lab> --dry-run", ["watch", "kd-live", "--dry-run", "--detach"]],
     ["run without a lab (the preview)", ["run"]],
     ["watch --count", ["watch", "--count", "1", "--detach"]],
@@ -83,13 +85,13 @@ describe("provider-key discovery runs for live runs only", () => {
   it("does not discover for a live lab an option guard refuses", async () => {
     const cwd = await project();
     const stdout: string[] = [];
-    const args = ["lab", "run", "kd-terminal-live", "--rerun-failed-from", "earlier-run"];
+    const args = ["run", "kd-terminal-live", "--rerun-failed-from", "earlier-run"];
     expect(await discoveryCalls([...args, "--cwd", cwd, "--json", "--no-open"], stdout)).toBe(0);
     expect(stdout.join("")).toContain("HUMANISH_UNSUPPORTED_RERUN_FLAGS");
   });
 });
 
-/** `lab preflight` takes neither --no-open nor a watch flag. */
+/** `study check` takes neither --no-open nor a watch flag. */
 function validFor(args: readonly string[]): (flag: string) => boolean {
-  return (flag) => !(args[1] === "preflight" && flag === "--no-open");
+  return (flag) => !(args[1] === "check" && flag === "--no-open");
 }
