@@ -406,7 +406,7 @@ function keyChecks(
         ...(present || usedBy === undefined ? {} : { status: "note" as const }),
         message: present
           ? `supplied by ${probe.source}; presence only, validity not tested${usedBy ? `; ${usedBy}` : ""}`
-          : `missing; ${usedBy ?? "not used by any lab in this project"}; ${hint}`,
+          : `missing; ${usedBy ?? "not used by any study in this project"}; ${hint}`,
       };
     }
     // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
@@ -419,7 +419,7 @@ function keyChecks(
       ok: present || !required,
       message: present
         ? unused
-          ? `present (${probe.source}), not used by this lab`
+          ? `present (${probe.source}), not used by this study`
           : `supplied by ${probe.source}; presence only, validity not tested`
         : required
           ? `missing from every source; ${hint}`

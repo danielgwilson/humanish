@@ -173,7 +173,7 @@ export function createLocalTreeArchive(
     throw new Error(
       `Local tree root "${path.basename(resolvedRoot)}" produced zero packable entries after the always-on denylist` +
         (extraExclude.length > 0 ? " and extraExclude" : "") +
-        "; local-tree packing requires at least one non-denylisted file or symlink. (Paths in this message are basenames only; the packed root is the lab resolution cwd.)",
+        "; local-tree packing requires at least one non-denylisted file or symlink. (Paths in this message are basenames only; the packed root is the study's working directory.)",
     );
   }
 

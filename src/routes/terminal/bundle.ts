@@ -88,7 +88,7 @@ export function buildTerminalProductBundle(args: {
       at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.run.created",
-      message: `Created terminal-product lab run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`,
+      message: `Created a terminal-product run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`,
     },
     participantEvent(TERMINAL_IDS, {
       id: "event-001-subject",
@@ -141,14 +141,14 @@ export function buildTerminalProductBundle(args: {
       {
         at: args.run.createdAt,
         event: "terminal-lab.run.created",
-        message: `Created terminal-product lab run with one in-sandbox agent participant (actor ${args.actorId}, product ${args.productName}).`,
+        message: `Created a terminal-product run with one in-sandbox agent participant (actor ${args.actorId}, product ${args.productName}).`,
       },
     ],
     simulation,
     stream,
     events,
     redactionNotes:
-      "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
+      "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed study text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
     review,
   });
 }
@@ -374,8 +374,8 @@ function terminalRunBundle(
     },
     scenario: {
       id: `terminal-${args.labId}`,
-      title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
-      // The author mission is public-safe committed lab text. It is recorded plaintext as the goal,
+      title: args.labTitle ?? `Terminal-product run: ${args.labId}`,
+      // The author mission is public-safe committed study text. It is recorded plaintext as the goal,
       // redacted defensively before persisting (it never carries a secret, but the harness never
       // trusts that). The full composed prompt is bound by digest, not text.
       goal: redactText(args.mission),

@@ -532,7 +532,7 @@ export const NO_LOCAL_AGENT_MESSAGE =
 /** Doctor's row for one installed agent, in the register the other rows use. */
 export function localAgentDoctorMessage(agent: DetectedLocalAgent): string {
   if (agent.authStatus === "authenticated")
-    return `${agent.label} reports signed in; a lab with actors[0].type: local-agent can use it instead of a provider API key. Account access and limits are untested.`;
+    return `${agent.label} reports signed in; a study with actors[0].type: local-agent can use it instead of a provider API key. Account access and limits are untested.`;
   const status = agent.id === "codex" ? "codex login status" : "claude auth status";
   return agent.authStatus === "unauthenticated"
     ? `${agent.label} is installed and reports not signed in; run \`${agent.id === "codex" ? "codex login" : "claude auth login"}\``

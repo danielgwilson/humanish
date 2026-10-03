@@ -263,7 +263,7 @@ describe("route, mode and the keys a route does not read", () => {
 
   it("names both schemas when the schema is neither", () => {
     expect(refusal({ ...study, schema: "humanish.study.v2" })).toBe(
-      "Lab schema must be humanish.study.v3 or humanish.lab.v2.",
+      "The study schema must be humanish.study.v3 or humanish.lab.v2.",
     );
   });
 });

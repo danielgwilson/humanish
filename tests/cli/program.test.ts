@@ -165,7 +165,7 @@ describe("humanish CLI scaffold", () => {
         expect(envelope.ok).toBe(false);
         expect(envelope.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(envelope.error.message).toContain(
-          `Unknown lab field(s) in \`actors[0].${field}[0]\`: runtme`,
+          `Unknown study field(s) in \`actors[0].${field}[0]\`: runtme`,
         );
         expect(await readdir(cwd)).not.toContain(".humanish");
       });

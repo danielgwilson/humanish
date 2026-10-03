@@ -403,7 +403,7 @@ export function formatStatsHuman(
   if (!result.ok) return { error: result.error };
   const t = result.totals;
   const scope = [
-    result.study === undefined ? undefined : `lab ${result.study}`,
+    result.study === undefined ? undefined : `study ${result.study}`,
     result.since === undefined ? undefined : `since ${result.since}`,
   ].filter((part): part is string => part !== undefined);
   const lines = [
@@ -418,7 +418,7 @@ export function formatStatsHuman(
     if (result.studies.length > 0)
       lines.push(
         "",
-        "per lab:",
+        "per study:",
         ...result.studies.map((row) => {
           const rate =
             row.passRate === undefined ? "no verdicts" : `${row.passed} of ${row.judged} passed`;

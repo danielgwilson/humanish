@@ -23,7 +23,7 @@ describe("communication declarations fail explicitly", () => {
   ])("rejects unsupported channels instead of running without them: %j", (comms) => {
     const result = parseStudy({ ...base, comms });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.message).toContain("Unknown lab field(s) in `comms`");
+    if (!result.ok) expect(result.error.message).toContain("Unknown study field(s) in `comms`");
   });
 
   it("retains supported email capture and absence of communications", () => {
@@ -55,7 +55,9 @@ describe("communication declarations fail explicitly", () => {
       });
       expect(result.ok).toBe(false);
       if (!result.ok)
-        expect(result.error.message).toContain("SMTP capture is not yet wired for shared-world");
+        expect(result.error.message).toContain(
+          "SMTP capture is not supported yet for shared-world",
+        );
     },
   );
 });

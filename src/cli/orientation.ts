@@ -92,7 +92,7 @@ function nextCommandsFor(args: {
     return [
       {
         command: "humanish init --yes",
-        why: "write starter labs, personas and an AGENTS.md (--dry-run lists every file first)",
+        why: "write starter studies, personas and an AGENTS.md (--dry-run lists every file first)",
       },
       dryRun,
     ];
@@ -138,7 +138,7 @@ export function formatOrientationHuman(state: OrientationState): string {
   if (!state.initialized) {
     lines.push("This project is not set up yet.");
   } else {
-    const labs = state.labCount === 1 ? "1 lab" : `${state.labCount} labs`;
+    const labs = state.labCount === 1 ? "1 study" : `${state.labCount} studies`;
     const runs =
       state.runCount === 0
         ? "no runs yet"

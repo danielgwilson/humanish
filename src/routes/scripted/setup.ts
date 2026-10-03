@@ -121,7 +121,7 @@ export async function prepareScriptedRun(
       ok: false,
       result: failed(
         "HUMANISH_SCRIPTED_KEYS_MISSING",
-        `Live clone scripted-browser labs require ${missing.join(" and ")} (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(missing, env)}`,
+        `Live clone scripted-browser studies require ${missing.join(" and ")} (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(missing, env)}`,
       ),
     };
   }
@@ -131,7 +131,7 @@ export async function prepareScriptedRun(
       ok: false,
       result: failed(
         "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
-        `Subject env values missing for live clone scripted-browser lab: ${unsetSubjectEnv.join(", ")}.`,
+        `Subject env values missing for a live clone scripted-browser study: ${unsetSubjectEnv.join(", ")}.`,
       ),
     };
   }

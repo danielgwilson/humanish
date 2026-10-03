@@ -164,7 +164,7 @@ export class ScriptedSubject {
 
     if (typeof subjectDesktop.getHost !== "function") {
       throw new Error(
-        "the installed @e2b/desktop SDK does not expose getHost(port); clone scripted-browser labs require it to reach the provisioned subject",
+        "the installed @e2b/desktop SDK does not expose getHost(port); clone scripted-browser studies require it to reach the provisioned subject",
       );
     }
     const rawHost = subjectDesktop.getHost(servePort(clone.serve.url));

@@ -10,7 +10,7 @@
       ],
       "error": {
         "code": "HUMANISH_WATCH_OPTION_CONFLICT",
-        "message": "--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to the terminal route."
+        "message": "--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use studies; this study runs on the terminal route."
       }
     },
     "stderr": "warning: humanish/labs/adm-terminal-live-no-caps.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
@@ -61,7 +61,7 @@
       ],
       "error": {
         "code": "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
-        "message": "--rerun-failed-from/--participants apply only to computer-use fan-out labs; this lab resolved to the scripted route."
+        "message": "--rerun-failed-from/--participants apply only to computer-use studies with more than one participant; this study runs on the scripted route."
       }
     },
     "stderr": "warning: humanish/labs/adm-scripted.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.\n",
@@ -244,7 +244,7 @@
       ],
       "error": {
         "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-        "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+        "message": "Live computer-use studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
@@ -312,7 +312,7 @@
       ],
       "error": {
         "code": "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
-        "message": "Live terminal-product labs declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
+        "message": "Live terminal-product studies declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
@@ -345,7 +345,7 @@
       ],
       "error": {
         "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-        "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+        "message": "Live computer-use studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
@@ -381,7 +381,7 @@
       ],
       "error": {
         "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-        "message": "Live concurrent shared-world labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+        "message": "Live concurrent shared-world studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
@@ -473,7 +473,7 @@
       "study": "adm-clone-codex-app-server",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); the lab clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+        "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
       },
       "warnings": []
     },
@@ -491,7 +491,7 @@
       "study": "adm-clone-codex-app-server",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); the lab clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+        "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
       },
       "warnings": []
     },

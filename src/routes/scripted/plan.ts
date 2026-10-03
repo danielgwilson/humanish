@@ -81,7 +81,7 @@ export function planScriptedStudy(
   if (String(config.comms?.email?.kind) === "real")
     return refuse(
       "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab.",
+      "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study.",
       beforeScope,
     );
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
@@ -110,7 +110,7 @@ export function planScriptedStudy(
     if (provisioned?.kind !== "clone" || !provisioned.repo)
       return refuse(
         "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
-        "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config.",
+        "clone scripted-browser studies require one subject repo plus subject.serve; parseStudy should have rejected this config.",
         { actor, appUrl: "[provisioned-subject]" },
       );
     subject = provisioned;

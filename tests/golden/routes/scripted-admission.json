@@ -14,7 +14,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
+      "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
     }
   },
   "invalid analysis": {
@@ -91,7 +91,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
-      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -160,7 +160,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
-      "message": "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config."
+      "message": "clone scripted-browser studies require one subject repo plus subject.serve; parseStudy should have rejected this config."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -206,7 +206,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_KEYS_MISSING",
-      "message": "Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live clone scripted-browser studies require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -229,7 +229,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
+      "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
     }
   },
   "invalid analysis and tasks": {
@@ -306,7 +306,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
-      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -375,7 +375,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
-      "message": "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config."
+      "message": "clone scripted-browser studies require one subject repo plus subject.serve; parseStudy should have rejected this config."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

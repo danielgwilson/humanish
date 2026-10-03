@@ -77,7 +77,7 @@ export async function resolveCuaRerunSelection(args: {
   if (missingCurrent.length > 0) {
     return {
       ok: false,
-      message: `selected participant id(s) are not present in the current lab config ${args.labId}: ${missingCurrent.join(", ")}`,
+      message: `selected participant id(s) are not present in the current study file ${args.labId}: ${missingCurrent.join(", ")}`,
     };
   }
 

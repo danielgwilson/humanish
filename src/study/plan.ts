@@ -53,7 +53,7 @@ function planPreview(
   if (String(config.comms?.email?.kind) === "real")
     return refuse(
       "HUMANISH_STUDY_COMMS_UNSUPPORTED",
-      "Real email receiving is unsupported on the preview route. Use a supported hosted computer-use lab.",
+      "Real email receiving is unsupported on the preview route. Use a supported hosted computer-use study.",
     );
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);

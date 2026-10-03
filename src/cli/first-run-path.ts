@@ -157,7 +157,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   steps.push({
     command: `${HUMANISH} keys set openai`,
     why:
-      "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the lab to actors[0].type: local-agent" +
+      "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the study to actors[0].type: local-agent" +
       localUnavailable,
   });
   return steps;
@@ -205,7 +205,7 @@ export function agentsSection(): string {
     "  bundles into an issue; `humanish feedback issue` writes a redacted, share-safe draft.",
     "- `humanish tui` is for people and refuses to run in an agent session. Use the `--json`",
     "  commands above instead, and tell the person you are working for that `humanish tui` exists.",
-    "- A live run spends money. `execution.caps.maxUsd` in each lab caps estimated model spend: the run",
+    "- A live run spends money. `execution.caps.maxUsd` in each study caps estimated model spend: the run",
     "  stops before its next request once the estimate passes it, so the last request can go over, and",
     "  hosted desktop time is billed on top. Do not raise it without asking the person you are working for.",
     "",

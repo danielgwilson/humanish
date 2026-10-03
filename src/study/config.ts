@@ -97,11 +97,11 @@ import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
  */
 export function parseStudy(raw: unknown): StudyParseResult {
   if (!isRecord(raw)) {
-    return invalid("Lab manifest must be a YAML object.");
+    return invalid("A study file must be a YAML object.");
   }
   if (raw.schema === STUDY_SCHEMA) return parseV3(raw);
   if (raw.schema !== V2_SCHEMA) {
-    return invalid(`Lab schema must be ${STUDY_SCHEMA} or ${V2_SCHEMA}.`);
+    return invalid(`The study schema must be ${STUDY_SCHEMA} or ${V2_SCHEMA}.`);
   }
   return parseV2(raw);
 }
@@ -145,7 +145,7 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
   const id = str(raw.id);
   if (!id || !ID_PATTERN.test(id)) {
     return invalid(
-      "Lab id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).",
+      "The study id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).",
     );
   }
 
@@ -208,7 +208,7 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
   if (commsResult.value) config.comms = commsResult.value;
   if (config.comms?.email?.smtp && config.subject.topology === "shared-world") {
     return invalid(
-      "SMTP capture is not yet wired for shared-world labs. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world labs.",
+      "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies.",
     );
   }
 
@@ -259,7 +259,7 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
       );
       if (unknown.length > 0) {
         return invalid(
-          `comms.email.recipients name participant(s) that do not exist: ${unknown.map((r) => `"${recipientParticipantId(r)}"`).join(", ")}. This lab's participant ids are: ${participantIds.join(", ")}. A recipient's \`lane\` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant.`,
+          `comms.email.recipients name participant(s) that do not exist: ${unknown.map((r) => `"${recipientParticipantId(r)}"`).join(", ")}. This study's participant ids are: ${participantIds.join(", ")}. A recipient's \`lane\` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant.`,
         );
       }
       if (!email.recipients.some((recipient) => recipient.address !== undefined)) {

@@ -140,7 +140,7 @@ export async function runStudyPreflight(
       reachability,
       checks: [
         {
-          name: "lab manifest",
+          name: "study file",
           ok: false,
           message: resolved.error.message,
         },
@@ -167,7 +167,7 @@ export async function runStudyPreflight(
     env: options.env ?? process.env,
     hooks: options.hooks ?? {},
     checks: [
-      { name: "lab manifest", ok: true, message: `resolved ${resolved.origin} lab manifest` },
+      { name: "study file", ok: true, message: `resolved ${resolved.origin} study file` },
       { name: "route", ok: true, message: `selected the ${route} route` },
     ],
     targets: collectTargets(resolved.config),

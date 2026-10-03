@@ -77,7 +77,7 @@ export async function runStudyCommand(args: {
       warnings: [],
       error: {
         code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to the ${route} route.`,
+        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use studies; this study runs on the ${route} route.`,
       },
     };
     writeResult(args.command, args.io, result, formatRunHuman);
@@ -214,7 +214,7 @@ function routeRunFor(
       return sharedWorldRouteRun(args);
     default:
       // Compile-time exhaustiveness: a future route must be handled here, not silently no-op.
-      throw new Error(`Unhandled lab route: ${String(route satisfies never)}`);
+      throw new Error(`Unhandled study route: ${String(route satisfies never)}`);
   }
 }
 
@@ -237,7 +237,7 @@ function writeUnsupportedRerunFlagsResult(
     warnings: [],
     error: {
       code: "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
-      message: `--rerun-failed-from/--participants apply only to computer-use fan-out labs; this lab resolved to the ${route} route.`,
+      message: `--rerun-failed-from/--participants apply only to computer-use studies with more than one participant; this study runs on the ${route} route.`,
     },
   };
   writeResult(args.command, args.io, result, formatRunHuman);

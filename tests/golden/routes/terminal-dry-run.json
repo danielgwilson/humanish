@@ -73,13 +73,13 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
+        "notes": "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed study text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
       },
       "lifecycle": [
         {
           "at": "[ts]",
           "event": "terminal-lab.run.created",
-          "message": "Created terminal-product lab run with one in-sandbox agent participant (actor codex-exec, product widgetsmith-cli)."
+          "message": "Created a terminal-product run with one in-sandbox agent participant (actor codex-exec, product widgetsmith-cli)."
         }
       ],
       "knownGaps": [
@@ -217,7 +217,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.run.created",
-        "message": "Created terminal-product lab run with one in-sandbox agent participant (actor codex-exec, product widgetsmith-cli)."
+        "message": "Created a terminal-product run with one in-sandbox agent participant (actor codex-exec, product widgetsmith-cli)."
       }
     ],
     "simulations": [
@@ -290,7 +290,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.run.created",
-        "message": "Created terminal-product lab run for terminal-live-proof (actor codex-exec, product widgetsmith-cli)."
+        "message": "Created a terminal-product run for terminal-live-proof (actor codex-exec, product widgetsmith-cli)."
       },
       {
         "id": "event-001-subject",
@@ -338,7 +338,7 @@
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
+      "notes": "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed study text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
     },
     "artifacts": {
       "run": "run.json",

@@ -179,7 +179,7 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
           : "Live E2B desktop launch requires the optional peer @e2b/desktop, and humanish is running from an " +
               "npx cache. Node resolves the peer relative to humanish itself, so a copy installed in this project " +
               "is not found. Install both into the project and run it from there: " +
-              "`npm i -D humanish @e2b/desktop` then `npx humanish run <lab>`.",
+              "`npm i -D humanish @e2b/desktop` then `npx humanish run <study>`.",
       );
     }
 

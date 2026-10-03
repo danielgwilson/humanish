@@ -185,7 +185,7 @@ async function admitSharedWorldRun(
   if (missing.length > 0) {
     return fail(
       "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      `Live concurrent shared-world labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}`,
+      `Live concurrent shared-world studies need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}`,
     );
   }
   if (plan.brain.kind === "local-agent") {

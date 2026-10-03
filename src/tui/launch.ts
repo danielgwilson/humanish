@@ -89,7 +89,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
       ok: false,
       error: {
         code: "HUMANISH_LAUNCH_INVALID_STUDY",
-        message: `"${options.lab}" is not a usable lab handle. Run it by path with \`humanish run <path>\` instead.`,
+        message: `"${options.lab}" is not a usable study handle. Run it by path with \`humanish run <path>\` instead.`,
       },
     };
   }

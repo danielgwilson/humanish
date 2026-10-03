@@ -171,7 +171,7 @@ export function registerTelemetryCommand(parent: Command, io: CliIo): void {
             "every field that is sent, with example values:",
             JSON.stringify(sample, null, 2),
             "",
-            "never sent: labs you wrote, subjects, personas, missions, paths, run evidence, key names or values.",
+            "never sent: studies you wrote, subjects, personas, missions, paths, run evidence, key names or values.",
             "",
             "humanish telemetry disable   turns it off",
           ].join("\n") + "\n",

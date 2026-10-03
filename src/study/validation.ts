@@ -232,7 +232,7 @@ export function receivingEmailValidationReason(config: StudyConfig): string | un
     !isComputerUseComposition(config) ||
     !["app-url", "clone", "local-tree"].includes(config.subject.source)
   ) {
-    return "Real email receiving requires a hosted computer-use browser lab with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
+    return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
   }
   if (config.actors.some((actor) => actor.type === "local-agent")) {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
@@ -269,7 +269,7 @@ export function cloneTargetValidationReason(config: StudyConfig): string | null 
   const target = config.execution?.target;
   if (config.subject.source !== "clone" || target === "e2b-desktop") return null;
   const got = target === undefined ? "it is absent" : `got "${target}"`;
-  return `clone subjects require \`execution.target: e2b-desktop\` (${got}): the lab clones and serves the repo inside a hosted desktop sandbox. \`execution.target: local\` applies to app-url and local-app subjects.`;
+  return `clone subjects require \`execution.target: e2b-desktop\` (${got}): humanish clones and serves the repo inside a hosted desktop sandbox. \`execution.target: local\` applies to app-url and local-app subjects.`;
 }
 
 /**
@@ -284,7 +284,7 @@ export function scenarioCapsValidationReason(config: StudyConfig): string | null
   for (const key of ["maxUsd", "maxTotalUsd"] as const) {
     const value = config.scenario?.caps?.[key];
     if (value === undefined || value <= 0) continue;
-    return `scenario.caps.${key} (${value}) does not cap a computer-use lab: this route stops on execution.caps.${key}. Move the value to execution.caps.${key}; scenario.caps applies only to terminal-product labs.`;
+    return `scenario.caps.${key} (${value}) does not cap a computer-use study: this route stops on execution.caps.${key}. Move the value to execution.caps.${key}; scenario.caps applies only to terminal-product studies.`;
   }
   return null;
 }
@@ -318,7 +318,7 @@ function sharedWorldConcurrencyReason(config: StudyConfig): string | null {
   const participants = rosterOf(config.actors[0])?.length ?? 0;
   const concurrency = config.execution?.concurrency ?? participants;
   if (concurrency >= 2) return null;
-  return `shared-world labs need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
+  return `shared-world studies need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
 }
 
 /**
@@ -436,5 +436,5 @@ export function automaticAnalysisRouteReason(config: StudyConfig): string | unde
     )
   )
     return undefined;
-  return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording.";
+  return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this study's route does not produce an eligible live recording.";
 }

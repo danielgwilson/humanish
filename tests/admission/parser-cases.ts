@@ -46,7 +46,7 @@ export const parserCases: readonly AdmissionCase[] = [
     raw: lab("sharedProvisioned", {
       comms: { email: { kind: "fake", smtp: { hostEnv: "SMTP_HOST", portEnv: "SMTP_PORT" } } },
     }),
-    parser: "SMTP capture is not yet wired",
+    parser: "SMTP capture is not supported yet",
   },
   {
     name: "recording on shared world",

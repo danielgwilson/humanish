@@ -119,7 +119,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -257,7 +257,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -303,7 +303,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
+      "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): humanish packs and serves the working tree in the sandbox."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -326,7 +326,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
+      "message": "`subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves)."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -418,7 +418,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING",
-      "message": "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not."
+      "message": "An app-url study with execution.target: local needs a local desktop. runStudy starts one; a direct route call or an in-process executor does not."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -487,7 +487,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
+      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -625,7 +625,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-      "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live computer-use studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -753,7 +753,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -891,7 +891,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -937,7 +937,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
+      "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): humanish packs and serves the working tree in the sandbox."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -960,7 +960,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
+      "message": "`subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves)."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1075,7 +1075,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
+      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1144,7 +1144,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING",
-      "message": "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not."
+      "message": "An app-url study with execution.target: local needs a local desktop. runStudy starts one; a direct route call or an in-process executor does not."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1236,7 +1236,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
+      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1259,7 +1259,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
+      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
