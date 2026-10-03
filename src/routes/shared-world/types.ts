@@ -137,7 +137,7 @@ export interface ConcurrentSharedWorldParticipantResult {
   window?: { startedAt: number; endedAt: number };
   session?: { status: string; completionReason: string; reason: string; screenshots: number };
   /** The actor sandbox lifecycle proof (the getHost/key value is never surfaced here). */
-  sandbox?: { sandboxId: string; killed: boolean };
+  sandbox?: { sandboxId: string; sandboxIdDigest?: string; killed: boolean };
   error?: { code: ConcurrentSharedWorldStudyErrorCode; message: string };
 }
 
@@ -157,7 +157,7 @@ export interface ConcurrentSharedWorldStudyResult
   /** The harness-minted getHost URL the actors drove (tokenless; live only). */
   host?: string;
   /** The one subject sandbox lifecycle proof. */
-  subjectSandbox?: { sandboxId: string; killed: boolean };
+  subjectSandbox?: { sandboxId: string; sandboxIdDigest?: string; killed: boolean };
   /** Whether ≥2 actor windows overlapped in time (proven concurrency; live only). */
   overlapProven?: boolean;
   /** Max participants observed live at the same instant (live only): the simultaneity number; a

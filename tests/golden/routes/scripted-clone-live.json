@@ -31,7 +31,8 @@
       }
     },
     "subjectSandbox": {
-      "sandboxId": "fake-subject-001",
+      "sandboxId": "[redacted-sandbox-id]",
+      "sandboxIdDigest": "888d7a3aac3169fa",
       "killed": true
     },
     "hostDigest": "8d9b4d09db938d38",

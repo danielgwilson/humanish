@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import {
   cp,
   link,
@@ -283,18 +284,17 @@ describe("dry-run bundles", () => {
       expect(cleanup.schema).toBe(CLEANUP_SCHEMA);
       expect(cleanup.ok).toBe(false);
       expect(providerLoads).toBe(0);
-      expect(cleanup.resources).toEqual([
-        expect.objectContaining({
-          id: "sbx-owned-1",
-          status: "failed",
-          message: "automatic provider cleanup requires a verified resource lease",
-        }),
-        expect.objectContaining({
-          id: "sbx-forged-unknown",
-          status: "failed",
-          message: "automatic provider cleanup requires a verified resource lease",
-        }),
-      ]);
+      // A run recorded before 0.110 holds raw ids in run.json; cleanup reports them by digest.
+      expect(cleanup.resources).toEqual(
+        ["sbx-owned-1", "sbx-forged-unknown"].map((id) =>
+          expect.objectContaining({
+            id: REDACTED_SANDBOX_ID,
+            idDigest: sandboxIdDigest(id),
+            status: "failed",
+            message: "automatic provider cleanup requires a verified resource lease",
+          }),
+        ),
+      );
       expect(cleanup.summary).toMatchObject({
         resources: 2,
         killed: 0,

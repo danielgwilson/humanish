@@ -606,6 +606,11 @@ function shareSafetyRemedy(codes: string[]): string {
   if (codes.includes("RAW_SCREENSHOTS")) {
     steps.push("Re-run with policies.redactScreenshots: true to blur screenshots at capture.");
   }
+  if (codes.includes("RAW_SANDBOX_ID")) {
+    steps.push(
+      "Export with --format bundle --redact-screenshots, which writes a copy without raw sandbox ids, and share from that copy.",
+    );
+  }
   if (codes.includes("UNSCANNED_ARTIFACT")) {
     steps.push(
       "verify cannot read the files that `humanish verify --json` lists under UNSCANNED_ARTIFACT as text: remove them from the run folder, or keep only images an actor trace references as stream screenshots.",

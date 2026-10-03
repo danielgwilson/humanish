@@ -82,10 +82,37 @@ export const REDACTED_SANDBOX_ID = "[redacted-sandbox-id]";
 /** The keys run writers put a sandbox id under; `providerResources` entries hold one as `id`. */
 const SANDBOX_ID_KEYS = new Set(["sandboxId", "subjectSandboxId"]);
 
+/** A sandbox id's public stand-in: its digest matches a receipt without naming the sandbox. */
+export function sandboxIdDigest(id: string): string {
+  return digestText(id, 16);
+}
+
+/** The digest field written beside a redacted id: `idDigest`, `sandboxIdDigest`, … */
+const digestKey = (key: string): string => `${key}Digest`;
+
 /**
- * `value` with every sandbox id replaced by REDACTED_SANDBOX_ID: strings at `sandboxId` and
- * `subjectSandboxId`, and the `id` of each `providerResources` entry. A run keeps raw ids as local
- * evidence for cleanup; a copy made to be shared names no sandbox.
+ * The entries of `object` with each raw id at one of `keys` replaced by REDACTED_SANDBOX_ID and its
+ * digest written beside it, unless the object already records one.
+ */
+function redactIdEntries(object: object, keys: ReadonlySet<string>): [string, unknown][] {
+  const entries = Object.entries(object);
+  const present = new Set(entries.map(([key]) => key));
+  return entries.flatMap(([key, child]): [string, unknown][] => {
+    if (!keys.has(key) || typeof child !== "string" || child === REDACTED_SANDBOX_ID)
+      return [[key, child]];
+    const digest: [string, unknown][] = present.has(digestKey(key))
+      ? []
+      : [[digestKey(key), sandboxIdDigest(child)]];
+    return [[key, REDACTED_SANDBOX_ID], ...digest];
+  });
+}
+
+const RESOURCE_ID_KEYS = new Set(["id"]);
+
+/**
+ * `value` with every sandbox id replaced by REDACTED_SANDBOX_ID plus its digest: strings at
+ * `sandboxId` and `subjectSandboxId`, and the `id` of each `providerResources` entry. Raw ids live
+ * only in a run's sandbox-receipts.ndjson; every record and output names a sandbox by digest.
  */
 export function redactSandboxIds(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -93,29 +120,24 @@ export function redactSandboxIds(value: unknown): unknown {
     return items.every((item, index) => item === value[index]) ? value : items;
   }
   if (value === null || typeof value !== "object") return value;
-  let changed = false;
   // fromEntries keeps a key such as __proto__ an own property, as JSON.parse made it.
-  const entries = Object.entries(value).map(([key, child]): [string, unknown] => {
-    let next: unknown;
-    if (SANDBOX_ID_KEYS.has(key) && typeof child === "string") next = REDACTED_SANDBOX_ID;
-    else if (key === "providerResources" && Array.isArray(child))
-      next = child.map((resource: unknown) =>
-        resource !== null &&
-        typeof resource === "object" &&
-        !Array.isArray(resource) &&
-        "id" in resource
-          ? Object.fromEntries(
-              Object.entries(redactSandboxIds(resource) as object).map(([field, entry]) => [
-                field,
-                field === "id" ? REDACTED_SANDBOX_ID : entry,
-              ]),
-            )
-          : redactSandboxIds(resource),
-      );
-    else next = redactSandboxIds(child);
-    if (next !== child && JSON.stringify(next) !== JSON.stringify(child)) changed = true;
-    return [key, next];
+  const entries = redactIdEntries(value, SANDBOX_ID_KEYS).map(([key, child]): [string, unknown] => {
+    if (key === "providerResources" && Array.isArray(child))
+      return [
+        key,
+        child.map((resource: unknown) =>
+          resource !== null && typeof resource === "object" && !Array.isArray(resource)
+            ? Object.fromEntries(
+                redactIdEntries(redactSandboxIds(resource) as object, RESOURCE_ID_KEYS),
+              )
+            : redactSandboxIds(resource),
+        ),
+      ];
+    return [key, redactSandboxIds(child)];
   });
+  const changed =
+    entries.length !== Object.keys(value).length ||
+    entries.some(([key, child]) => child !== (value as Record<string, unknown>)[key]);
   return changed ? Object.fromEntries(entries) : value;
 }
 

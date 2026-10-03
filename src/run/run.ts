@@ -16,6 +16,7 @@ import {
 } from "./paths.js";
 import { registerActiveRun } from "./active-runs.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./contained-output.js";
+import { withPublicSandboxIds } from "./sandbox-ids.js";
 import { beginRunStatus, runStatusOutcome, type RunStatusHandle } from "./status.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
 
@@ -233,7 +234,7 @@ export async function runScope<T>(
       afterBundle: (publicBundle: RunBundle) => Promise<void>,
     ): Promise<void> => {
       await validatePreparedRunArtifactPaths(paths);
-      const publicBundle: RunBundle = { ...bundle, cwd: PUBLIC_TARGET_CWD };
+      const publicBundle = await withPublicSandboxIds(paths, { ...bundle, cwd: PUBLIC_TARGET_CWD });
       await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
       await afterBundle(publicBundle);
       await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");

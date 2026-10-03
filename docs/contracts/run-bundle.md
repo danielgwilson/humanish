@@ -525,6 +525,9 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 
 - `share_ready`: feedback draft commands may render public issue payloads;
 - `local_only`: keep the run local; only supported redaction-only cases can produce a shareable derivative;
+  `RAW_SANDBOX_ID` is one: a file other than `sandbox-receipts.ndjson` names one of the run's raw
+  sandbox ids. Runs from 0.110 keep raw ids only in the receipts, so it fires on runs recorded
+  before 0.110, whose `run.json` holds them, until they are exported;
 - `blocked`: fix the verification or public-safety failure first.
 
 `ok: true` also does not mean the run finished. A run killed mid-way leaves an
@@ -540,7 +543,9 @@ writing; an older one reads as interrupted. The warning names what verify saw:
   there is no usable record;
 - how many streams are still `running`;
 - what `reclaim-receipt.json` records: how many of the run's sandboxes are gone
-  (killed or already gone), and how many journaled sandboxes it does not cover;
+  (killed or already gone), and how many journaled sandboxes it does not cover. It
+  matches its outcomes to the receipts by `sandboxIdDigest`; a reclaim receipt from
+  before 0.110 names raw ids, which are digested to match;
 - with journaled sandboxes and no reclaim receipt, the command that stops them:
   `humanish reclaim --run <id>`.
 
@@ -635,8 +640,12 @@ commands can subsequently generate new derivative-local artifacts.
 
 The derivative names no sandbox. In every JSON and NDJSON file it copies, the
 values at `sandboxId`, `subjectSandboxId` and each `providerResources[].id` read
-`[redacted-sandbox-id]`; `sandbox-receipts.ndjson` is omitted. The source keeps
-its raw ids, which cleanup and reclaim read.
+`[redacted-sandbox-id]`, with the id's digest beside them. In every text file it
+copies, Markdown, logs and YAML included, each id the source's
+`sandbox-receipts.ndjson` names becomes `[redacted-sandbox-id <digest>]`; the
+receipts give the exact ids, so the rest of each file is unchanged. A run with no
+receipts gets the key rule only. `sandbox-receipts.ndjson` is omitted, and the
+source keeps its raw ids, which reclaim reads.
 
 PNG files that actor traces reference as stream screenshots are re-encoded as
 blurred thumbnails. A PNG that nothing in `run.json` cites is omitted and

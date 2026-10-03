@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { spawn } from "node:child_process";
 import { existsSync, readlinkSync } from "node:fs";
 import { link, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -370,7 +371,12 @@ describe("lab preflight receipts", () => {
     });
     expect(reclaim.ok).toBe(true);
     expect(reclaim.outcomes).toEqual([
-      { sandboxId: "fake-sb-preflight-1", laneId: id, state: "killed" },
+      {
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest("fake-sb-preflight-1"),
+        laneId: id,
+        state: "killed",
+      },
     ]);
     expect(reclaimer.killed).toEqual(["fake-sb-preflight-1"]);
     expect(await journals(cwd)).toEqual([]);

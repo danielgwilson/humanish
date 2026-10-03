@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -125,7 +126,15 @@ describe("a live run with the run command's handler, signalled mid-session", () 
     });
     expect(
       JSON.parse(await readFile(path.join(runDir, "reclaim-receipt.json"), "utf8")),
-    ).toMatchObject({ outcomes: [{ sandboxId: "fake-sb-interrupted", state: "killed" }] });
+    ).toMatchObject({
+      outcomes: [
+        {
+          sandboxId: REDACTED_SANDBOX_ID,
+          sandboxIdDigest: sandboxIdDigest("fake-sb-interrupted"),
+          state: "killed",
+        },
+      ],
+    });
     expect(stderr).toContain(
       `humanish: SIGTERM: run ${runId} marked interrupted; sandboxes: 1 killed.`,
     );

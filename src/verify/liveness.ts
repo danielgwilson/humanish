@@ -2,6 +2,7 @@
 // and a run killed mid-way leaves an in-progress bundle that passes those checks. The warning says
 // what verify saw on disk, so `ok: true` is not read as "the run finished". It never flips `ok`.
 
+import { sandboxIdDigest } from "../evidence/redaction.js";
 import path from "node:path";
 
 import type { RunBundle } from "../run/bundle.js";
@@ -63,14 +64,18 @@ export async function runNotFinishedWarnings(
 /** What the reclaim receipt says about the sandboxes this run journaled, or what to run. */
 async function reclaimState(runPaths: PreparedRunArtifactPaths, runId: string): Promise<string> {
   const journal = await readRunTextIfExists(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
+  // Matched by digest: a reclaim receipt names each sandbox by digest, and one written before it
+  // did holds the raw id, which is digested here.
   const journaled = new Set(
-    (journal === null ? [] : parseSandboxReceipts(journal)).map((receipt) => receipt.sandboxId),
+    (journal === null ? [] : parseSandboxReceipts(journal)).map((receipt) =>
+      sandboxIdDigest(receipt.sandboxId),
+    ),
   );
   const receipt = await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT);
   const outcomes = reclaimOutcomes(receipt, runId);
   if (outcomes !== undefined) {
     const gone = outcomes.filter((outcome) => GONE_STATES.has(outcome.state)).length;
-    const reclaimed = new Set(outcomes.map((outcome) => outcome.sandboxId));
+    const reclaimed = new Set(outcomes.map((outcome) => outcome.digest));
     const missing = [...journaled].filter((id) => !reclaimed.has(id)).length;
     return `${RECLAIM_RECEIPT_ARTIFACT} records ${gone} of ${outcomes.length} sandboxes gone${
       missing === 0 ? "" : `, and ${missing} journaled sandboxes are not in it`
@@ -84,15 +89,16 @@ async function reclaimState(runPaths: PreparedRunArtifactPaths, runId: string): 
 function reclaimOutcomes(
   receipt: unknown,
   runId: string,
-): { sandboxId: string; state: string }[] | undefined {
+): { digest: string; state: string }[] | undefined {
   if (!isRecord(receipt) || receipt.runId !== runId || !Array.isArray(receipt.outcomes))
     return undefined;
-  const outcomes: { sandboxId: string; state: string }[] = [];
+  const outcomes: { digest: string; state: string }[] = [];
   for (const outcome of receipt.outcomes as unknown[]) {
     if (!isRecord(outcome)) return undefined;
-    const { sandboxId, state } = outcome;
+    const { sandboxId, sandboxIdDigest: recorded, state } = outcome;
     if (typeof sandboxId !== "string" || typeof state !== "string") return undefined;
-    outcomes.push({ sandboxId, state });
+    const digest = typeof recorded === "string" ? recorded : sandboxIdDigest(sandboxId);
+    outcomes.push({ digest, state });
   }
   return outcomes;
 }

@@ -64,7 +64,10 @@ export interface RunResult {
 export interface CleanupResourceResult {
   provider: RunProviderResource["provider"];
   kind: RunProviderResource["kind"];
+  /** "[redacted-sandbox-id]"; the raw id is only in the run's sandbox-receipts.ndjson. */
   id: string;
+  /** The id's digest, which matches its receipt; absent when the record had neither. */
+  idDigest?: string;
   /** Cleanup reads recorded evidence and never kills a sandbox, so it never writes `killed`. */
   status: "already_clean" | "failed" | "skipped";
   message: string;

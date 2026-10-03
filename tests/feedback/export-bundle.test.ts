@@ -30,7 +30,7 @@ import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/fe
 import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import { REDACTED_SANDBOX_ID } from "../../src/evidence/redaction.js";
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { computeStats } from "../../src/run/stats.js";
 import { createProgram } from "../../src/cli/program.js";
 
@@ -252,20 +252,42 @@ describe("redacted bundle export", () => {
       JSON.stringify({ sandbox: { sandboxId: raw }, subjectSandboxId: raw }),
     );
     await writeFile(path.join(runDir, "leases.ndjson"), `${JSON.stringify({ sandboxId: raw })}\n`);
+    // Free text names the sandbox too: the receipts give export the exact id to replace there.
+    await writeFile(
+      path.join(runDir, "sandbox-receipts.ndjson"),
+      `${JSON.stringify({ at: "t", laneId: "lane-01", provider: "e2b", sandboxId: raw })}\n`,
+    );
+    const review = path.join(runDir, "review.md");
+    await writeFile(review, `${await readFile(review, "utf8")}\nSandbox ${raw} reclaimed.\n`);
+    await writeFile(path.join(runDir, "teardown.log"), `kill(${raw}) returned true\n`);
     const result = await exportRun(cwd, RUN, OPTIONS);
     if (!result.ok) throw new Error(result.error.message);
     const copy = path.join(cwd, "shared", ".humanish", "runs", RUN);
     const shared = JSON.parse(await readFile(path.join(copy, "run.json"), "utf8")) as RunBundle;
-    expect(shared.providerResources?.map((resource) => resource.id)).toEqual([REDACTED_SANDBOX_ID]);
+    const digest = sandboxIdDigest(raw);
+    expect(shared.providerResources?.map(({ id, idDigest }) => ({ id, idDigest }))).toEqual([
+      { id: REDACTED_SANDBOX_ID, idDigest: digest },
+    ]);
     expect(JSON.parse(await readFile(path.join(copy, "lease.json"), "utf8"))).toEqual({
-      sandbox: { sandboxId: REDACTED_SANDBOX_ID },
+      sandbox: { sandboxId: REDACTED_SANDBOX_ID, sandboxIdDigest: digest },
       subjectSandboxId: REDACTED_SANDBOX_ID,
+      subjectSandboxIdDigest: digest,
     });
     expect(JSON.parse(await readFile(path.join(copy, "leases.ndjson"), "utf8"))).toEqual({
       sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: digest,
     });
-    for (const file of ["run.json", "lease.json", "leases.ndjson"])
+    expect(await readFile(path.join(copy, "review.md"), "utf8")).toContain(
+      `Sandbox [redacted-sandbox-id ${digest}] reclaimed.`,
+    );
+    expect(await readFile(path.join(copy, "teardown.log"), "utf8")).toBe(
+      `kill([redacted-sandbox-id ${digest}]) returned true\n`,
+    );
+    for (const file of ["run.json", "lease.json", "leases.ndjson", "review.md", "teardown.log"])
       expect(await readFile(path.join(copy, file), "utf8")).not.toContain(raw);
+    await expect(readFile(path.join(copy, "sandbox-receipts.ndjson"), "utf8")).rejects.toThrow(
+      /ENOENT/,
+    );
     const source = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     expect(source.providerResources?.[0]?.id).toBe(raw);
   });

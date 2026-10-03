@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -121,7 +122,8 @@ describe("sandbox receipts + humanish reclaim", () => {
     expect(result.ok).toBe(false);
     expect(result.outcomes).toEqual([
       {
-        sandboxId: "fake-sb-elsewhere",
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest("fake-sb-elsewhere"),
         laneId: "lane-01",
         state: "unsupported-provider",
         detail: expect.stringContaining('"example-cloud"'),
@@ -204,12 +206,14 @@ describe("sandbox receipts + humanish reclaim", () => {
     // on the fake to begin with (the module type never offers one to reclaim).
     expect(killedIds.sort()).toEqual(["fake-sb-alive", "fake-sb-broken", "fake-sb-gone"]);
     expect(result.receiptCount).toBe(4);
-    const states = Object.fromEntries(result.outcomes.map((o) => [o.sandboxId, o.state]));
+    // Outcomes name each sandbox by digest; the kills above went to the raw ids.
+    const states = Object.fromEntries(result.outcomes.map((o) => [o.sandboxIdDigest, o.state]));
     expect(states).toEqual({
-      "fake-sb-alive": "killed",
-      "fake-sb-gone": "already-gone",
-      "fake-sb-broken": "kill-failed",
+      [sandboxIdDigest("fake-sb-alive")]: "killed",
+      [sandboxIdDigest("fake-sb-gone")]: "already-gone",
+      [sandboxIdDigest("fake-sb-broken")]: "kill-failed",
     });
+    expect(result.outcomes.every((o) => o.sandboxId === REDACTED_SANDBOX_ID)).toBe(true);
     // A kill-failed means the reclaim did not fully succeed: the exit says so, and the TTL is the
     // backstop.
     expect(result.ok).toBe(false);

@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -91,8 +92,14 @@ describe("the run command's signal handler", () => {
     const receipt = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", RUN, RECLAIM_RECEIPT_ARTIFACT), "utf8"),
     ) as { outcomes: unknown[] };
+    // The receipt names the sandbox by digest; the raw id stays in sandbox-receipts.ndjson.
     expect(receipt.outcomes).toEqual([
-      { sandboxId: "fake-sb-1", laneId: "lane-01", state: "killed" },
+      {
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest("fake-sb-1"),
+        laneId: "lane-01",
+        state: "killed",
+      },
     ]);
     expect(run.stderr()).toBe(
       `humanish: SIGTERM: run ${RUN} marked interrupted; sandboxes: 1 killed.\n`,

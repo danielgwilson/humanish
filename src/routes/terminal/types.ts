@@ -184,7 +184,10 @@ export interface TerminalProductStudyResult
   };
   /** Live-only: the sandbox lifecycle proof (the key/auth value is never surfaced here). */
   sandbox?: {
+    /** "[redacted-sandbox-id]"; the raw id is only in the run's sandbox-receipts.ndjson. */
     sandboxId: string;
+    /** The id's digest, which matches its receipt. */
+    sandboxIdDigest?: string;
     killed: boolean;
     /** By-id proof (never a re-list): 0 = confirmed reclaimed, 1 = still present (unconfirmed),
      *  -1 = kill(id) itself failed or was unavailable. See TerminalLedgers["cleanup"]. */

@@ -12,6 +12,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { openContainedRegularFile } from "../run/contained-output.js";
+import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
 import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "../run/locate.js";
@@ -352,6 +353,10 @@ export function rawScreenshotStreamIds(
 interface RegisteredStreamMedia {
   recordingPaths: Set<string>;
   screenshotPaths: Set<string>;
+  /** The run's raw sandbox ids, from its receipts; any other file holding one is listed below. */
+  sandboxIds?: readonly string[];
+  /** Filled by the scan: files other than the receipts that name a raw sandbox id. */
+  sandboxIdFiles?: string[];
 }
 
 /**
@@ -457,6 +462,11 @@ async function scanRunPublicSafetyDirectory(
     }
     // serve renders observer/index.html from run.json and export regenerates it, so the on-disk
     // copy reaches neither. It embeds the Observer's own base64 fonts and scripts.
+    if (
+      relativePath !== SANDBOX_RECEIPTS_ARTIFACT &&
+      media.sandboxIds?.some((id) => decoded.text.includes(id))
+    )
+      media.sandboxIdFiles?.push(relativePath);
     const scan = scanEncodedTextCached(decoded.text, {
       allowOpaqueBase64: relativePath === "observer/index.html",
     });

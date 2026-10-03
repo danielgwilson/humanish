@@ -41,6 +41,7 @@ import { admitTerminalPlan, terminalStudyRefusal } from "./routes/terminal/route
 import { type TerminalProductStudyResult } from "./routes/terminal/types.js";
 import { type RunScorerProvenance } from "./run/bundle.js";
 import type { RunStudyProvenance } from "./run/study-provenance.js";
+import { publicRunResult } from "./run/sandbox-ids.js";
 import { isLocalBrowserStudy, localBrowserDefaults } from "./substrates/local/runtime-config.js";
 
 /**
@@ -147,7 +148,11 @@ export async function prepareStudy(
         // study, so a rebuilt one would leave the participants they start for no finally to close.
         const outcome = await admitted.run(scorer);
         outcome.result.warnings.push(...normalized.warnings);
-        return outcome;
+        // The result names each sandbox by digest; the raw ids stay in the run's receipts.
+        return {
+          ...outcome,
+          result: await publicRunResult(outcome.result, options.cwd),
+        } as StudyOutcome;
       } finally {
         await vm?.close();
       }

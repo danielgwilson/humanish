@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../../src/evidence/redaction.js";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -242,7 +243,12 @@ describe("terminal sandbox acquisition boundary", () => {
     expect(provider.allocated).toEqual([]);
     expect(provider.killed).toEqual(["fake-sb-boundary-orphan"]);
     expect(reclaim.outcomes).toEqual([
-      { sandboxId: "fake-sb-boundary-orphan", laneId: "terminal", state: "killed" },
+      {
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest("fake-sb-boundary-orphan"),
+        laneId: "terminal",
+        state: "killed",
+      },
     ]);
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
       state: "running" | "finished";
