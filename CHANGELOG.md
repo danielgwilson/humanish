@@ -8,6 +8,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `humanish reclaim --env-file <path>`, with the same option and loader as `run`: it loads the
+  file's unset variables, so the `E2B_API_KEY` in it reaches the calls that kill the run's
+  sandboxes, and prints no value. Without the option, reclaim fills a missing key from the stores
+  `humanish keys` and the other commands read. A missing file stops the command with exit 2.
+
+### Changed
+
+- `humanish migrate` removes a `labs/` directory that its moves emptied. It checks that every entry
+  in the directory, a dotfile or a subdirectory included, was a file it moved, and then calls a
+  non-recursive `rmdir`, so anything else in the directory keeps it. `--dry-run` prints the
+  removal as a planned step (`humanish/labs/: removed after the move, since nothing else is in
+it`), the summary line names each removed directory, and `--json` lists them in
+  `removedDirectories`.
+
 ## 0.109.0: Lab names removed, v2 study files refused (2026-10-03)
 
 humanish 0.109.0 removes what 0.108.0 deprecated. A `humanish.lab.v2` file, or any study file in a

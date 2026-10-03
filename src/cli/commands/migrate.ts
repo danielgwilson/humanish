@@ -14,8 +14,11 @@ function formatValue(value: unknown): string {
   return text.length > 80 ? `${text.slice(0, 77)}...` : text;
 }
 
-/** Each file's source, destination, moved keys and dropped keys, printed before any write. */
-function formatMigratePlan(files: readonly MigrateFile[]): string {
+/**
+ * Each file's source, destination, moved keys and dropped keys, and each labs/ directory the moves
+ * empty, printed before any write.
+ */
+function formatMigratePlan(files: readonly MigrateFile[], emptied: readonly string[]): string {
   const lines: string[] = [];
   for (const file of files) {
     if (file.action === "skip") {
@@ -33,6 +36,9 @@ function formatMigratePlan(files: readonly MigrateFile[]): string {
       if (key.comments) lines.push(`    its comment: ${key.comments.replace(/\n/g, " ")}`);
     }
   }
+  for (const directory of emptied) {
+    lines.push(`${directory}/: removed after the move, since nothing else is in it`);
+  }
   return lines.length > 0 ? `${lines.join("\n")}\n` : "No study files to convert.\n";
 }
 
@@ -44,7 +50,11 @@ function formatMigrateOutcome(result: MigrateResult): string {
   const written = result.files.filter((file) => file.action !== "skip").length;
   const files = written === 1 ? "1 study file" : `${written} study files`;
   if (result.dryRun) return `Dry run: nothing was written. ${files} would change.\n`;
-  return written === 0 ? "No v2 study files to convert.\n" : `Converted ${files}.\n`;
+  if (written === 0) return "No v2 study files to convert.\n";
+  const removed = result.removedDirectories ?? [];
+  return removed.length === 0
+    ? `Converted ${files}.\n`
+    : `Converted ${files}. Removed ${removed.map((directory) => `${directory}/`).join(", ")}, which the move emptied.\n`;
 }
 
 /** `humanish migrate`. */
@@ -72,7 +82,8 @@ export function registerMigrateCommand(parent: Command, io: CliIo): void {
           dryRun: options.dryRun === true,
           // The plan is printed before anything is written; with --json it goes to stderr, so stdout
           // stays one JSON document.
-          onPlan: (files) => (json ? io.writeErr : io.writeOut)(formatMigratePlan(files)),
+          onPlan: (files, emptied) =>
+            (json ? io.writeErr : io.writeOut)(formatMigratePlan(files, emptied)),
         });
         writeResult(command, io, result, formatMigrateOutcome);
         io.setExitCode(result.ok ? 0 : 2);

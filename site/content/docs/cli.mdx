@@ -694,7 +694,7 @@ humanish runtime setup [options]
 
 ## humanish reclaim
 
-Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.
+Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --env-file.
 
 ```text
 humanish reclaim [options]
@@ -705,6 +705,7 @@ humanish reclaim [options]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--run <id>` | Run id, or latest. (default: "latest") |
 | `--preflight` | Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's. |
+| `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
