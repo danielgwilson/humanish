@@ -43,8 +43,10 @@ npx humanish migrate
 
 `--dry-run` lists each file's destination and every key it moves or drops, with the
 dropped values, and writes nothing. `migrate` then rewrites each v2 file as v3 and
-moves it from `labs/` to the matching `studies/` folder. A key the v2 file declared
-but its route never read is dropped and reported.
+moves it from `labs/` to the matching `studies/` folder; a v2 file outside `labs/` is
+rewritten in place. Comments move with their keys. A key the v2 file declared but its
+route never read is dropped and reported, and a file that uses YAML anchors is refused
+with the line number.
 
 ## Inspect the route before running
 
