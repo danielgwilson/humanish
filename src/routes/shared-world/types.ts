@@ -50,7 +50,7 @@ export const CONCURRENT_ATTRIBUTION_LIMITS = [
   "state-change-not-isolated-to-actors",
 ] as const;
 
-export interface RunConcurrentSharedWorldLabOptions {
+export interface RunConcurrentSharedWorldStudyOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   cwd: string;
@@ -83,11 +83,11 @@ export interface RunConcurrentSharedWorldLabOptions {
 
 /** What a shared-world run takes besides its plan. The plan carries the config, dry run and lab. */
 export type SharedWorldRunInput = Omit<
-  RunConcurrentSharedWorldLabOptions,
+  RunConcurrentSharedWorldStudyOptions,
   "config" | "dryRun" | "lab"
 >;
 
-export type ConcurrentSharedWorldLabErrorCode =
+export type ConcurrentSharedWorldStudyErrorCode =
   | "HUMANISH_STUDY_ANALYSIS_INVALID"
   | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
   | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
@@ -140,10 +140,10 @@ export interface ConcurrentSharedWorldParticipantResult {
   session?: { status: string; completionReason: string; reason: string; screenshots: number };
   /** The actor sandbox lifecycle proof (the getHost/key value is never surfaced here). */
   sandbox?: { sandboxId: string; killed: boolean };
-  error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
+  error?: { code: ConcurrentSharedWorldStudyErrorCode; message: string };
 }
 
-export interface ConcurrentSharedWorldLabResult
+export interface ConcurrentSharedWorldStudyResult
   extends AutomaticAnalysisResult, StudyResultIdentity<"shared-world"> {
   ok: boolean;
   cwd: string;
@@ -170,7 +170,7 @@ export interface ConcurrentSharedWorldLabResult
   roles: ConcurrentSharedWorldParticipantResult[];
   observer?: ObserverResult;
   warnings: string[];
-  error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
+  error?: { code: ConcurrentSharedWorldStudyErrorCode; message: string };
 }
 
 /** The provisioned plane's own desktop, for the run's cost estimate. */

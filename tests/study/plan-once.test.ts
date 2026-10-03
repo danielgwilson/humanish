@@ -22,9 +22,9 @@ vi.mock("../../src/routes/terminal/plan.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/routes/terminal/plan.js")>();
   return {
     ...actual,
-    planTerminalLab: (...args: Parameters<typeof actual.planTerminalLab>) => {
+    planTerminalStudy: (...args: Parameters<typeof actual.planTerminalStudy>) => {
       counts.route += 1;
-      return actual.planTerminalLab(...args);
+      return actual.planTerminalStudy(...args);
     },
   };
 });
@@ -32,9 +32,9 @@ vi.mock("../../src/routes/scripted/plan.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/routes/scripted/plan.js")>();
   return {
     ...actual,
-    planScriptedLab: (...args: Parameters<typeof actual.planScriptedLab>) => {
+    planScriptedStudy: (...args: Parameters<typeof actual.planScriptedStudy>) => {
       counts.route += 1;
-      return actual.planScriptedLab(...args);
+      return actual.planScriptedStudy(...args);
     },
   };
 });
@@ -42,9 +42,9 @@ vi.mock("../../src/routes/shared-world/plan.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/routes/shared-world/plan.js")>();
   return {
     ...actual,
-    planSharedWorldLab: (...args: Parameters<typeof actual.planSharedWorldLab>) => {
+    planSharedWorldStudy: (...args: Parameters<typeof actual.planSharedWorldStudy>) => {
       counts.route += 1;
-      return actual.planSharedWorldLab(...args);
+      return actual.planSharedWorldStudy(...args);
     },
   };
 });
@@ -52,9 +52,9 @@ vi.mock("../../src/routes/computer-use/plan.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/routes/computer-use/plan.js")>();
   return {
     ...actual,
-    planComputerUseLab: (...args: Parameters<typeof actual.planComputerUseLab>) => {
+    planComputerUseStudy: (...args: Parameters<typeof actual.planComputerUseStudy>) => {
       counts.route += 1;
-      return actual.planComputerUseLab(...args);
+      return actual.planComputerUseStudy(...args);
     },
   };
 });

@@ -209,7 +209,7 @@ class SubjectPlane {
           SANDBOX_TIMEOUT_BUFFER_MS,
         metadata: {
           ...CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
-          labId: plan.labId,
+          labId: plan.studyId,
           topology: "shared-world",
           topologyMode: "concurrent",
           kind: "subject",

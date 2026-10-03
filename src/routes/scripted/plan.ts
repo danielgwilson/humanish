@@ -60,7 +60,7 @@ export function injectedBrowser(deps: StudyDeps | undefined): boolean {
  * Plan a scripted-browser lab. It is called for any config handed to the scripted runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
-export function planScriptedLab(
+export function planScriptedStudy(
   config: StudyConfig,
   input: {
     readonly dryRun: boolean;

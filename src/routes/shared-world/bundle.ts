@@ -155,7 +155,7 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.run.created",
-    message: `Created a concurrent shared-world run for ${plan.labId} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) on one shared app, at most ${plan.concurrency} at once).`,
+    message: `Created a concurrent shared-world run for ${plan.studyId} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) on one shared app, at most ${plan.concurrency} at once).`,
   });
   // Human-readable plane label, byte-stable for the clone route. local-tree has no repo slug: it
   // labels the packed archive instead (archiveSha256 + dirty/clean when the packed root was a git
@@ -171,7 +171,7 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
   // External-public plane provenance differs: an operator-declared, operator-owned public
   // deployment humanish neither provisioned nor seeded, with no getHost, no clone and no synthetic
   // attestation (claiming synthetic on a real site is a lie). The origin persists digest-only.
-  // planSharedWorldLab refuses an external-public plane without a declared owner; the fallback
+  // planSharedWorldStudy refuses an external-public plane without a declared owner; the fallback
   // says so rather than naming one.
   const externalPlaneOwner =
     plan.plane.kind === "external-public" ? plan.plane.owner : "(undeclared)";
@@ -459,18 +459,18 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     persona: {
       id: actorSpecs[0]?.persona.id ?? "concurrent-persona",
       name: `Concurrent shared-world swarm (${actorSpecs.length} personas)`,
-      source: `study:${plan.labId}`,
+      source: `study:${plan.studyId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
     scenario: {
-      id: `concurrent-shared-world-${plan.labId}`,
-      title: plan.title ?? `Concurrent shared-world: ${plan.labId}`,
+      id: `concurrent-shared-world-${plan.studyId}`,
+      title: plan.title ?? `Concurrent shared-world: ${plan.studyId}`,
       goal: redactText(
         actorSpecs[0]?.evidenceInstructions ??
           actorSpecs[0]?.instructions ??
           "Concurrent shared-world interaction.",
       ),
-      source: `study:${plan.labId}`,
+      source: `study:${plan.studyId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
     lifecycle: [

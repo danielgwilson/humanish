@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
+import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import {
   appendSandboxReceipt,
@@ -97,7 +97,7 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
 
   it("reports a receipt from an unknown provider without loading or calling E2B", async () => {
-    const run = await runTerminalProductLab({
+    const run = await runTerminalProductStudy({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -126,7 +126,7 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
 
   it("kills an old receipt with no provider and a new e2b one through the same E2B path", async () => {
-    const run = await runTerminalProductLab({
+    const run = await runTerminalProductStudy({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -152,7 +152,7 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
 
   it("reclaims by recorded exact id: kills the living, reports the gone, fails loud on a provider error, dedupes racing receipts", async () => {
-    const run = await runTerminalProductLab({
+    const run = await runTerminalProductStudy({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -201,7 +201,7 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
 
   it("a run with no receipts reclaims ok with a warning that it had nothing to act on (no scan pretended)", async () => {
-    const run = await runTerminalProductLab({
+    const run = await runTerminalProductStudy({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -240,7 +240,7 @@ describe("reclaim of unreadable receipts", () => {
   it.skipIf(process.getuid?.() === 0)(
     "reports receipts it cannot read instead of claiming there are none",
     async () => {
-      const run = await runTerminalProductLab({
+      const run = await runTerminalProductStudy({
         cwd,
         config: dryRunConfig(),
         dryRun: true,
@@ -279,7 +279,7 @@ describe("reclaim with E2B_DEBUG=true", () => {
   });
 
   it("refuses before loading the SDK and keeps the receipts", async () => {
-    const run = await runTerminalProductLab({
+    const run = await runTerminalProductStudy({
       cwd,
       config: dryRunConfig(),
       dryRun: true,

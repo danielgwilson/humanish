@@ -32,27 +32,29 @@ import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
 import { withLateScorer } from "../../study/route-inputs.js";
 import type { AdmittedPlan } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
-import { callerDrivingOf, planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
+import { callerDrivingOf, planComputerUseStudy, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
-import { runLabParticipants } from "./live-phase.js";
-import { admitCuaRun, type AdmittedCuaRun, refuseCuaLab, startCuaRun } from "./setup.js";
+import { runStudyParticipants } from "./live-phase.js";
+import { admitCuaRun, type AdmittedCuaRun, refuseCuaStudy, startCuaRun } from "./setup.js";
 import {
   type ComputerUseRunInput,
-  type CuaActorLabResult,
-  type RunCuaActorLabOptions,
+  type CuaActorStudyResult,
+  type RunCuaActorStudyOptions,
 } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
 /**
  * Plans and runs a computer-use lab in one call. It is not exported from src/index.ts; tests call
- * it. It plans the config with planComputerUseLab and runs
+ * it. It plans the config with planComputerUseStudy and runs
  * the plan with runComputerUsePlan, whose run scope and withTransientCommsSecrets wrapper cover the
  * run and its analysis.
  */
-export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
+export async function runCuaActorStudy(
+  options: RunCuaActorStudyOptions,
+): Promise<CuaActorStudyResult> {
   const { config, dryRun, ...input } = options;
-  // planComputerUseLab makes every configuration refusal, in the order this route always has.
-  const planned = planComputerUseLab(config, {
+  // planComputerUseStudy makes every configuration refusal, in the order this route always has.
+  const planned = planComputerUseStudy(config, {
     dryRun,
     hasRunSession: input.deps?.runSession !== undefined,
     driving: callerDrivingOf(input),
@@ -60,7 +62,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
   if (planned.ok) return runComputerUsePlan(planned.plan, input, config);
-  return computerUseLabRefusal(options, planned.refusal);
+  return computerUseStudyRefusal(options, planned.refusal);
 }
 
 /**
@@ -68,10 +70,10 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
  * envelope and no analysis record; the others come after the cwd checks, and the participant cap after
  * the personas are read.
  */
-export async function computerUseLabRefusal(
-  options: RunCuaActorLabOptions,
+export async function computerUseStudyRefusal(
+  options: RunCuaActorStudyOptions,
   refusal: ComputerUseRefusal,
-): Promise<CuaActorLabResult> {
+): Promise<CuaActorStudyResult> {
   const { config, dryRun } = options;
   if (refusal.stage === "before-scope")
     return {
@@ -89,7 +91,7 @@ export async function computerUseLabRefusal(
   // The other refusals come after the cwd checks, and the participant cap after the personas are read.
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   return completeAutomaticAnalysis(
-    await refuseCuaLab(options, refusal),
+    await refuseCuaStudy(options, refusal),
     undefined,
     analysis.ok ? analysis.config : undefined,
     options,
@@ -125,7 +127,7 @@ export async function admitComputerUsePlan(
   };
 }
 
-function cuaOutcome(result: CuaActorLabResult) {
+function cuaOutcome(result: CuaActorStudyResult) {
   return { route: "computer-use", result } as const;
 }
 
@@ -140,7 +142,7 @@ export async function runComputerUsePlan(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
   config: StudyConfig,
-): Promise<CuaActorLabResult> {
+): Promise<CuaActorStudyResult> {
   const admission = await admitCuaRun(plan, input, config);
   if (!admission.ok) return completeCuaAnalysis(plan, input, admission.result, undefined);
   return runAdmittedCuaRun(plan, input, admission.admitted);
@@ -155,7 +157,7 @@ function runAdmittedCuaRun(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
   admitted: AdmittedCuaRun,
-): Promise<CuaActorLabResult> {
+): Promise<CuaActorStudyResult> {
   return withTransientCommsSecrets(async () => {
     const { result, finished } = await runScope((scope) =>
       runPlanInScope(plan, input, admitted, scope),
@@ -167,9 +169,9 @@ function runAdmittedCuaRun(
 function completeCuaAnalysis(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  result: CuaActorLabResult,
+  result: CuaActorStudyResult,
   finished: FinishedRun | undefined,
-): Promise<CuaActorLabResult> {
+): Promise<CuaActorStudyResult> {
   // A local VM study whose cleanup is unconfirmed records a skip instead of analyzing.
   const refusal = input.localVm?.analysisRefusal;
   return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
@@ -184,10 +186,10 @@ async function runPlanInScope(
   input: ComputerUseRunInput,
   admitted: AdmittedCuaRun,
   scope: RunScope,
-): Promise<CuaActorLabResult> {
+): Promise<CuaActorStudyResult> {
   const prepared = await startCuaRun(plan, input, admitted, scope);
   if (!prepared.ok) return prepared.result;
-  const ran = await runLabParticipants(prepared.setup, prepared.participants);
+  const ran = await runStudyParticipants(prepared.setup, prepared.participants);
   if (!ran.ok) return ran.result;
   return finishCuaRun(prepared.setup, prepared.finish, ran);
 }

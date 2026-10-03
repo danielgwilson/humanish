@@ -1,6 +1,6 @@
 import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "./runtime-auth.js";
 import type { StudyRuntimeAuth } from "../../study/types.js";
-import { TERMINAL_PRODUCT_LAB_PROVIDER_METADATA } from "./types.js";
+import { TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA } from "./types.js";
 
 /**
  * Resolve the runtime key on the host. Legacy openai-env passes it command-scoped; openai-egress
@@ -121,8 +121,8 @@ export function buildSandboxMetadata(allowlist: {
   runId: string;
 }): Record<string, string> {
   return {
-    mode: TERMINAL_PRODUCT_LAB_PROVIDER_METADATA.mode,
-    tool: TERMINAL_PRODUCT_LAB_PROVIDER_METADATA.tool,
+    mode: TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA.mode,
+    tool: TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA.tool,
     provider: "codex",
     labId: allowlist.labId,
     recordId: allowlist.recordId,

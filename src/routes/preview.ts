@@ -17,7 +17,7 @@ type PreviewPlan = Extract<StudyPlan, { readonly route: "preview" }>;
 export type PreviewStudyResult = Omit<RunResult, "schema"> & StudyResultIdentity<"preview">;
 
 /** A refused preview's result. */
-export function previewLabRefusal(
+export function previewStudyRefusal(
   cwd: string,
   studyId: string,
   refusal: Extract<PlanRefusal, { readonly route: "preview" }>,
@@ -42,7 +42,7 @@ export function admitPreviewPlan(
       route: "preview",
       result: {
         ...(await runPreviewPlan(plan, input)),
-        ...studyResultIdentity("preview", plan.labId),
+        ...studyResultIdentity("preview", plan.studyId),
       },
     }),
   };

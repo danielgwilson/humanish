@@ -1,6 +1,6 @@
 // The terminal-product route: a real autonomous agent (Codex) studies a CLI or product from its
 // public surfaces only, inside an E2B shell. The flow:
-//   1. admit: planTerminalLab refuses what the plan cannot hold, then a live plan's machine checks
+//   1. admit: planTerminalStudy refuses what the plan cannot hold, then a live plan's machine checks
 //      (checkLiveTerminalMachine) run before any run scope opens, so the CLI can refuse before it
 //      loads a declared scorer;
 //   2. open the run scope;
@@ -48,8 +48,8 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import path from "node:path";
 import { runScope, type FinishedRun, type RunScope } from "../../run/run.js";
-import { planTerminalLab, type TerminalRefusal } from "./plan.js";
-import { runDryTerminalLab } from "./dry-run.js";
+import { planTerminalStudy, type TerminalRefusal } from "./plan.js";
+import { runDryTerminalStudy } from "./dry-run.js";
 import { checkLiveTerminalMachine, runLiveTerminalSession } from "./session.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
 import { terminalRouteScorer } from "../../study/adapter-scorer-loader.js";
@@ -59,8 +59,8 @@ import {
   type LiveTerminalAuth,
   type LiveTerminalPlan,
   type RunLiveTerminalSessionArgs,
-  type RunTerminalProductLabOptions,
-  type TerminalProductLabResult,
+  type RunTerminalProductStudyOptions,
+  type TerminalProductStudyResult,
   type TerminalRunInput,
 } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
@@ -69,25 +69,25 @@ import { studyResultIdentity } from "../../run/study-result.js";
  * The config-taking entry point. It plans, returns a refusal with the same envelope and analysis
  * record the route has always returned, and otherwise runs the plan.
  */
-export async function runTerminalProductLab(
-  options: RunTerminalProductLabOptions,
-): Promise<TerminalProductLabResult> {
+export async function runTerminalProductStudy(
+  options: RunTerminalProductStudyOptions,
+): Promise<TerminalProductStudyResult> {
   const { config, dryRun, ...input } = options;
-  const planned = planTerminalLab(config, {
+  const planned = planTerminalStudy(config, {
     dryRun,
     hasCostProbe: input.deps?.costProbe !== undefined,
   });
   if (planned.ok) return runTerminalPlan(planned.plan, input);
-  return terminalLabRefusal(options, planned.refusal);
+  return terminalStudyRefusal(options, planned.refusal);
 }
 
 /** A refused terminal lab's result: the route's envelope, and the analysis record a refusal gets. */
-export function terminalLabRefusal(
-  options: RunTerminalProductLabOptions,
+export function terminalStudyRefusal(
+  options: RunTerminalProductStudyOptions,
   refusal: TerminalRefusal,
-): Promise<TerminalProductLabResult> {
+): Promise<TerminalProductStudyResult> {
   const { config, dryRun } = options;
-  const refused: TerminalProductLabResult = {
+  const refused: TerminalProductStudyResult = {
     ...studyResultIdentity("terminal", config.id),
     ok: false,
     cwd: path.resolve(options.cwd),
@@ -128,7 +128,7 @@ type DryTerminalPlan = Extract<TerminalPlan, { readonly dryRun: true }>;
 export async function runTerminalPlan(
   plan: TerminalPlan,
   input: TerminalRunInput,
-): Promise<TerminalProductLabResult> {
+): Promise<TerminalProductStudyResult> {
   const admission = await admitTerminalRun(plan, input);
   return admission.ok ? runAdmittedTerminalRun(admission.admitted, input) : admission.result;
 }
@@ -156,7 +156,7 @@ export async function admitTerminalPlan(
   };
 }
 
-function terminalOutcome(result: TerminalProductLabResult) {
+function terminalOutcome(result: TerminalProductStudyResult) {
   return { route: "terminal", result } as const;
 }
 
@@ -168,7 +168,7 @@ async function admitTerminalRun(
   plan: TerminalPlan,
   input: TerminalRunInput,
 ): Promise<
-  | { readonly ok: false; readonly result: TerminalProductLabResult }
+  | { readonly ok: false; readonly result: TerminalProductStudyResult }
   | { readonly ok: true; readonly admitted: AdmittedTerminalRun }
 > {
   const warnings: string[] = [];
@@ -183,7 +183,7 @@ async function admitTerminalRun(
 async function runAdmittedTerminalRun(
   admitted: AdmittedTerminalRun,
   input: TerminalRunInput,
-): Promise<TerminalProductLabResult> {
+): Promise<TerminalProductStudyResult> {
   const { result, finished } = await runScope((scope) =>
     runTerminalPlanInScope(admitted, input, scope),
   );
@@ -193,9 +193,9 @@ async function runAdmittedTerminalRun(
 function completeTerminalAnalysis(
   plan: TerminalPlan,
   input: TerminalRunInput,
-  result: TerminalProductLabResult,
+  result: TerminalProductStudyResult,
   finished: FinishedRun | undefined,
-): Promise<TerminalProductLabResult> {
+): Promise<TerminalProductStudyResult> {
   return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
     ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
     preferLargerOutput: plan.analysis?.preferLargerOutput === true,
@@ -210,7 +210,7 @@ function terminalFailure(
 ): RunLiveTerminalSessionArgs["failed"] {
   const cwd = path.resolve(input.cwd);
   return (code, message) => ({
-    ...studyResultIdentity("terminal", plan.labId),
+    ...studyResultIdentity("terminal", plan.studyId),
     ok: false,
     cwd,
     actor: plan.actor,
@@ -226,7 +226,7 @@ async function runTerminalPlanInScope(
   admitted: AdmittedTerminalRun,
   input: TerminalRunInput,
   scope: RunScope,
-): Promise<TerminalProductLabResult> {
+): Promise<TerminalProductStudyResult> {
   const cwd = path.resolve(input.cwd);
   const { warnings } = admitted;
   const failed = terminalFailure(admitted.plan, input, warnings);
@@ -240,5 +240,5 @@ async function runTerminalPlanInScope(
     const { plan, runtimeEnv } = admitted;
     return runLiveTerminalSession({ plan, input, cwd, warnings, failed, scope, runtimeEnv });
   }
-  return runDryTerminalLab({ plan: admitted.plan, input, cwd, warnings, failed, scope });
+  return runDryTerminalStudy({ plan: admitted.plan, input, cwd, warnings, failed, scope });
 }

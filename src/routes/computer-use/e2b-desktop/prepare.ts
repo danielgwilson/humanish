@@ -14,7 +14,7 @@ import { attachReceivingInbox, participantCommsEnv, startCommsCatch } from "./co
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 import { participantSubjectEnv } from "../types.js";
 
-export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
+export const CUA_ACTOR_STUDY_PROVIDER_METADATA = {
   mode: "cua-actor-lab",
   tool: "humanish",
 } as const;
@@ -44,7 +44,7 @@ export async function acquireParticipantDesktop(
       requestTimeoutMs: deps.requestTimeoutMs,
       timeoutMs: deps.sandboxMs,
       metadata: {
-        ...CUA_ACTOR_LAB_PROVIDER_METADATA,
+        ...CUA_ACTOR_STUDY_PROVIDER_METADATA,
         labId: deps.labId,
         recordId: spec.recordId,
         participantId: spec.planned.id,

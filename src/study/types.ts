@@ -1,4 +1,4 @@
-import { type LabAnalysis } from "../analysis/automatic-config.js";
+import { type StudyAnalysis } from "../analysis/automatic-config.js";
 import type { StudyTask } from "./tasks.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import { type ReasoningEffort } from "../actors/reasoning-effort.js";
@@ -699,7 +699,7 @@ export interface StudyPolicies {
 
 export interface StudyReview {
   /** Analysis defaults on for eligible live recordings; false disables the separate request. */
-  analysis?: LabAnalysis | false;
+  analysis?: StudyAnalysis | false;
   /** Forward-declared: no route reads it yet, so a set value warns. */
   scoring?: string;
   /** Forward-declared: no route reads it yet, so a set value warns. */

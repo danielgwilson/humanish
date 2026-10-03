@@ -63,7 +63,7 @@ interface ScriptedBundleArgs {
  * ActorTrace seam the Observer renders and verifyRun's engagement check reads. Exported for
  * the bundle-builder tests.
  */
-export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
+export function buildScriptedStudyBundle(args: ScriptedBundleArgs): RunBundle {
   const resultBySurface = new Map(
     args.sessionResults.map((result) => [result.capture.surface.id, result]),
   );

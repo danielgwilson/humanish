@@ -4,11 +4,11 @@ import React from "react";
 import type { StudySummary } from "../../../src/study/summary.js";
 import type { RunDetail } from "../../../src/run/detail.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
-import type { LabRow } from "../../../src/run/projection.js";
+import type { StudyRow } from "../../../src/run/projection.js";
 import {
   expectationLine,
   formatDuration,
-  labSummaryLine,
+  studySummaryLine,
   listWindow,
   normalizeThought,
 } from "../../../src/run/projection.js";
@@ -46,7 +46,7 @@ export function labItems(runs: readonly RunIndexEntry[], canStart: boolean): Lab
 }
 
 export interface LabScreenProps {
-  row: LabRow;
+  row: StudyRow;
   summary: StudySummary | null | undefined;
   runs: RunIndexEntry[];
   /** Detail for the live or latest run, including post-run analysis. */
@@ -94,7 +94,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         <Text dimColor wrap="truncate-end">
           {/* The same rule the studies list uses. Falling back to the mode-mixed expectation here put
               a dry-run-derived figure directly above a control that spends money. */}
-          {labSummaryLine(row)}
+          {studySummaryLine(row)}
           {capsLine(summary)}
         </Text>
         <Box flexGrow={1} />
@@ -295,7 +295,7 @@ const START_GAP = 2;
 
 function startRowText(
   mode: LabRunMode,
-  row: LabRow,
+  row: StudyRow,
   summary: StudySummary | null | undefined,
 ): { label: string; value: string; blocked: boolean } {
   if (mode === "dry-run")
@@ -319,7 +319,7 @@ function startRowText(
  */
 function startRowsStack(
   columns: number,
-  row: LabRow,
+  row: StudyRow,
   summary: StudySummary | null | undefined,
 ): boolean {
   return (["dry-run", "live"] as const).some((mode) => {

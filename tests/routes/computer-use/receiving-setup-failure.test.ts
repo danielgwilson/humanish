@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseStudy } from "../../../src/study/config.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
+import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 
@@ -69,7 +69,7 @@ describe("computer-use email receiving setup failure", () => {
     } as unknown as E2BDesktopModule;
     const analysis = automaticAnalysisBoundary();
 
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       cwd,
       config: realEmailCloneConfig(),
       dryRun: false,

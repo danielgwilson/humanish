@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // / --scorer), so tests reach it through the deep module; the adopter-facing types ship on the barrel.
 import { loadAdapterScorer } from "../../src/study/adapter-scorer-loader.js";
 import type { AdapterScorerModule, AdapterScoringContext } from "../../src/index.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
+import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import {
   applyBrowserScorer,
   DECLARED_SCORER_MALFORMED,
@@ -394,7 +394,7 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
     if (!loaded.ok) return;
 
     const inputs = passingRun({ scorer: loaded.hooks.score ? { score: loaded.hooks.score } : {} });
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: terminalConfig(),
       dryRun: false,
@@ -475,7 +475,7 @@ describe("terminal verdict: §5 decision is flip for config-declared scorers", (
 
   it("a config-declared terminal scorer returning fail flips review.verdict to fail", async () => {
     const inputs = passingRun({ scorer: { score: () => failScore() } });
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: terminalConfig(),
       dryRun: false,
@@ -496,7 +496,7 @@ describe("terminal verdict: §5 decision is flip for config-declared scorers", (
 
   it("a library caller (no scorerProvenance) keeps the additive no-flip behavior", async () => {
     const inputs = passingRun({ scorer: { score: () => failScore() } });
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: terminalConfig(),
       dryRun: false,
@@ -519,7 +519,7 @@ describe("terminal verdict: §5 decision is flip for config-declared scorers", (
         },
       },
     });
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: terminalConfig(),
       dryRun: false,
@@ -552,7 +552,7 @@ describe("terminal verdict: §5 decision is flip for config-declared scorers", (
         }),
       },
     });
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: terminalConfig(),
       dryRun: false,
@@ -724,7 +724,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
 
   it("a bundle with no scorerProvenance (a library caller or an older run) still verifies", async () => {
     const inputs = passingRun();
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: terminalConfig(),
       dryRun: false,
@@ -743,7 +743,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     const inputs = passingRun({ scorer: loaded.hooks.score ? { score: loaded.hooks.score } : {} });
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: terminalConfig(),
       dryRun: false,

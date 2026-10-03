@@ -12,13 +12,13 @@ export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
 const MAX_ANALYSIS_TIMEOUT_MS = 600_000;
 export const DEFAULT_ANALYSIS_MODEL = "gpt-6-astra";
 
-interface LabAnalysisSettings {
+interface StudyAnalysisSettings {
   model?: string;
   question?: string;
   timeoutMs?: number;
 }
 /** The lab's review.analysis: a provider selection for a separate review after a live study. */
-export type LabAnalysis = LabAnalysisSettings &
+export type StudyAnalysis = StudyAnalysisSettings &
   (
     | { provider?: "openai"; maxCostUsd: number; maxOutputTokens?: number }
     | { provider: "codex"; maxCostUsd?: null; maxOutputTokens?: null }

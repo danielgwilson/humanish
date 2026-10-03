@@ -35,7 +35,7 @@ import {
 } from "../../run/judge.js";
 import {
   terminalExecutionFailures,
-  terminalLabResult,
+  terminalStudyResult,
   terminalParticipantFacts,
 } from "./result.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
@@ -44,7 +44,7 @@ import type {
   RunLiveTerminalSessionArgs,
   TerminalEventRecord,
   TerminalLedgers,
-  TerminalProductLabResult,
+  TerminalProductStudyResult,
 } from "./types.js";
 
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
@@ -186,7 +186,7 @@ async function settleLiveLedgers(
 
 export async function finishLiveTerminalSession(
   inputs: LiveFinishInputs,
-): Promise<TerminalProductLabResult> {
+): Promise<TerminalProductStudyResult> {
   const { normalizedTranscript, trace } = buildLiveTrace(inputs);
   const { cost, noSpendProof, capFailure, ledgers } = await settleLiveLedgers(
     inputs,
@@ -215,7 +215,7 @@ export async function finishLiveTerminalSession(
   const bundle = buildLiveTerminalProductBundle({
     run,
     actorId: plan.actor,
-    labId: plan.labId,
+    labId: plan.studyId,
     ...(plan.title ? { labTitle: plan.title } : {}),
     mission: sanitize(mission),
     persona,
@@ -252,7 +252,7 @@ export async function finishLiveTerminalSession(
     ledgers,
     transcript: normalizedTranscript,
     product: product.name,
-    labId: plan.labId,
+    labId: plan.studyId,
     runId,
     sanitize,
     warnings,
@@ -278,9 +278,9 @@ export async function finishLiveTerminalSession(
     }),
     OUTCOME_POLICIES.terminal,
   );
-  const result = terminalLabResult({
+  const result = terminalStudyResult({
     cwd,
-    labId: plan.labId,
+    labId: plan.studyId,
     actorId: plan.actor,
     productName: product.name,
     runId,

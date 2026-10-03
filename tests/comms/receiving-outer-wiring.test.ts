@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
@@ -404,7 +404,7 @@ describe("configured receiving through exported study runners", () => {
       readLobbyCodeFromFrame: async () => undefined,
     };
     const result = route.startsWith("cua-")
-      ? await runCuaActorLab({ cwd, config, dryRun: false, env, deps })
+      ? await runCuaActorStudy({ cwd, config, dryRun: false, env, deps })
       : await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(events.indexOf("receiving-acquire")).toBeGreaterThanOrEqual(0);
     expect(events.indexOf("receiving-acquire")).toBeLessThan(events.indexOf("desktop-create"));

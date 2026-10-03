@@ -25,10 +25,10 @@ import type { Brain, ComputerUsePlan } from "../../../src/study/plan-types.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
-import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
-import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
+import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
+import { runComputerUsePlan, runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
-import type { RunCuaActorLabOptions } from "../../../src/routes/computer-use/types.js";
+import type { RunCuaActorStudyOptions } from "../../../src/routes/computer-use/types.js";
 
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
@@ -184,10 +184,13 @@ async function run(
   {
     localDesktop = true,
     ...driving
-  }: { localDesktop?: boolean } & Pick<RunCuaActorLabOptions, "createProvider" | "inProcess"> = {},
+  }: { localDesktop?: boolean } & Pick<
+    RunCuaActorStudyOptions,
+    "createProvider" | "inProcess"
+  > = {},
 ) {
   const sessions: CuaActorSessionOptions[] = [];
-  const result = await runCuaActorLab({
+  const result = await runCuaActorStudy({
     cwd,
     config: localDesktop ? onLocalDesktop(config) : config,
     dryRun: false,
@@ -359,7 +362,7 @@ describe("computer-use participant model, the plan's brain, over the config", ()
     { env, runSession }: { env: Record<string, string | undefined>; runSession: SessionRunner },
   ) {
     const config = onLocalDesktop(declared);
-    const planned = planComputerUseLab(config, { dryRun: false, hasRunSession: true });
+    const planned = planComputerUseStudy(config, { dryRun: false, hasRunSession: true });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const plan: ComputerUsePlan = {
       ...planned.plan,

@@ -18,8 +18,8 @@ import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import { runTerminalPlan, runTerminalProductLab } from "../../../src/routes/terminal/route.js";
-import { planTerminalLab } from "../../../src/routes/terminal/plan.js";
+import { runTerminalPlan, runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
+import { planTerminalStudy } from "../../../src/routes/terminal/plan.js";
 
 const ROOT = process.cwd();
 
@@ -97,7 +97,7 @@ describe("terminal actor registration + keyPlacement metadata", () => {
     expect(TERMINAL_AGENT_CAPABILITIES.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(descriptor.capabilities.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(TERMINAL_AGENT_CAPABILITIES.byoModel).toBe(false);
-    // It runs only inside runTerminalProductLab, so the registry gives it no session entry.
+    // It runs only inside runTerminalProductStudy, so the registry gives it no session entry.
     expect("runSession" in descriptor).toBe(false);
   });
 });
@@ -374,16 +374,16 @@ describe("runTerminalProductLab (dry-run)", () => {
 
   it("refuses a run id already in use and names the actor", async () => {
     const config = parsedTerminalConfig();
-    const first = await runTerminalProductLab({ cwd, config, dryRun: true, runId: "taken" });
+    const first = await runTerminalProductStudy({ cwd, config, dryRun: true, runId: "taken" });
     expect(first.ok).toBe(true);
-    const second = await runTerminalProductLab({ cwd, config, dryRun: true, runId: "taken" });
+    const second = await runTerminalProductStudy({ cwd, config, dryRun: true, runId: "taken" });
     expect(second.ok).toBe(false);
     expect(second.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
     expect(second.actor).toBe("codex-exec");
   });
 
   it("runs a plan alone: the bundle records the plan's title, mission, stdin and runtime auth", async () => {
-    const planned = planTerminalLab(parsedTerminalConfig(), { dryRun: true });
+    const planned = planTerminalStudy(parsedTerminalConfig(), { dryRun: true });
     if (!planned.ok || !planned.plan.dryRun) throw new Error("expected a dry terminal plan");
     const plan = {
       ...planned.plan,
@@ -411,7 +411,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     async (keyName) => {
       const secret = "synthetic-opaque-terminal-secret";
       const config = parsedTerminalConfig({ mission: `Discover the product using ${secret}.` });
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config,
         dryRun: true,
@@ -539,7 +539,7 @@ describe("runTerminalProductLab (dry-run)", () => {
       ...parsedTerminalConfig(),
       actors: [{ type: "codex-app-server" }],
     } as StudyConfig;
-    const result = await runTerminalProductLab({ cwd, config: tampered, dryRun: true });
+    const result = await runTerminalProductStudy({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_ACTOR_UNSUPPORTED");
     expect(result.runId).toBe("not-created");

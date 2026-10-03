@@ -43,10 +43,10 @@ import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js"
 import { type FinishedRun, runScope, type RunScope } from "../../run/run.js";
 import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
-import { planSharedWorldLab, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
+import { planSharedWorldStudy, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { runProvisionedPlane } from "./provisioned.js";
-import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
+import { concurrentStudyFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
 import type { SharedWorldPlan } from "../../study/plan-types.js";
 import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
@@ -54,14 +54,14 @@ import { withLateScorer } from "../../study/route-inputs.js";
 import type { AdmittedPlan } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
 import {
-  type ConcurrentSharedWorldLabErrorCode,
-  type ConcurrentSharedWorldLabResult,
+  type ConcurrentSharedWorldStudyErrorCode,
+  type ConcurrentSharedWorldStudyResult,
   type SharedWorldRunInput,
   type ConcurrentSharedWorldPlaneClass,
   type LiveParticipants,
   type PlaneContext,
   type PlaneResults,
-  type RunConcurrentSharedWorldLabOptions,
+  type RunConcurrentSharedWorldStudyOptions,
   type PlaneSelection,
 } from "./types.js";
 import { rosterOf } from "../../study/parse/actors.js";
@@ -72,34 +72,34 @@ const LOCAL_AGENT_REFUSAL_CODES = {
   "signin-required": "HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED",
   unsupported: "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
   "unpriced-cap": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
-} as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldLabErrorCode>;
+} as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldStudyErrorCode>;
 
 /**
- * The library entry for a shared-world lab. It plans the config with planSharedWorldLab and runs
+ * The library entry for a shared-world lab. It plans the config with planSharedWorldStudy and runs
  * the plan with runSharedWorldPlan, whose run scope and withTransientCommsSecrets wrapper cover the
  * run and its analysis.
  */
 export async function runConcurrentSharedWorld(
-  options: RunConcurrentSharedWorldLabOptions,
-): Promise<ConcurrentSharedWorldLabResult> {
+  options: RunConcurrentSharedWorldStudyOptions,
+): Promise<ConcurrentSharedWorldStudyResult> {
   const { config, dryRun, ...input } = options;
-  // planSharedWorldLab makes every configuration refusal, in the order this route always has.
-  const planned = planSharedWorldLab(config, {
+  // planSharedWorldStudy makes every configuration refusal, in the order this route always has.
+  const planned = planSharedWorldStudy(config, {
     dryRun,
     hasRunSession: input.deps?.runSession !== undefined,
   });
   if (planned.ok) return runSharedWorldPlan(planned.plan, input, config);
-  return sharedWorldLabRefusal(options, planned.refusal);
+  return sharedWorldStudyRefusal(options, planned.refusal);
 }
 
 /** A refused shared-world lab's result: the route's envelope, and a refusal's analysis record. */
-export function sharedWorldLabRefusal(
-  options: RunConcurrentSharedWorldLabOptions,
+export function sharedWorldStudyRefusal(
+  options: RunConcurrentSharedWorldStudyOptions,
   refusal: SharedWorldRefusal,
-): Promise<ConcurrentSharedWorldLabResult> {
+): Promise<ConcurrentSharedWorldStudyResult> {
   const { config, dryRun } = options;
   const declared = rosterOf(config.actors[0]) ?? [];
-  const fail = concurrentLabFailure({
+  const fail = concurrentStudyFailure({
     cwd: path.resolve(options.cwd),
     labId: config.id,
     actor: config.actors[0]?.type ?? "",
@@ -146,7 +146,7 @@ export async function admitSharedWorldPlan(
   };
 }
 
-function sharedWorldOutcome(result: ConcurrentSharedWorldLabResult) {
+function sharedWorldOutcome(result: ConcurrentSharedWorldStudyResult) {
   return { route: "shared-world", result } as const;
 }
 
@@ -155,7 +155,7 @@ export async function runSharedWorldPlan(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
   config: StudyConfig,
-): Promise<ConcurrentSharedWorldLabResult> {
+): Promise<ConcurrentSharedWorldStudyResult> {
   const refused = await admitSharedWorldRun(plan, input);
   return refused ?? runAdmittedSharedWorldRun(plan, input, config);
 }
@@ -168,10 +168,10 @@ export async function runSharedWorldPlan(
 async function admitSharedWorldRun(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
-): Promise<ConcurrentSharedWorldLabResult | undefined> {
+): Promise<ConcurrentSharedWorldStudyResult | undefined> {
   if (plan.dryRun) return undefined;
   const env = input.env ?? process.env;
-  const fail = (code: ConcurrentSharedWorldLabErrorCode, message: string) =>
+  const fail = (code: ConcurrentSharedWorldStudyErrorCode, message: string) =>
     completeSharedWorldAnalysis(
       plan,
       input,
@@ -213,7 +213,7 @@ function runAdmittedSharedWorldRun(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
   config: StudyConfig,
-): Promise<ConcurrentSharedWorldLabResult> {
+): Promise<ConcurrentSharedWorldStudyResult> {
   return withTransientCommsSecrets(async () => {
     const { result, finished } = await runScope((scope) =>
       runPlanInScope(plan, input, config, scope),
@@ -225,9 +225,9 @@ function runAdmittedSharedWorldRun(
 function completeSharedWorldAnalysis(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
-  result: ConcurrentSharedWorldLabResult,
+  result: ConcurrentSharedWorldStudyResult,
   finished: FinishedRun | undefined,
-): Promise<ConcurrentSharedWorldLabResult> {
+): Promise<ConcurrentSharedWorldStudyResult> {
   return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
     ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
     preferLargerOutput: plan.analysis?.preferLargerOutput === true,
@@ -236,9 +236,9 @@ function completeSharedWorldAnalysis(
 
 /** The route's envelope for a run that stops before its bundle. */
 function sharedWorldFailure(plan: SharedWorldPlan, input: SharedWorldRunInput) {
-  return concurrentLabFailure({
+  return concurrentStudyFailure({
     cwd: path.resolve(input.cwd),
-    labId: plan.labId,
+    labId: plan.studyId,
     actor: plan.actor,
     participantCount: plan.plane.participants.length,
     concurrency: plan.concurrency,
@@ -252,7 +252,7 @@ async function runPlanInScope(
   input: SharedWorldRunInput,
   config: StudyConfig,
   scope: RunScope,
-): Promise<ConcurrentSharedWorldLabResult> {
+): Promise<ConcurrentSharedWorldStudyResult> {
   const { dryRun } = plan;
   const requestedCwd = path.resolve(input.cwd);
   const deps = input.deps ?? {};

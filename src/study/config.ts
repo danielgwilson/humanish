@@ -51,7 +51,7 @@
 // bump the version.
 
 import {
-  isLocalBrowserLab,
+  isLocalBrowserStudy,
   localBrowserDefaults,
   localBrowserUnsupportedReason,
 } from "../substrates/local/runtime-config.js";
@@ -279,7 +279,7 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
   const analysisReason = automaticAnalysisRouteReason(config);
   if (analysisReason) return invalid(analysisReason);
   const normalized = localBrowserDefaults(config);
-  if (isLocalBrowserLab(normalized)) {
+  if (isLocalBrowserStudy(normalized)) {
     const reason = localBrowserUnsupportedReason(normalized);
     if (reason) return invalid(reason);
   }

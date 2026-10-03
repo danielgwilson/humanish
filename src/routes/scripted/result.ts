@@ -16,10 +16,10 @@ import {
 import type { ObserverResult } from "../../observer/render.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
-import { buildScriptedLabBundle } from "./bundle.js";
+import { buildScriptedStudyBundle } from "./bundle.js";
 import { existingScreenshots } from "./session-result.js";
 import type { ScriptedSubject } from "./subject.js";
-import { type ScriptedBrowserLabResult } from "./types.js";
+import { type ScriptedBrowserStudyResult } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 // Finishing a scripted-browser run: the subject's provenance, the bundle, the Observer and the
 // lab result.
@@ -107,7 +107,7 @@ export function scriptedExecutionFailures(args: {
 
 export async function finishScriptedRun(
   inputs: ScriptedFinishInputs,
-): Promise<ScriptedBrowserLabResult> {
+): Promise<ScriptedBrowserStudyResult> {
   const { plan, cwd, evidenceAppUrl, run, source, journey, scenario, persona } = inputs;
   const { surfaces, sessionResults, sessionError, warnings, clone, redactRepoLabel } = inputs;
   const { subjectEnvNames, scriptedSubject } = inputs;
@@ -148,13 +148,13 @@ export async function finishScriptedRun(
     expected: surfaces.length,
     surfaces: sessionResults.map(scriptedSurfaceFacts),
   });
-  const bundle = buildScriptedLabBundle({
+  const bundle = buildScriptedStudyBundle({
     run,
     actorId: actor,
     appUrl: evidenceAppUrl,
     dryRun,
     journey,
-    labId: plan.labId,
+    labId: plan.studyId,
     ...(plan.title ? { labTitle: plan.title } : {}),
     persona,
     scenarioSource: scenario.source,
@@ -206,7 +206,7 @@ export async function finishScriptedRun(
   );
 
   return {
-    ...studyResultIdentity("scripted", plan.labId),
+    ...studyResultIdentity("scripted", plan.studyId),
     ok,
     cwd,
     actor,

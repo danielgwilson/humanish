@@ -2,15 +2,15 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
-import type { LabRow } from "../../../src/run/projection.js";
-import { formatDuration, labSummaryLine, listWindow } from "../../../src/run/projection.js";
+import type { StudyRow } from "../../../src/run/projection.js";
+import { formatDuration, studySummaryLine, listWindow } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, spinnerFrame } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
 export interface LabsScreenProps {
-  rows: LabRow[];
+  rows: StudyRow[];
   selected: number;
   columns: number;
   viewport: number;
@@ -177,7 +177,7 @@ export function LabsScreen({
  * says so plainly rather than borrowing its title back: an echo of the row above it would read
  * like an answer while adding nothing.
  */
-function describe(row: LabRow | undefined, peerSelected: boolean): string {
+function describe(row: StudyRow | undefined, peerSelected: boolean): string {
   if (peerSelected) return "every run in this project, newest first, across every study";
   if (row === undefined) return "";
   const described = row.description?.split(/(?<=[.!?])\s/)[0]?.trim();
@@ -194,7 +194,7 @@ function LabRowView({
   liveParticipants,
   now,
 }: {
-  row: LabRow;
+  row: StudyRow;
   columns: number;
   active: boolean;
   tick: number;
@@ -204,7 +204,7 @@ function LabRowView({
   const live = row.liveRuns[0];
   const status =
     live === undefined
-      ? labSummaryLine(row)
+      ? studySummaryLine(row)
       : liveStatus(row, live, liveParticipants.get(live.runId), now);
   const statusBudget = Math.max(10, Math.floor(columns / 2) - 2);
   const shown = status.length <= statusBudget ? status : fallbackStatus(row);
@@ -238,7 +238,7 @@ function LabRowView({
  * scanning this list wants to know who is in there: not a count, and not a running total.
  */
 function liveStatus(
-  row: LabRow,
+  row: StudyRow,
   live: RunIndexEntry,
   who: string | undefined,
   now: number,
@@ -253,7 +253,7 @@ function liveStatus(
 }
 
 /** A narrow terminal keeps the fact and drops the detail. */
-function fallbackStatus(row: LabRow): string {
+function fallbackStatus(row: StudyRow): string {
   if (row.live > 0) return `${row.live} running`;
   return row.runs === 0 ? (row.declared ? "never run" : "no runs") : `${row.runs} runs`;
 }

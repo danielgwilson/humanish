@@ -1,9 +1,9 @@
 import type { CliError, HumanOutput } from "../io.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "../../routes/computer-use/diagnostics.js";
-import type { CuaActorLabResult } from "../../routes/computer-use/types.js";
-import type { ScriptedBrowserLabResult } from "../../routes/scripted/types.js";
-import type { TerminalProductLabResult } from "../../routes/terminal/types.js";
-import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
+import type { CuaActorStudyResult } from "../../routes/computer-use/types.js";
+import type { ScriptedBrowserStudyResult } from "../../routes/scripted/types.js";
+import type { TerminalProductStudyResult } from "../../routes/terminal/types.js";
+import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
 
 /** A lab run's first lines: the command that ran, whether it was a dry run, how it ended, and its route. */
 function runHeader(
@@ -32,7 +32,7 @@ function participantStatus(status: string): string {
 }
 
 export function formatConcurrentSharedWorldStudyHuman(
-  result: ConcurrentSharedWorldLabResult,
+  result: ConcurrentSharedWorldStudyResult,
 ): HumanOutput {
   return withError(result.error, [
     ...runHeader(result, "shared-world"),
@@ -65,7 +65,7 @@ export function formatConcurrentSharedWorldStudyHuman(
   ]);
 }
 
-export function formatTerminalStudyHuman(result: TerminalProductLabResult): HumanOutput {
+export function formatTerminalStudyHuman(result: TerminalProductStudyResult): HumanOutput {
   return withError(result.error, [
     ...runHeader(result, "terminal"),
     `run: ${result.runId}`,
@@ -79,7 +79,7 @@ export function formatTerminalStudyHuman(result: TerminalProductLabResult): Huma
   ]);
 }
 
-export function formatScriptedStudyHuman(result: ScriptedBrowserLabResult): HumanOutput {
+export function formatScriptedStudyHuman(result: ScriptedBrowserStudyResult): HumanOutput {
   return withError(result.error, [
     ...runHeader(result, "scripted"),
     `run: ${result.runId}`,
@@ -102,7 +102,7 @@ export function formatScriptedStudyHuman(result: ScriptedBrowserLabResult): Huma
   ]);
 }
 
-export function formatCuaStudyHuman(result: CuaActorLabResult): HumanOutput {
+export function formatCuaStudyHuman(result: CuaActorStudyResult): HumanOutput {
   return withError(result.error, [
     ...runHeader(result, "computer-use"),
     `run: ${result.runId}`,

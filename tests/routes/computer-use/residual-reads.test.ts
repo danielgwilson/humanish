@@ -16,7 +16,7 @@ import { parseStudy } from "../../../src/study/config.js";
 import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
-import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
+import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan } from "../../../src/routes/computer-use/route.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
@@ -56,7 +56,7 @@ function appUrlLab(): StudyConfig {
 }
 
 function planOf(config: StudyConfig, deps: StudyDeps): ComputerUsePlan {
-  const planned = planComputerUseLab(config, {
+  const planned = planComputerUseStudy(config, {
     dryRun: false,
     hasRunSession: deps.runSession !== undefined,
   });
@@ -92,7 +92,7 @@ describe("computer-use run reads the plan's residual fields", () => {
     const config = appUrlLab();
     const { module, creates } = recordingModule();
     const deps: StudyDeps = { desktopModule: async () => module };
-    const plan = { ...planOf(config, deps), labId: "plan-lab" };
+    const plan = { ...planOf(config, deps), studyId: "plan-lab" };
     await runAndCapture(plan, config, deps);
     expect(creates).toHaveLength(1);
     expect(optionsOf(creates[0]!).metadata?.labId).toBe("plan-lab");
@@ -166,7 +166,7 @@ describe("computer-use run reads the plan's residual fields", () => {
       review: { analysis: false },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const planned = planComputerUseLab(parsed.config, { dryRun: true });
+    const planned = planComputerUseStudy(parsed.config, { dryRun: true });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const plan = { ...planned.plan, caps: { maxUsd: 4 } };
     const result = await runComputerUsePlan(plan, { cwd }, parsed.config);

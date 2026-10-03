@@ -25,18 +25,22 @@ import {
 import type { RunStudyDriving, RunStudyHomes } from "./study/run-study-homes.js";
 import { type StudyConfig } from "./study/types.js";
 import type { ObserverResult } from "./observer/render.js";
-import { admitComputerUsePlan, computerUseLabRefusal } from "./routes/computer-use/route.js";
-import { type CuaActorLabResult } from "./routes/computer-use/types.js";
-import { admitPreviewPlan, previewLabRefusal, type PreviewStudyResult } from "./routes/preview.js";
-import { admitScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
-import { type ScriptedBrowserLabResult } from "./routes/scripted/types.js";
-import { admitSharedWorldPlan, sharedWorldLabRefusal } from "./routes/shared-world/route.js";
-import { type ConcurrentSharedWorldLabResult } from "./routes/shared-world/types.js";
-import { admitTerminalPlan, terminalLabRefusal } from "./routes/terminal/route.js";
-import { type TerminalProductLabResult } from "./routes/terminal/types.js";
+import { admitComputerUsePlan, computerUseStudyRefusal } from "./routes/computer-use/route.js";
+import { type CuaActorStudyResult } from "./routes/computer-use/types.js";
+import {
+  admitPreviewPlan,
+  previewStudyRefusal,
+  type PreviewStudyResult,
+} from "./routes/preview.js";
+import { admitScriptedPlan, scriptedStudyRefusal } from "./routes/scripted/route.js";
+import { type ScriptedBrowserStudyResult } from "./routes/scripted/types.js";
+import { admitSharedWorldPlan, sharedWorldStudyRefusal } from "./routes/shared-world/route.js";
+import { type ConcurrentSharedWorldStudyResult } from "./routes/shared-world/types.js";
+import { admitTerminalPlan, terminalStudyRefusal } from "./routes/terminal/route.js";
+import { type TerminalProductStudyResult } from "./routes/terminal/types.js";
 import { type RunScorerProvenance } from "./run/bundle.js";
 import type { RunStudyProvenance } from "./run/study-provenance.js";
-import { isLocalBrowserLab, localBrowserDefaults } from "./substrates/local/runtime-config.js";
+import { isLocalBrowserStudy, localBrowserDefaults } from "./substrates/local/runtime-config.js";
 
 /**
  * Runs a lab on its route. The options are checked against the route and mapped into the route's
@@ -95,7 +99,7 @@ export async function prepareStudy(
   // An in-process executor needs no desktop, and a caller that already prepared the study passes
   // its localVm, which a second study would replace.
   const prepareLocalVm =
-    isLocalBrowserLab(lab) && options.inProcess === undefined && options.localVm === undefined
+    isLocalBrowserStudy(lab) && options.inProcess === undefined && options.localVm === undefined
       ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmRun
       : undefined;
   const vm = prepareLocalVm?.({ ...normalized.options, config: lab });
@@ -179,12 +183,12 @@ async function refusalOutcome(
     case "preview":
       return {
         route: "preview",
-        result: previewLabRefusal(options.cwd, config.id, refusal),
+        result: previewStudyRefusal(options.cwd, config.id, refusal),
       };
     case "computer-use":
       return {
         route: "computer-use",
-        result: await computerUseLabRefusal(
+        result: await computerUseStudyRefusal(
           { ...computerUseInput(options, deps, emit), config, dryRun },
           refusal,
         ),
@@ -192,7 +196,7 @@ async function refusalOutcome(
     case "scripted":
       return {
         route: "scripted",
-        result: await scriptedLabRefusal(
+        result: await scriptedStudyRefusal(
           { ...scriptedInput(options, deps, emit), config, dryRun },
           refusal,
         ),
@@ -200,7 +204,7 @@ async function refusalOutcome(
     case "terminal":
       return {
         route: "terminal",
-        result: await terminalLabRefusal(
+        result: await terminalStudyRefusal(
           { ...terminalInput(options, deps, emit), config, dryRun },
           refusal,
         ),
@@ -208,7 +212,7 @@ async function refusalOutcome(
     case "shared-world":
       return {
         route: "shared-world",
-        result: await sharedWorldLabRefusal(
+        result: await sharedWorldStudyRefusal(
           { ...sharedWorldInput(options, deps, emit), config, dryRun },
           refusal,
         ),
@@ -266,10 +270,10 @@ interface RouteOutcome<R extends StudyRoute, T> {
 
 export type StudyOutcome =
   | RouteOutcome<"preview", PreviewStudyResult>
-  | RouteOutcome<"computer-use", CuaActorLabResult>
-  | RouteOutcome<"scripted", ScriptedBrowserLabResult>
-  | RouteOutcome<"terminal", TerminalProductLabResult>
-  | RouteOutcome<"shared-world", ConcurrentSharedWorldLabResult>;
+  | RouteOutcome<"computer-use", CuaActorStudyResult>
+  | RouteOutcome<"scripted", ScriptedBrowserStudyResult>
+  | RouteOutcome<"terminal", TerminalProductStudyResult>
+  | RouteOutcome<"shared-world", ConcurrentSharedWorldStudyResult>;
 
 /**
  * A plan past its route's local checks that need no scorer: the refusal they returned, or the
@@ -285,8 +289,8 @@ export type AdmittedPlan<R extends StudyRoute = StudyRoute> =
 /** The result of a run on route `R`, the `result` of that route's `StudyOutcome`. */
 export type StudyResult<R extends StudyRoute = StudyRoute> = {
   preview: PreviewStudyResult;
-  "computer-use": CuaActorLabResult;
-  scripted: ScriptedBrowserLabResult;
-  terminal: TerminalProductLabResult;
-  "shared-world": ConcurrentSharedWorldLabResult;
+  "computer-use": CuaActorStudyResult;
+  scripted: ScriptedBrowserStudyResult;
+  terminal: TerminalProductStudyResult;
+  "shared-world": ConcurrentSharedWorldStudyResult;
 }[R];

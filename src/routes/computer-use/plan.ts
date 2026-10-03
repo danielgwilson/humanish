@@ -39,17 +39,17 @@ import {
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { desktopCliProductReason } from "../../study/composition-rules.js";
-import { isLocalBrowserLab } from "../../substrates/local/runtime-config.js";
+import { isLocalBrowserStudy } from "../../substrates/local/runtime-config.js";
 import {
   boundedConcurrency,
   defaultSessionTimeoutMs,
   resolveParticipantSandboxMs,
 } from "./participant-runs.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
-import { type CuaActorLabErrorCode, type RunCuaActorLabOptions } from "./types.js";
+import { type CuaActorStudyErrorCode, type RunCuaActorStudyOptions } from "./types.js";
 
 /** The error a computer-use lab returns before a run starts. */
-export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorLabErrorCode> {
+export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorStudyErrorCode> {
   /**
    * Where the route returns it. "before-scope": analysis and tasks, returned before the run scope
    * with no automatic-analysis record. "in-scope": after the cwd checks. "after-personas": after
@@ -63,7 +63,7 @@ export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActo
 
 export type ComputerUsePlanResult = RoutePlanResult<ComputerUsePlan, ComputerUseRefusal>;
 
-/** The registered descriptor for a planned actor id; planComputerUseLab checked the registry. */
+/** The registered descriptor for a planned actor id; planComputerUseStudy checked the registry. */
 export function cuaDescriptorOf(actor: string): CuaActorDescriptor {
   const descriptor = actorRegistry[actor as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor))
@@ -152,7 +152,7 @@ export function plannedAppUrl(subject: ComputerUseRunner["subject"]): string {
   return "appUrl" in subject ? subject.appUrl : "";
 }
 
-type Rejection = { code: CuaActorLabErrorCode; message: string } | undefined;
+type Rejection = { code: CuaActorStudyErrorCode; message: string } | undefined;
 
 const invalid = (message: string): Rejection => ({
   code: "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
@@ -164,7 +164,7 @@ const invalid = (message: string): Rejection => ({
  * is touched. The parser enforces most of these too; the engine repeats them for library callers
  * that hand it a config directly. The groups run in this order, and each returns its first reason.
  */
-function cuaLabRejection(
+function cuaStudyRejection(
   config: StudyConfig,
   hasRunSession: boolean,
   driving: CallerDriving,
@@ -330,7 +330,7 @@ function rerunPlan({
  * Plan a computer-use lab. It is called for any config handed to the computer-use runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
-export function planComputerUseLab(
+export function planComputerUseStudy(
   config: StudyConfig,
   input: {
     readonly dryRun: boolean;
@@ -339,14 +339,14 @@ export function planComputerUseLab(
     /** Which of the caller's driving homes are set; neither when absent. */
     readonly driving?: CallerDriving;
     readonly countOverride?: number;
-    readonly rerun?: RunCuaActorLabOptions["rerun"];
+    readonly rerun?: RunCuaActorStudyOptions["rerun"];
   },
 ): ComputerUsePlanResult {
   const hasRunSession = input.hasRunSession === true;
   const driving = input.driving ?? { inProcess: false, createProvider: false };
   const refuse = (
     stage: ComputerUseRefusal["stage"],
-    code: CuaActorLabErrorCode,
+    code: CuaActorStudyErrorCode,
     message: string,
     actor?: string,
   ): ComputerUsePlanResult => ({
@@ -376,7 +376,7 @@ export function planComputerUseLab(
       `actors[0].type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
-  const rejection = cuaLabRejection(
+  const rejection = cuaStudyRejection(
     config,
     hasRunSession,
     driving,
@@ -451,7 +451,7 @@ export function planComputerUseLab(
         participants: [first],
         subject: source === "local-app" ? { kind: "local-app", appUrl } : appUrlSubject,
       }
-    : isLocalBrowserLab(config)
+    : isLocalBrowserStudy(config)
       ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
       : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
   const declared = config.execution?.concurrency;

@@ -13,8 +13,8 @@ import type { Requirement } from "../../src/study/plan-types.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
-import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
+import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 
 const live = { scenario: { mode: "live" } };
 
@@ -320,14 +320,14 @@ describe("requirements with a local study's desktop and a caller's provider", ()
       },
       analysisRefusal: () => undefined,
     };
-    const planned = planComputerUseLab(parsed.config, {
+    const planned = planComputerUseStudy(parsed.config, {
       dryRun: false,
       driving: { inProcess: false, createProvider: true },
     });
     if (!planned.ok) throw new Error(planned.refusal.message);
     expect(planned.plan.requirements.flatMap(keyNames)).toEqual([]);
     // Past preflight, the run asks the study for a desktop, and its throw ends the run.
-    const code = await runCuaActorLab({
+    const code = await runCuaActorStudy({
       cwd,
       config: parsed.config,
       dryRun: false,

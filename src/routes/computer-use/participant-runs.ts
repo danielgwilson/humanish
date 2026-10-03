@@ -4,7 +4,7 @@
 // compiles the committed personas first and narrows a rerun to its selected participants.
 
 import {
-  isLocalBrowserLab,
+  isLocalBrowserStudy,
   LOCAL_BROWSER_LIFETIME_MS,
 } from "../../substrates/local/runtime-config.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
@@ -24,7 +24,7 @@ import type { PreparedSelectedOutputDirectory } from "../../run/contained-output
 import {
   CUA_FANOUT_STRATEGY,
   CUA_MAX_CONCURRENCY_ENV,
-  type CuaActorLabErrorCode,
+  type CuaActorStudyErrorCode,
   type CuaParticipantPlan,
   type CuaParticipantPlanEntry,
   type DesktopParticipantRun,
@@ -65,7 +65,7 @@ export function defaultSessionTimeoutMs(config: StudyConfig): number {
  *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
  *  costs the same wall-clock room either way. */
 export function resolveParticipantSandboxMs(config: StudyConfig): number {
-  if (isLocalBrowserLab(config)) return LOCAL_BROWSER_LIFETIME_MS;
+  if (isLocalBrowserStudy(config)) return LOCAL_BROWSER_LIFETIME_MS;
   const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
@@ -308,7 +308,7 @@ export async function loadCuaParticipants(args: {
       participantPlan: CuaParticipantPlan;
       rerunLineage?: RunRerunLineage;
     }
-  | { ok: false; code: CuaActorLabErrorCode; message: string }
+  | { ok: false; code: CuaActorStudyErrorCode; message: string }
 > {
   const { plan } = args;
   const { participants } = plan.runner;
@@ -333,7 +333,7 @@ export async function loadCuaParticipants(args: {
 
   const selected = await resolveCuaRerunSelection({
     cwd: args.cwd,
-    labId: plan.labId,
+    labId: plan.studyId,
     sandboxMs: plan.sandboxMs,
     sourceRunId: rerun.sourceRunId,
     ...(rerun.participantIds === undefined ? {} : { participantIds: [...rerun.participantIds] }),

@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import type { StudyConfig } from "../../../src/study/types.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
+import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -83,7 +83,7 @@ describe("terminal admission order", () => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-admission-"));
       dirs.push(cwd);
       const dryRun = config.scenario?.mode !== "live";
-      const result = await runTerminalProductLab({ cwd, config, dryRun, env: {} });
+      const result = await runTerminalProductStudy({ cwd, config, dryRun, env: {} });
       expect(await readdir(cwd), name).toEqual([]);
       let text = JSON.stringify(result);
       for (const dir of [await realpath(cwd), cwd]) text = text.split(dir).join("[cwd]");

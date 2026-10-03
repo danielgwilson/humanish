@@ -8,7 +8,7 @@ import type { StudyListEntry } from "../../src/study/discover.js";
 import type { StudySummary } from "../../src/study/summary.js";
 import type { RunDetail } from "../../src/run/detail.js";
 import type { RunIndexEntry, RunIndexResult } from "../../src/run/run-index.js";
-import { labRows, type LabRow } from "../../src/run/projection.js";
+import { studyRows, type StudyRow } from "../../src/run/projection.js";
 import type { TuiOptions } from "../../src/tui/contract.js";
 import { currentScreen, initialNav, navigate, selectedIndex, type NavState } from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
@@ -21,7 +21,7 @@ import { useTerminalSize } from "./use-terminal-size.js";
 
 /** What the surface has read. `undefined` means "not yet", which is never rendered as "none". */
 interface ProjectData {
-  rows: LabRow[];
+  rows: StudyRow[];
   unattributed: RunIndexEntry[];
   runsByLab: Map<string, RunIndexEntry[]>;
   runsById: Map<string, RunIndexEntry>;
@@ -189,7 +189,7 @@ export function App({
   }, [data, screen]);
 
   const start = useCallback(
-    async (row: LabRow, mode: "dry-run" | "live"): Promise<void> => {
+    async (row: StudyRow, mode: "dry-run" | "live"): Promise<void> => {
       if (mode === "live" && confirming !== "live") {
         // Arm, do not fire. The row above says what a live run costs; this makes the operator press
         // again having read it.
@@ -778,7 +778,7 @@ function keyHints(
 }
 
 function project(index: RunIndexResult, labs: readonly StudyListEntry[]): ProjectData {
-  const { rows, unattributed } = labRows(
+  const { rows, unattributed } = studyRows(
     labs.map((lab) => ({
       id: lab.id,
       ...(lab.title === undefined ? {} : { title: lab.title }),
@@ -829,7 +829,7 @@ function labelForLab(data: ProjectData, labId: string | undefined): string {
 function itemsForLab(
   data: ProjectData,
   labKey: string,
-): { row?: LabRow; items: ReturnType<typeof labItems> } {
+): { row?: StudyRow; items: ReturnType<typeof labItems> } {
   const row = data.rows.find((candidate) => candidate.key === labKey);
   if (row === undefined) return { items: [] };
   return { row, items: labItems(data.runsByLab.get(row.labId) ?? [], row.declared) };

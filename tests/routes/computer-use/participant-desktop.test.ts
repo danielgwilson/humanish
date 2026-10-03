@@ -11,7 +11,7 @@ import type {
   CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
 import { describeCodexCliAdmission } from "../../../src/actors/codex/codex-admission.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
+import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
 import { type CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
 import type {
@@ -245,7 +245,7 @@ describe("ready desktop participant contract", () => {
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       ...runOf(f, { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" }),
       config: parsed.config,
       dryRun: false,
@@ -281,7 +281,7 @@ describe("ready desktop participant contract", () => {
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       ...runOf(f, { PATH: f.cwd, E2B_API_KEY: "synthetic-e2b-key" }),
       config: parsed.config,
       dryRun: false,
@@ -449,7 +449,7 @@ describe("ready desktop participant contract", () => {
       execution: { ...f.config.execution, target: "local" as const },
     };
     expect(parseStudy(config).ok).toBe(true);
-    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, deps: seamsOf(f) });
+    const result = await runCuaActorStudy({ cwd: f.cwd, config, dryRun: false, deps: seamsOf(f) });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");
     expect(result.error?.message).toContain("needs a local desktop");
@@ -465,7 +465,7 @@ describe("ready desktop participant contract", () => {
       subject: { ...f.config.subject, source: "this-repo" },
       execution: { ...f.config.execution, target: "local" as const },
     } as unknown as StudyConfig;
-    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: true, deps: seamsOf(f) });
+    const result = await runCuaActorStudy({ cwd: f.cwd, config, dryRun: true, deps: seamsOf(f) });
     expect(result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");
     expect(result.ok, JSON.stringify(result.error)).toBe(true);
   });
@@ -489,7 +489,7 @@ describe("ready desktop participant contract", () => {
 
   it("records local desktop feedback without hosted credentials or resource claims", async () => {
     const f = await fixture();
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       ...runOf(f),
       config: localFeedbackLab(f),
       runId: "local-feedback",
@@ -523,7 +523,7 @@ describe("ready desktop participant contract", () => {
         },
       }),
     };
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       ...runOf(f),
       config: localFeedbackLab(f),
       runId: "local-unconfirmed",
@@ -557,7 +557,7 @@ describe("ready desktop participant contract", () => {
     // Without a review block the plan runs its default analysis.
     const config: StudyConfig = localFeedbackLab(f);
     delete config.review;
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       ...runOf(f),
       config,
       dryRun: false,
@@ -581,7 +581,7 @@ describe("ready desktop participant contract", () => {
     const runSession = vi.fn((options: Parameters<typeof runCuaActorSession>[0]) =>
       runCuaActorSession(options),
     );
-    const result = await runCuaActorLab({
+    const result = await runCuaActorStudy({
       ...runOf(f),
       config: localFeedbackLab(f),
       dryRun: false,

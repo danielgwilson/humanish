@@ -1,4 +1,4 @@
-import { resolveAutomaticAnalysis, type LabAnalysis } from "../../analysis/automatic-config.js";
+import { resolveAutomaticAnalysis, type StudyAnalysis } from "../../analysis/automatic-config.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "../device-presets.js";
 import { isExactRuntimeVersion } from "../../routes/terminal/runtime.js";
 import { invalid, nonNegNumber, posInt, str } from "./values.js";
@@ -375,7 +375,7 @@ export function parseReview(
   if (!analysis.ok) return invalid(analysis.message);
   const review: StudyReview = {};
   if (raw.analysis !== undefined)
-    review.analysis = raw.analysis === false ? false : { ...(raw.analysis as LabAnalysis) };
+    review.analysis = raw.analysis === false ? false : { ...(raw.analysis as StudyAnalysis) };
   const scoring = str(raw.scoring);
   if (scoring) review.scoring = scoring;
   const milestones = str(raw.milestones);

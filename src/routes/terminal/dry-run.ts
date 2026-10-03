@@ -15,7 +15,7 @@ import { declaredRuntimeProvenance } from "./runtime.js";
 import { defaultMission, makeTerminalRunId } from "./session.js";
 import {
   type RunLiveTerminalSessionArgs,
-  type TerminalProductLabResult,
+  type TerminalProductStudyResult,
   type TerminalRunInput,
 } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
@@ -24,14 +24,14 @@ import { studyResultIdentity } from "../../run/study-result.js";
  * The dry-run path: a contract bundle with the persona and prompt digest bound, published through
  * the run scope with no sandbox, key or spend.
  */
-export async function runDryTerminalLab(args: {
+export async function runDryTerminalStudy(args: {
   plan: Extract<TerminalPlan, { readonly dryRun: true }>;
   input: TerminalRunInput;
   cwd: string;
   warnings: string[];
   failed: RunLiveTerminalSessionArgs["failed"];
   scope: RunScope;
-}): Promise<TerminalProductLabResult> {
+}): Promise<TerminalProductStudyResult> {
   const { plan, input, cwd, warnings, failed, scope } = args;
   const { product } = plan;
   const { evidenceMission, physicalCwd, persona } = await prepareDryPersona({
@@ -66,7 +66,7 @@ export async function runDryTerminalLab(args: {
     run,
     actorId: plan.actor,
     dryRun: true,
-    labId: plan.labId,
+    labId: plan.studyId,
     ...(plan.title ? { labTitle: plan.title } : {}),
     mission: evidenceMission,
     persona,
@@ -105,7 +105,7 @@ export async function runDryTerminalLab(args: {
   await finished.recordOutcome({ ok, execution });
 
   return {
-    ...studyResultIdentity("terminal", plan.labId),
+    ...studyResultIdentity("terminal", plan.studyId),
     ok,
     cwd,
     actor: plan.actor,

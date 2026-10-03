@@ -104,7 +104,7 @@ function fanoutParticipantRecord(
   const { outcome, publicTargetUrl, session, status, reason } = view;
   return participantRecord(spec, index + 1, {
     personaId: spec.persona.id,
-    scenarioId: `cua-${plan.labId}`,
+    scenarioId: `cua-${plan.studyId}`,
     status,
     streamKind: "browser",
     mode: "browser-sim",

@@ -11,7 +11,7 @@ import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
 import { V2_SCHEMA, type StudyConfig, type StudyRuntimeAuth } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
+import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import { type TerminalCostProbe } from "../../../src/routes/terminal/types.js";
 import {
@@ -403,7 +403,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       const config = liveConfig();
       delete config.review; // Omitted config uses the separate default analysis budget.
       const analyze = automaticAnalysisBoundary();
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config,
         dryRun: false,
@@ -438,7 +438,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
   it("keeps unconfirmed guarded cleanup failed closed with the startup cause visible", async () => {
     const probe = guardedStartupFailure("Xvfb", new Error("synthetic-cleanup-secret"));
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -465,7 +465,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   it("records guarded startup cleanup unconfirmed when E2B_DEBUG makes kill return true", async () => {
     vi.stubEnv("E2B_DEBUG", "true");
     const probe = guardedStartupFailure("Xvfb", true);
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -490,7 +490,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
   it("does not infer allocation absence when create rejects before returning a handle", async () => {
     const killed: string[] = [];
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -524,7 +524,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   });
 
   it("verifies a zero-output terminal session but rejects missing, contradicted, or unrelated empty evidence", async () => {
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -642,7 +642,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const config = liveConfig();
     config.execution!.runtime = { version: "0.153.3" };
     config.actors[0]!.model = "gpt-5.6-sol";
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: true,
@@ -672,7 +672,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   it("labels a dry run's terminal stream with the declared stdin mode", async () => {
     const config = liveConfig();
     config.execution!.terminal = { transport: "exec-stream", stdin: "planned" };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: true,
@@ -701,7 +701,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     config.execution!.runtime = { version: "0.153.3" };
     config.actors[0]!.model = "gpt-5.6-sol";
     config.actors[0]!.reasoningEffort = "low";
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -767,7 +767,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         killed: string[] = [];
       const config = liveConfig();
       config.execution!.runtime = { version: "0.153.3" };
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config,
         dryRun: false,
@@ -809,7 +809,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       killed: string[] = [];
     const config = liveConfig();
     config.subject.product!.install = PRODUCT_INSTALL;
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -844,7 +844,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const config = liveConfig();
     config.subject.product!.install = PRODUCT_INSTALL;
     const stderr = captureStderr();
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -897,7 +897,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const config = liveConfig();
     config.subject.product!.upload = "widgetsmith-0.1.0.tgz";
     config.subject.product!.install = PRODUCT_INSTALL;
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -937,7 +937,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       const config = liveConfig();
       config.subject.product!.upload = "escape.tgz";
       config.subject.product!.install = PRODUCT_INSTALL;
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config,
         dryRun: false,
@@ -973,7 +973,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       runs: RecordedRun[] = [],
       killed: string[] = [];
     let clock = 1_000;
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1014,7 +1014,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       runs: RecordedRun[] = [],
       killed: string[] = [];
     let clock = 1_000_000;
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1046,7 +1046,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   it("rejects a bad pin at the exported engine before loading or allocating", async () => {
     const config = liveConfig();
     config.execution!.runtime = { version: "latest; unexpected-command" };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -1093,7 +1093,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const fetch = vi.fn<AnalysisFetch>(async () => {
       throw new Error("Synthetic request boundary");
     });
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1180,7 +1180,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       };
       const nested = JSON.stringify({ payload: JSON.stringify({ cwd: localPath, ok: true }) });
       const records = `${JSON.stringify(report)}\n${nested}\n`;
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config: liveConfig(),
         dryRun: false,
@@ -1234,7 +1234,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         killed: string[] = [];
       const repeated = "I checked the same control again.\n";
       const prefix = `Visible unicode: café 🧭\n${repeated}${repeated}known value ${FAKE_RUNTIME_KEY}\n`;
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config: liveConfig({ caps: { maxUsd: 0, maxMinutes: 1 } }),
         dryRun: false,
@@ -1284,7 +1284,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       const creates: RecordedCreate[] = [],
         runs: RecordedRun[] = [],
         killed: string[] = [];
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config: liveConfig(),
         dryRun: false,
@@ -1347,7 +1347,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       killed: string[] = [];
     const e2bKey = baseEnv().E2B_API_KEY as string;
     let expected = "";
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1396,7 +1396,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       const creates: RecordedCreate[] = [],
         runs: RecordedRun[] = [],
         killed: string[] = [];
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config: liveConfig(),
         dryRun: false,
@@ -1450,7 +1450,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         runs: RecordedRun[] = [],
         killed: string[] = [];
       const padding = capped ? "x".repeat(512 * 1024) : "";
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config: liveConfig(),
         dryRun: false,
@@ -1503,7 +1503,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [],
       runs: RecordedRun[] = [],
       killed: string[] = [];
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1535,7 +1535,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       runs: RecordedRun[] = [],
       killed: string[] = [];
     const shared = `Same visible line on both streams: ${FAKE_RUNTIME_KEY}\n`;
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1583,7 +1583,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [],
       runs: RecordedRun[] = [],
       killed: string[] = [];
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1617,7 +1617,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [],
       runs: RecordedRun[] = [],
       killed: string[] = [];
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1660,7 +1660,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         runtimeAuth: "openai-egress",
         ...(egressAllow ? { egressAllow } : {}),
       });
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config,
         dryRun: false,
@@ -1730,7 +1730,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
   it("retries sandbox create once after a transient provider error and says so", async () => {
     const creates: RecordedCreate[] = [];
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1765,7 +1765,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
   it("does not retry sandbox create after an auth failure", async () => {
     const creates: RecordedCreate[] = [];
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -1793,7 +1793,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig({ runtimeAuth: "openai-egress" }),
       dryRun: false,
@@ -1864,7 +1864,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
     const config = liveConfig();
     config.actors[0]!.mission = `Discover widgetsmith-cli using ${FAKE_RUNTIME_KEY}.`;
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -1983,7 +1983,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2043,7 +2043,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       },
     };
     const stderr = captureStderr();
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2093,7 +2093,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           makeFakeModule({ creates, runs, killed, codexBehavior: () => ({ exitCode: 0 }) }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig({ caps: null }),
       dryRun: false,
@@ -2123,7 +2123,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2163,7 +2163,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       },
     };
     const stderr = captureStderr();
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2220,7 +2220,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2252,7 +2252,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2295,7 +2295,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
             }),
         },
       };
-      const result = await runTerminalProductLab({
+      const result = await runTerminalProductStudy({
         cwd,
         config: liveConfig(),
         dryRun: false,
@@ -2333,7 +2333,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2376,7 +2376,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2415,7 +2415,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2451,7 +2451,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2496,7 +2496,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2537,7 +2537,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2584,7 +2584,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
           }),
       },
     };
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2652,7 +2652,7 @@ describe("terminal persona traits", () => {
       },
     };
 
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2693,7 +2693,7 @@ describe("terminal run directory golden", () => {
   it("live run with a passing actor verdict", async () => {
     const runs: RecordedRun[] = [];
     const stderr = captureStderr();
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2735,7 +2735,7 @@ describe("terminal run directory golden", () => {
 
   it("dry run that allocates nothing", async () => {
     const stderr = captureStderr();
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: true,
@@ -2779,7 +2779,7 @@ describe("terminal run lifetime", () => {
   };
 
   it("a refused start that names an older run never analyzes or changes it", async () => {
-    const older = await runTerminalProductLab({
+    const older = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: true,
@@ -2799,7 +2799,7 @@ describe("terminal run lifetime", () => {
     const analysis = automaticAnalysisBoundary();
     const skipped = { state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
 
-    const keyless = await runTerminalProductLab({
+    const keyless = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -2810,7 +2810,7 @@ describe("terminal run lifetime", () => {
     });
     expect(keyless).toMatchObject({ ok: false, runId: "older", automaticAnalysis: skipped });
 
-    const inUse = await runTerminalProductLab({
+    const inUse = await runTerminalProductStudy({
       cwd,
       config,
       dryRun: false,
@@ -2853,7 +2853,7 @@ describe("terminal run lifetime", () => {
       return sandbox;
     };
 
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -2907,7 +2907,7 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
   async function judged(options: Case) {
     let clock = 1_000;
     const behavior = options.codexBehavior ?? marker("passed");
-    const result = await runTerminalProductLab({
+    const result = await runTerminalProductStudy({
       cwd,
       config: liveConfig(),
       dryRun: options.dryRun ?? false,

@@ -69,7 +69,7 @@ export interface PlannedAnalysis {
 }
 
 interface PlanBase {
-  readonly labId: string;
+  readonly studyId: string;
   /** The lab's declared title, which bundles record. */
   readonly title?: string;
   readonly lab?: RunStudyProvenance;

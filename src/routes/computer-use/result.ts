@@ -22,7 +22,7 @@ import {
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import { toParticipantResult } from "./participant-execution.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
-import type { runLabParticipants } from "./live-phase.js";
+import type { runStudyParticipants } from "./live-phase.js";
 import type { CuaFinishFacts, CuaRunSetup } from "./setup.js";
 import {
   aggregateCuaSubject,
@@ -31,8 +31,8 @@ import {
 } from "./subject-projection.js";
 import {
   CUA_FANOUT_STRATEGY,
-  type CuaActorLabErrorCode,
-  type CuaActorLabResult,
+  type CuaActorStudyErrorCode,
+  type CuaActorStudyResult,
   type CuaParticipantPlan,
   type CuaParticipantSummary,
   type DesktopParticipantRun,
@@ -92,7 +92,7 @@ function buildParticipantSummary(
  * every participant passed (dry-run participants pass as contracts), and no adapter score or declared scorer
  * verdict failed; otherwise the error names the first reason.
  */
-function cuaLabResult(args: {
+function cuaStudyResult(args: {
   labId: string;
   cwd: string;
   runId: string;
@@ -115,7 +115,7 @@ function cuaLabResult(args: {
   receivingWarnings: string[];
   aggregateWarnings: string[];
   adapterWarnings: string[];
-}): CuaActorLabResult {
+}): CuaActorStudyResult {
   const {
     labId,
     cwd,
@@ -162,7 +162,7 @@ function cuaLabResult(args: {
   const summary = buildParticipantSummary(outcomes, participantCount, participantPlan, dryRun);
   const firstOutcome = outcomes?.[0];
 
-  const errorResult = ((): CuaActorLabResult["error"] | undefined => {
+  const errorResult = ((): CuaActorStudyResult["error"] | undefined => {
     if (ok) return undefined;
     if (adapterFailure !== undefined) {
       return { code: "HUMANISH_COMPUTER_USE_FAILED", message: adapterFailure };
@@ -194,7 +194,7 @@ function cuaLabResult(args: {
     const geometryFailure = (outcomes ?? []).find(
       (outcome) => outcome.failureCode === "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY",
     );
-    const code: CuaActorLabErrorCode =
+    const code: CuaActorStudyErrorCode =
       geometryFailure?.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED";
     return {
       code,
@@ -318,8 +318,8 @@ function participantCapWarning(
 export async function finishCuaRun(
   setup: CuaRunSetup,
   finish: CuaFinishFacts,
-  ran: Extract<Awaited<ReturnType<typeof runLabParticipants>>, { ok: true }>,
-): Promise<CuaActorLabResult> {
+  ran: Extract<Awaited<ReturnType<typeof runStudyParticipants>>, { ok: true }>,
+): Promise<CuaActorStudyResult> {
   const { plan, input, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
   const { rerunLineage, publicRepo, subjectArgs } = finish;
@@ -361,7 +361,7 @@ export async function finishCuaRun(
     context: {
       bundle,
       runDir: run.paths.physicalRunRoot,
-      labId: plan.labId,
+      labId: plan.studyId,
       runId,
       actor: descriptor.id,
       route: "computer-use",
@@ -384,8 +384,8 @@ export async function finishCuaRun(
     computerUseExecutionFailures(outcomes, observer, runId),
     OUTCOME_POLICIES["computer-use"],
   );
-  const result = cuaLabResult({
-    labId: plan.labId,
+  const result = cuaStudyResult({
+    labId: plan.studyId,
     cwd,
     runId,
     actorId: descriptor.id,
