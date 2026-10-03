@@ -635,15 +635,29 @@ describe("createOpenAiResponsesProvider", () => {
     expect(call).toBe(3);
     const retried = JSON.parse(bodies[2] ?? "{}") as {
       previous_response_id?: string;
-      input: unknown[];
+      store?: boolean;
+      include?: string[];
+      input: Array<{ type?: string; role?: string }>;
     };
     expect((retried as { instructions?: string }).instructions).toBe(
       "Act as a new user and sign in.",
     );
     expect(retried.previous_response_id).toBeUndefined();
-    // The retried body re-sends the prior output items (the computer_call) inline.
-    const firstItem = retried.input[0] as { type: string };
-    expect(firstItem.type).toBe("computer_call");
+    expect(retried.store).toBe(false);
+    expect(retried.include).toEqual(["reasoning.encrypted_content"]);
+    // The retried body carries the conversation so far: the opening message, the reply's
+    // computer_call, then the output that answers it.
+    expect(retried.input.map((item) => item.type ?? item.role)).toEqual([
+      "user",
+      "computer_call",
+      "computer_call_output",
+    ]);
+    expect(provider.conversation).toMatchObject({
+      mode: "explicit_context",
+      explicitReason: "zdr_rejection",
+      switchedAtRequest: 2,
+      requests: [{ mode: "threaded" }, { mode: "explicit_context", carriedExchanges: 1 }],
+    });
   });
 
   it("asks for reasoning summaries by default and honors 'off'", async () => {

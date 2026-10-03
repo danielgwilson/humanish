@@ -391,6 +391,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- `openai-computer-use` participants on a zero-data-retention OpenAI organization remember the
+  whole session (#1491). Before, each request in explicit-context mode carried only the previous
+  reply, so a participant forgot everything older than one turn: per-turn input stayed flat,
+  finished steps were started again, and closing reports contradicted the trace. Each request now
+  carries the conversation from the client: the opening message, every earlier reply with the
+  screenshots that answered it, and the latest reply. It sends `store: false` and asks for the
+  reasoning back in encrypted form. Past an estimated 64,000 input tokens, the opening screenshot
+  goes first, then the oldest turns become a note that keeps their reasoning summaries, messages
+  and actions as text. The actor trace's new `conversation` record gives the mode, why and when it
+  switched, and each request's carried context. A participant that ran this way gets a run
+  warning. With `zeroDataRetention` set, requests were stored by default before; they now send
+  `store: false`.
+
 - The Observer player sizes a fitted recording in CSS from the stage's current box (#1447). On a
   phone, opening a recording whose declared viewport has a different shape from its screenshots
   showed the frame at about half size for one frame (105.8×229 in place of 191.75×415 for a 390×844

@@ -133,6 +133,7 @@ export function loopResult(
     provider: provider.id,
     ...usage.liveMetadata(),
     ...(provider.version === undefined ? {} : { providerVersion: provider.version }),
+    ...(provider.conversation === undefined ? {} : { conversation: provider.conversation }),
     protocol: "cua-loop",
     lane: "computer-use",
     persona: settings.persona,

@@ -138,6 +138,18 @@
     "schema": "humanish.actor-trace.v1",
     "provider": "openai-responses-cu",
     "providerVersion": "gpt-5.6-sol",
+    "conversation": {
+      "mode": "threaded",
+      "summarizedTurns": 0,
+      "requests": [
+        {
+          "mode": "threaded"
+        },
+        {
+          "mode": "threaded"
+        }
+      ]
+    },
     "protocol": "cua-loop",
     "lane": "computer-use",
     "persona": {
@@ -545,6 +557,18 @@
           "schema": "humanish.actor-trace.v1",
           "provider": "openai-responses-cu",
           "providerVersion": "gpt-5.6-sol",
+          "conversation": {
+            "mode": "threaded",
+            "summarizedTurns": 0,
+            "requests": [
+              {
+                "mode": "threaded"
+              },
+              {
+                "mode": "threaded"
+              }
+            ]
+          },
           "protocol": "cua-loop",
           "lane": "computer-use",
           "persona": {
