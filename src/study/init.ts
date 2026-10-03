@@ -408,14 +408,6 @@ function validateLocalBrowserStarter(
 }
 
 /**
- * What this machine can run, for the starter study and the next steps. Local CLI status is
- * classified without returning its output or reading its credential file. Provider keys go
- * through the same discovery chain as every other command (process env, the project overlay,
- * `e2b auth login`, the `humanish keys set` store) and only their presence is read, never a value.
- * Local authentication status is not a fresh provider/account-validity test.
- */
-
-/**
  * The first-run hint's peer install, ahead of `npx humanish`: beside humanish in its project, else
  * humanish and the peer together here, where `npx humanish` then finds them. None where `npm i`
  * would prune a node_modules that no package.json declares.
@@ -427,6 +419,13 @@ function initDesktopPeerCommand(install: HumanishInstall): string | undefined {
   return "npm i -D humanish @e2b/desktop";
 }
 
+/**
+ * What this machine can run, for the starter study and the next steps. Local CLI status is
+ * classified without returning its output or reading its credential file. Provider keys go
+ * through the same discovery chain as every other command (process env, the project overlay,
+ * `e2b auth login`, the `humanish keys set` store) and only their presence is read, never a value.
+ * Local authentication status is not a fresh provider/account-validity test.
+ */
 async function firstRunEnvironment(
   env: NodeJS.ProcessEnv,
   cwd: string,
