@@ -7,7 +7,12 @@ import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { BundleRun, RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
+import {
+  judgeOneParticipant,
+  judgeParticipants,
+  type Judgment,
+  verdictText,
+} from "../../run/judge.js";
 import { desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { providerResourcesForOutcome } from "./bundle-parts.js";
@@ -208,7 +213,7 @@ export function renderCuaReviewMarkdown(bundle: RunBundle): string {
     "",
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
-    `- run gate: ${bundle.review.verdict}`,
+    `- run gate: ${verdictText(bundle.review.verdict, bundle.mode)}`,
     `- summary: ${bundle.review.summary}`,
     ...(provenance ? [`- subject: ${provenance.message}`] : []),
     ...(trace

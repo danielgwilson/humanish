@@ -13,7 +13,7 @@ import {
   bundleHead,
   type BundleRun,
 } from "../../run/bundle.js";
-import type { Verdict } from "../../run/judge.js";
+import { type Verdict, verdictText } from "../../run/judge.js";
 import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
 import {
   participantEvent,
@@ -414,7 +414,7 @@ export function renderTerminalReviewMarkdown(bundle: RunBundle): string {
     "",
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
-    `- verdict: ${bundle.review.verdict}`,
+    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
     `- summary: ${bundle.review.summary}`,
     `- mission: ${bundle.scenario.goal}`,
     ...(subject ? [`- subject: ${subject.message}`] : []),

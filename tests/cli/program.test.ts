@@ -380,7 +380,7 @@ describe("humanish CLI scaffold", () => {
         expect(applied.exitCode).toBe(0);
         const firstScreen = applied.stdout.split("\n").slice(0, 20).join("\n");
         expect(firstScreen).toContain("humanish run first-run");
-        expect(firstScreen).toContain("evidence preview: no browser or model runs");
+        expect(firstScreen).toContain("a dry run: no browser or model runs");
         expect(applied.stdout).not.toContain("humanish/personas/synthetic-new-user.yaml");
         const details = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
         expect(JSON.parse(details.stdout).changes).toContainEqual(
