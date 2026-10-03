@@ -253,7 +253,7 @@ export async function renderObserver(
     warnings: [
       loaded.bundle.mode === "live"
         ? "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted."
-        : "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+        : "This is a dry run: its participants are synthetic and no product behavior was tested.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
       ...(openResult.warning ? [openResult.warning] : []),
     ],

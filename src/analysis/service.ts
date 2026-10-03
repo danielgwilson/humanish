@@ -121,7 +121,7 @@ const messages: Record<string, string> = {
   ANALYSIS_RUN_ACTIVE: "Analysis requires a completed recording. Wait for the study to finish.",
   ANALYSIS_NO_PARTICIPANTS: "This run contains no participant evidence to analyze.",
   ANALYSIS_REQUIRES_LIVE_RUN:
-    "A dry-run proves harness contracts, not participant behavior. Select a completed live study for analysis.",
+    "A dry run has no participant behavior to analyze. Select a completed live run.",
   ANALYSIS_SOURCE_UNAVAILABLE:
     "The source recording is missing, unsafe, or exceeds the input limit.",
   ANALYSIS_SOURCE_CHANGED:

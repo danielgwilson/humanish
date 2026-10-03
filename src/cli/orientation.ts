@@ -84,9 +84,9 @@ function nextCommandsFor(args: {
   hasRun: boolean;
   host: { platform: NodeJS.Platform; arch: string };
 }): OrientationCommand[] {
-  const preview = {
+  const dryRun = {
     command: "humanish run first-run",
-    why: "an evidence preview: no browser or model runs, no keys, no spend",
+    why: "a dry run: no browser or model runs, no keys, no spend",
   };
   if (!args.initialized) {
     return [
@@ -94,7 +94,7 @@ function nextCommandsFor(args: {
         command: "humanish init --yes",
         why: "write starter labs, personas and an AGENTS.md (--dry-run lists every file first)",
       },
-      preview,
+      dryRun,
     ];
   }
 
@@ -107,7 +107,7 @@ function nextCommandsFor(args: {
   ).find((id) => args.labIds.includes(id));
   if (!args.hasRun) {
     return [
-      preview,
+      dryRun,
       liveLab === undefined
         ? { command: "humanish lab list", why: "see the labs this project declares" }
         : {

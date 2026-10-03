@@ -282,7 +282,8 @@ function formatReclaimHuman(result: ReclaimResult): string {
 }
 
 const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
-  contract_proof_only: "preview only; no product behavior was tested",
+  // A dry run, or a live run with no participant result; review's result does not carry the mode.
+  contract_proof_only: "no verdict; no product behavior was tested",
   pass: "pass",
   fail: "fail",
   blocked: "blocked",
