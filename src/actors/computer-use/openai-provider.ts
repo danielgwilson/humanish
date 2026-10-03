@@ -1,11 +1,14 @@
 import { validClosingReport } from "./loop.js";
-import type { ActorCapabilities } from "../contract.js";
+import type { ActorCapabilities, ActorConversation } from "../contract.js";
 import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./admission-limit.js";
 import { CuaPromptRefusedError } from "./provider-error.js";
 import type { CuaProvider, CuaSpendGate, CuaTurn, CuaTurnRequest } from "./loop.js";
+import { CarriedConversation } from "./openai-context.js";
 import {
   acceptReply,
+  ConversationRecord,
   debriefRequestBody,
+  turnInputItems,
   turnRequestBody,
   type OpenAiConversationState,
   type OpenAiRequestSettings,
@@ -249,7 +252,10 @@ export interface OpenAiResponsesProviderOptions {
    * paid request. */
   singleDispatch?: boolean;
   delayFn?: (ms: number) => Promise<void>;
+  /** Carry the conversation on the client from the first request (explicit_context). */
   zeroDataRetention?: boolean;
+  /** The clock the trace's conversation record reads. Defaults to Date.now. */
+  now?: () => number;
   /**
    * Environment for the wire-capture gate (HUMANISH_CUA_WIRE_CAPTURE_DIR; see the
    * module header). Injectable so deterministic tests control the gate without
@@ -511,7 +517,8 @@ export function createOpenAiResponsesProvider(
   const state: OpenAiConversationState = {
     lastResponseId: undefined,
     pendingCallIds: [],
-    lastOutputItems: [],
+    replies: 0,
+    conversation: new CarriedConversation(),
     mode: options.zeroDataRetention ? "explicit_context" : "previous_response_id",
     // Latches to undefined (stop asking) for the rest of the session when the
     // account/model rejects the summary request; see OpenAiResponsesProviderOptions.
@@ -537,25 +544,38 @@ export function createOpenAiResponsesProvider(
     spend?: CuaSpendGate,
   ): Promise<unknown> => postResponse(transport, body, signal, retries, interaction, spend);
 
+  const record = new ConversationRecord(
+    options.zeroDataRetention === true,
+    options.now ?? Date.now,
+  );
+
   // POST with the recoverable-policy latches: a ZDR rejection switches to explicit-context mode; a
   // reasoning-summary rejection latches summaries off. Each latch can flip only once, so the loop
   // is bounded; anything else rethrows. The body is rebuilt per attempt so a flipped latch shows.
   const postTurn = async (
     req: CuaTurnRequest,
+    sent: readonly unknown[],
     signal: AbortSignal,
     spend: CuaSpendGate | undefined,
   ): Promise<unknown> => {
     if (options.singleDispatch === true)
-      return post(turnRequestBody(settings, state, req), signal, 0);
+      return post(turnRequestBody(settings, state, req, sent), signal, 0);
     for (;;) {
       try {
-        return await post(turnRequestBody(settings, state, req), signal, maxRetries, true, spend);
+        return await post(
+          turnRequestBody(settings, state, req, sent),
+          signal,
+          maxRetries,
+          true,
+          spend,
+        );
       } catch (error) {
         if (error instanceof SummaryRejectionError && state.reasoningSummary !== undefined) {
           state.reasoningSummary = undefined;
           continue;
         }
         if (error instanceof ZdrError && state.mode !== "explicit_context") {
+          record.switched(state);
           state.mode = "explicit_context";
           continue;
         }
@@ -571,12 +591,14 @@ export function createOpenAiResponsesProvider(
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
     await capture.prepareNext();
+    const sent = turnInputItems(state, req);
     // A closing report makes exactly one request: no HTTP or policy-latch retries.
     const raw = closing
-      ? await post(debriefRequestBody(settings, state, req), signal, 0, false)
-      : await postTurn(req, signal, spend);
+      ? await post(debriefRequestBody(settings, state, req, sent), signal, 0, false)
+      : await postTurn(req, sent, signal, spend);
+    if (!closing) record.requested(state, sent);
     const parsed = parseOpenAiResponse(raw);
-    acceptReply(state, parsed, closing);
+    acceptReply(state, parsed, closing, sent);
     if (closing) {
       // Refusals, incomplete output, malformed JSON, and invalid shapes remain no-report results.
       // Never promote raw JSON or a fallback paragraph into a structured finding.
@@ -611,8 +633,12 @@ export function createOpenAiResponsesProvider(
       return interactionUsageIncomplete;
     },
     nextTurn: (req, signal, spend) => requestTurn(req, signal, false, spend),
-    // Stateless mode retains only the latest output packet, not the whole session needed for
-    // retrospective claims. This getter follows both configured ZDR and a runtime policy latch.
+    get conversation(): ActorConversation {
+      return record.snapshot(state);
+    },
+    // An explicit-context conversation summarizes its oldest turns past its budget, so it may not
+    // hold the whole session a retrospective report needs. This getter follows both configured
+    // ZDR and a runtime policy latch.
     get debrief() {
       return state.mode === "explicit_context" || state.lastResponseId === undefined
         ? undefined

@@ -8,7 +8,7 @@ import type {
   CuaLoopResult,
   CuaProvider,
 } from "../../actors/computer-use/loop.js";
-import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
+import type { ActorConversation, ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { startClaudeSession } from "../../actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
@@ -284,11 +284,34 @@ export async function recordParticipantTrace(
     `${JSON.stringify(session.trace, null, 2)}\n`,
     "utf8",
   );
+  const conversation = session.trace.conversation;
+  if (conversation?.mode === "explicit_context")
+    warnings.push(explicitContextWarning(conversation));
   if (session.trace.redaction.screenshots === "raw") {
     warnings.push(
       "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
     );
   }
+}
+
+/**
+ * The run warning for a participant whose provider kept no conversation server-side, so humanish
+ * carried it on every request. It says why, and how many early turns became a text summary.
+ */
+export function explicitContextWarning(conversation: ActorConversation): string {
+  const why =
+    conversation.explicitReason === "zdr_rejection"
+      ? `The OpenAI organization rejected server-side conversation state (zero data retention)${
+          conversation.switchedAtRequest === undefined
+            ? ""
+            : ` on request ${conversation.switchedAtRequest}`
+        }`
+      : "zeroDataRetention is set";
+  const summarized =
+    conversation.summarizedTurns === 0
+      ? ""
+      : ` To stay within its token budget it summarized the ${conversation.summarizedTurns} oldest turns as text and dropped their screenshots.`;
+  return `${why}, so humanish carried this participant's conversation itself (explicit_context).${summarized} The trace's conversation record has each request's carried context.`;
 }
 
 /** The checks that keep a goal_satisfied session from counting as a pass, with their warnings. */

@@ -1,0 +1,282 @@
+import { describe, expect, it } from "vitest";
+import { PNG } from "pngjs";
+import { runComputerUseLoop, type CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
+import {
+  createOpenAiResponsesProvider,
+  type FetchLike,
+} from "../../../src/actors/computer-use/openai-provider.js";
+import { CONTEXT_TOKEN_BUDGET } from "../../../src/actors/computer-use/openai-context.js";
+import { explicitContextWarning } from "../../../src/routes/computer-use/participant-model.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
+
+// A provider whose server keeps no conversation (explicit_context) must carry it on every
+// request: a participant that only sees its last reply forgets what it already did.
+
+function png(width: number, height: number): Buffer {
+  const image = new PNG({ width, height });
+  image.data.fill(200);
+  return PNG.sync.write(image);
+}
+
+const SCREEN = png(1280, 800);
+
+function request(): CuaTurnRequest {
+  return {
+    instructions: "Sign up with the address in your brief, then open the dashboard.",
+    observation: { screenshot: SCREEN, stateSignature: "sig" },
+  };
+}
+
+/** A reply for turn `n`: a reasoning summary, a message and one click, each naming the turn. */
+function reply(n: number): Record<string, unknown> {
+  return {
+    id: `resp_${n}`,
+    status: "completed",
+    output: [
+      {
+        type: "reasoning",
+        id: `rs_${n}`,
+        summary: [{ type: "summary_text", text: `turn-${n} thought: the form is on screen` }],
+        encrypted_content: `enc-${n}`,
+      },
+      {
+        type: "message",
+        id: `msg_${n}`,
+        role: "assistant",
+        content: [{ type: "output_text", text: `turn-${n} said: filling the form` }],
+      },
+      {
+        type: "computer_call",
+        id: `cu_${n}`,
+        call_id: `call_${n}`,
+        actions: [{ type: "click", x: n, y: n }],
+      },
+    ],
+    usage: { input_tokens: 1000 * n, output_tokens: 50 },
+  };
+}
+
+interface SentBody {
+  previous_response_id?: string;
+  store?: boolean;
+  include?: string[];
+  input: Array<Record<string, unknown>>;
+}
+
+async function runTurns(
+  turns: number,
+  options: { zeroDataRetention?: boolean } = {},
+): Promise<{ bodies: SentBody[]; provider: ReturnType<typeof createOpenAiResponsesProvider> }> {
+  const bodies: SentBody[] = [];
+  let n = 0;
+  const fetchFn: FetchLike = async (_url, init) => {
+    bodies.push(JSON.parse(init.body) as SentBody);
+    n += 1;
+    const value = reply(n);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  const provider = createOpenAiResponsesProvider({
+    apiKey: "test-key",
+    fetchFn,
+    delayFn: async () => undefined,
+    now: () => Date.parse("2026-10-03T00:00:00Z"),
+    ...options,
+  });
+  for (let turn = 0; turn < turns; turn += 1)
+    await provider.nextTurn(request(), new AbortController().signal);
+  return { bodies, provider };
+}
+
+const text = (body: SentBody): string => JSON.stringify(body.input);
+
+describe("an explicit-context conversation", () => {
+  it("carries turn 1's opening, reasoning, message and action on turn 5", async () => {
+    const { bodies } = await runTurns(5, { zeroDataRetention: true });
+    const fifth = bodies[4]!;
+    expect(fifth.previous_response_id).toBeUndefined();
+    expect(fifth.store).toBe(false);
+    expect(fifth.include).toEqual(["reasoning.encrypted_content"]);
+    expect(text(fifth)).toContain("Sign up with the address in your brief");
+    expect(text(fifth)).toContain("turn-1 thought");
+    expect(text(fifth)).toContain("turn-1 said");
+    expect(text(fifth)).toContain('"call_id":"call_1"');
+    // The encrypted reasoning goes back so the model keeps its reasoning state.
+    expect(text(fifth)).toContain("enc-1");
+  });
+
+  it("answers every carried computer_call with its output, in order", async () => {
+    const { bodies } = await runTurns(6, { zeroDataRetention: true });
+    const input = bodies[5]!.input;
+    const calls = input.filter((item) => item.type === "computer_call");
+    const outputs = input.filter((item) => item.type === "computer_call_output");
+    expect(calls.map((call) => call.call_id)).toEqual(outputs.map((output) => output.call_id));
+    for (const call of calls) {
+      const at = input.indexOf(call);
+      const answer = input.findIndex(
+        (item) => item.type === "computer_call_output" && item.call_id === call.call_id,
+      );
+      expect(answer).toBeGreaterThan(at);
+    }
+  });
+
+  it("grows until the budget, then stays bounded with the earliest screenshots dropped first", async () => {
+    const { bodies, provider } = await runTurns(80, { zeroDataRetention: true });
+    const record = provider.conversation!;
+    const estimates = record.requests.map((request) => request.estimatedInputTokens ?? 0);
+    expect(estimates[9]!).toBeGreaterThan(estimates[1]!);
+    // One request's own new items can sit above the carried budget; nothing grows past that.
+    for (const estimate of estimates) expect(estimate).toBeLessThan(CONTEXT_TOKEN_BUDGET + 3_000);
+    expect(record.summarizedTurns).toBeGreaterThan(0);
+
+    const last = bodies[79]!;
+    const [opening, note] = last.input;
+    // The opening keeps the instructions and loses its screenshot first.
+    expect(JSON.stringify(opening)).toContain("Sign up with the address in your brief");
+    expect(JSON.stringify(opening)).not.toContain("input_image");
+    // The oldest turns are a text note that keeps what was thought, said and done.
+    expect(note).toMatchObject({ role: "developer" });
+    expect(JSON.stringify(note)).toContain("Turn 1: thought: turn-1 thought");
+    expect(JSON.stringify(note)).toContain("did: click (1, 1)");
+    // The newest turns are carried whole, with their screens.
+    expect(text(last)).toContain('"call_id":"call_79"');
+    expect(text(last)).not.toContain('"call_id":"call_1"');
+  });
+
+  it("switches mid-session and records when, keeping what came before the switch", async () => {
+    const bodies: SentBody[] = [];
+    let n = 0;
+    const fetchFn: FetchLike = async (_url, init) => {
+      bodies.push(JSON.parse(init.body) as SentBody);
+      n += 1;
+      if (n === 3)
+        return {
+          ok: false,
+          status: 400,
+          text: async () => "previous_response_id is not supported: Zero Data Retention",
+          json: async () => ({}),
+        };
+      const value = reply(n);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(value),
+        json: async () => value,
+      };
+    };
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn,
+      delayFn: async () => undefined,
+      now: () => Date.parse("2026-10-03T00:00:00Z"),
+    });
+    for (let turn = 0; turn < 3; turn += 1)
+      await provider.nextTurn(request(), new AbortController().signal);
+    expect(bodies[1]!.previous_response_id).toBe("resp_1");
+    expect(bodies[1]!.store).toBeUndefined();
+    const retried = bodies[3]!;
+    expect(retried.previous_response_id).toBeUndefined();
+    expect(text(retried)).toContain("turn-1 thought");
+    expect(text(retried)).toContain("turn-2 said");
+    expect(provider.conversation).toMatchObject({
+      mode: "explicit_context",
+      explicitReason: "zdr_rejection",
+      switchedAt: "2026-10-03T00:00:00.000Z",
+      switchedAtRequest: 3,
+      requests: [{ mode: "threaded" }, { mode: "threaded" }, { mode: "explicit_context" }],
+    });
+  });
+
+  it("leaves a threaded conversation's requests as they were", async () => {
+    const { bodies, provider } = await runTurns(3);
+    expect(bodies[2]!.previous_response_id).toBe("resp_2");
+    expect(bodies[2]!.store).toBeUndefined();
+    expect(bodies[2]!.include).toBeUndefined();
+    expect(bodies[2]!.input.map((item) => item.type)).toEqual(["computer_call_output"]);
+    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
+  });
+});
+
+describe("the actor trace", () => {
+  it("records how the conversation was carried", async () => {
+    let n = 0;
+    const fetchFn: FetchLike = async () => {
+      n += 1;
+      const value =
+        n === 1
+          ? reply(1)
+          : {
+              id: "resp_done",
+              status: "completed",
+              output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+              usage: { input_tokens: 2000, output_tokens: 5 },
+            };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(value),
+        json: async () => value,
+      };
+    };
+    let time = 0;
+    let actions = 0;
+    const result = await runComputerUseLoop({
+      instructions: "Sign up with the address in your brief, then open the dashboard.",
+      provider: createOpenAiResponsesProvider({
+        apiKey: "test-key",
+        fetchFn,
+        zeroDataRetention: true,
+        now: () => time,
+      }),
+      executor: {
+        observe: async () => ({ screenshot: SCREEN, stateSignature: String(actions) }),
+        execute: async () => {
+          actions += 1;
+        },
+      },
+      persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+      timeoutMs: 10_000,
+      redaction: defaultRedactionHooks,
+    });
+    expect(result.trace.reason).not.toMatch(/error/i);
+    expect(result.trace.conversation).toMatchObject({
+      mode: "explicit_context",
+      explicitReason: "configured",
+      summarizedTurns: 0,
+      requests: [
+        { mode: "explicit_context", carriedExchanges: 0 },
+        { mode: "explicit_context", carriedExchanges: 1, carriedScreenshots: 1 },
+      ],
+    });
+  });
+});
+
+describe("the explicit-context run warning", () => {
+  it("says why and how many turns were summarized", () => {
+    expect(
+      explicitContextWarning({
+        mode: "explicit_context",
+        explicitReason: "zdr_rejection",
+        switchedAtRequest: 2,
+        summarizedTurns: 12,
+        requests: [],
+      }),
+    ).toMatch(/rejected server-side conversation state.*on request 2.*summarized the 12 oldest/);
+    expect(
+      explicitContextWarning({
+        mode: "explicit_context",
+        explicitReason: "configured",
+        summarizedTurns: 0,
+        requests: [],
+      }),
+    ).toMatch(/^zeroDataRetention is set/);
+  });
+});

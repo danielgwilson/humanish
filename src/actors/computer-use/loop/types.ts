@@ -1,6 +1,7 @@
 import type { HeardSpeech } from "../speech.js";
 import type {
   ActorCapabilities,
+  ActorConversation,
   ActorExecutionProfile,
   ActorPersonaRef,
   ActorSessionResult,
@@ -187,6 +188,8 @@ export interface CuaProvider {
   readonly requestPolicy?: "fail_closed";
   readonly executionProfile?: ActorExecutionProfile | undefined;
   readonly historyTurnsOmitted?: number;
+  /** How the conversation was carried between requests, for the trace. */
+  readonly conversation?: ActorConversation;
   readonly id: string;
   readonly version?: string | undefined;
   /**

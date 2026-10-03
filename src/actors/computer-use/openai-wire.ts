@@ -17,7 +17,7 @@ export function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }
 
-function asArray(value: unknown): unknown[] {
+export function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
@@ -284,6 +284,11 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
 
 export interface OpenAiCuContext {
+  /**
+   * The server keeps no conversation (explicit_context): the request asks not to be stored and
+   * for its reasoning back in encrypted form, so the next request can carry it.
+   */
+  stateless?: boolean;
   model: string;
   instructions: string;
   reasoningEffort: ReasoningEffort;
@@ -318,6 +323,7 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
       ...(ctx.reasoningSummary === undefined ? {} : { summary: ctx.reasoningSummary }),
     },
     ...(ctx.safetyIdentifier === undefined ? {} : { safety_identifier: ctx.safetyIdentifier }),
+    ...(ctx.stateless === true ? { store: false, include: ["reasoning.encrypted_content"] } : {}),
   };
 }
 
@@ -343,23 +349,31 @@ export function buildInitialRequest(
   );
   return {
     ...sharedRequestFields({ ...ctx, maxOutputTokens }),
-    input: [
-      {
-        role: "user",
-        content: [
-          { type: "input_text", text: ctx.instructions },
-          ...(screenshot === undefined
-            ? []
-            : [
-                {
-                  type: "input_image",
-                  image_url: `data:image/png;base64,${screenshot.toString("base64")}`,
-                },
-              ]),
-        ],
-      },
-    ],
+    input: [openingMessage(ctx.instructions, screenshot)],
   };
+}
+
+/** One input message, read as the words of `sender`: the user, or the developer's own note. */
+export function inputMessage(
+  sender: "user" | "developer",
+  content: readonly unknown[],
+): Record<string, unknown> {
+  return { role: sender, content: [...content] };
+}
+
+/** The first request's only input item: the instructions and, when there is one, the first screen. */
+export function openingMessage(instructions: string, screenshot?: Buffer): Record<string, unknown> {
+  return inputMessage("user", [
+    { type: "input_text", text: instructions },
+    ...(screenshot === undefined
+      ? []
+      : [
+          {
+            type: "input_image",
+            image_url: `data:image/png;base64,${screenshot.toString("base64")}`,
+          },
+        ]),
+  ]);
 }
 
 /**
@@ -405,25 +419,23 @@ export function buildCallOutput(
 export interface ContinuationRequestArgs {
   ctx: OpenAiCuContext;
   previousResponseId: string | undefined;
-  callOutputs: object[];
+  callOutputs: readonly unknown[];
   contextHint?: string;
   explicitContextItems?: unknown[];
 }
 
-// Turn an optional context-hint string into an input item array (or empty).
-function hintItems(contextHint: string | undefined): unknown[] {
-  return contextHint
-    ? [{ role: "user", content: [{ type: "input_text", text: contextHint }] }]
-    : [];
+/** An optional context hint as input items (none when there is no hint). */
+export function hintItems(contextHint: string | undefined): unknown[] {
+  return contextHint ? [inputMessage("user", [{ type: "input_text", text: contextHint }])] : [];
 }
 
 /**
  * Build a continuation request body. Two modes:
  *  - default: thread server-side state via previous_response_id and send only the
  *    new call outputs (plus an optional hint).
- *  - explicit-context (ZDR): no previous_response_id; the prior output items are
- *    re-sent inline ahead of the new call outputs so the model has full context
- *    without the server retaining any.
+ *  - explicit-context (ZDR): no previous_response_id; the carried conversation
+ *    (openai-context.ts) is sent inline ahead of the new call outputs, so the model
+ *    has the session without the server retaining any.
  */
 export function buildContinuationRequest(args: ContinuationRequestArgs): Record<string, unknown> {
   const { ctx, previousResponseId, callOutputs, contextHint, explicitContextItems } = args;
