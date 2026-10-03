@@ -8,6 +8,32 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixes
+
+- When the optional peer `@e2b/desktop` is missing, the live-run error, `humanish reclaim` and
+  `humanish doctor` name the command for where humanish is installed. Node resolves the peer from
+  humanish's own directory, and the advice used to assume this project or an npx cache:
+  - a project: the nearest `package.json` from the working directory up to humanish's
+    `node_modules` that declares humanish. The command is `npm i -D @e2b/desktop`, or
+    `pnpm add -D @e2b/desktop` when pnpm installed humanish. From below that project it adds
+    `--prefix ../..` (pnpm: `--dir ../..`), one `..` per level;
+  - an npx or pnpm dlx cache: `npm i -D humanish @e2b/desktop`, then `npx humanish run <study>`;
+  - npm's global root, read as npm reads it (the prefix in the environment, then the user, global
+    and built-in npmrc files, then Node's own): `npm i -g @e2b/desktop`; pnpm's global directory:
+    `pnpm add -g @e2b/desktop`;
+  - a source checkout: `pnpm install` in the checkout;
+  - anywhere else, such as another project or a global prefix npm is not configured for here:
+    install both into this project. Where npm would install into a `node_modules` that no
+    `package.json` declares (the working directory's, or the nearest one above it), the advice
+    says to run that from the project's directory instead, and `humanish init` points to
+    `humanish doctor`. No command installs into another directory, because `npm i` where no
+    manifest declares the installed packages removes them.
+
+  The live-run error told a global install, an install in another directory and a project run from
+  a subdirectory that humanish ran from an npx cache, and doctor gave every install
+  `npm i -D @e2b/desktop`. The outdated-SDK advisory and `humanish init`'s first-run hint name the
+  command the same way.
+
 ## 0.110.0: --dotenv, and sandbox ids only in receipts (2026-10-03)
 
 humanish 0.110.0 renames `--env-file` to `--dotenv`, so a missing file reaches humanish's exit 2

@@ -34,14 +34,14 @@ describe("what to do next, resolved against this machine", () => {
         hasProviderKey: false,
         localAgents: [],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       },
       {
         hasE2bKey: true,
         hasProviderKey: true,
         localAgents: [],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       },
     ]) {
       expect(firstRunSteps(env)[0]?.command).toBe("npx humanish run first-run");
@@ -54,7 +54,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: false,
       localAgents: [],
       hasDesktopSdk: false,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
       platform: "linux",
       arch: "x64",
     });
@@ -69,7 +69,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: false,
       localAgents: [],
       hasDesktopSdk: false,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
       platform: "darwin",
       arch: "arm64",
     });
@@ -83,7 +83,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: true,
       localAgents: [CODEX],
       hasDesktopSdk: true,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
       platform: "win32",
       arch: "x64",
     });
@@ -97,7 +97,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: true,
       localAgents: [],
       hasDesktopSdk: true,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
     });
     expect(byKey.at(-1)?.command).toBe("npx humanish run try-live");
     expect(byKey.at(-1)?.why).toContain("your provider key");
@@ -107,7 +107,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: false,
       localAgents: [CODEX],
       hasDesktopSdk: true,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
     });
     expect(byAgent.at(-1)?.command).toBe("npx humanish run try-live");
     // The point of the local-agent route: no API key hunt before the first real run.
@@ -120,7 +120,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: false,
       localAgents: [],
       hasDesktopSdk: true,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
     });
     expect(steps.at(-1)?.command).toBe("npx humanish keys set openai");
   });
@@ -134,7 +134,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: true,
       localAgents: [],
       hasDesktopSdk: false,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
     });
     expect(missing.at(-1)?.command).toBe("npm i -D @e2b/desktop && npx humanish run try-live");
     const present = firstRunSteps({
@@ -142,7 +142,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: true,
       localAgents: [],
       hasDesktopSdk: true,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
     });
     expect(present.at(-1)?.command).toBe("npx humanish run try-live");
   });
@@ -157,7 +157,7 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: true,
       localAgents: [],
       hasDesktopSdk: false,
-      installedInProject: false,
+      desktopPeerCommand: "npm i -D humanish @e2b/desktop",
     });
     expect(viaNpx.at(-1)?.command).toBe(
       "npm i -D humanish @e2b/desktop && npx humanish run try-live",
@@ -168,9 +168,20 @@ describe("what to do next, resolved against this machine", () => {
       hasProviderKey: true,
       localAgents: [],
       hasDesktopSdk: false,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
     });
     expect(installed.at(-1)?.command).toBe("npm i -D @e2b/desktop && npx humanish run try-live");
+  });
+
+  it("sends a directory where `npm i` would prune an undeclared node_modules to doctor", () => {
+    const steps = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [],
+      hasDesktopSdk: false,
+      desktopPeerCommand: undefined,
+    });
+    expect(steps.at(-1)?.command).toBe("npx humanish doctor");
   });
 
   it("stays short: a list of options is the same as no guidance", () => {
@@ -180,21 +191,21 @@ describe("what to do next, resolved against this machine", () => {
         hasProviderKey: false,
         localAgents: [],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       },
       {
         hasE2bKey: true,
         hasProviderKey: false,
         localAgents: [CODEX],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       },
       {
         hasE2bKey: true,
         hasProviderKey: true,
         localAgents: [CODEX, CLAUDE],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       },
     ]) {
       expect(firstRunSteps(env).length).toBeLessThanOrEqual(2);
@@ -209,7 +220,7 @@ describe("the starter live lab is written for the brain this machine has", () =>
       hasProviderKey,
       localAgents,
       hasDesktopSdk: true,
-      installedInProject: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
     });
     expect(starterLocalAgentFor(env([CLAUDE]))).toBe("claude");
     expect(starterLocalAgentFor(env([CLAUDE, CODEX]))).toBe("codex");
@@ -227,7 +238,7 @@ describe("the starter live lab is written for the brain this machine has", () =>
         hasProviderKey: false,
         localAgents: [CODEX],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       }),
     ).toBe("local-agent");
   });
@@ -239,7 +250,7 @@ describe("the starter live lab is written for the brain this machine has", () =>
         hasProviderKey: true,
         localAgents: [CODEX],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       }),
     ).toBe("openai-computer-use");
   });
@@ -251,7 +262,7 @@ describe("the starter live lab is written for the brain this machine has", () =>
         hasProviderKey: false,
         localAgents: [],
         hasDesktopSdk: true,
-        installedInProject: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
       }),
     ).toBe("openai-computer-use");
   });

@@ -7,6 +7,11 @@ import {
   type DotenvLoad,
   type KeySourceProbe,
 } from "../keys/key-resolution.js";
+import {
+  desktopPeerAdvice,
+  humanishInstall,
+  type HumanishInstall,
+} from "../substrates/e2b/peer-install.js";
 import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
 import {
   detectLocalAgents,
@@ -68,7 +73,10 @@ export interface DoctorResult {
 export const DESKTOP_SDK_FLOOR = "2.3.2";
 
 /** The advisory `doctor` attaches to an installed desktop SDK older than the floor, else undefined. */
-export function desktopSdkAdvisory(version: string | undefined): string | undefined {
+export function desktopSdkAdvisory(
+  version: string | undefined,
+  install: () => HumanishInstall = humanishInstall,
+): string | undefined {
   if (version === undefined) return undefined;
   const parse = (value: string): number[] =>
     value
@@ -83,8 +91,14 @@ export function desktopSdkAdvisory(version: string | undefined): string | undefi
     (have[0] === floor[0] &&
       (have[1]! < floor[1]! || (have[1] === floor[1] && have[2]! < floor[2]!)));
   return older
-    ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, the supported floor for background command cleanup and stdin handles (older releases could keep the CLI alive for minutes after its result). Update with \`npm i -D @e2b/desktop@latest\`.`
+    ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, the supported floor for background command cleanup and stdin handles (older releases could keep the CLI alive for minutes after its result). To update it: ${desktopPeerAdvice(install(), "@e2b/desktop@latest").advice}`
     : undefined;
+}
+
+/** The doctor line for an absent desktop SDK, with the install command for where humanish runs from. */
+export function missingDesktopSdkMessage(install: HumanishInstall): string {
+  const { where, advice } = desktopPeerAdvice(install);
+  return `optional peer @e2b/desktop is not installed${where}: dry runs work, but a live run with a desktop participant fails when it starts. ${advice}`;
 }
 
 /** The version of the @e2b/desktop that `import("@e2b/desktop")` resolves to from here, if readable. */
@@ -302,7 +316,7 @@ async function desktopSdkCheck(setup: StudySetup | undefined): Promise<DoctorChe
       ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
       : setup?.desktop === false
         ? "optional peer @e2b/desktop is absent; not required by the selected route"
-        : "optional peer @e2b/desktop is not installed: dry runs work, but a live run with a desktop participant fails when it starts. Install it with `npm i -D @e2b/desktop`.",
+        : missingDesktopSdkMessage(humanishInstall()),
   };
 }
 
