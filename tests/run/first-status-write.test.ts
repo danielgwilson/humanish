@@ -6,9 +6,9 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { RUN_STATUS_FILE } from "../../src/run/status.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -38,7 +38,7 @@ const RUN_ID = "run-status-before-sandbox";
 const env = { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" };
 
 function parsed(input: unknown): StudyConfig {
-  const result = parseStudyDocument(input);
+  const result = parseStudy(input);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
@@ -79,12 +79,13 @@ describe("a live route records its status before acquiring a sandbox", () => {
     const seen: boolean[] = [];
     await runStudyWith(
       parsed({
-        schema: V2_SCHEMA,
+        schema: STUDY_SCHEMA,
         id: "status-first-cua",
+        route: "computer-use",
+        mode: "live",
         subject: clone,
-        actors: [{ type: "openai-computer-use" }],
+        actor: { type: "openai-computer-use" },
         execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-        scenario: { mode: "live" },
       }),
       {
         cwd,
@@ -121,15 +122,18 @@ describe("a live route records its status before acquiring a sandbox", () => {
     const seen: boolean[] = [];
     await runStudyWith(
       parsed({
-        schema: V2_SCHEMA,
+        schema: STUDY_SCHEMA,
         id: "status-first-scripted",
+        route: "scripted",
+        mode: "live",
         subject: {
           ...clone,
           exposure: "synthetic",
           state: { seed: [{ name: "seed", command: "pnpm db:seed" }] },
         },
-        actors: [{ type: "scripted-browser", count: 1 }],
-        scenario: { ref: "scripted-first-run", mode: "live" },
+        actor: { type: "scripted-browser" },
+        surfaces: ["desktop"],
+        scenario: "scripted-first-run",
         execution: { target: "e2b-desktop", timeoutMs: 60_000 },
       }),
       {

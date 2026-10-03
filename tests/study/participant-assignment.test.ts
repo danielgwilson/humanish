@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { participantAssignment } from "../../src/study/participant-assignment.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
@@ -124,18 +124,15 @@ describe("participant assignment evidence", () => {
 
   it("redacts a second participant's known values and retains the runner's default mission", async () => {
     const secret = "synthetic-opaque-assignment-secret";
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "assignment-default",
+      route: "computer-use",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          lanes: [
-            { id: "first", instruction: "Use the keyboard." },
-            { id: "second", instruction: `Use ${secret} from /tmp/private-assignment.` },
-          ],
-        },
+      actor: { type: "openai-computer-use" },
+      participants: [
+        { id: "first", instruction: "Use the keyboard." },
+        { id: "second", instruction: `Use ${secret} from /tmp/private-assignment.` },
       ],
       execution: { target: "e2b-desktop" },
     });

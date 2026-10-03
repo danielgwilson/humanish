@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
@@ -132,7 +132,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
       };
       const source = raw.subject?.source;
       if (source !== "clone" && source !== "local-tree") continue;
-      const result = parseStudyDocument(raw);
+      const result = parseStudy(raw);
       expect(result.ok ? "ok" : result.error.message, file).toBe("ok");
       checked.push(file);
     }

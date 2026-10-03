@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse, parseDocument, visit } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import { routeOf } from "../../src/study/routing.js";
 import { convertStudyText } from "../../src/study/convert.js";
@@ -57,7 +57,7 @@ describe("every committed lab", () => {
       const text = await readFile(path.join(dir, name), "utf8");
       const conversion = convert(text);
       const v2 = parseStudyDocument(parse(text));
-      const v3 = parseStudyDocument(parse(conversion.text));
+      const v3 = parseStudy(parse(conversion.text));
       if (!v2.ok || !v3.ok) throw new Error(`${name} did not parse`);
       expect(v3.config.schema, name).toBe("humanish.study.v3");
       expect(routeOf(v3.config), name).toBe(routeOf(v2.config));

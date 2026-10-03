@@ -36,12 +36,12 @@ import {
 import { planSharedWorldStudy } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import {
   externalPublicSharedWorldValidationReason,
   concurrentSharedWorldValidationReason,
 } from "../../../src/study/validation.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -584,12 +584,13 @@ describe("external-public config validation + routing", () => {
 // ---------------------------------------------------------------------------
 describe("getHost synthetic gate stays intact", () => {
   function provisionedConfig(): StudyConfig {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "provisioned-gethost",
+      route: "shared-world",
+      mode: "live",
       subject: {
         source: "clone",
-        topology: "shared-world",
         exposure: "synthetic",
         repos: ["example-org/collab-app"],
         env: ["DATABASE_URL"],
@@ -603,18 +604,12 @@ describe("getHost synthetic gate stays intact", () => {
           checkpoint: [{ name: "n", command: "psql n" }],
         },
       },
-      actors: [
-        {
-          type: "openai-computer-use",
-          mission: "use",
-          lanes: [
-            { id: "a", persona: "p1", entry: "/a" },
-            { id: "b", persona: "p2", entry: "/b" },
-          ],
-        },
+      actor: { type: "openai-computer-use", mission: "use" },
+      participants: [
+        { id: "a", persona: "p1", entry: "/a" },
+        { id: "b", persona: "p2", entry: "/b" },
       ],
       execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 2 },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -1278,7 +1273,7 @@ describe("lobby-trivia-3player committed lab", () => {
         "utf8",
       ),
     ) as Record<string, unknown>;
-    const parsed = parseStudyDocument(raw);
+    const parsed = parseStudy(raw);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.warnings ?? []).toEqual([]);

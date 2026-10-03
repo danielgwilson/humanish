@@ -61,8 +61,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
@@ -429,10 +429,12 @@ function cloneCuaConfig(extra?: {
   state?: unknown;
   keep?: boolean;
 }): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "cua-clone-proof",
     title: "CUA clone proof",
+    route: "computer-use",
+    mode: "live",
     subject: {
       source: "clone",
       repos: ["example-org/example-app"],
@@ -447,15 +449,12 @@ function cloneCuaConfig(extra?: {
       ...(extra?.env ? { env: extra.env } : {}),
       ...(extra?.state === undefined ? {} : { state: extra.state }),
     },
-    actors: [
-      {
-        type: "openai-computer-use",
-        persona: "first-time-visitor",
-        mission: "Explore the app and stop.",
-      },
-    ],
+    actor: {
+      type: "openai-computer-use",
+      persona: "first-time-visitor",
+      mission: "Explore the app and stop.",
+    },
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -464,11 +463,12 @@ function cloneCuaConfig(extra?: {
 describe("lab routing (app-url → cua)", () => {
   it("routeOf sends app-url to computer-use and leaves the other routes untouched", () => {
     expect(routeOf(cuaConfig())).toBe("computer-use");
-    const synthetic = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const synthetic = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "s",
+      route: "preview",
       subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona" }],
+      actor: { type: "synthetic-persona" },
     });
     if (!synthetic.ok) throw new Error("fixture config must parse");
     expect(routeOf(synthetic.config)).toBe("preview");
@@ -652,18 +652,19 @@ describe("runCuaActorLab", () => {
     // The drain's error quotes the run's OpenAI key and the catch's bearer token; the warning must
     // carry neither.
     const token = ["tango", "lima", "catch", "credential"].join("-");
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-external-comms",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
+      actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." },
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
       comms: {
         email: {
           external: { catchBaseUrl: "https://catch.example.test", authTokenEnv: "CATCH_TOKEN" },
         },
       },
-      scenario: { mode: "live" },
       review: { analysis: false },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -721,14 +722,15 @@ describe("runCuaActorLab", () => {
     deliveries: () => Promise<Response>;
   }) {
     const catchBaseUrl = options.catchBaseUrl ?? "https://catch.example.test";
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-external-comms",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
+      actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." },
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
       comms: { email: { external: { catchBaseUrl, authTokenEnv: "CATCH_TOKEN" } } },
-      scenario: { mode: "live" },
       review: { analysis: false },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -841,11 +843,13 @@ describe("runCuaActorLab", () => {
   it("records a drained operator-hosted catch in the bundle and leaves the verdict alone", async () => {
     const tokenEnv = "CATCH_TOKEN";
     const token = ["synthetic", "catch", "token"].join("-");
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-external-comms-drained",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
+      actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." },
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
       comms: {
         email: {
@@ -853,7 +857,6 @@ describe("runCuaActorLab", () => {
           recipients: [{ lane: "lane-01", address: "user@example.test" }],
         },
       },
-      scenario: { mode: "live" },
       review: { analysis: false },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -1342,24 +1345,23 @@ describe("runCuaActorLab", () => {
   });
 
   it("continues the E2B study with a warning when optional recording cannot start", async () => {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-recording-startup-failure",
       title: "Recording startup failure",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         desktop: { recording: { audio: false } },
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const sandbox = makeFakeSandbox(); // Deliberately lacks files.read, like an older optional peer.
@@ -1474,24 +1476,23 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-mobile-fidelity",
       title: "Mobile fidelity",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } },
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runStudyWith(
@@ -1653,24 +1654,23 @@ describe("runCuaActorLab", () => {
   }
   async function runLaterTabLane(sandbox: ReturnType<typeof makeFakeSandbox>) {
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-mobile-fidelity-drift",
       title: "Mobile fidelity drift",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } },
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runStudyWith(
@@ -1728,29 +1728,28 @@ describe("runCuaActorLab", () => {
   it("a lab's dwell window reaches the session the participant runs: actor default, participant override", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-dwell-plumbing",
       title: "Dwell plumbing",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
+      actor: {
+        type: "openai-computer-use",
+        mission: "Watch the room.",
+        dwell: { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000 },
+      },
+      participants: [
+        { id: "watcher", persona: "first-time-visitor", instruction: "Watch." },
         {
-          type: "openai-computer-use",
-          mission: "Watch the room.",
-          dwell: { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000 },
-          lanes: [
-            { id: "watcher", persona: "first-time-visitor", instruction: "Watch." },
-            {
-              id: "leaver",
-              persona: "first-time-visitor",
-              instruction: "Watch, then leave.",
-              dwell: { ms: 2_000, everyMs: 1_000, then: "stop" },
-            },
-          ],
+          id: "leaver",
+          persona: "first-time-visitor",
+          instruction: "Watch, then leave.",
+          dwell: { ms: 2_000, everyMs: 1_000, then: "stop" },
         },
       ],
       execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const seen: unknown[] = [];
@@ -1819,24 +1818,23 @@ describe("runCuaActorLab", () => {
     policies: Record<string, unknown>,
   ) {
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-camera",
       title: "Participant camera",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Turn on the camera and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Turn on the camera and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         desktop: { browser: "chrome", media: { camera: { source: "synthetic" } } },
       },
-      scenario: { mode: "live" },
       policies,
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -1968,20 +1966,19 @@ describe("runCuaActorLab", () => {
       return realCreate(...args);
     };
     module.Sandbox.create = failingOnce as unknown as typeof module.Sandbox.create;
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-create-retry",
       title: "Sandbox create retry",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { browser: "chrome" } },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const phases: string[] = [];
@@ -2024,20 +2021,19 @@ describe("runCuaActorLab", () => {
       throw new Error("401 Unauthorized: invalid API key");
     };
     module.Sandbox.create = alwaysUnauthorized as unknown as typeof module.Sandbox.create;
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-create-no-retry",
       title: "Sandbox create, no retry",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runStudyWith(
@@ -2076,24 +2072,23 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-mobile-fidelity-desktop-lane",
       title: "Mobile fidelity, desktop lane",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         desktop: { device: "desktop", browser: "chrome", fidelity: { mobileEmulation: true } },
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runStudyWith(
@@ -2143,24 +2138,23 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-mobile-fidelity-firefox",
       title: "Mobile fidelity on Firefox",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         desktop: { device: "mobile", browser: "firefox", fidelity: { mobileEmulation: true } },
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runStudyWith(
@@ -4865,24 +4859,23 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
   });
 
   function templatedConfig(template?: string): StudyConfig {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-template-proof",
       title: "CUA template proof",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
         desktop: { resolution: [1280, 800], ...(template === undefined ? {} : { template }) },
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -4945,18 +4938,18 @@ describe("Chrome DevTools readiness after launch", () => {
   });
 
   function chromeConfig(device: "mobile" | "desktop"): StudyConfig {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-devtools-readiness",
       title: "DevTools readiness",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
@@ -4966,7 +4959,6 @@ describe("Chrome DevTools readiness after launch", () => {
           ...(device === "mobile" ? { fidelity: { mobileEmulation: true } } : {}),
         },
       },
-      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -6271,19 +6263,18 @@ function makeStateProvider(): CuaProvider {
 }
 
 function localAppConfig(appUrl = "http://localhost:5173/"): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "downstream-local-app-state",
     title: "State-driven local app",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "local-app", appUrl },
-    actors: [
-      {
-        type: "openai-computer-use",
-        persona: "pixel-pat",
-        mission: "Drive the app via its state contract.",
-      },
-    ],
-    scenario: { mode: "live" },
+    actor: {
+      type: "openai-computer-use",
+      persona: "pixel-pat",
+      mission: "Drive the app via its state contract.",
+    },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -7422,14 +7413,15 @@ describe("adopter-hosted comms on the app-url route", () => {
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     try {
       const port = (server.address() as { port: number }).port;
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "older-external-catch",
+        route: "computer-use",
+        mode: "live",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
         comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
-        actors: [{ type: "openai-computer-use", mission: "Sign up." }],
+        actor: { type: "openai-computer-use", mission: "Sign up." },
         execution: { target: "e2b-desktop" },
-        scenario: { mode: "live" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
       const loadDesktopModule = vi.fn(async () => {
@@ -7501,21 +7493,20 @@ describe("adopter-hosted comms on the app-url route", () => {
       });
       expect(posted.ok).toBe(true);
 
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "cua-external-comms",
         title: "CUA adopter-hosted comms",
+        route: "computer-use",
+        mode: "live",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
         comms: { email: { external: { catchBaseUrl: baseUrl, authTokenEnv: "CATCH_TOKEN" } } },
-        actors: [
-          {
-            type: "openai-computer-use",
-            mission: "Sign up using the email address in your instructions.",
-            count: 2,
-          },
-        ],
+        actor: {
+          type: "openai-computer-use",
+          mission: "Sign up using the email address in your instructions.",
+        },
+        participants: 2,
         execution: { target: "e2b-desktop", desktop: { resolution: [1280, 800] } },
-        scenario: { mode: "live" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 

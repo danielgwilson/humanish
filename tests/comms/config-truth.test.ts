@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 
 const base = {
-  schema: V2_SCHEMA,
+  schema: STUDY_SCHEMA,
   id: "mail-capture",
+  route: "computer-use",
+  mode: "live",
   subject: {
     source: "clone",
     repos: ["example-org/example-app"],
     serve: { install: "npm ci", start: "npm start", url: "http://127.0.0.1:3000/" },
   },
-  actors: [{ type: "openai-computer-use", mission: "Create an account." }],
+  actor: { type: "openai-computer-use", mission: "Create an account." },
   execution: { target: "e2b-desktop" },
-  scenario: { mode: "live" },
 };
 
 describe("communication declarations fail explicitly", () => {
@@ -21,20 +22,18 @@ describe("communication declarations fail explicitly", () => {
     { sms: {}, email: { injectEnv: "MAIL_API_URL" } },
     { emali: { injectEnv: "MAIL_API_URL" } },
   ])("rejects unsupported channels instead of running without them: %j", (comms) => {
-    const result = parseStudyDocument({ ...base, comms });
+    const result = parseStudy({ ...base, comms });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toContain("Unknown study field in `comms`");
   });
 
   it("retains supported email capture and absence of communications", () => {
-    expect(parseStudyDocument(base).ok).toBe(true);
-    expect(
-      parseStudyDocument({ ...base, comms: { email: { injectEnv: "MAIL_API_URL" } } }).ok,
-    ).toBe(true);
+    expect(parseStudy(base).ok).toBe(true);
+    expect(parseStudy({ ...base, comms: { email: { injectEnv: "MAIL_API_URL" } } }).ok).toBe(true);
   });
 
   it("rejects mixing real receiving and local capture", () => {
-    const result = parseStudyDocument({
+    const result = parseStudy({
       ...base,
       comms: { email: { connection: "agentmail", injectEnv: "MAIL_API_URL" } },
     });
@@ -45,9 +44,10 @@ describe("communication declarations fail explicitly", () => {
   it.each([undefined, "MAIL_API_URL"])(
     "rejects shared-world SMTP even when HTTP is also declared (%s)",
     (injectEnv) => {
-      const result = parseStudyDocument({
+      const result = parseStudy({
         ...base,
-        subject: { ...base.subject, topology: "shared-world" },
+        route: "shared-world",
+        participants: [{ id: "host" }, { id: "guest" }],
         comms: {
           email: {
             ...(injectEnv ? { injectEnv } : {}),

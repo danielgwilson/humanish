@@ -9,7 +9,7 @@ import type {
   RestrictedCodexRequest,
   RestrictedCodexResult,
 } from "../../src/actors/codex/restricted-policy.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { estimateActorCost, estimateActorCostForExecution } from "../../src/run/pricing.js";
@@ -37,15 +37,18 @@ afterEach(async () => {
 });
 
 function accountBilledConfig() {
-  const parsed = parseStudyDocument({
-    schema: "humanish.lab.v2",
+  const parsed = parseStudy({
+    schema: "humanish.study.v3",
     id: "synthetic-account",
     title: "Synthetic account study",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "local-app", appUrl: "http://localhost:5173/" },
-    actors: [
-      { type: "openai-computer-use", model: "gpt-6-astra", mission: "Save the synthetic note." },
-    ],
-    scenario: { mode: "live" },
+    actor: {
+      type: "openai-computer-use",
+      model: "gpt-6-astra",
+      mission: "Save the synthetic note.",
+    },
     execution: { timeoutMs: 10_000 },
     review: { analysis: false },
   });

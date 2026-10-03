@@ -14,8 +14,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
@@ -305,10 +305,12 @@ function scriptedConfig(overrides?: {
 }
 
 function provisionedScriptedConfig(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "provisioned-scripted-routing-proof",
     title: "Provisioned scripted routing proof",
+    route: "scripted",
+    mode: "live",
     subject: {
       source: "clone",
       exposure: "synthetic",
@@ -323,8 +325,9 @@ function provisionedScriptedConfig(): StudyConfig {
       env: ["GITHUB_TOKEN"],
       state: { seed: [{ name: "seed", command: "pnpm db:seed" }] },
     },
-    actors: [{ type: "scripted-browser", persona: "synthetic-provider", count: 1 }],
-    scenario: { ref: "scripted-first-run", mode: "live" },
+    actor: { type: "scripted-browser", persona: "synthetic-provider" },
+    surfaces: ["desktop"],
+    scenario: "scripted-first-run",
     execution: {
       target: "e2b-desktop",
       timeoutMs: 30_000,
@@ -342,18 +345,20 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
   });
 
   it("app-url × e2b-desktop × openai-computer-use still routes to cua, and the other routes are untouched", () => {
-    const cua = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const cua = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua",
+      route: "computer-use",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use" }],
+      actor: { type: "openai-computer-use" },
       execution: { target: "e2b-desktop" },
     });
-    const synthetic = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const synthetic = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "s",
+      route: "preview",
       subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona" }],
+      actor: { type: "synthetic-persona" },
     });
     // A clone lab without a computer-use or scripted actor no longer parses; a library caller that
     // skips the parser still reaches the computer-use route's fail-closed actor check.

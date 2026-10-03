@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { TERMINAL_AGENT_CAPABILITIES } from "../../../src/actors/contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../../src/actors/registry.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
 import {
   isComputerUseComposition,
   isScriptedBrowserComposition,
@@ -313,25 +313,29 @@ describe("terminal-product parse matrix", () => {
 
 describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", () => {
   it("routes the four prior backends as before, and the route predicates stay disjoint for terminal", () => {
-    const cua = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const cua = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua",
+      route: "computer-use",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use" }],
+      actor: { type: "openai-computer-use" },
       execution: { target: "e2b-desktop" },
     });
-    const scripted = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const scripted = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "scripted",
+      route: "scripted",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
-      actors: [{ type: "scripted-browser", count: 2 }],
-      scenario: { ref: "scripted-first-run" },
+      actor: { type: "scripted-browser" },
+      surfaces: ["desktop", "mobile"],
+      scenario: "scripted-first-run",
     });
-    const synthetic = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const synthetic = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "s",
+      route: "preview",
       subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona" }],
+      actor: { type: "synthetic-persona" },
     });
     if (!cua.ok || !scripted.ok || !synthetic.ok) throw new Error("fixture configs must parse");
     expect(routeOf(cua.config)).toBe("computer-use");

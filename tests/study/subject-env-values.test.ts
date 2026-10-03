@@ -9,13 +9,15 @@
 // secret-shaped rather than letting it be committed to a public repo.
 import { describe, expect, it } from "vitest";
 
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 
 function cloneLab(subjectExtra: Record<string, unknown>) {
-  return parseStudyDocument({
-    schema: V2_SCHEMA,
+  return parseStudy({
+    schema: STUDY_SCHEMA,
     id: "env-values-lab",
+    route: "computer-use",
+    mode: "live",
     subject: {
       source: "clone",
       repos: ["example-org/example-app"],
@@ -27,9 +29,8 @@ function cloneLab(subjectExtra: Record<string, unknown>) {
       },
       ...subjectExtra,
     },
-    actors: [{ type: "openai-computer-use", mission: "sign up" }],
+    actor: { type: "openai-computer-use", mission: "sign up" },
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "live" },
   });
 }
 

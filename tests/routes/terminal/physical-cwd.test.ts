@@ -6,8 +6,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolveCommittedPersona } from "../../../src/study/persona-resolve.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 
 // The dry run takes no hook between resolving the project and starting the run, so the alias is
@@ -18,17 +18,19 @@ vi.mock("../../../src/study/persona-resolve.js", async (importOriginal) => {
 });
 
 function dryConfig(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "terminal-physical-cwd",
     title: "Terminal physical cwd",
+    route: "terminal",
+    mode: "dry-run",
     subject: {
       source: "terminal-product",
       product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
     },
-    actors: [{ type: "codex-exec", mission: "Discover widgetsmith-cli from public surfaces." }],
+    actor: { type: "codex-exec", mission: "Discover widgetsmith-cli from public surfaces." },
+    caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
     execution: { target: "e2b-terminal", runtimeAuth: "openai-env" },
-    scenario: { mode: "dry-run", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;

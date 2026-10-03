@@ -5,8 +5,8 @@ import path from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { parse as parseYaml } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
@@ -111,12 +111,14 @@ describe("lab config expressiveness (rung 3)", () => {
 
   it("synthetic behavior is a function of config (actor count -> simCount), not just a parsed label", async () => {
     const base = (count: number) =>
-      parseStudyDocument({
-        schema: V2_SCHEMA,
+      parseStudy({
+        schema: STUDY_SCHEMA,
         id: "behavioral",
+        route: "preview",
+        mode: "dry-run",
         subject: { source: "this-repo" },
-        actors: [{ type: "synthetic-persona", count }],
-        scenario: { mode: "dry-run" },
+        actor: { type: "synthetic-persona" },
+        participants: count,
       });
     const two = base(2);
     const five = base(5);

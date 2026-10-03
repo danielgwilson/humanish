@@ -22,8 +22,8 @@ import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js
 import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2b-desktop/desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -57,20 +57,22 @@ const specFields = {
   instructions: "Save a note.",
 };
 
+/** The fixture's study as a humanish.study.v3 object, for tests that vary it and parse again. */
+const readyDesktop = {
+  schema: STUDY_SCHEMA,
+  id: "ready-desktop",
+  title: "Ready desktop",
+  route: "computer-use",
+  mode: "live",
+  subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+  actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Save a note." },
+  execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+};
+
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-ready-desktop-"));
   temporary.push(cwd);
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
-    id: "ready-desktop",
-    title: "Ready desktop",
-    subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [
-      { type: "openai-computer-use", persona: "first-time-visitor", mission: "Save a note." },
-    ],
-    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-    scenario: { mode: "live" },
-  });
+  const parsed = parseStudy(readyDesktop);
   if (!parsed.ok) throw new Error(parsed.error.message);
   const { config } = parsed;
   const spec = participantRun(specFields);
@@ -182,18 +184,16 @@ describe("ready desktop participant contract", () => {
     "selects the desktop image for speech=$speech, override=$template",
     async ({ speech, template, expected }) => {
       const f = await fixture();
-      const parsed = parseStudyDocument({
-        ...f.config,
-        actors: [
-          {
-            type: "local-agent",
-            localAgent: "codex",
-            persona: "first-time-visitor",
-            mission: "Join a call.",
-          },
-        ],
+      const parsed = parseStudy({
+        ...readyDesktop,
+        actor: {
+          type: "local-agent",
+          localAgent: "codex",
+          persona: "first-time-visitor",
+          mission: "Join a call.",
+        },
         execution: {
-          ...f.config.execution,
+          ...readyDesktop.execution,
           desktop: {
             ...(template ? { template } : {}),
             ...(speech ? { media: { microphone: { source: "speech" } } } : {}),
@@ -231,16 +231,14 @@ describe("ready desktop participant contract", () => {
       `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.153.0\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(executable, 0o700);
-    const parsed = parseStudyDocument({
-      ...f.config,
-      actors: [
-        {
-          type: "local-agent",
-          localAgent: "codex",
-          persona: "first-time-visitor",
-          mission: "Save a note.",
-        },
-      ],
+    const parsed = parseStudy({
+      ...readyDesktop,
+      actor: {
+        type: "local-agent",
+        localAgent: "codex",
+        persona: "first-time-visitor",
+        mission: "Save a note.",
+      },
       review: { analysis: false },
     });
     expect(parsed.ok).toBe(true);
@@ -266,17 +264,15 @@ describe("ready desktop participant contract", () => {
       `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.157.1\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(executable, 0o700);
-    const parsed = parseStudyDocument({
-      ...f.config,
-      actors: [
-        {
-          type: "local-agent",
-          localAgent: "codex",
-          persona: "first-time-visitor",
-          mission: "Save a note.",
-        },
-      ],
-      execution: { ...f.config.execution, caps: { maxUsd: 1 } },
+    const parsed = parseStudy({
+      ...readyDesktop,
+      actor: {
+        type: "local-agent",
+        localAgent: "codex",
+        persona: "first-time-visitor",
+        mission: "Save a note.",
+      },
+      caps: { maxUsd: 1 },
       review: { analysis: false },
     });
     expect(parsed.ok).toBe(true);
@@ -448,7 +444,9 @@ describe("ready desktop participant contract", () => {
       ...f.config,
       execution: { ...f.config.execution, target: "local" as const },
     };
-    expect(parseStudyDocument(config).ok).toBe(true);
+    expect(
+      parseStudy({ ...readyDesktop, execution: { ...readyDesktop.execution, target: "local" } }).ok,
+    ).toBe(true);
     const result = await runCuaActorStudy({ cwd: f.cwd, config, dryRun: false, deps: seamsOf(f) });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");

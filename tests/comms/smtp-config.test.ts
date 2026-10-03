@@ -2,13 +2,15 @@
 // apps that send mail over SMTP rather than a provider's HTTP API.
 import { describe, expect, it } from "vitest";
 
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 
 function cloneLab(email: unknown) {
-  return parseStudyDocument({
-    schema: V2_SCHEMA,
+  return parseStudy({
+    schema: STUDY_SCHEMA,
     id: "smtp-lab",
+    route: "computer-use",
+    mode: "live",
     subject: {
       source: "clone",
       repos: ["example-org/example-app"],
@@ -19,9 +21,8 @@ function cloneLab(email: unknown) {
         url: "http://127.0.0.1:3000/",
       },
     },
-    actors: [{ type: "openai-computer-use", mission: "sign up" }],
+    actor: { type: "openai-computer-use", mission: "sign up" },
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "live" },
     comms: { email },
   });
 }
