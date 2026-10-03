@@ -1,5 +1,6 @@
 import path from "node:path";
 import { Command, Option } from "commander";
+import { shellQuote } from "../../substrates/shell.js";
 import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
 import { cleanupRun, listRuns, readReview } from "../../run/stored-runs.js";
@@ -185,7 +186,7 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await cleanupRun(options.cwd, options.run);
-      writeResult(command, io, result, formatCleanupHuman);
+      writeResult(command, io, result, (value) => formatCleanupHuman(value, options.cwd));
       io.setExitCode(result.ok ? 0 : 2);
     });
 }
@@ -483,7 +484,26 @@ function formatVerifyVerbose(result: VerifyResult): string {
   );
 }
 
-function formatCleanupHuman(result: CleanupResult): string {
+/** A command-line argument, single-quoted only when the shell would split or expand it. */
+function shellArg(value: string): string {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : shellQuote(value);
+}
+
+/**
+ * Cleanup only reads evidence and never stops a sandbox. A failed resource is an E2B sandbox not
+ * recorded as stopped, which reclaim can stop from the run's sandbox receipts, so the last line
+ * names it. A skipped resource is a provider reclaim does not handle, so it gets no line. `cwd` is
+ * the --cwd the command was given, since cleanup's result masks it.
+ */
+function reclaimPointer(result: CleanupResult, cwd: string): string[] {
+  if (result.runId === undefined || result.summary.failed === 0) return [];
+  const cwdFlag = cwd === "." ? "" : ` --cwd ${shellArg(cwd)}`;
+  return [
+    `To stop leftover sandboxes, run humanish reclaim --run ${shellArg(result.runId)}${cwdFlag}.`,
+  ];
+}
+
+function formatCleanupHuman(result: CleanupResult, cwd: string): string {
   if (!result.ok && result.error) {
     return `${result.error.code}: ${result.error.message}\n`;
   }
@@ -495,6 +515,7 @@ function formatCleanupHuman(result: CleanupResult): string {
       `resources: already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
       ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
       ...result.warnings.map((warning) => `warning: ${warning}`),
+      ...reclaimPointer(result, cwd),
     ].join("\n") + "\n"
   );
 }

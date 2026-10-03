@@ -433,6 +433,32 @@ describe("dry-run bundles", () => {
       // Cleanup never kills, so the human summary does not offer a killed count.
       const human = await runCli(["cleanup", "--cwd", cwd, "--run", "latest"]);
       expect(human.stdout).toContain("resources: already-clean 1, skipped 0, failed 0");
+      expect(human.stdout).not.toContain("reclaim");
+    });
+  });
+
+  it("ends cleanup's human output with the reclaim command when a sandbox is not recorded as stopped", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "cleanup-leftover" });
+      const bundlePath = path.join(cwd, ".humanish/runs/cleanup-leftover/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as Record<string, unknown>;
+      bundle.providerResources = [
+        {
+          schema: "humanish.provider-resource.v1",
+          provider: "e2b-desktop",
+          kind: "sandbox",
+          id: "sbx-leftover",
+          owner: "humanish",
+          status: "unknown",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ];
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      const human = await runCli(["cleanup", "--cwd", cwd, "--run", "latest"]);
+      expect(human.stdout).toContain("resources: already-clean 0, skipped 0, failed 1");
+      expect(human.stdout.trimEnd().split("\n").at(-1)).toBe(
+        `To stop leftover sandboxes, run humanish reclaim --run cleanup-leftover --cwd ${cwd}.`,
+      );
     });
   });
 

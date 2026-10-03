@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "../../src/feedback/proof.js";
 import { draftFeedback, renderIssueMarkdown } from "../../src/feedback/feedback.js";
-import { runDryRun } from "../../src/run/dry-run.js";
+import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { type RunBundle, type RunFeedbackCandidate } from "../../src/run/bundle.js";
 
 const execFileAsync = promisify(execFile);
@@ -120,7 +120,7 @@ describe("portable feedback acceptance proof", () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-portable-proof-"));
     try {
       await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-      await runDryRun({ cwd, dryRun: true, runId: RUN });
+      await runSyntheticLive({ cwd, dryRun: true, runId: RUN });
       const runDir = path.join(cwd, ".humanish", "runs", RUN);
       const bundlePath = path.join(runDir, "run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as RunBundle;
@@ -145,23 +145,16 @@ describe("portable feedback acceptance proof", () => {
     }
   });
 
-  it.each(["dry-run", "live"] as const)(
-    "uses portable commands in a %s fallback draft",
-    async (mode) => {
-      const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-proof-fallback-"));
-      try {
-        await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-        await runDryRun({ cwd, dryRun: true, runId: RUN });
-        const bundlePath = path.join(cwd, ".humanish", "runs", RUN, "run.json");
-        const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
-        bundle.mode = mode;
-        await writeFile(bundlePath, JSON.stringify(bundle));
-        const result = await draftFeedback(cwd, RUN);
-        expect(result.ok).toBe(true);
-        expect(result.draft?.acceptance_proof).toEqual(Object.values(feedbackProofCommands(RUN)));
-      } finally {
-        await rm(cwd, { recursive: true, force: true });
-      }
-    },
-  );
+  it("uses portable commands in a fallback draft", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-proof-fallback-"));
+    try {
+      await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+      await runSyntheticLive({ cwd, dryRun: true, runId: RUN });
+      const result = await draftFeedback(cwd, RUN);
+      expect(result.ok).toBe(true);
+      expect(result.draft?.acceptance_proof).toEqual(Object.values(feedbackProofCommands(RUN)));
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
 });

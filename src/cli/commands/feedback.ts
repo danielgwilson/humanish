@@ -28,7 +28,7 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("List recorded feedback candidates and any saved draft.")
     .addHelpText(
       "after",
-      "\nWith no candidates, feedback draft and feedback issue can generate a run-summary follow-up. Public drafting still requires share_ready verification.\n",
+      "\nWith no candidates, feedback draft and feedback issue write a run-summary follow-up for a live run that verifies share_ready. A dry run gets no draft.\n",
     )
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -227,7 +227,7 @@ function formatFeedbackHuman(result: FeedbackResult): string {
       ...(noCandidates
         ? [
             "candidates: none recorded",
-            "With no candidates, feedback draft and feedback issue can generate a run-summary follow-up after share_ready verification.",
+            "With no candidates, feedback draft and feedback issue write a run-summary follow-up for a live run that verifies share_ready.",
             ...(result.draft ? [`summary: ${result.draft.summary}`] : []),
           ]
         : []),
