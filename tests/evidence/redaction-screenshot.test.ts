@@ -4,7 +4,7 @@ import { PNG } from "pngjs";
 import { redactScreenshot } from "../../src/evidence/redaction.js";
 
 // redactScreenshot is the fail-closed public-safety primitive for the
-// computer-use lane: a raw desktop frame must never reach a public artifact, so
+// computer-use route: a raw desktop frame must never reach a public artifact, so
 // the emitted buffer is always a re-encoded, downscaled, blurred thumbnail (or a
 // neutral placeholder), never the source pixels. These tests pin those
 // guarantees structurally (we cannot OCR in CI, so we assert the invariants that

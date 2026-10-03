@@ -44,8 +44,8 @@ export interface CodexActorDescriptor extends ActorDescriptorBase {
   toActorTrace(result: CodexAppServerRunResult, persona: ActorPersonaRef): ActorTrace;
 }
 
-// CuaActorDescriptor covers every actor on the computer-use lane. The ids share a session entry
-// and differ in where the provider comes from: local-agent builds it from the operator's
+// CuaActorDescriptor covers every actor of the computer-use run kind. The ids share a session
+// entry and differ in where the provider comes from: local-agent builds it from the operator's
 // signed-in CLI, openai-computer-use from a keyed API client. The id stays distinct because it is
 // the slot a lab names when it chooses a brain. There is no toActorTrace: runComputerUseLoop
 // already returns a complete ActorTrace at result.trace, so a mapper would be an identity
@@ -79,7 +79,7 @@ export type ActorDescriptor =
   | TerminalActorDescriptor;
 
 /**
- * Registry contract: an actor whose capabilities include the "computer-use" lane is a
+ * Registry contract: an actor whose capabilities include the "computer-use" run kind is a
  * CuaActorDescriptor: its runSession takes CuaActorSessionOptions and returns a CuaLoopResult.
  * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature and add
  * its id to CuaActorDescriptor["id"], so code narrowed by this guard can still tell the ids apart.
@@ -93,7 +93,7 @@ export function isCuaActorDescriptor(
 
 /**
  * Registry contract (mirror of isCuaActorDescriptor): an actor whose capabilities include the
- * "scripted-browser" lane is a ScriptedBrowserActorDescriptor; runSession takes
+ * "scripted-browser" run kind is a ScriptedBrowserActorDescriptor; runSession takes
  * ScriptedBrowserSessionOptions and returns ScriptedBrowserSessionResult (trace fully formed,
  * like the CUA shape; no separate toActorTrace). Any future scripted driver (e.g. a HAR
  * replayer) must keep this signature; it is what lets the lab dispatch on capabilities, not ids.
@@ -106,8 +106,8 @@ export function isScriptedBrowserActorDescriptor(
 
 /**
  * Registry contract (mirror of isCuaActorDescriptor / isScriptedBrowserActorDescriptor): an actor
- * whose capabilities include the "terminal" lane is a TerminalActorDescriptor. This is the guard
- * the terminal-product lab uses for route selection and capability enforcement. The current
+ * whose capabilities include the "terminal" run kind is a TerminalActorDescriptor. This is the
+ * guard the terminal-product route uses for route selection and capability enforcement. The current
  * descriptor's direct runSession is intentionally unsupported; live execution is route-owned. Any
  * future terminal actor must declare the keyPlacement it uses and integrate with that lifecycle.
  */
@@ -125,13 +125,14 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     runSession: runCodexAppServerSession,
     toActorTrace: codexResultToActorTrace,
   },
-  // The ActorId names the actor slot (keeps the lane open for a future stagehand-cua provider);
-  // the trace's `provider` string stays "openai-responses-cu" (the concrete model adapter).
-  // The operator's own signed-in coding agent as the computer-use brain (Codex on a ChatGPT plan,
-  // Claude Code on a Max plan). Same lane, same loop, same evidence; the only difference is where
-  // the next action comes from, which is exactly why it is a provider swap and not a new lane.
-  // It exists so someone new can watch a persona drive a real desktop without first going to find
-  // an API key; the machine they are on very often already has one of these signed in.
+  // The ActorId names the actor slot (keeps the slot open for a future stagehand-cua
+  // provider); the trace's `provider` string stays "openai-responses-cu" (the concrete model
+  // adapter). The operator's own signed-in coding agent as the computer-use brain (Codex on a
+  // ChatGPT plan, Claude Code on a Max plan). Same run kind, same loop, same evidence; the only
+  // difference is where the next action comes from, which is exactly why it is a provider swap and
+  // not a new run kind. It exists so someone new can watch a persona drive a real desktop
+  // without first going to find an API key; the machine they are on very often already has one of
+  // these signed in.
   "local-agent": {
     id: "local-agent",
     label: "Local coding agent (operator-authenticated)",

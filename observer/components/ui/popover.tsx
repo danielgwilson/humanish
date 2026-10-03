@@ -4,11 +4,11 @@ import { ReviewIcon } from "../review-icon";
 import type { ReactNode } from "react";
 import { useFullscreenContainer } from "@/lib/use-fullscreen-container";
 
-// Second Base UI primitive (D6): an anchored panel with outside-press and Escape
-// dismissal, focus handling, and portal stacking supplied by Base UI. Styling is
-// humanish tokens only. At phone width the same popup presents as a bottom sheet
-// via the .pop-panel media override in globals.css. Both layouts provide an
-// explicit close control; neither implies unsupported drag-to-dismiss behavior.
+// The second Base UI primitive, adopted when a component first needed one: an anchored panel with
+// outside-press and Escape dismissal, focus handling, and portal stacking supplied by Base UI.
+// Styling is humanish tokens only. At phone width the same popup presents as a bottom sheet via the
+// .pop-panel media override in globals.css. Both layouts provide an explicit close control; neither
+// implies unsupported drag-to-dismiss behavior.
 export function Popover({
   trigger,
   triggerClassName,

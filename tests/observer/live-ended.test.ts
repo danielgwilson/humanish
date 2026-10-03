@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-// A finished/cleaned-up lane must fall back to recorded evidence, never render the dead
+// A finished/cleaned-up participant must fall back to recorded evidence, never render the dead
 // stream. The overlay is where that decision lives: an ended runtime entry stops injecting its
 // live URL and marks the stream so the page can say why the live view changed.
 import {
@@ -30,13 +30,13 @@ describe("withRuntimeStreamUrls lifecycle", () => {
     const merged = withRuntimeStreamUrls(observerData(), runtime);
     const [a, b, c] = merged.streams as unknown as Array<Record<string, unknown>>;
 
-    // Active lane: the live iframe rides in.
+    // Active participant: the live iframe rides in.
     expect((a!.embed as Record<string, unknown>).kind).toBe("iframe");
     expect((a!.embed as Record<string, unknown>).url).toBe("https://live.example.test/a");
     expect(a!.liveEnded).toBeUndefined();
 
-    // Ended lane: no dead URL is served (the tile renders its recorded evidence) and the page
-    // is told why, so "finished" can never read as "sandbox not found".
+    // Ended participant: no dead URL is served (the tile renders its recorded evidence) and the
+    // page is told why, so "finished" can never read as "sandbox not found".
     expect(b!.embed).toBeUndefined();
     expect(b!.url).toBeUndefined();
     expect(b!.liveEnded).toBe(true);
@@ -53,7 +53,7 @@ describe("withRuntimeStreamUrls lifecycle", () => {
     const before = withRuntimeStreamUrls(observerData(), runtime);
     expect((before.streams[1] as unknown as Record<string, unknown>).liveEnded).toBeUndefined();
 
-    runtime[1]!.ended = true; // the lane's teardown reported its stream ended
+    runtime[1]!.ended = true; // the participant's teardown reported its stream ended
     const after = withRuntimeStreamUrls(observerData(), runtime);
     expect((after.streams[0] as unknown as Record<string, unknown>).liveEnded).toBeUndefined();
     expect((after.streams[1] as unknown as Record<string, unknown>).liveEnded).toBe(true);

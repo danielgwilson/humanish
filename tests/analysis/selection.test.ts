@@ -317,7 +317,7 @@ describe("fair bounded study evidence selection", () => {
     expect(input.coverage.complete).toBe(false);
   });
 
-  it("reserves bounded read bytes for a later valid lane despite several large invalid early lanes", async () => {
+  it("reserves bounded read bytes for a later valid participant despite several large invalid early participants", async () => {
     const streams = await Promise.all(["a", "b", "c", "d", "e"].map((id) => captures(id, 8)));
     for (const lane of streams.slice(0, 4)) {
       for (const item of lane.actor.items)
@@ -353,7 +353,7 @@ describe("fair bounded study evidence selection", () => {
   });
 
   it.each([false, true])(
-    "releases idle byte reservations for a valid image above the initial sixteen-lane share (missing lanes: %s)",
+    "releases idle byte reservations for a valid image above the initial sixteen-participant share (missing participants: %s)",
     async (missing) => {
       const image = new PNG({ width: 900, height: 900 });
       let noise = 123456789;
@@ -479,7 +479,7 @@ describe("fair bounded study evidence selection", () => {
     );
   });
 
-  it("reserves a later small lane's first admission before sharing the budget with earlier larger frames", async () => {
+  it("reserves a later small participant's first admission before sharing the budget with earlier larger frames", async () => {
     const largerImage = new PNG({ width: 10, height: 10 });
     for (let index = 0; index < largerImage.data.length; index++)
       largerImage.data[index] = (index * 53 + Math.floor(index / 11)) % 256;
@@ -552,7 +552,7 @@ describe("fair bounded study evidence selection", () => {
     );
   });
 
-  it("reclaims a failed slot for a lane whose initial capture share was zero", async () => {
+  it("reclaims a failed slot for a participant whose initial capture share was zero", async () => {
     const source = await save([await captures("a-missing", 1, true), await captures("b-valid", 1)]);
     const stat = vi.mocked(fs.lstat).mockClear();
     const input = await captureEvidence(prepared, source, { captures: 1 });

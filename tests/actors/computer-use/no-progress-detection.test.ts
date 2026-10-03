@@ -1,4 +1,4 @@
-// The no-progress backstop must not end a lane that is working.
+// The no-progress backstop must not end a participant that is working.
 //
 // What went wrong. The backstop's only input was a 16x16 grayscale frame hash at 2 bits per cell,
 // with no contrast normalization. On a light-themed web app the area-average of nearly every cell
@@ -6,8 +6,8 @@
 // level and the two darkest levels never used at all. The hash was effectively constant, so 9
 // visibly different consecutive frames: one auto-named table becoming two named tables with fields
 // and an expanded editor panel: produced one identical signature. The backstop read that as a stuck
-// agent, ended the lane as `gave_up`, and recorded the run as 0/2 passed while the agent was a
-// foreign key away from finishing its mission.
+// agent, ended the participant as `gave_up`, and recorded the run as 0/2 passed while the agent was
+// a foreign key away from finishing its mission.
 //
 // Two things are pinned here. The signature must see a widget-sized change on a light UI, and a
 // stale frame alone must never be enough to call an agent stuck: that now also requires the agent

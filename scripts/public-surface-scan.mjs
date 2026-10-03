@@ -120,7 +120,7 @@ const allowedEmailDomains = new Set([
 ]);
 
 // Binary public assets must be explicitly allowlisted here with a sha256 pin.
-// The rebranded Observer hero was captured from a synthetic four-lane run and
+// The rebranded Observer hero was captured from a synthetic four-participant run and
 // manually reviewed before its exact bytes were approved for publication.
 const approvedBinaryAssets = new Map([
   // Headline and wordmark font subsets (site/scripts/subset-display-fonts.py regenerates them).

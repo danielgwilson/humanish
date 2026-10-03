@@ -93,7 +93,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(result.error.message).toContain(`"${type}"`);
       expect(result.error.message).toContain("local-agent");
-      // codex-app-server is registered, but no lab route dispatches its "code" lane.
+      // codex-app-server is registered, but no study route dispatches its "code" run kind.
       expect(result.error.message).not.toContain("codex-app-server");
     },
   );
@@ -154,9 +154,10 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       ...(comms === undefined ? {} : { comms }),
     });
 
-    // A recipient naming a lane that does not exist is a hard error listing the real lane ids:
-    // the single-lane example's `lane-01` copied into a roster lab is the field failure this
-    // guards against (an unmatched lane silently disabled the whole funnel for that participant).
+    // A recipient naming a participant that does not exist is a hard error listing the real
+    // participant ids: the single-participant example's `lane-01` copied into a roster study is the
+    // field failure this guards against (an unmatched `lane` silently disabled the whole
+    // funnel for that participant).
     const unknownLane = parseLabConfig(
       multiLane({
         email: {
@@ -171,7 +172,8 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(unknownLane.error.message).toContain("signup-01, signup-02, signup-03");
     }
 
-    // Declared recipients covering zero lanes with an address = a guaranteed-dead funnel → error.
+    // Declared recipients covering zero participants with an address = a guaranteed-dead funnel →
+    // error.
     const zeroCoverage = parseLabConfig(
       multiLane({ email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "signup-01" }] } }),
     );
@@ -179,7 +181,8 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     if (!zeroCoverage.ok)
       expect(zeroCoverage.error.message).toContain("no participant with an address");
 
-    // Omitted recipients fill one deterministic address per lane: all participants can do email.
+    // Omitted recipients fill one deterministic address per participant: all participants can do
+    // email.
     const filled = parseLabConfig(multiLane({ email: { injectEnv: "RESEND_API_URL" } }));
     expect(filled.ok).toBe(true);
     if (filled.ok) {
@@ -191,7 +194,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(filled.warnings.filter((w) => w.includes("comms.email covers"))).toEqual([]);
     }
 
-    // Partial coverage is legal but loud: the uncovered lanes are named.
+    // Partial coverage is legal but loud: the uncovered participants are named.
     const partial = parseLabConfig(
       multiLane({
         email: {
@@ -252,8 +255,9 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       comms: { email: { injectEnv: "RESEND_API_URL" } },
     });
     expect(ok.ok).toBe(true);
-    // Omitted recipients are filled one-per-lane: a single-lane study gets lane-01@example.test,
-    // so the actor is told its address and the drain can match the mail: email works out of the box.
+    // Omitted recipients are filled one per participant: a single-participant study gets
+    // `lane-01@example.test`, so the actor is told its address and the drain can match the mail:
+    // email works out of the box.
     if (ok.ok)
       expect(ok.config.comms?.email).toEqual({
         kind: "fake",
@@ -486,7 +490,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     it("consumes execution.concurrency on the computer-use route (no warning) but still warns it elsewhere", () => {
-      // Consumed here (bounds in-flight fan-out lanes) → zero warnings.
+      // Consumed here (bounds in-flight fan-out participants) → zero warnings.
       const onCua = parseLabConfig({
         ...validCua,
         execution: { ...validCua.execution, concurrency: 2 },
@@ -560,7 +564,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings.some((warning) => warning.includes("comms.email"))).toBe(false);
     });
 
-    it("parses actor-level and lane-level deterministic stopWhen guards", () => {
+    it("parses actor-level and per-participant deterministic stopWhen guards", () => {
       const result = parseLabConfig({
         ...validCua,
         actors: [
@@ -867,7 +871,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         expect(result.warnings).toEqual([]);
       });
 
-      it("accepts a differentiated lanes roster (per-lane persona/device/instruction)", () => {
+      it("accepts a differentiated `lanes` roster (per-participant persona/device/instruction)", () => {
         const result = parseLabConfig({
           ...validCua,
           actors: [
@@ -898,7 +902,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         expect(result.warnings).toEqual([]);
       });
 
-      it("accepts explicit per-lane public targets when every lane declares one and the owner opts in", () => {
+      it("accepts explicit per-participant public targets when every participant declares one and the owner opts in", () => {
         const result = parseLabConfig({
           ...validCua,
           subject: { source: "app-url", appUrl: "https://fallback.preview.example.test/" },
@@ -931,7 +935,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         expect(result.warnings).toEqual([]);
       });
 
-      it("expands compact roster groups into deterministic lanes", () => {
+      it("expands compact roster groups into deterministic participants", () => {
         const result = parseLabConfig({
           ...validCua,
           actors: [
@@ -1752,7 +1756,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     it("rejects clone.fanout on the computer-use route (declared behavior change) but accepts clone.keep/depth", () => {
       // clone.fanout is now a hard parse error on the computer-use route: fan-out is declared via
-      // actors[0].count/lanes. No current route reads subject.clone.fanout.
+      // `actors[0].count`/`lanes`. No current route reads subject.clone.fanout.
       const rejected = parseLabConfig({
         ...validCloneCua,
         subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true, fanout: 2 } },
@@ -1772,7 +1776,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(accepted.warnings).toEqual([]);
     });
 
-    it("accepts a homogeneous count > 1 on the clone computer-use route (each lane clones the same repo)", () => {
+    it("accepts a homogeneous count > 1 on the clone computer-use route (each participant clones the same repo)", () => {
       const result = parseLabConfig({
         ...validCloneCua,
         actors: [{ type: "openai-computer-use", count: 3 }],
@@ -2331,7 +2335,7 @@ describe("shared-world topology routing + cross-validation", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("rejects malformed lane grouping metadata instead of persisting arbitrary labels", () => {
+  it("rejects malformed participant grouping metadata instead of persisting arbitrary labels", () => {
     const result = parseLabConfig(
       validSharedWorld({
         actors: [

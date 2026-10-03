@@ -1,11 +1,11 @@
-// Committed personas must reach browser lanes, not just the terminal lane.
+// Committed personas must reach the browser run kinds, not just the terminal one.
 //
 // `composeParticipantInstructions` must not emit a bare `Persona: <id>.` line or hardcode
 // `traitsApplied: []`: on every computer-use route that makes the persona axis a label with no
-// behavior behind it. A live two-lane contrast (impatient expert vs patient newcomer) came back with
-// near-identical action profiles, which looked like a finding about personas and was actually a
-// finding about the composer. These tests assert the persona's compiled directive text lands in the
-// prompt, because a prompt digest changing is not evidence that behavior changed.
+// behavior behind it. A live two-participant contrast (impatient expert vs patient newcomer) came
+// back with near-identical action profiles, which looked like a finding about personas and was
+// actually a finding about the composer. These tests assert the persona's compiled directive text
+// lands in the prompt, because a prompt digest changing is not evidence that behavior changed.
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -86,7 +86,7 @@ describe("composeParticipantInstructions applies committed personas", () => {
 });
 
 describe("committed persona resolution", () => {
-  it("resolves ids the lab config actually declares, per lane and per actor", () => {
+  it("resolves ids the study config actually declares, per participant and per actor", () => {
     expect(labPersonaIds({ actors: [{ persona: "synthetic-new-user" }] })).toEqual([
       "synthetic-new-user",
     ]);

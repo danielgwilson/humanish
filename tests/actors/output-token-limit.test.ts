@@ -61,7 +61,7 @@ describe("declared per-response output limit", () => {
       if (!result.ok) expect(result.error.message).toContain("maxOutputTokens");
     },
   );
-  it("rejects custom in-process and lane/roster declarations instead of ignoring them", () => {
+  it("rejects custom in-process and per-participant/roster declarations instead of ignoring them", () => {
     for (const raw of [
       { ...lab(), subject: { source: "local-app" } },
       lab({ lanes: [{ id: "one", maxOutputTokens: 32 }] }),

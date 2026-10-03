@@ -1,5 +1,5 @@
 // runLab plans each lab once: one planLab call per run, and one call of the route's own planner,
-// on every route and on a local browser study, whose desktop lane and provider are bound first.
+// on every route and on a local browser study, whose desktop and provider are bound first.
 
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";

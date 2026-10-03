@@ -15,7 +15,7 @@ import { estimateActorCost, MODEL_RATES } from "../../../src/run/pricing.js";
 // A declared dollar cap is enforced from the usage each provider reply reports. A request lost
 // without a reply (a stall, or a transport failure inside the provider) is booked at its worst
 // case and sent again only when that fits under the cap. These cases drive the real loop with the
-// options a built-in capped lane passes: maxUsd and the rate-sheet estimator for the model.
+// options a built-in capped participant passes: maxUsd and the rate-sheet estimator for the model.
 
 const MODEL = "gpt-5.6-sol";
 const estimate = (usage: ActorTokenUsage): number | null =>

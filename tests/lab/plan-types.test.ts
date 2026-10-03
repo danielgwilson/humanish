@@ -75,7 +75,7 @@ export function refusedShapes(): unknown[] {
     cloneOnLocalVm satisfies ComputerUseRunner,
     // @ts-expect-error 3. in-process runs one participant
     twoInProcess satisfies ComputerUseRunner,
-    // @ts-expect-error 4. only computer-use lanes carry tasks
+    // @ts-expect-error 4. only computer-use participants carry tasks
     seatWithTasks satisfies ProvisionedParticipant,
     // @ts-expect-error 4, as a literal
     { ...provisionedSeat, tasks: [] } satisfies ProvisionedParticipant,

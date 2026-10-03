@@ -4,8 +4,8 @@ import type { ComputerUseParticipant } from "../../src/lab/plan-participants.js"
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 
 /**
- * A synthetic participant run on the default desktop preset, for tests that drive a lane runner or
- * a bundle builder directly. Ids and paths default to a single participant.
+ * A synthetic participant run on the default desktop preset, for tests that drive a participant
+ * runner or a bundle builder directly. Ids and paths default to a single participant.
  */
 export function participantRun(fields: {
   id: string;

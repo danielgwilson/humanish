@@ -55,7 +55,7 @@ describe("reasoning effort is a declarable study variable", () => {
     }
   });
 
-  it("lets a lane override the actor default: the single-run control", () => {
+  it("lets a participant override the actor default: the single-run control", () => {
     const parsed = parseLabConfig(
       lab({
         reasoningEffort: "medium",
@@ -72,7 +72,7 @@ describe("reasoning effort is a declarable study variable", () => {
     }
   });
 
-  it("refuses an unknown level on a lane too", () => {
+  it("refuses an unknown level on a participant too", () => {
     const parsed = parseLabConfig(lab({ lanes: [{ id: "a", reasoningEffort: "turbo" }] }));
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error.message).toContain("lanes[0].reasoningEffort");
@@ -196,7 +196,7 @@ describe("the lab surface says what effort will actually run", () => {
     expect(summary?.reasoningEffort).toBe("xhigh");
   });
 
-  it("says per-lane rather than picking one lane's answer for all of them", async () => {
+  it("says per-participant rather than picking one participant's answer for all of them", async () => {
     const summary = await summaryFor(
       "  - type: openai-computer-use\n    mission: m\n    reasoningEffort: low\n    lanes:\n      - id: steady\n      - id: harder\n        reasoningEffort: high\n",
     );

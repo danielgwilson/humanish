@@ -178,7 +178,8 @@ export const routeCases: readonly AdmissionCase[] = [
     entries: ["runner"],
   },
 
-  // Raw vs parsed with a count override: the parser fills concurrency and recipients for 2 lanes.
+  // Raw vs parsed with a count override: the parser fills concurrency and recipients for 2
+  // participants.
   {
     name: "count override on a raw config",
     raw: lab("cuClone", { comms: { email } }, { count: 2 }),

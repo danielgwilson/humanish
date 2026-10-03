@@ -132,7 +132,7 @@ describe("versioned scripted capture evidence", () => {
     expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
   });
 
-  it("keeps explicit assignments authoritative and never promotes another lane's display intent", async () => {
+  it("keeps explicit assignments authoritative and never promotes another participant's display intent", async () => {
     const bundle = fixture();
     Object.assign(bundle.streams[0]!, { assignment: { mission: "Use the explicit task." } });
     expect((await captureEvidence(prepared, await save(bundle))).participants[0]!.assignment).toBe(
