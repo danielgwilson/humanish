@@ -21,7 +21,7 @@ Whether that is a defect depends entirely on a question the harness never asked:
   finding about how legible the surface is to its actual users.
 
 The proof roadmap already anticipated this: its strongest evidence class,
-`user-census`, is defined as "the users of the product are agents, and the lab runs
+`user-census`, is defined as "the users of the product are agents, and the study runs
 real production harnesses." This page is the layer that makes the distinction
 operable.
 
@@ -104,7 +104,7 @@ a green run proves nothing.
 
 **Declare, record, and let the adopter judge.**
 
-1. **Declared population is a property of a persona, not of a lab.** One study program
+1. **Declared population is a property of a persona, not of a study.** One study program
    can legitimately run agents and people against the same surface; the comparison
    between them is itself a finding. Prior art runs both populations
    through one instrument and reports the difference

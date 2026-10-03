@@ -2,7 +2,7 @@
 
 Independent computer-use participants, on hosted E2B desktops and local Firecracker
 desktops, acquire an owned desktop allocation before subject setup, then bind its
-executor after browser setup. The participant loop still consumes `CuaExecutor`;
+executor after browser setup. The participant loop still consumes `ComputerUseExecutor`;
 provisioning commands stay in the desktop adapter. This internal interface is not
 a public runtime plugin API.
 
@@ -45,7 +45,7 @@ span, not a provider billing measurement.
 2. The runner starts its model session and signals the existing hosted pipeline
    gate, preserving the current scheduling order.
 3. `openSession()` measures initial browser geometry, starts the optional live
-   stream, and supplies a `CuaExecutor` plus any participant inbox location.
+   stream, and supplies a `ComputerUseExecutor` plus any participant inbox location.
 4. The runner executes the participant loop and closes its model session.
 5. `finalize()` collects final evidence and releases the desktop, including after
    preparation or participant failure. Repeated calls share one finalization.
@@ -62,16 +62,16 @@ its steps in the files beside it; acquisition and release are in
 `src/substrates/e2b/desktop-media.ts`. Subject provisioning lives in
 `src/subject/` and reaches the sandbox only through a `Shell`
 (`src/substrates/shell.ts`), which `e2bShell` (`src/substrates/e2b/shell.ts`)
-builds from the sandbox handle. The adapter never imports the lab runner at
+builds from the sandbox handle. The adapter never imports the study runner at
 runtime.
 
 The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop
 shell commands or manufacture E2B objects for an alternate executor. A local
 Firecracker run supplies its desktops through the computer-use run's `localVm`
-input (`LocalVmInput` in `src/routes/computer-use/types.ts`). runLab builds that
+input (`LocalVmInput` in `src/routes/computer-use/types.ts`). runStudy builds that
 input with `prepareLocalVmRun` (`src/routes/computer-use/local-vm.ts`), and no
-package caller can set it. Contract tests pass a `localVm` desktop on a lab with
+package caller can set it. Contract tests pass a `localVm` desktop on a study with
 `execution.target: local`. Neither bypasses CLI admission checks.
 
 Final evidence errors cannot skip desktop release. Existing bundle fields and
@@ -88,5 +88,5 @@ The `runSession` testing hook for independent participants now receives a constr
 normal `CuaActorSessionOptions` executor or delegate to the internal
 `runCuaActorSession`. The `runCuaActorSession` export was removed in 0.107.0; a
 library caller uses `runComputerUseLoop`. A custom in-process
-executor now goes through `RunLabOptions.inProcess`, which replaces the
+executor now goes through `RunStudyOptions.inProcess`, which replaces the
 removed `cuaHooks.buildExecutor`.

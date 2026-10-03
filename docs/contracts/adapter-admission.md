@@ -1,18 +1,18 @@
 # Adapter admission limits
 
-Library callers can throw `CuaAdmissionLimitError` from a custom `CuaProvider`
+Library callers can throw `ComputerUseAdmissionLimitError` from a custom `ComputerUseProvider`
 or the `fetchFn` supplied to `createOpenAiResponsesProvider` when a configured
 local control limit refuses a request **before provider dispatch**:
 
 ```ts
-import { CuaAdmissionLimitError, createOpenAiResponsesProvider } from "humanish";
+import { ComputerUseAdmissionLimitError, createOpenAiResponsesProvider } from "humanish";
 
 const provider = createOpenAiResponsesProvider({
   apiKey,
   fetchFn: async (url, init) => {
     if (localLimitReached()) {
       await recordLocalAdmissionRefusal();
-      throw new CuaAdmissionLimitError();
+      throw new ComputerUseAdmissionLimitError();
     }
     return transport(url, init);
   },

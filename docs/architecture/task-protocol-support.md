@@ -1,6 +1,6 @@
 # Task protocol support
 
-`actors[0].tasks` adds a participant protocol to the mission. Goals reach the
+`actor.tasks` adds a participant protocol to the mission. Goals reach the
 participant; hidden success criteria go only to the observation tracker. A route
 that cannot carry both halves refuses the declaration before execution. Removing
 `tasks` is an explicit choice to run a mission-only study, not an automatic fallback.
@@ -14,7 +14,7 @@ that cannot carry both halves refuses the declaration before execution. Removing
 | Shared-world, provisioned or external-public          | Rejected     | Actor specs omit the protocol before CUA session dispatch                                     |
 | Terminal-product                                      | Rejected     | Terminal prompt and result contract do not implement tasks                                    |
 | Scripted-browser, local or provisioned                | Rejected     | Scenario steps drive the participant; no task protocol is consumed                            |
-| Synthetic (`this-repo`)                               | Rejected     | Lab dispatch does not pass task declarations to the dry-run engine                            |
+| Synthetic (`this-repo`)                               | Rejected     | Study dispatch does not pass task declarations to the dry-run engine                          |
 | Any second or later `actors[]` entry                  | Rejected     | Current runners consume only the first actor; declare every participant under the first actor |
 
 Both registered CUA actors (`openai-computer-use` and `local-agent`) share the CUA
@@ -22,8 +22,8 @@ session loop. Their task support does not depend on which provider chooses actio
 Custom session hooks remain caller-owned implementations of that same contract;
 this preflight does not certify arbitrary hook behavior.
 
-The parser reports `HUMANISH_LAB_INVALID` with the unsupported field path. `runLab`
-reports `HUMANISH_LAB_TASKS_UNSUPPORTED` in the route's failure envelope, from
+The parser reports `HUMANISH_STUDY_INVALID` with the unsupported field path. `runStudy`
+reports `HUMANISH_STUDY_TASKS_UNSUPPORTED` in the route's failure envelope, from
 `planLab` (`src/lab/plan.ts`) and each route's plan.
 Refusal precedes run storage, source preparation, user hooks, local processes,
 sandbox allocation, and model calls. No task content appears in the error.

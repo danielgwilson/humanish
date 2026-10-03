@@ -20,9 +20,9 @@ runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
 createdAt: "<ISO timestamp>"
-lab: # optional, additive: which manifest produced this run
-  id: "<lab id>"
-  path: "humanish/labs/<lab id>.yaml"
+lab: # optional, additive: which study file produced this run
+  id: "<study id>"
+  path: "humanish/studies/<study id>.yaml"
   origin: "committed|ignored|explicit"
 cwd: "[target-cwd]"
 artifactRoot: ".humanish/runs/<run-id>"
@@ -197,7 +197,7 @@ different facts separate:
 
 - `screen.requested`: the E2B/X screen size requested by config;
 - `screen.verified`: the screen size measured in-sandbox with `xdpyinfo`;
-- `screen.declared`: the device preset the lab asked for, present only when it differs from
+- `screen.declared`: the device preset the study asked for, present only when it differs from
   `screen.requested` because the rendered width was floored to Chrome's ~500px window minimum.
   `verified` compares the floored number with itself and reports a match, so a matching
   `verified` block is not evidence that the preset width rendered. When `declared` is present,
@@ -266,7 +266,7 @@ a provisioned clone records the clone's desktop as a `laneId: subject` line. A l
 without `cost` has an unmeasured spend. A live terminal run's `cost` prices the E2B terminal
 sandbox as a `desktop-minutes` line from its acquired-to-cleanup span and `e2b.getInfo` size.
 Its Codex `model-tokens` line prices the agent's tokens from the model passed as `--model`
-(`actors[0].model`, else `gpt-5.6-sol`). Codex reports usage per turn, summed over the turn's
+(`actor.model`, else `gpt-5.6-sol`). Codex reports usage per turn, summed over the turn's
 requests, so the line prices every token at the base tier and carries
 `basis: aggregated_turns_base_rate`. It stays `null` with `no_token_usage` when Codex reported
 none. `terminal-ledgers.json` still counts those tokens without a price, because its provider line
@@ -323,34 +323,33 @@ under its namespace.
 Multi-participant browser/shared-world routes may carry optional participant grouping metadata:
 
 ```yaml
-actors:
-  - type: openai-computer-use
-    lanes:
-      - id: lane-01
-        actorType: viewer
-        surface: intake
-        caseGroup: case-001
+actor:
+  type: openai-computer-use
+participants:
+  - id: lane-01
+    actorType: viewer
+    surface: intake
+    caseGroup: case-001
 ```
 
-For repeated participants, authors can use compact roster groups. The parser expands
-each group into deterministic `lanes[]` before the engine runs:
+For repeated participants, a `participants` entry can take a `count`. The parser expands
+each such group into deterministic participants before the engine runs:
 
 ```yaml
-actors:
-  - type: openai-computer-use
-    roster:
-      - id: viewer
-        count: 3
-        actorType: viewer
-        surface: review-queue
-        caseGroup: case-001
-        persona: curious-reviewer
-        device: desktop
+actor:
+  type: openai-computer-use
+participants:
+  - id: viewer
+    count: 3
+    actorType: viewer
+    surface: review-queue
+    caseGroup: case-001
+    persona: curious-reviewer
+    device: desktop
 ```
 
-The generated participant ids are `<group.id>-01`, `<group.id>-02`, and so on. `roster`
-is mutually exclusive with explicit `lanes`, homogeneous `count`, and
-`laneFocus`; it is an authoring convenience, not a second runtime shape.
+The generated participant ids are `<group.id>-01`, `<group.id>-02`, and so on, even when
+`count` is 1. A group is an authoring convenience, not a second runtime shape.
 
 These fields are adapter-owned labels, not core enums. They let downstream
 projects express "N actors of M app-defined types across S surfaces" without
@@ -362,7 +361,7 @@ are projected into:
 - Observer `laneGroups[]`;
 - human-readable Observer stream labels.
 
-`actorType` is deliberately separate from `actors[0].type`. The latter selects
+`actorType` is deliberately separate from `actor.type`. The latter selects
 the humanish execution actor, such as `openai-computer-use` or `scripted-browser`.
 The former is the app-defined simulated user bucket, such as `viewer`,
 `maintainer`, or a downstream adapter's own role label.
@@ -483,7 +482,7 @@ humanish:
 
 For public OSS runs, previews could include allowlisted setup files such as
 `package.json`, `.gitignore`, `humanish/config.ts`, and
-`humanish/labs/*.yaml` / `humanish/personas/*.yaml` /
+`humanish/studies/*.yaml` / `humanish/personas/*.yaml` /
 `humanish/scenarios/*.yaml`. For token-backed or private maintainer runs, raw
 previews were suppressed by default. Generated state, `.git`, `.env*`, `.npmrc`,
 browser profiles, `node_modules`, `.humanish/`, and arbitrary source files were

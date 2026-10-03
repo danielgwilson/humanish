@@ -3,7 +3,7 @@
 Part of this contract ships and part is still open. Shipped: the evidence schema
 `humanish.actor-trace.v1` (`src/actors/contract.ts`) and a closed first-party registry of five
 descriptors (`src/actors/registry.ts`: `codex-app-server`, `openai-computer-use`, `local-agent`,
-`scripted-browser`, `codex-exec`). `actors[0].type` is a real dispatch key on the computer-use,
+`scripted-browser`, `codex-exec`). `actor.type` is a real dispatch key on the computer-use,
 scripted-browser, and terminal-product routes. Product scoring, feedback, and artifact hooks are
 extension seams, but public out-of-tree actor registration and its conformance certification are not
 shipped. Also not shipped: the full `Actor.run(input)` interface, `ApprovalPolicy`,
@@ -15,15 +15,15 @@ Decision 6's capture-time screenshot stance was recanted in 0.6.0; see the inlin
 capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
 
-`codex-exec` is a real dispatch key for terminal-product labs, but the exported
+`codex-exec` is a real dispatch key for terminal-product studies, but the exported
 descriptor `runSession` is a fail-closed compatibility entry. Live execution is
 owned by `runTerminalProductLab`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
 The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and the
-`in-process-sdk` protocol were removed. No lab route dispatched either descriptor, and a
-lab that names one now fails to parse. A signed-in Claude Code drives computer-use studies
-through `local-agent`, which plugs into the provider-neutral `CuaProvider` port
+`in-process-sdk` protocol were removed. No study route dispatched either descriptor, and a
+study that names one now fails to parse. A signed-in Claude Code drives computer-use studies
+through `local-agent`, which plugs into the provider-neutral `ComputerUseProvider` port
 (`src/actors/computer-use/loop/types.ts`, re-exported from `loop.ts`).
 
 ## Context
@@ -293,8 +293,8 @@ export interface Actor {
   token-derived rate-table multiply from the operator-editable `src/run/pricing.ts`,
   labeled as an estimate and projected up into `RunBundle.cost` (see
   [`../contracts/schemas.md`](../contracts/schemas.md) → Run Cost Summary And
-  Estimated Actor Cost). The CUA lab computes and attaches `estimatedCost` at the
-  lab boundary before persisting the trace, so the pure computer-use loop never
+  Estimated Actor Cost). The CUA study computes and attaches `estimatedCost` at the
+  study boundary before persisting the trace, so the pure computer-use loop never
   depends on the pricing table. An unknown model yields
   `estimatedCostUsd: null` + a `reason`, never a guessed charge.
 
@@ -339,7 +339,7 @@ switch with no default, so a new completion reason forces a compile-time decisio
 status. ~30 min (`1_800_000`) is a reasonable default for open-ended watch; the persona
 still stops early on `goal_satisfied`/`gave_up`/`stopWhen`.
 
-Actuation-vs-spend gate: on the scripted lab route `scenario.mode: live` is still required
+Actuation-vs-spend gate: on the scripted route `mode: live` is still required
 even though provider spend is $0 by mechanism. The gate's justification there is actuation,
 not cost: a live scripted run drives a real browser against a real running app
 (state-mutating effects on the operator's app), which deserves the same affirmative
@@ -348,8 +348,8 @@ this paragraph is the record of that decision.
 
 ## Optional closing report
 
-`CuaProvider.debrief` is an optional read-only request after a structured
-`stopWhen` or dwell stop. It returns a `CuaTurn` with `closingReport` containing
+`ComputerUseProvider.debrief` is an optional read-only request after a structured
+`stopWhen` or dwell stop. It returns a `ComputerUseTurn` with `closingReport` containing
 `summary` and `frictionReports`; an empty friction list is valid. The loop rejects
 actions, pending safety checks, and invalid report shapes. It redacts accepted
 reports, records them in `ActorTrace.debrief`, and projects one readable message
@@ -371,14 +371,14 @@ records both report recovery and control failures in the separate legacy parser.
 
 ## The state-driven executor seam
 
-The `CuaExecutor` / `CuaProvider` ports are the concrete realization of the "plural harnesses /
+The `ComputerUseExecutor` / `ComputerUseProvider` ports are the concrete realization of the "plural harnesses /
 transport-agnostic" intent above: the computer-use loop does not require a screen or a vision
 model. A library caller can drive an **already-running local app** through its in-process JS
-contract (`window.app.getState()` etc.) with a custom `CuaExecutor` (screenshot optional,
-`appState` as the progress signal) paired with a **non-vision** `CuaProvider` (`requiresFrame`
-falsey), keeping the whole lab composition with no E2B desktop and no clone. See
+contract (`window.app.getState()` etc.) with a custom `ComputerUseExecutor` (screenshot optional,
+`appState` as the progress signal) paired with a **non-vision** `ComputerUseProvider` (`requiresFrame`
+falsey), keeping the whole study composition with no E2B desktop and no clone. See
 [`state-driven-executor.md`](./state-driven-executor.md) for the port, both entry points
-(`runComputerUseLoop` and `runLab` + `inProcess`/`createProvider`), the `subject.source:
+(`runComputerUseLoop` and `runStudy` + `inProcess`/`createProvider`), the `subject.source:
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
 appState-is-runtime-only stance.
 
@@ -388,9 +388,9 @@ The terminal-product route has a product-adapter extension seam: a product adopt
 attaches product-specific scoring + feedback as a thin in-repo extension without forking
 core. The seam is exported contract types (`RunBundle`, `RunFeedbackCandidate`,
 `RunAdapterScore`, `ActorTrace`, `AdapterScorerModule` and the terminal-route
-`TerminalProductScoringContext`) plus a registrable scorer module, `RunLabOptions.scorer`,
+`TerminalProductScoringContext`) plus a registrable scorer module, `RunStudyOptions.scorer`,
 with optional `score` and `deriveFeedback`. The older `terminalHooks` and `cuaHooks` bags were
-removed from `RunLabOptions`. The adapter records its product nouns only
+removed from `RunStudyOptions`. The adapter records its product nouns only
 under an adapter-namespaced block (`RunFeedbackCandidate.adapter` /
 `RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
 is hardcoded into a core enum. Default (no hook) behavior is unchanged. See

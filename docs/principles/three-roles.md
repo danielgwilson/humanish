@@ -14,7 +14,7 @@ They care about rigor and control, and they need output they can reason over and
 adjust.
 
 **The stakeholder** watches. In a real study they sit behind the glass in the
-viewing room; here they open Observer, `watch`, or `serve`. They want none of the
+viewing room; here they open Observer, `watch`, or `observe --all`. They want none of the
 protocol. They want to know what happened, where people got stuck, how bad it is,
 and whether anyone succeeded: moments, severity, and the denominator.
 

@@ -15,14 +15,14 @@ reverse proxy you own).
 
 ## What serve is
 
-`humanish serve` is the third observer surface, and the first whose subject is
+`humanish observe --all` is the third observer surface, and the first whose subject is
 the library rather than a run:
 
 - `humanish watch` serves one attached run: the process that created the run
   serves it and may inject runtime stream URLs for live following (see the
   stream-URL rules below and `watch --expose`);
 - `humanish observe` re-serves one finished run read-only;
-- `humanish serve` serves the whole local library under `.humanish/runs/`: a
+- `humanish observe --all` serves the whole local library under `.humanish/runs/`: a
   library index, per-run Observer pages, `/_humanish/history.json` polling, and
   optional edge-authenticated exposure beyond the machine.
 
@@ -34,7 +34,7 @@ authenticated edge (or `--safe`, see the fail-closed matrix).
 ## Fail-closed exposure matrix
 
 One shared validator (`validateExposure` in `src/observer/exposure.ts`) governs
-both `serve` and `watch`. `--expose` must always resolve to a reachable public
+both `observe --all` and `watch`. `--expose` must always resolve to a reachable public
 origin (a `--tunnel` or a `--public-url`), even under `--safe`, since an
 origin-less exposed server is an unreachable loopback no-op. With an origin
 present, exposure requires either edge auth (`--oauth` on the ngrok edge, or a
@@ -117,7 +117,7 @@ which adds `sandbox allow-scripts` to that policy.
 
 | Mode              | Invocation                                                                      | Boundary class                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `loopback`        | `humanish serve`                                                                | Capture-side trust: readable only by whoever can already read gitignored `.humanish/` on this machine; no new boundary is crossed.                                                                                                                                                                                                                                                                                                                                             |
+| `loopback`        | `humanish observe --all`                                                        | Capture-side trust: readable only by whoever can already read gitignored `.humanish/` on this machine; no new boundary is crossed.                                                                                                                                                                                                                                                                                                                                             |
 | `exposed`         | `--expose --tunnel ngrok --oauth google …`, or `--expose --public-url <origin>` | Edge-authed exposure: only viewers who clear the edge OAuth (or the operator's own edge) reach the loopback server, which then serves everything it grants unless `--safe` composes in. The gate is the edge, not humanish.                                                                                                                                                                                                                                                    |
 | `share-safe-open` | `--expose --safe --tunnel ngrok` (no `--oauth`)                                 | Genuine publishing behind the feedback-grade `share_ready` gate: only runs that pass verify are served. Each request walks the run, and any added, removed or changed file re-verifies it first; a file is read only while its inode, size, mtime and ctime match the walk verify covered, and its bytes are served only when their sha256 matches the hash taken at admission. Everything else is absent, 404ing byte-identically to a nonexistent run (no existence oracle). |
 
@@ -172,7 +172,7 @@ any mutating route ships, the contract is:
 - mutating routes require CSRF defenses appropriate to the chosen edge session;
 - the live-spend rule applies to remote hands too: a phone-initiated live
   run needs its own affirmative declaration at serve startup (an explicit opt-in
-  naming the lab and budget), never a default the viewer UI can reach.
+  naming the study and budget), never a default the viewer UI can reach.
 
 ## Why not Better Auth here
 

@@ -1,8 +1,8 @@
 # Bring your own participant: a local app through its state contract
 
 This complete library example starts a synthetic loopback HTTP app, reads its
-state with a `CuaExecutor`, sends a greeting through its action endpoint, and
-verifies the resulting humanish run. It uses a deterministic `CuaProvider` with
+state with a `ComputerUseExecutor`, sends a greeting through its action endpoint, and
+verifies the resulting humanish run. It uses a deterministic `ComputerUseProvider` with
 no model calls, API keys, browser, screenshots or E2B resources. It demonstrates
 the integration; it does not test persona behavior or the quality of an app's UI.
 
@@ -56,9 +56,9 @@ provider. Your replacement owns its model credentials and costs. The
 `openai-computer-use` actor id selects the registered CUA route; `createProvider`
 chooses the actual provider, so this example never invokes OpenAI.
 
-The runner shows both required discriminant checks: `parseLabConfig` receives
-an object containing `schema: LAB_CONFIG_SCHEMA` and is narrowed on `.ok`;
-`runLab` is narrowed on `route === "computer-use"` before inspecting its result.
+The runner shows both required discriminant checks: `parseStudy` receives
+an object containing `schema: STUDY_SCHEMA` and is narrowed on `.ok`;
+`runStudy` is narrowed on `route === "computer-use"` before inspecting its result.
 Supplying `inProcess.executor` and `createProvider` selects the library-assisted
 route. It is not a config-only CLI actor or an out-of-tree actor registration API.
 

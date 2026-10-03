@@ -8,7 +8,7 @@ holds the build order and the safety contract.
 
 ## What this is
 
-A lab route for **terminal-product real-agent studies**: a real autonomous coding
+A study route for **terminal-product real-agent studies**: a real autonomous coding
 agent (Codex) discovering and using a CLI/product from its **public surfaces
 only**, running **inside an E2B shell** with declared runtime-auth placement and
 spend/time caps, emitting durable terminal/substrate/cost/no-spend/cleanup/
@@ -24,19 +24,19 @@ fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition
 
-| Axis                                  | Value                                                                                                                                                     |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `subject.source`                      | `terminal-product`                                                                                                                                        |
-| `subject.product`                     | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                                  |
-| `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                                                      |
-| `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                                             |
-| `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                             |
-| `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                                                   |
-| `actors[0].model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                        |
-| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                                   |
-| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all default false                              |
-| `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                     |
-| route                                 | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
+| Axis                              | Value                                                                                                                                                     |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subject.source`                  | `terminal-product`                                                                                                                                        |
+| `subject.product`                 | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                                  |
+| `execution.target`                | `e2b-terminal` (or absent → implied)                                                                                                                      |
+| `execution.terminal`              | `{ transport: exec-stream, stdin: disabled }`                                                                                                             |
+| `execution.runtimeAuth`           | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                             |
+| `execution.runtime.version`       | Optional exact `@openai/codex` version; observed before keyed execution                                                                                   |
+| `actor.model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                        |
+| `caps`                            | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                                   |
+| `policies`                        | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all default false                              |
+| `actor.type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                     |
+| route                             | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
 
 Routing is `routeOf` (`src/lab/plan.ts`). It sends every `terminal-product` subject to
 this route, even with an unregistered actor, so this route refuses the actor.
@@ -46,10 +46,10 @@ warnings.
 ## Repeating a terminal study with the same runtime
 
 ```yaml
-actors:
-  - type: codex-exec
-    model: gpt-5.6-sol
-    reasoningEffort: low
+actor:
+  type: codex-exec
+  model: gpt-5.6-sol
+  reasoningEffort: low
 execution:
   target: e2b-terminal
   runtime:
@@ -69,7 +69,7 @@ the requested model and where it came from, declared effort, and the usage granu
 The observed executable version also appears as `providerVersion`.
 
 Codex's `--json` stream does not name the model it used, and its built-in default can change
-with any release. So the route always passes `--model`: the lab's `actors[0].model`
+with any release. So the route always passes `--model`: the study's `actor.model`
 (`modelStatus: declared`), or humanish's participant default `gpt-5.6-sol`
 (`modelStatus: humanish_default`). Bundles written before 0.107.0 record
 `runtime_default_unobserved` with no requested model.
@@ -81,7 +81,7 @@ requested model. Codex `turn.completed` usage sums every request in a turn, so n
 size is known and no per-request long-context tier can be applied. The estimate prices every token
 at the base tier, with cached input at the cached rate, and says so with
 `basis: aggregated_turns_base_rate`. It is an estimate, not a measurement. The cost ledger
-checked against `scenario.caps.maxUsd` keeps the provider line unmeasured, and the studied
+checked against `caps.maxUsd` keeps the provider line unmeasured, and the studied
 product's no-spend boundary still needs separate interpretation.
 
 ## Runtime auth: raw-key placement and remaining provider access
@@ -125,11 +125,11 @@ make authenticated requests to that host from sandbox creation until teardown,
 including bootstrap/setup commands and commands launched outside Codex. Calls
 made outside Codex may be absent from its usage ledger. This mode does not impose
 a provider-side spending limit, restrict models/API paths, or make
-`scenario.caps.maxUsd` a preventive provider budget. A hard provider budget needs
+`caps.maxUsd` a preventive provider budget. A hard provider budget needs
 a separately enforced control; do not infer zero spend from an unmeasured ledger
 line.
 
-Public internet discovery stays unrestricted unless the lab already declares
+Public internet discovery stays unrestricted unless the study already declares
 `execution.egressAllow`. The mode preserves that allowlist and its deny-all
 fallback without adding hosts. If an allowlist omits `api.openai.com`, provider
 requests can fail. E2B domain allowlists are routing controls rather than strict
@@ -229,7 +229,7 @@ the adopter's repo:
   `AdapterScorerModule` and `TerminalProductScoringContext`. The ledger, cost and
   no-spend shapes are reached through that context's fields, as
   `TerminalProductScoringContext["ledgers"]`.
-- **A registrable scorer / feedback module**, `RunLabOptions.scorer` (an
+- **A registrable scorer / feedback module**, `RunStudyOptions.scorer` (an
   `AdapterScorerModule`): `score?(ctx) => RunAdapterScore | Promise<…>` and
   `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`, where this route's
   `ctx` is a `TerminalProductScoringContext`. The older `terminalHooks.score` and
