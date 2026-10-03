@@ -9,7 +9,9 @@
   "safe": false,
   "host": "127.0.0.1",
   "runsListed": 0,
-  "warnings": [],
+  "warnings": [
+    "humanish serve is deprecated and is removed in the next minor. Use humanish observe --all."
+  ],
   "error": {
     "code": "HUMANISH_INVALID_PORT",
     "message": "--port must be an integer between 0 and 65535."

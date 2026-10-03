@@ -24,18 +24,18 @@ humanish [options] [command]
 | `-h, --help` | Show help for this command. |
 
 - [humanish init](#humanish-init): Set up starter studies and personas in this project.
-- [humanish doctor](#humanish-doctor): Check what this project and machine need before a run.
+- [humanish doctor](#humanish-doctor): Check what this project and machine need for a run.
 - [humanish run](#humanish-run): Run a study, as a dry run or with live participants.
 - [humanish watch](#humanish-watch): Run a study and follow it in the Observer.
 - [humanish observe](#humanish-observe): Open a saved run in the Observer.
 - [humanish verify](#humanish-verify): Check a run's evidence and share safety.
 - [humanish review](#humanish-review): Build a review packet from verified run evidence.
-- [humanish analyze](#humanish-analyze): Analyze a live run and write evidence-linked findings.
+- [humanish analyze](#humanish-analyze): Analyze a live run into evidence-linked findings.
 - [humanish feedback](#humanish-feedback): Draft public-safe feedback issues from a run.
-- [humanish export](#humanish-export): Export a run as an Observer page or a redacted bundle.
+- [humanish export](#humanish-export): Export a run as an Observer page or redacted bundle.
 - [humanish runs](#humanish-runs): List this project's runs and which one is latest.
 - [humanish stats](#humanish-stats): Show cost, outcomes and durations across runs.
-- [humanish lab](#humanish-lab): List, inspect and check studies in humanish/studies/.
+- [humanish study](#humanish-study): List, show and check studies in humanish/studies/.
 - [humanish migrate](#humanish-migrate): Convert v2 study files to v3.
 - [humanish comms](#humanish-comms): Catch the email an app sends, for email-gated flows.
 - [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
@@ -74,7 +74,7 @@ humanish doctor [options]
 | Option | Description |
 | --- | --- |
 | `--cwd <path>` | Project directory. (default: ".") |
-| `--lab <lab>` | Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls. |
+| `--study <study>` | Check the study's desktop, participant authentication and separate analysis requirements; no provider calls. |
 | `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
@@ -84,12 +84,12 @@ humanish doctor [options]
 Run a study, as a dry run or with live participants. This is the everyday command.
 
 ```text
-humanish run [options] [lab]
+humanish run [options] [study]
 ```
 
 | Argument | Description |
 | --- | --- |
-| `lab` | Optional lab id or .yaml path. |
+| `study` | Optional study id or .yaml path. |
 
 | Option | Description |
 | --- | --- |
@@ -98,9 +98,9 @@ humanish run [options] [lab]
 | `--no-open` | Render without opening a browser. |
 | `--detach` | Render/open once and exit without an attached watch server. |
 | `--port <port>` | Port to listen on at 127.0.0.1. (default: a free port) |
-| `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
+| `--count <count>` | Override the participant count of a preview or computer-use study, or of the synthetic run without a study. |
 | `--rerun-failed-from <run>` | Computer-use studies only: start a new run for the failed participants of a prior run. |
-| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The lab's actors[0].lanes[] decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
+| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The study's participants decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
 | `--scorer <path>` | Score with this .mjs module, a path inside the repo, in place of review.scorer.ref. It runs as code, so review it first. Terminal, computer-use and shared-world studies only. |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
@@ -113,24 +113,24 @@ humanish run [options] [lab]
 Run a study, open its Observer and keep the shell attached.
 
 ```text
-humanish watch [options] [lab]
+humanish watch [options] [study]
 ```
 
 | Argument | Description |
 | --- | --- |
-| `lab` | Optional lab id or .yaml path to run and observe. |
+| `study` | Study id or .yaml path to run and observe. |
 
 | Option | Description |
 | --- | --- |
-| `--lab <id-or-path>` | Explicit lab id or .yaml path. |
+| `--study <id-or-path>` | Study id or .yaml path, in place of the argument. |
 | `--dry-run` | Do a dry run: a synthetic run with no browser, keys or provider spend. |
 | `--open` | Open the Observer in the default browser. |
 | `--no-open` | Render without opening a browser. |
 | `--detach` | Render/open once and exit without an attached watch server. |
 | `--port <port>` | Port to listen on at 127.0.0.1. (default: a free port) |
-| `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
+| `--count <count>` | Override the participant count of a preview or computer-use study, or of the synthetic run without a study. |
 | `--rerun-failed-from <run>` | Computer-use studies only: start a new run for the failed participants of a prior run. |
-| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The lab's actors[0].lanes[] decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
+| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The study's participants decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
 | `--scorer <path>` | Score with this .mjs module, a path inside the repo, in place of review.scorer.ref. It runs as code, so review it first. Terminal, computer-use and shared-world studies only. |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
@@ -423,49 +423,31 @@ humanish stats [options]
 
 | Option | Description |
 | --- | --- |
-| `--lab <id>` | Only runs from this lab id. |
+| `--study <id>` | Only runs of this study id. |
 | `--since <date>` | Only runs that started on or after this ISO date or datetime. |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
-## humanish lab
+## humanish study
 
-List, inspect and check studies in humanish/studies/.
+List, show and check studies in humanish/studies/.
 
 ```text
-humanish lab [options] [command]
+humanish study [options] [command]
 ```
 
 | Option | Description |
 | --- | --- |
 | `-h, --help` | Show help for this command. |
 
-### humanish lab list
+### humanish study list
 
-List committed and ignored humanish lab manifests.
-
-```text
-humanish lab list [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Project directory. (default: ".") |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | Show help for this command. |
-
-### humanish lab inspect
-
-Inspect a humanish lab manifest without running it.
+List the studies in this project, committed and local.
 
 ```text
-humanish lab inspect [options] <lab>
+humanish study list [options]
 ```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Lab id or .yaml path. |
 
 | Option | Description |
 | --- | --- |
@@ -473,17 +455,35 @@ humanish lab inspect [options] <lab>
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
-### humanish lab preflight
+### humanish study show
 
-Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab &lt;lab&gt; first.
+Show a study's parsed file and its warnings without running it.
 
 ```text
-humanish lab preflight [options] <lab>
+humanish study show [options] <study>
 ```
 
 | Argument | Description |
 | --- | --- |
-| `lab` | Lab id or .yaml path. |
+| `study` | Study id or .yaml path. |
+
+| Option | Description |
+| --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish study check
+
+Check the study file and, with --reachability, its named endpoints. humanish doctor --study &lt;study&gt; checks this machine.
+
+```text
+humanish study check [options] <study>
+```
+
+| Argument | Description |
+| --- | --- |
+| `study` | Study id or .yaml path. |
 
 | Option | Description |
 | --- | --- |
@@ -536,7 +536,7 @@ humanish comms providers [options]
 
 ### humanish comms connections
 
-Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.
+Manage project-local non-secret connection profiles. A study explicitly selects its receiving connection.
 
 ```text
 humanish comms connections [options] [command]
@@ -563,7 +563,7 @@ humanish comms connections list [options]
 
 ### humanish comms connections add
 
-Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.
+Save an AgentMail connection profile. Does not write a key, alter a study or contact the provider.
 
 ```text
 humanish comms connections add [options] [name]
@@ -593,7 +593,7 @@ humanish comms check [options]
 | --- | --- |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--connection <name>` | Saved connection name. (default: "agentmail") |
-| `--lab <path>` | Check the connection selected by this exact lab. |
+| `--study <path>` | Check the connection this study selects. |
 | `--online` | Make a read-only provider authentication request. |
 | `--env-file <path>` | Load unset variables from this env file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
@@ -601,7 +601,7 @@ humanish comms check [options]
 
 ### humanish comms configure
 
-Preview or save a local receiving-enabled copy of a supported lab. No provider requests.
+Preview or save a local receiving-enabled copy of a supported study. No provider requests.
 
 ```text
 humanish comms configure [options]
@@ -609,10 +609,10 @@ humanish comms configure [options]
 
 | Option | Description |
 | --- | --- |
-| `--lab <path>` | Exact source lab path or handle. |
+| `--study <path>` | Source study path or name. Required. |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--connection <name>` | Saved connection name. (default: "agentmail") |
-| `--apply` | Save the local copy; original lab remains unchanged. |
+| `--apply` | Save the local copy; the source study stays unchanged. |
 | `--plan-token <digest>` | Require the source and destination to match a previous preview. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
@@ -636,7 +636,7 @@ humanish comms recover [options]
 
 ### humanish comms catch
 
-Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.
+Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your study's comms.email.external.catchBaseUrl at this server.
 
 ```text
 humanish comms catch [options]
@@ -704,7 +704,7 @@ humanish reclaim [options]
 | --- | --- |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--run <id>` | Run id, or latest. (default: "latest") |
-| `--preflight` | Reclaim sandboxes left by interrupted `humanish lab preflight` probes (journaled in .humanish/preflight) instead of a run's. |
+| `--preflight` | Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -834,7 +834,7 @@ humanish telemetry disable [options]
 
 ## humanish tui
 
-Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect &lt;lab&gt; --json and humanish runs --json.
+Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish study list --json, humanish study show &lt;study&gt; --json and humanish runs --json.
 
 ```text
 humanish tui [options]

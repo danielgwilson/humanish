@@ -12,7 +12,7 @@ import { createProgram } from "../../src/cli/program.js";
 import { lab } from "../admission/fixtures.js";
 
 const LAB_RUN_NOTE =
-  "warning: humanish lab run is deprecated and is removed in the next minor. Use humanish run <lab>.\n";
+  "warning: humanish lab run is deprecated and is removed in the next minor. Use humanish run <study>.\n";
 const RUN_FLAGS = ["--scorer", "--rerun-failed-from", "--participants"];
 
 interface CliRun {
@@ -177,7 +177,7 @@ describe("run takes the rerun and scorer flags lab run had", () => {
     expect(result.exitCode).toBe(2);
     expect(JSON.parse(result.stdout).error).toEqual({
       code: "HUMANISH_RUN_OPTION_CONFLICT",
-      message: "--scorer, --participants need a lab: humanish run <lab>.",
+      message: "--scorer, --participants need a study: humanish run <study>.",
     });
   });
 

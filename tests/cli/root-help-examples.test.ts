@@ -35,7 +35,7 @@ const NOT_RUN: Record<string, string> = {
   "humanish observe --run latest --open": "serves the Observer until Ctrl-C",
   "humanish run try-live": "starts a live study on an E2B desktop",
   // Its exit code reports this machine's readiness; the lab it names must still exist.
-  "humanish doctor --lab try-live": "readiness",
+  "humanish doctor --study try-live": "readiness",
 };
 
 let dir: string | undefined;

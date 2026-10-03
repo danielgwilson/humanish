@@ -41,7 +41,7 @@ export interface FirstRunEnvironment {
   hasProviderKey: boolean;
   /** The coding agents already signed in locally: Codex, Claude Code, or both. */
   localAgents: readonly SignedInAgent[];
-  /** Host shape only; `doctor --lab local-browser` owns exact read-only readiness. */
+  /** Host shape only; `doctor --study local-browser` owns exact read-only readiness. */
   platform?: NodeJS.Platform;
   arch?: string;
 }
@@ -110,8 +110,8 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
         ? "M3-or-newer Mac, native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"
         : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
     steps.push({
-      command: `${HUMANISH} doctor --lab local-browser`,
-      why: `check the local browser lab (${prerequisites}); no resources or quota used. Run \`${HUMANISH} runtime setup\` to prepare it, then start your app and run \`${HUMANISH} run local-browser\`; no E2B or model API key`,
+      command: `${HUMANISH} doctor --study local-browser`,
+      why: `check the local browser study (${prerequisites}); no resources or quota used. Run \`${HUMANISH} runtime setup\` to prepare it, then start your app and run \`${HUMANISH} run local-browser\`; no E2B or model API key`,
     });
     return steps;
   }
@@ -188,10 +188,10 @@ export function agentsSection(): string {
     "This project uses humanish: synthetic participants use the product and leave evidence.",
     "",
     "```bash",
-    "humanish doctor --lab try-live  # requirements for the selected participant and analysis",
-    "humanish lab list --json   # the labs in this project",
+    "humanish doctor --study try-live  # requirements for the selected participant and analysis",
+    "humanish study list --json # the studies in this project",
     "humanish run first-run     # dry run: no browser, model, keys, or spend",
-    "humanish doctor --lab local-browser  # local Docker/Firecracker + Codex-account readiness",
+    "humanish doctor --study local-browser  # local Docker/Firecracker + Codex-account readiness",
     "humanish run local-browser # your loopback app; no E2B or model API key",
     "humanish run try-live      # demo app study: E2B plus the selected participant's authentication",
     "humanish verify --run latest --json   # is the evidence share-safe",

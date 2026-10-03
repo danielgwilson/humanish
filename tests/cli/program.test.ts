@@ -478,11 +478,11 @@ describe("humanish CLI scaffold", () => {
         ].join("\n"),
       },
       async (cwd) => {
-        const list = await runCli(["lab", "list", "--cwd", cwd]);
-        const inspect = await runCli(["lab", "inspect", "first-run", "--cwd", cwd, "--json"]);
+        const list = await runCli(["study", "list", "--cwd", cwd]);
+        const inspect = await runCli(["study", "show", "first-run", "--cwd", cwd, "--json"]);
 
         expect(list.exitCode).toBe(0);
-        expect(list.stdout).toContain("humanish labs");
+        expect(list.stdout).toContain("humanish studies");
         expect(list.stdout).toContain("first-run this-repo committed");
 
         const envelope = JSON.parse(inspect.stdout) as {

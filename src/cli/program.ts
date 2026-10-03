@@ -19,7 +19,7 @@ import { registerAnalyzeCommand } from "./commands/analyze.js";
 import { registerCodexCommands } from "./commands/codex.js";
 import { registerCommsCommands } from "./commands/comms.js";
 import { registerFeedbackCommands } from "./commands/feedback.js";
-import { registerLabCommands } from "./commands/lab.js";
+import { registerStudyCommands } from "./commands/study.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerObserveCommand, registerServeCommand } from "./commands/observe.js";
 import {
@@ -352,7 +352,7 @@ export const ROOT_HELP_EXAMPLES = [
   "humanish init --yes",
   "humanish run first-run",
   "humanish observe --run latest --open",
-  "humanish doctor --lab try-live",
+  "humanish doctor --study try-live",
   "humanish run try-live",
   "humanish verify --json",
 ] as const;
@@ -451,7 +451,7 @@ export function createProgram(
   registerExportCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
   registerStatsCommand(program, cliIo);
-  registerLabCommands(program, cliIo);
+  registerStudyCommands(program, cliIo);
   registerMigrateCommand(program, cliIo);
   registerCommsCommands(program, cliIo);
   registerRuntimeCommands(program, cliIo);

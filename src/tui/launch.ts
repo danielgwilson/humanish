@@ -21,13 +21,13 @@ import { resolveLabManifest } from "../lab/discover.js";
 import { prepareManagedHumanishOutputDirectory } from "../run/contained-output.js";
 
 /**
- * A lab handle is the manifest filename, which is what `humanish lab run` resolves. Restricted to
+ * A lab handle is the manifest filename, which is what `humanish run` resolves. Restricted to
  * characters a manifest name can actually contain, and (the part that matters) never allowed to
  * begin with `-`, because argv is positional: a lab called `--json` would otherwise be handed to
  * the CLI as a flag. There is no shell involved, so this is the whole injection surface.
  *
  * A leading underscore is allowed: `_wip.yaml` is an ordinary way to name a work-in-progress
- * manifest, `humanish lab run _wip` resolves it, and refusing it here would leave the surface
+ * manifest, `humanish run _wip` resolves it, and refusing it here would leave the surface
  * listing a lab it will not start. A leading dot stays out: that names a hidden file, not a lab.
  */
 const SAFE_LAB_HANDLE = /^[A-Za-z0-9_][A-Za-z0-9._:-]*$/;
@@ -38,7 +38,7 @@ export function isSafeLabHandle(value: string): boolean {
 
 export interface LaunchRunOptions {
   cwd: string;
-  /** The manifest handle (filename stem), as `humanish lab run` takes it. */
+  /** The manifest handle (filename stem), as `humanish run` takes it. */
   lab: string;
   /** Exact selected manifest, avoiding a same-name committed lab shadowing a local copy. */
   manifestPath?: string;
@@ -103,7 +103,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
         ok: false,
         error: {
           code: "HUMANISH_LAUNCH_INVALID_STUDY",
-          message: "The selected lab path could not be read safely. Refresh the lab list.",
+          message: "The selected study path could not be read safely. Refresh the study list.",
         },
       };
     selectedLab = path.relative(cwd, path.resolve(cwd, resolved.path)).replace(/\\/g, "/");
@@ -143,7 +143,6 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
   // the operator's attention and must not have a browser thrown over it.
   const args = [
     options.cliPath ?? defaultCliPath(),
-    "lab",
     "run",
     "--cwd",
     cwd,

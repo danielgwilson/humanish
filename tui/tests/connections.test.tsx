@@ -333,7 +333,7 @@ describe("Receiving setup and cleanup", () => {
       const opts = receivingOptions({ check });
       const surface = await renderToText(<App options={opts} />, {
         columns,
-        until: (frame) => frame.includes("Use real email in a lab"),
+        until: (frame) => frame.includes("Use real email in a study"),
       });
       try {
         expect(check).not.toHaveBeenCalled();
@@ -367,7 +367,7 @@ describe("Receiving setup and cleanup", () => {
       const opts = receivingOptions({ configure });
       const surface = await renderToText(<App options={opts} />, {
         columns,
-        until: (frame) => frame.includes("Use real email in a lab"),
+        until: (frame) => frame.includes("Use real email in a study"),
       });
       const realNow = Date.now.bind(Date);
       let offset = 0;
@@ -412,7 +412,7 @@ describe("Receiving setup and cleanup", () => {
     const configure = vi.fn(receivingOptions().capabilities.comms!.configure!);
     const opts = receivingOptions({ configure });
     const surface = await renderToText(<App options={opts} />, {
-      until: (frame) => frame.includes("Use real email in a lab"),
+      until: (frame) => frame.includes("Use real email in a study"),
     });
     const realNow = Date.now.bind(Date);
     let offset = 0;
@@ -433,7 +433,7 @@ describe("Receiving setup and cleanup", () => {
       });
       offset = 500;
       await surface.press(KEY.enter, (frame) => frame.includes("Files changed. Preview again."));
-      expect(surface.frames.at(-1)).not.toContain("Save lab copy");
+      expect(surface.frames.at(-1)).not.toContain("Save study copy");
       await surface.press(KEY.enter, (frame) => frame.includes("Save email-enabled lab"));
       expect(configure).toHaveBeenLastCalledWith("humanish/labs/signup.yaml", false);
     } finally {

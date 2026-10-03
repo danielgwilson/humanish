@@ -7,6 +7,12 @@ import type { RunResult } from "../../run/results.js";
 import { runLabCommand } from "./lab-run.js";
 import { addRunOptions, studyOnlyFlags } from "./run-command.js";
 import {
+  deprecationMessage,
+  oldStudyOption,
+  studyOptionValue,
+  warnAndQueue,
+} from "../deprecations.js";
+import {
   applyEnvFileOption,
   type CliIo,
   collectRepeated,
@@ -24,10 +30,11 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
   addRunOptions(
     parent
       .command("watch")
-      .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
+      .argument("[study]", "Study id or .yaml path to run and observe.")
       .description("Run a study, open its Observer and keep the shell attached.")
       .summary("Run a study and follow it in the Observer.")
-      .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
+      .option("--study <id-or-path>", "Study id or .yaml path, in place of the argument.")
+      .addOption(oldStudyOption("id-or-path"))
       // Removed in 0.109.0: watch --run stays one minor, hidden; observe --run shows a saved run.
       .addOption(
         new Option("--run <id>", "Deprecated: use humanish observe --run <id>.").hideHelp(),
@@ -73,7 +80,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
       "after",
       [
         "",
-        "Without a lab or --run, watch starts a synthetic run of 4 participants; --count changes it.",
+        "Without a study or --run, watch starts a synthetic run of 4 participants; --count changes it.",
         "",
         "Happy path:",
         "  humanish watch",
@@ -89,11 +96,12 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
         "  humanish observe --run latest",
       ].join("\n"),
     )
-    .action((labArg, options, command) => handleWatch(io, labArg, options, command));
+    .action((named, options, command) => handleWatch(io, named, options, command));
 }
 
 interface WatchOptions extends LabCommandOptions {
   port: string;
+  study?: string;
   lab?: string;
   run?: string;
   expose?: boolean;
@@ -106,24 +114,28 @@ interface WatchOptions extends LabCommandOptions {
   safe?: boolean;
 }
 
-const WATCH_RUN_DEPRECATION =
-  "warning: humanish watch --run is deprecated and is removed in the next minor. Use humanish observe --run <id>.\n";
-
 type WatchRefusal = { code: NonNullable<RunResult["error"]>["code"]; message: string };
 
 async function handleWatch(
   io: CliIo,
-  labArg: string | undefined,
+  named: string | undefined,
   parsed: WatchOptions,
   command: Command,
 ): Promise<void> {
   const options = parsed;
-  if (options.run !== undefined) io.writeErr(WATCH_RUN_DEPRECATION);
-  const lab = options.lab ?? labArg;
-  if (options.lab !== undefined && labArg !== undefined) {
+  if (options.run !== undefined) {
+    warnAndQueue(
+      command,
+      io,
+      deprecationMessage("humanish watch --run", "humanish observe --run <id>"),
+    );
+  }
+  const option = studyOptionValue(command, io, options);
+  const study = option ?? named;
+  if (option !== undefined && named !== undefined) {
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
-      message: "Use either positional lab or --lab, not both.",
+      message: "Use either a study argument or --study, not both.",
     });
     return;
   }
@@ -141,8 +153,8 @@ async function handleWatch(
     return;
   }
 
-  if (lab) {
-    await watchLab(io, command, lab, options);
+  if (study) {
+    await watchStudy(io, command, study, options);
     return;
   }
 
@@ -150,7 +162,7 @@ async function handleWatch(
   if (studyOnly.length > 0) {
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
-      message: `${studyOnly.join(", ")} ${studyOnly.length === 1 ? "needs" : "need"} a lab: humanish watch <lab>.`,
+      message: `${studyOnly.join(", ")} ${studyOnly.length === 1 ? "needs" : "need"} a study: humanish watch <study>.`,
     });
     return;
   }
@@ -218,26 +230,27 @@ function refuseWatch(command: Command, io: CliIo, cwd: string, refusal: WatchRef
   io.setExitCode(2);
 }
 
-/** A lab argument starts that lab under watch; `--run` would name other evidence. */
-async function watchLab(
+/** A study argument starts that study under watch; `--run` would name other evidence. */
+async function watchStudy(
   io: CliIo,
   command: Command,
-  lab: string,
+  study: string,
   options: WatchOptions,
 ): Promise<void> {
   if (options.run !== undefined) {
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
-      message: "Use either a lab to start evidence or --run to watch existing evidence, not both.",
+      message:
+        "Use either a study to start evidence or --run to watch existing evidence, not both.",
     });
     return;
   }
 
   // Forwarded wholesale, as `run` forwards its options, so a run flag reaches the lab either way.
-  await runLabCommand({ command, io, lab, mode: "watch", options });
+  await runLabCommand({ command, io, lab: study, mode: "watch", options });
 }
 
-/** Without a lab, watch shows existing evidence (`--run`) or a fresh synthetic run (`--count`). */
+/** Without a study, watch shows existing evidence (`--run`) or a fresh synthetic run (`--count`). */
 function resolveWatchTarget(
   options: WatchOptions,
   command: Command,

@@ -407,9 +407,9 @@ describe("an agent session, even with a real terminal (studies/handed-a-human-su
     // Names the evidence, so the reader can check the claim rather than take it.
     expect(parsed.error.message).toContain("CODEX_SESSION_ID");
     expect(parsed.error.message).toContain("Codex");
-    // Including `lab list --json`: the study asked "what studies does this project have", and the
+    // Including `study list --json`: the study asked "what studies does this project have", and the
     // old refusal named neither of the commands that answer that.
-    expect(parsed.error.message).toContain("humanish lab list --json");
+    expect(parsed.error.message).toContain("humanish study list --json");
     expect(parsed.error.message).toContain("humanish runs --json");
     expect(result.exitCode).toBe(2);
   });

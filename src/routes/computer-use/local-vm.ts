@@ -75,7 +75,7 @@ function guestAssets(
         const readiness = await checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 });
         if (!readiness.ready)
           throw new Error(
-            `Codex account is not ready (${readiness.errorCode}). Run humanish doctor --lab <lab> before starting a local study.`,
+            `Codex account is not ready (${readiness.errorCode}). Run humanish doctor --study <study> before starting a local study.`,
           );
       }
       return (

@@ -18,6 +18,7 @@ import {
 import type { InitChange, InitResult } from "../../lab/init.js";
 import { doctor } from "../doctor.js";
 import type { DoctorResult } from "../doctor.js";
+import { oldStudyOption, studyOptionValue } from "../deprecations.js";
 import {
   applyEnvFileOption,
   CLI_VERSION,
@@ -90,22 +91,27 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
   parent
     .command("doctor")
     .description("Explain project readiness and missing humanish setup.")
-    .summary("Check what this project and machine need before a run.")
+    .summary("Check what this project and machine need for a run.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option(
-      "--lab <lab>",
-      "Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls.",
+      "--study <study>",
+      "Check the study's desktop, participant authentication and separate analysis requirements; no provider calls.",
     )
+    .addOption(oldStudyOption("study"))
     .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
-      async (options: { cwd: string; lab?: string; envFile?: string; json?: boolean }, command) => {
+      async (
+        options: { cwd: string; study?: string; lab?: string; envFile?: string; json?: boolean },
+        command,
+      ) => {
+        const study = studyOptionValue(command, io, options);
         if (
           options.envFile &&
           !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
         )
           return;
-        const result = await doctor(options.cwd, options.lab ? { lab: options.lab } : {});
+        const result = await doctor(options.cwd, study ? { lab: study } : {});
         writeResult(command, io, result, formatDoctorHuman);
         // Behavioral change: was exit 1, every other structured command uses 2.
         io.setExitCode(result.ok ? 0 : 2);

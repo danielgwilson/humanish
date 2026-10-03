@@ -4,9 +4,9 @@ human(ish)                                                           example-app
 Email lab saved
 .humanish/local/labs/signup-receiving.yaml
 
-Select this lab from Labs to start.
+Select this study from Studies to start.
 Or run this exact path:
-humanish lab run .humanish/local/labs/signup-receiving.yaml
+humanish run .humanish/local/labs/signup-receiving.yaml
 
 ❯ Back to Connections
 

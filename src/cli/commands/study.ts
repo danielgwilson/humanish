@@ -9,6 +9,7 @@ import {
   type LabPreflightResult,
 } from "../../lab/preflight.js";
 import { addRunOptions, handleRun } from "./run-command.js";
+import { deprecationMessage, warnAndQueue } from "../deprecations.js";
 import {
   applyEnvFileOption,
   type CliIo,
@@ -22,31 +23,65 @@ import {
   humanError,
 } from "../io.js";
 
-export function registerLabCommands(parent: Command, io: CliIo): void {
+export function registerStudyCommands(parent: Command, io: CliIo): void {
+  const study = parent
+    .command("study")
+    .description("List, show and check studies in humanish/studies/.");
+  listCommand(study.command("list"), io);
+  showCommand(study.command("show"), io);
+  checkCommand(study.command("check"), io);
+
+  // Removed in 0.109.0: the `lab` group stays one minor, hidden. Its list, inspect and preflight
+  // run as study list, show and check, and `lab run` runs as `run`, each after a warning.
   const lab = parent
-    .command("lab")
-    .description("List, inspect and check studies in humanish/studies/.");
+    .command("lab", { hidden: true })
+    .description("Deprecated: use humanish study.");
+  listCommand(lab.command("list"), io, "humanish study list");
+  showCommand(lab.command("inspect"), io, "humanish study show <study>");
+  checkCommand(lab.command("preflight"), io, "humanish study check <study>");
+  addRunOptions(
+    lab.command("run", { hidden: true }).argument("<study>", "Study id or .yaml path."),
+  ).action((name: string, options: LabCommandOptions, command: Command) => {
+    warnOldCommand(command, io, "humanish run <study>");
+    return handleRun(io, name, options, command);
+  });
+}
 
-  lab
-    .command("list")
-    .description("List committed and ignored humanish lab manifests.")
+/** The warning for a `lab` subcommand, naming its replacement. */
+function warnOldCommand(command: Command, io: CliIo, replacement: string): void {
+  warnAndQueue(command, io, deprecationMessage(`humanish lab ${command.name()}`, replacement));
+}
+
+function listCommand(command: Command, io: CliIo, replacement?: string): void {
+  command
+    .description("List the studies in this project, committed and local.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action((options, command) => handleLabList(io, options, command));
+    .action((options: { cwd: string; json?: boolean }, command: Command) => {
+      if (replacement !== undefined) warnOldCommand(command, io, replacement);
+      return handleStudyList(io, options, command);
+    });
+  if (replacement !== undefined) command.description(`Deprecated: use ${replacement}.`);
+}
 
-  lab
-    .command("inspect")
-    .argument("<lab>", "Lab id or .yaml path.")
-    .description("Inspect a humanish lab manifest without running it.")
+function showCommand(command: Command, io: CliIo, replacement?: string): void {
+  command
+    .argument("<study>", "Study id or .yaml path.")
+    .description("Show a study's parsed file and its warnings without running it.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action((labName, options, command) => handleLabInspect(io, labName, options, command));
+    .action((name: string, options: { cwd: string; json?: boolean }, command: Command) => {
+      if (replacement !== undefined) warnOldCommand(command, io, replacement);
+      return handleStudyShow(io, name, options, command);
+    });
+  if (replacement !== undefined) command.description(`Deprecated: use ${replacement}.`);
+}
 
-  lab
-    .command("preflight")
-    .argument("<lab>", "Lab id or .yaml path.")
+function checkCommand(command: Command, io: CliIo, replacement?: string): void {
+  command
+    .argument("<study>", "Study id or .yaml path.")
     .description(
-      "Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.",
+      "Check the study file and, with --reachability, its named endpoints. humanish doctor --study <study> checks this machine.",
     )
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .addOption(
@@ -57,51 +92,46 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
     .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action((labName, options, command) => handleLabPreflight(io, labName, options, command));
-
-  // Removed in 0.109.0: `lab run` stays one minor as a hidden alias of `run`, with the same flags.
-  addRunOptions(
-    lab.command("run", { hidden: true }).argument("<lab>", "Lab id or .yaml path."),
-  ).action((labName: string, options: LabCommandOptions, command: Command) => {
-    io.writeErr(LAB_RUN_DEPRECATION);
-    return handleRun(io, labName, options, command);
-  });
+    .action((name: string, options: StudyCheckOptions, command: Command) => {
+      if (replacement !== undefined) warnOldCommand(command, io, replacement);
+      return handleStudyCheck(io, name, options, command);
+    });
+  if (replacement !== undefined) command.description(`Deprecated: use ${replacement}.`);
 }
 
-const LAB_RUN_DEPRECATION =
-  "warning: humanish lab run is deprecated and is removed in the next minor. Use humanish run <lab>.\n";
+interface StudyCheckOptions {
+  cwd: string;
+  envFile?: string;
+  json?: boolean;
+  reachability: LabPreflightReachabilityMode;
+  timeoutMs: string;
+}
 
-async function handleLabList(
+async function handleStudyList(
   io: CliIo,
   options: { cwd: string; json?: boolean },
   command: Command,
 ): Promise<void> {
   const result = await listLabManifests(options.cwd);
-  writeResult(command, io, result, formatLabListHuman);
+  writeResult(command, io, result, formatStudyListHuman);
   io.setExitCode(0);
 }
 
-async function handleLabInspect(
+async function handleStudyShow(
   io: CliIo,
-  labName: string,
+  name: string,
   options: { cwd: string; json?: boolean },
   command: Command,
 ): Promise<void> {
-  const result = await inspectLabManifest(options.cwd, labName);
-  writeResult(command, io, result, formatLabInspectHuman);
+  const result = await inspectLabManifest(options.cwd, name);
+  writeResult(command, io, result, formatStudyShowHuman);
   io.setExitCode(result.ok ? 0 : 2);
 }
 
-async function handleLabPreflight(
+async function handleStudyCheck(
   io: CliIo,
-  labName: string,
-  options: {
-    cwd: string;
-    envFile?: string;
-    json?: boolean;
-    reachability: LabPreflightReachabilityMode;
-    timeoutMs: string;
-  },
+  name: string,
+  options: StudyCheckOptions,
   command: Command,
 ): Promise<void> {
   if (
@@ -121,7 +151,7 @@ async function handleLabPreflight(
       schema: "humanish.study-check.v1",
       ok: false,
       cwd: resolve(options.cwd),
-      study: labName,
+      study: name,
       reachability: options.reachability,
       checks: [{ name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." }],
       targets: [],
@@ -133,27 +163,27 @@ async function handleLabPreflight(
         message: "--timeout-ms must be a positive integer.",
       },
     };
-    writeResult(command, io, result, formatLabPreflightHuman);
+    writeResult(command, io, result, formatStudyCheckHuman);
     io.setExitCode(2);
     return;
   }
 
   const result = await runLabPreflight({
     cwd: options.cwd,
-    lab: labName,
+    lab: name,
     reachability: options.reachability,
     timeoutMs,
   });
-  writeResult(command, io, result, formatLabPreflightHuman);
+  writeResult(command, io, result, formatStudyCheckHuman);
   io.setExitCode(result.ok ? 0 : 2);
 }
 
-function formatLabListHuman(result: LabListResult): string {
+function formatStudyListHuman(result: LabListResult): string {
   if (result.studies.length === 0) {
     return (
       [
-        `No humanish labs found in ${result.cwd}`,
-        "Create one under humanish/studies/*.yaml or humanish/labs/*.yaml, or pass a .yaml path.",
+        `No studies found in ${result.cwd}`,
+        "Create one under humanish/studies/*.yaml, or pass a .yaml path.",
         ...result.warnings.map((warning) => `warning: ${warning}`),
       ].join("\n") + "\n"
     );
@@ -161,7 +191,7 @@ function formatLabListHuman(result: LabListResult): string {
 
   return (
     [
-      "humanish labs",
+      "humanish studies",
       ...result.studies.map(
         (lab) =>
           `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}${lab.error ? `\n  error: ${lab.error}` : ""}`,
@@ -171,13 +201,13 @@ function formatLabListHuman(result: LabListResult): string {
   );
 }
 
-function formatLabInspectHuman(result: LabInspectResult): HumanOutput {
+function formatStudyShowHuman(result: LabInspectResult): HumanOutput {
   if (!result.ok || !result.config) return humanError(result.error);
 
   const config = result.config;
   return (
     [
-      "humanish lab",
+      "humanish study",
       `id: ${config.id}`,
       `subject: ${config.subject.source}`,
       ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
@@ -196,14 +226,14 @@ function formatLabInspectHuman(result: LabInspectResult): HumanOutput {
   );
 }
 
-function formatLabPreflightHuman(result: LabPreflightResult): HumanOutput {
+function formatStudyCheckHuman(result: LabPreflightResult): HumanOutput {
   const checkedTargets = result.targets.filter((target) => target.checked);
   const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
   const blockedTargets = result.targets.filter((target) => target.status === "blocked");
   const stdout =
     [
-      `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
-      `lab: ${result.studyId ?? result.study}`,
+      `humanish study check ${result.ok ? "passed" : "failed"}`,
+      `study: ${result.studyId ?? result.study}`,
       ...(result.route ? [`route: ${result.route}`] : []),
       `reachability: ${result.reachability}`,
       `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,

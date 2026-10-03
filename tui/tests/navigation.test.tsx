@@ -122,7 +122,7 @@ describe("moving through the surface", () => {
     surface.unmount();
 
     // The first lab is selected by default and is the live one, so Enter lands on Signup flow.
-    expect(lab).toContain("‹ labs / signup-flow");
+    expect(lab).toContain("‹ studies / signup-flow");
     // Both of signup-flow's runs, and neither of diagram-editor's. Rows are identified by when they
     // ran and what happened, not by their id: the id is on the run screen, one level in.
     expect(lab).toContain("2/2 reached the goal");

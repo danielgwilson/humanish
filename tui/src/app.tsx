@@ -723,13 +723,13 @@ function breadcrumbOf(
   data: ProjectData | undefined,
 ): string | undefined {
   if (screen.name === "labs") return undefined;
-  if (screen.name === "all-runs") return "‹ labs / all runs";
+  if (screen.name === "all-runs") return "‹ studies / all runs";
   if (screen.name === "lab") {
     const row = data?.rows.find((candidate) => candidate.key === screen.labKey);
-    return `‹ labs / ${row?.name ?? screen.labKey}`;
+    return `‹ studies / ${row?.name ?? screen.labKey}`;
   }
   const lab = screen.labId;
-  return lab === undefined ? "‹ labs / run" : `‹ labs / ${lab} / run`;
+  return lab === undefined ? "‹ studies / run" : `‹ studies / ${lab} / run`;
 }
 
 /**
@@ -998,7 +998,7 @@ function renderScreen(args: {
   if (screen.name === "lab") {
     const row = data.rows.find((candidate) => candidate.key === screen.labKey);
     if (row === undefined)
-      return <Text color={PALETTE.warn}>that lab is no longer in this project</Text>;
+      return <Text color={PALETTE.warn}>that study is no longer in this project</Text>;
     return (
       <LabScreen
         row={row}

@@ -29,7 +29,9 @@
     "schema": "string",
     "simCount": "number",
     "studyId": "string",
-    "warnings": []
+    "warnings": [
+      "string"
+    ]
   },
   "pinned": {
     "mode": "dry-run"

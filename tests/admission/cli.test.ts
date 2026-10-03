@@ -77,7 +77,7 @@ const cases: readonly (readonly string[])[] = [
   ["watch", "--safe", "--json"],
   // Refused at parse since P0b, before any route runs.
   ["run", "adm-clone-codex-app-server", "--json"],
-  ["lab", "inspect", "adm-clone-codex-app-server", "--json"],
+  ["study", "show", "adm-clone-codex-app-server", "--json"],
   ["run", "adm-clone-no-serve", "--json"],
 ];
 

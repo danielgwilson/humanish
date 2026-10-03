@@ -50,7 +50,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .description(
       "Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.",
     )
-    .summary("Analyze a live run and write evidence-linked findings.")
+    .summary("Analyze a live run into evidence-linked findings.")
     .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option(
