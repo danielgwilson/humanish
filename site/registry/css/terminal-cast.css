@@ -10,7 +10,7 @@
   width: 100%;
   max-width: 560px;
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--text-12);
   line-height: 1.95;
 }
 
@@ -37,6 +37,6 @@
 .vsum {
   color: var(--dz-ink);
   border-top: 1px solid var(--dz-line);
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: var(--space-10);
+  padding-top: var(--space-10);
 }

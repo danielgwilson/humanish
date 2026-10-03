@@ -11,7 +11,8 @@ Vendored files are registry output: do not hand-edit them; re-vendor with
 | `@humanish/persona-lane`    | `lib/humanish/theme.ts`, `styles/humanish/persona-lane.css` (the Observer renders no persona lane, so the component files were removed) | https://humanish.dev/r/persona-lane.json    |
 | `@humanish/terminal-cast`   | `components/terminal-cast.tsx`, `styles/humanish/terminal-cast.css`                                                                     | https://humanish.dev/r/terminal-cast.json   |
 
-Last vendored: 2026-08-12, registry as published from site commit `c7a3c07`
+Last vendored: 2026-10-02, the three stylesheets copied from `site/registry/css/` in the
+commit that added the type, spacing and radius scale, before the live registry served them
 (the registry serves built output of `site/registry.json`; regenerate there
 with `pnpm --filter humanish-site registry:build`).
 

@@ -34,8 +34,8 @@ diff.
 
 Four counts are held to caps: oxlint warnings (`lint`, `--max-warnings` in package.json), prose in
 comments, test names and docs (`prose:check`), words in `src/` identifiers and file names
-(`vocabulary:check`), and raw hex colors and unstyled classes in `site/app/globals.css`
-(`site-css:check`). The last three read their caps from `scripts/caps.json`. The retired participant
+(`vocabulary:check`), and raw hex colors, unstyled classes and px sizes off the scale tokens in
+the site and Observer stylesheets (`site-css:check`). The last three read their caps from `scripts/caps.json`. The retired participant
 words are lane, seat, role and sim. `lab` is retired too: a study is what a user designs and runs,
 and a run is one execution of it. Each checker fails when a count is above its cap or below it, so
 the PR that reduces a count lowers its cap to the new count; the failure names the cap and the

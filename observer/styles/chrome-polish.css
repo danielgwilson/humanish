@@ -16,7 +16,7 @@
   justify-content: center;
   flex: none;
   width: 18px;
-  margin-right: 2px;
+  margin-right: var(--space-2);
   color: var(--accent-ink);
 }
 .card-pin svg {
@@ -61,14 +61,14 @@
   .card-caption[data-direct-pin] .card-name {
     grid-column: 1 / -1;
     grid-row: 1;
-    padding-inline: 8px;
+    padding-inline: var(--space-8);
   }
   .card-caption[data-direct-pin] :is(.card-outcome, .card-capture-time) {
     grid-column: 1 / -1;
     grid-row: 2;
     min-width: 0;
     max-width: 100%;
-    padding-inline: 8px;
+    padding-inline: var(--space-8);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -178,7 +178,7 @@
   inset: auto 0 44px;
   z-index: 3;
   pointer-events: none;
-  padding: 4px 6px;
+  padding: var(--space-4) var(--space-6);
   background: var(--panel);
   color: var(--body-c);
   font: 10px/1.4 var(--sans);
@@ -199,9 +199,9 @@
 }
 .evidence-player .evidence-image[data-retained-image] .evidence-message {
   inset: auto 0 0;
-  padding: 6px 10px;
-  gap: 3px;
-  font-size: 11px;
+  padding: var(--space-6) var(--space-10);
+  gap: var(--space-4);
+  font-size: var(--text-11);
 }
 /* Pending images decode in place; swapping the existing node avoids a second
    fetch for no-store recordings. They never participate in layout or hit tests. */

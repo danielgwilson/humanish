@@ -314,7 +314,8 @@ function RecordedImage({
             const position = row.coord ? pinPosition(row.coord, viewport) : null;
             const fraction = (row.coord?.x ?? 0) / viewport.width;
             const side = fraction > 0.5 ? "left" : "right";
-            // The frame box is a size container, so the tip's room follows the box's own width.
+            // The frame box is a size container, so the tip's room follows the box's own width. A
+            // tip is at least 96px wide, enough for a long word at 11px beside a narrow frame.
             const room = side === "left" ? fraction : 1 - fraction;
             return position ? (
               <span
@@ -326,7 +327,7 @@ function RecordedImage({
               >
                 <span
                   className="tip"
-                  style={{ maxWidth: `min(180px, max(32px, calc(${room} * 100cqw - 20px)))` }}
+                  style={{ maxWidth: `min(180px, max(96px, calc(${room} * 100cqw - 20px)))` }}
                 >
                   {row.title}
                 </span>

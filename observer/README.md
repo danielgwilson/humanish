@@ -55,7 +55,8 @@ From the repo root (pnpm workspace):
   `--overwrite`, never hand-edit, and record refreshes in `PROVENANCE.md`.
 - Register behavior is the site's three-state contract: system scheme by
   default, `data-theme` override on `<html>`, `humanish-theme` storage key.
-  No new colors: every color reads a humanish token.
+  No new colors: every color reads a humanish token, and every font size, spacing
+  and radius reads a scale token (`--text-*`, `--space-*`, `--radius-*`).
 - The CLI consumes the built artifact as its only renderer (cutover 2026-08-16,
   #439): the root build copies `observer/dist/index.html` to
   `dist/observer-app.html`, and `src/observer/artifact.ts` injects each run's snapshot

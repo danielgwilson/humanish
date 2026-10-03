@@ -90,7 +90,8 @@
     "knip": "knip",
     "prose:check": "node scripts/check-code-prose.mjs",
     "vocabulary:check": "tsx scripts/check-retired-words.ts",
-    "site-css:check": "node scripts/check-site-css.mjs"
+    "site-css:check": "node scripts/check-site-css.mjs",
+    "site:hero:proof": "node scripts/site-hero-wrap-proof.mjs"
   },
   "dependencies": {
     "commander": "^15.0.0",

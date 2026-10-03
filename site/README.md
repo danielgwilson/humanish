@@ -70,8 +70,11 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
   vocabulary. Documentation must match the current CLI and runnable examples. Design tokens live
   once in `app/globals.css` (`:root` plus the two dark blocks), and both themes must stay in
   sync. The footer, dark in both themes, sets its own `--foot-*` colors on `.site-foot`, which
-  keeps them out of the registry's token export. Rules read colors from tokens;
-  `pnpm site-css:check` counts the hex colors still written into rules.
+  keeps them out of the registry's token export. Rules read colors from tokens, and font sizes,
+  spacing and radii from the scale in `:root` (`--text-*`, `--space-*`, `--radius-*`), which the
+  registry's tokens item carries to the Observer. `pnpm site-css:check` counts the hex colors and
+  px sizes still written into rules, and `pnpm site:hero:proof` fails when a hero line ends with
+  one word alone at 390, 768 or 1440 px.
 - Keep dependencies minimal: Next, React, Tailwind, Vercel Analytics, Fumadocs UI/Core/MDX (docs
   only) with its `zod` schema peer, `posthog-js`, and `shadcn` as a dev dependency. No motion
   libraries. The only committed font binaries are the three subsets in `app/fonts/`.
