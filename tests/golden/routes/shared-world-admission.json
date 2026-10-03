@@ -1,9 +1,11 @@
 {
   "recording": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -24,10 +26,12 @@
     }
   },
   "invalid analysis": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -43,10 +47,12 @@
     }
   },
   "tasks": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -67,10 +73,12 @@
     }
   },
   "unregistered actor": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "not-an-actor",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -91,10 +99,12 @@
     }
   },
   "invalid output limit": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -115,10 +125,12 @@
     }
   },
   "scenario dollar cap": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -139,10 +151,12 @@
     }
   },
   "provisioned plane concurrency 1": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -163,10 +177,12 @@
     }
   },
   "external plane without authorization": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -187,10 +203,12 @@
     }
   },
   "output limit with a custom session": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -211,10 +229,12 @@
     }
   },
   "live cap on an unpriced model": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -235,10 +255,12 @@
     }
   },
   "real receiving with local-agent": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "local-agent",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -259,10 +281,12 @@
     }
   },
   "clone without a repo slug": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -283,10 +307,12 @@
     }
   },
   "external plane without an owner": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -307,10 +333,12 @@
     }
   },
   "live without keys": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -331,10 +359,12 @@
     }
   },
   "live external catch unreachable": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -355,10 +385,12 @@
     }
   },
   "recording and invalid analysis": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -374,10 +406,12 @@
     }
   },
   "invalid analysis and tasks": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -393,10 +427,12 @@
     }
   },
   "tasks and unregistered actor": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "not-an-actor",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -417,10 +453,12 @@
     }
   },
   "unregistered actor and invalid output limit": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "not-an-actor",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -441,10 +479,12 @@
     }
   },
   "invalid output limit and scenario dollar cap": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -465,10 +505,12 @@
     }
   },
   "scenario dollar cap and provisioned plane concurrency 1": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -489,10 +531,12 @@
     }
   },
   "provisioned plane concurrency 1 and output limit with a custom session": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -513,10 +557,12 @@
     }
   },
   "external plane without authorization and output limit with a custom session": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -537,10 +583,12 @@
     }
   },
   "output limit with a custom session and live cap on an unpriced model": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -561,10 +609,12 @@
     }
   },
   "live cap on an unpriced model and real receiving with local-agent": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "local-agent",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -585,10 +635,12 @@
     }
   },
   "real receiving with local-agent and live without keys": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "local-agent",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -609,10 +661,12 @@
     }
   },
   "real receiving with local-agent and clone without a repo slug": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "local-agent",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -633,10 +687,12 @@
     }
   },
   "clone without a repo slug and live without keys": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -657,10 +713,12 @@
     }
   },
   "real receiving with local-agent and external plane without an owner": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "local-agent",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -681,10 +739,12 @@
     }
   },
   "external plane without an owner and live without keys": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "adm-sharedprovisioned",
+    "labId": "adm-sharedprovisioned",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "adm-sharedprovisioned",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",

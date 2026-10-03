@@ -35,11 +35,11 @@ import { prepareScriptedRun } from "./setup.js";
 import { ScriptedSubject } from "./subject.js";
 import { runScriptedSessions, writeSurfaceTraces } from "./surface-sessions.js";
 import {
-  SCRIPTED_BROWSER_LAB_SCHEMA,
   type RunScriptedBrowserLabOptions,
   type ScriptedBrowserLabResult,
   type ScriptedRunInput,
 } from "./types.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /**
  * The config-taking entry point. It plans, returns a refusal with the envelope the route has always
@@ -71,10 +71,9 @@ export async function scriptedLabRefusal(
   const actorType = config.actors[0]?.type ?? "";
   if (refusal.beforeScope)
     return {
-      schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+      ...studyResultIdentity("scripted", config.id),
       ok: false,
       cwd,
-      labId: config.id,
       actor: actorType,
       dryRun,
       runId: options.runId ?? "not-created",
@@ -87,10 +86,9 @@ export async function scriptedLabRefusal(
   const physicalCwd = await realpath(cwd);
   await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
   const refused: ScriptedBrowserLabResult = {
-    schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+    ...studyResultIdentity("scripted", config.id),
     ok: false,
     cwd,
-    labId: config.id,
     actor: refusal.actor ?? actorType,
     appUrl: refusal.appUrl ?? config.subject.appUrl ?? "",
     dryRun,

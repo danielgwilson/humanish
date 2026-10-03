@@ -1809,7 +1809,7 @@ describe("study facts ride the result seam", () => {
       command,
       io,
       {
-        schema: "humanish.cua-lab-result.v2",
+        schema: "humanish.study-result.v1",
         ok: true,
         labId: "try-live",
         actor: "openai-computer-use",
@@ -1962,10 +1962,12 @@ describe("run writes the same bundle watch does", () => {
 describe("CUA ending output", () => {
   it("shows distinct lane causes without calling the first lane the whole session", () => {
     const output = formatCuaLabHuman({
-      schema: "humanish.cua-lab-result.v2",
+      schema: "humanish.study-result.v1",
+      route: "computer-use",
+      studyId: "synthetic",
+      labId: "synthetic",
       ok: false,
       cwd: "/synthetic",
-      labId: "synthetic",
       actor: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
       dryRun: false,

@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "fanout-proof",
+    "labId": "fanout-proof",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "fanout-proof",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": false,

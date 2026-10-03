@@ -1456,7 +1456,7 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       runId: string;
       scenario: { id: string; source: string; steps: number };
     };
-    expect(envelope.schema).toBe("humanish.scripted-lab-result.v1");
+    expect(envelope.schema).toBe("humanish.study-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("scripted-browser");

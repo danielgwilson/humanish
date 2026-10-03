@@ -19,6 +19,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { STUDY_RESULT_SCHEMA } from "../run/study-result.js";
 
 /** Write-only PostHog project key. Public by design: it can ingest, and can read nothing. */
 const INGEST_KEY = "phc_oeMeBqxDZhZ9tCHMSnuDFimLqHpU5Myc847WD33hAh4C";
@@ -319,13 +320,15 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
 
   const labRecord = asRecord(r.lab);
   const labId =
-    typeof r.labId === "string"
-      ? r.labId
-      : typeof labRecord?.id === "string"
-        ? labRecord.id
-        : typeof r.lab === "string"
-          ? r.lab
-          : undefined;
+    typeof r.studyId === "string"
+      ? r.studyId
+      : typeof r.labId === "string"
+        ? r.labId
+        : typeof labRecord?.id === "string"
+          ? labRecord.id
+          : typeof r.lab === "string"
+            ? r.lab
+            : undefined;
   const lab = safeLabId(labId);
   if (lab !== undefined) facts.lab = lab;
 
@@ -333,7 +336,7 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
   if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code))
     facts.errorCode = error.code;
 
-  const cuaResult = r.schema === "humanish.cua-lab-result.v2";
+  const cuaResult = r.schema === STUDY_RESULT_SCHEMA && r.route === "computer-use";
   const diagnostics = cuaResult ? asRecord(r.diagnostics) : undefined;
   if (isCuaDiagnosticCategory(diagnostics?.category))
     facts.diagnosticCategory = diagnostics.category;

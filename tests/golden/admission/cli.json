@@ -19,10 +19,12 @@
   "lab run adm-terminal-live-no-caps --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.terminal-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "terminal",
+      "studyId": "adm-terminal-live-no-caps",
+      "labId": "adm-terminal-live-no-caps",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-terminal-live-no-caps",
       "actor": "codex-exec",
       "product": "widgetsmith-cli",
       "dryRun": false,
@@ -80,10 +82,12 @@
   "lab run adm-cu --port 99999 --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu",
+      "labId": "adm-cu",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu",
       "actor": "openai-computer-use",
       "appUrl": "",
       "dryRun": true,
@@ -102,7 +106,10 @@
   "lab run adm-preview --count 0 --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.run-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "preview",
+      "studyId": "adm-preview",
+      "labId": "adm-preview",
       "ok": false,
       "cwd": "[cwd]",
       "warnings": [],
@@ -144,10 +151,12 @@
   "lab run adm-terminal-live-no-caps --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.terminal-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "terminal",
+      "studyId": "adm-terminal-live-no-caps",
+      "labId": "adm-terminal-live-no-caps",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-terminal-live-no-caps",
       "actor": "codex-exec",
       "product": "widgetsmith-cli",
       "dryRun": false,
@@ -172,10 +181,12 @@
   "lab run adm-cu-local-app --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu-local-app",
+      "labId": "adm-cu-local-app",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu-local-app",
       "actor": "openai-computer-use",
       "appUrl": "http://127.0.0.1:3000/",
       "dryRun": true,
@@ -201,10 +212,12 @@
   "lab run adm-cu-unpriced --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu-unpriced",
+      "labId": "adm-cu-unpriced",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu-unpriced",
       "actor": "openai-computer-use",
       "appUrl": "http://127.0.0.1:3000/",
       "dryRun": false,
@@ -230,10 +243,12 @@
   "lab run adm-shared-unpriced --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.concurrent-shared-world-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "shared-world",
+      "studyId": "adm-shared-unpriced",
+      "labId": "adm-shared-unpriced",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-shared-unpriced",
       "actor": "openai-computer-use",
       "topology": "shared-world",
       "topologyMode": "concurrent",
@@ -262,10 +277,12 @@
   "lab run adm-terminal-live --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.terminal-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "terminal",
+      "studyId": "adm-terminal-live",
+      "labId": "adm-terminal-live",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-terminal-live",
       "actor": "codex-exec",
       "product": "widgetsmith-cli",
       "dryRun": false,
@@ -290,10 +307,12 @@
   "lab run adm-cu-unpriced --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu-unpriced",
+      "labId": "adm-cu-unpriced",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu-unpriced",
       "actor": "openai-computer-use",
       "appUrl": "http://127.0.0.1:3000/",
       "dryRun": false,
@@ -319,10 +338,12 @@
   "lab run adm-shared-live --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.concurrent-shared-world-lab-result.v1",
+      "schema": "humanish.study-result.v1",
+      "route": "shared-world",
+      "studyId": "adm-shared-live",
+      "labId": "adm-shared-live",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-shared-live",
       "actor": "openai-computer-use",
       "topology": "shared-world",
       "topologyMode": "concurrent",
@@ -359,10 +380,12 @@
   "watch adm-cu --safe --json": {
     "exitCode": 2,
     "stdout": {
-      "schema": "humanish.cua-lab-result.v2",
+      "schema": "humanish.study-result.v1",
+      "route": "computer-use",
+      "studyId": "adm-cu",
+      "labId": "adm-cu",
       "ok": false,
       "cwd": "[cwd]",
-      "labId": "adm-cu",
       "actor": "openai-computer-use",
       "appUrl": "",
       "dryRun": true,

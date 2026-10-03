@@ -10,12 +10,12 @@ import {
   type ParticipantFacts,
 } from "../../run/judge.js";
 import {
-  TERMINAL_PRODUCT_LAB_SCHEMA,
   type NoSpendProof,
   type TerminalCostLedger,
   type TerminalLedgers,
   type TerminalProductLabResult,
 } from "./types.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /**
  * What judge.ts reads from a finished terminal session, after a blown cap has overridden it. It has
@@ -136,10 +136,9 @@ export function terminalLabResult(args: {
   });
 
   return {
-    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+    ...studyResultIdentity("terminal", labId),
     ok,
     cwd,
-    labId,
     actor: actorId,
     product: productName,
     dryRun: false,

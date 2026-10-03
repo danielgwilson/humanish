@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "lobby-trivia-3player-test",
+    "labId": "lobby-trivia-3player-test",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "lobby-trivia-3player-test",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",

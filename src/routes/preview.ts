@@ -4,18 +4,26 @@
 import type { AdmittedPlan, RunLabOptions } from "../run-lab.js";
 import type { LabPlan, PlanRefusal } from "../lab/plan-types.js";
 import type { RunResult } from "../run/results.js";
+import { studyResultIdentity, type StudyResultIdentity } from "../run/study-result.js";
 import { runDryRun } from "../run/dry-run.js";
 import path from "node:path";
 
 type PreviewPlan = Extract<LabPlan, { readonly route: "preview" }>;
 
+/**
+ * The preview route's result when a study runs: the synthetic run's result, named as a study
+ * result. `humanish run` with no study returns the plain `RunResult`.
+ */
+export type PreviewStudyResult = Omit<RunResult, "schema"> & StudyResultIdentity<"preview">;
+
 /** A refused preview's result. */
 export function previewLabRefusal(
   cwd: string,
+  studyId: string,
   refusal: Extract<PlanRefusal, { readonly route: "preview" }>,
-): RunResult {
+): PreviewStudyResult {
   return {
-    schema: "humanish.run-result.v1",
+    ...studyResultIdentity("preview", studyId),
     ok: false,
     cwd: path.resolve(cwd),
     warnings: [],
@@ -32,7 +40,10 @@ export function admitPreviewPlan(
     ok: true,
     run: async () => ({
       route: "preview",
-      result: await runPreviewPlan(plan, input),
+      result: {
+        ...(await runPreviewPlan(plan, input)),
+        ...studyResultIdentity("preview", plan.labId),
+      },
     }),
   };
 }

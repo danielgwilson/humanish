@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "concurrent-shared-world-proof",
+    "labId": "concurrent-shared-world-proof",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "concurrent-shared-world-proof",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
