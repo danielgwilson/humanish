@@ -178,7 +178,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
       ok: true,
       cwd: resolvedCwd,
       studies: [],
-      warnings: ["Project root failed containment validation; managed lab manifests were skipped."],
+      warnings: ["Project root failed containment validation; study files were skipped."],
     };
   }
 
@@ -208,10 +208,10 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
     for (const name of names.filter((value) => value.endsWith(".yaml") || value.endsWith(".yml"))) {
       let relativePath: string;
       try {
-        assertSafeOutputPathSegment(name, "Lab manifest name");
+        assertSafeOutputPathSegment(name, "Study file name");
         relativePath = path.join(entry.relativeDir, name);
       } catch {
-        warnings.push(`${entry.relativeDir}: unsafe lab manifest name; skipped.`);
+        warnings.push(`${entry.relativeDir}: unsafe study file name; skipped.`);
         continue;
       }
       const stem = stemSlot(stems, studyFileStem(name) ?? name);
@@ -341,7 +341,7 @@ function parseResolvedLab(args: {
   } catch (error: unknown) {
     return invalidLab(
       args,
-      error instanceof Error ? error.message : "Lab YAML could not be parsed.",
+      error instanceof Error ? error.message : "The study file's YAML could not be parsed.",
     );
   }
 
@@ -414,7 +414,7 @@ async function readManagedManifest(
   if (!contents) {
     return {
       status: "unsafe",
-      message: "Managed lab manifest changed or failed containment validation.",
+      message: "The study file changed or failed containment validation.",
     };
   }
   return { status: "ok", contents: contents.toString("utf8") };
@@ -440,7 +440,7 @@ async function readExplicitManifest(
     if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) {
       return {
         status: "unsafe",
-        message: "Explicit lab manifest must resolve to a single-link regular file.",
+        message: "The study file path must resolve to a single-link regular file.",
       };
     }
 
@@ -455,7 +455,7 @@ async function readExplicitManifest(
       ) {
         return {
           status: "unsafe",
-          message: "Explicit lab manifest changed before it could be read safely.",
+          message: "The study file changed before it could be read safely.",
         };
       }
       const contents = await handle.readFile();
@@ -474,7 +474,7 @@ async function readExplicitManifest(
       ) {
         return {
           status: "unsafe",
-          message: "Explicit lab manifest changed while it was being read.",
+          message: "The study file changed while it was being read.",
         };
       }
       return { status: "ok", contents: contents.toString("utf8") };
@@ -482,7 +482,7 @@ async function readExplicitManifest(
       await handle.close();
     }
   } catch {
-    return { status: "unsafe", message: "Explicit lab manifest failed containment validation." };
+    return { status: "unsafe", message: "The study file path failed containment validation." };
   }
 }
 
@@ -519,7 +519,7 @@ async function inspectManagedPath(
     const segments = relativePath.replace(/\\/g, "/").split("/");
     let current = projectRoot.physicalPath;
     for (const [index, segment] of segments.entries()) {
-      assertSafeOutputPathSegment(segment, "Managed lab path segment");
+      assertSafeOutputPathSegment(segment, "Study file path segment");
       current = path.join(current, segment);
       let stats;
       try {
@@ -532,18 +532,21 @@ async function inspectManagedPath(
       }
       const leaf = index === segments.length - 1;
       if (stats.isSymbolicLink()) {
-        return { status: "unsafe", message: "Managed lab paths must not contain symbolic links." };
+        return {
+          status: "unsafe",
+          message: "Study directory paths must not contain symbolic links.",
+        };
       }
       if (!leaf && !stats.isDirectory()) {
-        return { status: "unsafe", message: "Managed lab path parents must be directories." };
+        return { status: "unsafe", message: "Study file path parents must be directories." };
       }
       if (leaf && expectedKind === "directory" && !stats.isDirectory()) {
-        return { status: "unsafe", message: "Managed lab directory has an unsafe file type." };
+        return { status: "unsafe", message: "A study directory has an unsafe file type." };
       }
       if (leaf && expectedKind === "file" && (!stats.isFile() || stats.nlink !== 1n)) {
         return {
           status: "unsafe",
-          message: "Managed lab manifest must be a single-link regular file.",
+          message: "A study file must be a single-link regular file.",
         };
       }
       if (leaf) {
@@ -558,7 +561,7 @@ async function inspectManagedPath(
       }
     }
   } catch {
-    return { status: "unsafe", message: "Managed lab path failed containment validation." };
+    return { status: "unsafe", message: "A study file path failed containment validation." };
   }
   return { status: "missing" };
 }
@@ -640,7 +643,7 @@ function labNotFound(cwd: string, lab: string, warnings: string[]): LabResolveFa
     study: lab,
     error: {
       code: "HUMANISH_STUDY_NOT_FOUND",
-      message: `Lab not found: ${lab}. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.`,
+      message: `Study not found: ${lab}. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.`,
     },
     warnings,
   };

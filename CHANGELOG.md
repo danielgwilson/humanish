@@ -135,6 +135,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   (`humanish.study.v3`), `humanish study` commands, `--study`, `observe --all` and the
   `humanish/studies/` paths. `docs/contracts/schemas.md` documents the v3 study file, the
   participants and caps each route accepts, and the v2-to-v3 key map.
+
+- A study that cannot be found reports "Study not found: <name>. Look in humanish/studies/ or
+  humanish/labs/, or pass a .yaml path." where it said "Lab not found". Discovery's other refusals,
+  such as an unsafe or changed study file, say study file where they said lab manifest.
+
 - A run's persona and scenario `source` say `study:<id>` where they said `lab:<id>`.
 - `humanish stats` labels runs without a study `(no study)`, where it said `(no lab)`.
 - Telemetry names the starter study that ran as `study` (TELEMETRY.md). It still names only the
