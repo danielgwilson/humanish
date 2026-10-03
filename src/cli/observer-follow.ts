@@ -6,7 +6,7 @@ import type { RunResult } from "../run/results.js";
 import {
   type CliIo,
   formatRunHuman,
-  type LabCommandOptions,
+  type StudyCommandOptions,
   parseObserverPort,
   wantsJson,
   writeResult,
@@ -226,8 +226,8 @@ export function watchExposeRequested(o: {
   );
 }
 
-// Map LabCommandOptions onto the shared exposure validator input.
-export function exposureRequestFromOptions(options: LabCommandOptions): ExposureRequest {
+// Map StudyCommandOptions onto the shared exposure validator input.
+export function exposureRequestFromOptions(options: StudyCommandOptions): ExposureRequest {
   return {
     expose: options.expose === true,
     ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),

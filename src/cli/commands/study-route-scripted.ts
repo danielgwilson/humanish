@@ -2,22 +2,22 @@ import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.
 import { Command } from "commander";
 import type { StudyConfig } from "../../study/types.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
-import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
+import { type CliIo, type StudyCommandOptions, wantsJson, writeResult } from "../io.js";
 import { showObserver } from "../observer-follow.js";
-import { formatScriptedLabHuman } from "./lab-format.js";
-import { observerOpen, resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
-import type { RouteRun } from "./lab-route-run.js";
+import { formatScriptedStudyHuman } from "./study-format.js";
+import { observerOpen, resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
+import type { RouteRun } from "./study-route-run.js";
 
 interface ScriptedRouteArgs {
   command: Command;
   io: CliIo;
   config: StudyConfig;
   mode: "run" | "watch";
-  options: LabCommandOptions;
+  options: StudyCommandOptions;
 }
 
 /**
- * The scripted route's CLI setup: its open semantics and runLab options, and how it presents the
+ * The scripted route's CLI setup: its open semantics and runStudyWith options, and how it presents the
  * outcome. Undefined when watch-mode setup has already written its own result.
  */
 export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined {
@@ -44,7 +44,7 @@ export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined 
         throw new Error(`Expected the scripted route, got ${outcome.route}.`);
       }
       const result = outcome.result;
-      writeResult(args.command, args.io, result, formatScriptedLabHuman);
+      writeResult(args.command, args.io, result, formatScriptedStudyHuman);
       args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
       // Watch mode serves the Observer the route rendered through its finished run.

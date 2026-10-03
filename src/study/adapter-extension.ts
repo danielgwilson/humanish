@@ -70,7 +70,7 @@ function scorerContext(facts: BrowserScoringFacts): BrowserScoringContext {
   ) as BrowserScoringContext;
 }
 
-/** The scorer functions a computer-use or shared-world run calls: `RunLabOptions.scorer`. */
+/** The scorer functions a computer-use or shared-world run calls: `RunStudyOptions.scorer`. */
 export interface BrowserScorer {
   /**
    * Browser-route extension seam: a thin adapter may score the assembled

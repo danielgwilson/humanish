@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CuaAction, CuaExecutor } from "../../../src/actors/computer-use/loop.js";
 import type { FetchLike } from "../../../src/actors/computer-use/openai-provider.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import type { LocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
@@ -126,7 +126,7 @@ describe("local VM run directory golden", () => {
   it("live study with one participant on a fake VM", async () => {
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localVmConfig(),
       {
         cwd,

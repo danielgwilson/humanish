@@ -14,7 +14,7 @@ export interface SymbolIssue {
 
 // A code file under a source root. Other paths (docs, YAML, JSON) are not parsed for names.
 const CODE_PATH = String.raw`(?:src|tests|scripts|tui|site|runtime|observer)/[\w./-]+\.(?:tsx?|mts|mjs)`;
-// An identifier, optionally dotted (`Run.finish`, `LabOutcome.backend`), or a dotted string id
+// An identifier, optionally dotted (`Run.finish`, `StudyOutcome.backend`), or a dotted string id
 // such as a schema name (`humanish.pricing.v1`). A trailing `()` is allowed on the name.
 const NAME = String.raw`[A-Za-z_$][\w$]*(?:\.[\w$-]+)*`;
 const SYMBOL_REFERENCE = new RegExp(

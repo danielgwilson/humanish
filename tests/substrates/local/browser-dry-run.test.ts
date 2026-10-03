@@ -15,7 +15,7 @@ vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => (
 }));
 
 import type { StudyConfig } from "../../../src/study/types.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import type { AdapterScoringContext } from "../../../src/study/adapter-scorer-loader.js";
 import type { StudyEvent } from "../../../src/study/run-study-events.js";
 import type { RunAdapterScore, RunBundle } from "../../../src/run/bundle.js";
@@ -40,7 +40,7 @@ describe("local browser dry-run", () => {
       scenario: { mode: "live" },
     };
 
-    const outcome = await runLab(config, { cwd, dryRun: true, open: false });
+    const outcome = await runStudyWith(config, { cwd, dryRun: true, open: false });
     expect((outcome.result as { ok?: boolean }).ok).not.toBe(false);
     expect(calls.prepare).not.toHaveBeenCalled();
     expect(calls.account).not.toHaveBeenCalled();
@@ -65,7 +65,7 @@ describe("local browser dry-run", () => {
     }));
     const onEvent = vi.fn((_event: StudyEvent) => {});
 
-    const outcome = await runLab(config, {
+    const outcome = await runStudyWith(config, {
       cwd,
       dryRun: true,
       open: false,

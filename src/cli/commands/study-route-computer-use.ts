@@ -1,6 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { type InternalRunLabOptions } from "../../run-lab.js";
+import { type InternalRunStudyOptions } from "../../run-study.js";
 import { resolveStudyDryRun } from "../../study/plan.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
 import type { StudyConfig } from "../../study/types.js";
@@ -14,8 +14,8 @@ import { cliAnalysisOptions } from "./analysis-signals.js";
 import { onRunShutdown } from "./run-signals.js";
 import {
   type CliIo,
-  type LabCommandOptions,
-  parseLabCount,
+  type StudyCommandOptions,
+  parseStudyCount,
   parseParticipantIds,
   parseObserverPort,
   wantsJson,
@@ -30,9 +30,9 @@ import {
   staticObserverOpen,
   withObserverServer,
 } from "../observer-follow.js";
-import { formatCuaLabHuman } from "./lab-format.js";
-import { resolveRouteShouldOpen } from "./lab-route-open.js";
-import type { RouteRun } from "./lab-route-run.js";
+import { formatCuaStudyHuman } from "./study-format.js";
+import { resolveRouteShouldOpen } from "./study-route-open.js";
+import type { RouteRun } from "./study-route-run.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
 interface ComputerUseRouteArgs {
@@ -40,11 +40,11 @@ interface ComputerUseRouteArgs {
   io: CliIo;
   config: StudyConfig;
   mode: "run" | "watch";
-  options: LabCommandOptions;
+  options: StudyCommandOptions;
 }
 
 /**
- * The computer-use route's CLI setup: its settings, the watch and exposure plan, the runLab options
+ * The computer-use route's CLI setup: its settings, the watch and exposure plan, the runStudyWith options
  * with the live Observer hook, and how it presents the outcome or a run error. Undefined when
  * setup has already written its own result.
  */
@@ -122,7 +122,7 @@ function refuseCua(
     warnings: [],
     error: { code, message },
   };
-  writeResult(args.command, args.io, result, formatCuaLabHuman);
+  writeResult(args.command, args.io, result, formatCuaStudyHuman);
   args.io.setExitCode(2);
 }
 
@@ -141,7 +141,7 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     args.io.setExitCode(2);
     return undefined;
   }
-  const count = parseLabCount(args.options.count, args.config.actors[0]?.count ?? 1);
+  const count = parseStudyCount(args.options.count, args.config.actors[0]?.count ?? 1);
   if (count === null) {
     args.io.writeErr("error: --count must be a positive integer.\n");
     args.io.setExitCode(2);
@@ -202,13 +202,13 @@ function prepareCuaWatch(
   return { exposure: exposeValidation.plan, finishedPlan };
 }
 
-/** The runLab options for this invocation, with the live Observer hook for a followed watch. */
+/** The runStudyWith options for this invocation, with the live Observer hook for a followed watch. */
 function cuaRunOptions(
   args: ComputerUseRouteArgs,
   settings: CuaRunSettings,
   prepared: CuaWatchPlan,
   live: CuaLiveAttachment,
-): InternalRunLabOptions {
+): InternalRunStudyOptions {
   const { finishedPlan } = prepared;
   return {
     ...cliAnalysisOptions(args.io),
@@ -226,7 +226,7 @@ function cuaRunOptions(
     dryRun: settings.dryRun,
     ...(settings.wantsFollow
       ? {
-          // Fires inside runLab, before the actor loop and before sandbox creation, so a
+          // Fires inside runStudyWith, before the actor loop and before sandbox creation, so a
           // tunnel-auth failure aborts before any spend and leaves no orphaned sandbox.
           onObserverReady: (observer: ObserverResult & { ok: true }) =>
             attachLiveObserver(args.io, settings, prepared.exposure, live, observer),
@@ -346,7 +346,7 @@ async function reportCuaRun(
       ],
     };
   }
-  writeResult(args.command, args.io, output, formatCuaLabHuman);
+  writeResult(args.command, args.io, output, formatCuaStudyHuman);
   args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   if (server && (result.observer?.ok || attachedObserver)) {

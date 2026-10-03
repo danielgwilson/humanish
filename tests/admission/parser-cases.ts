@@ -1,6 +1,6 @@
 // One case per cross-field parser rule (src/study/config.ts:175-576 and the validation.ts reasons it
 // calls). Each raw manifest breaks exactly that rule. The library suite also hands the raw
-// manifest to runLab and to the route's exported runner, the way a caller that skips the parser
+// manifest to runStudyWith and to the route's exported runner, the way a caller that skips the parser
 // can, and pins what each entry point does with it today.
 
 import { lab, type RawLab } from "./fixtures.js";
@@ -13,7 +13,7 @@ export interface AdmissionCase {
   /** A substring of the parser's refusal message, or "accepts". Proves the case hits its rule. */
   readonly parser: string;
   readonly options?: AdmissionOptions;
-  /** Entry points beyond the parser. Default: runLab and the route's exported runner. */
+  /** Entry points beyond the parser. Default: runStudyWith and the route's exported runner. */
   readonly entries?: readonly ("runLab" | "runner")[];
 }
 
@@ -554,7 +554,7 @@ export const parserCases: readonly AdmissionCase[] = [
     raw: lab("preview", { review: { analysis: { maxCostUsd: 1 } } }),
     parser: "review.analysis requires",
   },
-  // runLab would start the local VM path, which probes the host; the parser case is enough.
+  // runStudyWith would start the local VM path, which probes the host; the parser case is enough.
   {
     name: "local browser long session",
     raw: lab("cuAppUrl", { execution: { target: "local", timeoutMs: 1_800_000 } }),

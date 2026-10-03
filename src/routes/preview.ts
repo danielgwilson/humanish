@@ -1,7 +1,7 @@
 // The preview route: a lab whose subject is this repo runs the synthetic dry run. planStudy decides
 // the sim count and refuses what a synthetic run would ignore; runPreviewPlan does the rest.
 
-import type { AdmittedPlan, RunLabOptions } from "../run-lab.js";
+import type { AdmittedPlan, RunStudyOptions } from "../run-study.js";
 import type { StudyPlan, PlanRefusal } from "../study/plan-types.js";
 import type { RunResult } from "../run/results.js";
 import { studyResultIdentity, type StudyResultIdentity } from "../run/study-result.js";
@@ -31,10 +31,10 @@ export function previewLabRefusal(
   };
 }
 
-/** runLab's step for a preview plan: it has no local checks and takes no scorer, so it returns its run. */
+/** runStudyWith's step for a preview plan: it has no local checks and takes no scorer, so it returns its run. */
 export function admitPreviewPlan(
   plan: PreviewPlan,
-  input: Pick<RunLabOptions, "cwd" | "runId" | "open">,
+  input: Pick<RunStudyOptions, "cwd" | "runId" | "open">,
 ): AdmittedPlan<"preview"> {
   return {
     ok: true,
@@ -51,7 +51,7 @@ export function admitPreviewPlan(
 /** Run a preview plan: the synthetic dry run with the planned sim count. */
 function runPreviewPlan(
   plan: PreviewPlan,
-  input: Pick<RunLabOptions, "cwd" | "runId" | "open">,
+  input: Pick<RunStudyOptions, "cwd" | "runId" | "open">,
 ): Promise<RunResult> {
   return runDryRun({
     ...(plan.lab === undefined ? {} : { lab: plan.lab }),

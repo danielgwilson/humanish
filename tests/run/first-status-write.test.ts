@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
 import { parseStudy } from "../../src/study/config.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { RUN_STATUS_FILE } from "../../src/run/status.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
@@ -77,7 +77,7 @@ describe("a live route records its status before acquiring a sandbox", () => {
 
   it("computer use", async () => {
     const seen: boolean[] = [];
-    await runLab(
+    await runStudyWith(
       parsed({
         schema: V2_SCHEMA,
         id: "status-first-cua",
@@ -104,7 +104,7 @@ describe("a live route records its status before acquiring a sandbox", () => {
       await readFile(path.join(ROOT, "humanish/studies/shared-world-concurrent-live.yaml"), "utf8"),
     ) as Record<string, unknown>;
     const seen: boolean[] = [];
-    await runLab(
+    await runStudyWith(
       parsed({ ...lab, mode: "live" }),
       { cwd, dryRun: false, runId: RUN_ID, env },
       { desktopModule: async () => statusCheckingModule(runDir, seen) },
@@ -119,7 +119,7 @@ describe("a live route records its status before acquiring a sandbox", () => {
       path.join(cwd, "humanish/scenarios/scripted-first-run.yaml"),
     );
     const seen: boolean[] = [];
-    await runLab(
+    await runStudyWith(
       parsed({
         schema: V2_SCHEMA,
         id: "status-first-scripted",

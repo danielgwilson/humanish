@@ -1,8 +1,8 @@
-// runLab runs one lab. It normalizes the caller's options, binds a local browser study's desktop
+// runStudyWith runs one lab. It normalizes the caller's options, binds a local browser study's desktop
 // and provider, and plans the lab once with planStudy. A refused plan returns the route's own result
 // envelope before anything starts. One switch on plan.route then calls the route's admit function,
 // which runs the route's local checks that need no scorer (keys, subject env, the local agent) and
-// returns the route's run. prepareLab is the same path in two steps, so the CLI can present either
+// returns the route's run. prepareStudy is the same path in two steps, so the CLI can present either
 // refusal before it loads a declared review scorer.
 
 import type { LocalVmInput } from "./routes/computer-use/types.js";
@@ -43,37 +43,37 @@ import { isLocalBrowserLab, localBrowserDefaults } from "./substrates/local/runt
  * hook bags before anything runs. Each route closes the run it started on every exit through its
  * own run scope (`src/run/run.ts`).
  */
-export async function runLab(
+export async function runStudyWith(
   config: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   deps: StudyDeps = {},
-): Promise<LabOutcome> {
-  const prepared = await prepareLab(config, options, deps);
+): Promise<StudyOutcome> {
+  const prepared = await prepareStudy(config, options, deps);
   return prepared.ok ? prepared.run() : prepared.outcome;
 }
 
 /**
- * runLab as the package exports it (`src/index.ts`): the public options only. A JavaScript caller
- * that passes a field RunLabOptions no longer has is refused in the route's own result envelope
- * before anything runs.
+ * The package's study runner (`src/index.ts`): runStudyWith with the public options only. A
+ * JavaScript caller that passes a field RunStudyOptions no longer has is refused in the route's own
+ * result envelope before anything runs.
  */
-export async function runPackageLab(
+export async function runStudy(
   config: StudyConfig,
-  options: RunLabOptions,
-): Promise<LabOutcome> {
+  options: RunStudyOptions,
+): Promise<StudyOutcome> {
   const removed = removedOptionRefusal(options);
-  if (removed === undefined) return runLab(config, options);
+  if (removed === undefined) return runStudyWith(config, options);
   const lab = localBrowserDefaults(config);
   return optionRefusalOutcome(lab, routeOf(lab), options, removed);
 }
 
 /** A lab planned once: the route's refusal, or the run of its plan. */
-export type PreparedLab =
-  | { readonly ok: false; readonly outcome: LabOutcome }
+export type PreparedStudy =
+  | { readonly ok: false; readonly outcome: StudyOutcome }
   | {
       readonly ok: true;
       /** Runs the plan. A scorer loaded after planning joins the run's hooks; it changes no plan. */
-      run(scorer?: LateScorer): Promise<LabOutcome>;
+      run(scorer?: LateScorer): Promise<StudyOutcome>;
     };
 
 /**
@@ -82,11 +82,11 @@ export type PreparedLab =
  * it, and its desktop goes to the computer-use run as `localVm`; with inProcess the caller drives
  * the app in process and needs no desktop.
  */
-export async function prepareLab(
+export async function prepareStudy(
   config: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   deps: StudyDeps = {},
-): Promise<PreparedLab> {
+): Promise<PreparedStudy> {
   const lab = localBrowserDefaults(config);
   const route = routeOf(lab);
   const normalized = normalizeRunStudyOptions(lab, route, options);
@@ -99,7 +99,7 @@ export async function prepareLab(
       ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmRun
       : undefined;
   const vm = prepareLocalVm?.({ ...normalized.options, config: lab });
-  const planning: InternalRunLabOptions =
+  const planning: InternalRunStudyOptions =
     vm === undefined ? normalized.options : { ...vm.options, localVm: vm.localVm };
   const planned = planStudy(lab, planning, deps);
   if (!planned.ok) {
@@ -146,7 +146,7 @@ export async function prepareLab(
 /** The route's admit function for a plan, with the route's input from the run's options. */
 async function admitPlan(
   config: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   plan: StudyPlan,
   deps: StudyDeps,
   emit: ((event: StudyEvent) => void) | undefined,
@@ -168,11 +168,11 @@ async function admitPlan(
 /** The refused route's own result, with the envelope and analysis record its runner returns. */
 async function refusalOutcome(
   config: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   refusal: PlanRefusal,
   deps: StudyDeps,
   emit: ((event: StudyEvent) => void) | undefined,
-): Promise<LabOutcome> {
+): Promise<StudyOutcome> {
   // Spend-safe default: a lab goes live only when the config (or CLI) says so.
   const dryRun = resolveStudyDryRun(config, options.dryRun, true) ?? true;
   switch (refusal.route) {
@@ -217,12 +217,12 @@ async function refusalOutcome(
 }
 
 /**
- * What a package caller passes to runLab: the run's settings and the typed homes (`RunStudyHomes`,
+ * What a package caller passes to runStudy: the run's settings and the typed homes (`RunStudyHomes`,
  * `RunStudyDriving`). Each wins over the config when provided.
  */
-export type RunLabOptions = RunLabBase & RunStudyHomes & RunStudyDriving;
+export type RunStudyOptions = RunStudyBase & RunStudyHomes & RunStudyDriving;
 
-interface RunLabBase {
+interface RunStudyBase {
   cwd: string;
   runId?: string;
   dryRun?: boolean;
@@ -237,10 +237,10 @@ interface RunLabBase {
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
 }
 
-/** runLab's options inside the package: the public ones plus what only the CLI and tests set. */
-export type InternalRunLabOptions = RunLabOptions & RunLabInternals;
+/** runStudyWith's options inside the package: the public ones plus what only the CLI and tests set. */
+export type InternalRunStudyOptions = RunStudyOptions & RunStudyInternals;
 
-interface RunLabInternals {
+interface RunStudyInternals {
   /**
    * Which manifest this run came from. planStudy puts it on the plan, and the route reads
    * plan.lab for the run's status record and bundle. Absent for a library caller that passes a
@@ -264,7 +264,7 @@ interface RouteOutcome<R extends StudyRoute, T> {
   result: T;
 }
 
-export type LabOutcome =
+export type StudyOutcome =
   | RouteOutcome<"preview", PreviewStudyResult>
   | RouteOutcome<"computer-use", CuaActorLabResult>
   | RouteOutcome<"scripted", ScriptedBrowserLabResult>
@@ -276,14 +276,14 @@ export type LabOutcome =
  * route's run, which takes a scorer loaded after them.
  */
 export type AdmittedPlan<R extends StudyRoute = StudyRoute> =
-  | { readonly ok: false; readonly outcome: Extract<LabOutcome, { route: R }> }
+  | { readonly ok: false; readonly outcome: Extract<StudyOutcome, { route: R }> }
   | {
       readonly ok: true;
-      run(scorer?: LateScorer): Promise<Extract<LabOutcome, { route: R }>>;
+      run(scorer?: LateScorer): Promise<Extract<StudyOutcome, { route: R }>>;
     };
 
-/** The result of a run on route `R`, the `result` of that route's `LabOutcome`. */
-export type LabResult<R extends StudyRoute = StudyRoute> = {
+/** The result of a run on route `R`, the `result` of that route's `StudyOutcome`. */
+export type StudyResult<R extends StudyRoute = StudyRoute> = {
   preview: PreviewStudyResult;
   "computer-use": CuaActorLabResult;
   scripted: ScriptedBrowserLabResult;

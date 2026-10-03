@@ -1,4 +1,4 @@
-// runLab plans each lab once: one planStudy call per run, and one call of the route's own planner,
+// runStudyWith plans each lab once: one planStudy call per run, and one call of the route's own planner,
 // on every route and on a local browser study, whose desktop and provider are bound first.
 
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -59,7 +59,7 @@ vi.mock("../../src/routes/computer-use/plan.js", async (importOriginal) => {
   };
 });
 
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { parseStudy } from "../../src/study/config.js";
 import type { StudyConfig } from "../../src/study/types.js";
@@ -96,7 +96,7 @@ describe("runLab plans each lab once", () => {
   it.each(runs)(
     "%s: one planLab call and one route planner call",
     async (_name, config, _backend, routePlans) => {
-      const outcome = await runLab(config(), { cwd, dryRun: true, open: false });
+      const outcome = await runStudyWith(config(), { cwd, dryRun: true, open: false });
       expect(outcome.route).toBe(routeOf(config()));
       expect((outcome.result as { ok?: boolean }).ok).toBe(true);
       expect(counts.planStudy).toBe(1);

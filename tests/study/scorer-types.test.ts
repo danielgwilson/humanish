@@ -1,4 +1,4 @@
-// What RunLabOptions.scorer accepts. Each `@ts-expect-error` fails typecheck if the line below it
+// What RunStudyOptions.scorer accepts. Each `@ts-expect-error` fails typecheck if the line below it
 // compiles, so `pnpm typecheck` is the assertion; the runtime test only keeps the file in the suite.
 
 import { describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import {
 } from "../../src/study/adapter-scorer-loader.js";
 import type { TerminalProductScoringContext } from "../../src/routes/terminal/types.js";
 import type { RunAdapterScore, RunFeedbackCandidate } from "../../src/run/bundle.js";
-import type { RunLabOptions } from "../../src/run-lab.js";
+import type { RunStudyOptions } from "../../src/run-study.js";
 
 const score = (summary: string): RunAdapterScore => ({
   schema: "humanish.adapter-score.v1",
@@ -22,7 +22,7 @@ const score = (summary: string): RunAdapterScore => ({
 });
 
 /** Inline scorers, scorers typed for one context through its helper, and union scorers compile. */
-function accepted(): RunLabOptions[] {
+function accepted(): RunStudyOptions[] {
   const browser = {
     score: (ctx: BrowserScoringContext) => score(`${ctx.route} ${ctx.participantCount}`),
     deriveFeedback: (_ctx: BrowserScoringContext): RunFeedbackCandidate[] => [],
@@ -64,7 +64,7 @@ function refused(): unknown[] {
   };
   return [
     // @ts-expect-error a browser-typed scorer needs browserScorer to say what it was written for
-    { cwd: "/x", scorer: browser } satisfies RunLabOptions,
+    { cwd: "/x", scorer: browser } satisfies RunStudyOptions,
     // @ts-expect-error a browser score beside a terminal deriveFeedback fits neither helper
     browserScorer(mixed),
     // @ts-expect-error the same module, as a terminal scorer

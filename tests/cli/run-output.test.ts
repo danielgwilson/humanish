@@ -86,7 +86,7 @@ describe("a run that is not there", () => {
 
 describe("lab run output", () => {
   it("names the command that ran, never a `humanish lab <route>` command that does not exist", async () => {
-    const source = await readFile("src/cli/commands/lab-format.ts", "utf8");
+    const source = await readFile("src/cli/commands/study-format.ts", "utf8");
     expect(
       source.match(/`humanish lab (cua|terminal|scripted|concurrent-shared-world) /g),
     ).toBeNull();

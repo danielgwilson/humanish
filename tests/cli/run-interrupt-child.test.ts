@@ -20,7 +20,7 @@ function screenshot(): string {
 
 const CHILD = `
   const root = process.env.REPO_ROOT;
-  const { runLab } = await import(root + "/src/run-lab.ts");
+  const { runStudyWith } = await import(root + "/src/run-study.ts");
   const { parseStudy } = await import(root + "/src/study/config.ts");
   const { V2_SCHEMA } = await import(root + "/src/study/types.ts");
   const { beginRunSignalPhase } = await import(root + "/src/cli/commands/run-signals.ts");
@@ -57,7 +57,7 @@ const CHILD = `
     review: { analysis: false },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  await runLab(
+  await runStudyWith(
     parsed.config,
     {
       cwd: process.env.PROBE_CWD,

@@ -9,10 +9,10 @@ import { parseStudy } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 import { normalizeRunStudyOptions } from "../../src/study/run-study-options.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { runPackageLab, type RunLabOptions } from "../../src/run-lab.js";
+import { runStudy, type RunStudyOptions } from "../../src/run-study.js";
 import { lab } from "../admission/fixtures.js";
 
-// The package's runLab refuses the RunLabOptions fields it no longer has, and the typed options
+// The package's runStudyWith refuses the RunStudyOptions fields it no longer has, and the typed options
 // emit no deprecation warning. Only tests set the internal options.
 
 function config(): StudyConfig {
@@ -68,8 +68,8 @@ describe("the package's runLab", () => {
     ["lab", "The humanish CLI sets it."],
     ["scorerProvenance", "The humanish CLI sets it."],
   ])("refuses %s in the route's envelope before anything runs", async (field, home) => {
-    const options = { cwd, dryRun: true, [field]: {} } as unknown as RunLabOptions;
-    const outcome = await runPackageLab(config(), options);
+    const options = { cwd, dryRun: true, [field]: {} } as unknown as RunStudyOptions;
+    const outcome = await runStudy(config(), options);
     expect(outcome.route).toBe("computer-use");
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error).toEqual({
@@ -84,8 +84,8 @@ describe("the package's runLab", () => {
       cwd,
       dryRun: true,
       rerun: { sourceRunId: "prior", laneIds: ["lane-01"] },
-    } as unknown as RunLabOptions;
-    const outcome = await runPackageLab(config(), options);
+    } as unknown as RunStudyOptions;
+    const outcome = await runStudy(config(), options);
     expect(outcome.result.error).toEqual({
       code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
       message:
@@ -95,14 +95,14 @@ describe("the package's runLab", () => {
   });
 
   it("runs a lab given only the typed options", async () => {
-    const outcome = await runPackageLab(config(), { cwd, dryRun: true });
+    const outcome = await runStudy(config(), { cwd, dryRun: true });
     expect(outcome.route).toBe("computer-use");
     expect(outcome.result.ok).toBe(true);
   });
 
   it("is the runLab src/index.ts exports", async () => {
     const humanish = await import("../../src/index.js");
-    expect(humanish.runLab).toBe(runPackageLab);
+    expect(humanish.runLab).toBe(runStudy);
   });
 });
 

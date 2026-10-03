@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { parseStudy } from "../../../src/study/config.js";
 import { planStudy } from "../../../src/study/plan.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { participantRunDeps } from "../../../src/routes/shared-world/participant-specs.js";
 import type { PlaneContext } from "../../../src/routes/shared-world/types.js";
 import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
@@ -87,7 +87,7 @@ describe("shared world with a local-agent brain", () => {
   it("refuses a missing agent CLI as AGENT_MISSING before any desktop loads, without OPENAI_API_KEY", async () => {
     const cwd = await projectDir();
     let loads = 0;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config("sharedProvisioned", localAgent),
       {
         cwd,
@@ -134,7 +134,7 @@ describe("shared world with a local-agent brain", () => {
       caps === undefined ? base : { ...base, execution: { ...(base.execution as object), caps } };
     const parsed = parseStudy(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,

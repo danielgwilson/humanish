@@ -1,11 +1,11 @@
-// What a run reports through RunLabOptions.onEvent, and how a callback failure becomes a run
+// What a run reports through RunStudyOptions.onEvent, and how a callback failure becomes a run
 // warning. normalizeRunStudyOptions (run-study-options.ts) builds the emitter and hands it to the
 // route hook bags it maps; the event values are built here.
 
 import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
 import type { CuaParticipantPlan } from "../routes/computer-use/types.js";
 import type { SubjectPhaseEvent } from "../subject/steps.js";
-import type { InternalRunLabOptions } from "../run-lab.js";
+import type { InternalRunStudyOptions } from "../run-study.js";
 import type { StudyRoute } from "./plan.js";
 import type { StudyConfig } from "./types.js";
 
@@ -58,7 +58,7 @@ export type StudyEvent =
  */
 export function knownSecretValues(
   config: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
 ): string[] {
   const sources = [forwardedEnv, options.env, process.env];

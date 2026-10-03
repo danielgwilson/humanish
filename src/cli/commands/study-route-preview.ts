@@ -5,12 +5,12 @@ import { studyResultIdentity } from "../../run/study-result.js";
 import {
   type CliIo,
   formatRunHuman,
-  type LabCommandOptions,
-  parseLabCount,
+  type StudyCommandOptions,
+  parseStudyCount,
   writeResult,
 } from "../io.js";
 import { planObserver, showObserver, staticObserverOpen } from "../observer-follow.js";
-import type { RouteRun } from "./lab-route-run.js";
+import type { RouteRun } from "./study-route-run.js";
 
 interface PreviewRouteArgs {
   command: Command;
@@ -18,15 +18,15 @@ interface PreviewRouteArgs {
   lab: string;
   config: StudyConfig;
   mode: "run" | "watch";
-  options: LabCommandOptions;
+  options: StudyCommandOptions;
 }
 
 /**
- * The preview route's CLI setup: the participant count and Observer plan, its runLab options, and how it
+ * The preview route's CLI setup: the participant count and Observer plan, its runStudyWith options, and how it
  * presents the outcome. Undefined when setup has already written its own result.
  */
 export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
-  const participantCount = parseLabCount(args.options.count, args.config.actors[0]?.count ?? 4);
+  const participantCount = parseStudyCount(args.options.count, args.config.actors[0]?.count ?? 4);
   if (participantCount === null) {
     const result: PreviewStudyResult = {
       ...studyResultIdentity("preview", args.config.id),

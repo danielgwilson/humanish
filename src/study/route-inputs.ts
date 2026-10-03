@@ -1,7 +1,7 @@
-// What each route's run takes from runLab's options: the shared run settings, the typed options
+// What each route's run takes from runStudyWith's options: the shared run settings, the typed options
 // the route reads, the event emitter, the test seams and the declared scorer's provenance.
 
-import type { InternalRunLabOptions } from "../run-lab.js";
+import type { InternalRunStudyOptions } from "../run-study.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
 import {
   browserRouteScorer,
@@ -16,7 +16,7 @@ import type { SharedWorldRunInput } from "../routes/shared-world/types.js";
 import type { TerminalRunInput } from "../routes/terminal/types.js";
 
 export function computerUseInput(
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   deps: StudyDeps,
   emit: StudyEmit | undefined,
 ): ComputerUseRunInput {
@@ -41,7 +41,7 @@ export function computerUseInput(
 }
 
 export function scriptedInput(
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   deps: StudyDeps,
   emit: StudyEmit | undefined,
 ): ScriptedRunInput {
@@ -58,7 +58,7 @@ export function scriptedInput(
 }
 
 export function terminalInput(
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   deps: StudyDeps,
   emit: StudyEmit | undefined,
 ): TerminalRunInput {
@@ -75,7 +75,7 @@ export function terminalInput(
 }
 
 export function sharedWorldInput(
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   deps: StudyDeps,
   emit: StudyEmit | undefined,
 ): SharedWorldRunInput {
@@ -94,9 +94,9 @@ export function sharedWorldInput(
 }
 
 /** A scorer the CLI loads after the route's local checks, and the provenance it stamps on the run. */
-export type LateScorer = Pick<InternalRunLabOptions, "scorer" | "scorerProvenance">;
+export type LateScorer = Pick<InternalRunStudyOptions, "scorer" | "scorerProvenance">;
 
-/** Narrows RunLabOptions.scorer to the context the route passes (adapter-scorer-loader.ts). */
+/** Narrows RunStudyOptions.scorer to the context the route passes (adapter-scorer-loader.ts). */
 type NarrowScorer<S> = (scorer: AdapterScorerModule) => S;
 
 /**
@@ -120,18 +120,18 @@ export function withLateScorer<S, I extends { scorer?: S; scorerProvenance?: Run
 type StudyEmit = (event: StudyEvent) => void;
 
 /** The caller's stream callback and the run's event emitter, for the routes that report them. */
-function observersOf(options: InternalRunLabOptions, emit: StudyEmit | undefined) {
+function observersOf(options: InternalRunStudyOptions, emit: StudyEmit | undefined) {
   return {
     ...(options.onStream === undefined ? {} : { onStream: options.onStream }),
     ...(emit === undefined ? {} : { emit }),
   };
 }
 
-function analysisOf(options: InternalRunLabOptions) {
+function analysisOf(options: InternalRunStudyOptions) {
   return options.analysisSignal === undefined ? {} : { analysisSignal: options.analysisSignal };
 }
 
-function scorerOf<S>(options: InternalRunLabOptions, narrow: NarrowScorer<S>) {
+function scorerOf<S>(options: InternalRunStudyOptions, narrow: NarrowScorer<S>) {
   return {
     ...(options.scorer === undefined ? {} : { scorer: narrow(options.scorer) }),
     ...(options.scorerProvenance === undefined

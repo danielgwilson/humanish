@@ -34,9 +34,9 @@ import {
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
-import { prepareLab, runLab } from "../../../src/run-lab.js";
+import { prepareStudy, runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
-import { sharedWorldRouteRun } from "../../../src/cli/commands/lab-route-shared-world.js";
+import { sharedWorldRouteRun } from "../../../src/cli/commands/study-route-shared-world.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import {
   extractLobbyCodeFromNarration,
@@ -563,8 +563,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       path: "humanish/labs/shared-lab.yaml",
       origin: "committed" as const,
     };
-    // runLab takes the provenance the CLI resolved, and planStudy puts it on the plan.
-    const outcome = await runLab(concurrentConfig(), { cwd, dryRun: true, lab });
+    // runStudyWith takes the provenance the CLI resolved, and planStudy puts it on the plan.
+    const outcome = await runStudyWith(concurrentConfig(), { cwd, dryRun: true, lab });
     if (outcome.route !== "shared-world") throw new Error(`routed to ${outcome.route}`);
     const { result } = outcome;
     expect(result.ok).toBe(true);
@@ -1594,7 +1594,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       const config = concurrentConfig(3, 3);
       const printed: string[] = [];
       let exitCode: number | undefined;
-      // The lab command's path: the backend's setup, then its one runLab call.
+      // The lab command's path: the backend's setup, then its one runStudyWith call.
       const run = sharedWorldRouteRun({
         command: new Command(),
         io: {
@@ -1614,7 +1614,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       // phase sink, the phases go to the default sink and to the CLI's onEvent.
       const { env, deps } = worldSeams(world);
       const { subjectPhaseSink: _sink, ...seams } = deps;
-      const prepared = await prepareLab(config, { ...run.options, env }, seams);
+      const prepared = await prepareStudy(config, { ...run.options, env }, seams);
       await run.present(prepared.ok ? await prepared.run() : prepared.outcome);
       exitCodes.push(exitCode);
       if (world === "no overlap") {
@@ -1723,7 +1723,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const config = concurrentConfig(3, 3);
     expect(routeOf(config)).toBe("shared-world");
-    const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
+    const outcome = await runStudyWith(config, { cwd, dryRun: false, env }, deps);
     expect(outcome.route).toBe("shared-world");
     if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);
@@ -1766,7 +1766,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const config = concurrentConfig(3, 3);
     delete config.execution!.concurrency;
     expect(sharedWorldValidationReason(config)).toBeNull();
-    const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
+    const outcome = await runStudyWith(config, { cwd, dryRun: false, env }, deps);
     expect(outcome.route).toBe("shared-world");
     expect(outcome.result.ok).toBe(true);
   });
@@ -2150,7 +2150,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     deps.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
     const config = localTreeConcurrentConfig(3, 3);
     expect(routeOf(config)).toBe("shared-world");
-    const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
+    const outcome = await runStudyWith(config, { cwd, dryRun: false, env }, deps);
     expect(outcome.route).toBe("shared-world");
     if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);
@@ -2438,7 +2438,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
   });
 
   it("dry-runs this exact committed config to a verified concurrent shared-world bundle at $0", async () => {
-    const outcome = await runLab(loadLiveLab(), { cwd, dryRun: true });
+    const outcome = await runStudyWith(loadLiveLab(), { cwd, dryRun: true });
     expect(outcome.route).toBe("shared-world");
     if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);
@@ -3004,7 +3004,7 @@ describe("RunLabOptions homes on the concurrent route", () => {
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const targets: unknown[] = [];
     const streams: string[] = [];
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       concurrentConfig(3, 3),
       {
         cwd,

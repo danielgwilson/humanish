@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseStudy } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
@@ -72,7 +72,7 @@ describe("declared task protocol admission", () => {
       const generic = [vi.spyOn(synthetic, "runDryRun")];
       for (const spy of generic) spy.mockImplementation(forbidden);
       const output = path.join(cwd, "must-not-exist");
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         parsed,
         { cwd: output, dryRun: false, env: {} },
         {

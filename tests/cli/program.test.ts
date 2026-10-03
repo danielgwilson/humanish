@@ -8,8 +8,8 @@ import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 
 import { createProgram, normalizeCliArgv } from "../../src/cli/program.js";
-import { formatCuaLabHuman } from "../../src/cli/commands/lab-format.js";
-import { resolveRouteShouldOpen } from "../../src/cli/commands/lab-route-open.js";
+import { formatCuaStudyHuman } from "../../src/cli/commands/study-format.js";
+import { resolveRouteShouldOpen } from "../../src/cli/commands/study-route-open.js";
 import { followObserver } from "../../src/cli/observer-follow.js";
 import { runFactsFor, writeResult } from "../../src/cli/io.js";
 import * as humanishIndex from "../../src/index.js";
@@ -1502,7 +1502,7 @@ describe("humanish serve command", () => {
 });
 
 // A live-mode CUA study so prepareCuaWatch runs the exposure validator. Every case below is a refusal
-// that aborts at validateExposure before runLab, so no sandbox/provider spend occurs ($0).
+// that aborts at validateExposure before runStudyWith, so no sandbox/provider spend occurs ($0).
 const CUA_LAB_FIXTURE: Record<string, string> = {
   "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
   "humanish/labs/cua-live.yaml": [
@@ -1729,7 +1729,7 @@ describe("provider-key discovery at the CLI seam", () => {
 
 describe("lab provenance survives the whole CLI path", () => {
   // This test exists because a live run caught what the unit tests could not: the provenance was
-  // built at the resolution site and forwarded through nine `runLab` call sites, and three of them
+  // built at the resolution site and forwarded through nine `runStudyWith` call sites, and three of them
   // silently dropped it: TypeScript cannot catch that, because a spread of an optional field is
   // never an excess-property error. So the guard has to run the CLI end to end and read the disk.
   it("`lab run` stamps the resolved study into the bundle and the status record", async () => {
@@ -1956,7 +1956,7 @@ describe("run writes the same bundle watch does", () => {
 
 describe("CUA ending output", () => {
   it("shows distinct participant causes without calling the first participant the whole session", () => {
-    const output = formatCuaLabHuman({
+    const output = formatCuaStudyHuman({
       schema: "humanish.study-result.v1",
       route: "computer-use",
       studyId: "synthetic",

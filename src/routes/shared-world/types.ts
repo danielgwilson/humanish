@@ -74,7 +74,7 @@ export interface RunConcurrentSharedWorldLabOptions {
   emit?: (event: StudyEvent) => void;
   /** Test seams. */
   deps?: StudyDeps;
-  /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
+  /** Scores the assembled evidence: `RunStudyOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
   /** Present only when the scorer was config-declared and loaded by the CLI;
    *  core-stamped onto the bundle as evidence. Absent for library callers. */

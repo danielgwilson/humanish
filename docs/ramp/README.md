@@ -133,7 +133,7 @@ Still not good enough:
 in `src/study/validation.ts`. The route entries check it again
 for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each
 accepted row except the local browser row. `tests/study/task-route-preflight.test.ts` checks that
-each of those labs routes as shown. `tests/run-lab-local-substrate.test.ts` covers the local
+each of those labs routes as shown. `tests/run-study-local-substrate.test.ts` covers the local
 browser row. Accepted rows have further required fields, such as `subject.serve` on `clone`, and
 the parse error names the missing one. The computer-use actors are `openai-computer-use` and
 `local-agent`.

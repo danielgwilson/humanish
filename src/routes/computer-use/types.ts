@@ -97,7 +97,7 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 export type ComputerUseRunInput = Omit<RunCuaActorLabOptions, "config" | "dryRun" | "lab">;
 
 /**
- * What runLab's local VM study gives a computer-use run: the desktop each participant runs on, the
+ * What runStudyWith's local VM study gives a computer-use run: the desktop each participant runs on, the
  * reason automatic analysis must not run (the study's cleanup is unconfirmed), and the signal its
  * sessions abort on.
  */
@@ -129,7 +129,7 @@ export interface RunCuaActorLabOptions {
   env?: Readonly<Record<string, string | undefined>>;
   /** E2B only. Runs on each participant's desktop after it exists and before provisioning. */
   prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
-  /** runLab's local VM study, for an app-url lab on the local target. */
+  /** runStudyWith's local VM study, for an app-url lab on the local target. */
   localVm?: LocalVmInput;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
@@ -142,7 +142,7 @@ export interface RunCuaActorLabOptions {
   emit?: (event: StudyEvent) => void;
   /** Test seams. */
   deps?: StudyDeps;
-  /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
+  /** Scores the assembled evidence: `RunStudyOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
   /** Present only when the scorer was config-declared and loaded by the CLI;
    *  core-stamped onto the bundle as evidence. Absent for library callers. */

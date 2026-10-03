@@ -22,7 +22,7 @@ import type { StudyConfig } from "./types.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
- * message, or null when valid. The parser enforces it, and runLab checks it again for a config
+ * message, or null when valid. The parser enforces it, and runStudyWith checks it again for a config
  * that skipped the parser. It runs rosterStructuralValidationReason (id and device
  * validity, unique ids) first, then the route-scoped XOR, cap and policy checks.
  */
@@ -125,7 +125,7 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
  * Cross-validate a `topology: shared-world` declaration. Returns the failure message, or
  * null when the one shared-world route can run it: the external-public checks for an app-url
  * subject, the provisioned checks otherwise. Enforced at parse and again by the route, since
- * runLab takes a config that skipped the parser.
+ * runStudyWith takes a config that skipped the parser.
  */
 export function sharedWorldValidationReason(config: StudyConfig): string | null {
   return config.subject.source === "app-url"
@@ -326,7 +326,7 @@ function sharedWorldConcurrencyReason(config: StudyConfig): string | null {
  * or null when valid. Includes the base shared-world checks plus the concurrent extras: a synthetic
  * subject attestation, a 0.0.0.0 serve bind (getHost only routes to a port bound on
  * all interfaces), and no `subject.clone.keep`/`subject.localTree.keep` (either would
- * orphan actor sandboxes). Enforced at parse and re-enforced in the engine (runLab
+ * orphan actor sandboxes). Enforced at parse and re-enforced in the engine (runStudyWith
  * takes a config that skipped the parser).
  */
 export function concurrentSharedWorldValidationReason(config: StudyConfig): string | null {
@@ -360,7 +360,7 @@ export function concurrentSharedWorldValidationReason(config: StudyConfig): stri
  * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
  * concurrency >= 2 + an actors[0].lanes roster of ≥2 with exactly one host participant. The getHost synthetic
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
- * Enforced at parse and re-enforced in the engine (runLab takes a config that skipped the parser).
+ * Enforced at parse and re-enforced in the engine (runStudyWith takes a config that skipped the parser).
  */
 export function externalPublicSharedWorldValidationReason(config: StudyConfig): string | null {
   const structuralReason = rosterStructuralValidationReason(config);

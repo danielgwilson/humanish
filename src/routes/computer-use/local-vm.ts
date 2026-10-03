@@ -1,6 +1,6 @@
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import path from "node:path";
-import type { InternalRunLabOptions } from "../../run-lab.js";
+import type { InternalRunStudyOptions } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
 import type { ProviderFactory } from "../../study/run-study-homes.js";
 import {
@@ -28,7 +28,7 @@ import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.j
 import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 
-type LocalVmRunOptions = InternalRunLabOptions & {
+type LocalVmRunOptions = InternalRunStudyOptions & {
   config: StudyConfig;
   assets?: LocalFirecrackerAssets;
   signal?: AbortSignal;
@@ -217,8 +217,8 @@ function accountProvider(state: LocalVmRunState): ProviderFactory {
 
 /** A local browser study's bindings, and the cleanup of what its participants started. */
 export interface LocalVmRun {
-  /** The caller's runLab options, with the account provider when the study runs one. */
-  readonly options: InternalRunLabOptions;
+  /** The caller's runStudyWith options, with the account provider when the study runs one. */
+  readonly options: InternalRunStudyOptions;
   /** The desktop, the analysis gate and the abort signal the computer-use run takes. */
   readonly localVm: LocalVmInput;
   close(): Promise<void>;

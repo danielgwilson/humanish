@@ -14,7 +14,7 @@ import {
   isScriptedBrowserComposition,
   isTerminalProductComposition,
 } from "../../../src/study/routing.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
@@ -432,7 +432,7 @@ describe("runTerminalProductLab (dry-run)", () => {
   );
 
   it("dry-run produces a verified contract bundle: terminal stream, unpinned subject, caps/policies/auth declared", async () => {
-    const outcome = await runLab(parsedTerminalConfig(), { cwd, dryRun: true });
+    const outcome = await runStudyWith(parsedTerminalConfig(), { cwd, dryRun: true });
     expect(outcome.route).toBe("terminal");
     if (outcome.route !== "terminal") return;
     const result = outcome.result;
@@ -517,7 +517,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     // Without a runtime key in the (empty) env, the shipped live backend fails closed at the
     // credential-resolution step: no sandbox, no spend, no artifacts. (The full
     // live path + credential boundary is covered deterministically in e2b-terminal-lab.test.ts.)
-    const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), {
+    const outcome = await runStudyWith(parsedTerminalConfig({ mode: "live" }), {
       cwd,
       env: {},
     });

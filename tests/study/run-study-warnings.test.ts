@@ -1,4 +1,4 @@
-// prepareLab's run carries the warnings its admitted hooks wrote, with or without a scorer that
+// prepareStudy's run carries the warnings its admitted hooks wrote, with or without a scorer that
 // joins after the route's checks. The CLI passes its scorer that way.
 
 import { mkdtemp, rm } from "node:fs/promises";
@@ -10,7 +10,7 @@ import type { AdapterScorerModule } from "../../src/study/adapter-scorer-loader.
 import { parseStudy } from "../../src/study/config.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import type { RunScorerProvenance } from "../../src/run/bundle.js";
-import { prepareLab } from "../../src/run-lab.js";
+import { prepareStudy } from "../../src/run-study.js";
 import { lab } from "../admission/fixtures.js";
 
 const WARNING = "RunLabOptions.onEvent failed on plan: observer down";
@@ -48,7 +48,7 @@ describe("a scorer that joins after the route's checks", () => {
   });
 
   async function prepared(base?: "scriptedAppUrl") {
-    const result = await prepareLab(config(base), {
+    const result = await prepareStudy(config(base), {
       cwd,
       dryRun: true,
       onEvent: () => {

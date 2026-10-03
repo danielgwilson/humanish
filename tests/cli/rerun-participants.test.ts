@@ -8,7 +8,7 @@ import { stringify } from "yaml";
 import { lab } from "../admission/fixtures.js";
 
 // `lab run --rerun-failed-from <run> --participants <ids>` is the example in `lab run --help`.
-// The CLI must pass the selection as rerun.participantIds: runLab refuses the removed
+// The CLI must pass the selection as rerun.participantIds: runStudyWith refuses the removed
 // rerun.laneIds with HUMANISH_STUDY_OPTION_UNSUPPORTED. A child process gives the real stderr, where
 // Node prints warnings.
 

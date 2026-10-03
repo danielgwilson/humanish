@@ -8,7 +8,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The live rung for subject.state: a seed step that proves itself through the readiness
@@ -72,7 +72,7 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (live, spend-gated)", () => 
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 
-      const outcome = await runLab(parsed.config, { cwd });
+      const outcome = await runStudyWith(parsed.config, { cwd });
       expect(outcome.route).toBe("computer-use");
       if (outcome.route !== "computer-use") return;
       const result = outcome.result;

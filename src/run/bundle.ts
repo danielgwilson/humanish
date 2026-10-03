@@ -116,7 +116,7 @@ export interface RunAdapterArtifact {
  * Provenance for a config-declared adopter scorer: the repo-relative entry path and a digest
  * of its entry-module bytes, recorded so a `review.scorer.ref`/`--scorer` run states which
  * out-of-tree judgment it attached. Core-computed (path + digest), never adopter-supplied. A library
- * caller (hooks passed directly through RunLabOptions) has implicit provenance, because its code is its
+ * caller (hooks passed directly through RunStudyOptions) has implicit provenance, because its code is its
  * provenance, so this block is absent there and every older bundle stays byte-stable + verifiable.
  *
  * The digest pins the entry file's identity only; modules it loads are outside it: a `export { score } from

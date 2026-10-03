@@ -4,7 +4,7 @@ import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
-import { runLabCommand } from "./lab-run.js";
+import { runStudyCommand } from "./study-run.js";
 import { addRunOptions, studyOnlyFlags } from "./run-command.js";
 import {
   deprecationMessage,
@@ -17,7 +17,7 @@ import {
   type CliIo,
   collectRepeated,
   formatRunHuman,
-  type LabCommandOptions,
+  type StudyCommandOptions,
   parseObserverPort,
   parsePositiveInteger,
   wantsJson,
@@ -99,7 +99,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     .action((named, options, command) => handleWatch(io, named, options, command));
 }
 
-interface WatchOptions extends LabCommandOptions {
+interface WatchOptions extends StudyCommandOptions {
   port: string;
   study?: string;
   lab?: string;
@@ -146,7 +146,7 @@ async function handleWatch(
       cwd: options.cwd,
       envFile: options.envFile,
       io,
-      // runLabCommand discovers keys for a live lab; a preview or a saved run needs none.
+      // runStudyCommand discovers keys for a live lab; a preview or a saved run needs none.
       discoverKeys: false,
     }))
   ) {
@@ -247,7 +247,7 @@ async function watchStudy(
   }
 
   // Forwarded wholesale, as `run` forwards its options, so a run flag reaches the lab either way.
-  await runLabCommand({ command, io, lab: study, mode: "watch", options });
+  await runStudyCommand({ command, io, lab: study, mode: "watch", options });
 }
 
 /** Without a study, watch shows existing evidence (`--run`) or a fresh synthetic run (`--count`). */

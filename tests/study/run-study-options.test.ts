@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CuaExecutor, CuaProvider } from "../../src/actors/computer-use/loop.js";
 import type { AdapterScorerModule } from "../../src/study/adapter-scorer-loader.js";
 import { parseStudy } from "../../src/study/config.js";
-import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
+import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { phaseEvent, planEvent, type StudyEvent } from "../../src/study/run-study-events.js";
 import { streamEvent, type StreamEvent } from "../../src/study/run-study-homes.js";
@@ -41,99 +41,115 @@ const prepareDesktop = async (): Promise<void> => undefined;
 /** A fresh plan event with no participants: a poisoning test redefines its fields. */
 const emptyPlan = (): StudyEvent => ({ type: "plan", route: "computer-use", participants: [] });
 
-function normalize(labConfig: StudyConfig, options: Partial<InternalRunLabOptions>) {
+function normalize(labConfig: StudyConfig, options: Partial<InternalRunStudyOptions>) {
   return normalizeRunStudyOptions(labConfig, routeOf(labConfig), {
     cwd: "/tmp/unused",
     ...options,
-  } as InternalRunLabOptions);
+  } as InternalRunStudyOptions);
 }
 
 function normalized(
   labConfig: StudyConfig,
-  options: Partial<InternalRunLabOptions>,
-): InternalRunLabOptions {
+  options: Partial<InternalRunStudyOptions>,
+): InternalRunStudyOptions {
   const result = normalize(labConfig, options);
   if (!result.ok) throw new Error(result.message);
   return result.options;
 }
 
 describe("an option the route cannot honor is refused before anything runs", () => {
-  const cases: [string, () => StudyConfig, Partial<InternalRunLabOptions>, string | undefined][] = [
-    ["preview scorer", () => config("preview"), { scorer }, "scorer"],
-    ["preview createProvider", () => config("preview"), { createProvider }, "createProvider"],
-    ["preview inProcess", () => config("preview"), { inProcess, createProvider }, "createProvider"],
-    ["preview prepareDesktop", () => config("preview"), { prepareDesktop }, "prepareDesktop"],
-    ["preview onStream", () => config("preview"), { onStream: () => undefined }, undefined],
-    ["computer use scorer", () => config("cuAppUrl"), { scorer }, undefined],
-    ["computer use createProvider", () => config("cuAppUrl"), { createProvider }, undefined],
-    ["computer use inProcess", () => config("cuAppUrl"), { inProcess, createProvider }, undefined],
+  const cases: [string, () => StudyConfig, Partial<InternalRunStudyOptions>, string | undefined][] =
     [
-      "computer use inProcess on two participants (the planner refuses it)",
-      () => config("cuAppUrl", { actors: [{ type: "openai-computer-use", count: 2 }] }),
-      { inProcess, createProvider },
-      undefined,
-    ],
-    [
-      "computer use inProcess on a clone",
-      () => config("cuClone"),
-      { inProcess, createProvider },
-      "inProcess",
-    ],
-    ["computer use prepareDesktop", () => config("cuAppUrl"), { prepareDesktop }, undefined],
-    ["local VM prepareDesktop", localVm, { prepareDesktop }, "prepareDesktop"],
-    ["local VM createProvider", localVm, { createProvider }, undefined],
-    ["local-app inProcess", () => config("cuLocalApp"), { inProcess, createProvider }, undefined],
-    [
-      "local-app prepareDesktop",
-      () => config("cuLocalApp"),
-      { inProcess, createProvider, prepareDesktop },
-      "prepareDesktop",
-    ],
-    ["shared world scorer", () => config("sharedProvisioned"), { scorer }, undefined],
-    [
-      "shared world prepareDesktop",
-      () => config("sharedProvisioned"),
-      { prepareDesktop },
-      undefined,
-    ],
-    [
-      "external-public prepareDesktop",
-      () => config("sharedExternal"),
-      { prepareDesktop },
-      undefined,
-    ],
-    [
-      "shared world createProvider",
-      () => config("sharedProvisioned"),
-      { createProvider },
-      "createProvider",
-    ],
-    [
-      "shared world inProcess",
-      () => config("sharedExternal"),
-      { inProcess, createProvider },
-      "createProvider",
-    ],
-    ["terminal scorer", () => config("terminal"), { scorer }, undefined],
-    ["terminal createProvider", () => config("terminal"), { createProvider }, "createProvider"],
-    ["terminal prepareDesktop", () => config("terminal"), { prepareDesktop }, "prepareDesktop"],
-    ["terminal onStream", () => config("terminal"), { onStream: () => undefined }, undefined],
-    ["scripted scorer", () => config("scriptedAppUrl"), { scorer }, "scorer"],
-    [
-      "scripted createProvider",
-      () => config("scriptedAppUrl"),
-      { createProvider },
-      "createProvider",
-    ],
-    [
-      "scripted loopback prepareDesktop",
-      () => config("scriptedAppUrl"),
-      { prepareDesktop },
-      "prepareDesktop",
-    ],
-    ["scripted clone prepareDesktop", () => config("scriptedClone"), { prepareDesktop }, undefined],
-    ["inProcess without createProvider", () => config("cuAppUrl"), { inProcess }, "inProcess"],
-  ];
+      ["preview scorer", () => config("preview"), { scorer }, "scorer"],
+      ["preview createProvider", () => config("preview"), { createProvider }, "createProvider"],
+      [
+        "preview inProcess",
+        () => config("preview"),
+        { inProcess, createProvider },
+        "createProvider",
+      ],
+      ["preview prepareDesktop", () => config("preview"), { prepareDesktop }, "prepareDesktop"],
+      ["preview onStream", () => config("preview"), { onStream: () => undefined }, undefined],
+      ["computer use scorer", () => config("cuAppUrl"), { scorer }, undefined],
+      ["computer use createProvider", () => config("cuAppUrl"), { createProvider }, undefined],
+      [
+        "computer use inProcess",
+        () => config("cuAppUrl"),
+        { inProcess, createProvider },
+        undefined,
+      ],
+      [
+        "computer use inProcess on two participants (the planner refuses it)",
+        () => config("cuAppUrl", { actors: [{ type: "openai-computer-use", count: 2 }] }),
+        { inProcess, createProvider },
+        undefined,
+      ],
+      [
+        "computer use inProcess on a clone",
+        () => config("cuClone"),
+        { inProcess, createProvider },
+        "inProcess",
+      ],
+      ["computer use prepareDesktop", () => config("cuAppUrl"), { prepareDesktop }, undefined],
+      ["local VM prepareDesktop", localVm, { prepareDesktop }, "prepareDesktop"],
+      ["local VM createProvider", localVm, { createProvider }, undefined],
+      ["local-app inProcess", () => config("cuLocalApp"), { inProcess, createProvider }, undefined],
+      [
+        "local-app prepareDesktop",
+        () => config("cuLocalApp"),
+        { inProcess, createProvider, prepareDesktop },
+        "prepareDesktop",
+      ],
+      ["shared world scorer", () => config("sharedProvisioned"), { scorer }, undefined],
+      [
+        "shared world prepareDesktop",
+        () => config("sharedProvisioned"),
+        { prepareDesktop },
+        undefined,
+      ],
+      [
+        "external-public prepareDesktop",
+        () => config("sharedExternal"),
+        { prepareDesktop },
+        undefined,
+      ],
+      [
+        "shared world createProvider",
+        () => config("sharedProvisioned"),
+        { createProvider },
+        "createProvider",
+      ],
+      [
+        "shared world inProcess",
+        () => config("sharedExternal"),
+        { inProcess, createProvider },
+        "createProvider",
+      ],
+      ["terminal scorer", () => config("terminal"), { scorer }, undefined],
+      ["terminal createProvider", () => config("terminal"), { createProvider }, "createProvider"],
+      ["terminal prepareDesktop", () => config("terminal"), { prepareDesktop }, "prepareDesktop"],
+      ["terminal onStream", () => config("terminal"), { onStream: () => undefined }, undefined],
+      ["scripted scorer", () => config("scriptedAppUrl"), { scorer }, "scorer"],
+      [
+        "scripted createProvider",
+        () => config("scriptedAppUrl"),
+        { createProvider },
+        "createProvider",
+      ],
+      [
+        "scripted loopback prepareDesktop",
+        () => config("scriptedAppUrl"),
+        { prepareDesktop },
+        "prepareDesktop",
+      ],
+      [
+        "scripted clone prepareDesktop",
+        () => config("scriptedClone"),
+        { prepareDesktop },
+        undefined,
+      ],
+      ["inProcess without createProvider", () => config("cuAppUrl"), { inProcess }, "inProcess"],
+    ];
 
   it.each(cases)("%s", (_name, build, options, refusedOption) => {
     const labConfig = build();
@@ -166,9 +182,9 @@ describe("runLab returns an option refusal in the route's own envelope and write
     ["sharedProvisioned", "shared-world", "humanish.study-result.v1", { createProvider }],
   ] as const)("%s", async (base, route, schema, options) => {
     let desktopLoads = 0;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config(base),
-      { cwd, dryRun: false, runId: "refused", ...options } as InternalRunLabOptions,
+      { cwd, dryRun: false, runId: "refused", ...options } as InternalRunStudyOptions,
       {
         desktopModule: async () => {
           desktopLoads += 1;
@@ -193,7 +209,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
 
   it("typed inProcess on two participants gets the planner's fan-out refusal, naming inProcess", async () => {
     let desktopLoads = 0;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config("cuAppUrl"),
       {
         cwd,
@@ -432,7 +448,7 @@ describe("a computer-use dry run through runLab", () => {
 
   it("reports its plan and carries a failed handler's warning on the result", async () => {
     const events: StudyEvent[] = [];
-    const outcome = await runLab(config("cuAppUrl"), {
+    const outcome = await runStudyWith(config("cuAppUrl"), {
       cwd,
       dryRun: true,
       onEvent: (event) => {

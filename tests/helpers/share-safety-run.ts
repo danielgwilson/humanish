@@ -3,7 +3,7 @@
 import path from "node:path";
 
 import { parseStudy } from "../../src/study/config.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 
@@ -24,7 +24,7 @@ export function shareSafetyDryRunConfig(): StudyConfig {
 }
 
 export async function shareSafetyDryRun(cwd: string): Promise<{ runId: string; runDir: string }> {
-  const outcome = await runLab(shareSafetyDryRunConfig(), { cwd });
+  const outcome = await runStudyWith(shareSafetyDryRunConfig(), { cwd });
   if (outcome.route !== "computer-use") throw new Error(`unexpected backend ${outcome.route}`);
   const runId = outcome.result.runId;
   return { runId, runDir: path.join(cwd, ".humanish", "runs", runId) };

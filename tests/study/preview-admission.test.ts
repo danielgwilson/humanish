@@ -1,4 +1,4 @@
-// What runLab returns for a preview (this-repo) config it refuses, and which refusal wins when two
+// What runStudyWith returns for a preview (this-repo) config it refuses, and which refusal wins when two
 // apply. Written against the engine's own admission before the preview route moved onto planStudy;
 // the move must keep every envelope.
 
@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 
 const dirs: string[] = [];
@@ -45,7 +45,7 @@ describe("preview admission", () => {
   ] as const)("refuses %s before any run", async (_name, extra, code) => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-preview-admission-"));
     dirs.push(cwd);
-    const outcome = await runLab(preview(extra), { cwd, dryRun: true });
+    const outcome = await runStudyWith(preview(extra), { cwd, dryRun: true });
     expect(outcome.route).toBe("preview");
     expect(outcome.result).toEqual({
       schema: "humanish.study-result.v1",
@@ -66,7 +66,7 @@ describe("preview admission", () => {
     const messages = await Promise.all(
       [receiving, badAnalysis, analysis, tasks].map(
         async (extra) =>
-          (await runLab(preview(extra), { cwd, dryRun: true })).result.error?.message,
+          (await runStudyWith(preview(extra), { cwd, dryRun: true })).result.error?.message,
       ),
     );
     await expect(`${JSON.stringify(messages, null, 2)}\n`).toMatchFileSnapshot(

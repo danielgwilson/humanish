@@ -8,8 +8,8 @@ longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, an
 ## Follow one `humanish run <study>` from manifest to findings
 
 The steps follow a live computer-use study on a hosted E2B desktop. Every route shares steps 1, 2, 7
-and 8. Steps 3 to 6 run in the route's admit function and the `run()` it returns, which `runLab`
-reaches through `admitPlan` (`src/run-lab.ts`):
+and 8. Steps 3 to 6 run in the route's admit function and the `run()` it returns, which `runStudyWith`
+reaches through `admitPlan` (`src/run-study.ts`):
 
 - computer-use: `admitComputerUsePlan` (`src/routes/computer-use/route.ts`); its `run()` calls
   `runAdmittedCuaRun` (`src/routes/computer-use/route.ts`).
@@ -25,23 +25,23 @@ reaches through `admitPlan` (`src/run-lab.ts`):
 `runComputerUsePlan` (`src/routes/computer-use/route.ts`), `runTerminalPlan`
 (`src/routes/terminal/route.ts`) and `runSharedWorldPlan` (`src/routes/shared-world/route.ts`)
 admit and run in one call. Only tests call them, directly or through the route modules'
-`runCuaActorLab`, `runTerminalProductLab` and `runConcurrentSharedWorld`. `runLab` and the CLI do
+`runCuaActorLab`, `runTerminalProductLab` and `runConcurrentSharedWorld`. `runStudyWith` and the CLI do
 not.
 
-1. **Parse.** `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveStudyManifest`
+1. **Parse.** `runStudyCommand` (`src/cli/commands/study-run.ts`) calls `resolveStudyManifest`
    (`src/study/discover.ts`), which calls `parseStudy` (`src/study/config.ts`). It rejects unknown
    keys and the compositions the
    [support matrix](https://github.com/danielgwilson/humanish/blob/main/docs/ramp/README.md#check-which-compositions-a-lab-can-declare) refuses. A
    refusal exits with code 2 before a run id exists.
 2. **Plan.** The route's CLI setup, here `computerUseRouteRun`
-   (`src/cli/commands/lab-route-computer-use.ts`), hands off to `runRoute`
-   (`src/cli/commands/lab-route-run.ts`), which calls `prepareLab` (`src/run-lab.ts`). That picks the
+   (`src/cli/commands/study-route-computer-use.ts`), hands off to `runRoute`
+   (`src/cli/commands/study-route-run.ts`), which calls `prepareStudy` (`src/run-study.ts`). That picks the
    route with `routeOf` (`src/study/plan.ts`) and plans once with `planStudy` (`src/study/plan.ts`), here
    through `planComputerUseLab` (`src/routes/computer-use/plan.ts`). It then calls the route's admit
    function, here `admitComputerUsePlan` (`src/routes/computer-use/route.ts`), which makes the
    checks in step 3. A refusal from the planner or those checks returns before a declared scorer
-   loads. Otherwise a `run()` returns that takes the scorer and continues the run. `runLab` is
-   `prepareLab`, then `run()`.
+   loads. Otherwise a `run()` returns that takes the scorer and continues the run. `runStudyWith` is
+   `prepareStudy`, then `run()`.
 3. **Preflight.** `admitCuaRun` (`src/routes/computer-use/setup.ts`) calls `liveCuaRejection`
    (`src/routes/computer-use/preflight.ts`) for keys, local-agent sign-in, subject env and caps, and
    packs a `local-tree` subject. The `run()` opens the run's lifetime with `runScope`
@@ -78,7 +78,7 @@ not.
 | -------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | `src/cli/`                 | The commander program, with one file per command family in `commands/`                              | `src/cli/program.ts`                |
 | `src/keys/`                | Provider key discovery: env files, the user key store and key-source probes                         | `src/keys/key-resolution.ts`        |
-| `src/run-lab.ts`           | `runLab`: plan the study once, then run the plan on its route                                       | `src/run-lab.ts`                    |
+| `src/run-study.ts`         | `runStudyWith`: plan the study once, then run the plan on its route                                 | `src/run-study.ts`                  |
 | `src/study/`               | Study files: discovery in studies/ and labs/, parsing (`config.ts`, `parse/`), routing and planning | `src/study/plan.ts` for planning    |
 | `src/routes/`              | One folder per route; `routeOf` in `src/study/plan.ts` picks it                                     | `src/study/plan.ts`                 |
 | `src/routes/computer-use/` | Computer-use participants and the desktops composing `src/substrates/` with route code              | `src/routes/computer-use/route.ts`  |

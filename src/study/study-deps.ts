@@ -1,5 +1,5 @@
-// Test seams: the implementations a test puts in place of the real ones. The internal runLab takes
-// them as its third argument and each route runner as `deps`; the package's runLab takes none.
+// Test seams: the implementations a test puts in place of the real ones. The internal runStudyWith takes
+// them as its third argument and each route runner as `deps`; the package's runStudy takes none.
 // Each field defaults to the real implementation.
 
 import type {

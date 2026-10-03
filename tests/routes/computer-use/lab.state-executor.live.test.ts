@@ -18,7 +18,7 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The single live rung for the state-driven (in-process, no-E2B, no-vision) route: the
@@ -158,7 +158,7 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (live rung, no E2B, 
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 
-      const outcome = await runLab(parsed.config, {
+      const outcome = await runStudyWith(parsed.config, {
         cwd,
         inProcess: { executor: async (ctx) => createAppContractExecutor(app, ctx.appUrl) },
         createProvider: async () => createStateBrain(),

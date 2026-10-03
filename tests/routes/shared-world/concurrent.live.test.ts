@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The live rung for the concurrent shared-world topology. Written + gated, not run
@@ -61,7 +61,7 @@ describe.skipIf(!LIVE)(
         const parsed = parseStudy(raw);
         if (!parsed.ok) throw new Error(parsed.error.message);
 
-        const outcome = await runLab(parsed.config, { cwd, dryRun: false });
+        const outcome = await runStudyWith(parsed.config, { cwd, dryRun: false });
         expect(outcome.route).toBe("shared-world");
         if (outcome.route !== "shared-world") return;
         const result = outcome.result;

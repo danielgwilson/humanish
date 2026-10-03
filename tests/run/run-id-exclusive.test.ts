@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { resolveStudyManifest } from "../../src/study/discover.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { renderObserver } from "../../src/observer/render.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { bindExistingRunArtifactPaths, createRunArtifactPaths } from "../../src/run/paths.js";
@@ -121,7 +121,7 @@ describe("every producer refuses a run id that is in use", () => {
     if (!resolved.ok) throw new Error(`lab ${labId} did not resolve`);
     const runDir = path.join(cwd, ".humanish", "runs", "in-use");
 
-    const first = await runLab(resolved.config, { cwd, dryRun: true, runId: "in-use" });
+    const first = await runStudyWith(resolved.config, { cwd, dryRun: true, runId: "in-use" });
     expect(first.route).toBe(route);
     expect(first.result.ok).toBe(true);
     const before = {
@@ -129,7 +129,7 @@ describe("every producer refuses a run id that is in use", () => {
       status: await readFile(path.join(runDir, "status.json"), "utf8"),
     };
 
-    const second = await runLab(resolved.config, { cwd, dryRun: true, runId: "in-use" });
+    const second = await runStudyWith(resolved.config, { cwd, dryRun: true, runId: "in-use" });
     expect(second.result.ok).toBe(false);
     expect(second.result.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
     expect({

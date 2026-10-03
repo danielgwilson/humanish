@@ -2,22 +2,22 @@ import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.
 import { Command } from "commander";
 import type { StudyConfig } from "../../study/types.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
-import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
+import { type CliIo, type StudyCommandOptions, wantsJson, writeResult } from "../io.js";
 import { showObserver } from "../observer-follow.js";
-import { formatTerminalLabHuman } from "./lab-format.js";
-import { observerOpen, resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
-import type { RouteRun } from "./lab-route-run.js";
+import { formatTerminalStudyHuman } from "./study-format.js";
+import { observerOpen, resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
+import type { RouteRun } from "./study-route-run.js";
 
 interface TerminalRouteArgs {
   command: Command;
   io: CliIo;
   config: StudyConfig;
   mode: "run" | "watch";
-  options: LabCommandOptions;
+  options: StudyCommandOptions;
 }
 
 /**
- * The terminal route's CLI setup: its open semantics and runLab options, and how it presents the
+ * The terminal route's CLI setup: its open semantics and runStudyWith options, and how it presents the
  * outcome. Undefined when watch-mode setup has already written its own result.
  */
 export function terminalRouteRun(args: TerminalRouteArgs): RouteRun | undefined {
@@ -44,7 +44,7 @@ export function terminalRouteRun(args: TerminalRouteArgs): RouteRun | undefined 
         throw new Error(`Expected the terminal route, got ${outcome.route}.`);
       }
       const result = outcome.result;
-      writeResult(args.command, args.io, result, formatTerminalLabHuman);
+      writeResult(args.command, args.io, result, formatTerminalStudyHuman);
       args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
       if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {

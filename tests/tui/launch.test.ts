@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { isSafeLabHandle, launchRun, readLaunchLogTail } from "../../src/tui/launch.js";
+import { isSafeStudyHandle, launchRun, readLaunchLogTail } from "../../src/tui/launch.js";
 
 describe("starting a run from the terminal surface", () => {
   let cwd: string;
@@ -153,7 +153,7 @@ describe("starting a run from the terminal surface", () => {
     // argv is positional and there is no shell, so this is the entire injection surface, but a study
     // named `--json` would still be handed to the CLI as an option.
     for (const handle of ["--json", "-x", "", "../etc/passwd", "a/b", "a\0b", "a b"]) {
-      expect(isSafeLabHandle(handle)).toBe(false);
+      expect(isSafeStudyHandle(handle)).toBe(false);
       const { calls, spawn } = recordingSpawn();
       const result = await launchRun({
         cwd,
@@ -169,7 +169,7 @@ describe("starting a run from the terminal surface", () => {
     }
     // And the handles this project actually uses still pass, colons included (`oss:meta`).
     for (const handle of ["signup-flow", "oss:meta", "persona-contrast-live", "a.b_c-1"]) {
-      expect(isSafeLabHandle(handle)).toBe(true);
+      expect(isSafeStudyHandle(handle)).toBe(true);
     }
   });
 

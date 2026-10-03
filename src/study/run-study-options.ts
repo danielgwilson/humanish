@@ -1,12 +1,12 @@
-// The typed homes on RunLabOptions. runLab calls normalizeRunStudyOptions first: it refuses an option
+// The typed homes on RunStudyOptions. runStudyWith calls normalizeRunStudyOptions first: it refuses an option
 // the route cannot honor and otherwise passes the typed options to the route, with env copied and
-// onEvent turned into the emitter. The package's runLab refuses the removed bags
+// onEvent turned into the emitter. The package's runStudy refuses the removed bags
 // (removedOptionRefusal).
 
 import path from "node:path";
 
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
-import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
+import type { InternalRunStudyOptions, StudyOutcome, RunStudyOptions } from "../run-study.js";
 import { resolveStudyDryRun, type StudyRoute } from "./plan.js";
 import type { StudyConfig } from "./types.js";
 import { knownSecretValues, studyEventEmitter, type StudyEvent } from "./run-study-events.js";
@@ -22,8 +22,8 @@ type Refusal = {
 type Normalized = {
   ok: true;
   /** The options the route reads: onEvent removed, env copied. */
-  options: InternalRunLabOptions;
-  /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
+  options: InternalRunStudyOptions;
+  /** Filled by onEvent failures while the run runs; runStudyWith appends them to the result. */
   warnings: string[];
   /** Calls onEvent and never waits for it, or undefined without onEvent. The routes report through it. */
   emit: ((event: StudyEvent) => void) | undefined;
@@ -35,7 +35,7 @@ const unsupported = (option: string, route: StudyRoute, reason: string): Refusal
   message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
 });
 
-// Fields RunLabOptions no longer has, and where each one's job went.
+// Fields RunStudyOptions no longer has, and where each one's job went.
 const REMOVED_OPTIONS: Readonly<Record<string, string>> = {
   cuaHooks: "Use scorer, createProvider, inProcess, prepareDesktop, env, onEvent and onStream.",
   scriptedHooks: "Use prepareDesktop and env.",
@@ -46,8 +46,8 @@ const REMOVED_OPTIONS: Readonly<Record<string, string>> = {
   scorerProvenance: "The humanish CLI sets it.",
 };
 
-/** The refusal for a field a JavaScript caller passed that RunLabOptions no longer has. */
-export function removedOptionRefusal(options: RunLabOptions): Refusal | undefined {
+/** The refusal for a field a JavaScript caller passed that RunStudyOptions no longer has. */
+export function removedOptionRefusal(options: RunStudyOptions): Refusal | undefined {
   // rerun.laneIds, the older name of rerun.participantIds, would otherwise be ignored, so the rerun
   // would select every failed participant instead of the ones the caller named.
   if (options.rerun !== undefined && Reflect.get(options.rerun, "laneIds") !== undefined)
@@ -70,7 +70,7 @@ export function removedOptionRefusal(options: RunLabOptions): Refusal | undefine
 function unsupportedOption(
   config: StudyConfig,
   route: StudyRoute,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
 ): Refusal | undefined {
   const { scorer, createProvider, inProcess, prepareDesktop } = options;
   if (inProcess !== undefined && createProvider === undefined)
@@ -125,7 +125,7 @@ function unsupportedOption(
 export function normalizeRunStudyOptions(
   config: StudyConfig,
   route: StudyRoute,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
 ): Normalized | Refusal {
   const refused = unsupportedOption(config, route, options);
   if (refused) return refused;
@@ -141,7 +141,7 @@ export function normalizeRunStudyOptions(
 
   // Every route reads its typed options directly, and onEvent reaches it as `emit`. unsupportedOption
   // already refused an option no route reads; the preview route reads no env.
-  const normalized: InternalRunLabOptions = { ...forwarded };
+  const normalized: InternalRunStudyOptions = { ...forwarded };
   if (route !== "preview" && forwardedEnv !== undefined) normalized.env = forwardedEnv;
   return { ok: true, options: normalized, warnings, emit };
 }
@@ -150,9 +150,9 @@ export function normalizeRunStudyOptions(
 export function optionRefusalOutcome(
   config: StudyConfig,
   route: StudyRoute,
-  options: RunLabOptions,
+  options: RunStudyOptions,
   refusal: Refusal,
-): LabOutcome {
+): StudyOutcome {
   const cwd = path.resolve(options.cwd);
   const error = { code: refusal.code, message: refusal.message };
   const actor = config.actors[0]?.type ?? "";

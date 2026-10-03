@@ -7,7 +7,7 @@ import { parse as parseYaml } from "yaml";
 
 import { parseStudy } from "../../src/study/config.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
@@ -126,8 +126,8 @@ describe("lab config expressiveness (rung 3)", () => {
     // Fixed run ids need a fresh project: a second run with the same id is refused.
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-structural-"));
     onTestFinished(() => rm(cwd, { force: true, recursive: true }));
-    const r2 = await runLab(two.config, { cwd, runId: "behavioral-2", dryRun: true });
-    const r5 = await runLab(five.config, { cwd, runId: "behavioral-5", dryRun: true });
+    const r2 = await runStudyWith(two.config, { cwd, runId: "behavioral-2", dryRun: true });
+    const r5 = await runStudyWith(five.config, { cwd, runId: "behavioral-5", dryRun: true });
     expect(r2.route).toBe("preview");
     expect(r5.route).toBe("preview");
     if (r2.route !== "preview" || r5.route !== "preview") return;

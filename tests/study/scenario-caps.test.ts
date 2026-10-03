@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 import { parseStudy } from "../../src/study/config.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -76,7 +76,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
         throw new Error("the refused lab must not load the E2B desktop module");
       };
       try {
-        const outcome = await runLab(
+        const outcome = await runStudyWith(
           computerUseLab({ [key]: 3 }) as unknown as StudyConfig,
           {
             cwd,

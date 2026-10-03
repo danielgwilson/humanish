@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { parseStudy } from "../../src/study/config.js";
-import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
+import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
 import { lab } from "../admission/fixtures.js";
@@ -52,7 +52,7 @@ function parsed(base: "cuAppUrl" | "sharedProvisioned"): StudyConfig {
 interface Route {
   config: () => StudyConfig;
   /** The run's options: dry run, or the fake live terminal. */
-  base: () => Partial<InternalRunLabOptions>;
+  base: () => Partial<InternalRunStudyOptions>;
   /** The route's test seams, where it has them outside a bag. */
   deps?: () => StudyDeps;
 }
@@ -100,7 +100,7 @@ describe("scorer failures fold into one verdict the bundle, status and result ag
         it(`${routeName}: ${behavior}${declared ? " with CLI provenance" : ""}`, async () => {
           const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-fold-"));
           dirs.push(cwd);
-          const outcome = await runLab(
+          const outcome = await runStudyWith(
             route.config(),
             {
               ...route.base(),
@@ -108,7 +108,7 @@ describe("scorer failures fold into one verdict the bundle, status and result ag
               ...(declared ? { scorerProvenance: provenance } : {}),
               cwd,
               runId: "fold",
-            } as InternalRunLabOptions,
+            } as InternalRunStudyOptions,
             route.deps?.(),
           );
           const runDir = path.join(cwd, ".humanish", "runs", "fold");
