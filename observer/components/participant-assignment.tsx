@@ -2,7 +2,7 @@ import type { ObserverStream } from "@/lib/observer-data";
 import { recordedParticipantAssignment } from "@/lib/participant-assignment";
 import "@/styles/assignment.css";
 
-/** Retained scripted goals predate stream.assignment. Other lanes and study-level
+/** Retained scripted goals predate stream.assignment. Other participants and study-level
  * goals cannot fill missing participant context. */
 export function ParticipantAssignment({ stream }: { stream: ObserverStream }) {
   const recorded = recordedParticipantAssignment(stream);

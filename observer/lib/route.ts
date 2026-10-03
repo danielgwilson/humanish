@@ -1,10 +1,10 @@
-// Hash deep links (#441, the declared #439 parity regression): every participant and
+// Hash deep links: every participant and
 // frame is addressable, so a reload keeps its place, a link can carry a moment, and
-// #428's cite-turns flags get frame addresses. The grammar is the visible UI's own:
-// "#/lane/<streamId>" opens a participant; "#/lane/<streamId>/f/<n>" opens it at
+// cite-turns flags get frame addresses. The grammar is the visible UI's own:
+// `#/lane/<streamId>` opens a participant; `#/lane/<streamId>/f/<n>` opens it at
 // frame n, 1-based to match the transport counter ("3 / 30"). Screenshot-free
-// evidence uses "#/lane/<streamId>/e/<eventId>" without inventing a frame. Anything else — an
-// empty hash, an unknown lane, garbage — resolves to the grid, never an error.
+// evidence uses `#/lane/<streamId>/e/<eventId>` without inventing a frame. Anything else (an
+// empty hash, an unknown stream, garbage) resolves to the grid, never an error.
 // Explicit "/live" and "/replay" routes retain intent before any frame exists.
 
 export interface HashRoute {
@@ -90,7 +90,7 @@ export function replaceHash(next: string): void {
   window.history.replaceState(window.history.state, "", `${base}${next}`);
 }
 
-/** Write the hash as a history entry (lane open/close), so browser Back returns.
+/** Write the hash as a history entry (participant open/close), so browser Back returns.
  *  pushState never fires hashchange, so writes cannot echo into our own listener. */
 export function pushHash(next: string, state: unknown = null): void {
   const current = window.location.hash;

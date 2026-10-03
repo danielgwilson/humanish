@@ -1,8 +1,8 @@
 import type { ObserverData } from "./observer-data";
 
-// Dev-only: the committed observer-data goldens double as dev fixtures (#429), so the
+// Dev-only: the committed observer-data goldens double as dev fixtures, so the
 // dev server renders exactly the frozen contract. This module is reached through a
-// dynamic import guarded by import.meta.env.DEV — the production artifact contains
+// dynamic import guarded by `import.meta.env.DEV`: the production artifact contains
 // neither this code nor the fixture data (the smoke test asserts the absence).
 const fixtures: Record<string, () => Promise<{ default: unknown }>> = {
   "first-run": () => import("../../tests/golden/observer-data/first-run.json"),

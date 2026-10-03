@@ -21,7 +21,7 @@ function evidenceLines(plain: string): TerminalLine[] {
     });
 }
 
-// Frame-free lanes retain readable terminal output and their recorded events.
+// Frame-free participants retain readable terminal output and their recorded events.
 export function ParticipantStub({
   data,
   stream,

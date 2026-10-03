@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { STUDY_ANALYSIS_PLACEHOLDER } from "../lib/study-analysis";
 import { OBSERVER_DATA_PLACEHOLDER, injectObserverData } from "../scripts/inject";
 
-// The durability constraints from #426, made executable: the Observer is ONE
+// The durability constraints, made executable: the Observer is one
 // self-contained HTML file that renders from file://, offline, years later.
 // An earlier observer linked fonts.googleapis.com, which is why the rebuild bakes fonts in;
 // the network scan below keeps remote fonts and assets out.

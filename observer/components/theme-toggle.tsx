@@ -17,7 +17,7 @@ export function ThemeToggle() {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
-      /* private mode etc. — the attribute alone still themes this visit */
+      /* private mode etc.: the attribute alone still themes this visit */
     }
     syncTheme();
   };

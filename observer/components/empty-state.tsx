@@ -1,7 +1,7 @@
 import { Wordmark } from "./wordmark";
 
 // Rendered when the artifact carries no inlined snapshot (placeholder untouched or
-// malformed). Says what happened and how a real one gets its data — never a blank page.
+// malformed). Says what happened and how a real one gets its data, never a blank page.
 export function EmptyState() {
   return (
     <div className="empty">

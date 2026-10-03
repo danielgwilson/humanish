@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 import { useDecodedImage } from "../lib/use-decoded-image";
 
-it("promotes the decoded DOM node, rejects late loads, and keeps retry honest", async () => {
+it("promotes the decoded DOM node, rejects late loads, and retries with a fresh node", async () => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement("div");
   document.body.appendChild(container);

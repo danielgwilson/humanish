@@ -1,6 +1,6 @@
 // Hand-copied from site/components/wordmark.tsx (styled per the .wm/.ish rules in
-// site/app/globals.css) until the lockup is promoted to a @humanish registry item —
-// see PROVENANCE.md. Keep byte-faithful to the site's markup.
+// site/app/globals.css) until the lockup is promoted to a @humanish registry item;
+// see `PROVENANCE.md`. Keep byte-faithful to the site's markup.
 
 /** The human(ish) wordmark: serif (ish) device with accent parens. */
 function Ish() {

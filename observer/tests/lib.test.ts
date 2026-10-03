@@ -75,8 +75,8 @@ describe("notable completions", () => {
   });
 });
 
-describe("hash routes (#441 deep links)", () => {
-  it("round-trips lane and frame addresses, 1-based in the hash", () => {
+describe("hash routes (deep links)", () => {
+  it("round-trips participant and frame addresses, 1-based in the hash", () => {
     expect(parseHash(formatHash("stream-001", null))).toEqual({
       laneId: "stream-001",
       frame: null,
@@ -96,7 +96,7 @@ describe("hash routes (#441 deep links)", () => {
     expect(formatHash(null, 5)).toBe("");
   });
 
-  it("escapes lane ids that need it", () => {
+  it("escapes stream ids that need it", () => {
     const round = parseHash(formatHash("lane/with slash", 0));
     expect(round.laneId).toBe("lane/with slash");
   });
@@ -142,7 +142,7 @@ describe("player model", () => {
     expect(model?.avgFrameMs).toBe(10_000);
   });
 
-  it("builds from the mid-run liveActor partial when no finished actor exists (#441)", () => {
+  it("builds from the mid-run liveActor partial when no finished actor exists", () => {
     const stream = {
       liveActor: {
         schema: "humanish.live-actor.v1",
@@ -171,7 +171,7 @@ describe("player model", () => {
     expect(model?.rows[1]?.coord).toEqual({ x: 5, y: 6 });
   });
 
-  it("recorded pacing (#441): stamped frames play at real intervals, unstamped fall back to avg", () => {
+  it("recorded pacing: stamped frames play at real intervals, unstamped fall back to avg", () => {
     const stamped = buildPlayerModel(
       streamWith([
         {
@@ -230,7 +230,7 @@ describe("player model", () => {
     expect(frameHoldMs(unstamped!, 0)).toBe(5000);
   });
 
-  it("returns null for a lane with no frames", () => {
+  it("returns null for a stream with no frames", () => {
     expect(
       buildPlayerModel(
         streamWith([{ id: "a", kind: "ui_action", lifecycle: "completed", title: "wait" }]),
@@ -310,7 +310,7 @@ describe("live helpers", () => {
     expect(followTarget(9, 10, 3)).toBe(2); // shrink clamps into range
   });
 
-  it("liveEmbedUrl honors the injected URL and the #357 ended flag", () => {
+  it("liveEmbedUrl honors the injected URL and the ended flag", () => {
     expect(liveEmbedUrl(stream({ embed: { kind: "iframe", url: "https://live.example/d" } }))).toBe(
       "https://live.example/d",
     );

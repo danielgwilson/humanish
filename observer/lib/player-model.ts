@@ -1,13 +1,13 @@
 import { screenshotHref, traceItems } from "./artifact-href";
 import type { ObserverStream } from "./observer-data";
 
-// The player's view of a lane: the recorded screenshots as an ordered frame timeline,
+// The player's view of a stream: the recorded screenshots as an ordered frame timeline,
 // and every trace item as a feed row associated with the frame it happened on. Items
 // arrive in recorded order; an action belongs to the most recent screenshot before it
 // (frame 0 for anything before the first screenshot).
 //
 export interface PlayerFrame {
-  /** Recording stamp in epoch ms, when the capture stamped this frame (#441). */
+  /** Recording stamp in epoch ms, when the capture stamped this frame. */
   atMs?: number;
   index: number;
   itemId: string;
@@ -23,7 +23,7 @@ export interface PlayerRow {
   text?: string;
   status?: string;
   frameIndex: number;
-  /** Set when this row IS a frame (clicking it seeks exactly; frames highlight). */
+  /** Set when this row is a frame (clicking it seeks exactly; frames highlight). */
   isFrame: boolean;
   atMs?: number;
   coord?: { x: number; y: number };
@@ -32,9 +32,9 @@ export interface PlayerRow {
 export interface PlayerModel {
   frames: PlayerFrame[];
   rows: PlayerRow[];
-  /** Average ms per frame at 1× — durationMs spread over the frame count. */
+  /** Average ms per frame at 1×: durationMs spread over the frame count. */
   avgFrameMs: number;
-  /** "recorded" when every frame carries an `at` stamp (#441) so playback can run at the
+  /** "recorded" when every frame carries an `at` stamp so playback can run at the
    *  participant's real pace; "avg" for older bundles, and the transport says which. */
   paced: "recorded" | "avg";
 }
@@ -82,7 +82,7 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
         }
       }
     }
-    // Recorded structured coordinates (#441) are the source of truth; the title
+    // Recorded structured coordinates are the source of truth; the title
     // re-parse stays as the fallback for bundles captured before they existed.
     const coord = item.coord ?? (item.kind === "ui_action" ? parseClickCoord(item.title) : null);
     rows.push({
@@ -103,7 +103,7 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
   if (frames.length === 0) return null;
   const durationMs = stream.actor?.durationMs ?? 0;
   // Recorded pace needs every frame stamped and the stamps non-decreasing; anything
-  // else (older bundle, mixed producers, clock skew) falls back to honest averaging.
+  // else (older bundle, mixed producers, clock skew) falls back to averaging.
   const recorded =
     frames.length > 1 &&
     frames.every((frame) => frame.atMs !== undefined) &&
