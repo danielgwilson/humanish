@@ -1,13 +1,13 @@
 {
   "name": "humanish",
   "version": "0.107.0",
-  "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
+  "description": "Synthetic user research for apps, CLIs, and agent-facing product flows.",
   "keywords": [
-    "agent-harness",
     "cli",
-    "persona-simulation",
-    "ui-testing",
-    "ux-research"
+    "computer-use",
+    "synthetic-users",
+    "usability-testing",
+    "user-research"
   ],
   "homepage": "https://github.com/danielgwilson/humanish#readme",
   "bugs": {

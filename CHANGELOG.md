@@ -65,6 +65,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   its library the study library, and uses `·` in labels and a colon in sentences where it showed an
   em dash.
 
+- `humanish --help`, bare `humanish`, the package description and the humanish skill describe
+  humanish in one sentence: "Synthetic user research for apps, CLIs, and agent-facing product
+  flows." Before, they said "Open-source-safe persona simulation CLI and proof harness." and three
+  other variants. The package keywords are user-research, usability-testing, synthetic-users,
+  computer-use and cli.
 - The first commands a newcomer runs say the right thing.
   - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
     init --yes" and ".gitignore does not list .humanish/; run humanish init --yes". Before, these
