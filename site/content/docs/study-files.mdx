@@ -10,9 +10,9 @@ Start with the complete [own-app lab](/docs/your-app) and use this reference whe
 Labs are authored as `.yaml` source:
 
 ```text
-humanish/labs/*.yaml          committed public-safe labs
-.humanish/labs/*.yaml         ignored local labs
-.humanish/local/labs/*.yaml   ignored private or machine-specific labs
+humanish/studies/*.yaml          committed public-safe labs
+.humanish/studies/*.yaml         ignored local labs
+.humanish/local/studies/*.yaml   ignored private or machine-specific labs
 ```
 
 Committed labs should be useful to anyone who clones the project. Private repo
@@ -20,8 +20,8 @@ targets, token-backed provider settings, and local-only dogfood variants belong
 in ignored `.humanish/` lab manifests and can be run explicitly:
 
 ```bash
-npx humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
-npx humanish lab run .humanish/labs/local-dogfood.yaml --json --no-open
+npx humanish watch .humanish/studies/local-dogfood.yaml --env-file .humanish/local/provider.env
+npx humanish run .humanish/studies/local-dogfood.yaml --json --no-open
 ```
 
 `--env-file` loads values into the current humanish process; declared subject
@@ -32,9 +32,9 @@ names. Persisted text is scrubbed for known values and secret patterns, with the
 ## Inspect the route before running
 
 ```bash
-npx humanish lab list --json
-npx humanish lab inspect first-run --json
-npx humanish lab preflight first-run --json
+npx humanish study list --json
+npx humanish study show first-run --json
+npx humanish study check first-run --json
 ```
 
 A lab's subject, execution target, actor, and scenario jointly determine its route.
@@ -42,7 +42,7 @@ Declaring a field does not make every route support it. Read preflight warnings;
 unsupported compositions fail closed or identify inert fields.
 
 In humanish `0.83.0` and later, `lanes[]` entries and roster groups reject unknown fields
-before a run starts. For example, `runtme` produces `HUMANISH_LAB_INVALID` with the
+before a run starts. For example, `runtme` produces `HUMANISH_STUDY_INVALID` with the
 group or entry index; it cannot silently become a default. Use `instruction`
 to steer one participant.
 
@@ -106,8 +106,8 @@ element. Supported expectations are `text`, `selectorVisible`, `urlIncludes`,
 and `stateChanged`.
 
 Save the scenario as `humanish/scenarios/todo-onboarding.yaml` and point a lab at
-it. The repository's [`humanish/`](repo:humanish/) folder holds a complete
-example, `scripted-demo.yaml`.
+it. [`humanish/studies/scripted-demo.yaml`](repo:humanish/studies/scripted-demo.yaml)
+is a complete example.
 
 ```yaml
 schema: humanish.lab.v2
@@ -125,7 +125,7 @@ review:
   analysis: false
 ```
 
-Save it as `humanish/labs/todo-onboarding.yaml`. `count: 2` adds a mobile surface
+Save it as `humanish/studies/todo-onboarding.yaml`. `count: 2` adds a mobile surface
 to the desktop one. Without `mode: live` the lab is a dry run: it validates the steps
 and writes a contract bundle without opening a browser. Post-run analysis is separate
 from the steps: when `OPENAI_API_KEY` is set it runs by default, and it is refused when
@@ -134,12 +134,12 @@ requests.
 
 A live run drives a local Chrome or Chromium against your app, so start the app on
 `http://127.0.0.1:3000` first. If humanish finds no browser, the run stops with
-`HUMANISH_SCRIPTED_LAB_BROWSER_MISSING`; set `HUMANISH_BROWSER_COMMAND` to the browser
+`HUMANISH_SCRIPTED_BROWSER_MISSING`; set `HUMANISH_BROWSER_COMMAND` to the browser
 binary. `--dry-run` checks the steps without either:
 
 ```bash
-npx humanish lab run todo-onboarding --dry-run --json --no-open
-npx humanish lab run todo-onboarding --json --no-open
+npx humanish run todo-onboarding --dry-run --json --no-open
+npx humanish run todo-onboarding --json --no-open
 npx humanish verify --run latest --json
 ```
 

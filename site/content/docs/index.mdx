@@ -25,10 +25,10 @@ A live study needs a desktop and a model. The default route uses E2B for the des
 npx humanish keys set e2b
 npx humanish keys set openai
 npx humanish init --yes
-npx humanish doctor --lab try-live
+npx humanish doctor --study try-live
 ```
 
-The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--env-file <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --lab` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
+The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--env-file <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --study` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
 
 `init` writes example labs and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. Run it after `keys set`: it writes the `try-live` lab for the participant it finds credentials for, and it never overwrites an existing lab file.
 
@@ -63,7 +63,7 @@ In another terminal:
 
 ```bash
 npx humanish verify --run latest --json
-npx humanish stats --lab try-live
+npx humanish stats --study try-live
 ```
 
 `verify` grades the bundle for sharing (`share_ready`, `local_only` or `blocked`), and `stats` totals duration and estimated cost. [Read results](/docs/read-results) explains how to tell a finding from a broken run, and what you can share.

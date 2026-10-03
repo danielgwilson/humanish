@@ -53,7 +53,7 @@ Analysis usage is stored separately from participant costs. Inspect it with
 `humanish analyze list --run latest --json`; unknown usage remains unknown.
 
 ```bash
-npx humanish stats --lab try-live --json
+npx humanish stats --study try-live --json
 ```
 
 Inspect the run's estimated model and desktop costs, rates, and missing-usage fields. An unknown amount means unknown, never zero. A `budget_reached` computer-use session is `incomplete`; reaching a threshold does not establish task completion.
@@ -115,8 +115,8 @@ such as `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`; consult the table in you
 installed version instead of assuming a newly available model is priced.
 
 A declared computer-use cap (`maxUsd` or `maxTotalUsd`) on an unpriced model is
-refused at preflight with `HUMANISH_CUA_LAB_UNPRICED_CAP`, and a shared-world one with
-`HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP`. This checks whether a
+refused at preflight with `HUMANISH_COMPUTER_USE_UNPRICED_CAP`, and a shared-world one with
+`HUMANISH_SHARED_WORLD_UNPRICED_CAP`. This checks whether a
 rate is available; it does not prepay or reserve the next request. An absent cap
 is uncapped. A zero threshold can still allow a paid model request before its
 reported usage triggers the stop, so `maxUsd: 0` is not a no-provider-call mode.
@@ -130,23 +130,23 @@ before sending it again: the previous request's input plus the actor's
 `maxOutputTokens`, at the model's rates. The retry happens only when that fits.
 Without `maxOutputTokens` the worst case has no bound, so a capped lab without
 `maxOutputTokens` stops on a stall instead of retrying (`usage_unreported`). The
-`try-live` lab and the capped labs in `humanish/labs/` set `maxOutputTokens: 8192`
+`try-live` lab and the capped labs in `humanish/studies/` set `maxOutputTokens: 8192`
 for that reason.
 
 The terminal route uses `scenario.caps.maxUsd` for its separate cost-ledger and
 product-spend rules; it does not use these computer-use model thresholds. Its
 Codex tokens are counted but unpriced, so a live terminal run with a positive
-`maxUsd` is refused with `HUMANISH_TERMINAL_LAB_UNPRICED_CAP` unless an adapter's
+`maxUsd` is refused with `HUMANISH_TERMINAL_UNPRICED_CAP` unless an adapter's
 cost probe measures spend. Set `maxUsd: 0` and bound the run with
 `scenario.caps.maxMinutes`, which stops the agent command. A sandbox may live at most an hour, and
 its timeout adds the setup before the agent command (up to 6 minutes, or 11 with
 `subject.product.install`) and a 5-minute teardown buffer to `maxMinutes`, so a
 live run refuses a `maxMinutes` above 49, or 44 with a product install
-(`HUMANISH_TERMINAL_LAB_CAPS_INVALID`). The run's cost
+(`HUMANISH_TERMINAL_CAPS_INVALID`). The run's cost
 summary prices the terminal sandbox's compute time the way it prices a
 computer-use desktop, from its span and size; that estimate is not counted
 against `maxUsd`. A terminal run that exceeds its spend cap keeps the agent's own
-verdict and still fails, with `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`; the review and
+verdict and still fails, with `HUMANISH_TERMINAL_CAPS_EXCEEDED`; the review and
 `status.json` name the cap. The computer-use route uses `execution.caps`. A positive
 `scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab is
 refused when the lab is parsed, with a message that names the matching
@@ -173,7 +173,7 @@ Run evidence stays in gitignored `.humanish/`, and no command publishes it. Use 
 
 ## Recover after an interruption
 
-After a crash, run `npx humanish runs`, then `npx humanish cleanup --run YOUR_RUN_ID`, then `npx humanish reclaim --run YOUR_RUN_ID`. For an interrupted `humanish lab preflight` probe, run `npx humanish reclaim --preflight --json`. [Knowing that cleanup happened](/docs/trust-boundaries#knowing-that-cleanup-happened) explains each receipt and how long a preflight sandbox lives.
+After a crash, run `npx humanish runs`, then `npx humanish cleanup --run YOUR_RUN_ID`, then `npx humanish reclaim --run YOUR_RUN_ID`. For an interrupted `humanish study check` probe, run `npx humanish reclaim --preflight --json`. [Knowing that cleanup happened](/docs/trust-boundaries#knowing-that-cleanup-happened) explains each receipt and how long a preflight sandbox lives.
 
 ## Choose telemetry
 

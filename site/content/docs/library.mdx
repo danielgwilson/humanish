@@ -86,7 +86,7 @@ default brain, and `CuaAdmissionLimitError` is how a provider refuses a request 
 
 An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser routes,
 `deriveArtifacts`. Pass it as `runLab`'s `scorer`, or load the same file with
-`humanish lab run <lab> --scorer <file>`. The
+`humanish run <lab> --scorer <file>`. The
 [scorer example](repo:examples/scorer/) does both.
 Every scoring context carries `ctx.bundle` and `ctx.runId`.
 
@@ -106,7 +106,7 @@ The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProduct
 `runConcurrentSharedWorld`, their option types, and the hook bag types are removed, along with the
 `cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks` and `automaticAnalysis` options.
 Use `runLab` with the options above. A JavaScript caller that still passes a bag is refused with
-`HUMANISH_LAB_OPTION_UNSUPPORTED`, naming the option to use.
+`HUMANISH_STUDY_OPTION_UNSUPPORTED`, naming the option to use.
 
 0.107.0 removed `runDryRun`, `runCuaActorSession`, the route result types, `LabOutcome.backend`,
 `LabBackend`, `selectLabBackend`, the `routesTo*` predicates and the lab helpers that

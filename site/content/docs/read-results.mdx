@@ -26,7 +26,7 @@ Use a specific run ID in place of `latest` when you compare studies or save a fi
 | Install, provider, or sandbox fails      | Fix the study setup; the participant may never have reached the app.    |
 | A task was never measured                | Treat it as unknown, even if the participant said they completed it.    |
 
-The review's verdict says what the participants experienced. The run's `ok` says whether the run worked as an execution, and `.humanish/runs/<id>/status.json` records it as `outcome.ok`, with `outcome.execution.failures` naming each failure. The two can disagree. A participant whose session passed still reads `pass` when its model provider's cleanup could not be confirmed, and the run has `ok: false`. A terminal run that exceeds its spend cap keeps the agent's own verdict and fails with `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`. A run with `ok: false` exits non-zero.
+The review's verdict says what the participants experienced. The run's `ok` says whether the run worked as an execution, and `.humanish/runs/<id>/status.json` records it as `outcome.ok`, with `outcome.execution.failures` naming each failure. The two can disagree. A participant whose session passed still reads `pass` when its model provider's cleanup could not be confirmed, and the run has `ok: false`. A terminal run that exceeds its spend cap keeps the agent's own verdict and fails with `HUMANISH_TERMINAL_CAPS_EXCEEDED`. A run with `ok: false` exits non-zero.
 
 Synthetic participants can miss problems or report things that do not reproduce. Confirm a finding against the app before treating it as a defect. See [known failure modes](/failure-modes) for when to recruit real people.
 
@@ -92,6 +92,6 @@ npx humanish stats --json
 
 By default, `export` writes a self-contained Observer HTML file with its screenshots. It requires `share_ready`; `--local-only` permits a watermarked local export, which still needs review before sharing. Use `--format bundle --redact-screenshots` for the separate redacted workspace shown above.
 
-`stats` summarizes outcomes, duration, and estimated costs. Unknown cost is reported as unknown. Use `--lab your-app` to focus on one lab and `--since` to select a period; the [CLI reference](/docs/cli#humanish-stats) lists accepted flags.
+`stats` summarizes outcomes, duration, and estimated costs. Unknown cost is reported as unknown. Use `--study your-app` to focus on one lab and `--since` to select a period; the [CLI reference](/docs/cli#humanish-stats) lists accepted flags.
 
 Keep original run bundles so a later comparison can return to the same screenshots, actions, and app revision. A before/after claim is stronger when the same task succeeds for multiple participants after the change.

@@ -38,19 +38,19 @@ for a person actually at the keyboard. The TTY and Node requirements still apply
 Use these read-only commands to answer the same browsing questions:
 
 ```bash
-npx humanish lab list --json
-npx humanish lab inspect first-run --json
+npx humanish study list --json
+npx humanish study show first-run --json
 npx humanish runs --json
 npx humanish review --run latest --json
 npx humanish stats --json
 ```
 
-`lab list` shows available labs, `lab inspect` shows a lab's source,
+`study list` shows available labs, `study show` shows a lab's source,
 `runs` lists run history, and `review` reads an existing run. If there are no runs
 yet, do the [keyless dry run](/docs#preview-without-keys)
 before asking for `latest`.
 
-Starting a run is a separate action. `npx humanish lab run first-run --json --no-open`
+Starting a run is a separate action. `npx humanish run first-run --json --no-open`
 creates a keyless preview; replacing `first-run` with a live lab can launch providers
 and incur spend. See the [CLI reference](/docs/cli) for all flags.
 
@@ -237,15 +237,15 @@ how humanish.dev embeds a saved run.
 
 ## Serve the run library
 
-`humanish watch` follows one attached run; `humanish serve` serves the whole
+`humanish watch` follows one attached run; `humanish observe --all` serves the whole
 local run library under `.humanish/runs/`, a library index plus every run's
 Observer page:
 
 ```bash
-npx humanish serve
-npx humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com
-npx humanish serve --safe --expose --tunnel ngrok
-npx humanish serve --expose --public-url https://observer.example.com
+npx humanish observe --all
+npx humanish observe --all --expose --tunnel ngrok --oauth google --allow-email you@example.com
+npx humanish observe --all --safe --expose --tunnel ngrok
+npx humanish observe --all --expose --public-url https://observer.example.com
 ```
 
 The first serves the library on loopback only. The second is the phone path:

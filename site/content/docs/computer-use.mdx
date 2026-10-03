@@ -42,7 +42,7 @@ scenario: { mode: live }
 ```
 
 ```bash
-npx humanish lab run cua-browser --dry-run --json --no-open
+npx humanish run cua-browser --dry-run --json --no-open
 ```
 
 Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (from
@@ -51,7 +51,7 @@ subject is served **inside** the sandbox on loopback; to instead drive a deploym
 you own (a Vercel preview, staging), use an `app-url` subject with
 `policies.allowPublicTargets: true`. The actor's API key never enters the sandbox;
 only declared subject env names do. `humanish init` scaffolds an example at
-`humanish/labs/cua-browser.yaml`.
+`humanish/studies/cua-browser.yaml`.
 
 ## Custom desktop templates
 
@@ -271,8 +271,8 @@ Multi-participant CUA fan-out can be rerun surgically without mutating
 the source run:
 
 ```bash
-npx humanish lab run cua-browser --rerun-failed-from latest --json --no-open
-npx humanish lab run cua-browser --rerun-failed-from YOUR_RUN_ID --participants lane-02,lane-04
+npx humanish run cua-browser --rerun-failed-from latest --json --no-open
+npx humanish run cua-browser --rerun-failed-from YOUR_RUN_ID --participants lane-02,lane-04
 ```
 
 This creates a new linked run containing only the failed/blocked/timed-out/hollow participants

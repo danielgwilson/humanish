@@ -35,10 +35,10 @@ The same operations are available to agents:
 humanish keys set agentmail
 humanish comms connections add agentmail --json
 humanish comms check --online --json
-humanish comms configure --lab humanish/labs/signup.yaml --json
+humanish comms configure --study humanish/studies/signup.yaml --json
 # Review the returned path, disclosures and planToken, then:
-humanish comms configure --lab humanish/labs/signup.yaml --apply --plan-token <digest> --json
-humanish lab run .humanish/local/labs/signup-receiving.yaml --json --no-open
+humanish comms configure --study humanish/studies/signup.yaml --apply --plan-token <digest> --json
+humanish run .humanish/local/studies/signup-receiving.yaml --json --no-open
 ```
 
 Direct manifest authoring selects a saved connection:
