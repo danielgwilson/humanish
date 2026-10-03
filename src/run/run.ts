@@ -16,12 +16,8 @@ import {
 } from "./paths.js";
 import { registerActiveRun } from "./active-runs.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./contained-output.js";
-import {
-  beginRunStatus,
-  runStatusOutcome,
-  type RunLabProvenance,
-  type RunStatusHandle,
-} from "./status.js";
+import { beginRunStatus, runStatusOutcome, type RunStatusHandle } from "./status.js";
+import type { RunStudyProvenance } from "./study-provenance.js";
 
 interface StartRunOptions {
   /** Project directory, in the form the route resolved it. */
@@ -30,7 +26,7 @@ interface StartRunOptions {
   runId?: string | undefined;
   mintRunId: () => string;
   mode: "dry-run" | "live";
-  lab?: RunLabProvenance | undefined;
+  lab?: RunStudyProvenance | undefined;
   /** review.md for the published bundle. */
   renderReview: (bundle: RunBundle) => string;
   /** Used by `FinishedRun.renderObserver`; `render` is the `LabDeps.renderObserver` seam. */
@@ -44,7 +40,7 @@ interface Run {
   readonly createdAt: string;
   readonly mode: "dry-run" | "live";
   /** The manifest the run came from; bundleHead copies it into the bundle. */
-  readonly lab?: RunLabProvenance;
+  readonly lab?: RunStudyProvenance;
   /** Routes write their evidence files through these and hand them to participants. */
   readonly paths: PreparedRunArtifactPaths;
   /**

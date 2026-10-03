@@ -467,14 +467,14 @@ export function buildSingleParticipantBundle(args: {
     persona: {
       id: args.persona.id,
       name: `Computer-use operator (${args.persona.id})`,
-      source: `lab:${args.labId}`,
+      source: `study:${args.labId}`,
       sourceDigest: args.persona.promptDigest,
     },
     scenario: {
       id: `cua-${args.labId}`,
       title: args.labTitle ?? `Computer-use lab: ${args.labId}`,
       goal: redactText(args.mission),
-      source: `lab:${args.labId}`,
+      source: `study:${args.labId}`,
       sourceDigest: args.persona.promptDigest,
     },
     lifecycle: [

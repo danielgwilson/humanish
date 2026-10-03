@@ -35,7 +35,7 @@ export function groupRunsByLab(entries: readonly RunIndexEntry[]): {
   const byLab = new Map<string, RunIndexEntry[]>();
   const unattributed: RunIndexEntry[] = [];
   for (const entry of entries) {
-    const labId = entry.lab?.id;
+    const labId = entry.study?.id;
     if (labId === undefined) {
       unattributed.push(entry);
       continue;
@@ -391,7 +391,7 @@ export function labRows(
   const byId = new Map(labs.map((lab) => [lab.labId, lab]));
   const runsOf = new Map<string, RunIndexEntry[]>();
   for (const entry of entries) {
-    const labId = entry.lab?.id;
+    const labId = entry.study?.id;
     if (labId === undefined) continue;
     const bucket = runsOf.get(labId);
     if (bucket === undefined) runsOf.set(labId, [entry]);

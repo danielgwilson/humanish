@@ -459,7 +459,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     persona: {
       id: actorSpecs[0]?.persona.id ?? "concurrent-persona",
       name: `Concurrent shared-world swarm (${actorSpecs.length} personas)`,
-      source: `lab:${plan.labId}`,
+      source: `study:${plan.labId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
     scenario: {
@@ -470,7 +470,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
           actorSpecs[0]?.instructions ??
           "Concurrent shared-world interaction.",
       ),
-      source: `lab:${plan.labId}`,
+      source: `study:${plan.labId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
     lifecycle: [

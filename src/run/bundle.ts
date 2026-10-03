@@ -2,7 +2,7 @@ import path from "node:path";
 import type { CommsReceivingEvidence } from "../comms/receiving-types.js";
 import { captureGitState, type CapturedGitState } from "./git-state.js";
 import type { SharedWorldEvidence } from "./shared-world-evidence.js";
-import type { RunLabProvenance } from "./status.js";
+import { studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import type { RunSimulationStatus, RunStream, RunStreamKind } from "./streams.js";
 
 export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
@@ -357,12 +357,13 @@ export interface RunBundle {
    */
   providerResources?: RunProviderResource[];
   /**
-   * Which lab manifest produced this run. Optional + additive: absent on every bundle
-   * written before this contract and on library callers who pass a LabConfig directly (the run
-   * then has no study id rather than a guessed one). For older bundles a reader may fall back to
-   * `inferLegacyLabId`, which reads only the historical `persona.source = "lab:<id>"` convention.
+   * Which study file produced this run. Absent on a bundle written before this field and on a
+   * library caller's run (the run then has no study id rather than a guessed one). Read it, and
+   * `lab` and the source convention of older bundles, through studyProvenanceOf.
    */
-  lab?: RunLabProvenance;
+  study?: RunStudyProvenance;
+  /** `study`'s value, written beside it until 0.109. */
+  lab?: RunStudyProvenance;
   /**
    * Optional, additive run-level cost estimate (humanish.run-cost-summary.v1): the sum of every
    * participant's model-token estimate plus the E2B desktop-minute estimate, carrying the same
@@ -562,7 +563,7 @@ export interface BundleRun {
   readonly mode: RunBundle["mode"];
   readonly createdAt: string;
   /** The manifest the run came from, as the plan carried it to startRun. */
-  readonly lab?: RunLabProvenance | undefined;
+  readonly lab?: RunStudyProvenance | undefined;
 }
 
 /**
@@ -590,6 +591,7 @@ export function bundleHead(
   | "createdAt"
   | "cwd"
   | "artifactRoot"
+  | "study"
   | "lab"
   | "source"
 > {
@@ -602,7 +604,7 @@ export function bundleHead(
     createdAt: run.createdAt,
     cwd: args.cwd ?? PUBLIC_TARGET_CWD,
     artifactRoot: args.artifactRoot ?? path.join(".humanish", "runs", run.runId),
-    ...(run.lab === undefined ? {} : { lab: run.lab }),
+    ...studyFields(run.lab),
     source: args.source,
   };
 }

@@ -1,0 +1,23 @@
+{
+  "schema": "humanish.run-status.v1",
+  "runId": "status-backed",
+  "state": "finished",
+  "mode": "dry-run",
+  "lab": {
+    "id": "first-run",
+    "path": "humanish/labs/first-run.yaml",
+    "origin": "committed"
+  },
+  "pid": 1614067,
+  "startedAt": "2026-10-03T03:59:01.149Z",
+  "updatedAt": "2026-10-03T03:59:01.189Z",
+  "completedAt": "2026-10-03T03:59:01.189Z",
+  "outcome": {
+    "verdict": "contract_proof_only",
+    "ok": true,
+    "execution": {
+      "succeeded": true,
+      "failures": []
+    }
+  }
+}

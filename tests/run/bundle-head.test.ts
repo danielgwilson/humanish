@@ -10,7 +10,7 @@ describe("bundleHead", () => {
   const source = { capturedAt: "2026-10-01T00:00:00.000Z" } as never;
   const createdAt = "2026-10-01T00:00:00.000Z";
 
-  it("starts every bundle with the same fields in the saved order, artifactRoot before lab", () => {
+  it("starts every bundle with the same fields in the saved order, artifactRoot before study and lab", () => {
     const head = bundleHead(
       { runId: "run-1", mode: "live", createdAt, lab: { id: "lab-1" } as never },
       { participants: 2, source },
@@ -23,9 +23,13 @@ describe("bundleHead", () => {
       "createdAt",
       "cwd",
       "artifactRoot",
+      "study",
       "lab",
       "source",
     ]);
+    // Until 0.109, lab holds study's value.
+    expect(head.study).toEqual({ id: "lab-1" });
+    expect(head.lab).toEqual({ id: "lab-1" });
     expect(head).toMatchObject({
       schema: RUN_BUNDLE_SCHEMA,
       simCount: 2,
@@ -34,12 +38,12 @@ describe("bundleHead", () => {
     });
   });
 
-  it("omits lab when the run has none and keeps a caller's cwd and artifact root", () => {
+  it("omits study and lab when the run has none and keeps a caller's cwd and artifact root", () => {
     const head = bundleHead(
       { runId: "run-1", mode: "dry-run", createdAt },
       { participants: 1, cwd: "/srv/project", artifactRoot: ".humanish/runs/dryrun-1", source },
     );
-    expect("lab" in head).toBe(false);
+    expect("study" in head || "lab" in head).toBe(false);
     expect(head).toMatchObject({ cwd: "/srv/project", artifactRoot: ".humanish/runs/dryrun-1" });
   });
 

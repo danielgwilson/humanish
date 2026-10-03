@@ -310,7 +310,7 @@ describe("retained study cost accounting", () => {
       incompleteRunEstimates: 1,
     });
     expect(result.days[0]?.day).toBe("(undated)");
-    expect(result.studies[0]?.study).toBe("(no lab)");
+    expect(result.studies[0]?.study).toBe("(no study)");
     for (const options of [{ lab: "sample-lab" }, { since: "2026-09-01" }]) {
       const filtered = await computeStats(cwd, options);
       expect(filtered.ok && filtered.totals.runs).toBe(0);

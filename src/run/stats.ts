@@ -144,7 +144,7 @@ function addToLabRow(
   runUsd: number | undefined,
   costs: CostTotals,
 ): void {
-  const labId = entry.lab?.id ?? "(no lab)";
+  const labId = entry.study?.id ?? "(no study)";
   let row = labs.get(labId);
   if (row === undefined) {
     row = {
@@ -244,7 +244,7 @@ export async function computeStats(
       })),
   ];
   const selected = entries.filter((entry) => {
-    if (options.lab !== undefined && entry.lab?.id !== options.lab) return false;
+    if (options.lab !== undefined && entry.study?.id !== options.lab) return false;
     if (sinceMs !== undefined) {
       const at = entryTime(entry);
       if (at === undefined) return false;

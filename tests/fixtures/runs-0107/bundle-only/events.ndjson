@@ -1,0 +1,9 @@
+{"id":"event-000","at":"2026-10-03T03:59:02.952Z","level":"info","type":"observer.contract.created","message":"Created the public-safe Observer streams."}
+{"id":"event-001-a","at":"2026-10-03T03:59:02.952Z","level":"info","type":"sim.contract.ready","message":"UI journey stream ready.","simId":"sim-01","streamId":"sim-01-ui"}
+{"id":"event-001-b","at":"2026-10-03T03:59:02.952Z","level":"warn","type":"sim.live-substrate.missing","message":"No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.","simId":"sim-01","streamId":"sim-01-ui"}
+{"id":"event-002-a","at":"2026-10-03T03:59:02.952Z","level":"info","type":"sim.contract.ready","message":"CLI actor stream ready.","simId":"sim-02","streamId":"sim-02-terminal"}
+{"id":"event-002-b","at":"2026-10-03T03:59:02.952Z","level":"warn","type":"sim.live-substrate.missing","message":"No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.","simId":"sim-02","streamId":"sim-02-terminal"}
+{"id":"event-003-a","at":"2026-10-03T03:59:02.952Z","level":"info","type":"sim.contract.ready","message":"TUI actor stream ready.","simId":"sim-03","streamId":"sim-03-tui"}
+{"id":"event-003-b","at":"2026-10-03T03:59:02.952Z","level":"warn","type":"sim.live-substrate.missing","message":"No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.","simId":"sim-03","streamId":"sim-03-tui"}
+{"id":"event-004-a","at":"2026-10-03T03:59:02.952Z","level":"info","type":"sim.contract.ready","message":"Codex UI stream ready.","simId":"sim-04","streamId":"sim-04-codex-ui"}
+{"id":"event-004-b","at":"2026-10-03T03:59:02.952Z","level":"warn","type":"sim.live-substrate.missing","message":"No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.","simId":"sim-04","streamId":"sim-04-codex-ui"}

@@ -224,14 +224,14 @@
       "persona": {
         "id": "pixel-pat",
         "name": "Computer-use operator (pixel-pat)",
-        "source": "lab:downstream-local-app-state",
+        "source": "study:downstream-local-app-state",
         "sourceDigest": "447585e3031f1518"
       },
       "scenario": {
         "id": "cua-downstream-local-app-state",
         "title": "State-driven local app",
         "goal": "Persona: pixel-pat.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:downstream-local-app-state",
+        "source": "study:downstream-local-app-state",
         "sourceDigest": "447585e3031f1518"
       },
       "packageName": "humanish",
@@ -385,14 +385,14 @@
     "persona": {
       "id": "pixel-pat",
       "name": "Computer-use operator (pixel-pat)",
-      "source": "lab:downstream-local-app-state",
+      "source": "study:downstream-local-app-state",
       "sourceDigest": "447585e3031f1518"
     },
     "scenario": {
       "id": "cua-downstream-local-app-state",
       "title": "State-driven local app",
       "goal": "Persona: pixel-pat.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:downstream-local-app-state",
+      "source": "study:downstream-local-app-state",
       "sourceDigest": "447585e3031f1518"
     },
     "lifecycle": [

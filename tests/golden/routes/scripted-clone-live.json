@@ -162,7 +162,7 @@
       "persona": {
         "id": "synthetic-provider",
         "name": "Scripted journey persona (synthetic-provider)",
-        "source": "lab:provisioned-scripted-routing-proof",
+        "source": "study:provisioned-scripted-routing-proof",
         "sourceDigest": "41dea98c2dc4"
       },
       "scenario": {
@@ -302,7 +302,7 @@
     "persona": {
       "id": "synthetic-provider",
       "name": "Scripted journey persona (synthetic-provider)",
-      "source": "lab:provisioned-scripted-routing-proof",
+      "source": "study:provisioned-scripted-routing-proof",
       "sourceDigest": "41dea98c2dc4"
     },
     "scenario": {

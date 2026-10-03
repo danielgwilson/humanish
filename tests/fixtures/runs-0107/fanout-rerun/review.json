@@ -1,0 +1,17 @@
+{
+  "schema": "humanish.review.v1",
+  "verdict": "pass",
+  "participants": {
+    "total": 1,
+    "reachedGoal": 1,
+    "abandoned": 0,
+    "ranOut": 0,
+    "blocked": 0,
+    "harnessFailed": 0,
+    "reportedFriction": 0
+  },
+  "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Rerun from fanout-source: Computer-use fan-out (1 participants, one world each): 1/1 participant(s) reached a terminal, engaged verdict: 1/1 reported reaching the goal.",
+  "gaps": [
+    "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+  ]
+}

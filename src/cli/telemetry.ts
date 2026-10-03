@@ -24,8 +24,8 @@ import { STUDY_RESULT_SCHEMA } from "../run/study-result.js";
 const INGEST_KEY = "phc_oeMeBqxDZhZ9tCHMSnuDFimLqHpU5Myc847WD33hAh4C";
 const INGEST_HOST = "https://us.i.posthog.com";
 
-/** The only lab ids that may be named. Ours, shipped by `init`; everything else is "custom". */
-const STARTER_LABS = new Set([
+/** The only study ids that may be named. Ours, shipped by `init`; everything else is "custom". */
+const STARTER_STUDIES = new Set([
   "first-run",
   "try-live",
   "cua-browser",
@@ -38,8 +38,8 @@ export type TelemetryEvent = "cli_command" | "project_initialized" | "study_fini
 
 export interface TelemetryProperties {
   command?: string;
-  /** A starter lab id, or "custom"; never an adopter's own lab id. */
-  lab?: string;
+  /** A starter study id, or "custom"; never an adopter's own study id. */
+  study?: string;
   mode?: "dry-run" | "live";
   outcome?: string;
   /** Bucketed, not exact: a duration is a fingerprint at full precision. */
@@ -190,10 +190,10 @@ export function durationBucket(ms: number): string {
   return ">15m";
 }
 
-/** A lab id only if it is one of ours. An adopter's lab id can name an unannounced product. */
-export function safeLabId(lab: string | undefined): string | undefined {
-  if (lab === undefined) return undefined;
-  return STARTER_LABS.has(lab) ? lab : "custom";
+/** A study id only if it is one of ours. An adopter's study id can name an unannounced product. */
+export function safeStudyId(study: string | undefined): string | undefined {
+  if (study === undefined) return undefined;
+  return STARTER_STUDIES.has(study) ? study : "custom";
 }
 
 export interface TelemetryPayload {
@@ -245,7 +245,12 @@ export function buildPayload(args: {
   };
   const given = args.properties ?? {};
   if (given.command !== undefined) properties.command = given.command;
-  if (given.lab !== undefined) properties.lab = given.lab;
+  if (given.study !== undefined) {
+    properties.study = given.study;
+    // Removed in 0.109.0: `lab`, the property's 0.107 name, carries the same value until then, so
+    // a dashboard that filters on `lab` keeps reading 0.108 events while older clients send `lab`.
+    properties.lab = given.study;
+  }
   if (given.mode !== undefined) properties.mode = given.mode;
   if (given.outcome !== undefined) properties.outcome = given.outcome;
   if (given.durationBucket !== undefined) properties.duration = given.durationBucket;
@@ -317,21 +322,21 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
   else if (r.dryRun === false) facts.mode = "live";
   else if (r.mode === "dry-run" || r.mode === "live") facts.mode = r.mode;
 
-  const labRecord = asRecord(r.lab);
+  const studyRecord = asRecord(r.study) ?? asRecord(r.lab);
   const labId =
     typeof r.studyId === "string"
       ? r.studyId
       : typeof r.labId === "string"
         ? r.labId
-        : typeof labRecord?.id === "string"
-          ? labRecord.id
+        : typeof studyRecord?.id === "string"
+          ? studyRecord.id
           : typeof r.study === "string"
             ? r.study
             : typeof r.lab === "string"
               ? r.lab
               : undefined;
-  const lab = safeLabId(labId);
-  if (lab !== undefined) facts.lab = lab;
+  const study = safeStudyId(labId);
+  if (study !== undefined) facts.study = study;
 
   const error = asRecord(r.error);
   if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code))

@@ -349,7 +349,7 @@ describe("all runs: everyone working, across every study", () => {
     derivedFrom: "status" as const,
     liveness: "running" as const,
     mode: "live" as const,
-    lab: { id: labId },
+    study: { id: labId },
     startedAt: new Date(NOW - minutesAgo * 60_000).toISOString(),
     updatedAt: new Date(NOW).toISOString(),
   });

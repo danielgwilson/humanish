@@ -1,0 +1,34 @@
+{
+  "schema": "humanish.run-status.v1",
+  "runId": "fanout-source",
+  "state": "finished",
+  "mode": "live",
+  "lab": {
+    "id": "fanout-proof",
+    "path": "humanish/labs/fanout-proof.yaml",
+    "origin": "committed"
+  },
+  "pid": 1613234,
+  "startedAt": "2026-10-03T03:58:56.728Z",
+  "updatedAt": "2026-10-03T03:58:56.902Z",
+  "completedAt": "2026-10-03T03:58:56.902Z",
+  "outcome": {
+    "verdict": "fail",
+    "participants": {
+      "total": 3,
+      "reachedGoal": 3,
+      "reportedFriction": 0
+    },
+    "estimatedCostUsd": 0.000018,
+    "ok": false,
+    "execution": {
+      "succeeded": false,
+      "failures": [
+        {
+          "kind": "harness",
+          "message": "desktop-power: transient actor transport failed"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "humanish.review.v1",
+  "verdict": "fail",
+  "participants": {
+    "total": 3,
+    "reachedGoal": 3,
+    "abandoned": 0,
+    "ranOut": 0,
+    "blocked": 0,
+    "harnessFailed": 0,
+    "reportedFriction": 0
+  },
+  "summary": "Run gate: fail. Participants: 3/3 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 3/4 participant(s) reached a terminal, engaged verdict: 3/3 reported reaching the goal.",
+  "gaps": [
+    "desktop-power: transient actor transport failed",
+    "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+  ]
+}

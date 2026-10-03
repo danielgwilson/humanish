@@ -282,7 +282,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     persona: {
       id: specs[0]!.persona.id,
       name: `Computer-use fan-out (${specs.length} participants)`,
-      source: `lab:${plan.labId}`,
+      source: `study:${plan.labId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },
     scenario: {
@@ -297,7 +297,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       //
       // The instructions the model actually receives are untouched; only the persisted copy changes.
       goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
-      source: `lab:${plan.labId}`,
+      source: `study:${plan.labId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },
     lifecycle: [

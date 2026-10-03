@@ -60,14 +60,14 @@
       "persona": {
         "id": "autonomous-creative-agent",
         "name": "Autonomous terminal agent (autonomous-creative-agent)",
-        "source": "lab:terminal-live-proof",
+        "source": "study:terminal-live-proof",
         "sourceDigest": "5bc9377b0c3e"
       },
       "scenario": {
         "id": "terminal-terminal-live-proof",
         "title": "Terminal live proof",
         "goal": "Discover widgetsmith-cli from public surfaces.",
-        "source": "lab:terminal-live-proof",
+        "source": "study:terminal-live-proof",
         "sourceDigest": "5bc9377b0c3e"
       },
       "packageName": "humanish",
@@ -203,14 +203,14 @@
     "persona": {
       "id": "autonomous-creative-agent",
       "name": "Autonomous terminal agent (autonomous-creative-agent)",
-      "source": "lab:terminal-live-proof",
+      "source": "study:terminal-live-proof",
       "sourceDigest": "5bc9377b0c3e"
     },
     "scenario": {
       "id": "terminal-terminal-live-proof",
       "title": "Terminal live proof",
       "goal": "Discover widgetsmith-cli from public surfaces.",
-      "source": "lab:terminal-live-proof",
+      "source": "study:terminal-live-proof",
       "sourceDigest": "5bc9377b0c3e"
     },
     "lifecycle": [

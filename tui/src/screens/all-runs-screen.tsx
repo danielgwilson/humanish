@@ -72,8 +72,8 @@ export function AllRunsScreen({
           key={run.runId}
           run={run}
           who={personaOf(details.get(run.runId)) ?? "starting…"}
-          lab={labels.get(run.runId) ?? run.lab?.id ?? ""}
-          expectedMs={expected.get(run.lab?.id ?? "")}
+          lab={labels.get(run.runId) ?? run.study?.id ?? ""}
+          expectedMs={expected.get(run.study?.id ?? "")}
           active={window.start + offset === selected}
           columns={columns}
           tick={tick}

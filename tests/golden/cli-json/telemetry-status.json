@@ -21,6 +21,7 @@
         "os": "string",
         "outcome": "string",
         "stop_cause": "string",
+        "study": "string",
         "studyParticipant": "boolean",
         "version": "string"
       }

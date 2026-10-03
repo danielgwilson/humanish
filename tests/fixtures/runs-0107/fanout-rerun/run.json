@@ -1,0 +1,447 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "fanout-rerun",
+  "mode": "live",
+  "simCount": 1,
+  "createdAt": "2026-10-03T03:58:57.468Z",
+  "cwd": "[target-cwd]",
+  "artifactRoot": ".humanish/runs/fanout-rerun",
+  "lab": {
+    "id": "fanout-proof",
+    "path": "humanish/labs/fanout-proof.yaml",
+    "origin": "committed"
+  },
+  "source": {
+    "packageName": "humanish",
+    "humanishSource": "present",
+    "git": {
+      "schema": "humanish.git-state.v1",
+      "status": "missing",
+      "capturedAt": "2026-10-03T03:58:57.468Z",
+      "head": {
+        "shortSha": null,
+        "refState": "unknown"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "total": 0
+      },
+      "note": "No git work tree was detected."
+    }
+  },
+  "persona": {
+    "id": "power-user",
+    "name": "Computer-use fan-out (1 participants)",
+    "source": "lab:fanout-proof",
+    "sourceDigest": "506fda1f5dc6abc7"
+  },
+  "scenario": {
+    "id": "cua-fanout-proof",
+    "title": "Fan-out proof",
+    "goal": "Persona: power-user.\n\nYou are a desktop user (desktop, 1440x950).\n\nExplore the app and stop.\n\nLane focus: Open advanced settings.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+    "source": "lab:fanout-proof",
+    "sourceDigest": "506fda1f5dc6abc7"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-10-03T03:58:57.468Z",
+      "event": "cua-lab.run.created",
+      "message": "Created computer-use fan-out run with 1 participants, each in its own desktop browser (actor openai-computer-use)."
+    }
+  ],
+  "simulations": [
+    {
+      "id": "sim-003",
+      "index": 1,
+      "personaId": "power-user",
+      "scenarioId": "cua-fanout-proof",
+      "status": "passed",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Done.",
+      "summary": "Participant desktop-power (power-user/desktop): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+      "streamIds": [
+        "stream-003"
+      ],
+      "startedAt": "2026-10-03T03:58:57.468Z",
+      "updatedAt": "2026-10-03T03:58:57.468Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "stream-003",
+      "simId": "sim-003",
+      "laneId": "desktop-power",
+      "assignment": {
+        "mission": "Explore the app and stop.",
+        "focus": "Open advanced settings."
+      },
+      "kind": "browser",
+      "label": "desktop-power · browser",
+      "status": "passed",
+      "judgedStatus": "passed",
+      "transport": "snapshot",
+      "updatedAt": "2026-10-03T03:58:57.468Z",
+      "embed": {
+        "kind": "screenshot",
+        "url": "screenshots/desktop-power/turn-01.png",
+        "title": "Desktop (raw)"
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1440,
+            "height": 950
+          },
+          "verified": {
+            "width": 1440,
+            "height": 950,
+            "source": "xdpyinfo"
+          }
+        },
+        "warnings": [
+          "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
+          "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+          "Browser outer bounds could not be measured for participant desktop-power.",
+          "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution."
+        ]
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch participant desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
+        "state": "Done.",
+        "actorStatus": "passed",
+        "screenshotUrl": "screenshots/desktop-power/turn-01.png"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "openai-responses-cu",
+        "providerVersion": "gpt-5.6-sol",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "power-user",
+          "traitsApplied": [],
+          "promptDigest": "506fda1f5dc6abc7"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "2026-10-03T03:58:57.536Z",
+        "completedAt": "2026-10-03T03:58:57.550Z",
+        "durationMs": 14,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Done.",
+        "ids": {
+          "model": "gpt-5.6-sol",
+          "turnId": "resp_2"
+        },
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/desktop-power/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:57.543Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (11, 22)",
+            "coord": {
+              "x": 11,
+              "y": 22
+            },
+            "at": "2026-10-03T03:58:57.544Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/desktop-power/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "2026-10-03T03:58:57.550Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Done.",
+            "at": "2026-10-03T03:58:57.550Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": false,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "proprietary"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "participant desktop-power actor trace",
+          "path": "actors/stream-003.json",
+          "kind": "trace"
+        },
+        {
+          "label": "participant desktop-power screenshot 01 (raw)",
+          "path": "screenshots/desktop-power/turn-00-start.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "participant desktop-power screenshot 02 (raw)",
+          "path": "screenshots/desktop-power/turn-01.png",
+          "kind": "screenshot"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000-created",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 1 participants, one world each)."
+    },
+    {
+      "id": "event-001-fanout-plan",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "info",
+      "type": "cua-lab.fanout.plan",
+      "message": "Fan-out plan: 1 participant(s) (per-lane-worlds), concurrency 1, 1 wave(s); session budget 60s per participant; worst-case ~11 sandbox-minutes. Participants: desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7."
+    },
+    {
+      "id": "event-002-fanout-rerun",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "info",
+      "type": "cua-lab.fanout.rerun",
+      "message": "Rerun selected 1 participant(s) from fanout-source: desktop-power was failed. This is a new linked run; the source run verdict is unchanged."
+    },
+    {
+      "id": "event-003-subject-desktop-power",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Participant desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-004-session-desktop-power",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "Participant desktop-power passed: Done.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-005-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-006-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-007-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser outer bounds could not be measured for participant desktop-power.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-008-geometry-warning-desktop-power",
+      "at": "2026-10-03T03:58:57.468Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    }
+  ],
+  "rerun": {
+    "sourceRunId": "fanout-source",
+    "selectedLaneIds": [
+      "desktop-power"
+    ],
+    "previous": [
+      {
+        "laneId": "desktop-power",
+        "streamId": "stream-003",
+        "status": "failed",
+        "reason": "transient actor transport failed"
+      }
+    ]
+  },
+  "redaction": {
+    "status": "passed",
+    "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Some participants captured FULL-FIDELITY (raw) screenshots, retained for local use and NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+  },
+  "artifacts": {
+    "run": "run.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "humanish.review.v1",
+    "verdict": "pass",
+    "participants": {
+      "total": 1,
+      "reachedGoal": 1,
+      "abandoned": 0,
+      "ranOut": 0,
+      "blocked": 0,
+      "harnessFailed": 0,
+      "reportedFriction": 0
+    },
+    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Rerun from fanout-source: Computer-use fan-out (1 participants, one world each): 1/1 participant(s) reached a terminal, engaged verdict: 1/1 reported reaching the goal.",
+    "gaps": [
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+    ]
+  },
+  "feedbackCandidates": [],
+  "providerResources": [
+    {
+      "schema": "humanish.provider-resource.v1",
+      "provider": "e2b-desktop",
+      "kind": "sandbox",
+      "id": "fake-sandbox-01",
+      "owner": "humanish",
+      "status": "killed",
+      "simId": "sim-003",
+      "streamId": "stream-003",
+      "laneId": "desktop-power",
+      "createdAt": "2026-10-03T03:58:57.468Z",
+      "cleanup": {
+        "killed": true,
+        "reason": "killed during normal participant teardown"
+      }
+    }
+  ],
+  "subject": {
+    "source": "app-url",
+    "state": {
+      "provenance": "undeclared"
+    }
+  },
+  "cost": {
+    "schema": "humanish.run-cost-summary.v1",
+    "currency": "usd",
+    "estimatedTotalUsd": 0.000005,
+    "ratesAsOf": "2026-09-05",
+    "fullyEstimated": false,
+    "placeholder": false,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "desktop-power",
+        "estimatedCostUsd": null,
+        "reason": "no_token_usage",
+        "ratesAsOf": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "desktop-power",
+        "estimatedCostUsd": 0.000005,
+        "ratesAsOf": "2026-09-05",
+        "source": "e2b.dev/pricing",
+        "desktop": {
+          "minutes": 0.0006,
+          "durationBasis": "host-acquired-to-cleanup",
+          "resources": {
+            "cpuCount": 8,
+            "memoryMiB": 8192
+          },
+          "resourceSource": "e2b.getInfo",
+          "usdPerSecond": 0.000148
+        }
+      }
+    ],
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 0
+    },
+    "desktopMinutes": 0.0006,
+    "note": "Estimated 0.000005 USD total (a lower bound: some lines are unmeasured or unpriced). Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+  }
+}

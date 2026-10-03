@@ -225,7 +225,7 @@ describe("the interrupted card", () => {
     derivedFrom: "directory" as const,
     liveness: "interrupted" as const,
     mode: "live" as const,
-    lab: { id: "diagram-editor" },
+    study: { id: "diagram-editor" },
     startedAt: new Date(NOW - 40 * 60_000).toISOString(),
     updatedAt: new Date(NOW - 35 * 60_000).toISOString(),
     estimatedCostUsd: 0.62,

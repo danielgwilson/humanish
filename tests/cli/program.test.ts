@@ -1815,7 +1815,7 @@ describe("study facts ride the result seam", () => {
     );
     expect(runFactsFor(command)).toEqual({
       mode: "live",
-      lab: "try-live",
+      study: "try-live",
       outcome: "abandoned",
       brain: "provider-key",
     });
