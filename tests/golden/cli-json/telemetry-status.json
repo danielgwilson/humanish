@@ -14,7 +14,6 @@
         "command": "string",
         "diagnostic_category": "string",
         "duration": "string",
-        "lab": "string",
         "mode": "string",
         "node": "string",
         "ok": "boolean",

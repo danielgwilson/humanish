@@ -92,7 +92,10 @@ export interface RunStatusRecord {
   mode: "dry-run" | "live";
   /** Absent when the run did not come from a study file (a library caller, a bare `run`). */
   study?: RunStudyProvenance;
-  /** `study`'s value, written beside it until 0.109. Read either through studyProvenanceOf. */
+  /**
+   * `study`'s value, as runs saved by 0.108 and earlier wrote it. humanish no longer writes it.
+   * Read either through studyProvenanceOf.
+   */
   lab?: RunStudyProvenance;
   /** The pid that owns the run, for local liveness checks. */
   pid: number;
