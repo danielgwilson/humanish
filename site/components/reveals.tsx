@@ -5,11 +5,11 @@ import { useEffect } from "react";
 /**
  * Scroll reveals: adds .in to .rev elements as they approach the viewport.
  * The observer root is grown 25% of the viewport height downward, so a band
- * starts its fade before it is on screen — the POC's -30px bottom inset
+ * starts its fade before it is on screen. The prototype's -30px bottom inset
  * armed the reveal only after a band had already scrolled in, which read as
  * a blank still-loading section to anyone scrolling quickly. Growing the
  * root only moves the trigger earlier; the at-rest revealed state is
- * unchanged. Without IO — or without JS at all — the content is simply
+ * unchanged. Without IO (or without JS at all), the content is simply
  * visible; reduced motion is handled in CSS. Hydrating in time cancels the
  * inline-script fallback timer that would otherwise force everything
  * visible via `rev-all` (see THEME_INIT in layout.tsx).

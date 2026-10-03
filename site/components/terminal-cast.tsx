@@ -1,11 +1,11 @@
 /**
- * TerminalCast — a static terminal transcript, rendered as text.
+ * TerminalCast: a static terminal transcript, rendered as text.
  * Copy-pastable, no pixels: commands, check lines, and a ruled summary
  * line, in the voice of a real CLI session. Line kinds:
- *   cmd — the prompt line, as typed
- *   ok  — a passed check ("ok  <text>")
- *   dim — de-emphasized filler ("… 13 more checks")
- *   sum — the ruled summary line, with an optional dim note
+ *   cmd: the prompt line, as typed
+ *   ok:  a passed check ("ok  <text>")
+ *   dim: de-emphasized filler ("… 13 more checks")
+ *   sum: the ruled summary line, with an optional dim note
  */
 
 export type TerminalLine =

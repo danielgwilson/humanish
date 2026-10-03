@@ -98,9 +98,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * Runs before paint: mark JS availability (the POC's `.js` gate for
+ * Runs before paint: mark JS availability (the prototype's `.js` gate for
  * progressive enhancement) and restore a persisted explicit theme choice
- * so there is no flash of the wrong theme. System preference needs no JS —
+ * so there is no flash of the wrong theme. System preference needs no JS:
  * the token system handles it via prefers-color-scheme.
  *
  * The `.js` gate hides `.rev` content until Reveals hydrates, so the same

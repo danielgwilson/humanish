@@ -3,7 +3,7 @@
  * app/globals.css, which stays the single source of truth. Each registry
  * item ships the subset of rules its markup uses, selected by class token;
  * rules keep their document order, and @media blocks are filtered rule by
- * rule. Output lands in registry/css/<item>.css (committed — CI fails if
+ * rule. Output lands in registry/css/<item>.css (committed; CI fails if
  * a rebuild produces a diff).
  *
  * Run via `pnpm registry:build`.
@@ -26,7 +26,7 @@ function parseBlocks(css) {
     const start = i;
     while (i < css.length && css[i] !== "{" && css[i] !== ";") i++;
     if (css[i] === ";") {
-      // statement without a block (e.g. @import) — never extracted
+      // statement without a block (e.g. @import), never extracted
       i++;
       continue;
     }

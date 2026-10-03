@@ -69,13 +69,16 @@ import {
   isCapsEmphasis,
 } from "./lib/prose-rules.mjs";
 
-// Each root is read recursively; node_modules and dist are skipped. A root's caps are under
-// `prose.<root>` in scripts/caps.json.
-const ROOTS = ["src", "tests", "scripts", "tui", "observer"];
+// Each root is read recursively; node_modules, dist and Next's .next build output are skipped. A
+// root's caps are under `prose.<root>` in scripts/caps.json. `site-code` reads the source files
+// under site/; the .mdx pages are not source files.
+const ROOTS = ["src", "tests", "scripts", "tui", "observer", "site-code"];
+const ROOT_DIRS = { "site-code": "site" };
 const SOURCE_FILE = /\.(?:ts|tsx|mts|mjs|js)$/;
-const SKIPPED_DIR = /(?:^|\/)(?:node_modules|dist)(?:\/|$)/;
+const SKIPPED_DIR = /(?:^|\/)(?:node_modules|dist|\.next)(?:\/|$)/;
 
-function filesOf(dir) {
+function filesOf(root) {
+  const dir = ROOT_DIRS[root] ?? root;
   // A checkout without the folder has nothing to count there; its caps still apply.
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { recursive: true, encoding: "utf8" })

@@ -5,9 +5,9 @@ import { TH, onThemeRedraw } from "./theme";
 /**
  * Resolve covers: a dash-texture veil drawn over each evidence screenshot
  * that "resolves" left-to-right into the real image, once, when its panel
- * becomes active. Ported from the POC's initCovers/resolveCover.
+ * becomes active. Ported from the prototype's initCovers/resolveCover.
  *
- * Reduced motion never registers a cover (the POC removes them), so those
+ * Reduced motion never registers a cover (the prototype removes them), so those
  * visitors see finished states: the plain screenshots.
  */
 
@@ -70,7 +70,7 @@ function build(it: CoverItem): void {
   oc.fill();
   oc.fillStyle = "rgba(255,255,255,0.95)";
   // Canvas cannot resolve var(); read the concrete --mono stack (next/font
-  // family names) so the digits render in Geist Mono like the POC.
+  // family names) so the digits render in Geist Mono like the prototype.
   const mono =
     getComputedStyle(document.documentElement).getPropertyValue("--mono").trim() ||
     'ui-monospace,"SF Mono",Menlo,Consolas,monospace';

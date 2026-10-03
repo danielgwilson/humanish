@@ -10,7 +10,7 @@ const tryLive = tryLiveJson as unknown as TourData;
  * The study band, refreshed: the TodoMVC repair stays as shipped; the 2026-08-07
  * Excalidraw replay is replaced by two runs from 2026-09-16 rendered from their own
  * traces (the drawDB starter run in the replay player, the maintainer's lobby game as a
- * three-seat grid; the game is the maintainer's own and is not named in this repo), and
+ * three-participant grid; the game is the maintainer's own and is not named in this repo), and
  * the persona-axis result joins the repair as a second two-column study. Every number is read from a kept bundle or a linked receipt.
  */
 export default function StudyV3() {

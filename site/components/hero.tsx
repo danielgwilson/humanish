@@ -18,7 +18,7 @@ export default function Hero() {
           users
         </h1>
         {/* Mirror obligation: this lede is the site description. Any edit here
-            moves layout.tsx DESCRIPTION (meta + OG + Twitter + JSON-LD) and the
+            moves layout.tsx `DESCRIPTION` (meta + OG + Twitter + JSON-LD) and the
             llms.txt description block in the same commit. */}
         <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>
           You can&rsquo;t run a user study on an app that has no users yet. humanish runs one
