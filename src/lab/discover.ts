@@ -19,8 +19,8 @@ import {
 import { isNodeError } from "../run/type-guards.js";
 import { studyFileCandidates, studyFileStem, STUDY_DIRECTORIES } from "../study/files.js";
 
-const LAB_LIST_SCHEMA = "humanish.lab-list.v1";
-const LAB_INSPECT_SCHEMA = "humanish.lab-inspect.v1";
+const STUDY_LIST_SCHEMA = "humanish.study-list.v1";
+const STUDY_SHOW_SCHEMA = "humanish.study-show.v1";
 
 type LabOrigin = "committed" | "ignored" | "explicit";
 
@@ -34,7 +34,8 @@ interface ResolvedLabConfig {
 export interface LabResolveFailure {
   ok: false;
   cwd: string;
-  lab: string;
+  /** The study the caller asked for, as given. */
+  study: string;
   error: {
     code: "HUMANISH_STUDY_NOT_FOUND" | "HUMANISH_STUDY_INVALID" | "HUMANISH_STUDY_AMBIGUOUS";
     message: string;
@@ -61,20 +62,21 @@ export interface LabListEntry {
 }
 
 export interface LabListResult {
-  schema: typeof LAB_LIST_SCHEMA;
+  schema: typeof STUDY_LIST_SCHEMA;
   ok: true;
   cwd: string;
-  labs: LabListEntry[];
+  studies: LabListEntry[];
   warnings: string[];
 }
 
 export interface LabInspectResult {
   /** Persona context only, before route instructions and runtime grants. */
   personas?: Array<{ id: string; resolved: boolean; brief?: ActorPersonaRef["brief"] }>;
-  schema: typeof LAB_INSPECT_SCHEMA;
+  schema: typeof STUDY_SHOW_SCHEMA;
   ok: boolean;
   cwd: string;
-  lab: string;
+  /** The study the caller asked for, as given. */
+  study: string;
   config?: LabConfig;
   origin?: LabOrigin;
   path?: string;
@@ -172,10 +174,10 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
   const projectRoot = await bindProjectRoot(resolvedCwd);
   if (!projectRoot) {
     return {
-      schema: LAB_LIST_SCHEMA,
+      schema: STUDY_LIST_SCHEMA,
       ok: true,
       cwd: resolvedCwd,
-      labs: [],
+      studies: [],
       warnings: ["Project root failed containment validation; managed lab manifests were skipped."],
     };
   }
@@ -257,7 +259,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
 
   for (const [name, stem] of stems) {
     if (stem.studies === undefined || stem.legacy === undefined) continue;
-    const error = `${name} names two files, ${stem.studies} and ${stem.legacy}; running it by name fails until one is removed.`;
+    const error = `${name} names two files, ${stem.studies} and ${stem.legacy}; running it by name fails until you delete one (humanish migrate moves a kept labs/ file).`;
     for (const key of stem.keys) {
       const entry = listed.get(key);
       if (entry) entry.error = error;
@@ -265,10 +267,10 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
   }
 
   return {
-    schema: LAB_LIST_SCHEMA,
+    schema: STUDY_LIST_SCHEMA,
     ok: true,
     cwd: resolvedCwd,
-    labs: [...listed.values()].sort((left, right) =>
+    studies: [...listed.values()].sort((left, right) =>
       `${left.origin}:${left.id}`.localeCompare(`${right.origin}:${right.id}`),
     ),
     warnings,
@@ -279,10 +281,10 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
   const resolved = await resolveLabManifest(cwd, lab);
   if (!resolved.ok) {
     return {
-      schema: LAB_INSPECT_SCHEMA,
+      schema: STUDY_SHOW_SCHEMA,
       ok: false,
       cwd: resolved.cwd,
-      lab,
+      study: lab,
       error: resolved.error,
       warnings: resolved.warnings,
     };
@@ -294,23 +296,23 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
   } catch (error) {
     if (!(error instanceof PersonaConfigError)) throw error;
     return {
-      schema: LAB_INSPECT_SCHEMA,
+      schema: STUDY_SHOW_SCHEMA,
       ok: false,
       cwd: path.resolve(cwd),
-      lab,
+      study: lab,
       error: { code: "HUMANISH_STUDY_INVALID", message: error.message },
       warnings: resolved.warnings,
     };
   }
   return {
-    schema: LAB_INSPECT_SCHEMA,
+    schema: STUDY_SHOW_SCHEMA,
     personas: labPersonaIds(resolved.config).map((id) => {
       const persona = personaResolution.personas.get(id);
       return { id, resolved: !!persona, ...(persona ? { brief: personaBrief(persona) } : {}) };
     }),
     ok: true,
     cwd: path.resolve(cwd),
-    lab,
+    study: lab,
     config: resolved.config,
     origin: resolved.origin,
     path: resolved.path,
@@ -559,7 +561,7 @@ function invalidLab(
   return {
     ok: false,
     cwd: args.cwd,
-    lab: args.lab,
+    study: args.lab,
     error: {
       code: "HUMANISH_STUDY_INVALID",
       message,
@@ -591,10 +593,10 @@ function ambiguousStudy(
   return {
     ok: false,
     cwd,
-    lab: name,
+    study: name,
     error: {
       code: "HUMANISH_STUDY_AMBIGUOUS",
-      message: `${name} names two files, ${studiesPath} and ${labsPath}. Keep the one under studies/ and remove the other, or pass the path of the one to run.`,
+      message: `${name} names two files, ${studiesPath} and ${labsPath}. Delete the one you do not want; if you keep ${labsPath}, run humanish migrate to move it. Or pass the path of the one to run.`,
     },
     warnings,
   };
@@ -604,7 +606,7 @@ function labNotFound(cwd: string, lab: string, warnings: string[]): LabResolveFa
   return {
     ok: false,
     cwd,
-    lab,
+    study: lab,
     error: {
       code: "HUMANISH_STUDY_NOT_FOUND",
       message: `Lab not found: ${lab}. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.`,

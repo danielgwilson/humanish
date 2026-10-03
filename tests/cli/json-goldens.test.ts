@@ -1,7 +1,8 @@
-// Pins the JSON contract of every structured command: field names and value types, never values.
-// Ids, paths, timestamps and messages vary by machine and run, so a golden records "string" for
-// each of them. A changed field name, a dropped field, a new field or a changed type fails here,
-// so a PR that rewrites human output cannot move the JSON beside it.
+// Pins the JSON contract of every structured command: field names and value types, plus check
+// names and enum values (the pins below). Ids, paths, timestamps and messages vary by machine and
+// run, so a golden records "string" for each of them. A changed field name, a dropped field, a new
+// field, a changed type, a renamed check or a new enum value fails here, so a PR that rewrites
+// human output cannot move the JSON beside it.
 import { CommanderError, type Command } from "commander";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
@@ -117,9 +118,48 @@ const STEPS: ReadonlyArray<readonly [name: string, args: string[]]> = [
   ["lab-run", ["lab", "run", "first-run"]],
 ];
 
+type Json = Record<string, unknown>;
+const rows = (value: unknown): Json[] => (Array.isArray(value) ? (value as Json[]) : []);
+// A local agent row exists only on a machine with Codex or Claude Code installed.
+const doctorNames = (json: Json) =>
+  rows(json.checks)
+    .map((check) => check.name)
+    .filter((name) => typeof name === "string" && !name.startsWith("local agent"));
+
+/**
+ * Values pinned beside the shape: check names and enum fields, so a renamed check or a new enum
+ * value fails here. Machine-dependent values (statuses, local agent rows, messages) stay out.
+ */
+const PINS: Readonly<Record<string, (json: Json) => unknown>> = {
+  "doctor-before-init": (json) => ({ checks: doctorNames(json) }),
+  doctor: (json) => ({ checks: doctorNames(json) }),
+  init: (json) => ({
+    mode: json.mode,
+    actions: [...new Set(rows(json.changes).map((change) => change.action))].sort(),
+  }),
+  run: (json) => ({ mode: json.mode }),
+  "lab-run": (json) => ({ mode: json.mode }),
+  verify: (json) => ({
+    checks: rows(json.checks).map((check) => [check.name, check.ok]),
+    shareSafety: (json.shareSafety as Json).status,
+  }),
+  review: (json) => ({ verdict: json.verdict }),
+  runs: (json) => ({ modes: rows(json.runs).map((run) => run.mode) }),
+  export: (json) => ({ shareSafety: (json.shareSafety as Json).status }),
+  "lab-list": (json) => ({ ids: rows(json.studies).map((study) => study.id) }),
+  "lab-preflight": (json) => ({
+    route: json.route,
+    reachability: json.reachability,
+    checks: rows(json.checks).map((check) => check.name),
+  }),
+  "analyze-refused": (json) => ({ code: (json.error as Json).code }),
+  "comms-providers": (json) => ({ ids: rows(json.providers).map((provider) => provider.id) }),
+  "keys-list": (json) => ({ action: json.action }),
+};
+
 describe("CLI JSON goldens", () => {
   let cwd: string;
-  const shapes = new Map<string, { exitCode: number; shape: Shape }>();
+  const shapes = new Map<string, { exitCode: number; shape: Shape; pinned?: unknown }>();
 
   // A key exported in the developer's shell would turn a note row into an ok row.
   const keyNames = [
@@ -140,7 +180,12 @@ describe("CLI JSON goldens", () => {
     process.env.XDG_CONFIG_HOME = path.join(cwd, "user-config");
     for (const [name, args] of STEPS) {
       const { exitCode, json } = await runJson(NO_CWD.has(name) ? args : [...args, "--cwd", cwd]);
-      shapes.set(name, { exitCode, shape: shapeOf(json) });
+      const pin = PINS[name];
+      shapes.set(name, {
+        exitCode,
+        shape: shapeOf(json),
+        ...(pin === undefined ? {} : { pinned: pin(json as Json) }),
+      });
     }
   }, 120_000);
 
@@ -151,11 +196,14 @@ describe("CLI JSON goldens", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it.each(STEPS.map(([name]) => name))("%s keeps its JSON field names and types", async (name) => {
-    await expect(`${JSON.stringify(shapes.get(name), null, 2)}\n`).toMatchFileSnapshot(
-      `../golden/cli-json/${name}.json`,
-    );
-  });
+  it.each(STEPS.map(([name]) => name))(
+    "%s keeps its JSON field names, types and pinned values",
+    async (name) => {
+      await expect(`${JSON.stringify(shapes.get(name), null, 2)}\n`).toMatchFileSnapshot(
+        `../golden/cli-json/${name}.json`,
+      );
+    },
+  );
 
   it("marks a field missing from some array items optional and joins differing types", () => {
     expect(shapeOf([{ a: 1, b: "x" }, { a: null }])).toEqual([

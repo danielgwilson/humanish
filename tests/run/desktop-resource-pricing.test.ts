@@ -44,7 +44,7 @@ describe("observed desktop resources", () => {
     }
   });
 
-  it("prices mixed custom sizes per allocation and keeps unknown lanes out of the known subtotal", async () => {
+  it("prices mixed custom sizes per allocation and keeps unknown participants out of the known subtotal", async () => {
     const observed = await observeDesktopResources({ getInfo: async () => captured[0]! });
     const cost = buildRunCostSummary({
       participants: [],

@@ -2,8 +2,8 @@
 //
 // Inside a scroll-pinned (scrollytelling) section the viewport stays visually fixed while
 // the participant advances, so the frame hash read "no change" and the no-progress backstop ended
-// working reading sessions as gave_up: three live lanes died this way in one day. Scroll position
-// is state: it rides the progress key, bucketed.
+// working reading sessions as gave_up: three live participants died this way in one day. Scroll
+// position is state: it rides the progress key, bucketed.
 //
 // Tab pinning: the CDP state observer selected the launch tab forever, so a verification link
 // opening in a new tab left the observed URL frozen: stopWhen and task criteria went blind, and a

@@ -251,7 +251,10 @@ function resolveWatchTarget(
     options.count === undefined ? undefined : parsePositiveInteger(options.count);
   const port = parseObserverPort(options.port);
   if (participantCount === null) {
-    return { code: "HUMANISH_INVALID_SIM_COUNT", message: "--count must be a positive integer." };
+    return {
+      code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
+      message: "--count must be a positive integer.",
+    };
   }
   if (!runWasOmitted && participantCount !== undefined) {
     return {

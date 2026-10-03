@@ -122,8 +122,8 @@ describe("estimateActorCost: cached input", () => {
   // The bug this pins: every input token was billed at the full rate, and the provider's
   // cached-token count was not even parsed. The CUA loop threads state through the provider and
   // re-sends a growing warm prefix every turn, so most input on a long session is a cache hit. A
-  // live two-lane run read $5.14 per lane and aborted itself against its own $5 cap: for spend it
-  // very likely never incurred.
+  // live two-participant run read $5.14 per participant and aborted itself against its own $5 cap:
+  // for spend it very likely never incurred.
   const rate = {
     inputUsdPerToken: 5e-6,
     outputUsdPerToken: 30e-6,
@@ -180,7 +180,7 @@ describe("estimateActorCost: cached input", () => {
   });
 
   it("reprices the live run that aborted itself against its own cap", () => {
-    // Actual tokenUsage from cua-2026-08-08T07-38-10-148Z-ad382d8b, expert lane.
+    // Actual tokenUsage from cua-2026-08-08T07-38-10-148Z-ad382d8b, expert participant.
     const metered = estimateActorCost({ input: 1_008_579, output: 3_388 }, "gpt-5.5");
     expect(metered.estimatedCostUsd).toBeCloseTo(5.144535, 6); // what killed the run
 

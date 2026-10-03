@@ -824,16 +824,16 @@ describe("runComputerUseLoop", () => {
     });
     const blocked = await run("blocked");
     expect(blocked.trace.declaredOutcome).toBe("blocked");
-    // The actor stopped on purpose; the lane turns a declared blocker into a blocked participant.
+    // The actor stopped on purpose; the route turns a declared blocker into a blocked participant.
     expect(blocked.completionReason).toBe("goal_satisfied");
     const silent = await run(undefined);
     expect(silent.trace.declaredOutcome).toBeUndefined();
   });
 
   it("a provider turn that stalls is retried once with a notice, and the run goes on", async () => {
-    // Three lanes of a real run stopped producing turns within seven seconds of each other and
-    // were closed 36 minutes later as budget_reached, nothing in the trace saying why: one hung
-    // HTTP request per lane, bounded only by the session budget.
+    // Three participants of a real run stopped producing turns within seven seconds of each other
+    // and were closed 36 minutes later as budget_reached, nothing in the trace saying why: one hung
+    // HTTP request per participant, bounded only by the session budget.
     let calls = 0;
     const provider: CuaProvider = {
       id: "stall-once",
@@ -873,7 +873,7 @@ describe("runComputerUseLoop", () => {
     expect(notice?.text).toContain("provider turn 1 produced nothing within 30ms");
   });
 
-  it("a provider turn that stalls twice ends the lane as harness_error, named, not thirty silent minutes", async () => {
+  it("a provider turn that stalls twice ends the participant as harness_error, named, not thirty silent minutes", async () => {
     const provider: CuaProvider = {
       id: "stall-always",
       version: "s",
@@ -908,8 +908,8 @@ describe("runComputerUseLoop", () => {
   });
 
   it("a `wait` that hangs inside the desktop SDK is skipped with a notice; the participant is not failed", async () => {
-    // A default wait hung for ~90 s in the SDK after twelve turns of ordinary work and the lane
-    // ended actor_error. A wait that has hung has, by definition, waited.
+    // A default wait hung for ~90 s in the SDK after twelve turns of ordinary work and the
+    // participant ended actor_error. A wait that has hung has, by definition, waited.
     let turns = 0;
     const provider: CuaProvider = {
       id: "wait-then-done",
@@ -946,7 +946,7 @@ describe("runComputerUseLoop", () => {
     expect(notice?.text).toContain("idle action wait 5ms produced nothing within 35ms");
   });
 
-  it("an observe() that stalls is asked again once before the lane gives up on the desktop", async () => {
+  it("an observe() that stalls is asked again once before the participant gives up on the desktop", async () => {
     let observes = 0;
     const provider: CuaProvider = {
       id: "done-at-once",
@@ -1086,11 +1086,11 @@ describe("runComputerUseLoop", () => {
     ).toBeGreaterThanOrEqual(3);
   });
 
-  // A blind frame signature must not be able to end a lane that is working.
+  // A blind frame signature must not be able to end a participant that is working.
   //
   // This is the exact live failure, reduced. A constant stateSignature stands in for the old hash on
   // a light-themed web app, where 9 visibly different consecutive frames produced one identical
-  // value. Under the old rule (stale frame alone means no progress) the lane was ended as
+  // value. Under the old rule (stale frame alone means no progress) the participant was ended as
   // `gave_up` and the run recorded 0/2 passed, while the agent was a foreign key away from finishing
   // its mission. The backstop now needs the agent to also be repeating itself.
   it("does not give up when the frame signature is blind but the agent is doing varied work", async () => {
@@ -1923,8 +1923,8 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     });
 
     // Cumulative estimate: turn1 $0.15, turn2 $0.30, turn3 $0.45 > $0.35 → break at turn 3.
-    // Two material clicks executed before the cap tripped → a productive lane that hit its cost
-    // budget → budget_reached (incomplete), with the estimate + cap cited in the detail.
+    // Two material clicks executed before the cap tripped → a productive participant that hit its
+    // cost budget → budget_reached (incomplete), with the estimate + cap cited in the detail.
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
     expect(result.trace.stopCause).toBe("spend_limit");

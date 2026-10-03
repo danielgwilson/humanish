@@ -25,9 +25,9 @@ export const EXEMPT_PATHS = [
   "src/lab/parse/actors.ts",
   // The manifest's comms recipient key, `lane`, which the parser reads.
   "src/lab/parse/comms.ts",
-  // Every manifest key the parser accepts, including lanes, laneFocus and a recipient's lane.
+  // Every manifest key the parser accepts, including `lanes`, `laneFocus` and a recipient's `lane`.
   "src/lab/keys.ts",
-  // The manifest's types, whose keys keep lanes, laneFocus and lane.
+  // The manifest's types, whose keys keep `lanes`, `laneFocus` and `lane`.
   "src/lab/types.ts",
   // The saved run bundle's fields (laneId, simId, simIds), checked when a bundle is read.
   "src/run/bundle-shape.ts",
@@ -35,6 +35,8 @@ export const EXEMPT_PATHS = [
   "src/run/shared-world-shape.ts",
   // The saved stream record's simId, checked when a bundle is read.
   "src/run/stream-shape.ts",
+  // The library's 0.107 names (runLab, LabConfig and the rest), deprecated until 0.109.
+  "src/library-aliases.ts",
 ];
 
 export function isCounted(path: string): boolean {

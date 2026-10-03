@@ -1,6 +1,6 @@
 // The route decision. A lab's route follows from its composition (subject.source,
-// execution.target, the first actor's registered lane, subject.topology), never from a declared
-// kind. This is the only function that decides it.
+// execution.target, the first actor's registered run kind, subject.topology), never from a
+// declared kind. This is the only function that decides it.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import { callerDrivingOf, planComputerUseLab } from "../routes/computer-use/plan.js";
@@ -63,7 +63,7 @@ function planPreview(
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
   const participantCount = options.count ?? config.actors[0]?.count ?? 4;
   if (!Number.isSafeInteger(participantCount) || participantCount < 1)
-    return refuse("HUMANISH_INVALID_SIM_COUNT", "count must be a positive integer.");
+    return refuse("HUMANISH_INVALID_PARTICIPANT_COUNT", "count must be a positive integer.");
   if (!input.dryRun) return refuse("HUMANISH_LIVE_RUN_UNIMPLEMENTED", THIS_REPO_DRY_RUN_ONLY);
   return {
     ok: true,

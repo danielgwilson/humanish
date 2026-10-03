@@ -13,5 +13,10 @@
       }
     ],
     "schema": "string"
+  },
+  "pinned": {
+    "modes": [
+      "dry-run"
+    ]
   }
 }

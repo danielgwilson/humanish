@@ -18,6 +18,8 @@ import {
   type LabCommandOptions,
   parsePositiveInteger,
   writeResult,
+  type HumanOutput,
+  humanError,
 } from "../io.js";
 
 export function registerLabCommands(parent: Command, io: CliIo): void {
@@ -116,10 +118,10 @@ async function handleLabPreflight(
   const timeoutMs = parsePositiveInteger(options.timeoutMs);
   if (timeoutMs === null) {
     const result: LabPreflightResult = {
-      schema: "humanish.lab-preflight-result.v1",
+      schema: "humanish.study-check.v1",
       ok: false,
       cwd: resolve(options.cwd),
-      lab: labName,
+      study: labName,
       reachability: options.reachability,
       checks: [{ name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." }],
       targets: [],
@@ -147,7 +149,7 @@ async function handleLabPreflight(
 }
 
 function formatLabListHuman(result: LabListResult): string {
-  if (result.labs.length === 0) {
+  if (result.studies.length === 0) {
     return (
       [
         `No humanish labs found in ${result.cwd}`,
@@ -160,7 +162,7 @@ function formatLabListHuman(result: LabListResult): string {
   return (
     [
       "humanish labs",
-      ...result.labs.map(
+      ...result.studies.map(
         (lab) =>
           `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}${lab.error ? `\n  error: ${lab.error}` : ""}`,
       ),
@@ -169,10 +171,8 @@ function formatLabListHuman(result: LabListResult): string {
   );
 }
 
-function formatLabInspectHuman(result: LabInspectResult): string {
-  if (!result.ok || !result.config) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+function formatLabInspectHuman(result: LabInspectResult): HumanOutput {
+  if (!result.ok || !result.config) return humanError(result.error);
 
   const config = result.config;
   return (
@@ -196,14 +196,14 @@ function formatLabInspectHuman(result: LabInspectResult): string {
   );
 }
 
-function formatLabPreflightHuman(result: LabPreflightResult): string {
+function formatLabPreflightHuman(result: LabPreflightResult): HumanOutput {
   const checkedTargets = result.targets.filter((target) => target.checked);
   const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
   const blockedTargets = result.targets.filter((target) => target.status === "blocked");
-  return (
+  const stdout =
     [
       `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
-      `lab: ${result.labId ?? result.lab}`,
+      `lab: ${result.studyId ?? result.study}`,
       ...(result.route ? [`route: ${result.route}`] : []),
       `reachability: ${result.reachability}`,
       `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
@@ -216,8 +216,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): string {
       ...result.checks.map(
         (check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
       ),
-      ...(result.error ? [`error: ${result.error.code}: ${result.error.message}`] : []),
       ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
+    ].join("\n") + "\n";
+  return result.error === undefined ? stdout : { stdout, error: result.error };
 }

@@ -66,10 +66,10 @@ function options(
       unreadable: [],
     }),
     listLabs: async () => ({
-      schema: "humanish.lab-list.v1",
+      schema: "humanish.study-list.v1",
       ok: true,
       cwd: "/projects/acme-app",
-      labs: LABS,
+      studies: LABS,
       warnings: [],
     }),
     startRun: async () => ({
@@ -194,7 +194,8 @@ describe("watching a run", () => {
 
   it("names nobody when the run has not written a participant record yet", async () => {
     // A run that has just started has no bundle. The card says "starting…" rather than a sentence
-    // with a hole where the person goes, and it does not invent one from the lane or the lab.
+    // with a hole where the person goes, and it does not invent one from the stream id or the
+    // study.
     const { surface, frame } = await openLiveRun(null);
     surface.unmount();
     expect(frame).toContain("starting…");
@@ -241,10 +242,10 @@ describe("the interrupted card", () => {
         unreadable: [],
       }),
       listLabs: async () => ({
-        schema: "humanish.lab-list.v1",
+        schema: "humanish.study-list.v1",
         ok: true,
         cwd: "/projects/acme-app",
-        labs: LABS,
+        studies: LABS,
         warnings: [],
       }),
       startRun: async () => ({

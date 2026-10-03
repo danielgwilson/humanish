@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Command } from "commander";
+import { Command, type ParseOptionsResult } from "commander";
 import { redactText } from "../evidence/redaction.js";
 import { PortInUseError } from "../observer/listen.js";
 import {
@@ -20,6 +20,7 @@ import { registerCodexCommands } from "./commands/codex.js";
 import { registerCommsCommands } from "./commands/comms.js";
 import { registerFeedbackCommands } from "./commands/feedback.js";
 import { registerLabCommands } from "./commands/lab.js";
+import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerObserveCommand, registerServeCommand } from "./commands/observe.js";
 import {
   registerCleanupCommand,
@@ -193,6 +194,22 @@ class HumanishCommand extends Command {
 
   override createCommand(name?: string): Command {
     return new HumanishCommand(name, this.cliIo);
+  }
+
+  /**
+   * Commander rejects unknown options before the root action runs, so `humanish nope --cwd .`
+   * reported `--cwd` and never reached the root action's unknown-command message. When the root's
+   * first operand names no command, everything after it goes to that action as operands.
+   */
+  override parseOptions(argv: string[]): ParseOptionsResult {
+    const parsed = super.parseOptions(argv);
+    const [word] = parsed.operands;
+    if (this.parent !== null || word === undefined || parsed.unknown.length === 0) return parsed;
+    // `help` is the help command set up in createProgram; commander keeps it out of `commands`.
+    const known =
+      word === "help" ||
+      this.commands.some((command) => command.name() === word || command.aliases().includes(word));
+    return known ? parsed : { operands: [...parsed.operands, ...parsed.unknown], unknown: [] };
   }
 
   override action(fn: (this: this, ...args: any[]) => void | Promise<void>): this {
@@ -435,6 +452,7 @@ export function createProgram(
   registerRunsCommand(program, cliIo);
   registerStatsCommand(program, cliIo);
   registerLabCommands(program, cliIo);
+  registerMigrateCommand(program, cliIo);
   registerCommsCommands(program, cliIo);
   registerRuntimeCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);

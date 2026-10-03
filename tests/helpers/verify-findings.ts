@@ -30,8 +30,8 @@ export function verifyGolden(
 }
 
 /**
- * Concurrent bundle mutations for the verify goldens. No overclaim test reaches the lane-window or
- * role-coverage checks, so these make each of them report at least one finding.
+ * Concurrent bundle mutations for the verify goldens. No overclaim test reaches the `lane-window`
+ * or role-coverage checks, so these make each of them report at least one finding.
  */
 export const LANE_SHAPE_VARIANTS: ReadonlyArray<
   readonly [string, (bundle: Record<string, unknown>) => void]

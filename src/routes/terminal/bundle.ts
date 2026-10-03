@@ -61,7 +61,7 @@ export function buildTerminalProductBundle(args: {
   verdict: Verdict;
 }): RunBundle {
   const reason =
-    "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
+    "Dry run: the terminal-product study was declared without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
 
   // The terminal stream is a contract placeholder on the dry-run path: stdin is disabled and no
   // exec output was captured, so the tail is empty and transport stays "snapshot", never "pty"
@@ -70,7 +70,7 @@ export function buildTerminalProductBundle(args: {
   const { simulation, stream } = terminalParticipant(args, {
     status: "contract_proof_only",
     reason,
-    summary: `Contract participant for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
+    summary: `Dry-run participant for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
     updatedAt: args.run.createdAt,
     stdin: args.stdin,
     tail: "",
@@ -122,7 +122,7 @@ export function buildTerminalProductBundle(args: {
       level: "info",
       type: "terminal-lab.contract.ready",
       message:
-        "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
+        "Dry-run bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
     }),
   ];
 
@@ -131,7 +131,7 @@ export function buildTerminalProductBundle(args: {
     verdict: args.verdict,
     summary: reason,
     gaps: [
-      "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
+      "This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.",
       "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.",
     ],
   };
@@ -148,7 +148,7 @@ export function buildTerminalProductBundle(args: {
     stream,
     events,
     redactionNotes:
-      "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
+      "Dry-run bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
     review,
   });
 }

@@ -68,7 +68,9 @@ the file to read first. Keep these layout rules:
 - Messages a person reads (errors, warnings, command output) say what happened, why, and what to
   do next, in plain words. `prose:check` also counts em dashes, issue references, all-caps
   emphasis, `a later slice`, harness rationale words (`fail closed`, `by construction`, `hollow`,
-  `honest`) and `(s)` plurals in `src/` string literals, apart from model prompts.
+  `honest`) and `(s)` plurals in `src/` string literals, apart from model prompts and embedded
+  scripts. Mark either with a `// prose-check: model prompt` or `// prose-check: script` comment on
+  the line before the statement.
 - Tests assert behavior. Do not pin prose in docs or comments with `toContain`. The default test
   timeout is 20 s. Provider-API fixtures come from captured wire shapes.
 - New dependencies go in the pnpm catalog (`pnpm-workspace.yaml`) when more than one workspace

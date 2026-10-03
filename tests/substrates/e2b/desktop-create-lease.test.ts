@@ -128,7 +128,7 @@ describe("desktop allocation ownership survives startup failure", () => {
       expect(probe.create.mock.calls).toEqual(
         template === undefined ? [[options]] : [[template, options]],
       );
-      expect(probe.killed).toEqual([]); // Successful ownership transfers to the existing lane teardown.
+      expect(probe.killed).toEqual([]); // Successful ownership transfers to the existing participant teardown.
       expect(probe.list).not.toHaveBeenCalled();
       expect(probe.allocation).not.toHaveBeenCalled();
     },

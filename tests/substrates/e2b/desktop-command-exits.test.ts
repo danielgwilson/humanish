@@ -57,7 +57,7 @@ function screenDesktop(): E2BDesktopLike {
 }
 
 describe("an E2B desktop command that exits non-zero", () => {
-  it("reports the browser-state observer unavailable, once per lane", async () => {
+  it("reports the browser-state observer unavailable, once per participant", async () => {
     const desktop = failingDesktop(exited(127, "bash: line 1: python3: command not found"));
     const onUnavailable = vi.fn();
     const executor = createE2BDesktopExecutor(screenDesktop(), {

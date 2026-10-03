@@ -56,7 +56,7 @@ describe("runtime desktop iframe authority", () => {
     expect(slot).not.toBeNull();
     expect(JSON.parse(slot![1]!)).toEqual(data);
     expect(html).not.toContain("<script>window.synthetic=1</script>");
-    expect(html).toContain("<title>humanish Observer — $&amp; $$ $` $");
+    expect(html).toContain("<title>humanish Observer · $&amp; $$ $` $");
   });
 
   it("discards persisted grants in static projections and only grants valid active runtime URLs", async () => {

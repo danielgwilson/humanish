@@ -217,7 +217,7 @@ describe("configured receiving through exported study runners", () => {
     },
   );
 
-  it("cua-clone scrubs an address the receiving setup registered from a lane's error", async () => {
+  it("cua-clone scrubs an address the receiving setup registered from a participant's error", async () => {
     await expectRouteProof("cua-clone", false, true);
   });
 

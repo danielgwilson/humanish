@@ -16,7 +16,7 @@ const builtinPersona = {
 const builtinScenario = {
   id: "builtin-first-run-smoke",
   title: "Built-in First-Run Smoke",
-  goal: "Create a public-safe dry-run contract bundle from built-in defaults.",
+  goal: "Write a public-safe dry-run bundle from built-in defaults.",
   source: "builtin:first-run-smoke",
   sourceDigest: "builtin",
 };

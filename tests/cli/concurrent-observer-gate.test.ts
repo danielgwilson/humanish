@@ -68,7 +68,8 @@ function captureIo(): CliIo & { out: string[]; exitCode: number | undefined } {
     out: [] as string[],
     exitCode: undefined as number | undefined,
     writeOut: (text: string) => io.out.push(text),
-    writeErr: () => undefined,
+    // The failure's error line goes to stderr; record it with stdout.
+    writeErr: (text: string) => io.out.push(text),
     setExitCode: (code: number) => {
       io.exitCode = code;
     },

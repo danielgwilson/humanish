@@ -90,7 +90,7 @@ describe("account-billed participants", () => {
     ).toBe(false);
   });
 
-  it("writes no dollar estimate for the lane and verify rejects one added later", async () => {
+  it("writes no dollar estimate for the participant and verify rejects one added later", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-account-billing-"));
     directories.push(cwd);
     session.mockResolvedValue({

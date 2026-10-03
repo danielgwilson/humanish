@@ -59,7 +59,7 @@ describe("planLab", () => {
     );
   });
 
-  it("derives computer-use concurrency, session budget and sandbox time as the lane plan does", async () => {
+  it("derives computer-use concurrency, session budget and sandbox time as the participant plan does", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
       ...(await committedLabs(ROOT))
         .filter(([, config]) => routeOf(config) === "computer-use")
@@ -263,7 +263,7 @@ describe("planLab on the preview route", () => {
       ok: false,
       refusal: {
         route: "preview",
-        code: "HUMANISH_INVALID_SIM_COUNT",
+        code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
         message: "count must be a positive integer.",
       },
     });
@@ -283,7 +283,7 @@ describe("planLab on the preview route", () => {
 
   it("refuses a bad count before a live request, as runDryRun ordered them", () => {
     const result = planLab(thisRepo, { cwd: ROOT, dryRun: false, count: 0 });
-    expect(result.ok ? undefined : result.refusal.code).toBe("HUMANISH_INVALID_SIM_COUNT");
+    expect(result.ok ? undefined : result.refusal.code).toBe("HUMANISH_INVALID_PARTICIPANT_COUNT");
   });
 });
 

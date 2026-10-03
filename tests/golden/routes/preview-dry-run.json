@@ -42,7 +42,7 @@
       "scenario": {
         "id": "builtin-first-run-smoke",
         "title": "Built-in First-Run Smoke",
-        "goal": "Create a public-safe dry-run contract bundle from built-in defaults.",
+        "goal": "Write a public-safe dry-run bundle from built-in defaults.",
         "source": "builtin:first-run-smoke",
         "sourceDigest": "builtin"
       },
@@ -55,7 +55,7 @@
         {
           "at": "[ts]",
           "event": "run.created",
-          "message": "Synthetic dry-run contract bundle created with 1 simulated participant."
+          "message": "Synthetic dry-run bundle created with 1 simulated participant."
         },
         {
           "at": "[ts]",
@@ -191,7 +191,7 @@
     "scenario": {
       "id": "builtin-first-run-smoke",
       "title": "Built-in First-Run Smoke",
-      "goal": "Create a public-safe dry-run contract bundle from built-in defaults.",
+      "goal": "Write a public-safe dry-run bundle from built-in defaults.",
       "source": "builtin:first-run-smoke",
       "sourceDigest": "builtin"
     },
@@ -199,7 +199,7 @@
       {
         "at": "[ts]",
         "event": "run.created",
-        "message": "Synthetic dry-run contract bundle created with 1 simulated participant."
+        "message": "Synthetic dry-run bundle created with 1 simulated participant."
       },
       {
         "at": "[ts]",
@@ -227,7 +227,7 @@
         "streamKind": "ui",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Route and viewport contract captured",
+        "currentStep": "Route and viewport recorded",
         "summary": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
         "streamIds": [
           "sim-01-ui"
@@ -290,14 +290,14 @@
         "at": "[ts]",
         "level": "info",
         "type": "observer.contract.created",
-        "message": "Created public-safe observer stream contract."
+        "message": "Created the public-safe Observer streams."
       },
       {
         "id": "event-001-a",
         "at": "[ts]",
         "level": "info",
         "type": "sim.contract.ready",
-        "message": "UI journey stream contract ready.",
+        "message": "UI journey stream ready.",
         "simId": "sim-01",
         "streamId": "sim-01-ui"
       },

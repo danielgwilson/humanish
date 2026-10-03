@@ -96,7 +96,7 @@ function localAppValidationReason(config: LabConfig): string | null {
   return null;
 }
 
-// app-url routes: the actor type is a real dispatch key (registry-resolved). The actor lane
+// app-url routes: the actor type is a real dispatch key (registry-resolved). The actor's run kind
 // picks the substrate: a scripted-browser actor runs locally against the declared loopback
 // app; a computer-use actor drives a hosted desktop browser. Fail closed on mis-configs.
 function appUrlValidationReason(config: LabConfig): string | null {
@@ -207,7 +207,7 @@ function scriptedBrowserValidationReason(config: LabConfig): string | null {
   return null;
 }
 
-// clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
+// clone × e2b-desktop disambiguates on the actor's run kind: a computer-use actor means the study
 // clones and serves the subject in-sandbox, then drives it. Scripted-browser actors were checked
 // above.
 function cloneComputerUseValidationReason(config: LabConfig): string | null {

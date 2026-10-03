@@ -289,7 +289,7 @@ describe("humanish CLI scaffold", () => {
         expect(envelope.ok).toBe(true);
         expect(envelope.mode).toBe("dry-run");
         expect(
-          envelope.changes.some((change) => change.path === "humanish/labs/first-run.yaml"),
+          envelope.changes.some((change) => change.path === "humanish/studies/first-run.yaml"),
         ).toBe(true);
 
         await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
@@ -328,9 +328,9 @@ describe("humanish CLI scaffold", () => {
         await expect(
           stat(path.join(cwd, "humanish/personas/synthetic-new-user.yaml")),
         ).resolves.toBeTruthy();
-        await expect(stat(path.join(cwd, "humanish/labs/first-run.yaml"))).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, "humanish/studies/first-run.yaml"))).resolves.toBeTruthy();
         await expect(stat(path.join(cwd, ".humanish/runs"))).resolves.toBeTruthy();
-        await expect(stat(path.join(cwd, ".humanish/local/labs"))).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, ".humanish/local/studies"))).resolves.toBeTruthy();
 
         const gitignore = await readFile(path.join(cwd, ".gitignore"), "utf8");
         expect(gitignore).toContain(".humanish/");
@@ -738,8 +738,8 @@ describe("humanish CLI scaffold", () => {
         const result = await runCli(["feedback", "draft", "--run", "latest", "--cwd", cwd]);
 
         expect(result.exitCode).toBe(2);
-        expect(result.stdout).toContain("HUMANISH_RUN_NOT_FOUND");
-        expect(result.stderr).toBe("");
+        expect(result.stderr).toContain("HUMANISH_RUN_NOT_FOUND");
+        expect(result.stdout).toBe("");
       },
     );
   });
@@ -1543,7 +1543,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "ngrok",
       ]);
       expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("HUMANISH_WATCH_EXPOSE_REQUIRES_EDGE_AUTH");
+      expect(result.stderr).toContain("HUMANISH_WATCH_EXPOSE_REQUIRES_EDGE_AUTH");
       // Aborted before any run: no attach/serving banner.
       expect(result.stdout).not.toContain("watching:");
       expect(result.stderr).not.toContain("watching:");
@@ -1562,7 +1562,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "--safe",
       ]);
       expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
+      expect(result.stderr).toContain("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
     });
   });
 
@@ -1605,7 +1605,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
           ...extra,
         ]);
         expect(result.exitCode, extra.join(" ")).toBe(2);
-        expect(result.stdout, extra.join(" ")).toContain(
+        expect(result.stderr, extra.join(" ")).toContain(
           "HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW",
         );
       }
@@ -1625,7 +1625,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "google",
       ]);
       expect(noTunnel.exitCode).toBe(2);
-      expect(noTunnel.stdout).toContain("HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL");
+      expect(noTunnel.stderr).toContain("HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL");
 
       const noOauth = await runCli([
         "watch",
@@ -1638,7 +1638,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "you@example.com",
       ]);
       expect(noOauth.exitCode).toBe(2);
-      expect(noOauth.stdout).toContain("HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH");
+      expect(noOauth.stderr).toContain("HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH");
     });
   });
 
@@ -1657,7 +1657,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "google",
       ]);
       expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
+      expect(result.stderr).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
     });
   });
 
@@ -1678,7 +1678,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "google",
       ]);
       expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
+      expect(result.stderr).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
     });
   });
 });
@@ -1955,7 +1955,7 @@ describe("run writes the same bundle watch does", () => {
 });
 
 describe("CUA ending output", () => {
-  it("shows distinct lane causes without calling the first lane the whole session", () => {
+  it("shows distinct participant causes without calling the first participant the whole session", () => {
     const output = formatCuaLabHuman({
       schema: "humanish.study-result.v1",
       route: "computer-use",

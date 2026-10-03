@@ -1,5 +1,5 @@
 // planParticipants must produce the same participants the routes build today. Computer use is
-// compared field by field with the lane specs loadCuaParticipants builds from the plan. The
+// compared field by field with the participant specs loadCuaParticipants builds from the plan. The
 // shared-world participant builder is private, so participants are compared with what a
 // shared-world dry run records (participant ids, persona ids, assignment, rendered resolution);
 // limits, entry and host are checked directly.
@@ -120,7 +120,7 @@ const cuVariants: [string, LabConfig, number | undefined][] = [
   ["count override", parsed({ ...cuApp, actors: [{ type: "openai-computer-use", count: 2 }] }), 4],
 ];
 
-/** The declarative fields of a lane spec, in the participant's shape. */
+/** The declarative fields of a participant spec, in the participant's shape. */
 function fromSpec(spec: DesktopParticipantRun) {
   return {
     id: spec.planned.id,
@@ -166,7 +166,7 @@ function fromParticipant(participant: ComputerUseParticipant) {
 const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 describe("computerUseParticipants", () => {
-  it("matches the lane specs loadCuaParticipants builds, for committed labs and variants", async () => {
+  it("matches the participant specs loadCuaParticipants builds, for committed studies and variants", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
       ...(await committedLabsOn("computer-use")).map(
         ([id, config]) => [id, config, undefined] as [string, LabConfig, undefined],

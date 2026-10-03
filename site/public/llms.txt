@@ -85,6 +85,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish lab list`: List committed and ignored humanish lab manifests.
 - `humanish lab inspect`: Inspect a humanish lab manifest without running it.
 - `humanish lab preflight`: Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.
+- `humanish migrate`: Convert humanish.lab.v2 study files to humanish.study.v3. A file under a labs/ directory moves to the matching studies/ directory; any other file is rewritten in place. An original that a failure leaves out of place is kept as <name>.v2.bak. Pass the files to convert; without any, the six study directories are scanned. Every destination, moved key and dropped key is printed before anything is written. A file that changes during the run is kept and listed.
 - `humanish comms`: Local email capture, real receiving connections, checks and cleanup recovery.
 - `humanish comms providers`: List installed communication provider capabilities. No network requests.
 - `humanish comms connections`: Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.
@@ -102,7 +103,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish keys`: Manage the humanish user-level key store used by provider-key discovery.
 - `humanish keys set`: Store one provider key in the user store (0600), prompted with hidden input.
 - `humanish keys unset`: Remove one key from the user store.
-- `humanish keys list`: List the NAMES stored in the user store. Values are never printed.
+- `humanish keys list`: List the key names in the user store. Values are never printed.
 - `humanish telemetry`: Show or change anonymous usage collection.
 - `humanish telemetry status`: What is collected, and whether it is on.
 - `humanish telemetry enable`: Turn anonymous usage collection on.

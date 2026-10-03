@@ -129,7 +129,7 @@ describe("what one run's participants are doing", () => {
     expect(detail?.participants[0]?.thought?.text).toBe("finished thinking");
   });
 
-  it("reports every lane of a multi-participant run, separately", async () => {
+  it("reports every participant of a multi-participant run, separately", async () => {
     await writeBundle(cwd, "run-d", {
       runId: "run-d",
       streams: [
@@ -139,15 +139,15 @@ describe("what one run's participants are doing", () => {
     });
     const detail = await readRunDetail(cwd, "run-d");
     expect(detail?.participants.map((p) => p.label)).toEqual(["UI journey", "CLI actor"]);
-    // No trace at all is not an error: these lanes simply recorded no thinking.
+    // No trace at all is not an error: these participants simply recorded no thinking.
     expect(detail?.participants[0]?.thought).toBeUndefined();
     expect(detail?.participants[0]?.traits).toEqual([]);
   });
 
   it("counts the thoughts, so a live participant shows progress before counts exist", async () => {
-    // The mid-run flush carries trace items but no `counts` block, so a live lane has no turn
-    // number. Counting the recorded thoughts is a true statement about progress; inferring a turn
-    // number from the shape of the trace would not be.
+    // The mid-run flush carries trace items but no `counts` block, so a live participant has no
+    // turn number. Counting the recorded thoughts is a true statement about progress; inferring a
+    // turn number from the shape of the trace would not be.
     await writeBundle(cwd, "run-live", {
       runId: "run-live",
       streams: [

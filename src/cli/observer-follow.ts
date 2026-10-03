@@ -10,6 +10,8 @@ import {
   parseObserverPort,
   wantsJson,
   writeResult,
+  type HumanOutput,
+  humanError,
 } from "./io.js";
 
 /** How a command shows an Observer, decided before the run it shows starts. */
@@ -103,10 +105,8 @@ export function withObserverServer(
   };
 }
 
-export function formatObserverHuman(result: ObserverResult): string {
-  if (!result.ok) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+export function formatObserverHuman(result: ObserverResult): HumanOutput {
+  if (!result.ok) return humanError(result.error);
 
   return (
     [

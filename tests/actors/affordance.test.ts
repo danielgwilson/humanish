@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 //
 // The distinction these tests pin: direct URL navigation is a human affordance
 // (`load(url)` appears in 99.4% of 2,337 real human web demonstrations, per WebLINX), so it must
-// never be lumped with script execution. Getting that wrong would make a human-declared lane look
-// unfaithful for behaving normally.
+// never be lumped with script execution. Getting that wrong would make a human-declared participant
+// look unfaithful for behaving normally.
 import {
   AFFORDANCE_CLASS_SCHEMA,
   classifyCuaAction,
@@ -46,7 +46,7 @@ describe("affordance classification", () => {
 
   it("treats direct URL navigation as human, separate from script execution", () => {
     // The empirical point: people type URLs. Classifying this as a shortcut would make an
-    // ordinary human lane look unfaithful.
+    // ordinary human participant look unfaithful.
     expect(classOf({ kind: "type", text: "https://example.test/pricing" })).toBe("url-navigation");
     expect(classOf({ kind: "type", text: "http://127.0.0.1:3000/" })).toBe("url-navigation");
     expect(classOf({ kind: "type", text: "example.test/docs" })).toBe("url-navigation");

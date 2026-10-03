@@ -10,12 +10,15 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createProgram } from "../../src/cli/program.js";
 import { verifyRun, type VerifyResult } from "../../src/verify/verify.js";
 
-async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string }> {
+async function runCli(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
   const stdout: string[] = [];
+  const stderr: string[] = [];
   const program = createProgram({
     writeOut: (text) => stdout.push(text),
-    writeErr: () => {},
+    writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
     },
@@ -31,7 +34,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
     if (!(error instanceof CommanderError)) throw error;
     exitCode = error.exitCode;
   }
-  return { exitCode, stdout: stdout.join("") };
+  return { exitCode, stdout: stdout.join(""), stderr: stderr.join("") };
 }
 
 describe("humanish verify output", () => {
@@ -134,8 +137,10 @@ describe("humanish verify output", () => {
   it("prints only the missing run, with no share-safety line", async () => {
     const result = await runCli(["verify", "--run", "nope", "--cwd", cwd]);
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toMatch(/^verify failed: .*nope.*\n$/);
-    expect(result.stdout).not.toContain("share-safety");
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe(
+      "humanish verify failed: No run nope; humanish runs lists them.\ncode: HUMANISH_RUN_NOT_FOUND\n",
+    );
   });
 
   it("gives every check that flips a different sentence on each side", async () => {

@@ -334,7 +334,7 @@ async function reportCuaRun(
       observer: withObserverServer(attachedResult, server),
       warnings: [
         ...result.warnings,
-        "Live CUA server is polling observer-data.json with no-store caching.",
+        "The live computer-use server polls observer-data.json with no-store caching.",
         ...(exposeRequested
           ? [
               `Exposed live desktop stream URLs to an edge-authenticated remote viewer${live.tunnel ? ` via ${live.tunnel.url.replace(/\/$/, "")}` : ""}.`,

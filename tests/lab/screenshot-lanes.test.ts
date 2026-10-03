@@ -1,6 +1,6 @@
-// The computer-use and scripted-browser lanes record the participant's screenshots as evidence.
-// An actor that declares `producesScreenshots: false` must not resolve to either lane: it would
-// report a GUI flow it only reached through a shell.
+// The computer-use and scripted-browser run kinds record the participant's screenshots as
+// evidence. An actor that declares `producesScreenshots: false` must not resolve to either
+// run kind: it would report a GUI flow it only reached through a shell.
 import { afterEach, describe, expect, it } from "vitest";
 
 import { actorRegistry, type ActorDescriptor } from "../../src/actors/registry.js";
@@ -26,8 +26,8 @@ afterEach(() => {
   delete registry[TEST_ID];
 });
 
-describe("screenshot lanes take only actors that produce screenshots", () => {
-  it("every registered actor on a screenshot lane declares producesScreenshots", () => {
+describe("screenshot run kinds take only actors that produce screenshots", () => {
+  it("every registered actor of a screenshot run kind declares producesScreenshots", () => {
     const onScreenshotLanes = Object.values(actorRegistry).filter(
       (descriptor) =>
         descriptor.capabilities.lanes.includes("computer-use") ||

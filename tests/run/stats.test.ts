@@ -96,7 +96,7 @@ describe("humanish stats", () => {
   it("gives every lab a pass rate with its denominator, and medians over the runs that have the number", async () => {
     const result = await computeStats(cwd, { nowMs: NOW });
     if (!result.ok) throw new Error(result.error.message);
-    const tryLive = result.labs.find((row) => row.lab === "try-live");
+    const tryLive = result.studies.find((row) => row.study === "try-live");
     expect(tryLive).toMatchObject({
       runs: 4,
       live: 4,
@@ -109,7 +109,7 @@ describe("humanish stats", () => {
       medianCostUsd: 0.1625,
       unpricedRuns: 2,
     });
-    const firstRun = result.labs.find((row) => row.lab === "first-run");
+    const firstRun = result.studies.find((row) => row.study === "first-run");
     // A dry run priced at $0 is priced; a dry run's duration is not a live duration.
     expect(firstRun).toMatchObject({
       runs: 1,
@@ -128,7 +128,7 @@ describe("humanish stats", () => {
     const byLab = await computeStats(cwd, { lab: "first-run", nowMs: NOW });
     if (!byLab.ok) throw new Error(byLab.error.message);
     expect(byLab.totals.runs).toBe(1);
-    expect(byLab.labs.map((row) => row.lab)).toEqual(["first-run"]);
+    expect(byLab.studies.map((row) => row.study)).toEqual(["first-run"]);
 
     const since = await computeStats(cwd, { since: "2026-09-01T19:00:00Z", nowMs: NOW });
     if (!since.ok) throw new Error(since.error.message);
@@ -158,6 +158,7 @@ describe("humanish stats", () => {
 
   it("reads as a short report, with the unpriced count next to the sum", async () => {
     const result = await computeStats(cwd, { nowMs: NOW });
+    if (!result.ok) throw new Error(result.error.message);
     const text = formatStatsHuman(result);
     expect(text).toContain("live runs: 4 (1 still running)\ndry runs: 1\n");
     expect(text).toContain("known estimated spend: $0.33");
@@ -168,7 +169,7 @@ describe("humanish stats", () => {
       "- try-live: 4 runs, 4 live; 2 of 3 passed; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced runs, 0 unpriced analyses",
     );
     expect(text).not.toContain("(s)");
-    expect(text.trimEnd().split("\n").at(-1)).toBe(result.ok ? result.note : "");
+    expect(text.trimEnd().split("\n").at(-1)).toBe(result.note);
   });
 
   it("an empty project is an empty report, not an error", async () => {
@@ -177,7 +178,7 @@ describe("humanish stats", () => {
       const result = await computeStats(empty, { nowMs: NOW });
       if (!result.ok) throw new Error(result.error.message);
       expect(result.totals.runs).toBe(0);
-      expect(result.labs).toEqual([]);
+      expect(result.studies).toEqual([]);
       expect(formatStatsHuman(result)).toBe(
         "humanish stats\nno runs yet; start one with humanish run first-run\n",
       );

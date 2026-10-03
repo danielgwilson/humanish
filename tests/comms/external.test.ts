@@ -146,7 +146,8 @@ describe("comms.email.external config", () => {
     // The previously-inert warning must be gone: this is the whole point of the feature.
     expect(result.warnings.join("\n")).not.toContain("comms.email (the in-sandbox email/SMS catch");
     expect(result.config.comms?.email?.external?.catchBaseUrl).toBe("https://catch.example.test");
-    // Recipients still auto-fill per lane, so the persona is told an address without extra config.
+    // Recipients still auto-fill per participant, so the persona is told an address without extra
+    // config.
     expect(result.config.comms?.email?.recipients).toEqual([
       { lane: "lane-01", address: "lane-01@example.test" },
     ]);

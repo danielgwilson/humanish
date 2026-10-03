@@ -65,7 +65,7 @@ describe("lab manifest resolution", () => {
     expect(ignored.ok && ignored.origin).toBe("ignored");
     expect(ignored.ok && ignored.config.subject.repos).toEqual(["example/app"]);
     expect(explicit.ok && explicit.origin).toBe("explicit");
-    expect(list.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual([
+    expect(list.studies.map((lab) => `${lab.origin}:${lab.id}`)).toEqual([
       "committed:first-run",
       "ignored:private",
     ]);
@@ -139,7 +139,7 @@ describe("lab manifest resolution", () => {
       expect(!resolved.ok && resolved.error.message).toMatch(
         /managed lab|single-link|containment/i,
       );
-      expect(listed.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:fallback"]);
+      expect(listed.studies.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:fallback"]);
       expect(listed.warnings.join("\n")).toContain("humanish/labs/priority.yaml");
       expect(await readFile(outside, "utf8")).toBe(labYaml("outside"));
     },
@@ -174,7 +174,9 @@ describe("lab manifest resolution", () => {
 
       expect(resolved.ok).toBe(false);
       expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_STUDY_INVALID");
-      expect(listed.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:safe-local"]);
+      expect(listed.studies.map((lab) => `${lab.origin}:${lab.id}`)).toEqual([
+        "ignored:safe-local",
+      ]);
       expect(listed.warnings.join("\n")).toMatch(/humanish[/\\]labs.*unsafe|symbolic links/i);
     },
   );
@@ -241,7 +243,7 @@ describe("lab manifest resolution", () => {
 
     expect(resolved.ok).toBe(true);
     expect(resolved.ok && resolved.path).toBe("humanish/labs/aliased.yaml");
-    expect(listed.labs.map((lab) => lab.path)).toEqual(["humanish/labs/aliased.yaml"]);
+    expect(listed.studies.map((lab) => lab.path)).toEqual(["humanish/labs/aliased.yaml"]);
   });
 });
 

@@ -49,10 +49,10 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
       unreadable: [],
     }),
     listLabs: async () => ({
-      schema: "humanish.lab-list.v1",
+      schema: "humanish.study-list.v1",
       ok: true,
       cwd: "/projects/acme-app",
-      labs: LABS,
+      studies: LABS,
       warnings: [],
     }),
     startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
@@ -158,7 +158,7 @@ describe("the labs screen, rendered", () => {
     expect(new Set(rowLines).size).toBe(rowLines.length);
   });
 
-  it("a live lab names the participant, not the lane the harness ran them in", async () => {
+  it("a live study names the participant, not the `lane-NN` id the harness ran them in", async () => {
     // "CUA browser: observer-live-check" is the harness describing itself. The row is about who is
     // in there, so the persona wins whenever the live flush carries one.
     const frame = await frameAt(
@@ -199,10 +199,10 @@ describe("the labs screen, rendered", () => {
         unreadable: [],
       }),
       listLabs: async () => ({
-        schema: "humanish.lab-list.v1",
+        schema: "humanish.study-list.v1",
         ok: true,
         cwd: "/projects/acme-app",
-        labs: [],
+        studies: [],
         warnings: [],
       }),
     });
@@ -225,10 +225,10 @@ describe("the labs screen, rendered", () => {
         throw new Error("EACCES: permission denied");
       },
       listLabs: async () => ({
-        schema: "humanish.lab-list.v1",
+        schema: "humanish.study-list.v1",
         ok: true,
         cwd: "/projects/acme-app",
-        labs: [],
+        studies: [],
         warnings: [],
       }),
     });
@@ -269,10 +269,10 @@ describe("the harness renders the way a terminal does, not the way a build log d
 describe("the two empty states are different problems", () => {
   const empty = { schema: "humanish.run-index.v1" as const, cwd: "/x", runs: [], unreadable: [] };
   const noLabs = {
-    schema: "humanish.lab-list.v1" as const,
+    schema: "humanish.study-list.v1" as const,
     ok: true as const,
     cwd: "/x",
-    labs: [],
+    studies: [],
     warnings: [],
   };
 

@@ -470,7 +470,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     });
     expect(publicTruth).toContain("did not execute an agent or prove live behavior");
     expect(publicTruth).toContain(
-      "proves contract shape only, not live behavior, scale, or adoption",
+      "checks the evidence shape only, not live behavior, scale, or adoption",
     );
     expect(publicTruth).not.toContain("receipt");
     expect(publicTruth).not.toContain("SLICE 2");

@@ -53,7 +53,7 @@ export function registeredScriptedBrowserActors(): string[] {
   return registeredActorsOn("scripted-browser");
 }
 
-/** True when `type` resolves to a registered terminal actor (the "terminal" lane). Exported so
+/** True when `type` resolves to a registered terminal actor (the "terminal" run kind). Exported so
  *  the engine + tests can resolve the dispatch the same way the parser does. */
 export function actorResolvesToTerminal(type: string | undefined): boolean {
   return actorResolvesTo(type, "terminal");

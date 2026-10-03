@@ -44,7 +44,7 @@ describe("participant assignment evidence", () => {
   });
 
   it.each([1, 2])(
-    "persists exact declarative assignments and only task goals for %i CUA lanes",
+    "persists exact declarative assignments and only task goals for %i computer-use participants",
     async (count) => {
       const secret = "synthetic-task-known-secret";
       const parsed = parseLabConfig({
@@ -122,7 +122,7 @@ describe("participant assignment evidence", () => {
     },
   );
 
-  it("redacts a second lane's known values and retains the runner's default mission", async () => {
+  it("redacts a second participant's known values and retains the runner's default mission", async () => {
     const secret = "synthetic-opaque-assignment-secret";
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,

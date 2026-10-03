@@ -242,7 +242,7 @@ function renderEmailImages(html: string, message: CommsMessage, originMap: Origi
         }
       }
       if (!src)
-        return `<span class="email-image-unavailable" role="img" aria-label="${esc(alt || "Email image")}">${esc(alt ? `${alt} — ${unavailable}` : unavailable)}</span>`;
+        return `<span class="email-image-unavailable" role="img" aria-label="${esc(alt || "Email image")}">${esc(alt ? `${alt}: ${unavailable}` : unavailable)}</span>`;
       const sizing = ["width", "height"]
         .map((name) => {
           const value = attributes.get(name);
@@ -340,8 +340,8 @@ export function renderInboxList(
     .join("");
   const body =
     (options.recipient
-      ? '<div class="bar">Inbox for ' + esc(options.recipient) + " — "
-      : '<div class="bar">Shared operator inbox — all captured recipients — ') +
+      ? '<div class="bar">Inbox for ' + esc(options.recipient) + ": "
+      : '<div class="bar">Shared operator inbox (all captured recipients): ') +
     messages.length +
     " message" +
     (messages.length === 1 ? "" : "s") +
