@@ -11,7 +11,7 @@ Separately, an account-wide provider operation once destroyed unrelated infrastr
 
 ## Decision
 
-- Managed run, Observer, feedback, lab, actor-output, git-metadata and source-archive paths bind
+- Managed run, Observer, feedback, study, actor-output, git-metadata and source-archive paths bind
   to validated physical filesystem identities. Traversal-shaped ids, unsafe links, special files
   and root retargeting are rejected before any write.
 - Provider ids in `run.json` are evidence. Nothing mutates a provider resource because of them.

@@ -11,7 +11,7 @@ reference under `docs/` by what it is for. To make a first change, start with
 
 ## Look up what the code does now
 
-- [contracts/](contracts/README.md): bundle, lab, policy, feedback, analysis and cost contracts.
+- [contracts/](contracts/README.md): bundle, study, policy, feedback, analysis and cost contracts.
   Documented fields are API. [contracts/schemas.md](contracts/schemas.md) indexes every schema.
 - [architecture/observer.md](architecture/observer.md), [architecture/serve.md](architecture/serve.md):
   the Observer and the run library server.

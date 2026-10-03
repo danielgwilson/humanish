@@ -19,7 +19,7 @@ real public app possible without any persona-to-persona messaging.
 | Extra proof         | none                                                                 | `lobbyConvergenceDigest` (all participants on one `/lobby/CODE`)                                  |
 
 The run's own verdict applies the same concurrency-on-pass rule per plane (`judgeSharedWorld` in
-`src/run/judge.ts`), so a run whose participants all passed but missed it reads fail and the lab exits
+`src/run/judge.ts`), so a run whose participants all passed but missed it reads fail and the study exits
 non-zero.
 
 In short: getHost = harness-minted host + synthetic-seeded attestation + authoritative

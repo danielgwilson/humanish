@@ -14,7 +14,7 @@ that cannot carry both halves refuses the declaration before execution. Removing
 | Shared-world, provisioned or external-public          | Rejected     | Actor specs omit the protocol before CUA session dispatch                                     |
 | Terminal-product                                      | Rejected     | Terminal prompt and result contract do not implement tasks                                    |
 | Scripted-browser, local or provisioned                | Rejected     | Scenario steps drive the participant; no task protocol is consumed                            |
-| Synthetic (`this-repo`)                               | Rejected     | Lab dispatch does not pass task declarations to the dry-run engine                            |
+| Synthetic (`this-repo`)                               | Rejected     | Study dispatch does not pass task declarations to the dry-run engine                          |
 | Any second or later `actors[]` entry                  | Rejected     | Current runners consume only the first actor; declare every participant under the first actor |
 
 Both registered CUA actors (`openai-computer-use` and `local-agent`) share the CUA

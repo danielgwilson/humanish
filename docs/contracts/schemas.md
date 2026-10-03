@@ -28,7 +28,7 @@ workflow without leaking private upstream truth into core.
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
 | Run bundle                        | `humanish.run-bundle.v1`                                                                                                                                                       | `synthetic-run-bundle`                                                              |
 | Adapter                           | `humanish.adapter.v1`                                                                                                                                                          | `synthetic-cli-adapter`                                                             |
-| Lab                               | `humanish.lab.v2`                                                                                                                                                              | `first-run`                                                                         |
+| Study file                        | `humanish.study.v3`                                                                                                                                                            | `first-run`                                                                         |
 | Persona                           | `humanish.persona.v1`                                                                                                                                                          | `synthetic-maintainer`                                                              |
 | Scenario                          | `humanish.scenario.v1`                                                                                                                                                         | `first-run-smoke`                                                                   |
 | Actor trace                       | `humanish.actor-trace.v1`                                                                                                                                                      | `synthetic-actor-trace`                                                             |
@@ -52,7 +52,7 @@ workflow without leaking private upstream truth into core.
 | Adapter score                     | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics)                                                                        | see Product-Adapter Extension Seam below                                            |
 | Adapter artifact                  | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references)                                                                   | see Product-Adapter Extension Seam below                                            |
 | Shared-world evidence             | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`)                                         | see Shared-World Evidence below                                                     |
-| Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of digests only: from/to/subject/link digests + one OTP count, never raw) | see `comms` under Lab Manifest                                                      |
+| Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of digests only: from/to/subject/link digests + one OTP count, never raw) | see `comms` under Study File                                                        |
 | Serve result                      | `humanish.serve-result.v1` (`src/observer/serve.ts` is authoritative)                                                                                                          | none (command result envelope; see Serve Result below)                              |
 | Serve control plane               | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1)                                                                                      | none                                                                                |
 
@@ -130,8 +130,8 @@ The rest of this section names keys by their v3 spelling:
   `maxArchiveBytes` (upload size cap override; default 256 MiB). Routing requires `execution.target: e2b-desktop` and a
   computer-use actor; `subject.serve`/`env`/`state` apply exactly as they do
   on the clone route (identical install/build/start/state semantics). The
-  packed root is the lab resolution cwd; there is no path field, by design
-  (an absolute path in a lab manifest would be a machine-specific,
+  packed root is the study resolution cwd; there is no path field, by design
+  (an absolute path in a study file would be a machine-specific,
   unshareable, leak-prone artifact). Enumeration is git-aware when the root
   is a git work tree (`git ls-files --cached --others --exclude-standard`,
   honoring `.gitignore`) or a denylist-only recursive walk otherwise; an
@@ -141,7 +141,7 @@ The rest of this section names keys by their v3 spelling:
   `src/subject/local-tree-archive.ts`)
   applies in both modes and is not overridable. The denylist matches names,
   not contents; a secret in a file it does not name packs like any other
-  file, so review the pack summary line and use `localTree.exclude`. The lab packs
+  file, so review the pack summary line and use `localTree.exclude`. The study packs
   once per run and uploads the identical archive to every fan-out participant. The
   in-sandbox commit refresh clone subjects use is skipped: `.git` is never
   uploaded, so identity comes from the host-side archive digest instead. See
@@ -149,7 +149,7 @@ The rest of this section names keys by their v3 spelling:
 - `subject.product` (terminal-product subjects): the product the agent studies.
   `product.name` is a public-safe token (committed fixtures use a neutral mock
   name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
-  skill manifest) that are the only world the agent sees. The lab does not
+  skill manifest) that are the only world the agent sees. The study does not
   clone/provision the product, so its provenance is recorded
   unpinned. `serve`/`clone`/`state`/`repos`/`appUrl` are rejected on a
   terminal-product subject (a field that cannot act on the route is a parse
@@ -160,7 +160,7 @@ The rest of this section names keys by their v3 spelling:
   seed/migration/fixture steps (`{ name, command, when: before-build |
 before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   serve sequence; `state.external[]` declares env var names (each must also
-  appear in `subject.env`) pointing at state the lab does not control,
+  appear in `subject.env`) pointing at state the study does not control,
   recorded as unpinned in provenance. Commands persist in evidence as
   sha256-16 digests only, never as text;
 - `actor`: who drives it. On the computer-use, shared-world, scripted and
@@ -168,7 +168,7 @@ before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   actor registry. On the preview route it remains a descriptive label (e.g.
   `synthetic-persona`). The
   `codex-exec` descriptor's direct `runSession` member is a fail-closed
-  compatibility entry, not the live runner; the terminal-product lab route
+  compatibility entry, not the live runner; the terminal route
   owns the live sandbox, auth, cap, evidence, and cleanup lifecycle.
   A `participants` count is the preview route's participant count (simCount),
   and on the computer-use **E2B** route the homogeneous fan-out count (N
@@ -192,7 +192,7 @@ instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` bec
   `participants`). No current route reads `clone.fanout`;
 - `participants[].target` (app-url × computer-use E2B route only): an
   absolute browser URL that participant opens instead of `subject.appUrl`. This is the
-  setup-produced-target handoff for crawler/swarm labs: an adapter may start any
+  setup-produced-target handoff for crawler/swarm studies: an adapter may start any
   topology it needs, then declare exactly which target each actor should drive.
   If any participant declares `target`, every entry in the list must declare one.
   Public/non-loopback targets still require `policies.allowPublicTargets: true`.
@@ -207,10 +207,10 @@ instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` bec
   cap on participants in flight at once. When omitted, every participant runs
   simultaneously: independent participants resolve it from the final participant count,
   after any `--count` override, and the parser fills `concurrency = participantCount`
-  for multi-participant shared-world labs. Total sessions and spend are identical either way; only wall-clock
+  for multi-participant shared-world studies. Total sessions and spend are identical either way; only wall-clock
   and simultaneity differ. Declaring a value below the participant count runs participants in
   waves and emits a warning saying so, because a green waved run is otherwise
-  indistinguishable from the all-live run the author meant. Shared-world labs
+  indistinguishable from the all-live run the author meant. Shared-world studies
   need at least 2 (the host and a follower are live together); `concurrency: 1`
   there is refused at parse, since the sequential turn-taking route was removed
   in 0.106.0. The env override
@@ -320,7 +320,7 @@ instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` bec
 - `comms` (hosted on the clone/local-tree computer-use route and the
   shared-world getHost plane, or connected to an external catch on
   app-url/operator-provided subjects): off-app
-  email the app itself sends, made a persona-driven testable surface. Lab
+  email the app itself sends, made a persona-driven testable surface. Study
   configuration rejects `comms.sms` and unknown channel names; message-bus SMS
   types do not imply a supported SMS execution route. SMTP capture is supported
   on provisioned routes with separate worlds and rejected for shared-world studies.
@@ -392,7 +392,7 @@ Adding an existing name with different settings refuses to overwrite it.
 profiles and local key presence/source, not provider authentication or delivery.
 `comms providers --json` returns `humanish.comms-providers.v1` with explicit
 setup/receiving availability. The key store accepts `humanish keys set agentmail`.
-Saving a connection neither modifies a lab nor creates a provider resource;
+Saving a connection neither modifies a study nor creates a provider resource;
 a supported study explicitly selects `comms.email: { connection: agentmail }`.
 Optional `allowedOrigins` lists exact additional HTTP(S) origins; `linkOrigin`
 participates in the existing provisioned-subject origin rewrite. Connection
@@ -432,7 +432,7 @@ where a dry-run participant is ok as synthetic and a live participant must pass
 error, engaged, and no self-reported blocker.
 
 Explicit failed-participant reruns are supported on the CUA fan-out route via
-`humanish run <lab> --rerun-failed-from <run-id> [--participants <ids>]`, where a
+`humanish run <study> --rerun-failed-from <run-id> [--participants <ids>]`, where a
 participant id is a declared `participants` entry id, or `lane-01`, `lane-02`, … by position.
 The source run must be a live CUA fan-out bundle. humanish creates a new run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
@@ -495,11 +495,12 @@ Core-owned fields:
 - `artifacts`
 - `review`
 - `feedbackCandidates`
-- `lab` (optional, additive): which manifest produced the run,
-  `{ id, path?, origin? }`, where `origin` is `committed` (humanish/labs),
+- `lab` (optional, additive): which study file produced the run,
+  `{ id, path?, origin? }`, where `origin` is `committed` (`humanish/studies/`, or
+  `humanish/labs/` for a v2 file),
   `ignored` (a local overlay), or `explicit` (a path the operator passed).
   Absent on bundles written before this contract and on library callers who
-  hand a `LabConfig` directly. Such a run has no lab, and nothing guesses
+  hand a `LabConfig` directly. Such a run has no study, and nothing guesses
   one. Readers wanting attribution for an older bundle may fall back to
   `inferLegacyLabId`, which reads only the historical
   `persona.source = "lab:<id>"` convention and nothing else.
@@ -669,7 +670,7 @@ cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
     drove (a first-class provisioned-subject target). A digest, not the raw
     URL: a getHost URL embeds the live sandbox id and matches the publish-safety e2b-URL
     redaction, so it never lands raw in a published bundle (the raw tokenless URL is
-    surfaced only on the ephemeral lab result). The orchestrator confirms the URL is
+    surfaced only on the ephemeral study result). The orchestrator confirms the URL is
     tokenless (no authKey) before digesting.
   - `plane.exposure: synthetic`: the required author attestation that the subject behind
     the internet-reachable getHost URL is synthetic seeded data (author-trust + a
@@ -891,7 +892,7 @@ Actors execute or simulate the trial. Actor evidence is the provider-neutral
 computer-use cycles, scripted browser steps, and in-sandbox terminal-agent exec
 output all map onto one `ActorTrace`. Registered actors live in
 `src/actors/registry.ts` (`codex-app-server`, `openai-computer-use`,
-`local-agent`, `scripted-browser`, `codex-exec`). A lab that names
+`local-agent`, `scripted-browser`, `codex-exec`). A study that names
 `pi-agent-core` or `claude-agent-sdk` fails to parse. There is no
 `humanish.actor.v1`; that name never shipped.
 
@@ -934,11 +935,11 @@ Core-owned fields:
 - optional `modelSettings` (`humanish.model-settings.v1`): how the model was
   asked to run, alongside `ids.model` which says which model it was.
   `reasoningEffort` records the value the request actually carried,
-  including the provider default when a lab declared nothing. The resolved
+  including the provider default when a study declared nothing. The resolved
   value is what produced the trace, and recording "unset" would misdescribe
   the run. Absent when a provider declares no settings and on every
   pre-existing bundle; tolerated by verify. It exists because effort was
-  unreachable from a lab, which made every run take the default silently. Effort
+  unreachable from a study, which made every run take the default silently. Effort
   is part of who the participant was rather than of how the instrument was tuned
   (docs/principles/actor-fidelity.md), so a trace without it is a result missing
   half its sample description
@@ -1009,7 +1010,7 @@ items: []
 
 Reserved: `humanish.substrate.v1` is named here for layering intent but has
 never shipped; no code emits or validates it. Substrate truth today lives
-inside run bundles (per-stream transport and status) and lab execution config
+inside run bundles (per-stream transport and status) and study execution config
 (`execution.target: local | e2b-desktop | e2b-terminal`). Do not emit this schema.
 
 ## Serve Result And Reserved Control-Plane Namespace
@@ -1153,7 +1154,7 @@ interrupted once stale. A library caller of `runLab` gets no signal handling. A
 humanish older than this field rejects the state and falls back to the bundle's
 own liveness.
 
-It answers two questions the filesystem could not answer before: **which lab**
+It answers two questions the filesystem could not answer before: **which study**
 a run belongs to, and **whether it is still alive**, including for runs an
 agent launched (`run --json`) or that were detached, which previously wrote
 nothing at all until they completed.
@@ -1205,7 +1206,7 @@ only because it is asked for the one run being watched.
 `HUMANISH_TUI_BUNDLE_MISSING`. `HUMANISH_TUI_AGENT_SESSION` is the one a TTY
 check could not catch: `codex exec` allocates a PTY for the commands it runs, so
 both streams are terminals and the surface used to open. A study watched an
-agent move through the labs list and start a run it did not mean to start
+agent move through the studies list and start a run it did not mean to start
 (humanish/studies/handed-a-human-surface.yaml). The refusal names the environment variable
 that identified the runner, so the reader can check the claim, and `--force` is
 the escape for a person who really is at that keyboard. Every other
@@ -1255,7 +1256,7 @@ Three new `.v1` schema tags ship, all additive and optional so
   Live terminal-product runs emit the same summary: one `desktop-minutes` line for
   the E2B shell sandbox (its acquired-to-cleanup span and `e2b.getInfo` size) and
   one `model-tokens` line for the Codex participant, priced from the model the route passed
-  to Codex (`gpt-5.6-sol` unless the lab declares one) with `basis:
+  to Codex (`gpt-5.6-sol` unless the study declares one) with `basis:
 aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bundles record
   `no_rate_for_model` (model `codex`). The terminal trace records the same `estimatedCost`. The sandbox line is not part of the
   terminal cost ledger, whose lines are checked against `caps.maxUsd`.
@@ -1359,10 +1360,10 @@ threshold is not proof of task completion.
 An absent threshold is uncapped. A zero threshold can still permit a paid model
 request before reported usage trips it; `maxUsd: 0` is not a no-provider-call
 mode. Use the keyless `humanish run first-run` preview or an explicit
-`humanish run <lab> --dry-run` for a path without provider calls. A declared
+`humanish run <study> --dry-run` for a path without provider calls. A declared
 threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
 (`HUMANISH_COMPUTER_USE_UNPRICED_CAP`, or `HUMANISH_SHARED_WORLD_UNPRICED_CAP` on a
-shared-world lab) before sandbox allocation. This rate-availability
+shared-world study) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
 
 Library callers can make a capped session stricter by composing it from the loop and the default
@@ -1448,7 +1449,7 @@ bundle, and its absence is tolerated by verify.
 
 ## Library options (`RunLabOptions`)
 
-`runLab(config, options)` checks its options against the lab's route before anything runs. A
+`runLab(config, options)` checks its options against the study's route before anything runs. A
 refusal comes back in the route's own result envelope, with no run directory, receipt or sandbox.
 
 | Option                                   | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Routes                                                                                                                                                                  |
@@ -1480,7 +1481,7 @@ throw or a rejected promise becomes a redacted run warning.
 Refusals:
 
 - `HUMANISH_STUDY_OPTION_UNSUPPORTED`: the route cannot honor the option, for example `scorer` on
-  a preview or scripted lab, `createProvider` off computer use, or `prepareDesktop` where no E2B
+  a preview or scripted study, `createProvider` off computer use, or `prepareDesktop` where no E2B
   desktop exists. The message names the option and the route. The same code refuses a field
   `RunLabOptions` no longer has (below); that message names the field and where its job went.
 
@@ -1516,7 +1517,7 @@ of it fails.
 
 | Removed export                                                                                                                                 | Use                                                                                                                                                                                                                                                                                                                                    |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `runDryRun`, `RunOptions`, `RunResult`                                                                                                         | `runLab(config, options)` on a `this-repo` lab; its result is `LabResult<"preview">`                                                                                                                                                                                                                                                   |
+| `runDryRun`, `RunOptions`, `RunResult`                                                                                                         | `runLab(config, options)` on a `this-repo` study; its result is `LabResult<"preview">`                                                                                                                                                                                                                                                 |
 | `runCuaActorSession`                                                                                                                           | `runComputerUseLoop` with `createOpenAiResponsesProvider({ singleDispatch: true })`, `redaction: defaultRedactionHooks` and `now: Date.now`, which `runCuaActorSession` defaulted (the composition above). A caller that passed `desktop` and `executorOptions` writes its own `CuaExecutor`: the E2B desktop executor is not exported |
 | `CuaActorLabResult`, `ScriptedBrowserLabResult`, `TerminalProductLabResult`, `ConcurrentSharedWorldLabResult`                                  | `LabResult<"computer-use">`, `LabResult<"scripted">`, `LabResult<"terminal">`, `LabResult<"shared-world">`                                                                                                                                                                                                                             |
 | `SubjectPhaseEvent`                                                                                                                            | the `subject-phase` `LabEvent` through `onEvent`. Its `type` is `"subject-phase"`; the phase that was `type` is `name`, and `target` is `{ kind: "subject" }` or `{ kind: "participant", participant }`. `message`, `at`, `ok` and `durationMs` are unchanged                                                                          |
@@ -1596,7 +1597,7 @@ Acceptance semantics are route-specific:
 
 - Terminal-product runs keep the mission-based `review` verdict unchanged for a
   library `scorer`; the adapter score is additive. A config-declared scorer
-  (`--scorer` or the lab's `review.scorer.ref`) that returns `status: fail`,
+  (`--scorer` or the study's `review.scorer.ref`) that returns `status: fail`,
   throws, or returns a malformed score turns a pass-like verdict into `fail` and
   fails the run result.
 - Browser/computer-use runs treat `adapterScore.status: fail` as product-red:

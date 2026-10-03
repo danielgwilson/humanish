@@ -148,7 +148,7 @@ surfaces `appState`, the trace's `redaction.notes` declares that app state was
 observed each turn to drive progress detection and was not written to the trace.
 
 A future change that puts `appState` in evidence must route a stringified projection through
-`redaction.redactText` (and the lab's `scrubText`) and cap / whitelist fields
+`redaction.redactText` (and the study's `scrubText`) and cap / whitelist fields
 before persisting. Pattern + literal redaction alone cannot sanitize an
 arbitrary blob.
 
@@ -209,9 +209,9 @@ Fail-closed guards, all before any key check, so a CLI invocation never sees a m
 - `HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
   without `inProcess` (there is no built-in in-process driver yet). A structured error,
   never a desktop attempt.
-- `HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING`: an `app-url` lab with `execution.target: local`
+- `HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING`: an `app-url` study with `execution.target: local`
   and no local desktop. `runLab` gives a local browser study its desktop; a direct route
-  call or an in-process executor on the same lab has none.
+  call or an in-process executor on the same study has none.
 - `HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER`: the route's internal executor hook without its
   provider hook. A package caller gets `HUMANISH_STUDY_OPTION_UNSUPPORTED` above instead.
 

@@ -76,7 +76,7 @@ remain null. Interrupted token observations remain explicitly incomplete.
 
 The dry-run validates only local evidence and configuration. It does not check
 the CLI, login, model access or quota and does not start a provider request.
-`doctor --study <lab>` checks the selected analyst setup without a model call.
+`doctor --study <study>` checks the selected analyst setup without a model call.
 Failures leave the recording available; inspect `analyze show` and the attempt's
 accounting before an explicit `analyze --provider codex --rerun`.
 

@@ -20,9 +20,9 @@ runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
 createdAt: "<ISO timestamp>"
-lab: # optional, additive: which manifest produced this run
-  id: "<lab id>"
-  path: "humanish/studies/<lab id>.yaml"
+lab: # optional, additive: which study file produced this run
+  id: "<study id>"
+  path: "humanish/studies/<study id>.yaml"
   origin: "committed|ignored|explicit"
 cwd: "[target-cwd]"
 artifactRoot: ".humanish/runs/<run-id>"
@@ -197,7 +197,7 @@ different facts separate:
 
 - `screen.requested`: the E2B/X screen size requested by config;
 - `screen.verified`: the screen size measured in-sandbox with `xdpyinfo`;
-- `screen.declared`: the device preset the lab asked for, present only when it differs from
+- `screen.declared`: the device preset the study asked for, present only when it differs from
   `screen.requested` because the rendered width was floored to Chrome's ~500px window minimum.
   `verified` compares the floored number with itself and reports a match, so a matching
   `verified` block is not evidence that the preset width rendered. When `declared` is present,

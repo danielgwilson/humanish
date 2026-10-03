@@ -43,7 +43,7 @@ Choose how the participant runs:
 
 A Codex ChatGPT login can power a `local-agent` participant. It does not
 authenticate humanish's OpenAI API requests. Choose the actor explicitly in
-your lab; installing Codex does not change an `openai-computer-use` lab.
+your study; installing Codex does not change an `openai-computer-use` study.
 
 ### Study your app in a local browser
 
@@ -55,7 +55,7 @@ ahead of time. Supported Macs use Lima instead of Docker Desktop.
 use a separate media runtime. [Optional desktop video/audio](https://humanish.dev/docs/desktop-recording)
 adds continuous Observer playback; screenshots remain the default. [Local captured inboxes](https://humanish.dev/docs/comms-inbox#local-browser-studies) support email verification without mailbox-provider credentials.
 
-For a new local lab, initialize with your app URL and task:
+For a new local study, initialize with your app URL and task:
 
 ```bash
 npx humanish init --yes \
@@ -102,7 +102,7 @@ desktop or making a model request. It reports key presence, not remote key
 validity, model access, or quota. `study check` checks manifest metadata by default.
 `try-live` clones and studies drawDB, not your project. Set the keys before `init`:
 `init` writes `try-live` for the participant this machine can run, and it never
-overwrites an existing lab file. With an OpenAI key, from the environment or the
+overwrites an existing study file. With an OpenAI key, from the environment or the
 `keys set` store, the participant is `openai-computer-use` and its **$2 cap covers
 estimated participant model spend**. With no OpenAI key and a signed-in Codex or
 Claude Code, it is `local-agent`, bounded by a ten-minute session limit with no
@@ -119,10 +119,10 @@ goals, patience, and skill, actually use your product on isolated desktops while
 you watch. A study leaves verifiable evidence: screenshots, action traces,
 per-task completion funnels, participant outcomes with the denominator
 attached, and estimated cost lines. A fail-closed share-safety gate decides what
-goes into feedback drafts, export bundles and a `serve --safe` library, and the
+goes into feedback drafts, export bundles and an `observe --all --safe` library, and the
 end of the pipeline is a public-safe feedback draft you can turn into a real
-issue. Committed lab source lives under `humanish/`; run evidence lands under
-gitignored `.humanish/`. [ARCHITECTURE.md](ARCHITECTURE.md) traces `humanish run <lab>` through
+issue. Committed study source lives under `humanish/`; run evidence lands under
+gitignored `.humanish/`. [ARCHITECTURE.md](ARCHITECTURE.md) traces `humanish run <study>` through
 the code.
 
 The researcher declares the study, the participant tries the product, and the
@@ -188,7 +188,7 @@ review:
   analysis: false
 ```
 
-`humanish run <lab>`, `humanish run <lab>`, `humanish watch <lab>`, and live
+`humanish run <study>`, `humanish watch <study>`, and live
 starts in the TUI share this default. Dry runs and unsupported routes dispatch
 nothing. Without `OPENAI_API_KEY`, default analysis is skipped and a successful
 recording stays successful. A default analysis whose admission estimate is over
@@ -220,7 +220,7 @@ bundle, and review the actual text and pixels before sharing.
 evidence over the network when you pass `--expose`, and humanish has no auth of
 its own behind either one:
 
-- `humanish watch <lab> --expose` streams a live run, which is never
+- `humanish watch <study> --expose` streams a live run, which is never
   `share_ready`, to whoever your edge admits. It requires edge auth:
   `--tunnel ngrok --oauth google`, or `--public-url` for an edge you run. Without
   `--allow-email` or `--allow-domain`, the OAuth edge admits any Google account.
@@ -293,7 +293,7 @@ fills from sources 2 to 4, never the value:
    which `humanish keys set` writes as plain text with mode `0600`.
 
 A dry run reads no provider key, so `run`, `run` and `watch` consult sources 2 to 4 only
-for a live lab. A live run fills every key it finds and prints the ones its plan reads: its model,
+for a live study. A live run fills every key it finds and prints the ones its plan reads: its model,
 desktop and runtime keys, its `subject.env` names, the variable
 `comms.email.external.authTokenEnv` names, `ANTHROPIC_API_KEY` for a Claude Code participant, and
 `OPENAI_API_KEY` when its automatic analysis runs on OpenAI. With a declared scorer it prints
@@ -310,12 +310,12 @@ never reads the subject app's own `.env` files.
 **What leaves your machine.** [Trust boundaries](https://humanish.dev/docs/trust-boundaries)
 has the providers' retention terms.
 
-| Party                | What it receives                                                                                                                                                                                                                                                                                                                                            | When                                                                                                                          |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| OpenAI               | Each step's screenshot, the persona, the mission and the actions so far; after a run, selected text and captures for analysis; for an external-public shared-world lab, the host participant's screen while its lobby code is read; for a terminal study, the agent's requests from the E2B sandbox                                                         | `openai-computer-use` participants; automatic or `humanish analyze` runs; external-public shared-world labs; terminal studies |
-| Codex or Claude Code | The same screenshots and prompts, through your signed-in agent and its provider                                                                                                                                                                                                                                                                             | `local-agent` participants, local browser studies, the Codex analyst                                                          |
-| E2B                  | A desktop or shell running your app and everything on its screen; the repository a `clone` subject names; your working tree for a `local-tree` subject, minus gitignored files, `.env*` and other secret-shaped files; the credentials you declare for the subject app; for a terminal study, your OpenAI key unless `execution.runtimeAuth: openai-egress` | Every hosted study                                                                                                            |
-| PostHog              | Telemetry events, described [below](#check-what-telemetry-sends)                                                                                                                                                                                                                                                                                            | By default                                                                                                                    |
+| Party                | What it receives                                                                                                                                                                                                                                                                                                                                            | When                                                                                                                             |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI               | Each step's screenshot, the persona, the mission and the actions so far; after a run, selected text and captures for analysis; for an external-public shared-world study, the host participant's screen while its lobby code is read; for a terminal study, the agent's requests from the E2B sandbox                                                       | `openai-computer-use` participants; automatic or `humanish analyze` runs; external-public shared-world studies; terminal studies |
+| Codex or Claude Code | The same screenshots and prompts, through your signed-in agent and its provider                                                                                                                                                                                                                                                                             | `local-agent` participants, local browser studies, the Codex analyst                                                             |
+| E2B                  | A desktop or shell running your app and everything on its screen; the repository a `clone` subject names; your working tree for a `local-tree` subject, minus gitignored files, `.env*` and other secret-shaped files; the credentials you declare for the subject app; for a terminal study, your OpenAI key unless `execution.runtimeAuth: openai-egress` | Every hosted study                                                                                                               |
+| PostHog              | Telemetry events, described [below](#check-what-telemetry-sends)                                                                                                                                                                                                                                                                                            | By default                                                                                                                       |
 
 ## Find the main commands
 
@@ -324,13 +324,13 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 
 | Command                                                  | Purpose                                                                   |
 | -------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `humanish init --yes`                                    | Scaffold lab source and ignored runtime state.                            |
-| `humanish doctor --study <lab> --json`                   | Check the selected route's setup without exposing key values or spending. |
-| `humanish study list --json`                             | List available labs.                                                      |
-| `humanish study show <lab> --json`                       | Read a lab before running it.                                             |
-| `humanish study check <lab> --json`                      | Check configuration and route warnings.                                   |
-| `humanish run <lab>`                                     | Run the named preview or live study.                                      |
-| `humanish watch <lab>`                                   | Run a lab with an attached Observer.                                      |
+| `humanish init --yes`                                    | Scaffold study source and ignored runtime state.                          |
+| `humanish doctor --study <study> --json`                 | Check the selected route's setup without exposing key values or spending. |
+| `humanish study list --json`                             | List available studies.                                                   |
+| `humanish study show <study> --json`                     | Read a study before running it.                                           |
+| `humanish study check <study> --json`                    | Check configuration and route warnings.                                   |
+| `humanish run <study>`                                   | Run the named preview or live study.                                      |
+| `humanish watch <study>`                                 | Run a study with an attached Observer.                                    |
 | `humanish runs --json`                                   | List local run history.                                                   |
 | `humanish review --run latest --json`                    | Read an existing run's evidence.                                          |
 | `humanish verify --run latest --json`                    | Check evidence and share-safety gates.                                    |
@@ -345,11 +345,11 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 | `2`     | humanish domain or validation failure. Check the JSON envelope's `error.code` for detail. |
 | `128+N` | Terminated by signal `N`: `130` for SIGINT, `143` for SIGTERM, `129` for SIGHUP.          |
 
-## Browse labs in the terminal
+## Browse studies in the terminal
 
-`humanish tui` is for a person browsing labs and runs. It needs an
+`humanish tui` is for a person browsing studies and runs. It needs an
 interactive stdin/stdout, and refuses detected coding-agent sessions even with
-a TTY. Agents should use `study list --json`, `study show <lab> --json`, and
+a TTY. Agents should use `study list --json`, `study show <study> --json`, and
 `runs --json`. Read [TUI behavior and JSON alternatives](https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts).
 
 Its Connections screen (**c**) adds an AgentMail key for
@@ -419,8 +419,8 @@ the command, the humanish version, your OS and Node major version, whether it
 ran in CI, the exit code, a duration bucket and a random machine id made on
 first use. A study adds whether it was a dry run, an outcome word, the
 participant's brain route, stop and diagnostic categories, and humanish's error
-code when it fails. The lab id is sent only when it is a starter lab that
-`humanish init` writes; any other lab is sent as `custom`. Your lab ids,
+code when it fails. The study id is sent only when it is a starter study that
+`humanish init` writes; any other study is sent as `custom`. Your study ids,
 subjects, personas, prompts, paths, run ids and evidence are never sent.
 `humanish telemetry status` prints the exact event, and `humanish telemetry
 disable` or `DO_NOT_TRACK=1` turns it off. [TELEMETRY.md](TELEMETRY.md) lists

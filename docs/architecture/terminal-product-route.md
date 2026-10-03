@@ -8,7 +8,7 @@ holds the build order and the safety contract.
 
 ## What this is
 
-A lab route for **terminal-product real-agent studies**: a real autonomous coding
+A study route for **terminal-product real-agent studies**: a real autonomous coding
 agent (Codex) discovering and using a CLI/product from its **public surfaces
 only**, running **inside an E2B shell** with declared runtime-auth placement and
 spend/time caps, emitting durable terminal/substrate/cost/no-spend/cleanup/
@@ -129,7 +129,7 @@ a provider-side spending limit, restrict models/API paths, or make
 a separately enforced control; do not infer zero spend from an unmeasured ledger
 line.
 
-Public internet discovery stays unrestricted unless the lab already declares
+Public internet discovery stays unrestricted unless the study already declares
 `execution.egressAllow`. The mode preserves that allowlist and its deny-all
 fallback without adding hosts. If an allowlist omits `api.openai.com`, provider
 requests can fail. E2B domain allowlists are routing controls rather than strict

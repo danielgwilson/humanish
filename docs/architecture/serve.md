@@ -34,7 +34,7 @@ authenticated edge (or `--safe`, see the fail-closed matrix).
 ## Fail-closed exposure matrix
 
 One shared validator (`validateExposure` in `src/observer/exposure.ts`) governs
-both `serve` and `watch`. `--expose` must always resolve to a reachable public
+both `observe --all` and `watch`. `--expose` must always resolve to a reachable public
 origin (a `--tunnel` or a `--public-url`), even under `--safe`, since an
 origin-less exposed server is an unreachable loopback no-op. With an origin
 present, exposure requires either edge auth (`--oauth` on the ngrok edge, or a
@@ -172,7 +172,7 @@ any mutating route ships, the contract is:
 - mutating routes require CSRF defenses appropriate to the chosen edge session;
 - the live-spend rule applies to remote hands too: a phone-initiated live
   run needs its own affirmative declaration at serve startup (an explicit opt-in
-  naming the lab and budget), never a default the viewer UI can reach.
+  naming the study and budget), never a default the viewer UI can reach.
 
 ## Why not Better Auth here
 

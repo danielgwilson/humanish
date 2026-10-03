@@ -15,14 +15,14 @@ Decision 6's capture-time screenshot stance was recanted in 0.6.0; see the inlin
 capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
 
-`codex-exec` is a real dispatch key for terminal-product labs, but the exported
+`codex-exec` is a real dispatch key for terminal-product studies, but the exported
 descriptor `runSession` is a fail-closed compatibility entry. Live execution is
 owned by `runTerminalProductLab`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
 The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and the
-`in-process-sdk` protocol were removed. No lab route dispatched either descriptor, and a
-lab that names one now fails to parse. A signed-in Claude Code drives computer-use studies
+`in-process-sdk` protocol were removed. No study route dispatched either descriptor, and a
+study that names one now fails to parse. A signed-in Claude Code drives computer-use studies
 through `local-agent`, which plugs into the provider-neutral `CuaProvider` port
 (`src/actors/computer-use/loop/types.ts`, re-exported from `loop.ts`).
 
@@ -293,8 +293,8 @@ export interface Actor {
   token-derived rate-table multiply from the operator-editable `src/run/pricing.ts`,
   labeled as an estimate and projected up into `RunBundle.cost` (see
   [`../contracts/schemas.md`](../contracts/schemas.md) → Run Cost Summary And
-  Estimated Actor Cost). The CUA lab computes and attaches `estimatedCost` at the
-  lab boundary before persisting the trace, so the pure computer-use loop never
+  Estimated Actor Cost). The CUA study computes and attaches `estimatedCost` at the
+  study boundary before persisting the trace, so the pure computer-use loop never
   depends on the pricing table. An unknown model yields
   `estimatedCostUsd: null` + a `reason`, never a guessed charge.
 
@@ -375,7 +375,7 @@ transport-agnostic" intent above: the computer-use loop does not require a scree
 model. A library caller can drive an **already-running local app** through its in-process JS
 contract (`window.app.getState()` etc.) with a custom `CuaExecutor` (screenshot optional,
 `appState` as the progress signal) paired with a **non-vision** `CuaProvider` (`requiresFrame`
-falsey), keeping the whole lab composition with no E2B desktop and no clone. See
+falsey), keeping the whole study composition with no E2B desktop and no clone. See
 [`state-driven-executor.md`](./state-driven-executor.md) for the port, both entry points
 (`runComputerUseLoop` and `runLab` + `inProcess`/`createProvider`), the `subject.source:
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the

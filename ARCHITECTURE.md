@@ -5,9 +5,9 @@ fails when a path in it no longer exists, or when a file named beside a function
 longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, and
 [docs/decisions/](docs/decisions/README.md) records the decisions behind the rules below.
 
-## Follow one `humanish run <lab>` from manifest to findings
+## Follow one `humanish run <study>` from manifest to findings
 
-The steps follow a live computer-use lab on a hosted E2B desktop. Every route shares steps 1, 2, 7
+The steps follow a live computer-use study on a hosted E2B desktop. Every route shares steps 1, 2, 7
 and 8. Steps 3 to 6 run in the route's admit function and the `run()` it returns, which `runLab`
 reaches through `admitPlan` (`src/run-lab.ts`):
 
@@ -70,7 +70,7 @@ not.
    `buildObserverData` (`src/observer/data.ts`).
 8. **Analysis.** `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`) runs
    `runAutomaticAnalysis` (`src/analysis/automatic.ts`) on the `FinishedRun` that `Run.finish`
-   issued. Dry runs and labs with `review.analysis: false` skip it.
+   issued. Dry runs and studies with `review.analysis: false` skip it.
 
 ## Find the code for each part of the system
 
@@ -78,7 +78,7 @@ not.
 | -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------- |
 | `src/cli/`                 | The commander program, with one file per command family in `commands/`                 | `src/cli/program.ts`                |
 | `src/keys/`                | Provider key discovery: env files, the user key store and key-source probes            | `src/keys/key-resolution.ts`        |
-| `src/run-lab.ts`           | `runLab`: plan the lab once, then run the plan on its route                            | `src/run-lab.ts`                    |
+| `src/run-lab.ts`           | `runLab`: plan the study once, then run the plan on its route                          | `src/run-lab.ts`                    |
 | `src/lab/`                 | Manifest parsing and warnings (`config.ts`, `parse/`), types, routing and planning     | `src/lab/plan.ts` for planning      |
 | `src/study/`               | Where study files live: the studies/ and labs/ directories and the name check          | `src/study/files.ts`                |
 | `src/routes/`              | One folder per route; `routeOf` in `src/lab/plan.ts` picks it                          | `src/lab/plan.ts`                   |
@@ -147,6 +147,6 @@ probe timeouts.
 - [Project layout](https://humanish.dev/docs/project-layout): the `humanish/`
   and `.humanish/` folders in a project that runs studies.
 - [docs/ramp/README.md](https://github.com/danielgwilson/humanish/blob/main/docs/ramp/README.md#check-which-compositions-a-lab-can-declare): the
-  support matrix, which compositions a lab can declare and which tests pin each row.
+  support matrix, which compositions a study can declare and which tests pin each row.
 - [CONTRIBUTING.md](https://github.com/danielgwilson/humanish/blob/main/CONTRIBUTING.md#make-your-first-change): a first change, offline, and the
   tests and contracts that common changes touch.

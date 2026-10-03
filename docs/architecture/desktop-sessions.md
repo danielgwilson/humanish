@@ -62,7 +62,7 @@ its steps in the files beside it; acquisition and release are in
 `src/substrates/e2b/desktop-media.ts`. Subject provisioning lives in
 `src/subject/` and reaches the sandbox only through a `Shell`
 (`src/substrates/shell.ts`), which `e2bShell` (`src/substrates/e2b/shell.ts`)
-builds from the sandbox handle. The adapter never imports the lab runner at
+builds from the sandbox handle. The adapter never imports the study runner at
 runtime.
 
 The runner owns instructions, model execution, spend guards, screenshots, trace
@@ -71,7 +71,7 @@ shell commands or manufacture E2B objects for an alternate executor. A local
 Firecracker run supplies its desktops through the computer-use run's `localVm`
 input (`LocalVmInput` in `src/routes/computer-use/types.ts`). runLab builds that
 input with `prepareLocalVmRun` (`src/routes/computer-use/local-vm.ts`), and no
-package caller can set it. Contract tests pass a `localVm` desktop on a lab with
+package caller can set it. Contract tests pass a `localVm` desktop on a study with
 `execution.target: local`. Neither bypasses CLI admission checks.
 
 Final evidence errors cannot skip desktop release. Existing bundle fields and

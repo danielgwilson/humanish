@@ -121,7 +121,7 @@ providerClasses:
   - model
   - desktop_substrate
 operatorIntent:
-  command: humanish run my-lab --json --no-open
+  command: humanish run my-study --json --no-open
   explicit: true
 budget:
   limit: unspecified

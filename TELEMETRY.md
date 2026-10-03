@@ -6,14 +6,14 @@ disclosed the first time it happens, and you can switch it off in one command.
 
 This follows the convention the Next.js and Vercel CLIs established, with one
 difference: humanish is stricter about what may be collected, because a study's
-subject is your product and a lab id can name something you have not announced.
+subject is your product and a study id can name something you have not announced.
 
 ## Why
 
 humanish shipped sixty-one releases without being able to answer _"does anyone
 get to a working first run?"_. The answer, when it finally arrived, came from an
 adoption post-mortem: the first live run had been impossible for months, because
-the starter labs shipped with a placeholder URL. Nobody reported it. Without
+the starter studies shipped with a placeholder URL. Nobody reported it. Without
 telemetry, humanish cannot tell whether new users reach a working first run.
 
 ## What is collected
@@ -24,8 +24,8 @@ telemetry, humanish cannot tell whether new users reach a working first run.
   (a bucket such as `1-5m`, never an exact duration)
 - for a study: whether it was a dry run or live, its outcome (one of a fixed
   set of words such as `passed`, `abandoned`, `all_passed`), which brain route
-  ran it (`provider-key`, `local-agent`, or `none` for a dry run), and which lab
-  ran, **only if it is one of the starter labs `humanish init` writes**
+  ran it (`provider-key`, `local-agent`, or `none` for a dry run), and which study
+  ran, **only if it is one of the starter studies `humanish init` writes**
 - when a command fails: humanish's own error code (`HUMANISH_…`), never the
   message. Which failure ends a first run is the question this exists to answer.
 - for CUA results with diagnostics: `diagnostic_category` is exactly one of
@@ -58,7 +58,7 @@ HUMANISH_TELEMETRY_DEBUG=1 humanish run first-run
 
 ## What is never collected
 
-Your own lab ids and titles. Your subjects: repos, URLs, app names. Personas,
+Your own study ids and titles. Your subjects: repos, URLs, app names. Personas,
 missions, or any prompt text. Paths, working directories, hostnames, usernames.
 Run ids, evidence, screenshots, traces. Credential names or values. There is no
 field in the payload that could carry any of these. `src/cli/telemetry.ts` enforces

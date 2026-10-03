@@ -12,7 +12,7 @@ exactly those cases.
 
 The `observer/` workspace builds with Vite into a single HTML file with fonts inlined and no
 network references. The root build copies it to `dist/observer-app.html`. `renderObserverHtml`
-is the one path every surface (observe, watch, serve, labs) uses; it injects the run's
+is the one path every surface (observe, observe --all, watch, studies) uses; it injects the run's
 `humanish.observer-data.v1` snapshot into that file. There is no second renderer and no feature
 flag; rolling back means pinning an older package version.
 
@@ -21,7 +21,7 @@ flag; rolling back means pinning an older package version.
 - An Observer page opens from disk, and an exported bundle carries its own viewer.
 - Every dependency the Observer adds ships inside each rendered page, so page weight is a cost
   reviewers check.
-- Live views (`watch`, `serve`) use the same file and poll for new snapshots.
+- Live views (`watch`, `observe --all`) use the same file and poll for new snapshots.
 
 ## Enforced by
 
