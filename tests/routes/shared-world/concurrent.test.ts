@@ -72,7 +72,7 @@ import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.j
 // checkpoint output (a shared worldVersion the fake runSession bumps per turn).
 //
 // Overlap is produced, not injected. The fake runSession blocks on a
-// rendezvous latch until all N actors have entered, so N lane fns are genuinely
+// rendezvous latch until all N actors have entered, so N participant fns are genuinely
 // in-flight while the real orchestrator clock (Date.now, not overridden) measures
 // the wrapped [start,end] laneWindows. The windows therefore overlap for real.
 // ---------------------------------------------------------------------------
@@ -229,7 +229,7 @@ function makeCommandHandler(state: {
 }
 
 /** A rendezvous latch: the returned fn blocks until `count` callers have entered, then releases
- *  them all, so `count` lane fns are genuinely in-flight at once (real overlap). */
+ *  them all, so `count` participant fns are genuinely in-flight at once (real overlap). */
 function makeRendezvous(count: number): () => Promise<void> {
   let arrived = 0;
   let release: () => void = () => {};
@@ -340,16 +340,16 @@ function makeRunSession(
   let calls = -1;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
     calls += 1;
-    // The override targets a lane (by its persona id), never "the Nth call": concurrent lanes
-    // interleave however the scheduler likes, so call order is an accident: asserting on it made
-    // these tests flake the moment an unrelated await shifted the schedule.
+    // The override targets a participant (by its persona id), never "the Nth call": concurrent
+    // participants interleave however the scheduler likes, so call order is an accident: asserting
+    // on it made these tests flake the moment an unrelated await shifted the schedule.
     const personaMatch = /^persona-(\d+)$/.exec(options.persona.id);
     const myIndex = personaMatch ? Number(personaMatch[1]) - 1 : calls;
     await rendezvous(); // all actors are in-flight here → their windows overlap on the real clock
-    // All lanes were released together; hold them concurrently for a measurable interval so the
-    // real orchestrator clock records overlapping [start,end] windows (Date.now is ms-resolution:
-    // without this the instant fake collapses every window to a zero-width point). The overlap is
-    // genuinely produced (all lanes are in this delay at once), not injected.
+    // All participants were released together; hold them concurrently for a measurable interval so
+    // the real orchestrator clock records overlapping [start,end] windows (Date.now is
+    // ms-resolution: without this the instant fake collapses every window to a zero-width point).
+    // The overlap is genuinely produced (all participants are in this delay at once), not injected.
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 15);
     });
@@ -1071,7 +1071,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     };
     const config: LabConfig = {
       ...concurrentConfig(3, 3),
-      // Recipient lane matches the first persona's lane id, so only it is told to check the inbox.
+      // The recipient's `lane` matches the first persona's participant id, so only it is told to
+      // check the inbox.
       comms: {
         email: {
           kind: "fake",
@@ -1342,7 +1343,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     }
   });
 
-  it("threads actor-default and lane-level stopWhen guards into concurrent shared-world actors", async () => {
+  it("threads actor-default and per-participant stopWhen guards into concurrent shared-world actors", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const config = concurrentConfig(3, 3);
@@ -1351,7 +1352,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     config.actors[0]!.stopWhen = actorDefault;
     config.actors[0]!.lanes![1]!.stopWhen = laneOverride;
 
-    // Keyed by lane persona, not call order: concurrent completion order is not a contract.
+    // Keyed by participant persona, not call order: concurrent completion order is not a contract.
     const seen = new Map<string, CuaActorSessionOptions["stopWhen"]>();
     const runSession = deps.runSession!;
     deps.runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
@@ -1621,7 +1622,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(exitCodes).toEqual([0, 2]);
   });
 
-  it("fails review when a lane returns a terminal failed actor trace", async () => {
+  it("fails review when a participant returns a terminal failed actor trace", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3), (index) =>
       index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined,
@@ -1679,7 +1680,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     );
   });
 
-  it("fails review when a lane self-reports a blocker while claiming goal_satisfied", async () => {
+  it("fails review when a participant self-reports a blocker while claiming goal_satisfied", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3), (index) =>
       index === 0
@@ -1726,7 +1727,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(outcome.result.ok).toBe(true);
   });
 
-  it("a participant without its own persona takes actors[0].persona, as independent lanes do", async () => {
+  it("a participant without its own persona takes actors[0].persona, as independent participants do", async () => {
     const state = { worldVersion: 0 };
     const seen: Array<{ persona: string; instructions: string }> = [];
     const baseRun = makeRunSession(state, makeRendezvous(3));
@@ -1967,8 +1968,9 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       .filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
     expect(cloneWrites).toHaveLength(0);
 
-    // Provenance: source local-tree + archiveSha256 (the pin - one archive, no per-lane unanimity
-    // math needed) + commit/dirty from the host-packed archive; no repo/publicRepo for local-tree.
+    // Provenance: source local-tree + archiveSha256 (the pin - one archive, no per-participant
+    // unanimity math needed) + commit/dirty from the host-packed archive; no repo/publicRepo for
+    // local-tree.
     const expectedSubject = {
       source: "local-tree",
       archiveSha256: FIXED_ARCHIVE.archiveSha256,
@@ -2278,11 +2280,11 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
 });
 
 describe("concurrent shared-world verify findings golden", () => {
-  // The golden pins verify's failing checks for the good run, each variant and each failing lane.
-  // Each case is its own test with its own timeout: run as one test, these timed out at the 20 s
-  // default at load 26-78. The variants share one good run in its own project, made by the first
-  // test that needs it, because the file's per-test cwd is removed after each test. The last test
-  // asserts the golden in this order, so it needs every case to have run.
+  // The golden pins verify's failing checks for the good run, each variant and each failing
+  // participant. Each case is its own test with its own timeout: run as one test, these timed out
+  // at the 20 s default at load 26-78. The variants share one good run in its own project, made by
+  // the first test that needs it, because the file's per-test cwd is removed after each test. The
+  // last test asserts the golden in this order, so it needs every case to have run.
   let shared:
     | Promise<{ project: string; runId: string; bundlePath: string; original: string }>
     | undefined;
@@ -2607,7 +2609,7 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
 
 // Exercise the actual first-party provider route: a custom runSession would bypass the
 // output-limit contract. The response is a retained wire fixture; no network or paid compute.
-it("routes actor output limits and per-lane reasoning to concurrent provider requests", async () => {
+it("routes actor output limits and per-participant reasoning to concurrent provider requests", async () => {
   const config = concurrentConfig();
   // Below the first request's own 1024 cap, so the first request carries the declared value.
   config.actors[0]!.maxOutputTokens = 512;

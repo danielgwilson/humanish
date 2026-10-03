@@ -35,7 +35,7 @@ describe("local study Codex participant close", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("hands the lane the native session's warnings and late refusal", async () => {
+  it("hands the participant the native session's warnings and late refusal", async () => {
     participant.close.mockResolvedValue({
       status: "confirmed",
       warnings: ["synthetic unknown-method warning"],

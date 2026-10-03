@@ -15,7 +15,7 @@ import { verifyRun } from "../../../src/verify/verify.js";
 
 // The single live rung for the scripted-browser route: the committed scenario dispatched through
 // runLab to real playwright-core against an in-test loopback http.Server. Provider spend is $0
-// by mechanism (no model exists on this lane); the env gate exists for real-browser actuation
+// by mechanism (no model exists on this route); the env gate exists for real-browser actuation
 // + environment dependence (a local Chrome/Chromium must be installed), mirroring the
 // HUMANISH_LIVE_CUA convention:
 //   HUMANISH_LIVE_SCRIPTED=1 must be set explicitly (the actuation opt-in); the browser binary
