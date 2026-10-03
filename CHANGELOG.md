@@ -16,6 +16,24 @@ The Unreleased section holds the full notes for the next version until it is tag
   gains `analysisCost` and `estimatedCostComplete`, and `status.json`'s outcome gains
   `estimatedCostComplete`; `estimatedCostUsd` stays participants and desktops only.
 
+### Removed
+
+- The library's 0.107 names, deprecated in 0.108.0: `runLab`, `parseLabConfig`,
+  `LAB_CONFIG_SCHEMA`, `LabConfig`, `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`,
+  `RunLabOptions`, `BrowserLabScoringContext`, the nine `Cua*` loop types and
+  `CuaAdmissionLimitError`. Import `runStudy`, `parseStudy`, `StudyConfig`, `StudyEvent`,
+  `StudyOutcome`, `StudyResult`, `StudyRoute`, `RunStudyOptions`, `BrowserScoringContext`, the
+  `ComputerUse*` types and `ComputerUseAdmissionLimitError`, which are the same values and types.
+  `STUDY_SCHEMA` is the v3 schema id; `LAB_CONFIG_SCHEMA` named the v2 one.
+- `labId` on a study's result, deprecated in 0.108.0. Read `studyId`, which holds the same value.
+- `simId` on the events `onStream` receives, deprecated in 0.108.0. Read `recordId`.
+- `BrowserScoringContext.backend` and `laneCount`, and the `onObservedUrl`, `onMessage` and
+  `onScreenshot` options of `runComputerUseLoop`. The 0.107.0 notes listed them for removal in
+  0.108.0, and 0.108.0 still shipped them with the same warnings. Read `route` and
+  `participantCount`, and wrap the executor's `observe` (for `url` and `screenshot`) or the
+  provider's `nextTurn` (for `reasoning` and `message`). `runComputerUseLoop` throws a `TypeError`
+  naming the replacement when a JavaScript caller still passes one of the three options.
+
 ### Changed
 
 - `humanish doctor --json` and `humanish study check --json` name their checks for the study:

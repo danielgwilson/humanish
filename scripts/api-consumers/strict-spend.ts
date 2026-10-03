@@ -4,13 +4,16 @@ import {
   createOpenAiResponsesProvider,
   defaultRedactionHooks,
   runComputerUseLoop,
-  type CuaExecutor,
-  type CuaLoopResult,
+  type ComputerUseExecutor,
+  type ComputerUseLoopResult,
 } from "humanish";
 
-declare const executor: CuaExecutor;
+declare const executor: ComputerUseExecutor;
 
-export async function strictSession(apiKey: string, maxUsd: number): Promise<CuaLoopResult> {
+export async function strictSession(
+  apiKey: string,
+  maxUsd: number,
+): Promise<ComputerUseLoopResult> {
   return runComputerUseLoop({
     instructions: "Explore the app.",
     persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },

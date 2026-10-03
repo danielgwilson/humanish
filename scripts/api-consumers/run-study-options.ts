@@ -3,26 +3,26 @@
 // to the shape of a field used here fails the proof, where the export-name golden would not.
 import type {
   AdapterScorerModule,
-  CuaExecutor,
-  CuaProvider,
-  LabEvent,
+  ComputerUseExecutor,
+  ComputerUseProvider,
+  StudyEvent,
   ProviderContext,
   RunAdapterScore,
   RunBundle,
-  RunLabOptions,
+  RunStudyOptions,
 } from "humanish";
 
-declare const executor: CuaExecutor;
-declare const provider: CuaProvider;
+declare const executor: ComputerUseExecutor;
+declare const provider: ComputerUseProvider;
 
-export async function createProvider(ctx: ProviderContext): Promise<CuaProvider> {
+export async function createProvider(ctx: ProviderContext): Promise<ComputerUseProvider> {
   const { config, participant } = ctx;
   const label: string = `${config.id}:${participant.id}:${participant.index}/${participant.count}`;
   if (label.length === 0 || ctx.executor === undefined) throw new Error("unreachable");
   return provider;
 }
 
-export function describeEvent(event: LabEvent): string {
+export function describeEvent(event: StudyEvent): string {
   switch (event.type) {
     case "plan":
       return `${event.route}: ${event.participants
@@ -56,7 +56,7 @@ export const scorer: AdapterScorerModule = {
   deriveArtifacts: (ctx) => (ctx.runDir.length > 0 ? [] : []),
 };
 
-export const options: RunLabOptions[] = [
+export const options: RunStudyOptions[] = [
   {
     cwd: ".",
     runId: "consumer",
@@ -91,7 +91,7 @@ export const options: RunLabOptions[] = [
 ];
 
 // @ts-expect-error An in-process executor returns no frame, so it needs createProvider.
-export const inProcessWithoutProvider: RunLabOptions = {
+export const inProcessWithoutProvider: RunStudyOptions = {
   cwd: ".",
   inProcess: { executor: async () => executor },
 };

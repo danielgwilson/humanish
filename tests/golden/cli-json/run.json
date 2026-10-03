@@ -4,7 +4,6 @@
     "artifactRoot": "string",
     "bundlePath": "string",
     "cwd": "string",
-    "labId": "string",
     "latestPath": "string",
     "mode": "string",
     "observer": {

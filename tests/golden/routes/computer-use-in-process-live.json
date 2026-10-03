@@ -3,7 +3,6 @@
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
     "studyId": "downstream-local-app-state",
-    "labId": "downstream-local-app-state",
     "ok": true,
     "cwd": "[cwd]",
     "actor": "openai-computer-use",

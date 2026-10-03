@@ -48,29 +48,3 @@ export type { AdapterScorerModule, AdapterScoringContext } from "./study/adapter
 export type { BrowserScoringContext } from "./study/adapter-extension.js";
 export type { TerminalProductScoringContext } from "./routes/terminal/types.js";
 export type { RunAdapterArtifact, RunAdapterScore } from "./run/bundle.js";
-
-// The 0.107 names, deprecated until 0.109 removes them. Each is its new name's value or type.
-export {
-  CuaAdmissionLimitError,
-  LAB_CONFIG_SCHEMA,
-  parseLabConfig,
-  runLab,
-} from "./library-aliases.js";
-export type {
-  BrowserLabScoringContext,
-  CuaAction,
-  CuaExecutor,
-  CuaLoopOptions,
-  CuaLoopResult,
-  CuaObservation,
-  CuaProvider,
-  CuaSafetyCheck,
-  CuaTurn,
-  CuaTurnRequest,
-  LabConfig,
-  LabEvent,
-  LabOutcome,
-  LabResult,
-  LabRoute,
-  RunLabOptions,
-} from "./library-aliases.js";

@@ -1,12 +1,12 @@
 import { expect, it } from "vitest";
 
 import {
-  runComputerUseLoop,
+  runComputerUseLoopWithTaps,
   type CuaExecutor,
-  type CuaLoopOptions,
   type CuaProvider,
   type CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
+import type { LoopRunOptions } from "../../../src/actors/computer-use/loop/types.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { CAPABILITIES, FRAME, click, done, turn } from "../../helpers/loop-golden.js";
 
@@ -96,7 +96,7 @@ function armedClock() {
   };
 }
 
-const base = (overrides: Partial<CuaLoopOptions>): CuaLoopOptions => ({
+const base = (overrides: Partial<LoopRunOptions>): LoopRunOptions => ({
   instructions: "Finish the synthetic task.",
   provider: provider([]),
   executor: executor([{ stateSignature: "s" }]),
@@ -113,7 +113,7 @@ it("calls every injected function without a receiver", async () => {
     if (!receivers.has(name) || self !== undefined) receivers.set(name, self);
   };
   let t = 0;
-  const result = await runComputerUseLoop(
+  const result = await runComputerUseLoopWithTaps(
     base({
       provider: provider([
         turn({
@@ -200,7 +200,7 @@ it.each([
 ] as const)(
   "calls provider methods with the provider as receiver (%s requests)",
   async (_name, requestPolicy) => {
-    const result = await runComputerUseLoop(
+    const result = await runComputerUseLoopWithTaps(
       base({
         provider: new MethodProvider(requestPolicy),
         executor: executor([{ stateSignature: "a" }, { stateSignature: "b", text: "saved" }]),
@@ -218,7 +218,7 @@ it.each([
 it("reads its options once, at entry", async () => {
   const seen: string[] = [];
   const exec = executor([{ stateSignature: "a" }, { stateSignature: "b" }]);
-  const options: CuaLoopOptions = base({
+  const options: LoopRunOptions = base({
     provider: {
       ...provider([turn({ actions: [click(1, 1)], usage: { input: 1, output: 1 } })]),
       async nextTurn(request) {
@@ -237,7 +237,7 @@ it("reads its options once, at entry", async () => {
     maxUsd: 1,
     estimateTurnCostUsd: () => 2,
   });
-  const result = await runComputerUseLoop(options);
+  const result = await runComputerUseLoopWithTaps(options);
   expect(result.completionReason).toBe("budget_reached");
   expect(result.trace.stopCause).toBe("spend_limit");
   expect(result.trace.counts.actions).toBe(0);
@@ -246,7 +246,7 @@ it("reads its options once, at entry", async () => {
 
 it("returns actor_error when stamping a blocked safety check fails", async () => {
   const clock = armedClock();
-  const result = await runComputerUseLoop(
+  const result = await runComputerUseLoopWithTaps(
     base({
       provider: provider([
         turn({
@@ -269,7 +269,7 @@ it("returns actor_error when stamping a blocked safety check fails", async () =>
 it("keeps the closing request when stamping the stopWhen notice fails", async () => {
   const clock = armedClock();
   let debriefs = 0;
-  const result = await runComputerUseLoop(
+  const result = await runComputerUseLoopWithTaps(
     base({
       provider: provider([turn({ actions: [click(1, 1)] })], {
         debrief: async () => {
@@ -295,7 +295,7 @@ it("keeps the closing request when stamping the stopWhen notice fails", async ()
 
 it("keeps a stop cause committed before its notice failed to record", async () => {
   const clock = armedClock();
-  const result = await runComputerUseLoop(
+  const result = await runComputerUseLoopWithTaps(
     base({
       provider: provider([turn({ actions: [click(1, 1)], interruption: "token_limit" })]),
       now: clock.now,
@@ -311,7 +311,7 @@ it("keeps a stop cause committed before its notice failed to record", async () =
 
 it("keeps the declared outcome when redacting the closing summary fails", async () => {
   let fail = true;
-  const result = await runComputerUseLoop(
+  const result = await runComputerUseLoopWithTaps(
     base({
       // The message is recorded untrimmed first; only the trimmed summary fails.
       provider: provider([done("  Did not reach the goal  ")]),
@@ -330,7 +330,7 @@ it("keeps the declared outcome when redacting the closing summary fails", async 
 
 it("records the usage-unavailable notice before releasing the strict request", async () => {
   const clock = armedClock();
-  const result = await runComputerUseLoop(
+  const result = await runComputerUseLoopWithTaps(
     base({
       provider: {
         ...provider([]),
@@ -352,7 +352,7 @@ it("records the usage-unavailable notice before releasing the strict request", a
 
 it("allocates a trace id before redacting the item's text", async () => {
   let fail = true;
-  const result = await runComputerUseLoop(
+  const result = await runComputerUseLoopWithTaps(
     base({
       provider: provider([turn({ actions: [click(1, 1)], message: "Looking around" })]),
       scrubText: (text) => {

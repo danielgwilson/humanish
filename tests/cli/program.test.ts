@@ -1806,7 +1806,7 @@ describe("study facts ride the result seam", () => {
       {
         schema: "humanish.study-result.v1",
         ok: true,
-        labId: "try-live",
+        studyId: "try-live",
         actor: "openai-computer-use",
         dryRun: false,
         session: { status: "abandoned", completionReason: "gave_up", reason: "", screenshots: 3 },
@@ -1960,7 +1960,6 @@ describe("CUA ending output", () => {
       schema: "humanish.study-result.v1",
       route: "computer-use",
       studyId: "synthetic",
-      labId: "synthetic",
       ok: false,
       cwd: "/synthetic",
       actor: "openai-computer-use",

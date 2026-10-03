@@ -51,17 +51,18 @@ page, and sends `Runtime.evaluate({ url: location.href, title, text })` over the
 `CuaObservation.url` is runtime-only by contract (it drives `stopWhen`/progress but is never
 persisted raw into the trace).
 
-The route reads each participant's URL through one callback, `CuaLoopOptions.onObservedUrl?(url)`,
+The route reads each participant's URL through one callback, `LoopTaps.onObservedUrl?(url)`,
 invoked right after every `executor.observe()` (the initial observe and each loop observe) with
 `observation.url`, threaded through `CuaActorSessionOptions` → `CuaParticipantDeps` → the concurrent
 orchestrator. It adds no CDP code and needs no change to the lobby-trivia app. The CDP URL read is
 unreliable on E2B desktops, so the host's code can also come from its narration or its screen
 (step 2).
 
-`onObservedUrl`, `onMessage` and `onScreenshot` are deprecated on `CuaLoopOptions`, and the next
-minor removes them. A `runComputerUseLoop` caller that used them wraps the executor's `observe`
-(for `url` and `screenshot`) or the provider's `nextTurn` (for `reasoning` and `message`). The
-handoff still passes all three.
+`onObservedUrl`, `onMessage` and `onScreenshot` are internal `LoopTaps`
+(`src/actors/computer-use/loop/types.ts`): 0.109.0 removed them from `CuaLoopOptions`, and the
+public `runComputerUseLoop` refuses them. The actor passes them through
+`runComputerUseLoopWithTaps`. A library caller wraps the executor's `observe` (for `url` and
+`screenshot`) or the provider's `nextTurn` (for `reasoning` and `message`).
 
 Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
 

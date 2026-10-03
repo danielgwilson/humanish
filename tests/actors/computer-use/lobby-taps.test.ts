@@ -2,14 +2,17 @@ import { expect, it } from "vitest";
 
 import {
   runComputerUseLoop,
+  runComputerUseLoopWithTaps,
+  type CuaLoopOptions,
   type CuaExecutor,
   type CuaProvider,
   type CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
-// onObservedUrl, onMessage and onScreenshot are deprecated. Their @deprecated tags tell a caller to
-// wrap the executor's observe and the provider's nextTurn instead. This run passes both, and
+// onObservedUrl, onMessage and onScreenshot left the public CuaLoopOptions in 0.109.0. The
+// external-public handoff still passes them through runComputerUseLoopWithTaps; a library caller
+// wraps the executor's observe and the provider's nextTurn instead. The first run passes both, and
 // checks that the wrappers see what the taps report.
 
 const turns: CuaTurn[] = [
@@ -37,7 +40,7 @@ const turns: CuaTurn[] = [
   },
 ];
 
-it("wrapping observe and nextTurn sees what the deprecated taps report", async () => {
+it("wrapping observe and nextTurn sees what the internal taps report", async () => {
   let observed = 0;
   const executor: CuaExecutor = {
     observe: async () => {
@@ -87,7 +90,7 @@ it("wrapping observe and nextTurn sees what the deprecated taps report", async (
   };
 
   let time = 0;
-  const result = await runComputerUseLoop({
+  const result = await runComputerUseLoopWithTaps({
     instructions: "Join the lobby.",
     provider: wrappedProvider,
     executor: wrappedExecutor,
@@ -114,4 +117,44 @@ it("wrapping observe and nextTurn sees what the deprecated taps report", async (
   expect(wrapped.urls).toEqual(taps.urls);
   expect(wrapped.frames).toEqual(taps.frames);
   expect(wrapped.messages).toEqual(taps.messages);
+});
+
+it.each([
+  ["onObservedUrl", "Wrap the executor's `observe` and read `url`"],
+  ["onMessage", "Wrap the provider's `nextTurn` and read `reasoning` and `message`"],
+  ["onScreenshot", "Wrap the executor's `observe` and read `screenshot`"],
+])("the public runComputerUseLoop refuses %s, which 0.109.0 removed", async (name, replacement) => {
+  const executor: CuaExecutor = {
+    observe: async () => ({ stateSignature: "page" }),
+    execute: async () => undefined,
+  };
+  const provider: CuaProvider = {
+    id: "removed-tap-fixture",
+    capabilities: {
+      headless: true,
+      structuredTrace: true,
+      lanes: ["computer-use"],
+      producesScreenshots: true,
+      byoModel: true,
+      preGrantableApprovals: false,
+      inProcessTools: false,
+      license: "open",
+    },
+    nextTurn: async () => {
+      throw new Error("the refusal comes before any turn");
+    },
+  };
+  // A JavaScript caller can still pass the field; the type no longer has it.
+  const options = {
+    instructions: "Join the lobby.",
+    provider,
+    executor,
+    persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
+    timeoutMs: 1_000,
+    redaction: defaultRedactionHooks,
+    [name]: () => {},
+  } as unknown as CuaLoopOptions;
+  await expect(runComputerUseLoop(options)).rejects.toThrow(
+    `runComputerUseLoop: ${name} was removed in 0.109.0. ${replacement}`,
+  );
 });

@@ -17,7 +17,7 @@ import {
 } from "../../../src/actors/contract.js";
 import type { CuaActorSessionOptions } from "../../../src/actors/computer-use/actor.js";
 import {
-  runComputerUseLoop,
+  runComputerUseLoopWithTaps,
   type CuaExecutor,
   type CuaLoopResult,
   type CuaObservation,
@@ -479,7 +479,7 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
       },
     };
     let now = 0;
-    const result = await runComputerUseLoop({
+    const result = await runComputerUseLoopWithTaps({
       instructions: "do it",
       provider,
       executor,

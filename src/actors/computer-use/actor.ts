@@ -10,14 +10,14 @@
 
 import type { ActorPersonaRef, ActorTokenUsage, ActorTraceItem } from "../contract.js";
 import {
-  runComputerUseLoop,
+  runComputerUseLoopWithTaps,
   type CuaExecutor,
   type CuaLiveMetadata,
-  type CuaLoopOptions,
   type CuaLoopResult,
   type CuaProvider,
   type CuaSafetyCheck,
 } from "./loop.js";
+import type { LoopRunOptions } from "./loop/types.js";
 import {
   createE2BDesktopExecutor,
   type E2BDesktopExecutorOptions,
@@ -93,12 +93,12 @@ export interface CuaActorSessionOptions {
   /** Stricter unknown-usage policy for capped sessions (see CuaLoopOptions); it also makes the
    *  OpenAI provider send one HTTP dispatch per turn. Library-only. */
   requireReportedUsageForSpendCap?: boolean;
-  /** Runtime-only observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
+  /** Runtime-only observed-URL callback threaded to the loop; see LoopTaps.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;
-  /** Runtime-only per-turn narration callback threaded to the loop; see CuaLoopOptions.onMessage. */
+  /** Runtime-only per-turn narration callback threaded to the loop; see LoopTaps.onMessage. */
   onMessage?: (text: string) => void;
-  /** Runtime-only per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
+  /** Runtime-only per-turn raw-frame callback threaded to the loop; see LoopTaps.onScreenshot. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot callback threaded to the loop; see CuaLoopOptions.onTrace. */
   onTrace?: (
@@ -118,7 +118,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
   const provider = options.provider ?? defaultProvider(options.openai, strictSpend);
   const executor = options.executor ?? defaultExecutor(options.desktop, options.executorOptions);
 
-  const loopOptions: CuaLoopOptions = {
+  const loopOptions: LoopRunOptions = {
     instructions: options.instructions,
     provider,
     executor,
@@ -154,7 +154,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.onTrace === undefined ? {} : { onTrace: options.onTrace }),
   };
 
-  const result = await runComputerUseLoop(loopOptions);
+  const result = await runComputerUseLoopWithTaps(loopOptions);
   if (result.trace.executionProfile?.billing === "account-unknown") {
     result.trace.estimatedCost = estimateActorCostForExecution(
       result.trace.tokenUsage,

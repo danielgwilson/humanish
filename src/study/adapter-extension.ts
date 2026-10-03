@@ -8,11 +8,8 @@ import type {
   RunScorerProvenance,
 } from "../run/bundle.js";
 import { isRunAdapterScore } from "../run/bundle-shape.js";
-import { withDeprecatedFields } from "./deprecated-fields.js";
 import { isRunFeedbackCandidate } from "../run/feedback-shape.js";
 import { isRecord } from "../run/type-guards.js";
-
-type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 
 /** The routes that call a browser scorer. */
 type BrowserScorerRoute = "computer-use" | "shared-world";
@@ -35,39 +32,9 @@ export interface BrowserScoringContext {
   actor: string;
   /** The route that ran the participants. */
   route: BrowserScorerRoute;
-  /**
-   * @deprecated Use `route`. `cua` is `computer-use` and `concurrent-shared-world` is
-   * `shared-world`. Reading it warns once per process; the next minor removes it.
-   */
-  backend: BrowserAdapterBackend;
   dryRun: boolean;
   /** How many participants the run had. */
   participantCount: number;
-  /**
-   * @deprecated Use `participantCount`, which has the same value. Reading it warns once per
-   * process; the next minor removes it.
-   */
-  laneCount: number;
-}
-
-/** The context a route passes to applyBrowserScorer; the deprecated fields derive from it. */
-type BrowserScoringFacts = Omit<BrowserScoringContext, "backend" | "laneCount">;
-
-const OLDER_BACKEND: Record<BrowserScorerRoute, BrowserAdapterBackend> = {
-  "computer-use": "cua",
-  "shared-world": "concurrent-shared-world",
-};
-
-/** The scorer's context: the facts, plus the older `backend` and `laneCount` (deprecated-fields.ts). */
-function scorerContext(facts: BrowserScoringFacts): BrowserScoringContext {
-  return withDeprecatedFields(
-    { ...facts },
-    { name: "BrowserLabScoringContext", code: "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED" },
-    {
-      backend: { replacement: "route", read: () => OLDER_BACKEND[facts.route] },
-      laneCount: { replacement: "participantCount", read: () => facts.participantCount },
-    },
-  ) as BrowserScoringContext;
 }
 
 /** The scorer functions a computer-use or shared-world run calls: `RunStudyOptions.scorer`. */
@@ -115,7 +82,7 @@ export function declaredScorerThrew(detail: string): string {
 
 export async function applyBrowserScorer(args: {
   scorer: BrowserScorer | undefined;
-  context: BrowserScoringFacts;
+  context: BrowserScoringContext;
   bundle: RunBundle;
   sanitize: (text: string) => string;
   warnings: string[];
@@ -137,10 +104,10 @@ export async function applyBrowserScorer(args: {
   // The scorer sees a read-only view of the bundle: it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws in the scorer's strict-mode ESM and is caught below as
   // a hook failure). The seam still stamps the real bundle.
-  const scoringContext = scorerContext({
+  const scoringContext: BrowserScoringContext = {
     ...context,
     bundle: frozenBundleView(context.bundle),
-  });
+  };
 
   const scrubValue = <T>(value: T): T => {
     const encoded = JSON.stringify(value);

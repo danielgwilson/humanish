@@ -3,20 +3,20 @@ import { expect } from "vitest";
 
 import type { ActorCapabilities, ActorTokenUsage } from "../../src/actors/contract.js";
 import {
-  runComputerUseLoop,
+  runComputerUseLoopWithTaps,
   type CuaAction,
   type CuaExecutor,
-  type CuaLoopOptions,
   type CuaObservation,
   type CuaProvider,
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../src/actors/computer-use/loop.js";
+import type { LoopRunOptions } from "../../src/actors/computer-use/loop/types.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
 
 import { loopGoldenText } from "./loop-golden-log.js";
 
-// Characterization harness for runComputerUseLoop. A scenario records every port call the loop
+// Characterization harness for runComputerUseLoopWithTaps. A scenario records every port call the loop
 // makes, in order, next to the full CuaLoopResult, so a golden diff shows what the loop did as
 // well as what it returned. The clock is injected, so recorded timestamps are deterministic and
 // stay unmasked; only Buffers are reduced to their length.
@@ -25,7 +25,7 @@ import { loopGoldenText } from "./loop-golden-log.js";
 export type LoopScenario = (probe: Probe) => {
   provider: CuaProvider;
   executor: CuaExecutor;
-  options?: Partial<CuaLoopOptions>;
+  options?: Partial<LoopRunOptions>;
 };
 
 export const CAPABILITIES: ActorCapabilities = {
@@ -120,8 +120,8 @@ export function baseOptions(
   probe: Probe,
   provider: CuaProvider,
   executor: CuaExecutor,
-  overrides: Partial<CuaLoopOptions> = {},
-): CuaLoopOptions {
+  overrides: Partial<LoopRunOptions> = {},
+): LoopRunOptions {
   return {
     instructions: "Act as the synthetic persona and finish the task.",
     provider,
@@ -182,9 +182,9 @@ function plain(value: unknown): unknown {
   return value;
 }
 
-export async function outcome(probe: Probe, options: CuaLoopOptions) {
+export async function outcome(probe: Probe, options: LoopRunOptions) {
   try {
-    const result = await runComputerUseLoop(options);
+    const result = await runComputerUseLoopWithTaps(options);
     return plain({ result, log: probe.log });
   } catch (error) {
     const thrown =

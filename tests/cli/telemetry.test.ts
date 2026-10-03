@@ -302,7 +302,7 @@ describe("what a study reports about itself", () => {
         schema: "humanish.study-result.v1",
         route: "computer-use",
         ok: true,
-        labId: "try-live",
+        studyId: "try-live",
         actor: "openai-computer-use",
         dryRun: false,
         session: {
@@ -316,7 +316,7 @@ describe("what a study reports about itself", () => {
   });
 
   it("rolls a fan-out up to all/some/none passed, never per-participant detail", () => {
-    const base = { labId: "cua-browser", actor: "openai-computer-use", dryRun: false, ok: true };
+    const base = { studyId: "cua-browser", actor: "openai-computer-use", dryRun: false, ok: true };
     expect(deriveRunFacts({ ...base, laneSummary: { total: 3, passed: 3 } }).outcome).toBe(
       "all_passed",
     );
@@ -331,7 +331,7 @@ describe("what a study reports about itself", () => {
   it("reports a dry run as brain none, whatever actor would have run it", () => {
     expect(
       deriveRunFacts({
-        labId: "first-run",
+        studyId: "first-run",
         actor: "openai-computer-use",
         dryRun: true,
         ok: true,
@@ -343,7 +343,7 @@ describe("what a study reports about itself", () => {
     expect(
       deriveRunFacts({
         ok: false,
-        labId: "try-live",
+        studyId: "try-live",
         dryRun: false,
         error: { code: "HUMANISH_COMPUTER_USE_KEYS_MISSING", message: "OPENAI_API_KEY is not set" },
       }),
@@ -364,7 +364,7 @@ describe("what a study reports about itself", () => {
 
   it("never names an adopter's study, and never forwards free-text status", () => {
     const facts = deriveRunFacts({
-      labId: "acme-checkout-v2",
+      studyId: "acme-checkout-v2",
       dryRun: false,
       ok: true,
       session: { status: "Finished after the user typed their password" },
@@ -464,12 +464,12 @@ describe("finite CUA diagnostics", () => {
     ).toEqual({});
   });
 
-  it("names the study from studyId, and from the deprecated labId when studyId is absent", () => {
+  it("names the study from studyId, and no longer reads labId, which 0.109.0 removed", () => {
     const result = { schema: "humanish.study-result.v1", route: "terminal", ok: true };
     expect(deriveRunFacts({ ...result, studyId: "first-run", labId: "other" }).study).toBe(
       "first-run",
     );
-    expect(deriveRunFacts({ ...result, labId: "first-run" }).study).toBe("first-run");
+    expect(deriveRunFacts({ ...result, labId: "first-run" }).study).toBeUndefined();
   });
 
   it("rejects injected values again at the final payload boundary", () => {

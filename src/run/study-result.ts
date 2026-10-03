@@ -11,11 +11,6 @@ export interface StudyResultIdentity<R extends string> {
   route: R;
   /** The study's `id`. */
   studyId: string;
-  /**
-   * The study's `id`, the same value as `studyId`.
-   * @deprecated Read `studyId`. The next minor removes it.
-   */
-  labId: string;
 }
 
 /** The identity fields for a result of route `route` from the study `studyId`. */
@@ -23,5 +18,5 @@ export function studyResultIdentity<R extends string>(
   route: R,
   studyId: string,
 ): StudyResultIdentity<R> {
-  return { schema: STUDY_RESULT_SCHEMA, route, studyId, labId: studyId };
+  return { schema: STUDY_RESULT_SCHEMA, route, studyId };
 }

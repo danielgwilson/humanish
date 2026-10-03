@@ -10,7 +10,7 @@ import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { phaseEvent, planEvent, type StudyEvent } from "../../src/study/run-study-events.js";
-import { streamEvent, type StreamEvent } from "../../src/study/run-study-homes.js";
+import type { StreamEvent } from "../../src/study/run-study-homes.js";
 import { normalizeRunStudyOptions } from "../../src/study/run-study-options.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
@@ -201,8 +201,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
       ok: false,
       error: { code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" },
     });
-    // The deprecated spelling carries the same value until the next minor removes it.
-    expect(outcome.result).toHaveProperty("labId", config(base).id);
+    expect(outcome.result).not.toHaveProperty("labId");
     expect(desktopLoads).toBe(0);
     expect(await readdir(cwd)).toEqual([]);
   });
@@ -284,21 +283,21 @@ describe("stream, rerun and analysis options land where the route reads them", (
       events.push(event);
       if (event.type === "ended") throw new Error("ended handler failed");
     });
-    const ready = streamEvent({
+    const ready: StreamEvent = {
       type: "ready",
       participantId: "lane-01",
       sandboxId: "sbx",
       recordId: "sim-001",
       streamId: "stream-001",
       url: "https://stream.invalid/key",
-    });
+    };
     await streams.onStream(ready);
-    const ended = streamEvent({
+    const ended: StreamEvent = {
       type: "ended",
       participantId: "lane-01",
       recordId: "sim-001",
       streamId: "stream-001",
-    });
+    };
     await expect(streams.onStream(ended)).rejects.toThrow("ended handler failed");
     expect(events).toEqual([ready, ended]);
   });

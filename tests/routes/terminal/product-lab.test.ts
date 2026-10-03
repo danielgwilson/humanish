@@ -632,7 +632,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       dryRun: boolean;
       actor: string;
       product: string;
-      labId: string;
+      studyId: string;
       runId: string;
     };
     expect(envelope.schema).toBe("humanish.study-result.v1");
@@ -640,7 +640,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("codex-exec");
     expect(envelope.product).toBe("widgetsmith-cli");
-    expect(envelope.labId).toBe("terminal-product-demo");
+    expect(envelope.studyId).toBe("terminal-product-demo");
     expect(envelope.runId).toBe("terminal-cli-json");
 
     const verified = await verifyRun(cwd, "terminal-cli-json");

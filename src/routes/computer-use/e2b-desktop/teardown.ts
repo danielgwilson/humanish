@@ -14,7 +14,6 @@ import { drainCommsEvidence } from "./comms.js";
 import { finalParticipantGeometry } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 import type { E2BDesktopDeps, DesktopParticipantRun, SandboxReleaseFact } from "../types.js";
-import { streamEvent } from "../../../study/run-study-homes.js";
 
 /**
  * Each route's own keep flag gates its own participants only: a clone.keep can never leak into a
@@ -180,14 +179,12 @@ export async function finishE2BDesktop(
     // break teardown.
     if (state.streamUrl !== undefined) {
       try {
-        await deps.onStream(
-          streamEvent({
-            type: "ended",
-            participantId: spec.planned.id,
-            recordId: spec.recordId,
-            streamId: spec.streamId,
-          }),
-        );
+        await deps.onStream({
+          type: "ended",
+          participantId: spec.planned.id,
+          recordId: spec.recordId,
+          streamId: spec.streamId,
+        });
       } catch {
         // viewer-side only; nothing to record
       }

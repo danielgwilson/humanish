@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { CuaAdmissionLimitError } from "../../../src/index.js";
+import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import {
   runComputerUseLoop,
   type CuaProvider,

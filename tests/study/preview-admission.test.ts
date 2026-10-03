@@ -51,7 +51,6 @@ describe("preview admission", () => {
       schema: "humanish.study-result.v1",
       route: "preview",
       studyId: "preview-admission",
-      labId: "preview-admission",
       ok: false,
       cwd: path.resolve(cwd),
       warnings: [],
