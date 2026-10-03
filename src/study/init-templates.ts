@@ -1,4 +1,5 @@
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
+import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
 
 export interface StarterFile {
   path: string;
@@ -68,10 +69,14 @@ function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): St
   const needs = account
     ? `  Needs E2B_API_KEY and the coding agent signed in on this machine. Cost: one small task, a few
   E2B desktop minutes and the agent's account usage. humanish cannot put a dollar cap on account
-  usage, so the ten-minute session limit below bounds the run.`
+  usage, so the ten-minute session limit below bounds the run. When OPENAI_API_KEY is set, the
+  analysis after the run bills it: humanish refuses that request before it starts if its estimate
+  is over $${DEFAULT_ANALYSIS_MAX_COST_USD}. Set review.analysis: false to skip it.`
     : `  Needs E2B_API_KEY and OPENAI_API_KEY. Cost: one small task with a $2 cap on estimated model
   spend. The run stops before its next model request once the estimate passes $2, so the last
-  request can go slightly over, and hosted desktop time is billed separately.`;
+  request can go slightly over, and hosted desktop time is billed separately. The analysis after
+  the run bills the same key outside that cap: humanish refuses it before it starts if its
+  estimate is over $${DEFAULT_ANALYSIS_MAX_COST_USD}. Set review.analysis: false to skip it.`;
   const participant = account
     ? `# Your machine has a coding agent signed in, so this study uses it: no provider API key, only
 # E2B. To use a provider key instead, swap to \`type: openai-computer-use\` and add caps.maxUsd.

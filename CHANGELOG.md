@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixes
+
+- The Observer's cost line left out the analysis after a run, which bills the OpenAI key
+  separately: on a try-live run it showed about $0.02 for participants and desktops while the
+  analysis cost about $0.53, and it showed no cost once analyzed outcomes replaced the tally. The
+  line now adds the analysis spend as its own part and a total that includes it, with or without
+  analyzed outcomes. The try-live starter study's description says the analysis bills
+  OPENAI_API_KEY, is refused above $3, and is turned off with `review.analysis: false`.
+
 ## 0.108.0: Studies, one runner and one viewer, errors on stderr (2026-10-03)
 
 humanish 0.108.0 renames labs to studies. A study file is `humanish.study.v3` under
