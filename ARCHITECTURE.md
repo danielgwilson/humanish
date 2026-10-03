@@ -137,7 +137,7 @@ comments name an invariant by its rule.
 | A run is closed on every exit, only a published run is analyzed, and `latest.json` moves only after its run is published | `runScope` and `FinishedRun` (`src/run/run.ts`); `completeAutomaticAnalysis` requires an issued `FinishedRun` for the result's run; `Run.finish` writes `latest.json` last through `writePreparedRunLatestPointer` (`src/run/contained-output.ts`)                                                                                            | `tests/run/run-lifecycle.test.ts`, which also checks that `src/run/run.ts` is the pointer's one writer, `tests/analysis/automatic-analysis.test.ts`                                                                                                                                                                                                                                                                                                                            |
 
 The receipt write is best-effort; the sandbox's server-side timeout ends a sandbox with no
-receipt. A lab preflight probe journals its receipt with `withPreflightSandbox`
+receipt. A study check probe journals its receipt with `withPreflightSandbox`
 (`src/lab/preflight-probes.ts`), and `humanish reclaim --preflight` (`src/run/reclaim.ts`) kills
 what a failed probe left. [Trust boundaries](https://github.com/danielgwilson/humanish/blob/main/site/content/docs/trust-boundaries.mdx) gives the
 probe timeouts.
