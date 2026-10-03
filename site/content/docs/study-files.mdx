@@ -40,9 +40,9 @@ humanish run failed: humanish/labs/old-study.yaml is a humanish.lab.v2 file in h
 code: HUMANISH_STUDY_V2_UNSUPPORTED
 ```
 
-A v3 file left in a `labs/` folder fails with `HUMANISH_STUDY_RETIRED_DIRECTORY` and
-"Move it to humanish/studies/." `humanish study list --json` lists each refused file in
-`retired`, with its code and message. Convert every v2 file at once:
+A v3 file left in a `labs/` folder fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`, and its
+message names the matching `studies/` folder to move it to; `migrate` skips v3 files.
+`humanish study list --json` lists each refused file in `retired`, with its code and message. Convert every v2 file at once:
 
 ```bash
 npx humanish migrate --dry-run
