@@ -1,13 +1,13 @@
 import { formatAutomaticAnalysisBudget } from "../../analysis/automatic-config.js";
 import { resolve } from "node:path";
 import { Command, Option } from "commander";
-import { inspectLabManifest, listLabManifests } from "../../lab/discover.js";
-import type { LabInspectResult, LabListResult } from "../../lab/discover.js";
+import { inspectLabManifest, listLabManifests } from "../../study/discover.js";
+import type { LabInspectResult, LabListResult } from "../../study/discover.js";
 import {
   runLabPreflight,
   type LabPreflightReachabilityMode,
   type LabPreflightResult,
-} from "../../lab/preflight.js";
+} from "../../study/preflight.js";
 import { addRunOptions, handleRun } from "./run-command.js";
 import { deprecationMessage, warnAndQueue } from "../deprecations.js";
 import {

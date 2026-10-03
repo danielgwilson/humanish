@@ -21,10 +21,10 @@ import type {
   ActorTraceItem,
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
-import type { LabEvent, ParticipantRef } from "../../lab/run-lab-events.js";
-import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../lab/run-lab-homes.js";
-import { type BrowserScorer } from "../../lab/adapter-extension.js";
+import type { LabDeps } from "../../study/study-deps.js";
+import type { LabEvent, ParticipantRef } from "../../study/run-study-events.js";
+import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../study/run-study-homes.js";
+import { type BrowserScorer } from "../../study/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
@@ -34,8 +34,8 @@ import type {
   ComputerUsePlan,
   ComputerUseRunner,
   ResidualConfig,
-} from "../../lab/plan-types.js";
-import { type LabCommsEmail, type LabConfig } from "../../lab/types.js";
+} from "../../study/plan-types.js";
+import { type LabCommsEmail, type LabConfig } from "../../study/types.js";
 import { type ObserverResult } from "../../observer/render.js";
 import {
   type BundleRun,
@@ -50,7 +50,7 @@ import { type PreparedOutputRoot } from "../../run/contained-output.js";
 import type {
   ComputerUseParticipant,
   SharedWorldParticipant,
-} from "../../lab/plan-participants.js";
+} from "../../study/plan-participants.js";
 import type { ResolvedParticipant } from "../../run/participant.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 

@@ -6,7 +6,7 @@ import { PNG } from "pngjs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { runLab } from "../../src/run-lab.js";
-import type { BrowserLabScoringContext } from "../../src/lab/adapter-extension.js";
+import type { BrowserLabScoringContext } from "../../src/study/adapter-extension.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 import type { RunAdapterArtifact } from "../../src/run/bundle.js";
 import { verifyRun } from "../../src/verify/verify.js";

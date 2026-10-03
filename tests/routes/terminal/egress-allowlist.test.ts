@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 
 // The terminal route injects the operator's runtime LLM key command-scoped, and codex spawns
 // the participant's shell as a child, so the participant inherits that key. Two participants in a

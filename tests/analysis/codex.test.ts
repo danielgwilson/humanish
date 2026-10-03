@@ -13,7 +13,7 @@ import {
   resolveAutomaticAnalysis,
 } from "../../src/analysis/automatic-config.js";
 import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../src/analysis/automatic.js";
-import { parseLabConfig } from "../../src/lab/config.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import { createProgram } from "../../src/cli/program.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";

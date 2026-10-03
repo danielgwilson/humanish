@@ -34,7 +34,7 @@
 // gate; humanish cannot tell synthetic from real data, so it makes no claim about real data.
 
 import path from "node:path";
-import { missingKeys, missingSubjectEnv } from "../../lab/requirements.js";
+import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { scrubLiterals } from "../../evidence/redaction.js";
@@ -48,11 +48,11 @@ import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-ag
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
-import type { SharedWorldPlan } from "../../lab/plan-types.js";
-import { browserRouteScorer } from "../../lab/adapter-scorer-loader.js";
-import { withLateScorer } from "../../lab/route-inputs.js";
+import type { SharedWorldPlan } from "../../study/plan-types.js";
+import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
+import { withLateScorer } from "../../study/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import {
   type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
@@ -64,7 +64,7 @@ import {
   type RunConcurrentSharedWorldLabOptions,
   type PlaneSelection,
 } from "./types.js";
-import { rosterOf } from "../../lab/parse/actors.js";
+import { rosterOf } from "../../study/parse/actors.js";
 
 /** The shared-world code for each local-agent refusal, kind for kind with computer-use. */
 const LOCAL_AGENT_REFUSAL_CODES = {

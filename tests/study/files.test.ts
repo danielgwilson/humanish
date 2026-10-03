@@ -9,8 +9,8 @@ import { stringify } from "yaml";
 
 import { saveCommsConnection } from "../../src/comms/connections.js";
 import { configureCommsLab } from "../../src/comms/setup.js";
-import { listLabManifests, resolveLabManifest } from "../../src/lab/discover.js";
-import { runInit } from "../../src/lab/init.js";
+import { listLabManifests, resolveLabManifest } from "../../src/study/discover.js";
+import { runInit } from "../../src/study/init.js";
 import { otherStudyFiles, studyFileCandidates } from "../../src/study/files.js";
 
 let cwd: string;

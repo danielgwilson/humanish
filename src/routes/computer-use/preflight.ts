@@ -1,7 +1,7 @@
-import type { Brain, ComputerUsePlan } from "../../lab/plan-types.js";
-import { pricedModel } from "../../lab/plan-base.js";
-import { missingKeys, missingSubjectEnv } from "../../lab/requirements.js";
-import type { LabCommsExternal } from "../../lab/types.js";
+import type { Brain, ComputerUsePlan } from "../../study/plan-types.js";
+import { pricedModel } from "../../study/plan-base.js";
+import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
+import type { LabCommsExternal } from "../../study/types.js";
 import { detectLocalAgents } from "../../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";

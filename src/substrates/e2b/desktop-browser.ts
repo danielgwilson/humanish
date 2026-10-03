@@ -5,8 +5,8 @@ import {
   chromiumEvidenceProfilePreferencesJson,
 } from "../../evidence/browser-hygiene.js";
 import { failureTail } from "../../evidence/redaction.js";
-import { isHttpUrl } from "../../lab/parse/subject.js";
-import type { LabDesktopBrowser } from "../../lab/types.js";
+import { isHttpUrl } from "../../study/parse/subject.js";
+import type { LabDesktopBrowser } from "../../study/types.js";
 import { runDetachedStep } from "../detached.js";
 import { shellQuote } from "../shell.js";
 import type { E2BDesktopSandbox } from "./sdk.js";

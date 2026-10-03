@@ -1,5 +1,5 @@
 import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "./runtime-auth.js";
-import type { LabRuntimeAuth } from "../../lab/types.js";
+import type { LabRuntimeAuth } from "../../study/types.js";
 import { TERMINAL_PRODUCT_LAB_PROVIDER_METADATA } from "./types.js";
 
 /**

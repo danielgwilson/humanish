@@ -11,15 +11,15 @@ import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import {
   computerUseParticipants,
   type ComputerUseParticipant,
-} from "../../lab/plan-participants.js";
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
+} from "../../study/plan-participants.js";
+import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { resolveParticipant } from "../../run/participant.js";
-import { type LabConfig } from "../../lab/types.js";
-import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
+import { type LabConfig } from "../../study/types.js";
+import { scrubPersonaBrief, type ResolvedPersona } from "../../study/persona.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunRerunLineage } from "../../run/bundle.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
-import { resolveCommittedPersonas } from "../../lab/persona-resolve.js";
+import { participantAssignment } from "../../study/participant-assignment.js";
+import { resolveCommittedPersonas } from "../../study/persona-resolve.js";
 import type { PreparedSelectedOutputDirectory } from "../../run/contained-output.js";
 import {
   CUA_FANOUT_STRATEGY,
@@ -37,7 +37,7 @@ import {
   SANDBOX_TIMEOUT_BUFFER_MS,
   SUBJECT_PROVISION_BUDGET_MS,
 } from "../../substrates/e2b/lifetime.js";
-import { readPositiveInt } from "../../lab/parse/values.js";
+import { readPositiveInt } from "../../study/parse/values.js";
 import { digestUrl } from "./bundle-parts.js";
 import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-prompt.js";
 import { resolveCuaRerunSelection } from "./rerun-selection.js";

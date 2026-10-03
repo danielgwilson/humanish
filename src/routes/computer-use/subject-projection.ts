@@ -3,8 +3,8 @@
 // bundle builders take.
 
 import { commandDigestOf } from "../../subject/state.js";
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
-import type { LabSubjectState } from "../../lab/types.js";
+import type { ComputerUsePlan } from "../../study/plan-types.js";
+import type { LabSubjectState } from "../../study/types.js";
 import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";

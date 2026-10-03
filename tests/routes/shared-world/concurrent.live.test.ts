@@ -7,7 +7,7 @@ import { parse } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 

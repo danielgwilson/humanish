@@ -9,8 +9,8 @@ import {
   isCuaActorDescriptor,
   type CuaActorDescriptor,
 } from "../../actors/registry.js";
-import { isHttpUrl, isLoopbackUrl } from "../../lab/parse/subject.js";
-import { subjectStateInvalidReason } from "../../lab/parse/subject-state.js";
+import { isHttpUrl, isLoopbackUrl } from "../../study/parse/subject.js";
+import { subjectStateInvalidReason } from "../../study/parse/subject-state.js";
 import {
   brainOf,
   callerBrainOf,
@@ -18,17 +18,17 @@ import {
   desktopRequirements,
   planBase,
   provisionedSubject,
-} from "../../lab/plan-base.js";
-import { computerUseParticipants, declaredTargets } from "../../lab/plan-participants.js";
+} from "../../study/plan-base.js";
+import { computerUseParticipants, declaredTargets } from "../../study/plan-participants.js";
 import type {
   AppUrlSubject,
   ComputerUsePlan,
   ComputerUseRunner,
   RoutePlanResult,
   RouteRefusal,
-} from "../../lab/plan-types.js";
-import { MAX_COMPUTER_USE_PARTICIPANTS } from "../../lab/routing.js";
-import type { LabConfig, LabSubjectServe, LabSubjectState } from "../../lab/types.js";
+} from "../../study/plan-types.js";
+import { MAX_COMPUTER_USE_PARTICIPANTS } from "../../study/routing.js";
+import type { LabConfig, LabSubjectServe, LabSubjectState } from "../../study/types.js";
 import {
   cloneTargetValidationReason,
   computerUseValidationReason,
@@ -37,8 +37,8 @@ import {
   receivingEmailValidationReason,
   scenarioCapsValidationReason,
   taskProtocolValidationReason,
-} from "../../lab/validation.js";
-import { desktopCliProductReason } from "../../lab/composition-rules.js";
+} from "../../study/validation.js";
+import { desktopCliProductReason } from "../../study/composition-rules.js";
 import { isLocalBrowserLab } from "../../substrates/local/runtime-config.js";
 import {
   boundedConcurrency,

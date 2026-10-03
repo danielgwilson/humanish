@@ -15,11 +15,11 @@ import type {
   CuaTurn as Turn,
   CuaTurnRequest as TurnRequest,
 } from "./actors/computer-use/loop.js";
-import type { BrowserLabScoringContext as BrowserScoringContext } from "./lab/adapter-extension.js";
-import { parseLabConfig as parseStudy } from "./lab/config.js";
-import type { LabRoute as StudyRoute } from "./lab/routing.js";
-import type { LabEvent as StudyEvent } from "./lab/run-lab-events.js";
-import { LAB_CONFIG_SCHEMA as V2_SCHEMA, type LabConfig as StudyConfig } from "./lab/types.js";
+import type { BrowserLabScoringContext as BrowserScoringContext } from "./study/adapter-extension.js";
+import { parseLabConfig as parseStudy } from "./study/config.js";
+import type { LabRoute as StudyRoute } from "./study/routing.js";
+import type { LabEvent as StudyEvent } from "./study/run-study-events.js";
+import { LAB_CONFIG_SCHEMA as V2_SCHEMA, type LabConfig as StudyConfig } from "./study/types.js";
 import {
   runPackageLab as runStudy,
   type LabOutcome as StudyOutcome,

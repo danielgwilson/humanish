@@ -1,5 +1,5 @@
 // Finds doc references that pair a code name with the file that holds it, such as
-// "`routeOf` (`src/lab/plan.ts`)", and reports the ones whose file no longer declares that name.
+// "`routeOf` (`src/study/plan.ts`)", and reports the ones whose file no longer declares that name.
 // A rename, a move or a deletion leaves these pointers behind; a reader who opens the file then
 // finds nothing by that name. Only three explicit forms are read, so a name that merely sits near
 // a path is never checked.

@@ -38,9 +38,9 @@ fail-closed cross-validation, and forward-declared warnings.
 | `actor.type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                     |
 | route                             | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
 
-Routing is `routeOf` (`src/lab/plan.ts`). It sends every `terminal-product` subject to
+Routing is `routeOf` (`src/study/plan.ts`). It sends every `terminal-product` subject to
 this route, even with an unregistered actor, so this route refuses the actor.
-`isTerminalProductComposition(config)` (`src/lab/routing.ts`) also feeds the forward-declared
+`isTerminalProductComposition(config)` (`src/study/routing.ts`) also feeds the forward-declared
 warnings.
 
 ## Repeating a terminal study with the same runtime
@@ -215,7 +215,7 @@ the cleanup proof, the interventions ledger and a minimal fail-closed cap.
 
 The route reads `env` and `scorer` from its options (`src/routes/terminal/types.ts`), and a test
 passes its seams (`desktopModule`, `renderObserver`, `now`, `costProbe`) as `LabDeps`
-(`src/lab/lab-deps.ts`).
+(`src/study/study-deps.ts`).
 
 ## The product-adapter extension seam
 

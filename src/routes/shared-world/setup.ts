@@ -4,7 +4,7 @@
 import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabConfig, LabSubjectServe, LabSubjectStateCheckpoint } from "../../lab/types.js";
+import type { LabConfig, LabSubjectServe, LabSubjectStateCheckpoint } from "../../study/types.js";
 import { buildRunSource, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
@@ -34,8 +34,8 @@ import type {
   PlaneSelection,
   SharedWorldRunInput,
 } from "./types.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
-import type { SharedWorldPlan } from "../../lab/plan-types.js";
+import type { LabDeps } from "../../study/study-deps.js";
+import type { SharedWorldPlan } from "../../study/plan-types.js";
 import { planeStateOf } from "./plan.js";
 import path from "node:path";
 

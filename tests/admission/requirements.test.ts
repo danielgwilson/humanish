@@ -7,10 +7,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../../src/lab/config.js";
-import { planLab } from "../../src/lab/plan.js";
-import type { Requirement } from "../../src/lab/plan-types.js";
-import type { LabDeps } from "../../src/lab/lab-deps.js";
+import { parseLabConfig } from "../../src/study/config.js";
+import { planLab } from "../../src/study/plan.js";
+import type { Requirement } from "../../src/study/plan-types.js";
+import type { LabDeps } from "../../src/study/study-deps.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";

@@ -8,8 +8,8 @@ import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import { inspectCommsRecovery } from "../../src/comms/receiving-recovery.js";
 import { prepareReceivingRun } from "../../src/comms/receiving-runtime.js";
 import type { ReceivingSurfaceFile } from "../../src/comms/receiving-types.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { parseLabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 
 // Synthetic canaries and explicit mutations of the sanitized, live-derived wire fixtures.

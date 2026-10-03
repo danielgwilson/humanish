@@ -9,7 +9,7 @@ extension seams, but public out-of-tree actor registration and its conformance c
 shipped. Also not shipped: the full `Actor.run(input)` interface, `ApprovalPolicy`,
 `StagehandCuaActor`, and the `persona-fidelity` verify check. `RedactionHooks` ships in
 `src/evidence/redaction.ts`, and the computer-use loop takes it; the other adapters do not take it
-yet. Of the capabilities, routing checks `lanes` and `producesScreenshots` (`src/lab/routing.ts`):
+yet. Of the capabilities, routing checks `lanes` and `producesScreenshots` (`src/study/routing.ts`):
 an actor that declares no screenshots cannot run on the computer-use or scripted-browser route.
 Decision 6's capture-time screenshot stance was recanted in 0.6.0; see the inline notes and the
 capture-vs-publish rule in
@@ -409,7 +409,7 @@ Plan:
 
 1. **Parse the whole persona** into a `ResolvedPersona`: `{ id, name, summary, goals[],
 traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }` (map
-   `technical_confidence` to `skill`). The shipped shape in `src/lab/persona.ts` has no
+   `technical_confidence` to `skill`). The shipped shape in `src/study/persona.ts` has no
    `goals`, adds `background`, and makes every trait optional.
 2. **Compile traits into actor-neutral directives**, not prose, via a pure
    `personaToDirectives(p)`:
@@ -435,7 +435,7 @@ traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }`
    candidate. The harness imposes no turn cap; its hard stops are the wall-clock
    `timeoutMs` and declared spend caps.
 4. **Bind the same directives per harness.** `renderPersonaPromptSection`
-   (`src/lab/persona.ts`) renders the directives as one prompt section, and each harness puts
+   (`src/study/persona.ts`) renders the directives as one prompt section, and each harness puts
    that section where its model reads standing instructions:
    - Computer use: `composeParticipantInstructions`
      (`src/routes/computer-use/participant-prompt.ts`) opens the participant instructions
@@ -465,7 +465,7 @@ traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }`
    `persona-fidelity` verify check asserts that the friction and accessibility directives
    reached the actor input and that a `gave_up` run cites a concrete friction reason (not a
    turn count). "Did the persona drive the run" becomes a verifiable artifact. (Status
-   2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and `traitsApplied` is
+   2026-06-11: `personaToDirectives` shipped in `src/study/persona.ts` and `traitsApplied` is
    threaded on the codex-exec terminal route, but the `persona-fidelity` verify check is
    not-yet-shipped roadmap. The computer-use route records `persona.traitsApplied` from the
    resolved persona in `src/routes/computer-use/participant-prompt.ts`.)

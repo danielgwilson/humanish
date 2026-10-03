@@ -8,9 +8,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/lab/types.js";
+import type { LabConfig } from "../../../src/study/types.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import { lab } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];

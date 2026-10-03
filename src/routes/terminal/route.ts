@@ -51,9 +51,9 @@ import { runScope, type FinishedRun, type RunScope } from "../../run/run.js";
 import { planTerminalLab, type TerminalRefusal } from "./plan.js";
 import { runDryTerminalLab } from "./dry-run.js";
 import { checkLiveTerminalMachine, runLiveTerminalSession } from "./session.js";
-import type { TerminalPlan } from "../../lab/plan-types.js";
-import { terminalRouteScorer } from "../../lab/adapter-scorer-loader.js";
-import { withLateScorer } from "../../lab/route-inputs.js";
+import type { TerminalPlan } from "../../study/plan-types.js";
+import { terminalRouteScorer } from "../../study/adapter-scorer-loader.js";
+import { withLateScorer } from "../../study/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import {
   type LiveTerminalAuth,

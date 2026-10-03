@@ -1,4 +1,4 @@
-import type { LabRoute } from "../lab/plan.js";
+import type { LabRoute } from "../study/plan.js";
 import { CODEX_ANALYSIS_MODEL, codexAnalysisIdentity } from "./codex-config.js";
 import {
   DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,

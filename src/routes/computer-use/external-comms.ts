@@ -1,5 +1,5 @@
 import { collectExternalCommsEvidence } from "../../comms/external-evidence.js";
-import type { LabCommsEmail, LabCommsExternal } from "../../lab/types.js";
+import type { LabCommsEmail, LabCommsExternal } from "../../study/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
 import { participantHasInboxRecipient } from "./participant-desktop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";

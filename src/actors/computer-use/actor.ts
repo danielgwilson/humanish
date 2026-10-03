@@ -30,7 +30,7 @@ import {
 import { defaultRedactionHooks, type RedactionHooks } from "../../evidence/redaction.js";
 import type { DwellWindow, StopWhen } from "../stop-conditions.js";
 import { estimateActorCostForExecution } from "../../run/pricing.js";
-import type { LabTask } from "../../lab/tasks.js";
+import type { LabTask } from "../../study/tasks.js";
 
 export interface CuaActorSessionOptions {
   /** The composed mission (persona + scenario/participant instruction) handed to the model. */

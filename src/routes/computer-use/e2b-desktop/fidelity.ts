@@ -2,7 +2,7 @@
 // browser-state observer that watches it for drift, and the final browser geometry.
 
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
-import type { ResidualConfig } from "../../../lab/plan-types.js";
+import type { ResidualConfig } from "../../../study/plan-types.js";
 import type { RunDesktopGeometry } from "../../../run/streams.js";
 import { readDetachedLog } from "../../../substrates/detached.js";
 import type {

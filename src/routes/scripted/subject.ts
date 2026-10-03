@@ -3,7 +3,7 @@
 // teardown.
 
 import { commandDigestOf } from "../../subject/state.js";
-import type { ScriptedPlan } from "../../lab/plan-types.js";
+import type { ScriptedPlan } from "../../study/plan-types.js";
 import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
@@ -19,8 +19,8 @@ import {
 import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/sandbox.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
-import type { RunLabHomes } from "../../lab/run-lab-homes.js";
+import type { LabDeps } from "../../study/study-deps.js";
+import type { RunLabHomes } from "../../study/run-study-homes.js";
 import {
   e2bRequestTimeoutMs,
   SANDBOX_TIMEOUT_BUFFER_MS,

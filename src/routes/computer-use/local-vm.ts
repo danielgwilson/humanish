@@ -1,8 +1,8 @@
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import path from "node:path";
 import type { InternalRunLabOptions } from "../../run-lab.js";
-import type { LabConfig } from "../../lab/types.js";
-import type { ProviderFactory } from "../../lab/run-lab-homes.js";
+import type { LabConfig } from "../../study/types.js";
+import type { ProviderFactory } from "../../study/run-study-homes.js";
 import {
   inboxRecipientFor,
   type ParticipantDesktop,

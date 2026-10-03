@@ -9,8 +9,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
-import { parseLabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../src/actors/computer-use/openai-provider.js";

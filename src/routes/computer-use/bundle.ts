@@ -5,7 +5,7 @@
 
 import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { ComputerUsePlan } from "../../study/plan-types.js";
 import type { BundleRun, RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import {
   judgeOneParticipant,

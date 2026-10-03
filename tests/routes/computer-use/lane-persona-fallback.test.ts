@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 
 // With a `lanes` roster present, participant persona resolution once read only `lane.persona`. Every
 // fan-out participant of every study that declared `actors[0].persona` therefore ran with no
 // persona: no personaLine in the prompt, traitsApplied empty, and nothing warned. The field's own
-// doc comment in src/lab/types.ts says "Default: actors[0].persona", and its sibling fields
+// doc comment in src/study/types.ts says "Default: actors[0].persona", and its sibling fields
 // (stopWhen, reasoningEffort) already fell back that way. Doc and code disagreed; code won.
 //
 // personas drive the app. A fan-out result produced without one is not the study that was

@@ -1,6 +1,6 @@
 import { deriveRunFacts } from "../../../src/cli/telemetry.js";
-import type { LabEvent } from "../../../src/lab/run-lab-events.js";
-import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
+import type { LabEvent } from "../../../src/study/run-study-events.js";
+import { browserScorer } from "../../../src/study/adapter-scorer-loader.js";
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import { draftFeedback } from "../../../src/feedback/feedback.js";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -25,14 +25,14 @@ import {
   floorRenderResolution,
   MIN_DESKTOP_RENDER_WIDTH,
   resolveParticipantDevice,
-} from "../../../src/lab/device-presets.js";
+} from "../../../src/study/device-presets.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
-import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
+import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
 import { runCuaParticipants } from "../../../src/routes/computer-use/participant-execution.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import {
   type DesktopParticipantRun,
   type ParticipantRunOutcome,
@@ -43,8 +43,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -60,8 +60,8 @@ import { readReview } from "../../../src/run/stored-runs.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { participantRun } from "../../helpers/participant-run.js";
-import type { ProviderContext } from "../../../src/lab/run-lab-homes.js";
-import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
+import type { ProviderContext } from "../../../src/study/run-study-homes.js";
+import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a distinct sandbox per create()

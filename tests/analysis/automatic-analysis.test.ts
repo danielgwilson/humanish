@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { parseLabConfig } from "../../src/lab/config.js";
-import { type LabConfig } from "../../src/lab/types.js";
+import { parseLabConfig } from "../../src/study/config.js";
+import { type LabConfig } from "../../src/study/types.js";
 import {
   automaticAnalysisBudget,
   resolveAutomaticAnalysis,
@@ -20,8 +20,8 @@ import { asLiveRecording, publishRun } from "../helpers/finished-run.js";
 import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
 import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
 import { createProgram } from "../../src/cli/program.js";
-import { readLabSummary } from "../../src/lab/summary.js";
-import { runLabPreflight } from "../../src/lab/preflight.js";
+import { readLabSummary } from "../../src/study/summary.js";
+import { runLabPreflight } from "../../src/study/preflight.js";
 import { parse as parseYaml } from "yaml";
 import { runLab } from "../../src/run-lab.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
@@ -35,7 +35,7 @@ import { verifyRun } from "../../src/verify/verify.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { stopRun } from "../../src/tui/actions.js";
 import * as automaticJobs from "../../src/analysis/automatic.js";
-import { routeOf } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/study/plan.js";
 import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
 
 const fixtures = JSON.parse(

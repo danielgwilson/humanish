@@ -1,7 +1,7 @@
 // Each participant's records in a computer-use fan-out bundle: its simulation, its stream, its
 // subject provenance event and the events of its outcome (session, geometry warnings, phase trail).
 
-import { participantAssignment } from "../../lab/participant-assignment.js";
+import { participantAssignment } from "../../study/participant-assignment.js";
 import type { RunEvent, RunSimulation } from "../../run/bundle.js";
 import {
   participantEvent,

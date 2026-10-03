@@ -31,13 +31,13 @@ dropped: `plane.exposure` must be absent (claiming synthetic on a real site is a
 external-public disclosure limits are required.
 
 Why the getHost synthetic gate is deliberately not reachable from the app-url branch: that gate
-(`concurrentSharedWorldValidationReason` in `src/lab/validation.ts` requires `subject.exposure:
+(`concurrentSharedWorldValidationReason` in `src/study/validation.ts` requires `subject.exposure:
 synthetic`, a `0.0.0.0` bind and no `keep`; verify's `getHostPlaneFindings` in
 `src/verify/shared-world-concurrent.ts` then requires `plane.exposure == synthetic` and
 `subject.state.provenance == seeded`) exists because a getHost URL is internet-reachable and
 harness-owned; real data behind a harness-exposed URL is the hazard. A public site the harness
 neither provisioned nor exposed has neither property, so the gate's hazard does not exist there. The
-app-url branch is validated by `externalPublicSharedWorldValidationReason` (`src/lab/validation.ts`)
+app-url branch is validated by `externalPublicSharedWorldValidationReason` (`src/study/validation.ts`)
 and is reached before the getHost gate; a snapshot regression test pins the getHost path
 byte-unchanged.
 

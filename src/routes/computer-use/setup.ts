@@ -9,7 +9,7 @@ import { type RunScope } from "../../run/run.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
 import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
+import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../study/types.js";
 import { buildRunSource, type RunRerunLineage } from "../../run/bundle.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -28,9 +28,9 @@ import { makeCuaRunBudget } from "./participant-model.js";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 import { liveCuaRejection } from "./preflight.js";
 import { cuaDescriptorOf, declaredAppUrl, plannedAppUrl, type ComputerUseRefusal } from "./plan.js";
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
-import { phaseEvent, planEvent } from "../../lab/run-lab-events.js";
+import { phaseEvent, planEvent } from "../../study/run-study-events.js";
 import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
@@ -47,7 +47,7 @@ import {
   type RunCuaActorLabOptions,
   participantSubjectEnv,
 } from "./types.js";
-import { labPersonaIds } from "../../lab/persona-resolve.js";
+import { labPersonaIds } from "../../study/persona-resolve.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
 /** The physical project, bound before any caller hook runs. */

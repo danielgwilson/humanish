@@ -2,7 +2,7 @@
 // lab result with each role's outcome and the one error a run that did not pass reports.
 
 import { redactText } from "../../evidence/redaction.js";
-import { adapterScoreFailureMessage, applyBrowserScorer } from "../../lab/adapter-extension.js";
+import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adapter-extension.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import {

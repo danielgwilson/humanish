@@ -8,9 +8,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse, parseDocument, visit } from "yaml";
 
-import { parseLabConfig } from "../../src/lab/config.js";
-import { planLab } from "../../src/lab/plan.js";
-import { routeOf } from "../../src/lab/routing.js";
+import { parseLabConfig } from "../../src/study/config.js";
+import { planLab } from "../../src/study/plan.js";
+import { routeOf } from "../../src/study/routing.js";
 import { convertStudyText } from "../../src/study/convert.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));

@@ -7,9 +7,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/lab/types.js";
+import type { LabConfig } from "../../../src/study/types.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import type { RunCuaActorLabOptions } from "../../../src/routes/computer-use/types.js";
 import { lab } from "../../admission/fixtures.js";
 

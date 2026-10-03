@@ -1,6 +1,6 @@
 import type { AffordanceUse } from "./affordance.js";
 import type { ActorEstimatedCost } from "../run/pricing.js";
-import type { TaskFunnel } from "../lab/tasks.js";
+import type { TaskFunnel } from "../study/tasks.js";
 import {
   isCuaProviderFailurePhase,
   type CuaProviderFailurePhase,
@@ -13,7 +13,7 @@ import {
 // The schema maps the providers and routes implemented by the closed first-party
 // registry. The broader Actor.run(input) and ApprovalPolicy contract remains
 // design-only and is intentionally absent from these runtime types. RedactionHooks
-// (src/evidence/redaction.ts) and ResolvedPersona (src/lab/persona.ts) ship in
+// (src/evidence/redaction.ts) and ResolvedPersona (src/study/persona.ts) ship in
 // their own modules.
 
 export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";

@@ -11,10 +11,10 @@ import {
   starterLocalAgentFor,
   type FirstRunEnvironment,
 } from "../../src/cli/first-run-path.js";
-import { parseLabConfig } from "../../src/lab/config.js";
-import { brainOf } from "../../src/lab/plan-base.js";
+import { parseLabConfig } from "../../src/study/config.js";
+import { brainOf } from "../../src/study/plan-base.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
-import { runInit } from "../../src/lab/init.js";
+import { runInit } from "../../src/study/init.js";
 import { parse as parseYaml } from "yaml";
 
 const CODEX = { id: "codex", label: "Codex" } as const;

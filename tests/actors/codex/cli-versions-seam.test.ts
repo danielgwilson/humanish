@@ -5,8 +5,8 @@ import { parseSync } from "oxc-parser";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createProgram } from "../../../src/cli/program.js";
 import type { RunLabOptions } from "../../../src/run-lab.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import { parseLabConfig } from "../../../src/study/config.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 
 // `RestrictedCodexSessionOptions.cliVersions` bypasses per-host qualification for
 // scripts/codex-qualify.mjs. These tests prove no public path can set it.

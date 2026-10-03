@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { missingKeys } from "../../lab/requirements.js";
+import { missingKeys } from "../../study/requirements.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";

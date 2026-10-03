@@ -66,7 +66,7 @@ Implemented:
 - skills.sh-compatible agent skill;
 - first-class lab manifest resolution through `humanish/labs/*.yaml` and
   ignored `.humanish/labs/*.yaml` overlays, as `humanish.lab.v2` compositions
-  (`src/lab/config.ts`) with one engine and no hardcoded lab kinds;
+  (`src/study/config.ts`) with one engine and no hardcoded lab kinds;
 - a first-party actor registry with five registered descriptors
   (`src/actors/registry.ts`); `actors[0].type` is a real dispatch key on the
   computer-use, scripted-browser, and terminal-product routes;
@@ -128,11 +128,11 @@ Still not good enough:
 
 ## Check which compositions a lab can declare
 
-`parseLabConfig` (`src/lab/config.ts`) enforces this matrix through `compositionReason`
-(`src/lab/composition-rules.ts`), which uses the predicates in `src/lab/routing.ts` and the reasons
-in `src/lab/validation.ts`. The route entries check it again
+`parseLabConfig` (`src/study/config.ts`) enforces this matrix through `compositionReason`
+(`src/study/composition-rules.ts`), which uses the predicates in `src/study/routing.ts` and the reasons
+in `src/study/validation.ts`. The route entries check it again
 for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each
-accepted row except the local browser row. `tests/lab/task-route-preflight.test.ts` checks that
+accepted row except the local browser row. `tests/study/task-route-preflight.test.ts` checks that
 each of those labs routes as shown. `tests/run-lab-local-substrate.test.ts` covers the local
 browser row. Accepted rows have further required fields, such as `subject.serve` on `clone`, and
 the parse error names the missing one. The computer-use actors are `openai-computer-use` and

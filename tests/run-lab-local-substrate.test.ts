@@ -15,7 +15,7 @@ vi.mock("../src/routes/computer-use/local-vm.js", () => ({
 }));
 
 import { runLab } from "../src/run-lab.js";
-import type { LabConfig } from "../src/lab/types.js";
+import type { LabConfig } from "../src/study/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../src/run/bundle.js";
 import type { CuaExecutor, CuaProvider } from "../src/actors/computer-use/loop.js";
 

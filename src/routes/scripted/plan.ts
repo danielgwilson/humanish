@@ -2,24 +2,24 @@
 // its order and with its codes, then the plan the run uses. What stays in the route reads external
 // state: the scenario file, the E2B key, subject env values and the host browser.
 
-import type { LabDeps } from "../../lab/lab-deps.js";
+import type { LabDeps } from "../../study/study-deps.js";
 import { actorRegistry, isScriptedBrowserActorDescriptor } from "../../actors/registry.js";
 import { normalizeLocalAppUrl } from "../../actors/scripted-browser/steps.js";
 import { browserSurfaces } from "../../actors/scripted-browser/types.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import { isNonEmpty, planBase, provisionedSubject } from "../../lab/plan-base.js";
+import { isNonEmpty, planBase, provisionedSubject } from "../../study/plan-base.js";
 import type {
   Requirement,
   RoutePlanResult,
   RouteRefusal,
   ScriptedPlan,
-} from "../../lab/plan-types.js";
-import type { LabConfig } from "../../lab/types.js";
+} from "../../study/plan-types.js";
+import type { LabConfig } from "../../study/types.js";
 import {
   cloneTargetValidationReason,
   desktopMediaValidationReason,
   taskProtocolValidationReason,
-} from "../../lab/validation.js";
+} from "../../study/validation.js";
 
 // Default surface roster is 1 (desktop only): the defaults-table single-participant row governs;
 // `count: 2` is the declared override that adds the mobile surface.

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { runRoute, type RouteRun } from "../../src/cli/commands/lab-route-run.js";
-import type { LabConfig } from "../../src/lab/types.js";
+import type { LabConfig } from "../../src/study/types.js";
 import { prepareLab, type LabOutcome } from "../../src/run-lab.js";
 
 // runRoute calls afterRun once runLab has returned or thrown, before presentation. The run

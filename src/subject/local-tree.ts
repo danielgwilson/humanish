@@ -1,5 +1,5 @@
 import { failureTail, toErrorMessage } from "../evidence/redaction.js";
-import type { LabSubjectServe, LabSubjectState } from "../lab/types.js";
+import type { LabSubjectServe, LabSubjectState } from "../study/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
 import { detachedTimersOf, runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
 import type { Shell } from "../substrates/shell.js";

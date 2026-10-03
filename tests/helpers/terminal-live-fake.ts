@@ -1,8 +1,8 @@
 // A compact fake @e2b/desktop module and mock codex CLI, so the live terminal route runs
 // deterministically at $0. Shared by the scorer loader and RunLabOptions equivalence tests.
 
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { parseLabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import type { RunTerminalProductLabOptions } from "../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 

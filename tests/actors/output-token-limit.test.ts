@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
-import { parseLabConfig } from "../../src/lab/config.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import {
   createOpenAiResponsesProvider,
   type FetchLike,

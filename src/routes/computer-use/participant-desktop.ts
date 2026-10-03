@@ -1,8 +1,8 @@
 import type { CuaExecutor } from "../../actors/computer-use/loop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
-import type { LabCommsEmail, LabCommsRecipient } from "../../lab/types.js";
+import type { LabCommsEmail, LabCommsRecipient } from "../../study/types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
-import { recipientParticipantId } from "../../lab/parse/comms.js";
+import { recipientParticipantId } from "../../study/parse/comms.js";
 
 /** A prepared desktop supplies only participant input/observation and its inbox location. */
 export interface ReadyParticipantDesktop {

@@ -3,8 +3,8 @@
 
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
-import type { TerminalPlan } from "../../lab/plan-types.js";
+import { participantAssignment } from "../../study/participant-assignment.js";
+import type { TerminalPlan } from "../../study/plan-types.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
 import { judgeExecution, judgeTerminal, OUTCOME_POLICIES, resultOk } from "../../run/judge.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";

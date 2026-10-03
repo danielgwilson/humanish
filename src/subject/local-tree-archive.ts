@@ -388,7 +388,7 @@ function isDenylistedSegment(relPath: string): boolean {
  * are rejected instead of silently ignored: an exclude the author believed in but
  * that never matches anything is a leak vector, so unusable shapes fail
  * closed at the packing boundary (and, for lab manifests, already at parse
- * time in src/lab/parse/subject.ts).
+ * time in src/study/parse/subject.ts).
  */
 export function normalizeExtraExcludeEntry(entry: string): string {
   const trimmed = entry.trim();

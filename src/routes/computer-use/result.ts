@@ -1,9 +1,9 @@
-import { adapterScoreFailureMessage, applyBrowserScorer } from "../../lab/adapter-extension.js";
+import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adapter-extension.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import { round6 } from "../../run/pricing.js";
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { ComputerUsePlan } from "../../study/plan-types.js";
 import {
   foldScorerFailures,
   judgeExecution,

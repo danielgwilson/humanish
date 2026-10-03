@@ -7,9 +7,9 @@ import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import type { LabDeps } from "../../src/lab/lab-deps.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { parseLabConfig } from "../../src/lab/config.js";
+import type { LabDeps } from "../../src/study/study-deps.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,

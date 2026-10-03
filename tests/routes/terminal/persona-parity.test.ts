@@ -9,9 +9,9 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActorPersonaRef } from "../../../src/actors/contract.js";
 import { digestText } from "../../../src/evidence/redaction.js";
-import { renderPersonaPromptSection } from "../../../src/lab/persona.js";
-import { resolveCommittedPersonasForCwd } from "../../../src/lab/persona-resolve.js";
-import type { LabConfig } from "../../../src/lab/types.js";
+import { renderPersonaPromptSection } from "../../../src/study/persona.js";
+import { resolveCommittedPersonasForCwd } from "../../../src/study/persona-resolve.js";
+import type { LabConfig } from "../../../src/study/types.js";
 import {
   buildLiveTerminalProductBundle,
   buildTerminalProductBundle,

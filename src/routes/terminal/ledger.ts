@@ -1,6 +1,6 @@
 import { describeTokenUsage } from "./token-usage.js";
 import type { ActorTokenUsage } from "../../actors/contract.js";
-import type { LabScenarioCaps } from "../../lab/types.js";
+import type { LabScenarioCaps } from "../../study/types.js";
 import { round6 } from "../../run/pricing.js";
 import { COST_CATEGORIES, type CostCategory } from "../../run/terminal-contract.js";
 import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";

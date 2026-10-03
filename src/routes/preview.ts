@@ -2,7 +2,7 @@
 // the sim count and refuses what a synthetic run would ignore; runPreviewPlan does the rest.
 
 import type { AdmittedPlan, RunLabOptions } from "../run-lab.js";
-import type { LabPlan, PlanRefusal } from "../lab/plan-types.js";
+import type { LabPlan, PlanRefusal } from "../study/plan-types.js";
 import type { RunResult } from "../run/results.js";
 import { studyResultIdentity, type StudyResultIdentity } from "../run/study-result.js";
 import { runDryRun } from "../run/dry-run.js";

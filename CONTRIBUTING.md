@@ -123,20 +123,20 @@ pnpm pack:dry-run
 
 Common changes touch these tests and contracts:
 
-| Change                    | Tests                                                                                                                                                      | Contract or doc to update                                                      |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| A lab manifest field      | `tests/lab/config.test.ts`, the route's tests. Its cases pin each lab's warnings, so a new warning fails cases that expect none                            | `docs/contracts/schemas.md`, `site/content/docs/study-files.mdx`               |
-| A CLI option              | the command's tests under `tests/cli/`                                                                                                                     | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`                 |
-| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/` and `tests/golden/failures/<route>/`                                              | `docs/contracts/run-bundle.md`                                                 |
-| An actor trace field      | `tests/actors/`, `tests/actors/conformance.test.ts`, then the route goldens with `-u`                                                                      | `docs/contracts/schemas.md#actor-trace`, `docs/architecture/actor-contract.md` |
-| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1`                                                                               | `docs/architecture/observer.md`                                                |
-| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                                                                                                  | `observer/README.md`                                                           |
-| A route's behavior        | the route's folder in `tests/routes/` (the scripted route's main suite is `tests/routes/scripted/route.test.ts`), `tests/lab/task-route-preflight.test.ts` | the support matrix in `docs/ramp/README.md`                                    |
-| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                                                                                                        | `docs/architecture/actor-contract.md`                                          |
-| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`                                                                                             | `docs/contracts/policy.md`                                                     |
-| Study analysis            | `tests/analysis/`                                                                                                                                          | `docs/contracts/study-analysis.md`                                             |
-| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                                                                                                   | `tests/golden/public-api.json`, and a doc comment on the declaration           |
-| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                                                                                                | `examples/README.md`                                                           |
+| Change                    | Tests                                                                                                                                                        | Contract or doc to update                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| A lab manifest field      | `tests/study/config.test.ts`, the route's tests. Its cases pin each lab's warnings, so a new warning fails cases that expect none                            | `docs/contracts/schemas.md`, `site/content/docs/study-files.mdx`               |
+| A CLI option              | the command's tests under `tests/cli/`                                                                                                                       | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`                 |
+| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/` and `tests/golden/failures/<route>/`                                                | `docs/contracts/run-bundle.md`                                                 |
+| An actor trace field      | `tests/actors/`, `tests/actors/conformance.test.ts`, then the route goldens with `-u`                                                                        | `docs/contracts/schemas.md#actor-trace`, `docs/architecture/actor-contract.md` |
+| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1`                                                                                 | `docs/architecture/observer.md`                                                |
+| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                                                                                                    | `observer/README.md`                                                           |
+| A route's behavior        | the route's folder in `tests/routes/` (the scripted route's main suite is `tests/routes/scripted/route.test.ts`), `tests/study/task-route-preflight.test.ts` | the support matrix in `docs/ramp/README.md`                                    |
+| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                                                                                                          | `docs/architecture/actor-contract.md`                                          |
+| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`                                                                                               | `docs/contracts/policy.md`                                                     |
+| Study analysis            | `tests/analysis/`                                                                                                                                            | `docs/contracts/study-analysis.md`                                             |
+| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                                                                                                     | `tests/golden/public-api.json`, and a doc comment on the declaration           |
+| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                                                                                                  | `examples/README.md`                                                           |
 
 Six folders hold fixtures:
 
@@ -144,7 +144,7 @@ Six folders hold fixtures:
 - `humanish/fixtures/`: the synthetic apps this repo's own labs start.
 - `fixtures/`: synthetic apps and cases that several tests and scripts copy, such as
   `fixtures/minimal-app/`.
-- `adapters/fixtures/`: the adapter evidence shapes `tests/lab/adapter-fixtures.test.ts` checks.
+- `adapters/fixtures/`: the adapter evidence shapes `tests/study/adapter-fixtures.test.ts` checks.
 - `bench/fixtures/`: the TodoMVC patch and license `bench/todomvc-edit-study.md` uses.
 - `scripts/fixtures/`: a synthetic two-person video room, a proof target for camera and
   microphone runs.

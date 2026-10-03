@@ -6,13 +6,13 @@ import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provid
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { isReasoningEffort } from "../../actors/reasoning-effort.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
-import { isNonEmpty, planBase } from "../../lab/plan-base.js";
-import type { RoutePlanResult, RouteRefusal, TerminalPlan } from "../../lab/plan-types.js";
-import type { LabConfig } from "../../lab/types.js";
+import { isNonEmpty, planBase } from "../../study/plan-base.js";
+import type { RoutePlanResult, RouteRefusal, TerminalPlan } from "../../study/plan-types.js";
+import type { LabConfig } from "../../study/types.js";
 import {
   desktopMediaValidationReason,
   taskProtocolValidationReason,
-} from "../../lab/validation.js";
+} from "../../study/validation.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import { NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";

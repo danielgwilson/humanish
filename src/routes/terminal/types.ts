@@ -1,4 +1,4 @@
-import type { LabEvent } from "../../lab/run-lab-events.js";
+import type { LabEvent } from "../../study/run-study-events.js";
 import { type AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type {
   ActorCompletionReason,
@@ -9,9 +9,9 @@ import type {
 import type { CostCategory } from "../../run/terminal-contract.js";
 import type { RunScope } from "../../run/run.js";
 import type { buildRuntimeAuth } from "./credentials.js";
-import type { TerminalPlan } from "../../lab/plan-types.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { TerminalPlan } from "../../study/plan-types.js";
+import type { LabDeps } from "../../study/study-deps.js";
+import type { LabConfig } from "../../study/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import {
   type RunAdapterScore,

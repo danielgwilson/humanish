@@ -3,7 +3,7 @@ import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
 import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
+import { participantAssignment } from "../../study/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
 import {
   REVIEW_SCHEMA,

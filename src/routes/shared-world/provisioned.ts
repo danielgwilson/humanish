@@ -16,7 +16,7 @@ import type {
   LabConfig,
   LabSubjectServe,
   LabSubjectStateCheckpoint,
-} from "../../lab/types.js";
+} from "../../study/types.js";
 import { liveObserverResult } from "../../observer/live.js";
 import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
@@ -25,7 +25,7 @@ import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
 import { defaultSharedWorldPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
-import { phaseEvent } from "../../lab/run-lab-events.js";
+import { phaseEvent } from "../../study/run-study-events.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import {
@@ -49,7 +49,7 @@ import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
 import type { ConcurrentBundleArgs } from "./types.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
+import type { LabDeps } from "../../study/study-deps.js";
 import {
   buildSubjectProvenance,
   hostOriginDigest,
@@ -73,7 +73,7 @@ import {
   type LiveParticipants,
   type PlaneContext,
 } from "./types.js";
-import { addressedRecipients } from "../../lab/parse/comms.js";
+import { addressedRecipients } from "../../study/parse/comms.js";
 
 /** What the provisioned plane needs besides the shared plane context. */
 export interface ProvisionedPlaneSetup {

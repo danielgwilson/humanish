@@ -1,9 +1,9 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { type InternalRunLabOptions } from "../../run-lab.js";
-import { resolveLabDryRun } from "../../lab/plan.js";
+import { resolveLabDryRun } from "../../study/plan.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { startExposedObserver, validateExposure } from "../../observer/exposure.js";

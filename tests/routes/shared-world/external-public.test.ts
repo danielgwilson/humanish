@@ -36,16 +36,16 @@ import {
 import { planSharedWorldLab } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
 import {
   externalPublicSharedWorldValidationReason,
   concurrentSharedWorldValidationReason,
-} from "../../../src/lab/validation.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
-import { isSharedWorldComposition } from "../../../src/lab/routing.js";
+} from "../../../src/study/validation.js";
+import { parseLabConfig } from "../../../src/study/config.js";
+import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { runLab } from "../../../src/run-lab.js";
-import { routeOf } from "../../../src/lab/plan.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import { routeOf } from "../../../src/study/plan.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,

@@ -30,15 +30,15 @@ type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 // Reuse the slice-2/3 fake-E2B-module + mock-CLI pattern. (parseLabConfig + runTerminalProductLab +
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
 // harness in-test: the adapter itself uses the barrel exclusively, asserted below.)
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import type { TerminalScorer } from "../../../src/routes/terminal/types.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import { DECLARED_SCORER_MALFORMED } from "../../../src/lab/adapter-extension.js";
+import { DECLARED_SCORER_MALFORMED } from "../../../src/study/adapter-extension.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 
 // =============================================================================================

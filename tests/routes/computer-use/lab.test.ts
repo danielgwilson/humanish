@@ -1,7 +1,11 @@
-import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
-import { phaseEvent, type LabEvent, type SetupTarget } from "../../../src/lab/run-lab-events.js";
+import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
+import {
+  phaseEvent,
+  type LabEvent,
+  type SetupTarget,
+} from "../../../src/study/run-study-events.js";
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
-import { browserScorer } from "../../../src/lab/adapter-scorer-loader.js";
+import { browserScorer } from "../../../src/study/adapter-scorer-loader.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
@@ -43,7 +47,7 @@ import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
 } from "../../../src/routes/computer-use/self-report.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import {
   judgeOneParticipant,
   participantStatus as participantStatusForCredibility,
@@ -57,13 +61,13 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
 import { runLab } from "../../../src/run-lab.js";
-import { routeOf } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/study/plan.js";
 import {
   renderObserver,
   serveObserver,

@@ -79,7 +79,7 @@ readiness, uses the labels and the `humanish_swarm` block below.
   draft (`src/feedback/draft.ts`).
 - `adapter-hardening`, `target-app-setup`, `actor-auth` and
   `setup-quality-review`: feedback candidates that an adapter adds to the
-  bundle. `src/lab/adapter-extension.ts` checks the value.
+  bundle. `src/study/adapter-extension.ts` checks the value.
 
 ## Issue Body Contract
 

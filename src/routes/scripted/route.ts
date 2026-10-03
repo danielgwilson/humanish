@@ -22,7 +22,7 @@ import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import type { ScriptedPlan } from "../../lab/plan-types.js";
+import type { ScriptedPlan } from "../../study/plan-types.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
