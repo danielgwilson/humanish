@@ -142,11 +142,15 @@
     "seat": 0,
     "role": 49,
     "sim": 16,
-    "lab": 2196,
+    "lab": 2214,
     "doc-backend": 17
   },
   "site": {
     "css-hex-literals": 11,
-    "unused-classes": 0
+    "unused-classes": 0,
+    "literal-sizes": 0
+  },
+  "observer": {
+    "literal-sizes": 0
   }
 }

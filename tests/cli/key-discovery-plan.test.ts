@@ -114,7 +114,7 @@ async function initLocalBrowser(): Promise<string> {
 }
 
 async function patchLocalBrowser(cwd: string, patch: Record<string, unknown>): Promise<void> {
-  const labPath = path.join(cwd, "humanish", "labs", "local-browser.yaml");
+  const labPath = path.join(cwd, "humanish", "studies", "local-browser.yaml");
   const starter = parse(await readFile(labPath, "utf8")) as Record<string, unknown>;
   await writeFile(labPath, stringify({ ...starter, ...patch }));
 }

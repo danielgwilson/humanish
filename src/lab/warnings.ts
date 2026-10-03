@@ -379,6 +379,21 @@ export function inertFieldLabels(config: LabConfig): string[] {
   return inert;
 }
 
+/**
+ * The same fields as `inertFieldLabels`, as paths without their reasons, such as
+ * `actors[0].lanes[].entry` or `execution.timeoutMs`. `humanish migrate` drops each one.
+ */
+export function inertFieldPaths(config: LabConfig): string[] {
+  const routes = routesOf(config);
+  const paths: string[] = [];
+  for (const [index, actor] of config.actors.entries()) {
+    for (const row of ACTOR_ROWS)
+      if (row.applies(actor, routes)) paths.push(`actors[${index}].${row.field}`);
+  }
+  for (const row of CONFIG_ROWS) if (row.applies(config, routes)) paths.push(row.field);
+  return paths;
+}
+
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
 // setting that silently does nothing.
 export function forwardDeclaredWarnings(config: LabConfig): string[] {

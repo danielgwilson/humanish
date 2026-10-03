@@ -4,13 +4,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-12);
   min-width: 0;
   max-width: 100%;
   min-height: 36px;
-  padding: 6px 9px;
+  padding: var(--space-6) var(--space-8);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-6);
   background: var(--paper);
   color: var(--ink);
   font: 12px/1.4 var(--sans);
@@ -49,8 +49,8 @@
   min-width: var(--anchor-width);
   max-width: min(360px, calc(100vw - 24px));
   border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 4px;
+  border-radius: var(--radius-10);
+  padding: var(--space-4);
   background: var(--panel);
   color: var(--ink);
   box-shadow: var(--sh-panel);
@@ -68,8 +68,8 @@
   display: flex;
   align-items: center;
   min-height: 36px;
-  padding: 7px 12px 7px 32px;
-  border-radius: 5px;
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-32);
+  border-radius: var(--radius-6);
   font: 12px/1.4 var(--sans);
   overflow-wrap: anywhere;
   cursor: default;
@@ -97,7 +97,7 @@
   width: 16px;
   height: 16px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-4);
   background: var(--paper);
   color: var(--rail-on);
   cursor: pointer;
@@ -114,8 +114,8 @@
   height: 13px;
 }
 .tool:has(.observer-select) {
-  border-radius: 8px;
-  padding: 0 0 0 12px;
+  border-radius: var(--radius-8);
+  padding: 0 0 0 var(--space-12);
 }
 .tool .observer-select {
   flex: 1;

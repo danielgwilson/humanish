@@ -20,6 +20,7 @@ import { registerCodexCommands } from "./commands/codex.js";
 import { registerCommsCommands } from "./commands/comms.js";
 import { registerFeedbackCommands } from "./commands/feedback.js";
 import { registerLabCommands } from "./commands/lab.js";
+import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerObserveCommand, registerServeCommand } from "./commands/observe.js";
 import {
   registerCleanupCommand,
@@ -451,6 +452,7 @@ export function createProgram(
   registerRunsCommand(program, cliIo);
   registerStatsCommand(program, cliIo);
   registerLabCommands(program, cliIo);
+  registerMigrateCommand(program, cliIo);
   registerCommsCommands(program, cliIo);
   registerRuntimeCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);

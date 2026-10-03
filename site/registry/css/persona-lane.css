@@ -17,28 +17,28 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   font-weight: 500;
   letter-spacing: 0.14em;
   color: var(--accent-ink);
   border: 1px solid var(--accent-dim);
-  padding: 3px 9px;
-  border-radius: 999px;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
 .chip-pass::before {
   content: "✓";
-  font-size: 10px;
+  font-size: var(--text-11);
 }
 
 .chip-dot::before {
   content: "";
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--accent-ink);
 }
 
@@ -56,7 +56,7 @@
   flex-direction: column;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-14);
   overflow: hidden;
   box-shadow: var(--sh-panel);
 }
@@ -65,9 +65,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   min-height: 40px;
-  padding: 8px 16px;
+  padding: var(--space-8) var(--space-16);
   border-bottom: 1px solid var(--line-soft);
   background: var(--accent-wash);
 }
@@ -75,13 +75,13 @@
 .pl {
   display: flex;
   align-items: baseline;
-  gap: 11px;
+  gap: var(--space-12);
   min-width: 0;
 }
 
 .pidx {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   font-weight: 500;
   color: var(--accent-ink);
   letter-spacing: 0.08em;
@@ -89,7 +89,7 @@
 
 .pname {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   color: var(--ink);
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -100,7 +100,7 @@
 
 .pr {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: var(--text-11);
   color: var(--label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -124,32 +124,32 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 14px;
+  gap: var(--space-14);
   min-height: 52px;
-  padding: 12px 16px;
+  padding: var(--space-12) var(--space-16);
   border-top: 1px solid var(--line-soft);
 }
 
 .prep {
   margin: 0;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--text-13);
   color: var(--body-c);
 }
 
 .plab {
   display: block;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: var(--text-11);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--label);
-  margin-bottom: 3px;
+  margin-bottom: var(--space-4);
 }
 
 .prep q {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--text-12);
   color: var(--ink);
   quotes: "\201C" "\201D";
 }
@@ -161,9 +161,9 @@
 @media (max-width: 420px) {
   .pbar {
       flex-wrap: wrap;
-      row-gap: 2px;
-      padding-top: 10px;
-      padding-bottom: 10px;
+      row-gap: var(--space-2);
+      padding-top: var(--space-10);
+      padding-bottom: var(--space-10);
   }
   .pname {
       white-space: normal;
@@ -178,15 +178,5 @@
 @media (max-width: 1023px) {
   .panel {
       box-shadow: var(--sh-rail);
-  }
-}
-
-.fl, .chip, .c-bar, .c-foot, .manifest dt, .plab, .rail-k, .brief-facts dt {
-  font-size: 11px;
-}
-
-@media (max-width: 700px) {
-  .manifest dt, .plab, .brief-facts dt, .manifest dd.dd-sub, .ledger .lh span {
-      font-size: 11px;
   }
 }

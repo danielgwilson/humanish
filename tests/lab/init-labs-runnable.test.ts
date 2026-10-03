@@ -103,8 +103,8 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     await chmod(path.join(bin, "codex"), 0o700);
     const env = { PATH: bin, OPENAI_API_KEY: "synthetic-starter-admission-key" };
 
-    const labs = files.filter((file) => file.path.startsWith("humanish/labs/"));
-    expect(labs.map((file) => file.path)).toContain("humanish/labs/try-live.yaml");
+    const labs = files.filter((file) => file.path.startsWith("humanish/studies/"));
+    expect(labs.map((file) => file.path)).toContain("humanish/studies/try-live.yaml");
     for (const file of labs) {
       const parsed = parseLabConfig(parse(file.contents));
       expect(parsed.ok, `${file.path} should parse`).toBe(true);
@@ -156,7 +156,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
 
   it("carries a dollar cap only when the participant has an API price", () => {
     const tryLive = starterFilesFor(actor).find(
-      (file) => file.path === "humanish/labs/try-live.yaml",
+      (file) => file.path === "humanish/studies/try-live.yaml",
     )!;
     const parsed = parseLabConfig(parse(tryLive.contents));
     expect(parsed.ok).toBe(true);

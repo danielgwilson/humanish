@@ -7,9 +7,9 @@
 .participant-assignment summary {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   min-height: 40px;
-  padding: 6px 16px;
+  padding: var(--space-6) var(--space-16);
   cursor: pointer;
 }
 .participant-assignment summary::after {
@@ -40,31 +40,31 @@
 .assignment-body {
   max-height: 220px;
   overflow: auto;
-  padding: 0 16px 12px;
+  padding: 0 var(--space-16) var(--space-12);
   font: 14px/1.6 var(--sans);
   overflow-wrap: anywhere;
 }
 .assignment-body p {
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-10);
   white-space: pre-wrap;
 }
 .assignment-body h3 {
-  margin: 12px 0 4px;
+  margin: var(--space-12) 0 var(--space-4);
   font: 11px var(--mono);
   color: var(--muted);
 }
 .assignment-body ol {
-  padding-left: 22px;
-  margin: 4px 0;
+  padding-left: var(--space-24);
+  margin: var(--space-4) 0;
 }
 .assignment-body li {
-  margin: 4px 0;
+  margin: var(--space-4) 0;
   white-space: pre-wrap;
 }
 .assignment-missing {
   flex: none;
   margin: 0;
-  padding: 8px 16px;
+  padding: var(--space-8) var(--space-16);
   border-bottom: 1px solid var(--line-soft);
   font: 11px/1.5 var(--sans);
   color: var(--muted);
@@ -79,12 +79,12 @@
 @media (max-width: 880px) {
   .participant-assignment summary {
     min-height: 44px;
-    gap: 8px;
+    gap: var(--space-8);
   }
   .assignment-preview {
-    font-size: 12px;
+    font-size: var(--text-12);
   }
   .assignment-body {
-    font-size: 15px;
+    font-size: var(--text-15);
   }
 }

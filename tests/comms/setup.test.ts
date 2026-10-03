@@ -144,7 +144,7 @@ describe("receiving lab selection", () => {
     expect(plan).toMatchObject({
       ok: true,
       applied: false,
-      path: ".humanish/local/labs/signup-receiving.yaml",
+      path: ".humanish/local/studies/signup-receiving.yaml",
     });
     await expect(readFile(path.join(cwd, plan.path!))).rejects.toThrow();
     expect(
@@ -161,6 +161,8 @@ describe("receiving lab selection", () => {
       kind: "real",
       connection: "agentmail",
     });
+    // The copy is a v3 study, converted from the v2 source.
+    expect(selected.ok && selected.config.schema).toBe("humanish.study.v3");
     expect(await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8")).toBe(before);
   });
   it("rejects stale preview when the source or destination changes", async () => {

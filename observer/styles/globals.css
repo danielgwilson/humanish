@@ -26,7 +26,7 @@ body {
   background: var(--paper);
   color: var(--body-c);
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: var(--text-13);
   line-height: 1.5;
   font-feature-settings: "ss01";
 }
@@ -44,12 +44,12 @@ a:hover {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius-2);
 }
 
 .o-label {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: var(--text-11);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--label);
@@ -63,11 +63,11 @@ a:hover {
 .wm {
   font-family: var(--sans);
   font-weight: 600;
-  font-size: 16.5px;
+  font-size: var(--text-16);
   letter-spacing: -0.01em;
   color: var(--ink);
   text-decoration: none;
-  margin-right: 6px;
+  margin-right: var(--space-6);
   flex: none;
 }
 .wm:hover {
@@ -106,13 +106,13 @@ a:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
-  gap: 4px;
+  padding: var(--space-12) 0;
+  gap: var(--space-4);
 }
 .rail button {
   width: 34px;
   height: 34px;
-  border-radius: 9px;
+  border-radius: var(--radius-10);
   display: grid;
   place-items: center;
   color: var(--muted);
@@ -153,25 +153,25 @@ a:hover {
   overflow: hidden;
 }
 .side nav {
-  padding: 16px 8px 12px;
+  padding: var(--space-16) var(--space-8) var(--space-12);
   overflow-y: auto;
 }
 .side .grp {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-16);
 }
 .side .grp > .o-label {
   display: block;
-  padding: 0 10px 6px;
+  padding: 0 var(--space-10) var(--space-6);
 }
 .side .item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   width: 100%;
   text-align: left;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12.5px;
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius-8);
+  font-size: var(--text-12);
   color: var(--body-c);
 }
 .side .item:hover {
@@ -186,7 +186,7 @@ a:hover {
 .side .item .dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   flex: none;
 }
 .side .item .dot.ok {
@@ -198,7 +198,7 @@ a:hover {
 }
 .side .item .mono-id {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -220,16 +220,16 @@ a:hover {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 16px;
+  gap: var(--space-14);
+  padding: 0 var(--space-16);
   border-bottom: 1px solid var(--line-soft);
 }
 .crumbs {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-8);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--text-12);
   color: var(--muted);
   min-width: 0;
 }
@@ -257,12 +257,12 @@ a:hover {
 .crumb-back {
   width: 24px;
   height: 24px;
-  border-radius: 7px;
+  border-radius: var(--radius-8);
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
   color: var(--body-c);
-  font-size: 14px;
+  font-size: var(--text-14);
   line-height: 1;
 }
 .crumb-back:hover {
@@ -273,28 +273,28 @@ a:hover {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
 }
 .tool {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--space-6);
+  font-size: var(--text-12);
   color: var(--body-c);
-  padding: 5px 13px;
+  padding: var(--space-4) var(--space-12);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .searchbox {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-8);
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 5px 13px;
+  border-radius: var(--radius-pill);
+  padding: var(--space-4) var(--space-12);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-12);
   min-width: 190px;
 }
 .searchbox input {
@@ -302,7 +302,7 @@ a:hover {
   border: 0;
   outline: none;
   font-family: var(--sans);
-  font-size: 12.5px;
+  font-size: var(--text-12);
   color: var(--ink);
   width: 100%;
 }
@@ -312,15 +312,15 @@ a:hover {
 .pager {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--text-12);
   color: var(--body-c);
 }
 .pager button {
   width: 26px;
   height: 26px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
@@ -339,9 +339,9 @@ a:hover {
 
 /* ---------- study grid ---------- */
 .countline {
-  padding: 16px 24px 2px;
+  padding: var(--space-16) var(--space-24) var(--space-2);
   font-family: var(--sans);
-  font-size: 12.5px;
+  font-size: var(--text-12);
   color: var(--muted);
 }
 .countline b {
@@ -351,8 +351,8 @@ a:hover {
 .gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  gap: 16px;
-  padding: 14px 24px 22px;
+  gap: var(--space-16);
+  padding: var(--space-14) var(--space-24) var(--space-24);
 }
 /* The card is a mini viewport plus one decide-line: thumb with duration/live/play
    overlays, a name row, one signal line. It rides .panel/.chip from persona-lane. */
@@ -381,11 +381,11 @@ a:hover {
 .thumb-term {
   height: 100%;
   background: var(--dz);
-  padding: 14px 18px;
+  padding: var(--space-14) var(--space-16);
 }
 .thumb-term .vterm {
   max-width: none;
-  font-size: 11.5px;
+  font-size: var(--text-12);
 }
 .thumb-ph {
   height: 100%;
@@ -393,27 +393,27 @@ a:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: var(--space-8);
 }
 .thumb-ph .ph-route {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--text-12);
   color: var(--ink);
 }
 .thumb-ph .ph-state {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--text-11);
   letter-spacing: 0.06em;
   color: var(--muted);
 }
 .th-pill {
   position: absolute;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--text-11);
   color: #f0ede5;
   background: rgba(14, 13, 11, 0.62);
-  border-radius: 999px;
-  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-8);
 }
 .th-dur {
   right: 8px;
@@ -433,10 +433,10 @@ a:hover {
   height: 40px;
   display: grid;
   place-items: center;
-  font-size: 14px;
+  font-size: var(--text-14);
   color: #f0ede5;
   background: rgba(14, 13, 11, 0.55);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   opacity: 0;
 }
 .card:hover .th-play,
@@ -446,8 +446,8 @@ a:hover {
 .cbar {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 10px 13px 0;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-12) 0;
   min-width: 0;
 }
 .cbar .pidx {
@@ -455,7 +455,7 @@ a:hover {
 }
 .cname {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--text-12);
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -466,8 +466,8 @@ a:hover {
   flex: none;
 }
 .csig {
-  margin: 5px 13px 12px;
-  font-size: 12.5px;
+  margin: var(--space-4) var(--space-12) var(--space-12);
+  font-size: var(--text-12);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -475,7 +475,7 @@ a:hover {
 }
 .sig-label {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: var(--text-11);
   color: var(--muted);
 }
 .sig-label.sig-flag {
@@ -483,7 +483,7 @@ a:hover {
 }
 .csig q {
   font-family: var(--sans);
-  font-size: 12.5px;
+  font-size: var(--text-12);
   color: var(--ink);
   quotes: "\201C" "\201D";
 }
@@ -496,59 +496,59 @@ a:hover {
 .stub {
   max-width: 880px;
   margin: 0 auto;
-  padding: 22px 24px 40px;
+  padding: var(--space-24) var(--space-24) var(--space-40);
 }
 .stub-note {
-  font-size: 11px;
+  font-size: var(--text-11);
   color: var(--muted);
   border: 1px dashed var(--line);
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: var(--radius-10);
+  padding: var(--space-10) var(--space-14);
 }
 .kv {
   display: grid;
   grid-template-columns: 92px 1fr;
-  gap: 7px 12px;
-  font-size: 12px;
-  padding-top: 18px;
+  gap: var(--space-8) var(--space-12);
+  font-size: var(--text-12);
+  padding-top: var(--space-16);
 }
 .kv .k {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: var(--text-11);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
-  padding-top: 2px;
+  padding-top: var(--space-2);
 }
 .kv .v {
   font-family: var(--sans);
-  font-size: 12px;
+  font-size: var(--text-12);
   font-variant-numeric: tabular-nums;
   color: var(--body-c);
   overflow-wrap: anywhere;
 }
 .blk {
-  margin: 20px 0 0;
+  margin: var(--space-20) 0 0;
 }
 .blk > .o-label {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: var(--space-8);
 }
 .stub-term {
   background: var(--dz);
-  border-radius: 10px;
-  padding: 16px 18px;
+  border-radius: var(--radius-10);
+  padding: var(--space-16) var(--space-16);
 }
 .stub-keyframe {
   display: block;
   width: 100%;
-  border-radius: 10px;
+  border-radius: var(--radius-10);
   border: 1px solid var(--line);
   box-shadow: var(--sh-panel);
 }
 .verbatim {
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: var(--text-13);
   line-height: 1.6;
   color: var(--ink);
 }
@@ -558,25 +558,25 @@ a:hover {
 }
 .arow {
   display: flex;
-  gap: 9px;
+  gap: var(--space-8);
   align-items: baseline;
   width: 100%;
   text-align: left;
-  padding: 6px 2px;
+  padding: var(--space-6) var(--space-2);
   border-bottom: 1px solid var(--line-soft);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   color: var(--body-c);
 }
 .arow .tc {
   flex: none;
-  font-size: 9px;
+  font-size: var(--text-11);
   font-weight: 500;
   letter-spacing: 0.06em;
   color: var(--muted);
   border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 1px 5px;
+  border-radius: var(--radius-6);
+  padding: 1px var(--space-4);
   min-width: 32px;
   text-align: center;
 }
@@ -589,7 +589,7 @@ a:hover {
    the dashed turn chip separates a thought from a recorded action at a glance. */
 .arow.thought .atext {
   font-family: var(--sans);
-  font-size: 11.5px;
+  font-size: var(--text-12);
 }
 .arow.thought .tc {
   border-style: dashed;
@@ -619,7 +619,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 20px 10px;
+  padding: var(--space-16) var(--space-20) var(--space-10);
   overflow: hidden;
 }
 .stage-box {
@@ -634,7 +634,7 @@ a:hover {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 9px;
+  border-radius: var(--radius-10);
   border: 1px solid var(--line);
   box-shadow: var(--sh-panel);
 }
@@ -653,7 +653,7 @@ a:hover {
   width: 100%;
   height: 100%;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-10);
   background: var(--dz);
   /* Read-only viewing: pointer events never reach the live desktop. */
   pointer-events: none;
@@ -663,30 +663,30 @@ a:hover {
   top: 10px;
   right: 12px;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: var(--text-11);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent-ink);
   background: var(--panel);
   border: 1px solid var(--accent-dim);
-  border-radius: 999px;
-  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  padding: var(--space-4) var(--space-8);
 }
 .tbtn.live-jump {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--text-11);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--accent-ink);
   border: 1px solid var(--accent-dim);
-  padding: 0 9px;
+  padding: 0 var(--space-8);
 }
 .spin {
   position: absolute;
   width: 20px;
   height: 20px;
   border: 1.5px solid var(--accent);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px var(--accent-wash);
 }
@@ -697,7 +697,7 @@ a:hover {
   top: 50%;
   width: 4px;
   height: 4px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--accent);
   transform: translate(-50%, -50%);
 }
@@ -706,33 +706,33 @@ a:hover {
   left: 14px;
   top: -7px;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: var(--text-11);
   letter-spacing: 0.05em;
   white-space: nowrap;
   background: var(--panel);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 2px 7px;
+  border-radius: var(--radius-6);
+  padding: var(--space-2) var(--space-6);
   box-shadow: var(--sh-panel);
 }
 .transport {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 18px;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-16);
   border-top: 1px solid var(--line-soft);
 }
 .tbtn {
   min-width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: var(--radius-8);
   display: grid;
   place-items: center;
   color: var(--body-c);
   flex: none;
-  font-size: 12px;
+  font-size: var(--text-12);
 }
 .tbtn:hover {
   background: var(--accent-wash);
@@ -740,9 +740,9 @@ a:hover {
 }
 .tbtn.speed {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   border: 1px solid var(--line);
-  padding: 0 8px;
+  padding: 0 var(--space-8);
 }
 .scrubwrap {
   --scrub-thumb-size: 12px;
@@ -759,7 +759,7 @@ a:hover {
   transform: translateY(-50%);
   height: var(--scrub-track-size);
   background: var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-2);
 }
 .scrub-played {
   position: absolute;
@@ -773,7 +773,7 @@ a:hover {
   top: 50%;
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--accent-dim);
   transform: translate(-50%, -50%);
 }
@@ -781,7 +781,7 @@ a:hover {
   position: absolute;
   right: -2px;
   top: -14px;
-  font-size: 10px;
+  font-size: var(--text-11);
   color: var(--accent-ink);
 }
 .scrub {
@@ -803,7 +803,7 @@ a:hover {
   width: var(--scrub-thumb-size);
   height: var(--scrub-thumb-size);
   margin-top: calc((var(--scrub-track-size) - var(--scrub-thumb-size)) / 2);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--accent);
   border: 0;
   box-shadow: 0 0 0 3px var(--accent-wash);
@@ -815,39 +815,39 @@ a:hover {
 .scrub::-moz-range-thumb {
   width: var(--scrub-thumb-size);
   height: var(--scrub-thumb-size);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--accent);
   border: 0;
   box-shadow: 0 0 0 3px var(--accent-wash);
 }
 .counter {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--text-12);
   color: var(--ink);
   min-width: 60px;
   text-align: center;
 }
 .t-meta {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: var(--text-11);
   color: var(--muted);
   white-space: nowrap;
 }
 .rawchip {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: var(--text-11);
   font-weight: 500;
   letter-spacing: 0.14em;
-  padding: 3px 9px;
-  border-radius: 999px;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
   border: 1px solid var(--line);
   color: var(--muted);
 }
 .filmstrip {
   flex: none;
   display: flex;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-16);
   overflow-x: auto;
   border-top: 1px solid var(--line-soft);
 }
@@ -860,7 +860,7 @@ a:hover {
   display: block;
   width: 96px;
   aspect-ratio: 1432 / 859;
-  border-radius: 6px;
+  border-radius: var(--radius-6);
   overflow: hidden;
   border: 1px solid var(--line);
   opacity: 0.75;
@@ -881,9 +881,9 @@ a:hover {
 .fs .lab {
   display: block;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: var(--text-11);
   color: var(--muted);
-  padding-top: 4px;
+  padding-top: var(--space-4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -904,15 +904,15 @@ a:hover {
   flex: none;
   display: flex;
   border-bottom: 1px solid var(--line-soft);
-  padding: 0 6px;
+  padding: 0 var(--space-6);
 }
 .itabs button {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 13px 12px;
+  padding: var(--space-12) var(--space-12);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
@@ -924,7 +924,7 @@ a:hover {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 14px 14px;
+  padding: 0 var(--space-14) var(--space-14);
 }
 button.arow:hover {
   background: var(--accent-wash);
@@ -952,11 +952,11 @@ button.arow:hover {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 18px;
+  gap: var(--space-16);
+  padding: 0 var(--space-16);
   border-top: 1px solid var(--line-soft);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   color: var(--muted);
 }
 .statusbar b {
@@ -966,7 +966,7 @@ button.arow:hover {
 .statusbar .links {
   margin-left: auto;
   display: flex;
-  gap: 14px;
+  gap: var(--space-14);
 }
 .statusbar .links a {
   color: var(--body-c);
@@ -979,16 +979,16 @@ button.arow:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-10);
   text-align: center;
-  padding: 24px;
+  padding: var(--space-24);
 }
 .empty .wm {
-  font-size: 21px;
+  font-size: var(--text-20);
 }
 .empty p {
   max-width: 52ch;
-  font-size: 13px;
+  font-size: var(--text-13);
   color: var(--muted);
 }
 .empty code {
@@ -1017,7 +1017,7 @@ button.arow:hover {
   height: 30px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: var(--radius-8);
   color: var(--muted);
 }
 .side-toggle:hover {
@@ -1065,14 +1065,14 @@ button.arow:hover {
     height: auto;
     min-height: 48px;
     flex-wrap: wrap;
-    gap: 8px 10px;
-    padding: 8px 10px;
+    gap: var(--space-8) var(--space-10);
+    padding: var(--space-8) var(--space-10);
   }
   .topbar .right {
     flex-basis: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-8);
   }
   .crumbs .trunc {
     max-width: 72px;
@@ -1082,10 +1082,10 @@ button.arow:hover {
     flex: 1 1 120px;
   }
   .countline {
-    padding: 12px 14px 2px;
+    padding: var(--space-12) var(--space-14) var(--space-2);
   }
   .gallery {
-    padding: 12px 14px;
+    padding: var(--space-12) var(--space-14);
     grid-template-columns: 1fr;
   }
 
@@ -1093,8 +1093,8 @@ button.arow:hover {
     height: auto;
     min-height: 38px;
     flex-wrap: wrap;
-    padding: 6px 12px;
-    gap: 8px 12px;
+    padding: var(--space-6) var(--space-12);
+    gap: var(--space-8) var(--space-12);
   }
   .statusbar .links {
     display: none;
@@ -1112,7 +1112,7 @@ button.arow:hover {
   }
   .stage {
     flex: none;
-    padding: 10px 10px 6px;
+    padding: var(--space-10) var(--space-10) var(--space-6);
     overflow: visible;
   }
   .stage-box img {
@@ -1123,8 +1123,8 @@ button.arow:hover {
   }
   .transport {
     flex-wrap: wrap;
-    row-gap: 8px;
-    padding: 8px 10px;
+    row-gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
   }
   .scrubwrap {
     flex: 1 1 160px;
@@ -1161,7 +1161,7 @@ button.arow:hover {
   height: 30px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: var(--radius-8);
   color: var(--muted);
 }
 .filter-btn:hover,
@@ -1175,12 +1175,12 @@ button.arow:hover {
   right: -3px;
   min-width: 14px;
   height: 14px;
-  padding: 0 3px;
-  border-radius: 999px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--rail-on);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: var(--text-11);
   font-weight: 600;
   display: grid;
   place-items: center;
@@ -1188,12 +1188,12 @@ button.arow:hover {
 .pop-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   min-width: 240px;
-  padding: 14px 16px;
+  padding: var(--space-14) var(--space-16);
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-14);
   box-shadow: var(--sh-panel);
   outline: none;
 }
@@ -1201,7 +1201,7 @@ button.arow:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-10);
 }
 .pop-panel .searchbox {
   min-width: 0;
@@ -1217,10 +1217,10 @@ button.arow:hover {
 }
 .filter-clear {
   align-self: flex-end;
-  font-size: 12.5px;
+  font-size: var(--text-12);
   color: var(--accent);
-  border-radius: 6px;
-  padding: 2px 6px;
+  border-radius: var(--radius-6);
+  padding: var(--space-2) var(--space-6);
 }
 .filter-clear:hover {
   background: var(--accent-wash);
@@ -1237,7 +1237,7 @@ button.arow:hover {
     position: fixed !important;
     inset: auto 0 0 0 !important;
     transform: none !important;
-    border-radius: 14px 14px 0 0;
+    border-radius: var(--radius-14) var(--radius-14) 0 0;
     border-bottom: 0;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
@@ -1245,8 +1245,8 @@ button.arow:hover {
     display: block;
     width: 36px;
     height: 4px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--line);
-    margin: 0 auto 2px;
+    margin: 0 auto var(--space-2);
   }
 }

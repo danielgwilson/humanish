@@ -68,6 +68,8 @@ jobs:
       - run: pnpm --filter humanish-site typecheck
       - run: pnpm --filter humanish-site registry:check
       - run: pnpm --filter humanish-site build
+      - run: pnpm exec playwright-core install --with-deps chromium
+      - run: pnpm site:hero:proof
 
   observer:
     runs-on: ubuntu-latest
