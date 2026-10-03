@@ -26,5 +26,14 @@
     },
     "targets": [],
     "warnings": []
+  },
+  "pinned": {
+    "route": "preview",
+    "reachability": "metadata",
+    "checks": [
+      "lab manifest",
+      "route",
+      "reachability"
+    ]
   }
 }

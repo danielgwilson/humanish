@@ -21,6 +21,8 @@ import {
   JSON_OPTION_DESCRIPTION,
   RUN_OPTION_DESCRIPTION,
   writeResult,
+  humanError,
+  type HumanOutput,
 } from "../io.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
@@ -266,7 +268,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
     );
 }
 
-function formatReclaimHuman(result: ReclaimResult): string {
+function formatReclaimHuman(result: ReclaimResult): HumanOutput {
   const lines: string[] = [];
   lines.push(
     `Reclaim ${result.runId}: ${result.ok ? "ok" : "FAILED"} — ${result.receiptCount} sandbox receipt(s).`,
@@ -277,8 +279,8 @@ function formatReclaimHuman(result: ReclaimResult): string {
     );
   }
   for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
-  if (result.error) lines.push(`  error: ${result.error.message}`);
-  return lines.join("\n");
+  const stdout = lines.join("\n");
+  return result.error === undefined ? stdout : { stdout: `${stdout}\n`, error: result.error };
 }
 
 const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
@@ -293,12 +295,21 @@ const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
 /** A run's review: its verdict, summary and gaps, and where review.json is. */
 function formatReviewHuman(
   result: VerifyResult | (ReviewSummary & { path: string; runId: string }),
-): string {
+): HumanOutput {
   if (!("verdict" in result)) {
-    const why = result.error
-      ? `${result.error.code}: ${result.error.message}`
-      : `the run did not pass verify; humanish verify --run ${result.run} shows why`;
-    return `humanish review failed\nrun: ${result.run}\n${why}\n`;
+    // A run that did not pass verify has no review to show; verify says why.
+    const error = result.error ?? {
+      code: "HUMANISH_INVALID_RUN_BUNDLE",
+      message: "Run bundle failed verification.",
+    };
+    return error.code === "HUMANISH_INVALID_RUN_BUNDLE"
+      ? {
+          error: {
+            ...error,
+            message: `${error.message} humanish verify --run ${result.run} shows why.`,
+          },
+        }
+      : humanError(error);
   }
   return (
     [
@@ -330,9 +341,8 @@ function shareSafetyLines(result: VerifyResult): string[] {
  * One line for a pass. A failure lists only the failing checks. `--verbose` prints every check.
  * A run that does not exist prints only that.
  */
-function formatVerifyHuman(result: VerifyResult): string {
-  if (result.error?.code === "HUMANISH_RUN_NOT_FOUND")
-    return `verify failed: ${result.error.message}\n`;
+function formatVerifyHuman(result: VerifyResult): HumanOutput {
+  if (result.error?.code === "HUMANISH_RUN_NOT_FOUND") return humanError(result.error);
   const runId = verifiedRunId(result);
   const total = result.checks.length;
   const failed = result.checks.filter((check) => !check.ok);
@@ -351,7 +361,8 @@ function formatVerifyHuman(result: VerifyResult): string {
   return `${lines.join("\n")}\n`;
 }
 
-function formatVerifyVerbose(result: VerifyResult): string {
+function formatVerifyVerbose(result: VerifyResult): HumanOutput {
+  if (result.error?.code === "HUMANISH_RUN_NOT_FOUND") return humanError(result.error);
   return (
     [
       `humanish verify ${result.ok ? "passed" : "failed"}`,
@@ -387,10 +398,8 @@ function reclaimPointer(result: CleanupResult, cwd: string): string[] {
   ];
 }
 
-function formatCleanupHuman(result: CleanupResult, cwd: string): string {
-  if (!result.ok && result.error) {
-    return `${result.error.code}: ${result.error.message}\n`;
-  }
+function formatCleanupHuman(result: CleanupResult, cwd: string): HumanOutput {
+  if (!result.ok && result.error) return humanError(result.error);
 
   return (
     [
@@ -404,10 +413,8 @@ function formatCleanupHuman(result: CleanupResult, cwd: string): string {
   );
 }
 
-function formatRunsHuman(result: RunsResult): string {
-  if (!result.ok) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+function formatRunsHuman(result: RunsResult): HumanOutput {
+  if (!result.ok) return humanError(result.error);
 
   if (result.runs.length === 0) {
     return `No humanish runs found in ${result.cwd}\n`;

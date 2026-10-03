@@ -12,5 +12,20 @@
     "cwd": "string",
     "ok": "boolean",
     "schema": "string"
+  },
+  "pinned": {
+    "checks": [
+      "target cwd",
+      "package.json",
+      "humanish source",
+      "runtime ignore",
+      "e2b desktop sdk",
+      "terminal surface",
+      "key OPENAI_API_KEY",
+      "key E2B_API_KEY",
+      "key GH_TOKEN",
+      "key CODEX_API_KEY",
+      "setup route"
+    ]
   }
 }

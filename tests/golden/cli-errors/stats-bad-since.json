@@ -1,0 +1,12 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.stats.v1",
+  "ok": false,
+  "cwd": "[cwd]",
+  "error": {
+    "code": "HUMANISH_STATS_INVALID_SINCE",
+    "message": "--since must be an ISO date or datetime, got \"last tuesday\"."
+  }
+}

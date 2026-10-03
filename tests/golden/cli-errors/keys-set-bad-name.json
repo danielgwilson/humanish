@@ -1,0 +1,11 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.keys-result.v1",
+  "ok": false,
+  "action": "set",
+  "store": "[cwd]/user-config/humanish/keys.env",
+  "names": [],
+  "message": "Not a vendor alias or valid env name: bad-name. Vendors: openai, e2b, anthropic, github, agentmail."
+}

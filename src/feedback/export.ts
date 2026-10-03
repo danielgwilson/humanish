@@ -570,8 +570,15 @@ function renderExportHtml(
     : `${banner}${output}`;
 }
 
-export function formatExportHuman(result: ExportResult | ExportFailure): string {
-  if (!result.ok) return `${result.error.code}: ${result.error.message}\n`;
+/** Human output; a failure is an error the CLI prints on stderr (HumanOutput in src/cli/io.ts). */
+export function formatExportHuman(result: ExportResult): string;
+export function formatExportHuman(
+  result: ExportResult | ExportFailure,
+): string | { error: ExportFailure["error"] };
+export function formatExportHuman(
+  result: ExportResult | ExportFailure,
+): string | { error: ExportFailure["error"] } {
+  if (!result.ok) return { error: result.error };
   if (result.format === "bundle") {
     return [
       `humanish export ${result.runId}`,

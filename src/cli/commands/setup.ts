@@ -28,6 +28,8 @@ import {
   markInvocationEnvelopeWritten,
   wantsJson,
   writeResult,
+  formatCliError,
+  type HumanOutput,
 } from "../io.js";
 
 export function registerInitCommand(parent: Command, io: CliIo): void {
@@ -203,7 +205,8 @@ interface KeysResult {
   message: string;
 }
 
-function formatKeysHuman(result: KeysResult): string {
+function formatKeysHuman(result: KeysResult): HumanOutput {
+  if (!result.ok) return { error: { message: result.message } };
   const lines = [
     `humanish keys ${result.ok ? "ok" : "failed"}`,
     `store: ${result.store}`,
@@ -390,9 +393,8 @@ function formatInitHuman(result: InitResult): string {
     lines.push("", "warnings:", ...result.warnings.map((warning) => `- ${warning}`));
   }
 
-  if (result.error) {
-    lines.push("", `${result.error.code}: ${result.error.message}`);
-  }
+  // init writes a refused plan to stderr, so the error goes there in the shared shape.
+  if (result.error) lines.push("", formatCliError("humanish init", result.error).trimEnd());
 
   if (result.mode === "needs-confirmation") {
     lines.push("", "Run with --dry-run --json to inspect or --yes to apply.");

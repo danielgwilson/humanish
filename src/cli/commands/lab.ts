@@ -18,6 +18,8 @@ import {
   type LabCommandOptions,
   parsePositiveInteger,
   writeResult,
+  type HumanOutput,
+  humanError,
 } from "../io.js";
 
 export function registerLabCommands(parent: Command, io: CliIo): void {
@@ -169,10 +171,8 @@ function formatLabListHuman(result: LabListResult): string {
   );
 }
 
-function formatLabInspectHuman(result: LabInspectResult): string {
-  if (!result.ok || !result.config) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+function formatLabInspectHuman(result: LabInspectResult): HumanOutput {
+  if (!result.ok || !result.config) return humanError(result.error);
 
   const config = result.config;
   return (
@@ -196,11 +196,11 @@ function formatLabInspectHuman(result: LabInspectResult): string {
   );
 }
 
-function formatLabPreflightHuman(result: LabPreflightResult): string {
+function formatLabPreflightHuman(result: LabPreflightResult): HumanOutput {
   const checkedTargets = result.targets.filter((target) => target.checked);
   const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
   const blockedTargets = result.targets.filter((target) => target.status === "blocked");
-  return (
+  const stdout =
     [
       `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
       `lab: ${result.labId ?? result.lab}`,
@@ -216,8 +216,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): string {
       ...result.checks.map(
         (check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
       ),
-      ...(result.error ? [`error: ${result.error.code}: ${result.error.message}`] : []),
       ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
+    ].join("\n") + "\n";
+  return result.error === undefined ? stdout : { stdout, error: result.error };
 }

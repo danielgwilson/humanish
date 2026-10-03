@@ -23,6 +23,7 @@
   "docs/contracts/adapter-admission.md",
   "docs/contracts/adapter-fixtures.md",
   "docs/contracts/core.md",
+  "docs/contracts/errors.md",
   "docs/contracts/feedback.md",
   "docs/contracts/policy.md",
   "docs/contracts/run-bundle.md",
