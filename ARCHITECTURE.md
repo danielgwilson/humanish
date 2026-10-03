@@ -31,7 +31,7 @@ not.
 1. **Parse.** `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
    (`src/lab/discover.ts`), which calls `parseLabConfig` (`src/lab/config.ts`). It rejects unknown
    keys and the compositions the
-   [support matrix](docs/ramp/README.md#check-which-compositions-a-lab-can-declare) refuses. A
+   [support matrix](https://github.com/danielgwilson/humanish/blob/main/docs/ramp/README.md#check-which-compositions-a-lab-can-declare) refuses. A
    refusal exits with code 2 before a run id exists.
 2. **Plan.** The route's CLI setup, here `computerUseRouteRun`
    (`src/cli/commands/lab-route-computer-use.ts`), hands off to `runRoute`
@@ -118,7 +118,7 @@ when a row names a folder that is gone; add the row with the folder. Participant
 three guest entry files stay at the `src/` root
 ([why](docs/architecture/guest-desktop.md#three-guest-files-stay-at-the-src-root)), and six
 `tests/` folders sit outside the mirror
-([list](CONTRIBUTING.md#find-the-test-folders-outside-the-src-mirror)).
+([list](https://github.com/danielgwilson/humanish/blob/main/CONTRIBUTING.md#find-the-test-folders-outside-the-src-mirror)).
 
 ## Keep these code guarantees when you change code
 
@@ -145,7 +145,7 @@ probe timeouts.
 
 - [Project layout](https://humanish.dev/docs/project-layout): the `humanish/`
   and `.humanish/` folders in a project that runs studies.
-- [docs/ramp/README.md](docs/ramp/README.md#check-which-compositions-a-lab-can-declare): the
+- [docs/ramp/README.md](https://github.com/danielgwilson/humanish/blob/main/docs/ramp/README.md#check-which-compositions-a-lab-can-declare): the
   support matrix, which compositions a lab can declare and which tests pin each row.
-- [CONTRIBUTING.md](CONTRIBUTING.md#make-your-first-change): a first change, offline, and the
+- [CONTRIBUTING.md](https://github.com/danielgwilson/humanish/blob/main/CONTRIBUTING.md#make-your-first-change): a first change, offline, and the
   tests and contracts that common changes touch.

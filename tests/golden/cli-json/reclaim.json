@@ -1,0 +1,14 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "cwd": "string",
+    "ok": "boolean",
+    "outcomes": [],
+    "receiptCount": "number",
+    "runId": "string",
+    "schema": "string",
+    "warnings": [
+      "string"
+    ]
+  }
+}

@@ -75,14 +75,14 @@ export interface LabPreflightResult {
   error?: {
     code:
       | LabResolveFailure["error"]["code"]
-      | "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION"
-      | "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE"
-      | "HUMANISH_LAB_PREFLIGHT_TARGET_POLICY"
-      | "HUMANISH_LAB_PREFLIGHT_ENV_MISSING"
-      | "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED"
-      | "HUMANISH_LAB_PREFLIGHT_TARGET_UNREACHABLE"
-      | "HUMANISH_LAB_PREFLIGHT_PROVISION_FAILED"
-      | "HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED";
+      | "HUMANISH_STUDY_PREFLIGHT_INVALID_OPTION"
+      | "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE"
+      | "HUMANISH_STUDY_PREFLIGHT_TARGET_POLICY"
+      | "HUMANISH_STUDY_PREFLIGHT_ENV_MISSING"
+      | "HUMANISH_STUDY_PREFLIGHT_E2B_REQUIRED"
+      | "HUMANISH_STUDY_PREFLIGHT_TARGET_UNREACHABLE"
+      | "HUMANISH_STUDY_PREFLIGHT_PROVISION_FAILED"
+      | "HUMANISH_STUDY_PREFLIGHT_TEARDOWN_FAILED";
     message: string;
   };
 }
@@ -190,7 +190,7 @@ export async function runLabPreflight(
     case "prepared-host":
       return fail(
         ctx,
-        "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE",
+        "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE",
         "prepared-host preflight requires a library adapter hook; the plain CLI can validate metadata only for this mode.",
         [
           {

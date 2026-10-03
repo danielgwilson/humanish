@@ -341,7 +341,7 @@ export async function loadCuaParticipants(args: {
     participantPlan,
   });
   if (!selected.ok) {
-    return { ok: false, code: "HUMANISH_CUA_LAB_RERUN_INVALID", message: selected.message };
+    return { ok: false, code: "HUMANISH_COMPUTER_USE_RERUN_INVALID", message: selected.message };
   }
   return {
     ok: true,

@@ -1,5 +1,5 @@
 // Recursive file snapshots for `pnpm codex:qualify`: each probe snapshots its private work directory
-// (HOME, CODEX_HOME, the project and TMPDIR) before the app-server starts and after it exits.
+// (`HOME`, CODEX_HOME, the project and `TMPDIR`) before the app-server starts and after it exits.
 import { lstatSync, readdirSync } from "node:fs";
 import path from "node:path";
 

@@ -1,4 +1,4 @@
-// Compiled CLI/default-loader regression for #708 and the deterministic part of #581.
+// The compiled CLI and default loader exit cleanly after a desktop startup failure, with verified evidence.
 // Run after build. No keys, provider allocation, model calls, or forced product exit.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -85,7 +85,7 @@ for (const phase of ["Xvfb", "startxfce4"]) {
     assert.equal(closed.signal, null);
     const result = JSON.parse(stdout);
     assert.equal(result.ok, false);
-    assert.equal(result.error.code, "HUMANISH_TERMINAL_LAB_FAILED");
+    assert.equal(result.error.code, "HUMANISH_TERMINAL_FAILED");
     assert.match(result.error.message, /synthetic desktop startup failure/);
     assert.equal(result.observer.ok, true, "failed-session evidence must verify and render");
     assert.equal(result.automaticAnalysis?.state, "skipped");

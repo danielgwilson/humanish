@@ -335,7 +335,7 @@ function parseParticipantEntries(
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
     const entryPath = str(entry.entry);
     if (entryPath !== undefined) parsedEntry.entry = entryPath;
-    // `host` marks the designated host seat on the external-public shared-world route; the
+    // `host` marks the designated host on the external-public shared-world route; the
     // exactly-one-host check runs in externalPublicSharedWorldValidationReason (route context).
     if (entry.host !== undefined) {
       if (typeof entry.host !== "boolean") {

@@ -95,11 +95,11 @@ export function terminalRouteScorer(
 }
 
 type AdapterScorerLoadErrorCode =
-  | "HUMANISH_LAB_SCORER_BAD_REF"
-  | "HUMANISH_LAB_SCORER_NOT_FOUND"
-  | "HUMANISH_LAB_SCORER_LOAD_FAILED"
-  | "HUMANISH_LAB_SCORER_NO_HOOKS"
-  | "HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND";
+  | "HUMANISH_STUDY_SCORER_BAD_REF"
+  | "HUMANISH_STUDY_SCORER_NOT_FOUND"
+  | "HUMANISH_STUDY_SCORER_LOAD_FAILED"
+  | "HUMANISH_STUDY_SCORER_NO_HOOKS"
+  | "HUMANISH_STUDY_SCORER_UNSUPPORTED_BACKEND";
 
 export type AdapterScorerLoadResult =
   | { ok: true; hooks: AdapterScorerModule; provenance: RunScorerProvenance }
@@ -137,7 +137,7 @@ export async function loadAdapterScorer(args: {
   // A declared gate that cannot run on this route must abort (never silently green-pass).
   if (!SCORER_CAPABLE_ROUTES.has(route)) {
     return fail(
-      "HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND",
+      "HUMANISH_STUDY_SCORER_UNSUPPORTED_BACKEND",
       `review.scorer.ref is declared but this lab resolves to the ${route} route, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, computer-use or shared-world lab.`,
     );
   }
@@ -145,7 +145,7 @@ export async function loadAdapterScorer(args: {
   const trimmed = args.ref.trim();
   if (!trimmed) {
     return fail(
-      "HUMANISH_LAB_SCORER_BAD_REF",
+      "HUMANISH_STUDY_SCORER_BAD_REF",
       "review.scorer.ref must be a non-empty repo-relative path ending in .mjs (recommended), .js, or .cjs.",
     );
   }
@@ -153,20 +153,20 @@ export async function loadAdapterScorer(args: {
   // is rejected up front rather than silently rewritten to its in-tree relative form.
   if (path.isAbsolute(trimmed)) {
     return fail(
-      "HUMANISH_LAB_SCORER_BAD_REF",
+      "HUMANISH_STUDY_SCORER_BAD_REF",
       `review.scorer.ref "${trimmed}" must be a repo-relative path, not absolute — provenance is recorded repo-relative.`,
     );
   }
   const ext = path.extname(trimmed).toLowerCase();
   if (ext === ".ts") {
     return fail(
-      "HUMANISH_LAB_SCORER_BAD_REF",
+      "HUMANISH_STUDY_SCORER_BAD_REF",
       `review.scorer.ref "${trimmed}" ends in .ts, but the shipped CLI runs compiled JS with no TypeScript loader. Precompile to .mjs (recommended) or .js/.cjs.`,
     );
   }
   if (!SCORER_EXTENSIONS.has(ext)) {
     return fail(
-      "HUMANISH_LAB_SCORER_BAD_REF",
+      "HUMANISH_STUDY_SCORER_BAD_REF",
       `review.scorer.ref "${trimmed}" must be a repo-relative PATH ending in .mjs (recommended), .js, or .cjs — an id-style ref is not supported.`,
     );
   }
@@ -180,7 +180,7 @@ export async function loadAdapterScorer(args: {
   const relative = path.relative(root.physicalPath, absolutePath);
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
     return fail(
-      "HUMANISH_LAB_SCORER_BAD_REF",
+      "HUMANISH_STUDY_SCORER_BAD_REF",
       `review.scorer.ref "${trimmed}" must stay inside the target cwd — provenance is recorded repo-relative and an escaping/absolute path (a cwd parent, node_modules above cwd, an absolute path) cannot be.`,
     );
   }
@@ -191,7 +191,7 @@ export async function loadAdapterScorer(args: {
   const bytes = await readContainedRegularFile(root, relPosix);
   if (!bytes) {
     return fail(
-      "HUMANISH_LAB_SCORER_NOT_FOUND",
+      "HUMANISH_STUDY_SCORER_NOT_FOUND",
       `review.scorer.ref "${trimmed}" could not be read as a contained regular file (${relPosix}). A scorer must be a regular file inside the target cwd — no symlink, no hardlink, no realpath escape.`,
     );
   }
@@ -213,7 +213,7 @@ export async function loadAdapterScorer(args: {
         ? ' Use a .mjs entry file, or set "type": "module" in the nearest package.json.'
         : "";
     return fail(
-      "HUMANISH_LAB_SCORER_LOAD_FAILED",
+      "HUMANISH_STUDY_SCORER_LOAD_FAILED",
       `review.scorer.ref "${trimmed}" failed to load: ${redactText(detail)}.${hint}`,
     );
   }
@@ -247,7 +247,7 @@ export async function loadAdapterScorer(args: {
   if (exports.length === 0) {
     const artifactsOnly = terminalRoute && typeof picked.deriveArtifacts === "function";
     return fail(
-      "HUMANISH_LAB_SCORER_NO_HOOKS",
+      "HUMANISH_STUDY_SCORER_NO_HOOKS",
       artifactsOnly
         ? `review.scorer.ref "${trimmed}" exported only deriveArtifacts, which is browser-only and inert on the terminal route. Export score and/or deriveFeedback for a terminal-product scorer.`
         : `review.scorer.ref "${trimmed}" loaded but exported none of the adopter-scorer hooks (score, deriveFeedback, deriveArtifacts). Export at least one (named, or on a single default object). costProbe is intentionally NOT loadable.`,

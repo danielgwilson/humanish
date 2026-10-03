@@ -1,4 +1,4 @@
-// Real browser + child IPC conformance proof for the finite control modules.
+// Real browser + child ipc conformance proof for the finite control modules.
 // No VM, privileged owner, production guest image, model or network isolation claim follows.
 import assert from "node:assert/strict";
 import { fork } from "node:child_process";

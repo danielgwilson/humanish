@@ -2,12 +2,12 @@
 
 User guides live at [humanish.dev/docs](https://humanish.dev/docs). This page sorts the contributor
 reference under `docs/` by what it is for. To make a first change, start with
-[CONTRIBUTING.md](../CONTRIBUTING.md#make-your-first-change).
+[CONTRIBUTING.md](https://github.com/danielgwilson/humanish/blob/main/CONTRIBUTING.md#make-your-first-change).
 
 ## Follow a guide to do a task
 
-- [ramp/README.md](ramp/README.md): current state, how to pick work and the quality bar.
-- [release/publish.md](release/publish.md): check a release candidate, tag it and publish it.
+- [ramp/README.md](https://github.com/danielgwilson/humanish/blob/main/docs/ramp/README.md): current state, how to pick work and the quality bar.
+- [release/publish.md](https://github.com/danielgwilson/humanish/blob/main/docs/release/publish.md): check a release candidate, tag it and publish it.
 
 ## Look up what the code does now
 
@@ -28,7 +28,7 @@ reference under `docs/` by what it is for. To make a first change, start with
   depth. Both keep dated slice notes beside the current rules.
 - [architecture/restricted-codex-analysis.md](architecture/restricted-codex-analysis.md) and
   [product/automatic-analysis.md](product/automatic-analysis.md): study analysis.
-- [release/public-readiness-standard.md](release/public-readiness-standard.md): what may appear in
+- [release/public-readiness-standard.md](https://github.com/danielgwilson/humanish/blob/main/docs/release/public-readiness-standard.md): what may appear in
   the public repository and the npm package.
 
 ## Read why the code is shaped this way
@@ -47,14 +47,14 @@ reference under `docs/` by what it is for. To make a first change, start with
 
 ## Check the current state and the evidence behind it
 
-- [status.md](status.md): what ships today, by surface, and the work that is gated.
-- [evidence/](evidence/README.md): dated study records that the README, the site and these pages
+- [status.md](https://github.com/danielgwilson/humanish/blob/main/docs/status.md): what ships today, by surface, and the work that is gated.
+- [evidence/](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/README.md): dated study records that the README, the site and these pages
   cite. `docs:check` covers them.
 
 ## Treat history as history
 
-[history/](history/README.md) holds dated goal packets, plans and the roadmap. They may name files
+[history/](https://github.com/danielgwilson/humanish/blob/main/docs/history/README.md) holds dated goal packets, plans and the roadmap. They may name files
 that have since moved, so `docs:check` skips them (`HISTORY_DIRECTORIES` in
-[scripts/lib/doc-paths.ts](../scripts/lib/doc-paths.ts)).
+[scripts/lib/doc-paths.ts](https://github.com/danielgwilson/humanish/blob/main/scripts/lib/doc-paths.ts)).
 
 `assets/` holds images that ship in the npm package, such as the README hero.

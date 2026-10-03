@@ -143,7 +143,7 @@ shapes, and fails closed on a match. It does **not** detect free-form PII/PHI
 those depends on using synthetic data and on reviewer judgment. Accordingly,
 `redaction: passed` means the automated secret/path scan found no matches, not a
 certification that the artifact is free of every class in the policy below. A
-first-class PII/PHI detector is planned (issue #108) and would move the listed
+first-class PII/PHI detector is [planned](https://github.com/danielgwilson/humanish/issues/108) and would move the listed
 PII classes from author-responsibility to enforced.
 
 Required redaction gates:

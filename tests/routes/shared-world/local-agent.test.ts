@@ -1,6 +1,7 @@
-// A shared-world lab with a local-agent brain runs each seat on the operator's signed-in agent:
-// the seats' runner deps carry the plan's brain, the route checks its sign-in before acquiring
-// anything, and only the external-public plane's lobby-code reader asks for OPENAI_API_KEY.
+// A shared-world study with a local-agent brain runs each participant on the operator's signed-in
+// agent: the participants' runner deps carry the plan's brain, the route checks its sign-in before
+// acquiring anything, and only the external-public plane's lobby-code reader asks for
+// OPENAI_API_KEY.
 
 import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -57,7 +58,7 @@ function planeContext(brain: PlaneContext["plan"]["brain"]): PlaneContext {
 }
 
 describe("shared world with a local-agent brain", () => {
-  it("hands each seat's runner the plan's brain, with its agent and declared model", () => {
+  it("hands each participant's runner the plan's brain, with its agent and declared model", () => {
     const live = { streamUrls: [] };
     const scrub = (text: string) => text;
     const localAgent = {
@@ -101,7 +102,7 @@ describe("shared world with a local-agent brain", () => {
       },
     );
     expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING");
+    expect(outcome.result.error?.code).toBe("HUMANISH_SHARED_WORLD_AGENT_MISSING");
     expect(outcome.result.error?.message).toContain("needs the codex CLI on PATH and signed in");
     expect(loads).toBe(0);
     expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
@@ -156,13 +157,13 @@ describe("shared world with a local-agent brain", () => {
     await writeFile(path.join(dir, "codex"), '#!/bin/sh\necho "Not logged in"\nexit 1\n');
     await chmod(path.join(dir, "codex"), 0o755);
     const error = await refusedWith(dir);
-    expect(error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED");
+    expect(error?.code).toBe("HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED");
     expect(error?.message).toContain("reports not signed in");
   });
 
   it("refuses a Codex release below the floor as ACTOR_UNSUPPORTED", async () => {
     expect((await refusedWith(await signedInCodex("0.0.1")))?.code).toBe(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
     );
   });
 
@@ -171,7 +172,7 @@ describe("shared world with a local-agent brain", () => {
     "refuses a dollar cap on a ChatGPT-account Codex as UNPRICED_CAP",
     async () => {
       const error = await refusedWith(await signedInCodex(qualified!), { maxUsd: 1 });
-      expect(error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP");
+      expect(error?.code).toBe("HUMANISH_SHARED_WORLD_UNPRICED_CAP");
       expect(error?.message).toContain("no API-dollar price");
     },
   );

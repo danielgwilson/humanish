@@ -73,7 +73,7 @@ describe("the package's runLab", () => {
     expect(outcome.route).toBe("computer-use");
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error).toEqual({
-      code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+      code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
       message: `RunLabOptions.${field} was removed. ${home} See docs/contracts/schemas.md, "Library options".`,
     });
     expect(await readdir(cwd)).toEqual([]);
@@ -87,7 +87,7 @@ describe("the package's runLab", () => {
     } as unknown as RunLabOptions;
     const outcome = await runPackageLab(config(), options);
     expect(outcome.result.error).toEqual({
-      code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+      code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
       message:
         'RunLabOptions.rerun.laneIds was removed. Use rerun.participantIds. See docs/contracts/schemas.md, "Library options".',
     });

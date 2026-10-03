@@ -56,21 +56,21 @@ export function planTerminalLab(
 
   if (String(config.comms?.email?.kind) === "real")
     return refuse(
-      "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab.",
     );
   const mediaReason = desktopMediaValidationReason(config);
-  if (mediaReason) return refuse("HUMANISH_TERMINAL_LAB_SUBJECT_INVALID", mediaReason);
+  if (mediaReason) return refuse("HUMANISH_TERMINAL_SUBJECT_INVALID", mediaReason);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  if (!analysis.ok) return refuse("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
+  if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
-  if (tasksReason) return refuse("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+  if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
 
   const actorType = config.actors[0]?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isTerminalActorDescriptor(descriptor))
     return refuse(
-      "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
       `actors[0].type "${actorType}" is not a registered terminal actor.`,
     );
 
@@ -83,7 +83,7 @@ export function planTerminalLab(
     (actor?.reasoningEffort !== undefined && !isReasoningEffort(actor.reasoningEffort))
   )
     return refuse(
-      "HUMANISH_TERMINAL_LAB_FAILED",
+      "HUMANISH_TERMINAL_FAILED",
       "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value.",
     );
 
@@ -91,7 +91,7 @@ export function planTerminalLab(
   const surfaces = product?.publicSurfaces ?? [];
   if (!product || !product.name || !isNonEmpty(surfaces))
     return refuse(
-      "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "terminal-product subjects require `subject.product` with a name and at least one public surface URL.",
       descriptor.id,
     );
@@ -133,7 +133,7 @@ export function planTerminalLab(
   const keyPlacement = descriptor.capabilities.keyPlacement;
   if (keyPlacement !== "in-sandbox-command-scoped")
     return refuse(
-      "HUMANISH_TERMINAL_LAB_KEYPLACEMENT_INVALID",
+      "HUMANISH_TERMINAL_KEYPLACEMENT_INVALID",
       `Terminal actor "${descriptor.id}" must declare keyPlacement "in-sandbox-command-scoped" for a live run (got "${String(keyPlacement)}"). The engine requires this registered default before applying the declared runtime-auth mode.`,
       descriptor.id,
     );
@@ -142,7 +142,7 @@ export function planTerminalLab(
   const maxMinutes = caps?.maxMinutes;
   if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0)
     return refuse(
-      "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
+      "HUMANISH_TERMINAL_CAPS_MISSING",
       "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
       descriptor.id,
     );
@@ -153,7 +153,7 @@ export function planTerminalLab(
   // cap would promise a bound nothing enforces, so it is refused; maxMinutes bounds a live run.
   if (maxUsd > 0 && input.hasCostProbe !== true)
     return refuse(
-      "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+      "HUMANISH_TERMINAL_UNPRICED_CAP",
       `scenario.caps.maxUsd=${maxUsd} cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );
@@ -165,7 +165,7 @@ export function planTerminalLab(
   if (sandboxTimeoutMs > MAX_SANDBOX_MS) {
     const headroomMinutes = (sandboxTimeoutMs - maxMinutes * 60_000) / 60_000;
     return refuse(
-      "HUMANISH_TERMINAL_LAB_CAPS_INVALID",
+      "HUMANISH_TERMINAL_CAPS_INVALID",
       `scenario.caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower scenario.caps.maxMinutes to at most ${MAX_SANDBOX_MS / 60_000 - headroomMinutes}. No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );

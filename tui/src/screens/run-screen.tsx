@@ -10,8 +10,8 @@ import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
 /**
- * What a run card can DO. Only actions that actually work appear — `Share…` waits for the export
- * contract (#471) rather than shipping as a control that fails.
+ * What a run card can do. Only actions that actually work appear: `Share…` waits for the export
+ * contract rather than shipping as a control that fails.
  */
 export type RunAction = "observer" | "again" | "reclaim" | "stop" | "cancel-analysis";
 
@@ -45,7 +45,7 @@ function actionLabel(action: RunAction): string {
     case "cancel-analysis":
       return "Cancel analysis";
     default:
-      return "Reclaim — stop sandboxes, keep evidence";
+      return "Reclaim: stop sandboxes, keep evidence";
   }
 }
 
@@ -57,15 +57,15 @@ export interface RunScreenProps {
   selected: number;
   tick: number;
   now: number;
-  /** What the last action said. Always shown — an action that appears to do nothing is a bug. */
+  /** What the last action said. Always shown: an action that appears to do nothing is a bug. */
   actionNote: string | undefined;
 }
 
 /**
- * ONE RUN, AS A CARD.
+ * One run, as A card.
  *
  * The question changed, so the shape does: on the lab screen you are watching, here you are asking
- * what happened. So the DENOMINATOR leads — `1/1 reached the goal`, never a bare "pass" — then the
+ * what happened. So the denominator leads (`1/1 reached the goal`, never a bare "pass") then the
  * participant's own closing words, then the real figure with its decomposition, then what you can
  * do about it.
  *
@@ -138,11 +138,11 @@ export function RunScreen({
 }
 
 /**
- * The verdict, with its denominator. `pass` alone says a run succeeded without saying at what — and
+ * The verdict, with its denominator. `pass` alone says a run succeeded without saying at what, and
  * the count is the finding, not the label.
  */
 function headline(run: RunIndexEntry, participant: RunParticipant | undefined): string {
-  if (run.liveness === "interrupted") return "interrupted — no outcome recorded";
+  if (run.liveness === "interrupted") return "interrupted: no outcome recorded";
   if (run.liveness === "running") {
     // Until the run has written a participant record there is nobody to name, and "starting…" is
     // the true thing to say rather than a sentence with a hole where the person goes.
@@ -168,7 +168,7 @@ function FinishedFacts({
   participant: RunParticipant | undefined;
   columns: number;
 }): React.ReactElement {
-  // The participant's OWN closing words, quoted. `completionReason` is the harness's word for the
+  // The participant's own closing words, quoted. `completionReason` is the harness's word for the
   // same moment; theirs is the one worth the space.
   const closing =
     participant?.thought === undefined
@@ -205,7 +205,7 @@ function FinishedFacts({
 
 /**
  * An interrupted run, at the same level as a finished one. What it managed, what it spent, and
- * whether anything is STILL RUNNING — which is the part that keeps costing money.
+ * whether anything is still running, which is the part that keeps costing money.
  */
 function InterruptedFacts({
   run,
@@ -239,7 +239,7 @@ function InterruptedFacts({
             so beats inventing a figure. The captured counts above are the honest proxy. */}
         <Text dimColor>
           {run.estimatedCostUsd === undefined && participant?.estimatedCostUsd === undefined
-            ? "cost unknown — it ended before pricing itself"
+            ? "cost unknown: it ended before pricing itself"
             : costLine(run, participant)}
         </Text>
         <Text color={PALETTE.warn}>{"  sandboxes may still be running"}</Text>
@@ -249,12 +249,12 @@ function InterruptedFacts({
 }
 
 /**
- * `null` is a DECLARED absent cost, `undefined` was never recorded, and neither is 0. An
+ * `null` is a declared absent cost, `undefined` was never recorded, and neither is 0. An
  * interrupted run that spent money before dying must still say so.
  */
 function costLine(run: RunIndexEntry, participant: RunParticipant | undefined): string {
-  // NOT `??` between the two sources: `??` treats null as nullish, so a DECLARED ABSENT cost would
-  // fall through to the participant's and then to "not recorded" — collapsing the exact distinction
+  // Not `??` between the two sources: `??` treats null as nullish, so a declared absent cost would
+  // fall through to the participant's and then to "not recorded": collapsing the exact distinction
   // this function exists to keep. Only a genuinely missing field falls through.
   const value =
     run.estimatedCostUsd === undefined ? participant?.estimatedCostUsd : run.estimatedCostUsd;

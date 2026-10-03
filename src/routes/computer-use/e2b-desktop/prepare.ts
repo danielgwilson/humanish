@@ -151,7 +151,7 @@ export async function verifyParticipantScreen(
     state.desktopGeometry = { ...state.desktopGeometry, warnings: [screenGeometry.warning] };
   }
   if (screenGeometry.error && deps.screenMismatchPolicy !== "record-evidence") {
-    state.failureCode = "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";
+    state.failureCode = "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY";
     throw new Error(screenGeometry.error);
   }
   if (screenGeometry.error && screenGeometry.verified) {

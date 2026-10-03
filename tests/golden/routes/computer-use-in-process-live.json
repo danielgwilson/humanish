@@ -428,13 +428,13 @@
           "mission": "Drive the app via its state contract."
         },
         "kind": "browser",
-        "label": "CUA browser — downstream-local-app-state",
+        "label": "lane-01 · browser",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "CUA desktop"
+          "title": "Desktop"
         },
         "ui": {
           "route": "http://localhost:5173/",

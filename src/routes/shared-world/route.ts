@@ -4,7 +4,7 @@
 //
 //   - One subject sandbox: provisionCloneSubject once (clone+install+build+seed) + serve on
 //     0.0.0.0, exposed via getHost(port) → a tokenless reachable URL (the headless service host;
-//     no GUI seat).
+//     no GUI participant).
 //   - N actor desktop sandboxes: fan-out's runCuaParticipant machinery (per-participant device/persona, by-id
 //     teardown) bounded by execution.concurrency, each browser pointed at the getHost URL and
 //     driving the shared service at the same time. Independent: no pipeline gate, no
@@ -68,10 +68,10 @@ import { rosterOf } from "../../lab/parse/actors.js";
 
 /** The shared-world code for each local-agent refusal, kind for kind with computer-use. */
 const LOCAL_AGENT_REFUSAL_CODES = {
-  "agent-missing": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING",
-  "signin-required": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED",
-  unsupported: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
-  "unpriced-cap": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
+  "agent-missing": "HUMANISH_SHARED_WORLD_AGENT_MISSING",
+  "signin-required": "HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED",
+  unsupported: "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
+  "unpriced-cap": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
 } as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldLabErrorCode>;
 
 /**
@@ -104,8 +104,8 @@ export function sharedWorldLabRefusal(
     labId: config.id,
     actor: config.actors[0]?.type ?? "",
     participantCount: declared.length,
-    // The parser fills concurrency for multi-seat labs, so this fallback serves only library
-    // callers: every declared seat runs at once unless the author declared a cap.
+    // The parser fills concurrency for multi-participant studies, so this fallback serves only
+    // library callers: every declared participant runs at once unless the author declared a cap.
     concurrency: config.execution?.concurrency ?? Math.max(1, declared.length),
     dryRun,
     runId: options.runId,
@@ -178,17 +178,18 @@ async function admitSharedWorldRun(
       sharedWorldFailure(plan, input)(code, message, sharedWorldDescriptorOf(plan.actor).id),
       undefined,
     );
-  // The plan lists OPENAI_API_KEY for an openai brain's seats and the external-public plane's
-  // lobby-code reader; a local-agent brain's seats run on the operator's signed-in agent instead.
+  // The plan lists OPENAI_API_KEY for an openai brain's participants and the external-public
+  // plane's lobby-code reader; a local-agent brain's participants run on the operator's signed-in
+  // agent instead.
   const missing = missingKeys(plan.requirements, env);
   if (missing.length > 0) {
     return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
+      "HUMANISH_SHARED_WORLD_KEYS_MISSING",
       `Live concurrent shared-world labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}`,
     );
   }
   if (plan.brain.kind === "local-agent") {
-    // A missing or signed-out agent found after the seats' desktops are paid for is the same
+    // A missing or signed-out agent found after the participants' desktops are paid for is the same
     // news at the worst moment.
     const refusal = await localAgentRefusal({ agent: plan.brain.agent, env, caps: plan.caps });
     if (refusal) return fail(LOCAL_AGENT_REFUSAL_CODES[refusal.kind], refusal.message);
@@ -196,7 +197,7 @@ async function admitSharedWorldRun(
   const unsetSubjectEnv = missingSubjectEnv(plan.requirements, env);
   if (unsetSubjectEnv.length > 0) {
     return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
+      "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING",
       `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
     );
   }
@@ -320,7 +321,7 @@ async function runPlanInScope(
   const planeRan = await runPlane(ctx, live, results, prepared.plane);
   if (!planeRan) {
     return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "HUMANISH_SHARED_WORLD_INVALID",
       "the provisioned-getHost concurrent shared-world route requires `subject.serve`.",
       descriptor.id,
     );
@@ -329,8 +330,8 @@ async function runPlanInScope(
 }
 
 /**
- * Runs the plane the lab declares, then finalizes email receiving and stops the seats' flush on
- * every exit. Returns false when a provisioned lab reaches it without `subject.serve`.
+ * Runs the plane the study declares, then finalizes email receiving and stops the participants'
+ * flush on every exit. Returns false when a provisioned study reaches it without `subject.serve`.
  */
 async function runPlane(
   ctx: PlaneContext,
@@ -369,7 +370,7 @@ async function runPlane(
         "Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
       );
     }
-    // Stop the seats' flush timer on every exit, before the final write.
+    // Stop the participants' flush timer on every exit, before the final write.
     await live.flush?.stop();
   }
   return true;

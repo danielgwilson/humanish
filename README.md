@@ -428,8 +428,9 @@ every field.
 
 ## Contribute
 
-Contributors: read [CONTRIBUTING.md](CONTRIBUTING.md) first. It gives the reading order, the
-commands CI runs and what a pull request needs.
+Contributors: read
+[CONTRIBUTING.md](https://github.com/danielgwilson/humanish/blob/main/CONTRIBUTING.md) first. It
+gives the reading order, the commands CI runs and what a pull request needs.
 
 ```bash
 pnpm install --frozen-lockfile
@@ -448,8 +449,8 @@ pnpm humanish lab list
 ## Browse the docs
 
 - [User guides and generated CLI reference](https://humanish.dev/docs)
-- [Contributing: reading order, commands and pull requests](CONTRIBUTING.md)
-- [Contributor and agent ramp](docs/ramp/README.md)
+- [Contributing: reading order, commands and pull requests](https://github.com/danielgwilson/humanish/blob/main/CONTRIBUTING.md)
+- [Contributor and agent ramp](https://github.com/danielgwilson/humanish/blob/main/docs/ramp/README.md)
 - [Architecture: the run path, code map and invariants](ARCHITECTURE.md)
 - [Project layout: the `humanish/` and `.humanish/` folders](https://humanish.dev/docs/project-layout)
 - [Feedback contract](docs/contracts/feedback.md)

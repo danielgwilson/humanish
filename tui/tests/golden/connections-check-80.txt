@@ -14,4 +14,4 @@ Checked: 2026-09-20T12:00:00Z
 ❯ Check again
   Back to Connections
 
-↑↓ move   ⏎ select   esc back   q quit
+↑↓ move  ⏎ select  esc back  q quit

@@ -65,7 +65,7 @@ for (const fixture of fixtures.filter(({ supported }) => !supported)) {
       assert.equal(child.status, 2, `${fixture.name}/${label}: ${child.stderr}`);
       const result = JSON.parse(child.stdout);
       assert.equal(result.ok, false);
-      assert.equal(result.error.code, "HUMANISH_LAB_INVALID");
+      assert.equal(result.error.code, "HUMANISH_STUDY_INVALID");
       assert.match(result.error.message, /actors\[0\]\.tasks is unsupported/);
       assert.doesNotMatch(
         child.stdout + child.stderr,

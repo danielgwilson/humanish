@@ -129,7 +129,6 @@ function fanoutParticipantStream(
   spec: DesktopParticipantRun,
   view: FanoutParticipantView,
 ): RunStream {
-  const { plan } = args;
   const { outcome, publicTargetUrl, session, desktopGeometry, screenshots } = view;
   const { lastScreenshot, status, reason, screenshotMode } = view;
   const judged = outcome === undefined ? undefined : judgedStatus(participantFactsOf(outcome));
@@ -149,7 +148,7 @@ function fanoutParticipantStream(
         ? {}
         : { caseGroup: spec.planned.labels.caseGroup }),
       kind: "browser",
-      label: `CUA participant ${spec.planned.id}: ${plan.labId}`,
+      label: `${spec.planned.id} · browser`,
       status,
       ...(judged === undefined ? {} : { judgedStatus: judged }),
       transport: "snapshot",
@@ -158,9 +157,9 @@ function fanoutParticipantStream(
         ? {
             kind: "screenshot",
             url: lastScreenshot,
-            title: `CUA desktop ${spec.planned.id} (${screenshotMode})`,
+            title: `Desktop (${screenshotMode})`,
           }
-        : { kind: "placeholder", title: `CUA desktop ${spec.planned.id}` },
+        : { kind: "placeholder", title: "Desktop" },
       ...(desktopGeometry.viewport === undefined
         ? {}
         : {

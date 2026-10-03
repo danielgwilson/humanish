@@ -212,14 +212,13 @@ describe("telling the operator what they already have", () => {
   it("finds an installed, signed-in agent and says a run can use it", async () => {
     const found = await detect(["codex"], [".codex/auth.json"]);
     expect(found.map((a) => a.id)).toEqual(["codex"]);
-    expect(localAgentDoctorMessage(found)).toContain("instead of a provider API key");
+    expect(localAgentDoctorMessage(found[0]!)).toContain("instead of a provider API key");
   });
 
   it("distinguishes installed-but-signed-out from absent", async () => {
     const signedOut = await detect(["claude"], []);
-    expect(localAgentDoctorMessage(signedOut)).toContain("not signed in");
-    const none = await detect([], []);
-    expect(localAgentDoctorMessage(none)).toContain("needs OPENAI_API_KEY");
+    expect(localAgentDoctorMessage(signedOut[0]!)).toContain("not signed in");
+    expect(await detect([], [])).toEqual([]);
   });
 
   it("does not expose credentials or status output", async () => {
@@ -266,7 +265,7 @@ describe("telling the operator what they already have", () => {
         authProbe: async () => result,
       });
       expect(found[0]).toMatchObject({ credentialsPresent: true, authStatus: expected });
-      expect(JSON.stringify(found) + localAgentDoctorMessage(found)).not.toContain(
+      expect(JSON.stringify(found) + found.map(localAgentDoctorMessage).join()).not.toContain(
         "private-account-marker",
       );
     }

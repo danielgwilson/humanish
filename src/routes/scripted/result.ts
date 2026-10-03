@@ -237,7 +237,7 @@ export async function finishScriptedRun(
       ? {}
       : {
           error: {
-            code: "HUMANISH_SCRIPTED_LAB_FAILED" as const,
+            code: "HUMANISH_SCRIPTED_FAILED" as const,
             message:
               sessionError ??
               (observer.ok

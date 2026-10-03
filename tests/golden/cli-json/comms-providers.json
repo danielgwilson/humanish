@@ -1,0 +1,20 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "ok": "boolean",
+    "providers": [
+      {
+        "channel": "string",
+        "description": "string",
+        "id": "string",
+        "keyEnv": "string",
+        "label": "string",
+        "limitation": "string",
+        "receivingAvailable": "boolean",
+        "setupAvailable": "boolean",
+        "setupUrl": "string"
+      }
+    ],
+    "schema": "string"
+  }
+}

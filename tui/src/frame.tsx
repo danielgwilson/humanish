@@ -6,18 +6,18 @@ import { color } from "./text-props.js";
 import { terminalRendersUnicode } from "../../src/routes/terminal/encoding.js";
 
 /**
- * The chrome every screen sits in (#455 rev 8).
+ * The chrome every screen sits in.
  *
- * TWO THINGS THIS FIXES, both visible the moment the surface met a real terminal:
+ * Two things this fixes, both visible the moment the surface met a real terminal:
  *
- * 1. WIDTH IS CAPPED. Ink lays out to the terminal's full width, so on a 150-column window the
+ * 1. Width is capped. Ink lays out to the terminal's full width, so on a 150-column window the
  *    header pinned "humanish" to the left edge and the version to the right with a canyon between
  *    them, and every row became a pair of distant columns. Terminals get arbitrarily wide; reading
  *    does not get better past a point. Content is capped and left-aligned, so a wide terminal gets
  *    margin instead of sprawl.
  *
- * 2. THE HEADER SAYS WHERE YOU ARE AND WHAT IS HAPPENING. The wordmark on the left, and on the
- *    right the thing a stakeholder actually wants at a glance — the project, and whether anyone is
+ * 2. The header says where you are and what is happening. The wordmark on the left, and on the
+ *    right the thing a stakeholder actually wants at a glance: the project, and whether anyone is
  *    working in it right now.
  */
 const CONTENT_MAX_COLUMNS = 96;
@@ -34,7 +34,7 @@ export interface FrameProps {
   context: string | undefined;
   /** Breadcrumb under the wordmark, e.g. `‹ labs / observer-live-check`. */
   breadcrumb: string | undefined;
-  /** The key legend, already written for THIS screen. */
+  /** The key legend, already written for this screen. */
   hints: string;
   children: React.ReactNode;
 }
@@ -76,7 +76,7 @@ export function Frame({
 /**
  * The braille spinner, advanced by the caller's tick.
  *
- * A live row needs to LOOK live: a static list of labs where one says "running" reads as stale
+ * A live row needs to look live: a static list of studies where one says "running" reads as stale
  * data, and the thing that says otherwise is motion.
  */
 // Braille spinner where the terminal can render it, ASCII where it cannot. A participant at a
@@ -95,7 +95,7 @@ export function gutter(active: boolean): string {
   return active ? (terminalRendersUnicode() ? "❯" : ">") : " ";
 }
 
-/** Verdict glyphs — a run's outcome readable before its text is. */
+/** Verdict glyphs: a run's outcome readable before its text is. */
 export function verdictGlyph(args: { liveness: string; verdict?: string; tick?: number }): string {
   if (args.liveness === "running") return spinnerFrame(args.tick ?? 0);
   const unicode = terminalRendersUnicode();
