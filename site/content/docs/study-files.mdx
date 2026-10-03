@@ -31,10 +31,18 @@ names. Persisted text is scrubbed for known values and secret patterns, with the
 
 ## Move files from 0.107
 
-Before 0.108.0 a study was a `humanish.lab.v2` file under a `labs/` folder. Those
-files still run in 0.108, each with a warning, and 0.109 stops reading them. A name
-that exists under both a `labs/` and a `studies/` folder is an error that names both
-paths.
+Before 0.108.0 a study was a `humanish.lab.v2` file under a `labs/` folder. humanish
+no longer runs those files or reads the `labs/` folders. Running one by name fails
+with the command that fixes it:
+
+```text
+humanish run failed: humanish/labs/old-study.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old-study.yaml to convert it and move it to humanish/studies/.
+code: HUMANISH_STUDY_V2_UNSUPPORTED
+```
+
+A v3 file left in a `labs/` folder fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`, and its
+message names the matching `studies/` folder to move it to; `migrate` skips v3 files.
+`humanish study list --json` lists each refused file in `retired`, with its code and message. Convert every v2 file at once:
 
 ```bash
 npx humanish migrate --dry-run

@@ -29,21 +29,18 @@ if (outcome.route === "computer-use") {
 }
 ```
 
-`parseStudy` takes a decoded object, not YAML text: a `humanish.study.v3` study, or a 0.107
-`humanish.lab.v2` one, which warns. `runStudy`'s options are `RunStudyOptions`:
+`parseStudy` takes a decoded object, not YAML text: a `humanish.study.v3` study. It refuses a
+0.107 `humanish.lab.v2` one with `HUMANISH_STUDY_V2_UNSUPPORTED`; `humanish migrate` converts the
+file. `runStudy`'s options are `RunStudyOptions`:
 `env`, `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `onEvent`, `onStream`,
 `analysisSignal` and `onObserverReady`, beside `dryRun`, `runId`, `count` and `rerun`. The
 [library options contract](repo:docs/contracts/schemas.md#library-options)
 lists which routes accept each one and the refusals for the rest. `routeOf(config)` returns the
-route a config takes, and `StudyResult<route>` is that route's result type. The 0.107 names
-(`runLab`, `parseLabConfig`, `LAB_CONFIG_SCHEMA`, `RunLabOptions`, `LabResult` and the rest) are
-deprecated aliases with the same value until 0.109.
+route a config takes, and `StudyResult<route>` is that route's result type.
 
 `onStream` receives each participant's `participantId`, `recordId` (the id of its entry in
 `run.json` `simulations[]`, such as `sim-001`) and `streamId`, and on `ready` its `sandboxId` and
-`url`. The older `simId` holds the same value as `recordId` and is removed in the next minor. The
-first time a callback reads it, it prints a `DeprecationWarning` with code
-`HUMANISH_STREAM_EVENT_FIELD_DEPRECATED`.
+`url`.
 
 ## Read a run
 
@@ -99,12 +96,21 @@ A scorer written for one context passes through a helper that names it:
 shared world, and `terminalScorer(…)` with `TerminalProductScoringContext` for terminal runs. An
 inline scorer, or one that narrows `ctx` at runtime, passes as it is.
 
-A browser scorer's context also carries `ctx.route` (`computer-use` or `shared-world`) and
-`ctx.participantCount`. The older `ctx.backend` and `ctx.laneCount` hold the same facts and are
-removed in the next minor. The first time a scorer reads each one, it prints a
-`DeprecationWarning` with code `HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED`.
+Both contexts name the study as `ctx.studyId` and the run as `ctx.runId`. A browser scorer's
+context also carries `ctx.route` (`computer-use` or `shared-world`) and `ctx.participantCount`.
 
 ## Removed exports
+
+0.109.0 removed the 0.107 names that 0.108.0 kept as deprecated aliases: `runLab`,
+`parseLabConfig`, `LAB_CONFIG_SCHEMA`, `LabConfig`, `LabEvent`, `LabOutcome`, `LabResult`,
+`LabRoute`, `RunLabOptions`, `BrowserLabScoringContext`, the nine `Cua*` loop types and
+`CuaAdmissionLimitError`. Import `runStudy`, `parseStudy`, `StudyConfig`, `StudyEvent`,
+`StudyOutcome`, `StudyResult`, `StudyRoute`, `RunStudyOptions`, `BrowserScoringContext`, the
+`ComputerUse*` types and `ComputerUseAdmissionLimitError`. It also removed `labId` on a study's
+result (read `studyId`), `simId` on `onStream` events (read `recordId`), and
+`BrowserScoringContext.backend` and `laneCount` (read `route` and `participantCount`). A scorer
+reads `ctx.studyId` where it read `ctx.labId`, and a computer-use error's `error.name` is its
+`ComputerUse…` class name.
 
 The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab` and
 `runConcurrentSharedWorld`, their option types, and the hook bag types are removed, along with the
