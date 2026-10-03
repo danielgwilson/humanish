@@ -1,14 +1,14 @@
 {
   "schema": "humanish.run-bundle.v1",
-  "runId": "cua-2026-09-16T16-20-26-762Z-c44a6d1d",
+  "runId": "cua-2026-10-03T10-43-07-890Z-833df699",
   "mode": "live",
   "simCount": 1,
-  "createdAt": "2026-09-16T16:20:26.765Z",
+  "createdAt": "2026-10-03T10:43:07.921Z",
   "cwd": "[target-cwd]",
-  "artifactRoot": ".humanish/runs/cua-2026-09-16T16-20-26-762Z-c44a6d1d",
-  "lab": {
+  "artifactRoot": ".humanish/runs/cua-2026-10-03T10-43-07-890Z-833df699",
+  "study": {
     "id": "try-live",
-    "path": "humanish/labs/try-live.yaml",
+    "path": "humanish/studies/try-live.yaml",
     "origin": "committed"
   },
   "source": {
@@ -17,7 +17,7 @@
     "git": {
       "schema": "humanish.git-state.v1",
       "status": "missing",
-      "capturedAt": "2026-09-16T16:20:26.765Z",
+      "capturedAt": "2026-10-03T10:43:07.921Z",
       "head": {
         "shortSha": null,
         "refState": "unknown"
@@ -34,21 +34,21 @@
   "persona": {
     "id": "synthetic-new-user",
     "name": "Computer-use operator (synthetic-new-user)",
-    "source": "lab:try-live",
-    "sourceDigest": "ceb1df9c10f5e47a"
+    "source": "study:try-live",
+    "sourceDigest": "718c2e7dd4cba5c1"
   },
   "scenario": {
     "id": "cua-try-live",
-    "title": "Your first REAL study — one participant, a real app, a hosted desktop",
-    "goal": "Persona: Synthetic New User. A privacy-safe first-time user evaluating the app with realistic but synthetic needs. You have moderate patience: work through some friction, but if you repeatedly fail to make progress toward your goal, stop and report what blocked you. You have moderate technical confidence: use straightforward paths and try one recovery step before giving up. You have the accessibility need \"none_declared\"; treat violations of it as defects and report them. Honor these constraints: Do not use real personal data.; Do not use production accounts.; Treat all credentials as env var names only..\n\nYou are a desktop user (desktop, 1440x950).\n\nYou have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-    "source": "lab:try-live",
-    "sourceDigest": "ceb1df9c10f5e47a"
+    "title": "Your first live study: one participant on a demo app",
+    "goal": "Persona: Synthetic New User.\n\nA privacy-safe first-time user evaluating the app with realistic but synthetic needs.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nHonor these constraints: Do not use real personal data.; Do not use production accounts.; Treat all credentials as env var names only..\n\nYou are a desktop user (desktop, 1440x950).\n\nYou have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+    "source": "study:try-live",
+    "sourceDigest": "718c2e7dd4cba5c1"
   },
   "lifecycle": [
     {
-      "at": "2026-09-16T16:20:26.765Z",
+      "at": "2026-10-03T10:43:07.921Z",
       "event": "cua-lab.run.created",
-      "message": "Created computer-use lab run with one desktop browser lane (actor local-agent)."
+      "message": "Created a computer-use run with one participant in a desktop browser (actor local-agent)."
     }
   ],
   "simulations": [
@@ -61,13 +61,13 @@
       "streamKind": "browser",
       "mode": "browser-sim",
       "progress": 100,
-      "currentStep": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+      "currentStep": "REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
       "summary": "Computer-use actor (local-agent) drove the subject app in a hosted desktop browser; goal_satisfied.",
       "streamIds": [
         "stream-001"
       ],
-      "startedAt": "2026-09-16T16:20:26.765Z",
-      "updatedAt": "2026-09-16T16:20:26.765Z"
+      "startedAt": "2026-10-03T10:43:07.921Z",
+      "updatedAt": "2026-10-03T10:43:07.921Z"
     }
   ],
   "streams": [
@@ -79,18 +79,18 @@
         "mission": "You have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated."
       },
       "kind": "browser",
-      "label": "CUA browser — try-live",
+      "label": "lane-01 · browser",
       "status": "passed",
       "transport": "snapshot",
-      "updatedAt": "2026-09-16T16:20:26.765Z",
+      "updatedAt": "2026-10-03T10:43:07.921Z",
       "embed": {
         "kind": "screenshot",
-        "url": "screenshots/turn-07.png",
-        "title": "CUA desktop (raw)"
+        "url": "screenshots/turn-07.jpg",
+        "title": "Desktop (raw)"
       },
       "viewport": {
-        "width": 1440,
-        "height": 950,
+        "width": 1435,
+        "height": 807,
         "deviceScaleFactor": 1,
         "isMobile": false
       },
@@ -107,33 +107,63 @@
           }
         },
         "browserWindow": {
-          "x": 0,
-          "y": 0,
-          "width": 1440,
-          "height": 950,
-          "source": "xdotool"
+          "x": 5,
+          "y": 56,
+          "width": 1435,
+          "height": 894,
+          "source": "xwininfo"
         },
         "viewport": {
-          "width": 1440,
-          "height": 950,
+          "width": 1435,
+          "height": 807,
           "deviceScaleFactor": 1,
           "source": "cdp"
         },
         "warnings": [
-          "Browser window clipping corrected for lane lane-01; physical bounds are 1440x950 at (0, 0)."
+          "Browser window clipping corrected for participant lane-01; physical bounds are 1435x894 at (5, 56).",
+          "Browser window fill did not reach the requested 1440x950 screen for participant lane-01; measured physical bounds are 1435x894 at (5, 56)."
         ]
       },
       "ui": {
         "route": "http://127.0.0.1:3000/",
         "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
-        "state": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "state": "REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
         "actorStatus": "passed",
-        "screenshotUrl": "screenshots/turn-07.png"
+        "screenshotUrl": "screenshots/turn-07.jpg"
       },
       "actor": {
         "schema": "humanish.actor-trace.v1",
-        "provider": "local-agent-codex-app-server",
-        "providerVersion": "codex app-server (local, operator-authenticated)",
+        "provider": "codex-participant",
+        "executionProfile": {
+          "schema": "humanish.actor-execution-profile.v1",
+          "transport": "codex-app-server",
+          "authentication": "chatgpt-account",
+          "billing": "account-unknown",
+          "requestedModel": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "cliVersion": "0.159.3",
+          "toolPolicy": "codex-ui-tools-v1",
+          "participantSchema": "humanish.codex-ui-tool.v1",
+          "memoryPolicy": "continuing-thread-v1"
+        },
+        "providerRequests": [
+          {
+            "ordinal": 1,
+            "kind": "interaction",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": true,
+            "usage": {
+              "input": 93089,
+              "output": 668,
+              "cachedInput": 66944,
+              "cacheWriteInput": 0
+            }
+          }
+        ],
+        "historyTurnsOmitted": 0,
+        "providerVersion": "gpt-6-astra",
         "protocol": "cua-loop",
         "lane": "computer-use",
         "persona": {
@@ -141,24 +171,30 @@
           "traitsApplied": [
             "patience:medium",
             "skill:medium",
-            "accessibility:none_declared",
             "constraints:3"
           ],
-          "promptDigest": "ceb1df9c10f5e47a"
+          "brief": {
+            "compilerVersion": 2,
+            "text": "Persona: Synthetic New User.\n\nA privacy-safe first-time user evaluating the app with realistic but synthetic needs.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nHonor these constraints: Do not use real personal data.; Do not use production accounts.; Treat all credentials as env var names only..",
+            "digest": "fdf250abbcc6",
+            "redacted": false,
+            "sourceDigest": "e48dfd827d2c"
+          },
+          "promptDigest": "718c2e7dd4cba5c1"
         },
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "8 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "8 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
-        "startedAt": "2026-09-16T16:21:38.036Z",
-        "completedAt": "2026-09-16T16:22:30.740Z",
-        "durationMs": 52704,
+        "startedAt": "2026-10-03T10:44:03.303Z",
+        "completedAt": "2026-10-03T10:44:41.964Z",
+        "durationMs": 38661,
         "status": "passed",
         "completionReason": "goal_satisfied",
-        "reason": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "reason": "REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
         "ids": {
-          "model": "codex app-server (local, operator-authenticated)"
+          "model": "gpt-6-astra"
         },
         "modelSettings": {
           "reasoningEffort": "low"
@@ -168,8 +204,8 @@
           "actions": 14,
           "materialActions": 14,
           "screenshots": 8,
-          "reasonings": 8,
-          "messages": 1,
+          "reasonings": 0,
+          "messages": 8,
           "idleTurns": 0,
           "noProgressTurns": 0
         },
@@ -180,29 +216,29 @@
             "lifecycle": "completed",
             "title": "turn-00-start",
             "screenshotRef": {
-              "path": "screenshots/turn-00-start.png",
+              "path": "screenshots/turn-00-start.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:21:38.675Z"
+            "at": "2026-10-03T10:44:04.142Z"
           },
           {
-            "id": "reasoning-002",
-            "kind": "reasoning",
+            "id": "message-002",
+            "kind": "message",
             "lifecycle": "completed",
-            "title": "reasoning turn 1",
-            "text": "The landing page offers a clear way to enter the diagram editor.",
-            "at": "2026-09-16T16:21:42.841Z"
+            "title": "message turn 1",
+            "text": "I’ll try the editor and make a simple customers-and-orders diagram.",
+            "at": "2026-10-03T10:44:08.678Z"
           },
           {
             "id": "ui_action-003",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (373, 570)",
+            "title": "click (373, 644)",
             "coord": {
               "x": 373,
-              "y": 570
+              "y": 644
             },
-            "at": "2026-09-16T16:21:43.178Z"
+            "at": "2026-10-03T10:44:09.002Z"
           },
           {
             "id": "screenshot-004",
@@ -210,40 +246,40 @@
             "lifecycle": "completed",
             "title": "turn-01",
             "screenshotRef": {
-              "path": "screenshots/turn-01.png",
+              "path": "screenshots/turn-01.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:21:43.724Z"
+            "at": "2026-10-03T10:44:09.747Z"
           },
           {
-            "id": "reasoning-005",
-            "kind": "reasoning",
+            "id": "message-005",
+            "kind": "message",
             "lifecycle": "completed",
-            "title": "reasoning turn 2",
-            "text": "I only need a simple diagram, so Generic seems appropriate. I hesitated because a database choice is required before adding tables.",
-            "at": "2026-09-16T16:21:49.526Z"
+            "title": "message turn 2",
+            "text": "I wasn’t expecting to choose a database just to draw tables. Generic sounds suitable for this example.",
+            "at": "2026-10-03T10:44:12.880Z"
           },
           {
             "id": "ui_action-006",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (491, 583)",
+            "title": "click (490, 656)",
             "coord": {
-              "x": 491,
-              "y": 583
+              "x": 490,
+              "y": 656
             },
-            "at": "2026-09-16T16:21:49.855Z"
+            "at": "2026-10-03T10:44:13.209Z"
           },
           {
             "id": "ui_action-007",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (997, 685)",
+            "title": "click (1002, 758)",
             "coord": {
-              "x": 997,
-              "y": 685
+              "x": 1002,
+              "y": 758
             },
-            "at": "2026-09-16T16:21:50.183Z"
+            "at": "2026-10-03T10:44:13.551Z"
           },
           {
             "id": "screenshot-008",
@@ -251,29 +287,29 @@
             "lifecycle": "completed",
             "title": "turn-02",
             "screenshotRef": {
-              "path": "screenshots/turn-02.png",
+              "path": "screenshots/turn-02.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:21:50.864Z"
+            "at": "2026-10-03T10:44:14.377Z"
           },
           {
-            "id": "reasoning-009",
-            "kind": "reasoning",
+            "id": "message-009",
+            "kind": "message",
             "lifecycle": "completed",
-            "title": "reasoning turn 3",
-            "text": "The Add table button is clearly labeled; I will create the first table.",
-            "at": "2026-09-16T16:21:54.507Z"
+            "title": "message turn 3",
+            "text": "The Add table button is easy to find. I’ll start there.",
+            "at": "2026-10-03T10:44:17.244Z"
           },
           {
             "id": "ui_action-010",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (309, 151)",
+            "title": "click (316, 295)",
             "coord": {
-              "x": 309,
-              "y": 151
+              "x": 316,
+              "y": 295
             },
-            "at": "2026-09-16T16:21:54.840Z"
+            "at": "2026-10-03T10:44:17.564Z"
           },
           {
             "id": "screenshot-011",
@@ -281,29 +317,29 @@
             "lifecycle": "completed",
             "title": "turn-03",
             "screenshotRef": {
-              "path": "screenshots/turn-03.png",
+              "path": "screenshots/turn-03.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:21:55.399Z"
+            "at": "2026-10-03T10:44:18.264Z"
           },
           {
-            "id": "reasoning-012",
-            "kind": "reasoning",
+            "id": "message-012",
+            "kind": "message",
             "lifecycle": "completed",
-            "title": "reasoning turn 4",
-            "text": "The table has an unexpected generated name. I will expand its sidebar entry to look for naming controls.",
-            "at": "2026-09-16T16:21:59.818Z"
+            "title": "message turn 4",
+            "text": "The generated name is long, and I don’t immediately see a rename control. I’ll expand the table in the sidebar.",
+            "at": "2026-10-03T10:44:21.526Z"
           },
           {
             "id": "ui_action-013",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (342, 193)",
+            "title": "click (347, 335)",
             "coord": {
-              "x": 342,
-              "y": 193
+              "x": 347,
+              "y": 335
             },
-            "at": "2026-09-16T16:22:00.146Z"
+            "at": "2026-10-03T10:44:21.854Z"
           },
           {
             "id": "screenshot-014",
@@ -311,54 +347,54 @@
             "lifecycle": "completed",
             "title": "turn-04",
             "screenshotRef": {
-              "path": "screenshots/turn-04.png",
+              "path": "screenshots/turn-04.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:22:00.693Z"
+            "at": "2026-10-03T10:44:22.566Z"
           },
           {
-            "id": "reasoning-015",
-            "kind": "reasoning",
+            "id": "message-015",
+            "kind": "message",
             "lifecycle": "completed",
-            "title": "reasoning turn 5",
-            "text": "The expanded entry exposes a Name field. I will name this table customers and add the second table.",
-            "at": "2026-09-16T16:22:08.933Z"
+            "title": "message turn 5",
+            "text": "There’s the Name field. I’ll name this table customers and add the second one.",
+            "at": "2026-10-03T10:44:25.728Z"
           },
           {
             "id": "ui_action-016",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (206, 238)",
+            "title": "click (209, 382)",
             "coord": {
-              "x": 206,
-              "y": 238
+              "x": 209,
+              "y": 382
             },
-            "at": "2026-09-16T16:22:09.257Z"
+            "at": "2026-10-03T10:44:26.046Z"
           },
           {
             "id": "ui_action-017",
             "kind": "ui_action",
             "lifecycle": "completed",
             "title": "keypress CTRL+A",
-            "at": "2026-09-16T16:22:09.357Z"
+            "at": "2026-10-03T10:44:26.152Z"
           },
           {
             "id": "ui_action-018",
             "kind": "ui_action",
             "lifecycle": "completed",
             "title": "type [9 chars]",
-            "at": "2026-09-16T16:22:09.787Z"
+            "at": "2026-10-03T10:44:26.811Z"
           },
           {
             "id": "ui_action-019",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (308, 150)",
+            "title": "click (312, 294)",
             "coord": {
-              "x": 308,
-              "y": 150
+              "x": 312,
+              "y": 294
             },
-            "at": "2026-09-16T16:22:10.153Z"
+            "at": "2026-10-03T10:44:27.144Z"
           },
           {
             "id": "screenshot-020",
@@ -366,29 +402,29 @@
             "lifecycle": "completed",
             "title": "turn-05",
             "screenshotRef": {
-              "path": "screenshots/turn-05.png",
+              "path": "screenshots/turn-05.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:22:10.880Z"
+            "at": "2026-10-03T10:44:27.755Z"
           },
           {
-            "id": "reasoning-021",
-            "kind": "reasoning",
+            "id": "message-021",
+            "kind": "message",
             "lifecycle": "completed",
-            "title": "reasoning turn 6",
-            "text": "Two tables are listed, though they appear to overlap on the canvas. I will expand the second table to rename it.",
-            "at": "2026-09-16T16:22:14.908Z"
+            "title": "message turn 6",
+            "text": "Customers is named correctly. The second table overlaps it, but I can still edit it from the sidebar.",
+            "at": "2026-10-03T10:44:31.247Z"
           },
           {
             "id": "ui_action-022",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (341, 391)",
+            "title": "click (348, 534)",
             "coord": {
-              "x": 341,
-              "y": 391
+              "x": 348,
+              "y": 534
             },
-            "at": "2026-09-16T16:22:15.230Z"
+            "at": "2026-10-03T10:44:31.576Z"
           },
           {
             "id": "screenshot-023",
@@ -396,54 +432,54 @@
             "lifecycle": "completed",
             "title": "turn-06",
             "screenshotRef": {
-              "path": "screenshots/turn-06.png",
+              "path": "screenshots/turn-06.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:22:15.799Z"
+            "at": "2026-10-03T10:44:32.116Z"
           },
           {
-            "id": "reasoning-024",
-            "kind": "reasoning",
+            "id": "message-024",
+            "kind": "message",
             "lifecycle": "completed",
-            "title": "reasoning turn 7",
-            "text": "I will name the second table orders, a meaningful companion to customers.",
-            "at": "2026-09-16T16:22:23.390Z"
+            "title": "message turn 7",
+            "text": "I’ll call the second table orders.",
+            "at": "2026-10-03T10:44:36.557Z"
           },
           {
             "id": "ui_action-025",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (208, 290)",
+            "title": "click (206, 433)",
             "coord": {
-              "x": 208,
-              "y": 290
+              "x": 206,
+              "y": 433
             },
-            "at": "2026-09-16T16:22:23.715Z"
+            "at": "2026-10-03T10:44:36.883Z"
           },
           {
             "id": "ui_action-026",
             "kind": "ui_action",
             "lifecycle": "completed",
             "title": "keypress CTRL+A",
-            "at": "2026-09-16T16:22:23.821Z"
+            "at": "2026-10-03T10:44:36.985Z"
           },
           {
             "id": "ui_action-027",
             "kind": "ui_action",
             "lifecycle": "completed",
             "title": "type [6 chars]",
-            "at": "2026-09-16T16:22:24.129Z"
+            "at": "2026-10-03T10:44:37.609Z"
           },
           {
             "id": "ui_action-028",
             "kind": "ui_action",
             "lifecycle": "completed",
-            "title": "click (585, 377)",
+            "title": "click (750, 488)",
             "coord": {
-              "x": 585,
-              "y": 377
+              "x": 750,
+              "y": 488
             },
-            "at": "2026-09-16T16:22:24.458Z"
+            "at": "2026-10-03T10:44:37.937Z"
           },
           {
             "id": "screenshot-029",
@@ -451,26 +487,18 @@
             "lifecycle": "completed",
             "title": "turn-07",
             "screenshotRef": {
-              "path": "screenshots/turn-07.png",
+              "path": "screenshots/turn-07.jpg",
               "redaction": "none"
             },
-            "at": "2026-09-16T16:22:24.988Z"
+            "at": "2026-10-03T10:44:38.430Z"
           },
           {
-            "id": "reasoning-030",
-            "kind": "reasoning",
-            "lifecycle": "completed",
-            "title": "reasoning turn 8",
-            "text": "The sidebar confirms two tables named customers and orders, and the app shows they were saved. The task is complete.",
-            "at": "2026-09-16T16:22:30.740Z"
-          },
-          {
-            "id": "message-031",
+            "id": "message-030",
             "kind": "message",
             "lifecycle": "completed",
             "title": "message turn 8",
-            "text": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
-            "at": "2026-09-16T16:22:30.740Z"
+            "text": "REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
+            "at": "2026-10-03T10:44:41.964Z"
           }
         ],
         "affordanceUse": {
@@ -483,6 +511,63 @@
           "shortcutTotal": 0
         },
         "declaredOutcome": "reached",
+        "tokenUsage": {
+          "input": 93089,
+          "output": 668,
+          "cachedInput": 66944,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 7549,
+              "output": 69,
+              "cachedInput": 0,
+              "cacheWriteInput": 0
+            },
+            {
+              "input": 9273,
+              "output": 87,
+              "cachedInput": 7040,
+              "cacheWriteInput": 0
+            },
+            {
+              "input": 10808,
+              "output": 69,
+              "cachedInput": 0,
+              "cacheWriteInput": 0
+            },
+            {
+              "input": 11070,
+              "output": 80,
+              "cachedInput": 10496,
+              "cacheWriteInput": 0
+            },
+            {
+              "input": 12805,
+              "output": 104,
+              "cachedInput": 10880,
+              "cacheWriteInput": 0
+            },
+            {
+              "input": 13103,
+              "output": 76,
+              "cachedInput": 12416,
+              "cacheWriteInput": 0
+            },
+            {
+              "input": 13354,
+              "output": 94,
+              "cachedInput": 12928,
+              "cacheWriteInput": 0
+            },
+            {
+              "input": 15127,
+              "output": 89,
+              "cachedInput": 13184,
+              "cacheWriteInput": 0
+            }
+          ],
+          "total": 93757
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -493,13 +578,14 @@
           "byoModel": true,
           "preGrantableApprovals": false,
           "inProcessTools": false,
-          "license": "open"
+          "license": "proprietary"
         },
         "estimatedCost": {
           "schema": "humanish.actor-estimated-cost.v1",
           "estimatedCostUsd": null,
-          "reason": "no_token_usage",
-          "ratesAsOf": null
+          "ratesAsOf": null,
+          "reason": "account_billing_unknown",
+          "modelId": "gpt-6-astra"
         }
       },
       "artifacts": [
@@ -525,42 +611,42 @@
         },
         {
           "label": "screenshot 01 (raw)",
-          "path": "screenshots/turn-00-start.png",
+          "path": "screenshots/turn-00-start.jpg",
           "kind": "screenshot"
         },
         {
           "label": "screenshot 02 (raw)",
-          "path": "screenshots/turn-01.png",
+          "path": "screenshots/turn-01.jpg",
           "kind": "screenshot"
         },
         {
           "label": "screenshot 03 (raw)",
-          "path": "screenshots/turn-02.png",
+          "path": "screenshots/turn-02.jpg",
           "kind": "screenshot"
         },
         {
           "label": "screenshot 04 (raw)",
-          "path": "screenshots/turn-03.png",
+          "path": "screenshots/turn-03.jpg",
           "kind": "screenshot"
         },
         {
           "label": "screenshot 05 (raw)",
-          "path": "screenshots/turn-04.png",
+          "path": "screenshots/turn-04.jpg",
           "kind": "screenshot"
         },
         {
           "label": "screenshot 06 (raw)",
-          "path": "screenshots/turn-05.png",
+          "path": "screenshots/turn-05.jpg",
           "kind": "screenshot"
         },
         {
           "label": "screenshot 07 (raw)",
-          "path": "screenshots/turn-06.png",
+          "path": "screenshots/turn-06.jpg",
           "kind": "screenshot"
         },
         {
           "label": "screenshot 08 (raw)",
-          "path": "screenshots/turn-07.png",
+          "path": "screenshots/turn-07.jpg",
           "kind": "screenshot"
         }
       ]
@@ -569,87 +655,105 @@
   "events": [
     {
       "id": "event-000-created",
-      "at": "2026-09-16T16:20:26.765Z",
+      "at": "2026-10-03T10:43:07.921Z",
       "level": "info",
       "type": "cua-lab.run.created",
-      "message": "Created computer-use lab run for try-live (actor local-agent)."
+      "message": "Created a computer-use run for try-live (actor local-agent)."
     },
     {
       "id": "event-001-subject",
-      "at": "2026-09-16T16:20:26.765Z",
+      "at": "2026-10-03T10:43:07.921Z",
       "level": "info",
       "type": "cua-lab.subject.provenance",
-      "message": "Subject cloned from drawdb-io/drawdb@ca7ba9a9a107bffb28adbf3e007138db3701a6aa and served at http://127.0.0.1:3000/ in-sandbox (subject env names: none; values never persisted); state: undeclared.",
+      "message": "Subject cloned from drawdb-io/drawdb@e4e696f2d2b1a17ac99ad1d062927582ff994a3c and served at http://127.0.0.1:3000/ in-sandbox (subject env names: none; values never persisted); state: undeclared.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
       "id": "event-002-session",
-      "at": "2026-09-16T16:20:26.765Z",
+      "at": "2026-10-03T10:43:07.921Z",
       "level": "info",
       "type": "cua-lab.session.goal_satisfied",
-      "message": "passed: REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+      "message": "passed: REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
       "id": "event-003-phase-clone",
-      "at": "2026-09-16T16:20:34.736Z",
+      "at": "2026-10-03T10:43:15.913Z",
       "level": "info",
       "type": "cua-lab.subject.clone.completed",
-      "message": "subject repository cloned (3462ms)",
+      "message": "subject repository cloned (3583ms)",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
       "id": "event-004-phase-runtime",
-      "at": "2026-09-16T16:20:56.709Z",
+      "at": "2026-10-03T10:43:19.425Z",
       "level": "info",
       "type": "cua-lab.subject.runtime.completed",
-      "message": "Node runtime ready (21893ms)",
+      "message": "Node runtime ready (3440ms)",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
       "id": "event-005-phase-install",
-      "at": "2026-09-16T16:21:12.496Z",
+      "at": "2026-10-03T10:43:35.173Z",
       "level": "info",
       "type": "cua-lab.subject.install.completed",
-      "message": "subject dependencies installed (15787ms)",
+      "message": "subject dependencies installed (15748ms)",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
       "id": "event-006-phase-build",
-      "at": "2026-09-16T16:21:19.365Z",
+      "at": "2026-10-03T10:43:45.038Z",
       "level": "info",
       "type": "cua-lab.subject.build.completed",
-      "message": "subject build complete (6705ms)",
+      "message": "subject build complete (9720ms)",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
       "id": "event-007-phase-ready",
-      "at": "2026-09-16T16:21:21.421Z",
+      "at": "2026-10-03T10:43:47.211Z",
       "level": "info",
       "type": "cua-lab.subject.ready.completed",
-      "message": "subject is ready (1664ms)",
+      "message": "subject is ready (1673ms)",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
-      "id": "event-008-geometry-warning",
-      "at": "2026-09-16T16:20:26.765Z",
+      "id": "event-008-phase-cua-lab-browser-devtools",
+      "at": "2026-10-03T10:43:51.920Z",
+      "level": "info",
+      "type": "cua-lab.browser.devtools.completed",
+      "message": "Chrome DevTools answered on 127.0.0.1:9222 (4452ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-009-geometry-warning",
+      "at": "2026-10-03T10:43:07.921Z",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser window clipping corrected for lane lane-01; physical bounds are 1440x950 at (0, 0).",
+      "message": "Browser window clipping corrected for participant lane-01; physical bounds are 1435x894 at (5, 56).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-010-geometry-warning",
+      "at": "2026-10-03T10:43:07.921Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window fill did not reach the requested 1440x950 screen for participant lane-01; measured physical bounds are 1435x894 at (5, 56).",
       "simId": "sim-001",
       "streamId": "stream-001"
     }
   ],
   "redaction": {
     "status": "passed",
-    "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+    "notes": "Typed text is recorded as its length only, and reasoning and messages pass through text redaction. Screenshots are unblurred and kept for local use; they are not redacted for publishing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share."
   },
   "artifacts": {
     "run": "run.json",
@@ -670,7 +774,7 @@
       "harnessFailed": 0,
       "reportedFriction": 1
     },
-    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal, 1 reported friction. Recorded summary: REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal, 1 reported friction. Recorded summary: REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
     "gaps": [
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
@@ -679,7 +783,7 @@
     {
       "schema": "humanish.feedback-candidate.v1",
       "id": "participant-report-lane-01",
-      "run_id": "cua-2026-09-16T16-20-26-762Z-c44a6d1d",
+      "run_id": "cua-2026-10-03T10-43-07-890Z-833df699",
       "stream_id": "stream-001",
       "adapter_id": "try-live",
       "scenario_id": "cua-try-live",
@@ -688,8 +792,8 @@
       "substrate": "e2b-desktop",
       "failure_owner": "target-app",
       "summary": "Participant synthetic-new-user (lane-01) reported friction on the way through the study goal",
-      "expected": "Persona: Synthetic New User. A privacy-safe first-time user evaluating the app with realistic but synthetic needs. You have moderate patience: work through some friction, but if you repeatedly fail to make progress toward your goal, stop and report what blocked you. You have moderate technical confidence: use straightforward paths and try one recovery step before giving up. You have the accessibility need \"none_declared\"; treat violations of it as defects and report them. Honor these constraints: Do not use real personal data.; Do not use production accounts.; Treat all credentials as env var names only..\n\nYou are a desktop user (desktop, 1440x950).\n\nYou have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "actual": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+      "expected": "Persona: Synthetic New User.\n\nA privacy-safe first-time user evaluating the app with realistic but synthetic needs.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nHonor these constraints: Do not use real personal data.; Do not use production accounts.; Treat all credentials as env var names only..\n\nYou are a desktop user (desktop, 1440x950).\n\nYou have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "actual": "Customers is named correctly. The second table overlaps it, but I can still edit it from the sidebar.\n\nREACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
       "evidence": [
         {
           "path": "actor.json",
@@ -697,7 +801,7 @@
           "note": "Full actor trace: turns, actions, and the participant's own report."
         },
         {
-          "path": "screenshots/turn-07.png",
+          "path": "screenshots/turn-07.jpg",
           "kind": "screenshot",
           "note": "Final screenshot at the moment the session ended."
         }
@@ -706,11 +810,11 @@
         "status": "passed",
         "notes": "Quoted participant text passed the loop's known-value scrub and pattern redaction before persisting, and redactText again here."
       },
-      "idempotency_key": "humanish:cua-2026-09-16T16-20-26-762Z-c44a6d1d:lane-01:participant-report",
+      "idempotency_key": "humanish:cua-2026-10-03T10-43-07-890Z-833df699:lane-01:participant-report",
       "proposed_next_state": "study-quality-review",
       "acceptance_proof": [
-        "humanish verify --run cua-2026-09-16T16-20-26-762Z-c44a6d1d --json",
-        "humanish watch --run cua-2026-09-16T16-20-26-762Z-c44a6d1d --no-open"
+        "humanish verify --run cua-2026-10-03T10-43-07-890Z-833df699 --json",
+        "humanish observe --run cua-2026-10-03T10-43-07-890Z-833df699 --no-open"
       ]
     }
   ],
@@ -719,23 +823,23 @@
       "schema": "humanish.provider-resource.v1",
       "provider": "e2b-desktop",
       "kind": "sandbox",
-      "id": "i8v1z0wb5xk1gvsmzwxlw",
+      "id": "[redacted-sandbox-id]",
       "owner": "humanish",
       "status": "killed",
       "simId": "sim-001",
       "streamId": "stream-001",
       "laneId": "lane-01",
-      "createdAt": "2026-09-16T16:20:26.765Z",
+      "createdAt": "2026-10-03T10:43:07.921Z",
       "cleanup": {
         "killed": true,
-        "reason": "killed during normal lane teardown"
+        "reason": "killed during normal participant teardown"
       }
     }
   ],
   "subject": {
     "source": "clone",
     "repo": "drawdb-io/drawdb",
-    "commit": "ca7ba9a9a107bffb28adbf3e007138db3701a6aa",
+    "commit": "e4e696f2d2b1a17ac99ad1d062927582ff994a3c",
     "envNames": [],
     "state": {
       "provenance": "undeclared"
@@ -744,7 +848,7 @@
   "cost": {
     "schema": "humanish.run-cost-summary.v1",
     "currency": "usd",
-    "estimatedTotalUsd": 0.017759,
+    "estimatedTotalUsd": 0.013349,
     "ratesAsOf": "2026-09-05",
     "fullyEstimated": false,
     "placeholder": false,
@@ -752,18 +856,19 @@
       {
         "kind": "model-tokens",
         "laneId": "lane-01",
+        "modelId": "gpt-6-astra",
         "estimatedCostUsd": null,
-        "reason": "no_token_usage",
+        "reason": "account_billing_unknown",
         "ratesAsOf": null
       },
       {
         "kind": "desktop-minutes",
         "laneId": "lane-01",
-        "estimatedCostUsd": 0.017759,
+        "estimatedCostUsd": 0.013349,
         "ratesAsOf": "2026-09-05",
         "source": "e2b.dev/pricing",
         "desktop": {
-          "minutes": 1.99985,
+          "minutes": 1.503283,
           "durationBasis": "host-acquired-to-cleanup",
           "resources": {
             "cpuCount": 8,
@@ -775,11 +880,11 @@
       }
     ],
     "tokenUsage": {
-      "input": 0,
-      "output": 0,
-      "total": 0
+      "input": 93089,
+      "output": 668,
+      "total": 93757
     },
-    "desktopMinutes": 1.99985,
-    "note": "Estimated 0.017759 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    "desktopMinutes": 1.503283,
+    "note": "Estimated 0.013349 USD total (a lower bound: some lines are unmeasured or unpriced). Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
   }
 }
