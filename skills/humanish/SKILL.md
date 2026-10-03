@@ -256,7 +256,7 @@ Run `npx humanish study show <study>` to see how a study file parses. humanish
 no longer runs a `humanish.lab.v2` file from 0.107: it fails with
 `HUMANISH_STUDY_V2_UNSUPPORTED`. `npx humanish migrate` rewrites every v2 file as v3
 under `studies/`, and `--dry-run` lists them first. A v3 file left in a `labs/` folder
-fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`; move it to `studies/`.
+fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`; move it to the matching `studies/` folder.
 
 ### Many actors at once (fan-out, shared worlds, concurrency)
 

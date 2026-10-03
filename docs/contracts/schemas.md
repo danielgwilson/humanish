@@ -451,8 +451,9 @@ committed public-safe studies, or ignored `.humanish/studies/*.yaml` /
 `.humanish/local/studies/*.yaml` for private local dogfood. A v3 key the declared route
 does not read is an error, so a study file never silently claims behavior that did not run.
 A name found only in one of the three `labs/` directories is refused: a v2 file with
-`HUMANISH_STUDY_V2_UNSUPPORTED`, and a v3 file with `HUMANISH_STUDY_RETIRED_DIRECTORY` ("Move it
-to humanish/studies/."). A path to a v3 file runs wherever the file is. `study list --json`
+`HUMANISH_STUDY_V2_UNSUPPORTED`, and a v3 file with `HUMANISH_STUDY_RETIRED_DIRECTORY`, whose
+message names the matching `studies/` directory to move it to. A path to a v3 file runs wherever
+the file is. `study list --json`
 lists the refused files in `retired`, each `{ path, code, message }`.
 
 Committed fixture (`humanish/studies/first-run.yaml`):
