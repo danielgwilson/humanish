@@ -64,7 +64,7 @@ describe("doctor's terminal-surface row is written for whoever is reading it", (
     // was not in one, and never mentioned the surface in the report it wrote for a human.
     const message = terminalSurfaceMessage({ ...base, interactive: false });
     expect(message).toContain("pass it on");
-    expect(message).toContain("PERSON");
+    expect(message).toContain("a person");
   });
 
   it("keeps the machine-state answers ahead of the audience question", () => {

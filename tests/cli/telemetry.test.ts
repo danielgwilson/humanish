@@ -17,7 +17,7 @@ import {
   TELEMETRY_NOTICE,
 } from "../../src/cli/telemetry.js";
 
-// Default-on collection is only honest if the promises are enforced rather than written down.
+// Default-on collection is acceptable only if the promises are enforced rather than written down.
 // humanish is stricter than the Next.js/Vercel convention it follows, because a lab id can name an
 // unannounced product and a subject is somebody else's roadmap.
 
@@ -295,7 +295,8 @@ describe("what a study reports about itself", () => {
   it("reads mode, starter lab, outcome, and brain off a single-lane computer-use result", () => {
     expect(
       deriveRunFacts({
-        schema: "humanish.cua-lab-result.v2",
+        schema: "humanish.study-result.v1",
+        route: "computer-use",
         ok: true,
         labId: "try-live",
         actor: "openai-computer-use",
@@ -406,10 +407,11 @@ describe("what a study reports about itself", () => {
 });
 
 describe("finite CUA diagnostics", () => {
-  it("labels successful N1/N2 previews honestly, failed previews as errors, and leaves live rollup unchanged", () => {
+  it("labels successful N1/N2 previews contract_proof_only, failed previews as errors, and leaves live rollup unchanged", () => {
     for (const total of [1, 2]) {
       const base = {
-        schema: "humanish.cua-lab-result.v2",
+        schema: "humanish.study-result.v1",
+        route: "computer-use",
         dryRun: true,
         ok: true,
         laneSummary: { total, passed: 0 },
@@ -428,7 +430,8 @@ describe("finite CUA diagnostics", () => {
   it("reads only the finite summary, never a first-lane cause or raw failure text", () => {
     expect(
       deriveRunFacts({
-        schema: "humanish.cua-lab-result.v2",
+        schema: "humanish.study-result.v1",
+        route: "computer-use",
         diagnostics: { category: "mixed", stopCause: "mixed" },
         session: { stopCause: "provider_output_limit" },
         reason: "private.example",
@@ -437,7 +440,8 @@ describe("finite CUA diagnostics", () => {
     ).toEqual({ diagnosticCategory: "mixed", stopCause: "mixed" });
     expect(
       deriveRunFacts({
-        schema: "humanish.cua-lab-result.v2",
+        schema: "humanish.study-result.v1",
+        route: "computer-use",
         diagnostics: { category: "private.example", stopCause: "secret reason" },
       }),
     ).toEqual({});
@@ -447,6 +451,21 @@ describe("finite CUA diagnostics", () => {
         diagnostics: { category: "mixed", stopCause: "mixed" },
       }),
     ).toEqual({});
+    expect(
+      deriveRunFacts({
+        schema: "humanish.study-result.v1",
+        route: "terminal",
+        diagnostics: { category: "mixed", stopCause: "mixed" },
+      }),
+    ).toEqual({});
+  });
+
+  it("names the study from studyId, and from the deprecated labId when studyId is absent", () => {
+    const result = { schema: "humanish.study-result.v1", route: "terminal", ok: true };
+    expect(deriveRunFacts({ ...result, studyId: "first-run", labId: "other" }).lab).toBe(
+      "first-run",
+    );
+    expect(deriveRunFacts({ ...result, labId: "first-run" }).lab).toBe("first-run");
   });
 
   it("rejects injected values again at the final payload boundary", () => {

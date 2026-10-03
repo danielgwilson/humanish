@@ -30,11 +30,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -74,11 +75,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedappurl",
+        "labId": "adm-scriptedappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedappurl",
         "actor": "scripted-browser",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -115,11 +117,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -156,11 +159,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "local-agent",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -197,11 +201,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedappurl",
+        "labId": "adm-scriptedappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedappurl",
         "actor": "scripted-browser",
         "dryRun": true,
         "runId": "not-created",
@@ -233,11 +238,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "local-agent",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -340,8 +346,10 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "preview",
-        "schema": "humanish.run-result.v1",
+        "studyId": "adm-preview",
+        "labId": "adm-preview",
         "ok": false,
         "cwd": "[cwd]",
         "warnings": [],
@@ -368,8 +376,10 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "preview",
-        "schema": "humanish.run-result.v1",
+        "studyId": "adm-preview",
+        "labId": "adm-preview",
         "ok": false,
         "cwd": "[cwd]",
         "warnings": [],
@@ -397,11 +407,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocalapp",
+        "labId": "adm-culocalapp",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocalapp",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -438,11 +449,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocalapp",
+        "labId": "adm-culocalapp",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocalapp",
         "actor": "scripted-browser",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -479,11 +491,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocalapp",
+        "labId": "adm-culocalapp",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocalapp",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -520,11 +533,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocalapp",
+        "labId": "adm-culocalapp",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocalapp",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -561,11 +575,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocalapp",
+        "labId": "adm-culocalapp",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocalapp",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -619,11 +634,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedappurl",
+        "labId": "adm-scriptedappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedappurl",
         "actor": "scripted-browser",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -711,11 +727,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedappurl",
+        "labId": "adm-scriptedappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedappurl",
         "actor": "scripted-browser",
         "appUrl": "https://example.com/",
         "dryRun": true,
@@ -777,11 +794,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "not-an-actor",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -818,11 +836,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "codex-app-server",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -859,11 +878,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "https://example.com/",
         "dryRun": true,
@@ -900,11 +920,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocaltree",
+        "labId": "adm-culocaltree",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocaltree",
         "actor": "scripted-browser",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -941,11 +962,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-scriptedclone",
+        "labId": "adm-scriptedclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedclone",
         "actor": "scripted-browser",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -982,11 +1004,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedclone",
+        "labId": "adm-scriptedclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedclone",
         "actor": "scripted-browser",
         "appUrl": "[provisioned-subject]",
         "dryRun": true,
@@ -1074,11 +1097,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedclone",
+        "labId": "adm-scriptedclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedclone",
         "actor": "scripted-browser",
         "appUrl": "[provisioned-subject]",
         "dryRun": true,
@@ -1234,11 +1258,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1275,11 +1300,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "openai-computer-use",
         "appUrl": "",
         "dryRun": true,
@@ -1341,11 +1367,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocaltree",
+        "labId": "adm-culocaltree",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocaltree",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1382,11 +1409,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocaltree",
+        "labId": "adm-culocaltree",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocaltree",
         "actor": "codex-exec",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1423,11 +1451,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "codex-exec",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1464,11 +1493,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "codex-app-server",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1505,11 +1535,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1546,11 +1577,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1587,11 +1619,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1628,11 +1661,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1669,11 +1703,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1710,11 +1745,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1751,11 +1787,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1792,11 +1829,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "https://example.com/",
         "dryRun": true,
@@ -1833,11 +1871,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1874,11 +1913,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1915,11 +1955,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -1956,11 +1997,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2000,11 +2042,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2044,11 +2087,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2088,11 +2132,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2132,11 +2177,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2176,11 +2222,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2220,11 +2267,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2264,11 +2312,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2308,11 +2357,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-sharedexternal",
+        "labId": "adm-sharedexternal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedexternal",
         "actor": "openai-computer-use",
         "appUrl": "https://app.example.com/",
         "dryRun": true,
@@ -2349,11 +2399,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedexternal",
+        "labId": "adm-sharedexternal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedexternal",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2393,11 +2444,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedexternal",
+        "labId": "adm-sharedexternal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedexternal",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2437,11 +2489,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedexternal",
+        "labId": "adm-sharedexternal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedexternal",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2481,11 +2534,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedexternal",
+        "labId": "adm-sharedexternal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedexternal",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2525,11 +2579,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedexternal",
+        "labId": "adm-sharedexternal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedexternal",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2569,11 +2624,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedexternal",
+        "labId": "adm-sharedexternal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedexternal",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -2613,11 +2669,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cudesktopcli",
+        "labId": "adm-cudesktopcli",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cudesktopcli",
         "actor": "openai-computer-use",
         "appUrl": "",
         "dryRun": true,
@@ -2679,11 +2736,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cudesktopcli",
+        "labId": "adm-cudesktopcli",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cudesktopcli",
         "actor": "codex-app-server",
         "appUrl": "",
         "dryRun": true,
@@ -2762,11 +2820,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "openai-computer-use",
         "product": "widgetsmith-cli",
         "dryRun": true,
@@ -2819,11 +2878,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedappurl",
+        "labId": "adm-scriptedappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedappurl",
         "actor": "scripted-browser",
         "dryRun": true,
         "runId": "not-created",
@@ -2855,11 +2915,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "dryRun": true,
         "runId": "not-created",
@@ -2891,8 +2952,10 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "preview",
-        "schema": "humanish.run-result.v1",
+        "studyId": "adm-preview",
+        "labId": "adm-preview",
         "ok": false,
         "cwd": "[cwd]",
         "warnings": [],
@@ -2925,11 +2988,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -2965,11 +3029,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "dryRun": true,
         "runId": "not-created",
@@ -2992,10 +3057,12 @@
         "subprocess": 0
       },
       "result": {
-        "schema": "humanish.cua-lab-result.v2",
+        "schema": "humanish.study-result.v1",
+        "route": "computer-use",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -3027,11 +3094,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-culocalapp",
+        "labId": "adm-culocalapp",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-culocalapp",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -3067,11 +3135,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -3107,11 +3176,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -3163,11 +3233,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -3203,11 +3274,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": false,
@@ -3242,11 +3314,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": false,
@@ -3282,11 +3355,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": true,
@@ -3322,11 +3396,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": true,
@@ -3361,11 +3436,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -3377,7 +3453,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
-          "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
+          "message": "execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3404,11 +3480,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": false,
@@ -3444,11 +3521,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": false,
@@ -3457,7 +3535,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
-          "message": "execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model \"unpriced-model\"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped."
+          "message": "execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3484,11 +3562,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": false,
@@ -3524,11 +3603,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "local-agent",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": false,
@@ -3564,11 +3644,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuclone",
+        "labId": "adm-cuclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuclone",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": false,
@@ -3604,11 +3685,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": false,
@@ -3644,11 +3726,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedclone",
+        "labId": "adm-scriptedclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedclone",
         "actor": "scripted-browser",
         "appUrl": "[provisioned-subject]",
         "dryRun": false,
@@ -3684,11 +3767,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedclone",
+        "labId": "adm-scriptedclone",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedclone",
         "actor": "scripted-browser",
         "appUrl": "[provisioned-subject]",
         "dryRun": false,
@@ -3724,11 +3808,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": false,
@@ -3763,11 +3848,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": false,
@@ -3802,11 +3888,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": false,
@@ -3841,11 +3928,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -3885,10 +3973,12 @@
         "subprocess": 0
       },
       "result": {
-        "schema": "humanish.cua-lab-result.v2",
+        "schema": "humanish.study-result.v1",
+        "route": "computer-use",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -3921,10 +4011,12 @@
         "subprocess": 0
       },
       "result": {
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "schema": "humanish.study-result.v1",
+        "route": "shared-world",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",
@@ -3960,10 +4052,12 @@
         "subprocess": 0
       },
       "result": {
-        "schema": "humanish.scripted-lab-result.v1",
+        "schema": "humanish.study-result.v1",
+        "route": "scripted",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "appUrl": "",
         "dryRun": true,
@@ -3996,10 +4090,12 @@
         "subprocess": 0
       },
       "result": {
-        "schema": "humanish.terminal-lab-result.v1",
+        "schema": "humanish.study-result.v1",
+        "route": "terminal",
+        "studyId": "adm-scriptedappurl",
+        "labId": "adm-scriptedappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedappurl",
         "actor": "scripted-browser",
         "product": "",
         "dryRun": true,
@@ -4083,11 +4179,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "computer-use",
-        "schema": "humanish.cua-lab-result.v2",
+        "studyId": "adm-cuappurl",
+        "labId": "adm-cuappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-cuappurl",
         "actor": "not-an-actor",
         "appUrl": "http://127.0.0.1:3000/",
         "dryRun": true,
@@ -4124,11 +4221,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "scripted",
-        "schema": "humanish.scripted-lab-result.v1",
+        "studyId": "adm-scriptedappurl",
+        "labId": "adm-scriptedappurl",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-scriptedappurl",
         "actor": "scripted-browser",
         "dryRun": true,
         "runId": "not-created",
@@ -4160,11 +4258,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "terminal",
-        "schema": "humanish.terminal-lab-result.v1",
+        "studyId": "adm-terminal",
+        "labId": "adm-terminal",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-terminal",
         "actor": "codex-exec",
         "product": "widgetsmith-cli",
         "dryRun": true,
@@ -4200,11 +4299,12 @@
         "subprocess": 0
       },
       "result": {
+        "schema": "humanish.study-result.v1",
         "route": "shared-world",
-        "schema": "humanish.concurrent-shared-world-lab-result.v1",
+        "studyId": "adm-sharedprovisioned",
+        "labId": "adm-sharedprovisioned",
         "ok": false,
         "cwd": "[cwd]",
-        "labId": "adm-sharedprovisioned",
         "actor": "openai-computer-use",
         "topology": "shared-world",
         "topologyMode": "concurrent",

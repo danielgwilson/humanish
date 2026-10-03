@@ -9,7 +9,7 @@ import { runScope } from "../../src/run/run.js";
 import { RUN_STATUS_FILE } from "../../src/run/status.js";
 
 // The first status write can be held open, so a test can look at the registry while status.json
-// is still settling, which is when a signal used to find no run to interrupt.
+// is still settling, which is the window where a signal must still find the run to interrupt.
 const statusGate = vi.hoisted(() => ({
   hold: undefined as Promise<void> | undefined,
   reached: undefined as (() => void) | undefined,

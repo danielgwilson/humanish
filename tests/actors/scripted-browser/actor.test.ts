@@ -233,7 +233,8 @@ describe("runScriptedBrowserSession (completion semantics through the real step 
           redaction: "none",
         });
       }
-      // counts.actions mirrors the engagement-check contract; screenshots are honest (on disk).
+      // counts.actions mirrors the engagement-check contract; screenshots count only frames on
+      // disk.
       expect(trace.counts).toEqual({
         steps: 4,
         actions: 4,
@@ -384,7 +385,7 @@ describe("runScriptedBrowserSession (completion semantics through the real step 
     expect(result.status).toBe("failed");
     expect(result.completionReason).toBe("harness_error");
     expect(result.reason).toContain("launch failed");
-    // The failure still persists an honest native trace (all steps blocked, ok: false).
+    // The failure still persists a native trace (all steps blocked, ok: false).
     const native = JSON.parse(
       await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8"),
     );

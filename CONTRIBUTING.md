@@ -89,24 +89,24 @@ Two kinds of change need one more step:
   review the diff to `tests/golden/public-api.json`. `pnpm api:proof` also runs `examples/` against
   the packed package.
 
-`pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files.
-It also holds four counts to caps: oxlint warnings (`lint`, capped in package.json), prose in
-comments and test names under `src/`, `tests/`, `scripts/` and `tui/` (`prose:check`: issue
-references, `FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and the
-other kinds listed at the top of `scripts/check-code-prose.mjs`, which also counts the text of
-`src/` string literals), and identifiers and file names in
-`src/` outside the exempt contract modules that still say a retired participant word (lane, seat,
-role or sim) or lab (`vocabulary:check`), and hex colors written into rules and classes no site
-component names in `site/app/globals.css` (`site-css:check`). A study is what a user designs and
-runs, and a run is one execution of it; lab is the old name for a study. The last three read their
-caps from `scripts/caps.json`. Each check fails when its count rises above
-the cap and also when it falls below it, so the PR that reduces a count lowers the cap in the same
-commit; the failure message names the cap and the new value. A count with no cap fails as well. CI's
-`caps` workflow (`scripts/check-cap-direction.mjs`) also fails a PR that raises or removes a cap
-against the base branch, unless the PR has the `raise-cap` label and a `Cap raise:` line in its body
-that says why. `pnpm lint` prints the warnings that already exist, several hundred of them;
-that is expected. `pnpm knip` fails on unused files, dependencies and exports, and on any import
-cycle.
+`pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files. It also holds four
+counts to caps: oxlint warnings (`lint`, capped in package.json), prose in comments and test names
+under `src/`, `tests/`, `scripts/`, `tui/` and `observer/`, and in the root guides, `docs/` outside
+`docs/history/` and the site's docs pages (`prose:check`: issue references, `FIX-N` tags, all-caps
+emphasis, em dashes, invariant numbers, review labels, contrast frames in docs and the other kinds
+listed at the top of `scripts/check-code-prose.mjs`, which also counts the text of `src/` string
+literals), and identifiers and file names in `src/` outside the exempt contract modules that still
+say a retired participant word (lane, seat, role or sim) or lab (`vocabulary:check`), and hex colors
+written into rules and classes no site component names in `site/app/globals.css` (`site-css:check`).
+A study is what a user designs and runs, and a run is one execution of it; lab is the old name for a
+study. The last three read their caps from `scripts/caps.json`. Each check fails when its count
+rises above the cap and also when it falls below it, so the PR that reduces a count lowers the cap
+in the same commit; the failure message names the cap and the new value. A count with no cap fails
+as well. CI's `caps` workflow (`scripts/check-cap-direction.mjs`) also fails a PR that raises or
+removes a cap against the base branch, unless the PR has the `raise-cap` label and a `Cap raise:`
+line in its body that says why. `pnpm lint` prints the warnings that already exist, several hundred
+of them; that is expected. `pnpm knip` fails on unused files, dependencies and exports, and on any
+import cycle.
 
 ## Useful Commands
 

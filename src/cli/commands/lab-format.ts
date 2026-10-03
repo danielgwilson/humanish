@@ -6,12 +6,12 @@ import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/t
 
 /** A lab run's first lines: the command that ran, whether it was a dry run, how it ended, and its route. */
 function runHeader(
-  result: { ok: boolean; dryRun?: boolean; labId: string },
+  result: { ok: boolean; dryRun?: boolean; studyId: string },
   route: "computer-use" | "terminal" | "scripted" | "shared-world",
 ): string[] {
   const kind = result.dryRun === true ? "dry run" : result.dryRun === false ? "live run" : "run";
   return [
-    `humanish run ${result.labId}: ${kind} ${result.ok ? "finished" : "failed"}`,
+    `humanish run ${result.studyId}: ${kind} ${result.ok ? "finished" : "failed"}`,
     `route: ${route}`,
   ];
 }

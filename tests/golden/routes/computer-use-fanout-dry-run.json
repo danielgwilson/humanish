@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "fanout-proof",
+    "labId": "fanout-proof",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "fanout-proof",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": true,
@@ -180,12 +182,12 @@
       "bundlePath": ".humanish/runs/[run]/run.json",
       "opened": false,
       "warnings": [
-        "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+        "This is a dry run: its participants are synthetic and no product behavior was tested.",
         "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
       ]
     },
     "warnings": [
-      "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+      "This is a dry run: its participants are synthetic and no product behavior was tested.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "automaticAnalysisTrigger": "default",
@@ -276,7 +278,7 @@
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       },
@@ -285,7 +287,7 @@
         "id": "stream-002",
         "sim": "[same as run.json simulation sim-002]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       },
@@ -294,7 +296,7 @@
         "id": "stream-003",
         "sim": "[same as run.json simulation sim-003]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       },
@@ -303,7 +305,7 @@
         "id": "stream-004",
         "sim": "[same as run.json simulation sim-004]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       }
@@ -364,7 +366,7 @@
       "Live fan-out session not yet run (dry-run contract only)."
     ]
   },
-  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: dry-run\n- run gate: contract_proof_only\n- summary: Dry-run fan-out contract: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.\n\n## Gaps\n- Live fan-out session not yet run (dry-run contract only).\n",
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: dry-run\n- run gate: dry run\n- summary: Dry-run fan-out contract: 4 participants composed for openai-computer-use against http://127.0.0.1:3000/, one world each; no desktops launched, $0 spend.\n\n## Gaps\n- Live fan-out session not yet run (dry-run contract only).\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",

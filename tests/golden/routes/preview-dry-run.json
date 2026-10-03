@@ -49,7 +49,7 @@
       "packageName": "humanish-minimal-fixture-app",
       "redaction": {
         "status": "passed",
-        "notes": "Dry-run bundle contains synthetic contract proof only."
+        "notes": "Dry-run bundle: synthetic data only, nothing from a product."
       },
       "lifecycle": [
         {
@@ -101,7 +101,7 @@
         "id": "sim-01-ui",
         "sim": "[same as run.json simulation sim-01]",
         "kindLabel": "UI",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
         "timeline": "[same as run.json events for this stream]"
       }
@@ -146,14 +146,14 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
+    "summary": "Dry run: humanish wrote a synthetic run bundle. No product behavior was tested.",
     "gaps": [
       "No browser was launched.",
       "No product state was verified.",
       "No model, provider, or E2B substrate was used."
     ]
   },
-  "review.md": "# humanish Run Review\n\nRun: [run]\n\nMode: dry-run\n\nVerdict: contract_proof_only\n\nSynthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.\n\n## Public-Safety\n\n- Redaction: passed\n- Notes: Dry-run bundle contains synthetic contract proof only.\n\n## Gaps\n\n- No browser was launched.\n- No product state was verified.\n- No model, provider, or E2B substrate was used.\n",
+  "review.md": "# humanish Run Review\n\nRun: [run]\n\nMode: dry-run\n\nVerdict: dry run\n\nDry run: humanish wrote a synthetic run bundle. No product behavior was tested.\n\n## Public-Safety\n\n- Redaction: passed\n- Notes: Dry-run bundle: synthetic data only, nothing from a product.\n\n## Gaps\n\n- No browser was launched.\n- No product state was verified.\n- No model, provider, or E2B substrate was used.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -313,7 +313,7 @@
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Dry-run bundle contains synthetic contract proof only."
+      "notes": "Dry-run bundle: synthetic data only, nothing from a product."
     },
     "artifacts": {
       "run": "run.json",
@@ -325,7 +325,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
+      "summary": "Dry run: humanish wrote a synthetic run bundle. No product behavior was tested.",
       "gaps": [
         "No browser was launched.",
         "No product state was verified.",

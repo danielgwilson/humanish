@@ -26,7 +26,7 @@ async function boot(): Promise<void> {
   }
 
   if (data !== null) {
-    document.title = `humanish Observer — ${data.run.runId}`;
+    document.title = `humanish Observer · ${data.run.runId}`;
   }
 
   const root = document.getElementById("root");

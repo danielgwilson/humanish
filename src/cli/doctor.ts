@@ -46,9 +46,9 @@ export interface DoctorResult {
      * Additive + optional. `false` means the check never ran: the directory could not be read, so
      * there is nothing to report about it either way. Absent means it ran and `ok` is its verdict.
      *
-     * It exists because a failed check and an unrun one used to render identically, and the unrun
-     * rows carried the success text: a participant read `missing package.json: package.json is
-     * present and safe to read` off a real screen (labs/tui-self-study.yaml).
+     * It exists so a failed check and an unrun one render differently. Without it an unrun row
+     * shows the success text, such as `missing package.json: package.json is present and safe to
+     * read` (labs/tui-self-study.yaml).
      */
     checked?: boolean;
   }>;
@@ -263,9 +263,9 @@ async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) 
 }
 
 /**
- * The optional peer dep every live browser and terminal route needs. `npx -y humanish` does
- * not pull optional peers, so an adopter's first live run used to fail on it, safely and at $0,
- * but as a burned first impression on the flagship path. Answering it here means the readiness
+ * The optional peer dep every live browser and terminal route needs. `npx -y humanish` does not
+ * pull optional peers, so without this check an adopter's first live run fails on it, safely and at
+ * $0, but as a burned first impression on the flagship path. Answering it here means the readiness
  * command actually answers readiness.
  */
 async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck> {

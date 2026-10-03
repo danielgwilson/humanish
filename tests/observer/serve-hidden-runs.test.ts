@@ -81,7 +81,7 @@ describe("serve --safe names the runs it leaves out", () => {
     });
     program.exitOverride();
     const finished = program.parseAsync(
-      ["node", "humanish", "serve", "--safe", "--cwd", cwd, "--no-open"],
+      ["node", "humanish", "observe", "--all", "--safe", "--cwd", cwd, "--no-open"],
       { from: "node" },
     );
     const start = Date.now();

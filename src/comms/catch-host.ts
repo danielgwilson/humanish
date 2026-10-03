@@ -175,7 +175,7 @@ export async function runCommsCatchHost(
       ...(inboxPort === undefined
         ? []
         : [
-            `  read-only inbox listener on http://0.0.0.0:${inboxPort} (GET only; expose THIS to personas)`,
+            `  read-only inbox listener on http://0.0.0.0:${inboxPort} (GET only; this is the address to give personas)`,
           ]),
       `  POST /emails        <- point your app's email-API base URL here`,
       `  GET  /inbox         <- shared operator inbox${inboxPort === undefined ? " (loopback only without --inbox-port)" : ""}`,
@@ -193,7 +193,7 @@ export async function runCommsCatchHost(
         ? [`        authTokenEnv: HUMANISH_COMMS_TOKEN   # value read at runtime, never persisted`]
         : []),
       ``,
-      `Captured mail is written to ${deliveriesPath}. Raw bodies stay on THIS host: the run bundle`,
+      `Captured mail is written to ${deliveriesPath}. Raw bodies stay on this host: the run bundle`,
       `only ever receives digests (from/to/subject/link) and an OTP count.`,
       ``,
     ].join("\n") + "\n",

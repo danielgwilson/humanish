@@ -253,7 +253,7 @@ export async function renderObserver(
     warnings: [
       loaded.bundle.mode === "live"
         ? "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted."
-        : "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+        : "This is a dry run: its participants are synthetic and no product behavior was tested.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
       ...(openResult.warning ? [openResult.warning] : []),
     ],
@@ -504,7 +504,7 @@ export function desktopOpener(
   if (host.platform === "darwin") return { command: "open", args: [target] };
   if (host.platform === "win32") return { command: "cmd", args: ["/c", "start", "", target] };
   if (!host.env.DISPLAY && !host.env.WAYLAND_DISPLAY)
-    return { reason: "no display is available (DISPLAY and WAYLAND_DISPLAY are unset)" };
+    return { reason: "no display is available (`DISPLAY` and `WAYLAND_DISPLAY` are unset)" };
   if (!host.onPath("xdg-open")) return { reason: "xdg-open is not installed" };
   return { command: "xdg-open", args: [target] };
 }

@@ -559,7 +559,7 @@ describe("runScriptedBrowserLab", () => {
       ["scripted-mobile", "contract_proof_only"],
     ]);
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
-    // No session ran, so no stream.actor exists (mirrors the cua dry-run honesty rule).
+    // No session ran, so no stream.actor exists (mirrors the computer-use dry-run rule).
     for (const stream of bundle.streams) {
       expect(stream.actor).toBeUndefined();
     }
@@ -582,7 +582,7 @@ describe("runScriptedBrowserLab", () => {
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
-    // latest.json points at this run so `verify --run latest` stays honest.
+    // latest.json points at this run so `verify --run latest` verifies it.
     const pointer = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"),
     );
@@ -703,7 +703,7 @@ describe("runScriptedBrowserLab", () => {
         const verified = await verifyRun(cwd, result.runId);
         expect(verified.ok).toBe(true);
         expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
-        expect(verified.warnings.join("\n")).toContain("FULL-FIDELITY (raw)");
+        expect(verified.warnings.join("\n")).toContain("are unblurred");
         expect(result.warnings.join("\n")).toContain("full-fidelity");
 
         // Public safety: no absolute machine paths or secret-shaped text in any text artifact.
@@ -850,7 +850,7 @@ describe("runScriptedBrowserLab", () => {
   it("the subject failing the script is successful evidence: run ok stays true, review verdict is fail", async () => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
-      // Click never produces the Welcome state -> stateChanged + waitForText fail honestly.
+      // Click never produces the Welcome state -> stateChanged + waitForText fail.
       const hooks: ScriptedTestInputs = {
         deps: { launchBrowser: async () => makeFakeBrowser({}) },
       };
@@ -1456,7 +1456,7 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       runId: string;
       scenario: { id: string; source: string; steps: number };
     };
-    expect(envelope.schema).toBe("humanish.scripted-lab-result.v1");
+    expect(envelope.schema).toBe("humanish.study-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("scripted-browser");

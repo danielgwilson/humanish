@@ -9,13 +9,21 @@ import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { resolveLabManifest } from "../../lab/discover.js";
 import { runCommsCatchHost } from "../../comms/catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "../../comms/sandbox-catch.js";
-import { applyEnvFileOption, type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
+import {
+  applyEnvFileOption,
+  type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
+  JSON_OPTION_DESCRIPTION,
+  PORT_OPTION_DESCRIPTION,
+  writeResult,
+} from "../io.js";
 
 export function registerCommsCommands(parent: Command, io: CliIo): void {
   const comms = parent
     .command("comms")
     .description("Local email capture, real receiving connections, checks and cleanup recovery.")
-    .summary("Off-app comms surfaces.");
+    .summary("Catch the email an app sends, for email-gated flows.");
 
   comms
     .command("providers")
@@ -33,8 +41,8 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .description(
       "Show saved connections and local credential status; does not authenticate with a provider.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--env-file <path>", "Load credentials for local status without printing values.")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleCommsList(io, options, command));
   connections
@@ -43,7 +51,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .description(
       "Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--provider <id>", "Installed provider id.", "agentmail")
     .option(
       "--api-key-env <name>",
@@ -58,11 +66,11 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .description(
       "Check connection and credential presence; --online authenticates without creating inboxes.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
     .option("--lab <path>", "Check the connection selected by this exact lab.")
     .option("--online", "Make a read-only provider authentication request.")
-    .option("--env-file <path>", "Load credentials without printing values.")
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleCommsCheck(io, options, command));
   comms
@@ -71,7 +79,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
       "Preview or save a local receiving-enabled copy of a supported lab. No provider requests.",
     )
     .requiredOption("--lab <path>", "Exact source lab path or handle.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
     .option("--apply", "Save the local copy; original lab remains unchanged.")
     .option(
@@ -85,10 +93,10 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .description(
       "Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--run <id>", "One run to inspect or recover.")
     .option("--apply", "Recover the selected inactive run and verify mailbox deletion.")
-    .option("--env-file <path>", "Load credentials without printing values.")
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleCommsRecover(io, options, command));
 
@@ -97,12 +105,8 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .description(
       "Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.",
     )
-    .summary("Run the adopter-hosted email catch.")
-    .option(
-      "--port <port>",
-      "Port for capture + inbox (default 8025).",
-      String(DEFAULT_SANDBOX_CATCH_PORT),
-    )
+    .summary("Run the email catch on this host.")
+    .option("--port <port>", PORT_OPTION_DESCRIPTION, String(DEFAULT_SANDBOX_CATCH_PORT))
     .option(
       "--dir <path>",
       "Directory for the deliveries log and rendered inbox.",

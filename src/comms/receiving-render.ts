@@ -453,7 +453,7 @@ function renderImage(m: MessageRender, attrs: Map<string, string>): string {
   const alt = attrs.get("alt")?.slice(0, 1024) || "Email image";
   if (!data) {
     m.assets++;
-    return `<span class="blocked-image" role="img" aria-label="${esc(alt)}">${esc(alt)} — Image unavailable. Remote images are blocked; embedded images must be supported and within the size limit.</span>`;
+    return `<span class="blocked-image" role="img" aria-label="${esc(alt)}">${esc(alt)}: image unavailable. Remote images are blocked, and an embedded image must use a supported format and fit the size limit.</span>`;
   }
   // srcset, background and all network-bearing image attributes are deliberately absent.
   const width = /^\d{1,3}$/.test(attrs.get("width") ?? "") ? ` width="${attrs.get("width")}"` : "";

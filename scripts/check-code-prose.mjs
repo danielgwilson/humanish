@@ -30,17 +30,31 @@
 //   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
 //   verb phrases (`## Read the results`).
 // - `string-*`: em dashes, issue references and caps, plus `a later slice`, harness rationale words
-//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`) and `(s)` plurals, counted
-//   in src string literals and template text: what a person reads in an error, a warning or
-//   command output. Model prompts and the terminal's transcoding table are not counted
-//   (`STRING_EXCLUDED`), nor is the statement after a `prose-check: model prompt` comment, nor a
-//   string literal type.
-// - `prompt-markers`: each `prose-check: model prompt` comment in src. The marker exempts the
-//   statement after it, so a new one raises this cap where a reviewer sees it.
+//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`), `(s)` plurals and `CUA`
+//   (say computer-use), counted in src string literals and template text: what a person reads in
+//   an error, a warning or command output. Model prompts and the terminal's transcoding table are
+//   not counted (`STRING_EXCLUDED`), nor is the statement after a `prose-check: model prompt` or
+//   `prose-check: script` comment, a string literal type, a string with no whitespace, or a caps
+//   word the shell reads (`${DISPLAY}`, `LANG=C`, `kill -INT`) or a file stem (`AGENTS.md`).
+// - `prompt-markers`, `script-markers`: each `prose-check: model prompt` or `prose-check: script`
+//   comment in src. A marker exempts the statement after it, so a new one raises its cap where a
+//   reviewer sees it.
+//
+// The current docs are read too, by lib/doc-prose.mjs, under the roots `docs`, `site` and
+// `evidence`, for the kinds `issue-refs`, `caps`, `em-dashes`, `invariant-refs`, `authority`,
+// `honest`, `archaeology` (which adds `SLICE 2` and `phase 2` for docs) and `contrast` (`not
+// just`, `not merely`, `rather than`).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
+import {
+  DOC_WORD_KINDS,
+  ROOT_GUIDES,
+  docProse,
+  docRootOf,
+  isDocCapsEmphasis,
+} from "./lib/doc-prose.mjs";
 import { parseSync } from "oxc-parser";
 import { parse as parseYaml } from "yaml";
 import {
@@ -55,8 +69,9 @@ import {
   isCapsEmphasis,
 } from "./lib/prose-rules.mjs";
 
-// Each root is read recursively; node_modules and dist are skipped. src keeps the bare flag names.
-const ROOTS = ["src", "tests", "scripts", "tui"];
+// Each root is read recursively; node_modules and dist are skipped. A root's caps are under
+// `prose.<root>` in scripts/caps.json.
+const ROOTS = ["src", "tests", "scripts", "tui", "observer"];
 const SOURCE_FILE = /\.(?:ts|tsx|mts|mjs|js)$/;
 const SKIPPED_DIR = /(?:^|\/)(?:node_modules|dist)(?:\/|$)/;
 
@@ -91,10 +106,11 @@ const { values } = parseArgs({
   },
 });
 
-// Files whose strings are not read by a person: model prompts, and the table that maps characters
-// a terminal cannot render to ASCII stand-ins.
+// Files whose strings are not read by a person: model prompts, the table that maps characters a
+// terminal cannot render to ASCII stand-ins, and the email catch server's Python source.
 const STRING_EXCLUDED = new Set([
   "src/analysis/execute.ts",
+  "src/comms/sandbox-catch-script.ts",
   "src/routes/computer-use/participant-prompt.ts",
   "src/routes/shared-world/lobby-code.ts",
   "src/routes/terminal/encoding.ts",
@@ -110,8 +126,14 @@ const STRING_KINDS = {
   "string-rationale":
     /\b(?:fails? closed|fail-closed|by construction|hollow|honest(?:ly|y)?|safety lie)\b/gi,
   "string-plural-s": /[a-z](?<!\bhttp)\(s\)/g,
+  "string-cua": /\bCUA\b/g,
 };
-const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps", "prompt-markers"];
+const STRING_KIND_NAMES = [
+  ...Object.keys(STRING_KINDS),
+  "string-caps",
+  "prompt-markers",
+  "script-markers",
+];
 
 // The title and description of each committed lab, which `lab list`, `lab inspect` and the TUI
 // show. They are held to the comment rules; the test-name kinds do not apply.
@@ -147,13 +169,17 @@ function scan(text, root, at, { testName }) {
   if (testName) for (const match of prose.matchAll(SERIES_CODE)) add("series-codes", match);
 }
 
-// A comment holding this marks the statement right after it as text a model reads, which is tuned
-// for the model and is not a message to a person.
+// A comment holding one of these marks the statement right after it as text no person reads as a
+// message: a prompt tuned for a model, or a program in another language (a shell, Python or
+// browser script).
 const PROMPT_MARK = /prose-check: model prompt/;
+const SCRIPT_MARK = /prose-check: script\b/;
+const isUnreadMark = (comment) =>
+  PROMPT_MARK.test(comment.value) || SCRIPT_MARK.test(comment.value);
 
-/** The [start, end) ranges of the statements a `prose-check: model prompt` comment marks. */
-function promptRanges(parsed, text) {
-  const marks = parsed.comments.filter((c) => PROMPT_MARK.test(c.value)).map((c) => c.end);
+/** The [start, end) ranges of the statements a `PROMPT_MARK` or `SCRIPT_MARK` comment marks. */
+function unreadRanges(parsed, text) {
+  const marks = parsed.comments.filter(isUnreadMark).map((c) => c.end);
   const ranges = [];
   if (marks.length === 0) return ranges;
   const visit = (node) => {
@@ -176,21 +202,50 @@ function promptRanges(parsed, text) {
   return ranges;
 }
 
-/** Every string literal and template text in a program, with its offset in the file. */
-function* stringsOf(node) {
+const quasiText = (quasi) => quasi.value.cooked ?? quasi.value.raw;
+
+/**
+ * Every string literal and template text in a program, with its offset in the file. A string with
+ * no whitespace is a code token, a path or an enum value (`"EXECUTE"`, `"ESRCH"`, `"/tmp/x.XXXXXX"`)
+ * and is skipped, unless a template splices it into its text (`${ok ? "PROVEN" : "not seen"}`).
+ * A template counts as one string for the whitespace test.
+ */
+function* stringsOf(node, spliced = false) {
   if (node === null || typeof node !== "object") return;
   // A string literal type (`mode: "fail-closed" | "record-evidence"`) names a value, not a message.
   if (node.type === "TSLiteralType") return;
   if (Array.isArray(node)) {
-    for (const child of node) yield* stringsOf(child);
+    for (const child of node) yield* stringsOf(child, spliced);
     return;
   }
-  if (node.type === "Literal" && typeof node.value === "string") {
-    yield { text: node.value, start: node.start };
-  } else if (node.type === "TemplateElement") {
-    yield { text: node.value.cooked ?? node.value.raw, start: node.start };
+  if (node.type === "Literal") {
+    if (typeof node.value === "string" && (spliced || /\s/.test(node.value))) {
+      yield { text: node.value, start: node.start };
+    }
+    return;
   }
-  for (const [key, child] of Object.entries(node)) if (key !== "parent") yield* stringsOf(child);
+  if (node.type === "TemplateLiteral") {
+    if (/\s/.test(node.quasis.map(quasiText).join(""))) {
+      for (const quasi of node.quasis) yield { text: quasiText(quasi), start: quasi.start };
+    }
+    yield* stringsOf(node.expressions, true);
+    return;
+  }
+  // A branch of `a ? b : c` or `a ?? b` inside a template is still spliced text; its test is not.
+  const branches =
+    spliced && (node.type === "ConditionalExpression" || node.type === "LogicalExpression");
+  for (const [key, child] of Object.entries(node)) {
+    if (key !== "parent") yield* stringsOf(child, branches && key !== "test");
+  }
+}
+
+/**
+ * True when a caps word in a string is a name the shell reads (`$HOME`, `${DISPLAY:-:0}`, `LANG=C`,
+ * `kill -INT`, `--default-signal=INT,TERM`, `x.XXXXXX`) or a file stem (`AGENTS.md`).
+ */
+function isCodeName(prose, match) {
+  const end = match.index + match[0].length;
+  return /[${.,=-]/.test(prose[match.index - 1] ?? "") || /^(?:=|\.\w)/.test(prose.slice(end));
 }
 
 /** Counts the string kinds in one src string. Code spans inside it are not counted. */
@@ -200,7 +255,9 @@ function scanString(text, at) {
     for (const match of prose.matchAll(pattern)) hits.get(`prose.src.${kind}`).push(at(match));
   }
   for (const match of prose.matchAll(CAPS_RUN)) {
-    if (isCapsEmphasis(match[0])) hits.get("prose.src.string-caps").push(at(match));
+    if (isCapsEmphasis(match[0]) && !isCodeName(prose, match)) {
+      hits.get("prose.src.string-caps").push(at(match));
+    }
   }
 }
 
@@ -256,12 +313,15 @@ for (const root of ROOTS) {
             .get("prose.src.prompt-markers")
             .push(`${file}:${lineOf(comment.start)} model prompt`);
         }
+        if (SCRIPT_MARK.test(comment.value)) {
+          hits.get("prose.src.script-markers").push(`${file}:${lineOf(comment.start)} script`);
+        }
       }
     }
     if (root === "src" && !STRING_EXCLUDED.has(file)) {
-      const prompts = promptRanges(parsed, text);
+      const unread = unreadRanges(parsed, text);
       for (const string of stringsOf(parsed.program)) {
-        if (prompts.some(([start, end]) => string.start >= start && string.start < end)) continue;
+        if (unread.some(([start, end]) => string.start >= start && string.start < end)) continue;
         scanString(string.text, (match) => `${file}:${lineOf(string.start)} ${match[0]}`);
       }
     }
@@ -304,6 +364,42 @@ for (const file of readdirSync(".")
       else if (!fenced && TITLE_CASE_HEADER.test(line))
         hits.get("prose.markdown.title-case-headers").push(`${file}:${index + 1} ${line}`);
     });
+}
+
+// The docs roots, counted over the pages docRootOf names.
+const DOC_ROOTS = ["docs", "site", "evidence"];
+const DOC_KINDS = ["issue-refs", "caps", "em-dashes", ...Object.keys(DOC_WORD_KINDS)];
+for (const root of DOC_ROOTS) {
+  for (const kind of DOC_KINDS) hits.set(`prose.${root}.${kind}`, []);
+}
+/** Every page under `dir`, recursively, with node_modules and dist skipped. */
+const pagesUnder = (dir) =>
+  existsSync(dir)
+    ? readdirSync(dir, { recursive: true, encoding: "utf8" })
+        .map((file) => `${dir}/${file.split("\\").join("/")}`)
+        .filter((file) => !SKIPPED_DIR.test(file))
+    : [];
+const docPages = [
+  ...ROOT_GUIDES.filter((file) => existsSync(file)),
+  ...pagesUnder("docs"),
+  ...pagesUnder("site/content/docs"),
+]
+  .filter((file) => docRootOf(file) !== undefined)
+  .sort();
+for (const file of docPages) {
+  const root = docRootOf(file);
+  const text = readFileSync(file, "utf8");
+  const prose = docProse(text);
+  const add = (kind, match) =>
+    hits
+      .get(`prose.${root}.${kind}`)
+      .push(`${file}:${text.slice(0, match.index).split("\n").length} ${match[0]}`);
+  for (const match of prose.matchAll(ISSUE_REF)) add("issue-refs", match);
+  for (const match of prose.matchAll(CAPS_RUN)) if (isDocCapsEmphasis(match[0])) add("caps", match);
+  for (const match of prose.matchAll(EM_DASH)) add("em-dashes", match);
+  for (const [kind, pattern] of Object.entries(DOC_WORD_KINDS)) {
+    for (const match of prose.matchAll(pattern)) add(kind, match);
+  }
 }
 
 const { flat, invalid } = flattenCaps(readCaps(values.caps));

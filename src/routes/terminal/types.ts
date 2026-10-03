@@ -19,6 +19,7 @@ import {
   type RunFeedbackCandidate,
   type RunScorerProvenance,
 } from "../../run/bundle.js";
+import { type StudyResultIdentity } from "../../run/study-result.js";
 
 /** Provider-neutral metadata constant: the route's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
 export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
@@ -63,8 +64,6 @@ export const PENDING_LINE_CHARS = 1024 * 1024;
 // Hard cap on the retained event-stream + transcript size, so a runaway agent cannot balloon the
 // bundle. Redaction runs pre-truncation so a cut can never split a secret past the scrubber.
 export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
-
-export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
 
 /**
  * The read-only evidence a thin adapter's scorer/feedback hook sees (the adapter extension seam).
@@ -164,14 +163,13 @@ export interface RunTerminalProductLabOptions {
   scorerProvenance?: RunScorerProvenance;
 }
 
-export interface TerminalProductLabResult extends AutomaticAnalysisResult {
-  schema: typeof TERMINAL_PRODUCT_LAB_SCHEMA;
+export interface TerminalProductLabResult
+  extends AutomaticAnalysisResult, StudyResultIdentity<"terminal"> {
   /** True when the bundle verified and (dry-run, or the live session reached a terminal verdict
    *  without a harness error + cleanup was proven). The agent's pass/fail is evidence, not the
    *  lab's exit code. */
   ok: boolean;
   cwd: string;
-  labId: string;
   /** The registry-resolved actor id that ran (or would run) the session. */
   actor: string;
   /** The studied product name (public-safe). */
@@ -349,7 +347,7 @@ export interface NoSpendProof {
   unmeasuredLines: CostCategory[];
   /** Sum of the known lines (== 0 for a satisfied no-spend run). */
   knownTotalUsd: number;
-  /** Human-readable honesty statement covering both what is proven and what is unmeasured. */
+  /** Human-readable statement covering both what is proven and what is unmeasured. */
   statement: string;
 }
 
@@ -371,7 +369,7 @@ export interface TerminalLedgers {
      *  this exact sandbox running/paused (still present); -1 = kill(id) itself failed, threw, or
      *  was unavailable (the server-side kill-on-timeout is the backstop). */
     remaining: number;
-    /** Honest, human-readable statement of which by-id signal produced `remaining`. */
+    /** Human-readable statement of which by-id signal produced `remaining`. */
     reason: string;
   };
   /** The spend ledger. Unknowns are `null`, never guessed; the no-spend proof

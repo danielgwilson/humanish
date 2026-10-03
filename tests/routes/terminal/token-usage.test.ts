@@ -14,7 +14,7 @@ const TURN_2 =
 
 describe("terminal token usage", () => {
   it("returns undefined when the stream carried no usage record", () => {
-    // The honest no-signal case. It must stay distinct from a measured zero.
+    // The no-signal case. It must stay distinct from a measured zero.
     expect(parseTerminalTokenUsage('no usage here\n{"type":"item.completed"}')).toBeUndefined();
   });
 

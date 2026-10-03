@@ -25,8 +25,8 @@ export interface SignalLine {
   text: string;
 }
 
-// The card answers one question — "open this participant?" — with ONE signal line:
-// notable completion → final recorded message → unresolved error → lane summary.
+// The card answers one question ("open this participant?") with one signal line:
+// notable completion → final recorded message → unresolved error → stream summary.
 // Recoverable warnings remain available in the card’s notices.
 export function signalFor(stream: ObserverStream): SignalLine {
   const actor = stream.actor;

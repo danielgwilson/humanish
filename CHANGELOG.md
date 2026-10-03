@@ -10,6 +10,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
+- Study files can live in `humanish/studies/`, `.humanish/studies/` and `.humanish/local/studies/`.
+  - `run <name>` and `lab list` read those three directories first, then the three `labs/`
+    directories.
+  - A name with a file in both a `studies/` and a `labs/` directory fails with
+    `HUMANISH_STUDY_AMBIGUOUS`, naming both files. `lab list --json` marks both entries with `error`.
+    Pass the path of one to run it.
+  - `init` skips a starter whose name another study directory already uses. `comms configure`
+    refuses to write when its destination name is in use.
 - Study files can use the format `schema: humanish.study.v3`.
   - The file declares `route:` (`preview`, `computer-use`, `shared-world`, `terminal` or
     `scripted`) and `mode:` (`dry-run` or `live`).
@@ -19,8 +27,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   - The scripted route takes `surfaces: [desktop]` or `surfaces: [desktop, mobile]`.
   - A field the declared route does not read is an error that names the route. So is a route the
     subject and actor do not take.
-  - A v3 file goes where a lab file goes today, under `humanish/labs/`. `humanish.lab.v2` files
-    parse as before, with the same warnings.
+  - A v3 file can live in a `studies/` or a `labs/` directory. `humanish.lab.v2` files parse as
+    before, with the same warnings.
   - `LabConfig.schema` holds the file's schema, so its type is now
     `"humanish.lab.v2" | "humanish.study.v3"`.
 
@@ -37,6 +45,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Deprecated
 
+- `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
+  minor removes it.
+- `--sims` on `run`, `lab run` and `watch`, and `--lanes` on `lab run`, deprecated in 0.107.0. Use
+  `--count` and `--participants`. Commander now reports an unknown option.
+- `watch --follow`, hidden and deprecated since 2026-06-01. Human output follows without it.
+- The hidden `run --app-url` refusal. 0.106.0 removed the option; it now gets commander's unknown
+  option error.
+
+### Deprecated
+
+- `humanish lab run` is a hidden alias of `humanish run` and is removed in the next minor. It takes
+  the same flags and prints "warning: humanish lab run is deprecated and is removed in the next
+  minor. Use humanish run <lab>." on stderr. `humanish lab --help` no longer lists it.
+- `humanish serve` is a hidden alias of `humanish observe --all` and is removed in the next minor.
+  It prints "warning: humanish serve is deprecated and is removed in the next minor. Use humanish
+  observe --all." on stderr.
+- `humanish watch --run <id>` is hidden and is removed in the next minor. It prints "warning:
+  humanish watch --run is deprecated and is removed in the next minor. Use humanish observe --run
+  <id>." on stderr and still shows the saved run.
+
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
   carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
   `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
@@ -44,6 +72,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
+
+- A study's result names its route and its study the same way on every route.
+  - Computer-use, scripted, terminal and shared-world results carry
+    `schema: "humanish.study-result.v1"`, `route` and `studyId`. So does a study's preview result.
+  - Before, each route had its own schema: `humanish.cua-lab-result.v2`,
+    `humanish.scripted-lab-result.v1`, `humanish.terminal-lab-result.v1`,
+    `humanish.concurrent-shared-world-lab-result.v1`, and `humanish.run-result.v1` for the preview.
+    A consumer that tells results apart by `schema` reads `route` instead.
+  - `humanish run` with no study, `observe`, and a refusal a command makes before it picks a route
+    keep `humanish.run-result.v1`.
 
 - Error codes name the study or the route where they said lab. Only the prefix changes.
   - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
@@ -70,6 +108,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   flows." Before, they said "Open-source-safe persona simulation CLI and proof harness." and three
   other variants. The package keywords are user-research, usability-testing, synthetic-users,
   computer-use and cli.
+- `humanish observe` is the one viewer. `observe --all` serves the run library, with `serve`'s
+  flags: `--safe`, `--expose`, `--tunnel`, `--tunnel-domain`, `--oauth`, `--allow-email`,
+  `--allow-domain` and `--public-url`. Without `--all` they are refused with
+  `HUMANISH_OBSERVE_OPTION_CONFLICT`. `observe --all --run <id>` opens the library on that run. Its
+  human output starts with "humanish observe --all" in place of "humanish serve"; the JSON keeps
+  `humanish.serve-result.v1`.
+- `humanish run <lab>` takes `--rerun-failed-from`, `--participants` and `--scorer`, which only
+  `lab run` took (and `watch`, for `--scorer`). `run` and `watch` register a run's flags through
+  one helper, so they take the same ones. Without a lab, `run` refuses these three with
+  `HUMANISH_RUN_OPTION_CONFLICT` and `watch` with `HUMANISH_WATCH_OPTION_CONFLICT`. Before,
+  `watch` ignored `--scorer` without a lab.
 - The first commands a newcomer runs say the right thing.
   - `humanish doctor` before `init` reports "no readable humanish/ source directory; run humanish
     init --yes" and ".gitignore does not list .humanish/; run humanish init --yes". Before, these
@@ -92,6 +141,30 @@ The Unreleased section holds the full notes for the next version until it is tag
   longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
   em dash and its all-caps word. A test now runs init and holds these files to zero of each
   (#1440).
+- A keyless run is called a dry run everywhere a person reads it. Before, the same run was "contract
+  proof", "contract evidence", "harness contracts", "artifact plumbing" or "preview".
+  - `run`, `watch` and `lab run` share one `--dry-run` help line: "Do a dry run: a synthetic run
+    with no browser, keys or provider spend." in place of "Generate contract proof without browser,
+    keys, or provider spend.".
+  - `humanish review` prints "no verdict; no product behavior was tested" in place of "preview
+    only; no product behavior was tested". `contract_proof_only` also marks a live run with no
+    participant result, and review's result does not carry the mode. `humanish stats` prints "2 dry runs ($0); no live runs yet"
+    and "dry runs: 2" in place of "previews".
+  - review.md's verdict line reads "dry run" in place of `contract_proof_only` on a dry run, and
+    "no verdict" on a live run with no participant result, on every route.
+  - The review summary in a dry-run bundle reads "Dry run: humanish wrote a synthetic run bundle.
+    No product behavior was tested.", and the redaction note "Dry-run bundle: synthetic data only,
+    nothing from a product.".
+  - The Observer labels a dry-run participant "Dry run" in place of "Contract proof" ("No verdict"
+    for a live participant with no result), and its
+    warning reads "This is a dry run: its participants are synthetic and no product behavior was
+    tested.".
+  - `humanish analyze` refuses a dry run with "A dry run has no participant behavior to analyze.
+    Select a completed live run." (`ANALYSIS_REQUIRES_LIVE_RUN`, unchanged).
+  - Bare `humanish`, `init`'s next step and the AGENTS.md section call `humanish run first-run` "a
+    dry run" in place of "an evidence preview".
+  - `contract_proof_only` stays the value of `streams[].status` and `review.verdict` in `run.json`.
+    CONTEXT.md maps it to dry run. "preview" now names only the route.
 - `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
   passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
   as what verify found, such as "redaction did not pass (status: pending)" or "review.md is
@@ -143,6 +216,31 @@ The Unreleased section holds the full notes for the next version until it is tag
   - Each installed local agent has its own row, `local agent codex` and `local agent claude`.
     Before, one `local agents` row joined both into one line. With no agent installed, the
     `local agents` row stays.
+- `humanish feedback draft`, `verify`, `issue` and `issue-url` refuse a dry run with
+  `HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN`, as `analyze` refuses one with `ANALYSIS_REQUIRES_LIVE_RUN`.
+  Before, a dry run produced a "Dry-run contract proof needs product-evidence follow-up" draft.
+  - The issue body drops the "public-safe simulation harness coverage" paragraph and the "GitHub
+    mutation", "Substrate" and "Production data" lines. Its evidence list names each file by its
+    path inside the run, such as "screenshot screenshots/step-003.png", without the
+    `.humanish/runs/<id>/` prefix; the YAML block keeps the full paths.
+- `humanish cleanup` ends with "To stop leftover sandboxes, run humanish reclaim --run <id>." when
+  an E2B sandbox in the run is not recorded as stopped. It adds `--cwd` when cleanup was given one.
+- A spend cap on a model humanish cannot price is refused with a message that lists the priced
+  models and says to remove `maxUsd` and `maxTotalUsd`. Before, the computer-use route said to add
+  a rate to `src/run/pricing.ts`, which the npm package does not ship, and the shared-world route
+  named no fix. The run cost note and the terminal ledger note no longer name that file; the cost
+  note says each line's reason names what is missing.
+- Option help reads the same across commands and drops internal words.
+  - `--cwd`, `--run`, `--env-file`, `--port` and `--json` have one description each on every
+    command. `--run` says "Run id, or latest." in place of six wordings; `--env-file` says "Load
+    unset variables from this env file. Values are never printed or saved." in place of six.
+  - `--port` shows "(default: a free port)" and `export --max-bytes` "(default: 25 MB)".
+  - Option help says computer-use in place of CUA, and drops "adopter scorer module", "admission
+    estimate" and "exposure intent". `--open` names the Observer with a capital O.
+  - `watch --safe` is hidden from help. It is still refused, with a message that names the
+    library filter and edge auth.
+  - The npm package keywords add ui-testing and ux-research back, beside the five from the
+    product-sentence change.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
@@ -179,6 +277,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `role: subject`, and the shared-world one `participantCount` in place of `roleCount`. Nothing in
   humanish reads these labels back; an E2B dashboard filter on the old keys needs the new ones
   (#1419).
+- `humanish --help` lists the commands in workflow order (init, doctor, run, watch, observe,
+  verify, review, analyze, feedback, export, then the rest), each on one line that says what it
+  does: for example "Run a study, as a dry run or with live participants." in place of "Run a
+  persona/scenario simulation or dry-run bundle.", and "Check that a run's resources were
+  stopped." in place of "Write a resource cleanup inspection receipt.".
+  - `-v` prints the version; `-V` is gone. `humanish help <command>` prints that command's help.
+  - Every help screen ends with links to https://humanish.dev/docs and
+    https://humanish.dev/docs/cli.
+  - `humanish codex` is hidden from help and the CLI reference, and works as before.
+  - The command index in llms.txt gives each command's full description.
 
 ### Fixes
 

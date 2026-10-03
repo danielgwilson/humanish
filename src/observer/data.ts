@@ -177,7 +177,7 @@ export function buildObserverData(
       status,
       sim,
       kindLabel: kindLabel(stream.kind),
-      statusLabel: statusLabel(status),
+      statusLabel: statusLabel(status, bundle.mode),
       terminalPlain: stripAnsi(stream.terminal?.tail ?? ""),
       timeline: [
         ...events.filter((event) => event.simId === sim.id || event.streamId === stream.id),
@@ -375,10 +375,11 @@ function kindLabel(kind: RunStreamKind): string {
   }
 }
 
-function statusLabel(status: RunStream["status"]): string {
+/** `contract_proof_only` reads "Dry run" on a dry run; a live participant with it has no result. */
+function statusLabel(status: RunStream["status"], mode: RunBundle["mode"]): string {
   switch (status) {
     case "contract_proof_only":
-      return "Contract proof";
+      return mode === "dry-run" ? "Dry run" : "No verdict";
     case "preparing":
       return "Preparing";
     case "queued":

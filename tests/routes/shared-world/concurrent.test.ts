@@ -545,7 +545,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     config.execution!.caps = { maxTotalUsd: 1 };
     const { env, created, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
-    expect(result.error?.message).toContain("unpriced model");
+    expect(result.error?.message).toContain("humanish has no rate for model");
     expect(created).toHaveLength(0);
   });
 
@@ -2343,7 +2343,8 @@ describe("concurrent shared-world verify findings golden", () => {
     const run = await goodConcurrentRun(laneOverride);
     const result = await pinnedVerifyResult(cwd, run.runId);
     pinned.set(name, result);
-    // A run that failed honestly still verifies: the golden pins that it reports no failing check.
+    // A run that recorded its failure still verifies: the golden pins that it reports no failing
+    // check.
     expect(result.ok).toBe(true);
   });
 
@@ -2519,7 +2520,7 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     expect(extractLobbyCodeFromNarration("lobby code: MHDTP2")).toBe("MHDTP2");
     expect(extractLobbyCodeFromNarration("LOBBY_CODE=AB8K9Q done")).toBe("AB8K9Q");
     // A wrong latch fails the whole run: ordinary lowercase words after "lobby code" must not latch,
-    // even though the label match is case-insensitive (regression: the /i flag used to grab them).
+    // even though the label match is case-insensitive (the /i flag must not grab them).
     expect(
       extractLobbyCodeFromNarration("I clicked the lobby code screen to check"),
     ).toBeUndefined();

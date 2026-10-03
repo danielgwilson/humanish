@@ -19,9 +19,11 @@ const INTENTIONALLY_OMITTED = new Map<string, string>([
   ["humanish", "the root command is the binary name, not an entry"],
 ]);
 
+/** Every command `--help` lists. A hidden command and its subcommands are left out of llms.txt too. */
 function walk(command: Command, trail: string[] = []): string[] {
   const names: string[] = [];
-  for (const child of command.commands) {
+  const visible = command.createHelp().visibleCommands(command);
+  for (const child of command.commands.filter((candidate) => visible.includes(candidate))) {
     const here = [...trail, child.name()];
     const isGroup = child.commands.length > 0;
     // A pure group (`feedback`, `keys`) is documented through its subcommands, so only leaves

@@ -8,11 +8,11 @@
     "failing": [
       {
         "name": "subject state provenance",
-        "message": "subject state findings: state marker \"seeded\" with zero seed step records is a hollow state claim"
+        "message": "subject state findings: state marker \"seeded\" with no seed step records claims state the run did not set up"
       },
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: the external-public plane class requires subject.state.provenance == \"external-public\" (got \"seeded\") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest"
+        "message": "shared-world findings: an external-public run needs subject.state.provenance == \"external-public\" (got \"seeded\"): seeded, unpinned or undeclared does not describe a public deployment the operator runs"
       }
     ]
   },
@@ -21,7 +21,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest \"synthetic\" on a real site"
+        "message": "shared-world findings: sharedWorld.plane.exposure must be absent on an external-public run: humanish did not provision the app, so it cannot declare a real deployment \"synthetic\""
       }
     ]
   },
@@ -30,7 +30,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 3e38c933ea57479e, 0000000000000000"
+        "message": "shared-world findings: the participants were observed on more than one origin; observed origin digests: 3e38c933ea57479e, 0000000000000000"
       }
     ]
   },
@@ -39,7 +39,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: attributionLimits is missing the mandatory external-public disclosure \"no-synthetic-attestation\" — an absent honest-downgrade ceiling overclaims"
+        "message": "shared-world findings: attributionLimits is missing the required external-public disclosure \"no-synthetic-attestation\"; without it the bundle claims more than the run can show"
       }
     ]
   },
@@ -48,7 +48,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)"
+        "message": "shared-world findings: the review verdict is pass, but no two laneWindows overlap in time, so the participants of this external-public run did not run at once"
       }
     ]
   },
@@ -66,7 +66,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 3e38c933ea57479e, not-a-digest"
+        "message": "shared-world findings: laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, the participants were observed on more than one origin; observed origin digests: 3e38c933ea57479e, not-a-digest"
       }
     ]
   },
@@ -93,11 +93,11 @@
     "failing": [
       {
         "name": "subject state provenance",
-        "message": "subject state findings: state marker \"seeded\" with zero seed step records is a hollow state claim"
+        "message": "subject state findings: state marker \"seeded\" with no seed step records claims state the run did not set up"
       },
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: attributionLimits is missing the mandatory external-public disclosure \"no-synthetic-attestation\" — an absent honest-downgrade ceiling overclaims, phantom/dropped role: outcomes count (2) must equal roleCount (3), laneWindow \"player-2\" must carry numeric startedAt <= endedAt on one clock, laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, laneWindow \"player-3\" references unknown simId \"sim-999\", laneWindow \"player-3\" references unknown streamId \"stream-999\", the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 3e38c933ea57479e, not-a-digest, sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest \"synthetic\" on a real site, the external-public plane class requires subject.state.provenance == \"external-public\" (got \"seeded\") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest, review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)"
+        "message": "shared-world findings: attributionLimits is missing the required external-public disclosure \"no-synthetic-attestation\"; without it the bundle claims more than the run can show, phantom/dropped role: outcomes count (2) must equal roleCount (3), laneWindow \"player-2\" must carry numeric startedAt <= endedAt on one clock, laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, laneWindow \"player-3\" references unknown simId \"sim-999\", laneWindow \"player-3\" references unknown streamId \"stream-999\", the participants were observed on more than one origin; observed origin digests: 3e38c933ea57479e, not-a-digest, sharedWorld.plane.exposure must be absent on an external-public run: humanish did not provision the app, so it cannot declare a real deployment \"synthetic\", an external-public run needs subject.state.provenance == \"external-public\" (got \"seeded\"): seeded, unpinned or undeclared does not describe a public deployment the operator runs, the review verdict is pass, but no two laneWindows overlap in time, so the participants of this external-public run did not run at once"
       }
     ]
   },
@@ -114,7 +114,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the participants converged on) is required on the external-public plane class, the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 18411940b0773353, 3e38c933ea57479e"
+        "message": "shared-world findings: sharedWorld.plane.publicOriginDigest (the sha256-16 of the origin the participants were observed to reach) is required on an external-public run, the participants were observed on more than one origin; observed origin digests: 18411940b0773353, 3e38c933ea57479e"
       }
     ]
   }

@@ -37,8 +37,8 @@ export function buildCostLedger(args: {
             source: "unpriced-token-usage",
             note:
               `Provider spend UNPRICED: the run consumed ${describeTokenUsage(args.tokenUsage)}, ` +
-              "but the terminal participant records the model as `codex` and src/run/pricing.ts carries no " +
-              "rate for it, so no dollar figure is claimed. Tokens are a MEASURED fact here; the " +
+              "but the terminal participant records the model as `codex` and humanish has no rate " +
+              "for it, so no dollar figure is claimed. Tokens are a MEASURED fact here; the " +
               "price is the unknown. Recorded null (never guessed to 0).",
           }
         : {
@@ -142,7 +142,7 @@ export function buildNoSpendProof(
   }
   // satisfied only when every known line is within the cap (for a no-spend run, maxUsd 0 => every
   // known line must be exactly 0). Unmeasured lines never make it satisfied; they are reported
-  // separately as the proof's honest blind spot.
+  // separately as the proof's blind spot.
   const cap = maxUsd ?? 0;
   const satisfied = knownNonZeroLines.length === 0 && ledger.knownTotalUsd <= cap;
   const verdict = !satisfied

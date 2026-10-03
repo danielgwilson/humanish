@@ -52,8 +52,7 @@ import type {
   SharedWorldParticipant,
 } from "../../lab/plan-participants.js";
 import type { ResolvedParticipant } from "../../run/participant.js";
-
-export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
+import { type StudyResultIdentity } from "../../run/study-result.js";
 
 // The fan-out topology of this route: N participants = N independent E2B desktop sandboxes,
 // each its own world (clone/serve + subject.state per participant). Shared-world has its own route.
@@ -83,7 +82,7 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
 // per-persona device dimension (N personas × devices, as the bespoke sims author) lands with
 // fan-out. On this E2B-desktop route only width/height physically render; isMobile/DSF are
-// honest metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
+// metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
 // rendered width is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
 // screen the browser can't shrink to does not overflow + clip (see resolveParticipantDevice).
 
@@ -330,13 +329,12 @@ export type CuaSubjectProvenanceArg =
       state: RunSubjectProvenance["state"];
     };
 
-export interface CuaActorLabResult extends AutomaticAnalysisResult {
-  schema: typeof CUA_ACTOR_LAB_SCHEMA;
+export interface CuaActorLabResult
+  extends AutomaticAnalysisResult, StudyResultIdentity<"computer-use"> {
   /** True when the Observer verified the bundle, all live participants passed credibility checks
    * (or this is a dry-run), and no declared adapter/scorer verdict failed. */
   ok: boolean;
   cwd: string;
-  labId: string;
   /** The registry-resolved actor id that ran (or would run) the session. */
   actor: string;
   appUrl: string;

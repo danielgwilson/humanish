@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.cua-lab-result.v2",
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "cua-routing-proof",
+    "labId": "cua-routing-proof",
     "ok": false,
     "cwd": "[cwd]",
-    "labId": "cua-routing-proof",
     "actor": "openai-computer-use",
     "appUrl": "http://127.0.0.1:3000/",
     "dryRun": false,
@@ -525,7 +527,7 @@
         "total": 0
       },
       "desktopMinutes": 1,
-      "note": "Estimated 0.00888 USD total. Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+      "note": "Estimated 0.00888 USD total. Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
     }
   },
   "sandbox-receipts.ndjson": [

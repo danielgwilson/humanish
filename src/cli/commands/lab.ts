@@ -8,11 +8,12 @@ import {
   type LabPreflightReachabilityMode,
   type LabPreflightResult,
 } from "../../lab/preflight.js";
-import { runLabCommand } from "./lab-run.js";
-import { countOption, participantsOption } from "../renamed-options.js";
+import { addRunOptions, handleRun } from "./run-command.js";
 import {
   applyEnvFileOption,
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
   type LabCommandOptions,
   parsePositiveInteger,
@@ -22,13 +23,12 @@ import {
 export function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("List, inspect, and run humanish lab manifests.")
-    .summary("List, inspect, and run humanish lab manifests.");
+    .description("List, inspect and check the studies in humanish/labs/.");
 
   lab
     .command("list")
     .description("List committed and ignored humanish lab manifests.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleLabList(io, options, command));
 
@@ -36,7 +36,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .command("inspect")
     .argument("<lab>", "Lab id or .yaml path.")
     .description("Inspect a humanish lab manifest without running it.")
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((labName, options, command) => handleLabInspect(io, labName, options, command));
 
@@ -46,66 +46,28 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .description(
       "Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .addOption(
       new Option("--reachability <mode>", "Reachability mode.")
         .choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"])
         .default("metadata"),
     )
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
-    .option(
-      "--env-file <path>",
-      "Load a local env file for this preflight without persisting values.",
-    )
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((labName, options, command) => handleLabPreflight(io, labName, options, command));
 
-  lab
-    .command("run")
-    .argument("<lab>", "Lab id or .yaml path.")
-    .description("Run a humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.")
-    .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
-    .option("--dry-run", "Render contract evidence without live provider spend.")
-    .option("--open", "Open the observer in the default browser.")
-    .option("--no-open", "Render without opening a browser.")
-    .option("--detach", "Render/open once and exit without attached watch server.")
-    .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--count <count>", "Override the participant count of a preview or computer-use lab.")
-    // The older spelling of --count, hidden and noted on stderr (renamed-options.ts).
-    .addOption(new Option("--sims <count>").hideHelp())
-    .option(
-      "--rerun-failed-from <run>",
-      "CUA fan-out only: create a new run for failed participants from a prior run.",
-    )
-    .option(
-      "--participants <ids>",
-      "CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position.",
-    )
-    // The older spelling of --participants, hidden and noted on stderr (renamed-options.ts).
-    .addOption(new Option("--lanes <participant-ids>").hideHelp())
-    .option("--run-id <id>", "Explicit lab run id; refused when that run already exists.")
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option(
-      "--scorer <path>",
-      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code.",
-    )
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .addHelpText(
-      "after",
-      [
-        "",
-        "Examples:",
-        "  humanish lab run first-run",
-        "  humanish lab run fanout-demo --rerun-failed-from latest --participants lane-02,lane-04",
-        "  humanish lab run my-terminal-lab --scorer scorers/product.mjs",
-        "  humanish lab run .humanish/labs/private-dogfood.yaml --env-file .humanish/local/provider.env",
-        "",
-        "Human watch path:",
-        "  humanish watch first-run",
-      ].join("\n"),
-    )
-    .action((labName, options, command) => handleLabRun(io, labName, options, command));
+  // Removed in 0.109.0: `lab run` stays one minor as a hidden alias of `run`, with the same flags.
+  addRunOptions(
+    lab.command("run", { hidden: true }).argument("<lab>", "Lab id or .yaml path."),
+  ).action((labName: string, options: LabCommandOptions, command: Command) => {
+    io.writeErr(LAB_RUN_DEPRECATION);
+    return handleRun(io, labName, options, command);
+  });
 }
+
+const LAB_RUN_DEPRECATION =
+  "warning: humanish lab run is deprecated and is removed in the next minor. Use humanish run <lab>.\n";
 
 async function handleLabList(
   io: CliIo,
@@ -184,42 +146,12 @@ async function handleLabPreflight(
   io.setExitCode(result.ok ? 0 : 2);
 }
 
-async function handleLabRun(
-  io: CliIo,
-  labName: string,
-  options: LabCommandOptions & { sims?: string; lanes?: string },
-  command: Command,
-): Promise<void> {
-  const count = countOption(io, options);
-  const participants = participantsOption(io, options);
-  if (
-    !(await applyEnvFileOption({
-      command,
-      cwd: options.cwd,
-      envFile: options.envFile,
-      io,
-      // runLabCommand discovers keys once the lab resolves to a live run.
-      discoverKeys: false,
-    }))
-  ) {
-    return;
-  }
-
-  await runLabCommand({
-    command,
-    io,
-    lab: labName,
-    mode: "run",
-    options: { ...options, count, participants },
-  });
-}
-
 function formatLabListHuman(result: LabListResult): string {
   if (result.labs.length === 0) {
     return (
       [
         `No humanish labs found in ${result.cwd}`,
-        "Create one under humanish/labs/*.yaml, .humanish/labs/*.yaml, or pass a .yaml path.",
+        "Create one under humanish/studies/*.yaml or humanish/labs/*.yaml, or pass a .yaml path.",
         ...result.warnings.map((warning) => `warning: ${warning}`),
       ].join("\n") + "\n"
     );
@@ -230,7 +162,7 @@ function formatLabListHuman(result: LabListResult): string {
       "humanish labs",
       ...result.labs.map(
         (lab) =>
-          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`,
+          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}${lab.error ? `\n  error: ${lab.error}` : ""}`,
       ),
       ...result.warnings.map((warning) => `warning: ${warning}`),
     ].join("\n") + "\n"

@@ -1665,8 +1665,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   );
 
   // The judge reads a goal_satisfied session that reports a blocker as blocked, so a rerun of the
-  // failed participants must select it. Rerun selection used to read the trace status, which stays
-  // "passed" for that session, and skipped it.
+  // failed participants must select it. Rerun selection that read the trace status, which stays
+  // "passed" for that session, would skip it.
   it("reruns a participant whose session reported a blocker", async () => {
     const config = fanoutConfig({
       concurrency: 1,

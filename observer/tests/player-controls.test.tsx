@@ -569,7 +569,7 @@ describe("player review controls", () => {
     expect(container.textContent).toContain("participant is preparing");
     expect(container.textContent).not.toContain("Finished");
   });
-  it("names unavailable addresses and ended screenshot-free streams honestly", async () => {
+  it("names unavailable addresses and ended screenshot-free streams", async () => {
     await render({ initialFrame: 100 });
     expect(container.textContent).toContain("addressed frame is unavailable");
     expect(container.querySelector(".stage-box img")).toBeNull();

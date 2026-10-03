@@ -2,8 +2,7 @@
 // default, disclosed the first time it happens, trivially switched off, and inspectable.
 //
 // Why it exists: humanish shipped 61 releases without being able to answer "does anyone get to a
-// working first run". The funnel was broken at the first live run for months and we learned it from
-// an adoption post-mortem, not from data. A tool that cannot see its own activation is guessing.
+// working first run". A tool that cannot see its own activation is guessing.
 //
 // What it will never send, and this is stricter than the convention because of what humanish is:
 // no paths, no cwd, no repo names, no URLs, no lab titles or ids that are not our own starter labs,
@@ -19,6 +18,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { STUDY_RESULT_SCHEMA } from "../run/study-result.js";
 
 /** Write-only PostHog project key. Public by design: it can ingest, and can read nothing. */
 const INGEST_KEY = "phc_oeMeBqxDZhZ9tCHMSnuDFimLqHpU5Myc847WD33hAh4C";
@@ -205,7 +205,7 @@ export interface TelemetryPayload {
 /**
  * The exact document that would be sent. Built separately from sending so that
  * `HUMANISH_TELEMETRY_DEBUG=1` can show it and so tests can assert on it. "You can read exactly
- * what we collect" is the part of this convention that makes it honest rather than merely legal.
+ * what we collect" is the part of this convention that lets a person check the collection.
  */
 export function buildPayload(args: {
   event: TelemetryEvent;
@@ -319,13 +319,15 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
 
   const labRecord = asRecord(r.lab);
   const labId =
-    typeof r.labId === "string"
-      ? r.labId
-      : typeof labRecord?.id === "string"
-        ? labRecord.id
-        : typeof r.lab === "string"
-          ? r.lab
-          : undefined;
+    typeof r.studyId === "string"
+      ? r.studyId
+      : typeof r.labId === "string"
+        ? r.labId
+        : typeof labRecord?.id === "string"
+          ? labRecord.id
+          : typeof r.lab === "string"
+            ? r.lab
+            : undefined;
   const lab = safeLabId(labId);
   if (lab !== undefined) facts.lab = lab;
 
@@ -333,7 +335,7 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
   if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code))
     facts.errorCode = error.code;
 
-  const cuaResult = r.schema === "humanish.cua-lab-result.v2";
+  const cuaResult = r.schema === STUDY_RESULT_SCHEMA && r.route === "computer-use";
   const diagnostics = cuaResult ? asRecord(r.diagnostics) : undefined;
   if (isCuaDiagnosticCategory(diagnostics?.category))
     facts.diagnosticCategory = diagnostics.category;

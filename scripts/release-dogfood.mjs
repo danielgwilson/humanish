@@ -4,7 +4,7 @@
 // `pnpm release:check` proves the code is internally consistent. It cannot tell you whether a
 // person landing on this build can get anywhere with it, and that gap is not theoretical: 0.56.0
 // passed every check and shipped a regression that hid a run's price exactly when someone was
-// deciding whether to set up keys. A synthetic participant found it hours later. So the honest
+// deciding whether to set up keys. A synthetic participant found it hours later. So the
 // last gate before a tag is to run the product's own first-contact study against the candidate.
 //
 // It installs the packed tarball, not `humanish@latest`. Installing latest would measure the last
@@ -49,7 +49,7 @@ if (!tarball) fail("npm pack produced no tarball.");
 // the machine for it. Everything else (the mission that names no command, the caps, the
 // deny-by-default credential policy) is the fixture's, unedited.
 //
-// One honest difference from the committed study, worth knowing when you read the report: the
+// One difference from the committed study, worth knowing when you read the report: the
 // fixture has the participant discover and install humanish from its public surfaces, which would
 // install whatever npm is serving: the last release, the one artifact we already know about. A
 // pre-release gate has to meet the candidate, so this pre-installs it. The discovery half is not

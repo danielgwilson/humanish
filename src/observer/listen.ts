@@ -1,9 +1,10 @@
 // One loopback bind for every humanish server, with the one failure people actually hit named.
 //
-// `listen EADDRINUSE` used to surface as HUMANISH_UNEXPECTED, the command-boundary catch-all for
-// "a handler threw". Something already serving on the port is the most expected condition
-// a serve command has: a second session, a forgotten background one, someone's dev server. It only
-// bites with an explicit --port, which is exactly when a person is asking for a stable address.
+// `listen EADDRINUSE` becomes PortInUseError: HUMANISH_UNEXPECTED, the command-boundary catch-all
+// for "a handler threw", would misname it. Something already serving on the port is the most
+// expected condition a serve command has: a second session, a forgotten background one, someone's
+// dev server. It only bites with an explicit --port, which is exactly when a person is asking for a
+// stable address.
 
 import type { Server } from "node:http";
 

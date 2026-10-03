@@ -2,7 +2,7 @@
 // lab grouping, the trust line's arithmetic, thought normalization and list-window math live, so
 // the parts most likely to be wrong are testable without a terminal.
 //
-// The honesty rules these encode, because they are the ones a UI is most tempted to break:
+// The rules these encode, because they are the ones a UI is most tempted to break:
 //   - a statistic always carries its denominator, and says when it has none;
 //   - an unknown cost is `null` (declared absent), never 0;
 //   - truncation is reported, never silent;
@@ -25,7 +25,7 @@ export interface LabRollup {
 
 /**
  * Group runs by lab, newest-first within each lab and by recency between labs. Runs with no lab
- * attribution are collected under `unattributed` rather than invented into a lab. That is the honest
+ * attribution are collected under `unattributed` rather than invented into a study. That is the
  * home for pre-contract runs and library callers.
  */
 export function groupRunsByLab(entries: readonly RunIndexEntry[]): {

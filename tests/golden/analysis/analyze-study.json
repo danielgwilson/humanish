@@ -2183,7 +2183,7 @@
       "warnings": [],
       "error": {
         "code": "ANALYSIS_REQUIRES_LIVE_RUN",
-        "message": "A dry-run proves harness contracts, not participant behavior. Select a completed live study for analysis."
+        "message": "A dry run has no participant behavior to analyze. Select a completed live run."
       }
     },
     "requests": [],

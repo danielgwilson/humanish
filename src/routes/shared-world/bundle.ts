@@ -32,8 +32,9 @@ import { participantFactsOf } from "../computer-use/participant-facts.js";
 import {
   judgeSharedWorld,
   participantPassed,
-  sharedWorldShortfall,
   type SharedWorldJudgment,
+  sharedWorldShortfall,
+  verdictText,
 } from "../../run/judge.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
@@ -46,7 +47,7 @@ import {
   type ConcurrentBundleArgs,
 } from "./types.js";
 
-/** Max windows live at the same instant (sweep over start/end points). The honest simultaneity
+/** Max windows live at the same instant (sweep over start/end points). The simultaneity
  *  count: the participant count says how many existed; this says how many ever ran at once. */
 export function maxSimultaneousWindows(
   windows: Array<{ startedAt: number; endedAt: number }>,
@@ -573,7 +574,7 @@ export function renderConcurrentReviewMarkdown(bundle: RunBundle): string {
     `- attribution class: ${bundle.attributionClass ?? "isolated"}`,
     `- topology: ${sw?.topology ?? "(none)"} / ${sw?.topologyMode ?? "(none)"}`,
     `- personas: ${sw?.roleCount ?? 0}`,
-    `- verdict: ${bundle.review.verdict}`,
+    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
     `- summary: ${bundle.review.summary}`,
     ...(plane ? [`- plane: ${plane.message}`] : []),
     ...(concurrency ? [`- concurrency: ${concurrency.message}`] : []),

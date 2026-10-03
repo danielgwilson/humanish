@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "concurrent-shared-world-proof",
+    "labId": "concurrent-shared-world-proof",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "concurrent-shared-world-proof",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -63,12 +65,12 @@
       "bundlePath": ".humanish/runs/[run]/run.json",
       "opened": false,
       "warnings": [
-        "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+        "This is a dry run: its participants are synthetic and no product behavior was tested.",
         "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
       ]
     },
     "warnings": [
-      "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+      "This is a dry run: its participants are synthetic and no product behavior was tested.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "automaticAnalysisTrigger": "default",
@@ -176,7 +178,7 @@
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       },
@@ -185,7 +187,7 @@
         "id": "stream-002",
         "sim": "[same as run.json simulation sim-002]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       },
@@ -194,7 +196,7 @@
         "id": "stream-003",
         "sim": "[same as run.json simulation sim-003]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       }
@@ -255,7 +257,7 @@
       "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: contract_proof_only\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE getHost-exposed plane (openai-computer-use); no sandboxes launched, $0 spend.\n- plane: Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE getHost-exposed plane (openai-computer-use); no sandboxes launched, $0 spend.\n- plane: Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",

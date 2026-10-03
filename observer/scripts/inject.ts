@@ -3,7 +3,7 @@
 // The built dist/index.html carries one placeholder slot; static mode fills it with
 // the run's snapshot at write time (a file:// page cannot fetch() sibling files, so
 // inlining is what makes the artifact durable). This is the reference implementation
-// the CLI adopts at cutover (#426 stage 5); tests/artifact-smoke.test.ts proves the
+// the CLI adopts at cutover; tests/artifact-smoke.test.ts proves the
 // round trip against the built artifact and the frozen goldens.
 
 export const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
@@ -52,7 +52,7 @@ export function injectObserverData(html: string, data: unknown): string {
   if (typeof runId === "string" && runId !== "") {
     out = out.replace(
       /<title>[^<]*<\/title>/,
-      `<title>humanish Observer — ${escapeHtml(runId)}</title>`,
+      `<title>humanish Observer · ${escapeHtml(runId)}</title>`,
     );
   }
   return out;

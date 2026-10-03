@@ -5,8 +5,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
-// The production build is ONE self-contained HTML file (#426): it must render from
-// file://, offline, years after the run — so every asset (JS, CSS, fonts) is inlined
+// The production build is one self-contained HTML file: it must render from
+// file://, offline, years after the run, so every asset (JS, CSS, fonts) is inlined
 // and nothing may reference the network. tests/artifact-smoke.test.ts enforces both.
 export default defineConfig({
   plugins: [react(), tailwindcss(), viteSingleFile({ removeViteModuleLoader: true })],

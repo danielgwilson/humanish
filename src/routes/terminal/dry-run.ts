@@ -15,10 +15,10 @@ import { declaredRuntimeProvenance } from "./runtime.js";
 import { defaultMission, makeTerminalRunId } from "./session.js";
 import {
   type RunLiveTerminalSessionArgs,
-  TERMINAL_PRODUCT_LAB_SCHEMA,
   type TerminalProductLabResult,
   type TerminalRunInput,
 } from "./types.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 /**
  * The dry-run path: a contract bundle with the persona and prompt digest bound, published through
@@ -105,10 +105,9 @@ export async function runDryTerminalLab(args: {
   await finished.recordOutcome({ ok, execution });
 
   return {
-    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+    ...studyResultIdentity("terminal", plan.labId),
     ok,
     cwd,
-    labId: plan.labId,
     actor: plan.actor,
     product: product.name,
     dryRun: true,

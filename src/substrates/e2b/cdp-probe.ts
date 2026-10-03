@@ -1,14 +1,11 @@
 // The in-sandbox Chrome DevTools probe behind every URL / page-text / viewport observation.
 //
-// It runs on python3, stdlib only. It used to run on node, and that blinded it: the
-// stock E2B desktop template ships python3 and curl but no Node, and Node only arrives when a
-// subject's serve pipeline needs it (src/subject/runtime.ts). So on the app-url route, and on any
-// subject served by something other than Node (the taskly benchmark is `python3 -m http.server`),
-// `node -e` exited 127 on every turn, the probe degraded to `{}`, and every urlIncludes /
-// textIncludes stop condition and task criterion went blind for the whole session. The only trace
-// was a geometry warning that the CSS viewport "could not be measured", which named the symptom
-// and not the cause. The tab-pinning fix that preceded this one (prefer "active") was diagnosed on
-// a Node subject, where the probe happened to work.
+// It runs on python3, stdlib only. The stock E2B desktop template ships python3 and curl but no
+// Node, and Node only arrives when a subject's serve pipeline needs it (src/subject/runtime.ts).
+// So on the app-url route, and on any subject served by something other than Node (the taskly
+// benchmark is `python3 -m http.server`), a `node -e` probe exits 127 on every turn, degrades to
+// `{}`, and blinds every urlIncludes / textIncludes stop condition and task criterion for the
+// whole session, with only a geometry warning that the CSS viewport "could not be measured".
 //
 // The same lesson was learned once already: the comms catch was rewritten from node to python3 in
 // 0.29.0 (comms/sandbox-catch.ts). This is the third in-sandbox runtime dependency to move.
@@ -353,7 +350,7 @@ def browser_ws_url(port):
 
 def hold(port, page, request):
     """Emulate the launch page and then every page target Chrome opens later, for as long as this
-    process lives (#221, #623). One browser-level socket with flattened sessions: the launch page is
+    process lives. One browser-level socket with flattened sessions: the launch page is
     attached by id and reloaded so scripts that read the UA at load see it; a target that appears
     later is attached the moment it exists, sent the same overrides, and reloaded once after its
     first real navigation commits (touch emulation reaches a document only when it loads under it).
@@ -463,7 +460,7 @@ def main():
     page = select_page(pages, args)
     # A listing with targets but no http page is usually an instant: a reload in flight, a tab
     # between about:blank and its navigation. Ask again for up to a second before calling it
-    # unavailable (#653): the lane's observer would otherwise lose one turn of url/text evidence,
+    # unavailable: the lane's observer would otherwise lose one turn of url/text evidence,
     # and a test on a loaded runner saw exactly this twice in one evening.
     for _ in range(4):
         if page is not None or not pages:

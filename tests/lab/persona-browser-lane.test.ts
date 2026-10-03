@@ -1,7 +1,7 @@
 // Committed personas must reach browser lanes, not just the terminal lane.
 //
-// The regression this pins: `composeParticipantInstructions` used to emit a bare `Persona: <id>.` line and
-// hardcode `traitsApplied: []`, so on every computer-use route the persona axis was a label with no
+// `composeParticipantInstructions` must not emit a bare `Persona: <id>.` line or hardcode
+// `traitsApplied: []`: on every computer-use route that makes the persona axis a label with no
 // behavior behind it. A live two-lane contrast (impatient expert vs patient newcomer) came back with
 // near-identical action profiles, which looked like a finding about personas and was actually a
 // finding about the composer. These tests assert the persona's compiled directive text lands in the

@@ -905,7 +905,7 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     expect(verify.ok).toBe(false);
     const check = verify.checks.find((c) => c.name === "shared-world evidence");
     expect(check?.ok).toBe(false);
-    expect(check?.message).toContain("did not converge on ONE OBSERVED origin");
+    expect(check?.message).toContain("were observed on more than one origin");
   });
 });
 
@@ -984,9 +984,9 @@ describe("review.summary is external-public plane-aware", () => {
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({
         seen,
-        // Exact captured live shape (humanish 0.36.0): all three traces were `passed`
-        // even though every completionReason was `budget_reached`. Current actors normalize that
-        // pairing to `incomplete`, but the durable summary must remain honest for either producer.
+        // Exact captured live shape (humanish 0.36.0): all three traces were `passed` even though
+        // every completionReason was `budget_reached`. Current actors normalize that pairing to
+        // `incomplete`, but the durable summary must report it unfinished for either producer.
         sessionOutcome: { status: "passed", completionReason: "budget_reached" },
       }),
     );
@@ -1038,7 +1038,7 @@ describe("handoff timeout fail-closed", () => {
     config.execution!.caps = { maxTotalUsd: 1 };
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
-    expect(result.error?.message).toContain("unpriced model");
+    expect(result.error?.message).toContain("humanish has no rate for model");
     expect(created).toHaveLength(0);
   });
 
@@ -1121,14 +1121,14 @@ const externalPublicInversions: ReadonlyArray<readonly [string, ExternalMutation
     (b) => {
       (b.sharedWorld!.plane as { exposure?: string }).exposure = "synthetic";
     },
-    "exposure must be ABSENT",
+    "exposure must be absent",
   ],
   [
     "fails closed when a routeHostDigest diverges (seats did not converge on ONE observed origin)",
     (b) => {
       b.sharedWorld!.laneWindows![1]!.routeHostDigest = "0000000000000000";
     },
-    "did not converge on ONE OBSERVED origin",
+    "were observed on more than one origin",
   ],
   [
     "fails closed when a required external-public attributionLimit is missing",

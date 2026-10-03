@@ -108,8 +108,8 @@ export function isScriptedBrowserActorDescriptor(
  * Registry contract (mirror of isCuaActorDescriptor / isScriptedBrowserActorDescriptor): an actor
  * whose capabilities include the "terminal" lane is a TerminalActorDescriptor. This is the guard
  * the terminal-product lab uses for route selection and capability enforcement. The current
- * descriptor's direct runSession is intentionally unsupported; live execution is route-owned.
- * Any future terminal actor must declare keyPlacement honestly and integrate with that lifecycle.
+ * descriptor's direct runSession is intentionally unsupported; live execution is route-owned. Any
+ * future terminal actor must declare the keyPlacement it uses and integrate with that lifecycle.
  */
 export function isTerminalActorDescriptor(
   descriptor: ActorDescriptor,

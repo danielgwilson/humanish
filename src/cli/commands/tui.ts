@@ -33,6 +33,8 @@ import {
   applyEnvFileOption,
   CLI_VERSION,
   type CliIo,
+  CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
   markInvocationEnvelopeWritten,
   wantsJson,
@@ -109,15 +111,12 @@ export function registerTuiCommand(
 ): void {
   parent
     .command("tui")
-    .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
-    .summary(
-      "Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.",
+    .description(
+      "Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect <lab> --json and humanish runs --json.",
     )
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option(
-      "--env-file <path>",
-      "Load a local env file for this terminal session and its runs without printing values.",
-    )
+    .summary("Browse studies and runs in a terminal UI for people.")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--force", "Open it anyway in a session that looks like an agent's.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleTui(io, runtime, options, command));
@@ -145,7 +144,7 @@ async function handleTui(
       ok: false,
       error: {
         code: "HUMANISH_TUI_BUNDLE_MISSING",
-        message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; in an install, this package is incomplete — please report it.`,
+        message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; an installed package always ships it, so please report this as a bug.`,
       },
     });
     return;
@@ -171,12 +170,12 @@ async function handleTui(
 
 /** The refusal for a session the surface cannot serve, or undefined when it may open. */
 function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | undefined {
-  // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands
-  // it runs, so the TTY check below passes and the surface used to open: a study watched an
-  // agent navigate the labs list and start a run it did not mean to start
-  // (humanish/labs/handed-a-human-surface.yaml). A TTY says a terminal exists, not that anyone is
-  // reading it. `--force` is the escape for the person who really is at this keyboard, and
-  // capturing frames from inside an agent session is exactly that case.
+  // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands it
+  // runs, so the TTY check below passes for an agent too, and an agent in the surface can start a
+  // run it did not mean to start (humanish/labs/handed-a-human-surface.yaml records one). A TTY
+  // says a terminal exists, not that anyone is reading it. `--force` is the escape for the person
+  // who really is at this keyboard, and capturing frames from inside an agent session is exactly
+  // that case.
   const agent = force ? undefined : detectAgentSession(runtime.env);
   if (agent !== undefined) {
     return {
@@ -188,7 +187,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
           `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. ` +
           "It renders frames of escape codes into a transcript, and its keys can start runs. " +
           "`humanish runs --json` lists runs, `humanish lab list --json` lists the labs in this project, " +
-          "and `humanish lab run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
+          "and `humanish run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
       },
     };
   }
@@ -200,7 +199,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
       error: {
         code: "HUMANISH_TUI_REQUIRES_TTY",
         message:
-          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish lab run --json` starts one.",
+          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish run <lab> --json` starts one.",
       },
     };
   }
@@ -356,7 +355,7 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
         ? {
             schema: TUI_ACTION_SCHEMA,
             ok: true as const,
-            message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`,
+            message: `set up humanish here: ${result.changes.filter((change) => change.action !== "skip").length} files written`,
           }
         : {
             schema: TUI_ACTION_SCHEMA,

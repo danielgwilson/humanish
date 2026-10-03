@@ -32,8 +32,7 @@ import type {
 } from "../computer-use/types.js";
 import type { ProvisionedPlaneSetup } from "./provisioned.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
-
-export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
+import { type StudyResultIdentity } from "../../run/study-result.js";
 
 export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {
   mode: "concurrent-shared-world-lab",
@@ -116,8 +115,8 @@ export type ConcurrentSharedWorldLabErrorCode =
 /** The two plane classes of the concurrent shared-world route. */
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";
 
-// External-public plane class: the honest-downgrade attribution ceiling. The concurrent family
-// (an honest ceiling) plus the mandatory external-public disclosures, mirrored in the required
+// External-public plane class: the downgraded attribution ceiling. The concurrent family
+// plus the mandatory external-public disclosures, mirrored in the required
 // set in verify/shared-world-concurrent.ts (CONCURRENT_ATTRIBUTION_LIMITS +
 // EXTERNAL_PUBLIC_EXTRA_LIMITS). Verify fails closed on a missing one.
 export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
@@ -144,11 +143,10 @@ export interface ConcurrentSharedWorldParticipantResult {
   error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
 }
 
-export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult {
-  schema: typeof CONCURRENT_SHARED_WORLD_LAB_SCHEMA;
+export interface ConcurrentSharedWorldLabResult
+  extends AutomaticAnalysisResult, StudyResultIdentity<"shared-world"> {
   ok: boolean;
   cwd: string;
-  labId: string;
   actor: string;
   topology: "shared-world";
   topologyMode: "concurrent";
@@ -164,7 +162,7 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   subjectSandbox?: { sandboxId: string; killed: boolean };
   /** Whether ≥2 actor windows overlapped in time (proven concurrency; live only). */
   overlapProven?: boolean;
-  /** Max participants observed live at the same instant (live only): the honest simultaneity number; a
+  /** Max participants observed live at the same instant (live only): the simultaneity number; a
    *  6-participant run capped at 3 reports 3 here, never 6. */
   maxSimultaneousLanes?: number;
   /** Subject provenance: the one shared plane. */

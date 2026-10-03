@@ -61,29 +61,31 @@ For coding agents: `npx skills add danielgwilson/humanish --skill humanish`
 
 This command index is generated from the shipped CLI. Full arguments and options: https://humanish.dev/docs/cli
 
-- `humanish init`: Set up humanish/ source and .humanish/ runtime state.
-- `humanish doctor`: Explain project readiness and missing setup.
-- `humanish tui`: Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.
-- `humanish telemetry`: Show or change anonymous usage collection.
-- `humanish telemetry status`: What is collected, and whether it is on.
-- `humanish telemetry enable`: Turn anonymous usage collection on.
-- `humanish telemetry disable`: Turn anonymous usage collection off.
-- `humanish keys`: Manage the user-level provider key store.
-- `humanish keys set`: Store one provider key in the user store (0600), prompted with hidden input.
-- `humanish keys unset`: Remove one key from the user store.
-- `humanish keys list`: List the NAMES stored in the user store. Values are never printed.
-- `humanish run`: Run a persona/scenario simulation or dry-run bundle.
-- `humanish verify`: Validate a run bundle and public-safety gates.
-- `humanish cleanup`: Write a resource cleanup inspection receipt.
-- `humanish review`: Build a review packet from verified run evidence.
-- `humanish analyze`: Generate evidence-linked study findings.
+- `humanish init`: Set up committed humanish/ source files and ignored .humanish/ runtime state.
+- `humanish doctor`: Explain project readiness and missing humanish setup.
+- `humanish run`: Run a study, as a dry run or with live participants. This is the everyday command.
+- `humanish watch`: Run a study, open its Observer and keep the shell attached.
+- `humanish observe`: Open a saved run in the Observer, served on http://127.0.0.1; without --run, the latest. With --all, serve the run library, opening on --run when given.
+- `humanish verify`: Check a run's evidence and share safety.
+- `humanish review`: Show a run's review: verdict, summary and gaps.
+- `humanish analyze`: Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.
 - `humanish analyze list`: List immutable analysis versions, including failed attempts.
 - `humanish analyze show`: Read validated analysis and correction history. Defaults to the latest usable version.
 - `humanish analyze correct`: Append a human review note bound to one exact finding version; original claims remain intact.
-- `humanish runs`: List local humanish runs and latest pointers.
-- `humanish stats`: Roll up cost, outcomes, and durations across runs.
-- `humanish export`: Export Observer HTML or a redacted bundle workspace.
-- `humanish comms`: Off-app comms surfaces.
+- `humanish feedback`: Draft public-safe feedback issues from a run. humanish never calls the GitHub API.
+- `humanish feedback list`: List recorded feedback candidates and any saved draft.
+- `humanish feedback draft`: Generate a public-safe feedback draft from verified evidence.
+- `humanish feedback verify`: Verify the feedback draft for public issue eligibility.
+- `humanish feedback issue`: Print Markdown for a public GitHub issue. Does not mutate GitHub.
+- `humanish feedback issue-url`: Print a prefilled public issue URL. Does not mutate GitHub.
+- `humanish export`: Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.
+- `humanish runs`: List this project's runs and which one is latest.
+- `humanish stats`: Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.
+- `humanish lab`: List, inspect and check the studies in humanish/labs/.
+- `humanish lab list`: List committed and ignored humanish lab manifests.
+- `humanish lab inspect`: Inspect a humanish lab manifest without running it.
+- `humanish lab preflight`: Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.
+- `humanish comms`: Local email capture, real receiving connections, checks and cleanup recovery.
 - `humanish comms providers`: List installed communication provider capabilities. No network requests.
 - `humanish comms connections`: Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.
 - `humanish comms connections list`: Show saved connections and local credential status; does not authenticate with a provider.
@@ -91,27 +93,21 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish comms check`: Check connection and credential presence; --online authenticates without creating inboxes.
 - `humanish comms configure`: Preview or save a local receiving-enabled copy of a supported lab. No provider requests.
 - `humanish comms recover`: Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.
-- `humanish comms catch`: Run the adopter-hosted email catch.
+- `humanish comms catch`: Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.
 - `humanish runtime`: Prepare or inspect the local browser runtime.
 - `humanish runtime status`: Check local Docker, virtualization and the cached browser image without downloads.
 - `humanish runtime setup`: Download and install the local browser image. Does not start a study or use model quota.
-- `humanish reclaim`: Reclaim an interrupted run's sandboxes by recorded id.
-- `humanish watch`: Run participants, open the observer, stay attached.
-- `humanish observe`: Follow a run's saved evidence over loopback http.
-- `humanish serve`: Serve the run library; optional tunnel-edge exposure.
-- `humanish codex`: Run Codex-native humanish integration surfaces.
-- `humanish codex app-server`: Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.
-- `humanish lab`: List, inspect, and run humanish lab manifests.
-- `humanish lab list`: List committed and ignored humanish lab manifests.
-- `humanish lab inspect`: Inspect a humanish lab manifest without running it.
-- `humanish lab preflight`: Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.
-- `humanish lab run`: Run a humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.
-- `humanish feedback`: Create public-safe feedback drafts, no GitHub API.
-- `humanish feedback list`: List recorded feedback candidates and any saved draft.
-- `humanish feedback draft`: Generate a public-safe feedback draft from verified evidence.
-- `humanish feedback verify`: Verify the feedback draft for public issue eligibility.
-- `humanish feedback issue`: Print Markdown for a public GitHub issue. Does not mutate GitHub.
-- `humanish feedback issue-url`: Print a prefilled public issue URL. Does not mutate GitHub.
+- `humanish reclaim`: Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.
+- `humanish cleanup`: Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.
+- `humanish keys`: Manage the humanish user-level key store used by provider-key discovery.
+- `humanish keys set`: Store one provider key in the user store (0600), prompted with hidden input.
+- `humanish keys unset`: Remove one key from the user store.
+- `humanish keys list`: List the NAMES stored in the user store. Values are never printed.
+- `humanish telemetry`: Show or change anonymous usage collection.
+- `humanish telemetry status`: What is collected, and whether it is on.
+- `humanish telemetry enable`: Turn anonymous usage collection on.
+- `humanish telemetry disable`: Turn anonymous usage collection off.
+- `humanish tui`: Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect <lab> --json and humanish runs --json.
 
 <!-- humanish-cli:end -->
 

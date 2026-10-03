@@ -1,9 +1,11 @@
 {
   "<result>": {
-    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "schema": "humanish.study-result.v1",
+    "route": "shared-world",
+    "studyId": "lobby-trivia-3player-test",
+    "labId": "lobby-trivia-3player-test",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "lobby-trivia-3player-test",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -53,12 +55,12 @@
       "bundlePath": ".humanish/runs/[run]/run.json",
       "opened": false,
       "warnings": [
-        "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+        "This is a dry run: its participants are synthetic and no product behavior was tested.",
         "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
       ]
     },
     "warnings": [
-      "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
+      "This is a dry run: its participants are synthetic and no product behavior was tested.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "automaticAnalysisTrigger": "default",
@@ -157,7 +159,7 @@
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       },
@@ -166,7 +168,7 @@
         "id": "stream-002",
         "sim": "[same as run.json simulation sim-002]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       },
@@ -175,7 +177,7 @@
         "id": "stream-003",
         "sim": "[same as run.json simulation sim-003]",
         "kindLabel": "Browser",
-        "statusLabel": "Contract proof",
+        "statusLabel": "Dry run",
         "terminalPlain": "",
         "timeline": "[same as run.json events for this stream]"
       }
@@ -236,7 +238,7 @@
       "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: contract_proof_only\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",

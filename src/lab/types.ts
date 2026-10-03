@@ -213,8 +213,8 @@ export interface LabSubject {
   source: LabSubjectSource;
   /**
    * World topology across participants. Absent == `per-lane-worlds` (the isolation default; every
-   * existing lab is byte-stable). `shared-world` is the declared override: one mutable
-   * service plane, N role participants at once. Consumed only on the shared-world routes (a
+   * existing study is byte-stable). `shared-world` is the declared override: one mutable service
+   * plane, N participants at once, each in its role. Consumed only on the shared-world routes (a
    * provisioned clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2
    * participants); inert/warned elsewhere.
    */
@@ -626,7 +626,7 @@ export interface LabScenarioCaps {
    * study is N participants, roughly $X", decided once, up front, where recruiting decisions are
    * made. The computer-use route reads it from `execution.caps.maxTotalUsd` only: every participant's
    * running estimated model spend feeds one shared ledger, and the moment the run total crosses
-   * this, each participant stops at its next turn with an honest `budget_reached` (status `incomplete`:
+   * this, each participant stops at its next turn with `budget_reached` (status `incomplete`:
    * the participant ran out of budget; never `gave_up`, because a study-level stop is not the
    * participant's doing). Estimated model spend only; desktop-minutes ride the cost summary but
    * not this ledger. Independent of the per-participant `maxUsd` backstop; either, both, or neither may
@@ -646,7 +646,7 @@ export interface LabScenario {
   ref?: string;
   /** Or inline the scenario body. Forward-declared: no route reads it yet, so a set value warns. */
   inline?: Record<string, unknown>;
-  /** dry-run = contract evidence (no provider spend); live = real run. Consumed. */
+  /** dry-run = a synthetic bundle with no provider spend; live = real run. Consumed. */
   mode?: LabScenarioMode;
   /** Spend/job/time caps. Consumed (recorded in the bundle) on the terminal-product route;
    *  inert (warned) elsewhere. */

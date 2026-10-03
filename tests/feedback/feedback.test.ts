@@ -26,6 +26,7 @@ import {
 import { FEEDBACK_SCHEMA } from "../../src/feedback/draft.js";
 import { createProgram } from "../../src/cli/program.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { markRunLive, runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
@@ -64,62 +65,79 @@ async function runCli(
 }
 
 describe("feedback issue drafts", () => {
-  it.each(["dry-run", "live"] as const)(
-    "explains a candidate-free %s without changing JSON or creating a draft on list",
-    async (mode) => {
-      await withFixtureCopy(async (cwd) => {
-        const runId = "feedback-empty";
-        await runDryRun({ cwd, dryRun: true, runId });
-        if (mode === "live") {
-          // A local contract fixture for the existing live-summary fallback; no provider runs.
-          const runPath = path.join(cwd, ".humanish", "runs", runId, "run.json");
-          const bundle = JSON.parse(await readFile(runPath, "utf8"));
-          bundle.mode = "live";
-          await writeFile(runPath, JSON.stringify(bundle), "utf8");
-        }
-        const args = ["feedback", "list", "--run", runId, "--cwd", cwd];
-        const listed = await runCli(args);
-        expect(listed.exitCode).toBe(0);
-        expect(listed.stdout).toContain("humanish feedback: no recorded candidates");
-        expect(listed.stdout).toContain("run-summary follow-up after share_ready verification");
-        const before = await runCli([...args, "--json"]);
-        expect(JSON.parse(before.stdout)).toEqual(await listFeedback(cwd, runId));
-        expect(JSON.parse(before.stdout).candidates).toEqual([]);
-        expect(JSON.parse(before.stdout)).not.toHaveProperty("draft");
-        await expect(
-          stat(path.join(cwd, ".humanish", "runs", runId, "feedback", "draft.json")),
-        ).rejects.toMatchObject({ code: "ENOENT" });
-
-        const issue = await runCli([
+  it("refuses a dry run with HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN and writes no draft", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const runId = "feedback-dry-run";
+      await runDryRun({ cwd, dryRun: true, runId });
+      for (const command of ["draft", "issue", "issue-url", "verify"]) {
+        const result = await runCli([
           "feedback",
-          "issue",
+          command,
           "--run",
           runId,
           "--cwd",
           cwd,
-          "--repo",
-          "example/app",
+          ...(command.startsWith("issue") ? ["--repo", "example/app"] : []),
+          "--json",
         ]);
-        expect(issue.exitCode).toBe(0);
-        const summary =
-          mode === "live"
-            ? "Live study completed without a participant-reported finding"
-            : "Dry-run contract proof needs product-evidence follow-up";
-        expect(issue.stdout).toContain(summary);
-        const after = await runCli(args);
-        expect(after.stdout).toContain("candidates: none recorded");
-        expect(after.stdout).toContain(`summary: ${summary}`);
-        const afterJson = await runCli([...args, "--json"]);
-        expect(JSON.parse(afterJson.stdout)).toEqual(await listFeedback(cwd, runId));
-        expect(JSON.parse(afterJson.stdout).candidates).toEqual([]);
-        expect(JSON.parse(afterJson.stdout).draft).not.toHaveProperty("source_candidate_id");
-      });
-    },
-  );
+        expect(result.exitCode, command).toBe(2);
+        expect(JSON.parse(result.stdout).error.code, command).toBe(
+          "HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN",
+        );
+      }
+      await expect(
+        stat(path.join(cwd, ".humanish", "runs", runId, "feedback")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+    });
+  });
+
+  it("explains a candidate-free live run without changing JSON or creating a draft on list", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const runId = "feedback-empty";
+      // A local contract fixture for the live-summary draft; no provider runs.
+      await runDryRun({ cwd, dryRun: true, runId });
+      await markRunLive(cwd, runId);
+      const args = ["feedback", "list", "--run", runId, "--cwd", cwd];
+      const listed = await runCli(args);
+      expect(listed.exitCode).toBe(0);
+      expect(listed.stdout).toContain("humanish feedback: no recorded candidates");
+      expect(listed.stdout).toContain(
+        "run-summary follow-up for a live run that verifies share_ready",
+      );
+      const before = await runCli([...args, "--json"]);
+      expect(JSON.parse(before.stdout)).toEqual(await listFeedback(cwd, runId));
+      expect(JSON.parse(before.stdout).candidates).toEqual([]);
+      expect(JSON.parse(before.stdout)).not.toHaveProperty("draft");
+      await expect(
+        stat(path.join(cwd, ".humanish", "runs", runId, "feedback", "draft.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+
+      const issue = await runCli([
+        "feedback",
+        "issue",
+        "--run",
+        runId,
+        "--cwd",
+        cwd,
+        "--repo",
+        "example/app",
+      ]);
+      expect(issue.exitCode).toBe(0);
+      const summary = "Live study completed without a participant-reported finding";
+      expect(issue.stdout).toContain(summary);
+      const after = await runCli(args);
+      expect(after.stdout).toContain("candidates: none recorded");
+      expect(after.stdout).toContain(`summary: ${summary}`);
+      const afterJson = await runCli([...args, "--json"]);
+      expect(JSON.parse(afterJson.stdout)).toEqual(await listFeedback(cwd, runId));
+      expect(JSON.parse(afterJson.stdout).candidates).toEqual([]);
+      expect(JSON.parse(afterJson.stdout).draft).not.toHaveProperty("source_candidate_id");
+    });
+  });
 
   it("writes and verifies public-safe feedback draft artifacts", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({
+      await runSyntheticLive({
         cwd,
         dryRun: true,
         runId: "feedback-test",
@@ -130,7 +148,7 @@ describe("feedback issue drafts", () => {
       expect(drafted.draftPath).toBe(".humanish/runs/feedback-test/feedback/draft.json");
       expect(drafted.draft?.schema).toBe(FEEDBACK_SCHEMA);
       expect(drafted.draft?.redaction.status).toBe("passed");
-      expect(drafted.draft?.idempotency_key).toBe("humanish:feedback-test:dry-run-contract-proof");
+      expect(drafted.draft?.idempotency_key).toBe("humanish:feedback-test:live-run-summary");
 
       await expect(
         stat(path.join(cwd, ".humanish/runs/feedback-test/feedback/draft.json")),
@@ -147,7 +165,7 @@ describe("feedback issue drafts", () => {
 
   it("refuses a hardlinked feedback output without mutating its external inode", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({ cwd, dryRun: true, runId: "feedback-hardlink" });
+      await runSyntheticLive({ cwd, dryRun: true, runId: "feedback-hardlink" });
       const feedbackDir = path.join(cwd, ".humanish", "runs", "feedback-hardlink", "feedback");
       const external = path.join(path.dirname(cwd), "feedback-external-sentinel.json");
       const original = '{"external":true}\n';
@@ -171,8 +189,8 @@ describe("feedback issue drafts", () => {
     try {
       await cp(path.resolve("fixtures/minimal-app"), physicalA, { recursive: true });
       await cp(path.resolve("fixtures/minimal-app"), physicalB, { recursive: true });
-      await runDryRun({ cwd: physicalA, dryRun: true, runId: "feedback-a" });
-      await runDryRun({ cwd: physicalB, dryRun: true, runId: "feedback-b" });
+      await runSyntheticLive({ cwd: physicalA, dryRun: true, runId: "feedback-a" });
+      await runSyntheticLive({ cwd: physicalB, dryRun: true, runId: "feedback-b" });
       await symlink(physicalA, cwdAlias, "dir");
       JSON.parse = ((
         text: string,
@@ -214,7 +232,7 @@ describe("feedback issue drafts", () => {
 
   it("refuses public feedback drafts for valid local-only evidence", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({
+      await runSyntheticLive({
         cwd,
         dryRun: true,
         runId: "feedback-local-only",
@@ -246,7 +264,7 @@ describe("feedback issue drafts", () => {
 
       const listed = await runCli(["feedback", "list", "--cwd", cwd]);
       expect(listed.exitCode).toBe(0);
-      expect(listed.stdout).toContain("after share_ready verification");
+      expect(listed.stdout).toContain("for a live run that verifies share_ready");
 
       const issue = await runCli([
         "feedback",
@@ -268,7 +286,7 @@ describe("feedback issue drafts", () => {
 
   it("renders Markdown and a URL without GitHub mutation", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({
+      await runSyntheticLive({
         cwd,
         dryRun: true,
         runId: "feedback-issue",
@@ -278,8 +296,11 @@ describe("feedback issue drafts", () => {
       expect(rendered.ok).toBe(true);
       expect(rendered.issuePath).toBe(".humanish/runs/feedback-issue/feedback/issue.md");
       expect(rendered.issueMarkdown).toContain("humanish_feedback:");
-      expect(rendered.issueMarkdown).toContain("GitHub mutation: not performed");
-      expect(rendered.issueMarkdown).toContain("claim unobserved product behavior");
+      expect(rendered.issueMarkdown).toContain("Repository: example/app");
+      expect(rendered.issueMarkdown).toContain("- state run.json: Source run bundle.");
+      expect(rendered.issueMarkdown).not.toMatch(
+        /GitHub mutation|Production data|harness coverage/,
+      );
       expect(rendered.issueMarkdown).not.toMatch(/\bcloses?\b/i);
 
       const issueMarkdown = await readFile(
@@ -297,7 +318,7 @@ describe("feedback issue drafts", () => {
 
   it("drafts feedback from run feedback candidates before dry-run fallback", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({
+      await runSyntheticLive({
         cwd,
         dryRun: true,
         runId: "feedback-candidate",
@@ -368,13 +389,18 @@ describe("feedback issue drafts", () => {
       const rendered = await renderIssueMarkdown(cwd, "latest", "example/app");
       expect(rendered.ok).toBe(true);
       expect(rendered.issueMarkdown).toContain("source_candidate_id: setup-quality-oss-01");
-      expect(rendered.issueMarkdown).toContain("Substrate: e2b-desktop");
+      expect(rendered.issueMarkdown).toContain("  substrate: e2b-desktop\n");
+      // The evidence list names files inside the run directory, keeping subdirectories.
+      expect(rendered.issueMarkdown).toContain(
+        "- filesystem setup-quality/oss-01-setup-quality.json: ",
+      );
+      expect(rendered.issueMarkdown).not.toContain("- filesystem .humanish/");
     });
   });
 
   it("refuses a run whose feedback candidate has an empty idempotency_key", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({ cwd, dryRun: true, runId: "feedback-blank-key" });
+      await runSyntheticLive({ cwd, dryRun: true, runId: "feedback-blank-key" });
       const runPath = path.join(cwd, ".humanish/runs/feedback-blank-key/run.json");
       const bundle = JSON.parse(await readFile(runPath, "utf8")) as {
         feedbackCandidates: unknown[];
@@ -414,7 +440,7 @@ describe("feedback issue drafts", () => {
 
   it("exposes issue Markdown and URL through the Commander CLI", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({
+      await runSyntheticLive({
         cwd,
         dryRun: true,
         runId: "feedback-cli",
@@ -435,7 +461,7 @@ describe("feedback issue drafts", () => {
       expect(issue.exitCode).toBe(0);
       expect(issue.stderr).toBe("");
       expect(issue.stdout).toContain("humanish_feedback:");
-      expect(issue.stdout).toContain("GitHub mutation: not performed");
+      expect(issue.stdout).toContain("Repository: example/app");
 
       const issueUrl = await runCli([
         "feedback",

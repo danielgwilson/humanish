@@ -2,7 +2,6 @@ import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.
 import { Command } from "commander";
 import { type InternalRunLabOptions } from "../../run-lab.js";
 import { resolveLabDryRun } from "../../lab/plan.js";
-import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
 import type { LabConfig } from "../../lab/types.js";
 import { serveObserver } from "../../observer/render.js";
@@ -34,6 +33,7 @@ import {
 import { formatCuaLabHuman } from "./lab-format.js";
 import { resolveRouteShouldOpen } from "./lab-route-open.js";
 import type { RouteRun } from "./lab-route-run.js";
+import { studyResultIdentity } from "../../run/study-result.js";
 
 interface ComputerUseRouteArgs {
   command: Command;
@@ -112,10 +112,9 @@ function refuseCua(
   message: string,
 ): void {
   const result: CuaActorLabResult = {
-    schema: CUA_ACTOR_LAB_SCHEMA,
+    ...studyResultIdentity("computer-use", args.config.id),
     ok: false,
     cwd: args.options.cwd,
-    labId: args.config.id,
     actor: args.config.actors[0]?.type ?? "",
     appUrl: "",
     dryRun,
