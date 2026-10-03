@@ -44,7 +44,7 @@ import {
   extractResponsesOutputText,
   readLobbyCodeFromFrame,
 } from "../../../src/routes/shared-world/lobby-code.js";
-import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../../src/index.js";
+import type { BrowserScoringContext, RunAdapterScore, RunBundle } from "../../../src/index.js";
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
@@ -458,7 +458,7 @@ function baseSeams(
 
 const CONCURRENT_ADAPTER_NAMESPACE = "concurrent-browser-adapter-proof";
 
-function concurrentFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
+function concurrentFailScore(ctx: BrowserScoringContext): RunAdapterScore {
   return {
     schema: "humanish.adapter-score.v1",
     namespace: CONCURRENT_ADAPTER_NAMESPACE,

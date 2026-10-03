@@ -154,11 +154,11 @@
     }
   },
   "vocabulary": {
-    "lane": 95,
+    "lane": 93,
     "seat": 0,
     "role": 48,
-    "sim": 16,
-    "lab": 406,
+    "sim": 14,
+    "lab": 379,
     "doc-backend": 17
   },
   "site": {

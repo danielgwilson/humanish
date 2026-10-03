@@ -14,6 +14,8 @@ import { loopResult, notice } from "./loop/trace.js";
 import type {
   CuaLoopOptions,
   CuaLoopResult,
+  LoopRunOptions,
+  LoopTaps,
   CuaObservation,
   CuaSafetyCheck,
   CuaTurn,
@@ -72,6 +74,33 @@ interface Conversation {
  * it is recorded; screenshots are persisted raw unless redactScreenshots is set.
  */
 export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLoopResult> {
+  refuseRemovedOptions(options);
+  return runComputerUseLoopWithTaps(options);
+}
+
+/** What 0.109.0 removed from CuaLoopOptions, and what a caller does instead. */
+const REMOVED_OPTIONS: Readonly<Record<keyof LoopTaps, string>> = {
+  onObservedUrl: "Wrap the executor's `observe` and read `url` from each observation it returns.",
+  onMessage:
+    "Wrap the provider's `nextTurn` and read `reasoning` and `message` from each turn it returns.",
+  onScreenshot:
+    "Wrap the executor's `observe` and read `screenshot` from each observation it returns.",
+};
+
+/** A JavaScript caller still passing a removed option gets an error, not a hook that never fires. */
+function refuseRemovedOptions(options: CuaLoopOptions): void {
+  for (const [name, replacement] of Object.entries(REMOVED_OPTIONS)) {
+    if ((options as unknown as Record<string, unknown>)[name] !== undefined) {
+      throw new TypeError(`runComputerUseLoop: ${name} was removed in 0.109.0. ${replacement}`);
+    }
+  }
+}
+
+/**
+ * runComputerUseLoop with the external-public handoff's taps (LoopTaps), which the public
+ * options no longer carry. The actor's entry.
+ */
+export async function runComputerUseLoopWithTaps(options: LoopRunOptions): Promise<CuaLoopResult> {
   refuseAccountBilledCaps(options);
   const session = new LoopSession(options);
   const conversation: Conversation = {
@@ -274,7 +303,7 @@ function stopBeforeActing(
   return undefined;
 }
 
-/** Hand the turn's narration to the onMessage hook; see CuaLoopOptions.onMessage. */
+/** Hand the turn's narration to the onMessage tap; see LoopTaps.onMessage. */
 function forwardNarration(session: LoopSession, turn: CuaTurn): void {
   const { onMessage } = session.settings;
   const narration = [turn.reasoning, turn.message]

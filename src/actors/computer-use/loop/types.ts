@@ -361,43 +361,6 @@ export interface CuaLoopOptions {
    */
   requireReportedUsageForSpendCap?: boolean;
   /**
-   * Runtime-only URL tap: called with `observation.url` for each observation a turn may receive
-   * (the initial one, each post-action one and the one after a dwell window). The loop never
-   * persists the URL. Default: no-op.
-   *
-   * Built-in caller: the external-public shared-world handoff (src/routes/shared-world/handoff.ts)
-   * latches the host participant's lobby URL and checks that each follower reached the same lobby.
-   *
-   * @deprecated Wrap the executor's `observe` and read `url` from each observation it returns. The
-   * next minor removes this option.
-   */
-  onObservedUrl?: (url: string | undefined) => void;
-  /**
-   * Runtime-only narration tap: called with the turn's reasoning and message text, joined by a
-   * newline, once per completed turn before the loop acts on it. An interrupted reply, or one cut
-   * off by the output limit, is not passed. The trace records its own redacted copy; this raw text
-   * stays in memory. Default: no-op.
-   *
-   * Built-in caller: the external-public handoff scans the host's narration for the lobby code,
-   * because the E2B desktop's CDP URL read behind onObservedUrl is unreliable.
-   *
-   * @deprecated Wrap the provider's `nextTurn` and read `reasoning` and `message` from each turn it
-   * returns. The next minor removes this option.
-   */
-  onMessage?: (text: string) => void;
-  /**
-   * Runtime-only frame tap: called with each raw frame a turn may receive and each dwell-window
-   * frame, before any redaction. The buffer stays in memory; screenshot persistence is separate and
-   * follows redactScreenshots. Not awaited. Default: no-op.
-   *
-   * Built-in caller: the external-public handoff reads the lobby code off each participant's own
-   * frame until that participant has one: the host's latch, or a follower's convergence observation.
-   *
-   * @deprecated Wrap the executor's `observe` and read `screenshot` from each observation it
-   * returns. The next minor removes this option.
-   */
-  onScreenshot?: (frame: Buffer) => void;
-  /**
    * Trace snapshot for a watcher: the redacted items recorded so far, with the running
    * usage so a run can be priced in flight. Called after each checkpoint's screenshot (the initial
    * observation and every acted turn, so a flush never shows an action without the frame before
@@ -411,6 +374,45 @@ export interface CuaLoopOptions {
     metadata?: CuaLiveMetadata,
   ) => void;
 }
+
+/**
+ * The runtime-only taps the external-public shared-world handoff (src/routes/shared-world/handoff.ts)
+ * reads the lobby code through. Internal: 0.109.0 removed them from CuaLoopOptions, and a library
+ * caller wraps the executor's `observe` or the provider's `nextTurn` instead.
+ */
+export interface LoopTaps {
+  /**
+   * Runtime-only URL tap: called with `observation.url` for each observation a turn may receive
+   * (the initial one, each post-action one and the one after a dwell window). The loop never
+   * persists the URL. Default: no-op.
+   *
+   * Built-in caller: the external-public shared-world handoff (src/routes/shared-world/handoff.ts)
+   * latches the host participant's lobby URL and checks that each follower reached the same lobby.
+   */
+  onObservedUrl?: (url: string | undefined) => void;
+  /**
+   * Runtime-only narration tap: called with the turn's reasoning and message text, joined by a
+   * newline, once per completed turn before the loop acts on it. An interrupted reply, or one cut
+   * off by the output limit, is not passed. The trace records its own redacted copy; this raw text
+   * stays in memory. Default: no-op.
+   *
+   * Built-in caller: the external-public handoff scans the host's narration for the lobby code,
+   * because the E2B desktop's CDP URL read behind onObservedUrl is unreliable.
+   */
+  onMessage?: (text: string) => void;
+  /**
+   * Runtime-only frame tap: called with each raw frame a turn may receive and each dwell-window
+   * frame, before any redaction. The buffer stays in memory; screenshot persistence is separate and
+   * follows redactScreenshots. Not awaited. Default: no-op.
+   *
+   * Built-in caller: the external-public handoff reads the lobby code off each participant's own
+   * frame until that participant has one: the host's latch, or a follower's convergence observation.
+   */
+  onScreenshot?: (frame: Buffer) => void;
+}
+
+/** The loop's options inside humanish: the public ones plus the handoff's taps. */
+export type LoopRunOptions = CuaLoopOptions & LoopTaps;
 
 export type CuaLiveMetadata = Pick<
   ActorTrace,

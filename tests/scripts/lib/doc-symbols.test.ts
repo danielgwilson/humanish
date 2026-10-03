@@ -37,7 +37,7 @@ describe("doc symbol check", () => {
   it("resolves declarations, members, re-exports and schema ids in the current files", () => {
     const doc = [
       "`routeOf` (`src/study/plan.ts`), `FinishedRun.renderObserver` in `src/run/run.ts`,",
-      "`LabOutcome.backend` in `src/index.ts`, `humanish.pricing.v1` in `src/run/pricing.ts`,",
+      "`StudyOutcome.backend` in `src/index.ts`, `humanish.pricing.v1` in `src/run/pricing.ts`,",
       "`StudyConfig` in `src/study/types.ts`, `deriveFeedback` (`src/routes/terminal/types.ts`),",
       "`producesScreenshots` (`src/study/routing.ts`),",
       "and `routeOf` (`src/study/missing-file.ts`).",

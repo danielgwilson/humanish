@@ -323,19 +323,17 @@ export function deriveRunFacts(result: unknown): TelemetryProperties {
   else if (r.mode === "dry-run" || r.mode === "live") facts.mode = r.mode;
 
   const studyRecord = asRecord(r.study) ?? asRecord(r.lab);
-  const labId =
+  const studyId =
     typeof r.studyId === "string"
       ? r.studyId
-      : typeof r.labId === "string"
-        ? r.labId
-        : typeof studyRecord?.id === "string"
-          ? studyRecord.id
-          : typeof r.study === "string"
-            ? r.study
-            : typeof r.lab === "string"
-              ? r.lab
-              : undefined;
-  const study = safeStudyId(labId);
+      : typeof studyRecord?.id === "string"
+        ? studyRecord.id
+        : typeof r.study === "string"
+          ? r.study
+          : typeof r.lab === "string"
+            ? r.lab
+            : undefined;
+  const study = safeStudyId(studyId);
   if (study !== undefined) facts.study = study;
 
   const error = asRecord(r.error);

@@ -97,11 +97,6 @@ describe("the package's runLab", () => {
     expect(outcome.route).toBe("computer-use");
     expect(outcome.result.ok).toBe(true);
   });
-
-  it("is the runLab src/index.ts exports", async () => {
-    const humanish = await import("../../src/index.js");
-    expect(humanish.runLab).toBe(runStudy);
-  });
 });
 
 describe("the CLI uses only the new homes", () => {

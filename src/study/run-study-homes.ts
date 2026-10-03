@@ -4,7 +4,6 @@
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
-import { withDeprecatedFields } from "./deprecated-fields.js";
 import type { StudyEvent, ParticipantRef, SetupTarget } from "./run-study-events.js";
 import type { StudyConfig } from "./types.js";
 
@@ -32,7 +31,7 @@ interface StreamEventIds {
   streamId: string;
 }
 
-type StreamEventFields =
+export type StreamEvent =
   | (StreamEventIds & {
       type: "ready";
       sandboxId: string;
@@ -40,23 +39,6 @@ type StreamEventFields =
       url: string;
     })
   | (StreamEventIds & { type: "ended" });
-
-export type StreamEvent = StreamEventFields & {
-  /**
-   * @deprecated Use `recordId`, which holds the same value. Reading it warns once per process; the
-   * next minor removes it.
-   */
-  readonly simId: string;
-};
-
-/** A stream event as the routes report it, with `simId` as a getter over `recordId`. */
-export function streamEvent(fields: StreamEventFields): StreamEvent {
-  return withDeprecatedFields(
-    { ...fields },
-    { name: "StreamEvent", code: "HUMANISH_STREAM_EVENT_FIELD_DEPRECATED" },
-    { simId: { replacement: "recordId", read: () => fields.recordId } },
-  ) as StreamEvent;
-}
 
 /** The options with a typed home, common to every route. */
 export interface RunStudyHomes {

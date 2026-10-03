@@ -59,9 +59,9 @@ export async function runStudyCommand(args: {
   // and carried into the run's status record and bundle so the filesystem can answer "which lab
   // produced this run" without the old `persona.source = "lab:<id>"` string convention.
   const lab: RunStudyProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
-  // Named here, once, for every route: a preview or terminal result carries no labId, so the
-  // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
-  noteRunFacts(args.command, deriveRunFacts({ labId: config.id }));
+  // Named here, once, for every route, so the starter study `first-run` is named in telemetry
+  // whatever its route's result carries.
+  noteRunFacts(args.command, deriveRunFacts({ studyId: config.id }));
   const route = routeOf(config);
   if (route !== "computer-use" && studyRerunFlagsRequested(args.options)) {
     writeUnsupportedRerunFlagsResult(args, route);

@@ -3,7 +3,7 @@ import type { AffordanceObservation } from "../../affordance.js";
 import { TaskTracker } from "../../../study/tasks.js";
 import type { DebriefTrigger, Stop } from "./ending.js";
 import { TraceRecorder } from "./trace.js";
-import type { CuaExecutor, CuaLoopOptions, CuaProvider, CuaSafetyCheck } from "./types.js";
+import type { CuaExecutor, CuaProvider, CuaSafetyCheck, LoopRunOptions } from "./types.js";
 import { UsageLedger } from "./usage.js";
 
 // The state one loop session shares across its phases: the options as read at entry, the session
@@ -41,7 +41,7 @@ export type LoopSettings = {
       | "onMessage"
       | "onScreenshot"
       | "onTrace"
-  ]: CuaLoopOptions[K];
+  ]: LoopRunOptions[K];
 };
 
 /** The participant's dispatched actions, as the backstop and failure notices describe them. */
@@ -109,7 +109,7 @@ export class LoopSession {
   private stopCause: ActorStopCause | undefined;
   private readonly scrubText: (text: string) => string;
 
-  constructor(options: CuaLoopOptions) {
+  constructor(options: LoopRunOptions) {
     // Read once, in this order: a caller mutating its options object mid-run changes nothing.
     const {
       instructions,

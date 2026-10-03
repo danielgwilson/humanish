@@ -3,7 +3,6 @@
     "schema": "humanish.study-result.v1",
     "route": "terminal",
     "studyId": "terminal-live-proof",
-    "labId": "terminal-live-proof",
     "ok": false,
     "cwd": "[cwd]",
     "actor": "codex-exec",

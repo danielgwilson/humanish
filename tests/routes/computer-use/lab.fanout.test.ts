@@ -50,7 +50,7 @@ import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
   type FetchLike,
 } from "../../../src/actors/computer-use/openai-provider.js";
-import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../../src/index.js";
+import type { BrowserScoringContext, RunAdapterScore, RunBundle } from "../../../src/index.js";
 import {
   serveObserver,
   type ObserverResult,
@@ -109,7 +109,7 @@ const TWO_TURN_SESSION = [
 const HOLLOW_SESSION = [{ id: "r1", output: [{ type: "message", content: [] }] }];
 const FANOUT_ADAPTER_NAMESPACE = "fanout-browser-adapter-proof";
 
-function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
+function fanoutFailScore(ctx: BrowserScoringContext): RunAdapterScore {
   return {
     schema: "humanish.adapter-score.v1",
     namespace: FANOUT_ADAPTER_NAMESPACE,

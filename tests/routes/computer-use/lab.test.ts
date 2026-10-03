@@ -76,7 +76,7 @@ import {
 } from "../../../src/observer/render.js";
 import type { FetchLike } from "../../../src/actors/computer-use/openai-provider.js";
 import type {
-  BrowserLabScoringContext,
+  BrowserScoringContext,
   RunAdapterScore,
   RunBundle,
   RunFeedbackCandidate,
@@ -330,7 +330,7 @@ const BLOCKED_AFTER_PARTIAL_SESSION = [
 ];
 const BROWSER_ADAPTER_NAMESPACE = "browser-adapter-proof";
 
-function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
+function failingBrowserScore(ctx: BrowserScoringContext): RunAdapterScore {
   return {
     schema: "humanish.adapter-score.v1",
     namespace: BROWSER_ADAPTER_NAMESPACE,
@@ -345,7 +345,7 @@ function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
   };
 }
 
-function browserFeedback(ctx: BrowserLabScoringContext): RunFeedbackCandidate[] {
+function browserFeedback(ctx: BrowserScoringContext): RunFeedbackCandidate[] {
   return [
     {
       schema: "humanish.feedback-candidate.v1",

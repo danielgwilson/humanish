@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  runComputerUseLoop,
-  type CuaLoopOptions,
+  runComputerUseLoopWithTaps,
   type CuaProvider,
   type CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
+import type { LoopRunOptions } from "../../../src/actors/computer-use/loop/types.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import {
   resolveSelfReportedBlocker,
@@ -23,7 +23,7 @@ const closing = (overrides: Partial<CuaTurn> = {}): CuaTurn => ({
   closingReport: { summary: "I renamed the item.", frictionReports: [report] },
   ...overrides,
 });
-function setup(overrides: Partial<CuaLoopOptions> = {}) {
+function setup(overrides: Partial<LoopRunOptions> = {}) {
   let time = 0;
   let actions = 0;
   const execute = vi.fn(async () => {
@@ -59,7 +59,7 @@ function setup(overrides: Partial<CuaLoopOptions> = {}) {
     nextTurn,
     debrief,
   };
-  const options: CuaLoopOptions = {
+  const options: LoopRunOptions = {
     instructions: "Rename the item.",
     provider,
     executor: { observe, execute },
@@ -92,7 +92,7 @@ function setup(overrides: Partial<CuaLoopOptions> = {}) {
     setTime: (value: number) => {
       time = value;
     },
-    run: () => runComputerUseLoop(options),
+    run: () => runComputerUseLoopWithTaps(options),
   };
 }
 

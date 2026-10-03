@@ -1454,7 +1454,7 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       ok: boolean;
       dryRun: boolean;
       actor: string;
-      labId: string;
+      studyId: string;
       runId: string;
       scenario: { id: string; source: string; steps: number };
     };
@@ -1462,7 +1462,7 @@ describe("humanish lab run scripted-demo (CLI)", () => {
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("scripted-browser");
-    expect(envelope.labId).toBe("scripted-demo");
+    expect(envelope.studyId).toBe("scripted-demo");
     expect(envelope.runId).toBe("scripted-cli-json");
     expect(envelope.scenario).toEqual(
       expect.objectContaining({

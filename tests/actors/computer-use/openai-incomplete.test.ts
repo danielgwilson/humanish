@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { runComputerUseLoop, type CuaTurn } from "../../../src/actors/computer-use/loop.js";
+import { runComputerUseLoopWithTaps, type CuaTurn } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
 import { parseOpenAiResponse } from "../../../src/actors/computer-use/openai-wire.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
@@ -13,7 +13,7 @@ function captured(name: "reasoning-only" | "partial-message"): Record<string, un
 
 async function runTurn(turn: CuaTurn) {
   const calls = { provider: 0, actions: 0, debrief: 0, narration: 0, sharedBudget: 0 };
-  const result = await runComputerUseLoop({
+  const result = await runComputerUseLoopWithTaps({
     instructions: "Synthetic provider-interruption contract check.",
     persona: { id: "synthetic-participant", traitsApplied: [], promptDigest: "fixture" },
     redaction: defaultRedactionHooks,
