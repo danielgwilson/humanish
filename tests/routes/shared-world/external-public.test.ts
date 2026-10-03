@@ -300,8 +300,8 @@ function externalPublicConfig(overrides?: {
 }): unknown {
   const lanes: Array<Record<string, unknown>> = overrides?.hostLast
     ? [
-        // Host is the last roster lane (blockers 1 & 4): with concurrency < laneCount it must still be
-        // schedulable on its dedicated slot rather than starved behind the follower pool.
+        // Host is the last roster entry (blockers 1 & 4): with concurrency < laneCount it must
+        // still be schedulable on its dedicated slot rather than starved behind the follower pool.
         {
           id: "player-2",
           device: "mobile",
@@ -560,7 +560,7 @@ describe("external-public config validation + routing", () => {
     }
   });
 
-  it("rejects zero or >1 host lanes", () => {
+  it("rejects zero hosts or more than one", () => {
     const zero = parseLabConfig(externalPublicConfig({ hostCount: 0 }));
     expect(zero.ok).toBe(false);
     if (!zero.ok) expect(zero.error.message).toContain("exactly one `host: true` participant");
@@ -570,7 +570,7 @@ describe("external-public config validation + routing", () => {
   });
 
   it("rejects N=1 (a single-participant shared world proves nothing)", () => {
-    // One host lane, concurrency 1 -> a shared world needs >=2 participants and concurrency > 1.
+    // One host, concurrency 1 -> a shared world needs >=2 participants and concurrency > 1.
     const base = externalPublicConfig({ concurrency: 1 }) as Record<string, unknown>;
     const actor = (base.actors as Array<Record<string, unknown>>)[0]!;
     actor.lanes = [(actor.lanes as unknown[])[0]];
@@ -784,14 +784,15 @@ describe("host-first handoff barrier + convergence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4b. Host-first scheduling: the host lane is never starved (blockers 1 & 4).
+// 4b. Host-first scheduling: the host is never starved (blockers 1 & 4).
 // ---------------------------------------------------------------------------
 describe("host-first scheduling: host runs on a dedicated slot, never starved", () => {
-  it("lanes [follower, follower, host] with concurrency 2 does not deadlock; followers receive the code", async () => {
-    // The host is the last roster lane and concurrency (2) < laneCount (3): if the host were scheduled
-    // inside the same bounded pool as the followers, the two follower workers would block on the latch
-    // holding both slots and the host would never be scheduled -> a spurious HANDOFF_TIMEOUT. On its
-    // dedicated slot the host runs immediately, resolves the latch, and the followers proceed.
+  it("`lanes: [follower, follower, host]` with concurrency 2 does not deadlock; followers receive the code", async () => {
+    // The host is the last roster entry and concurrency (2) < laneCount (3): if the host were
+    // scheduled inside the same bounded pool as the followers, the two follower workers would block
+    // on the latch holding both slots and the host would never be scheduled -> a spurious
+    // HANDOFF_TIMEOUT. On its dedicated slot the host runs immediately, resolves the latch, and the
+    // followers proceed.
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps, created } = makeExternalSeams(
       makeExternalRunSession({ seen }),
@@ -1297,7 +1298,7 @@ describe("lobby-trivia-3player committed lab", () => {
 
 // Exercise the actual first-party provider route: a custom runSession would bypass the
 // output-limit contract. The response is a retained wire fixture; no network or paid compute.
-it("routes actor output limits and per-lane reasoning to concurrent provider requests", async () => {
+it("routes actor output limits and per-participant reasoning to concurrent provider requests", async () => {
   const config = parseExternal();
   // Below the first request's own 1024 cap, so the first request carries the declared value.
   config.actors[0]!.maxOutputTokens = 512;
@@ -1518,7 +1519,8 @@ describe("external-public participant wiring", () => {
     const base = makeExternalRunSession({ seen });
     const narrating = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
       const result = await base(options);
-      // The loop scrubs narration with the scrub its lane hands it; this fake does the same.
+      // The loop scrubs narration with the scrub its participant runner hands it; this fake does
+      // the same.
       const raw = "The lobby code on screen is AB2CD9.";
       const text = options.scrubText ? options.scrubText(raw) : raw;
       return {

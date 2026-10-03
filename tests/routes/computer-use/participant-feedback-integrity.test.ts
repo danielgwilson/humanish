@@ -20,7 +20,8 @@ const ENDINGS = ["participant", "stopWhen", "dwell"] as const;
 type Ending = (typeof ENDINGS)[number];
 
 // Internal provider/executor ports, not vendor API wire fixtures. The real loop decides when
-// to stop, writes redacted trace messages, and feeds the same candidate builder as live lanes.
+// to stop, writes redacted trace messages, and feeds the same candidate builder as live
+// participants.
 async function runSession(
   ending: Ending,
   options: {

@@ -589,7 +589,7 @@ describe("runScriptedBrowserLab", () => {
     expect(pointer.runId).toBe(result.runId);
   });
 
-  it("default surface roster is 1 (desktop only): the single-lane default governs; count: 2 is the override", async () => {
+  it("default surface roster is 1 (desktop only): the single-participant default governs; count: 2 is the override", async () => {
     await writeCommittedScenario(cwd);
     const outcome = await runLab(scriptedConfig(), { cwd, dryRun: true });
     if (outcome.route !== "scripted") throw new Error("expected scripted backend");
