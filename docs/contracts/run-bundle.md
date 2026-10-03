@@ -22,7 +22,7 @@ simCount: 1
 createdAt: "<ISO timestamp>"
 lab: # optional, additive: which manifest produced this run
   id: "<lab id>"
-  path: "humanish/labs/<lab id>.yaml"
+  path: "humanish/studies/<lab id>.yaml"
   origin: "committed|ignored|explicit"
 cwd: "[target-cwd]"
 artifactRoot: ".humanish/runs/<run-id>"
@@ -483,7 +483,7 @@ humanish:
 
 For public OSS runs, previews could include allowlisted setup files such as
 `package.json`, `.gitignore`, `humanish/config.ts`, and
-`humanish/labs/*.yaml` / `humanish/personas/*.yaml` /
+`humanish/studies/*.yaml` / `humanish/personas/*.yaml` /
 `humanish/scenarios/*.yaml`. For token-backed or private maintainer runs, raw
 previews were suppressed by default. Generated state, `.git`, `.env*`, `.npmrc`,
 browser profiles, `node_modules`, `.humanish/`, and arbitrary source files were

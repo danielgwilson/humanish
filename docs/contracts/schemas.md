@@ -77,7 +77,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   `local-app` subject pairs a computer-use actor with `execution.target: local`
   (or absent) and is library-assisted: the caller supplies
   `RunLabOptions.inProcess.executor` + `createProvider`; with neither the engine fails
-  closed (`HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
+  closed (`HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
   [`docs/architecture/state-driven-executor.md`](../architecture/state-driven-executor.md);
 - `subject.localTree` (`local-tree` subjects, computer-use route): pack/upload
   knobs for the packed working tree: `exclude[]` (extra archive excludes on
@@ -261,15 +261,15 @@ dwell? }`. The parser expands it into
   fail-closed cap in force. `maxMinutes` is the
   wall-clock kill; `maxUsd`/`maxJobs` are enforced fail-closed against the cost
   ledger after the session (a run whose known spend exceeds the cap fails closed,
-  `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`). Core records Codex provider spend as
+  `HUMANISH_TERMINAL_CAPS_EXCEEDED`). Core records Codex provider spend as
   unpriced tokens, so without a cost probe no line can trip a positive `maxUsd`:
   a live run refuses `maxUsd > 0` before creating a sandbox
-  (`HUMANISH_TERMINAL_LAB_UNPRICED_CAP`) unless the caller passes a `costProbe`
+  (`HUMANISH_TERMINAL_UNPRICED_CAP`) unless the caller passes a `costProbe`
   hook. The sandbox's server-side timeout is the steps before the
   codex command (Node bootstrap, runtime version check, and product setup when
   `subject.product.install` is declared) plus `maxMinutes` plus a 5-minute
   teardown buffer; a live run refuses a `maxMinutes` that would take it past
-  E2B's one-hour limit (`HUMANISH_TERMINAL_LAB_CAPS_INVALID`). The no-spend proof is derived from that real ledger, never asserted (see
+  E2B's one-hour limit (`HUMANISH_TERMINAL_CAPS_INVALID`). The no-spend proof is derived from that real ledger, never asserted (see
   Terminal Cost Ledger And No-Spend Proof).
   Inert (warned) on every other route, except that a positive
   `scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab
@@ -323,8 +323,8 @@ dwell? }`. The parser expands it into
   for the drain read. The name is recorded as evidence; the value never
   persists. A live run refuses a token shorter than 16 characters, or not
   well-formed Unicode, before it probes the catch
-  (`HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID`,
-  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID`), as
+  (`HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID`,
+  `HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID`), as
   `humanish comms catch --token` does, and scrubs the token and its encoded
   forms from every comms warning. Declaring `external` on a harness-provisioned subject warns: two
   catches would exist and the app would point at humanish's own. `linkOrigin`
@@ -398,7 +398,7 @@ where a dry-run participant is ok as synthetic and a live participant must pass
 error, engaged, and no self-reported blocker.
 
 Explicit failed-participant reruns are supported on the CUA fan-out route via
-`humanish lab run <lab> --rerun-failed-from <run-id> [--participants <ids>]`, where a
+`humanish run <lab> --rerun-failed-from <run-id> [--participants <ids>]`, where a
 participant id is a declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position.
 The source run must be a live CUA fan-out bundle. humanish creates a new run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
@@ -411,13 +411,13 @@ That field is the judge's status (`judgedStatus` in `src/run/judge.ts`), so a go
 session that reported a blocker counts as blocked. A source bundle without `judgedStatus` falls back
 to the stream's trace status, its actor status and completion reason, and a zero-action check.
 
-Manifests are human-authored `.yaml` source under `humanish/labs/*.yaml` for
-committed public-safe labs, or ignored `.humanish/labs/*.yaml` /
-`.humanish/local/labs/*.yaml` for private local dogfood. Fields the engine does
-not yet consume are accepted but reported as warnings (`humanish lab inspect`
+Manifests are human-authored `.yaml` source under `humanish/studies/*.yaml` for
+committed public-safe labs, or ignored `.humanish/studies/*.yaml` /
+`.humanish/local/studies/*.yaml` for private local dogfood. Fields the engine does
+not yet consume are accepted but reported as warnings (`humanish study show`
 shows them), so a manifest never silently claims behavior that did not run.
 
-Committed fixture (`humanish/labs/first-run.yaml`):
+Committed fixture (`humanish/studies/first-run.yaml`):
 
 ```yaml
 schema: humanish.lab.v2
@@ -828,7 +828,7 @@ Legacy profiles retain medium defaults. `none_declared`/`none` access needs are
 omitted. `keyboard_first` allows pointer fallback; `keyboard_only` does not.
 These are prompt instructions, not evidence that a participant complied.
 
-`humanish lab inspect` adds `personas: [{ id, resolved, brief? }]`. A brief contains
+`humanish study show` adds `personas: [{ id, resolved, brief? }]`. A brief contains
 `compilerVersion`, persona-section `text`, its pre-redaction `digest`, `redacted`,
 and an optional source-file `sourceDigest`. It excludes task criteria and runtime
 grants. This is authored context; whether a selected actor consumes it depends on
@@ -980,7 +980,7 @@ inside run bundles (per-stream transport and status) and lab execution config
 
 ## Serve Result And Reserved Control-Plane Namespace
 
-`humanish serve` reports `humanish.serve-result.v1`. The exported `ServeResult`
+`humanish observe --all` reports `humanish.serve-result.v1`. The exported `ServeResult`
 type and `SERVE_SCHEMA` constant in `src/observer/serve.ts` are authoritative:
 mode (`loopback | exposed | share-safe-open`), the loopback host/port,
 `publicUrl`, the `tunnel` provider/url, an `oauth` echo (`provider`,
@@ -1073,7 +1073,7 @@ statement: "No-spend proof not established for maxUsd=0: no spend line was measu
 
 **Full caps enforcement (fail-closed, not advisory).** `scenario.caps.maxUsd`
 is enforced against the ledger: if the observed known spend exceeds `maxUsd`, the
-run fails closed (`HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`); `maxJobs` likewise when
+run fails closed (`HUMANISH_TERMINAL_CAPS_EXCEEDED`); `maxJobs` likewise when
 a known job count is present; `maxMinutes` is the wall-clock kill (unchanged).
 Unknowns (`null`) never trip a cap (we cannot claim a violation we did not
 measure) and never grant a green pass (they surface as unmeasured). `verifyRun`
@@ -1121,7 +1121,7 @@ own liveness.
 
 It answers two questions the filesystem could not answer before: **which lab**
 a run belongs to, and **whether it is still alive**, including for runs an
-agent launched (`lab run --json`) or that were detached, which previously wrote
+agent launched (`run --json`) or that were detached, which previously wrote
 nothing at all until they completed.
 
 It is a derived index, not evidence. `run.json` remains the evidence-of-record;
@@ -1325,9 +1325,9 @@ threshold is not proof of task completion.
 An absent threshold is uncapped. A zero threshold can still permit a paid model
 request before reported usage trips it; `maxUsd: 0` is not a no-provider-call
 mode. Use the keyless `humanish run first-run` preview or an explicit
-`humanish lab run <lab> --dry-run` for a path without provider calls. A declared
+`humanish run <lab> --dry-run` for a path without provider calls. A declared
 threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
-(`HUMANISH_CUA_LAB_UNPRICED_CAP`, or `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP` on a
+(`HUMANISH_COMPUTER_USE_UNPRICED_CAP`, or `HUMANISH_SHARED_WORLD_UNPRICED_CAP` on a
 shared-world lab) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
 
@@ -1445,13 +1445,13 @@ throw or a rejected promise becomes a redacted run warning.
 
 Refusals:
 
-- `HUMANISH_LAB_OPTION_UNSUPPORTED`: the route cannot honor the option, for example `scorer` on
+- `HUMANISH_STUDY_OPTION_UNSUPPORTED`: the route cannot honor the option, for example `scorer` on
   a preview or scripted lab, `createProvider` off computer use, or `prepareDesktop` where no E2B
   desktop exists. The message names the option and the route. The same code refuses a field
   `RunLabOptions` no longer has (below); that message names the field and where its job went.
 
 `rerun.laneIds`, the older name of `rerun.participantIds`, was removed in 0.107.0. A caller that
-still passes it is refused with `HUMANISH_LAB_OPTION_UNSUPPORTED`; use `rerun.participantIds`.
+still passes it is refused with `HUMANISH_STUDY_OPTION_UNSUPPORTED`; use `rerun.participantIds`.
 
 The route hook bags (`cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks`,
 `automaticAnalysis`) were removed from `RunLabOptions`, with the hook bag types and the four route

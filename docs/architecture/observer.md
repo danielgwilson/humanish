@@ -98,7 +98,7 @@ mismatched records omit the observation. A stale heartbeat alone does not prove
 interruption, and stored PIDs are neither probed nor returned. Static rendering
 and export do not create this served-only observation.
 
-Watch is deliberately distinct from `humanish serve`. Watch serves one
+Watch is deliberately distinct from `humanish observe --all`. Watch serves one
 attached run, and the process that created it may inject runtime stream URLs
 (live hosted-desktop viewers) into the observer data it serves. Serve is the
 library surface (every run under `.humanish/runs/`) and never serves runtime

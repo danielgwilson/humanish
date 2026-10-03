@@ -76,7 +76,7 @@ remain null. Interrupted token observations remain explicitly incomplete.
 
 The dry-run validates only local evidence and configuration. It does not check
 the CLI, login, model access or quota and does not start a provider request.
-`doctor --lab <lab>` checks the selected analyst setup without a model call.
+`doctor --study <lab>` checks the selected analyst setup without a model call.
 Failures leave the recording available; inspect `analyze show` and the attempt's
 accounting before an explicit `analyze --provider codex --rerun`.
 
@@ -194,7 +194,7 @@ validation exception keeps nothing.
 
 The directory sits outside every run directory, and export, verify and the
 Observer read only run directories. `humanish analyze` returns the file's path as
-`rejectedOutputPath` and prints it, and so does a lab run's automatic analysis.
+`rejectedOutputPath` and prints it, and so does a run's automatic analysis.
 Each write removes all but the newest 20 records across runs. It removes a
 record only while its directory is still the listed one, so a directory
 replaced by a symlink after listing is left alone. The record's

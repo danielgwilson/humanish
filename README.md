@@ -61,14 +61,14 @@ For a new local lab, initialize with your app URL and task:
 npx humanish init --yes \
   --local-browser http://127.0.0.1:3000 \
   --local-mission "Complete the primary flow and explain anything confusing"
-npx humanish doctor --lab local-browser
+npx humanish doctor --study local-browser
 npx humanish run local-browser
 npx humanish verify
 ```
 
 Start your app before running the study. `verify` checks the saved run bundle, and its
 share-safety line says whether the evidence can be shared as-is. If you already initialized this
-project, edit `humanish/labs/local-browser.yaml` to change its URL or mission; `init`
+project, edit `humanish/studies/local-browser.yaml` to change its URL or mission; `init`
 preserves existing files and warns when supplied settings cannot be applied.
 
 `init` also adds `humanish:*` scripts to `package.json`. `npm run humanish:doctor` and
@@ -90,16 +90,16 @@ included drawDB study:
 npx humanish keys set e2b
 npx humanish keys set openai
 npx humanish init --yes
-npx humanish doctor --lab try-live
-npx humanish lab preflight try-live
+npx humanish doctor --study try-live
+npx humanish study check try-live
 npx humanish run try-live
 npx humanish observe --run latest --open
 ```
 
 Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work.
-`doctor --lab` checks the selected route's local setup without launching a
+`doctor --study` checks the selected route's local setup without launching a
 desktop or making a model request. It reports key presence, not remote key
-validity, model access, or quota. `lab preflight` checks manifest metadata by default.
+validity, model access, or quota. `study check` checks manifest metadata by default.
 `try-live` clones and studies drawDB, not your project. Set the keys before `init`:
 `init` writes `try-live` for the participant this machine can run, and it never
 overwrites an existing lab file. With an OpenAI key, from the environment or the
@@ -188,7 +188,7 @@ review:
   analysis: false
 ```
 
-`humanish run <lab>`, `humanish lab run <lab>`, `humanish watch <lab>`, and live
+`humanish run <lab>`, `humanish run <lab>`, `humanish watch <lab>`, and live
 starts in the TUI share this default. Dry runs and unsupported routes dispatch
 nothing. Without `OPENAI_API_KEY`, default analysis is skipped and a successful
 recording stays successful. A default analysis whose admission estimate is over
@@ -224,7 +224,7 @@ its own behind either one:
   `share_ready`, to whoever your edge admits. It requires edge auth:
   `--tunnel ngrok --oauth google`, or `--public-url` for an edge you run. Without
   `--allow-email` or `--allow-domain`, the OAuth edge admits any Google account.
-- `humanish serve --expose` serves your run library. With edge auth and no
+- `humanish observe --all --expose` serves your run library. With edge auth and no
   `--safe`, everyone the edge admits sees every run, raw screenshots included.
   With `--safe`, it serves only `share_ready` runs, and edge auth is optional.
 
@@ -292,12 +292,12 @@ fills from sources 2 to 4, never the value:
 4. `$XDG_CONFIG_HOME/humanish/keys.env` (by default `~/.config/humanish/keys.env`),
    which `humanish keys set` writes as plain text with mode `0600`.
 
-A dry run reads no provider key, so `run`, `lab run` and `watch` consult sources 2 to 4 only
+A dry run reads no provider key, so `run`, `run` and `watch` consult sources 2 to 4 only
 for a live lab. A live run fills every key it finds and prints the ones its plan reads: its model,
 desktop and runtime keys, its `subject.env` names, the variable
 `comms.email.external.authTokenEnv` names, `ANTHROPIC_API_KEY` for a Claude Code participant, and
 `OPENAI_API_KEY` when its automatic analysis runs on OpenAI. With a declared scorer it prints
-every key it fills, since the scorer's code may read any. `lab preflight`, `doctor`, `tui` and the
+every key it fills, since the scorer's code may read any. `study check`, `doctor`, `tui` and the
 `comms` commands still consult them.
 `humanish analyze` consults them for a live OpenAI analysis, and not for `--dry-run` or the
 Codex analyst.
@@ -325,10 +325,10 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 | Command                                                  | Purpose                                                                   |
 | -------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `humanish init --yes`                                    | Scaffold lab source and ignored runtime state.                            |
-| `humanish doctor --lab <lab> --json`                     | Check the selected route's setup without exposing key values or spending. |
-| `humanish lab list --json`                               | List available labs.                                                      |
-| `humanish lab inspect <lab> --json`                      | Read a lab before running it.                                             |
-| `humanish lab preflight <lab> --json`                    | Check configuration and route warnings.                                   |
+| `humanish doctor --study <lab> --json`                   | Check the selected route's setup without exposing key values or spending. |
+| `humanish study list --json`                             | List available labs.                                                      |
+| `humanish study show <lab> --json`                       | Read a lab before running it.                                             |
+| `humanish study check <lab> --json`                      | Check configuration and route warnings.                                   |
 | `humanish run <lab>`                                     | Run the named preview or live study.                                      |
 | `humanish watch <lab>`                                   | Run a lab with an attached Observer.                                      |
 | `humanish runs --json`                                   | List local run history.                                                   |
@@ -349,7 +349,7 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 
 `humanish tui` is for a person browsing labs and runs. It needs an
 interactive stdin/stdout, and refuses detected coding-agent sessions even with
-a TTY. Agents should use `lab list --json`, `lab inspect <lab> --json`, and
+a TTY. Agents should use `study list --json`, `study show <lab> --json`, and
 `runs --json`. Read [TUI behavior and JSON alternatives](https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts).
 
 Its Connections screen (**c**) adds an AgentMail key for
@@ -377,7 +377,7 @@ Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
   model selection, dated estimates, and study and per-participant caps.
 - [A signed-in coding agent](https://humanish.dev/docs/local-agents): Codex or Claude Code supplies
   the participant's model on your existing plan. E2B still needs a key and bills for desktops.
-- [The run library](https://humanish.dev/docs/review-surfaces#serve-the-run-library): `humanish serve`
+- [The run library](https://humanish.dev/docs/review-surfaces#serve-the-run-library): `humanish observe --all`
   serves your runs on loopback, with authenticated remote access,
   [live viewing from a phone](https://humanish.dev/docs/review-surfaces#watch-a-live-run-from-your-phone)
   and share-safe public exposure.
@@ -443,7 +443,7 @@ Try the CLI from source:
 ```bash
 pnpm humanish watch
 pnpm humanish verify
-pnpm humanish lab list
+pnpm humanish study list
 ```
 
 ## Browse the docs

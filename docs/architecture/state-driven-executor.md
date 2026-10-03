@@ -199,21 +199,21 @@ undefined, so `result.sandbox` is omitted. That omission is the verifiable
 "no E2B SDK call" proof.
 
 Fail-closed guards, all before any key check, so a CLI invocation never sees a misleading
-`HUMANISH_CUA_LAB_KEYS_MISSING` first:
+`HUMANISH_COMPUTER_USE_KEYS_MISSING` first:
 
-- `HUMANISH_LAB_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
+- `HUMANISH_STUDY_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
   where the type does not stop it), or on a subject other than `app-url` or `local-app`.
   `createProvider` alone is allowed; that is a model swap on the normal E2B route.
-- `HUMANISH_CUA_LAB_FANOUT_INVALID`: `inProcess` with more than one participant. The planner refuses it, because fan-out gives each participant
+- `HUMANISH_COMPUTER_USE_FANOUT_INVALID`: `inProcess` with more than one participant. The planner refuses it, because fan-out gives each participant
   its own E2B desktop and the in-process route has none.
-- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
+- `HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
   without `inProcess` (there is no built-in in-process driver yet). A structured error,
   never a desktop attempt.
-- `HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING`: an `app-url` lab with `execution.target: local`
+- `HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING`: an `app-url` lab with `execution.target: local`
   and no local desktop. `runLab` gives a local browser study its desktop; a direct route
   call or an in-process executor on the same lab has none.
-- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the route's internal executor hook without its
-  provider hook. A package caller gets `HUMANISH_LAB_OPTION_UNSUPPORTED` above instead.
+- `HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER`: the route's internal executor hook without its
+  provider hook. A package caller gets `HUMANISH_STUDY_OPTION_UNSUPPORTED` above instead.
 
 Key gating is route-aware: the in-process route uses the caller's own model and
 executor, so no `OPENAI_API_KEY`/`E2B_API_KEY` is required.

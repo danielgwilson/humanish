@@ -7,7 +7,7 @@ All amounts are estimates from retained rate-table accounting, not provider bill
 
 ```bash
 humanish stats
-humanish stats --lab sample-study --since 2026-09-01 --json
+humanish stats --study sample-study --since 2026-09-01 --json
 ```
 
 The filters select runs by lab and run start date. All later analysis reruns

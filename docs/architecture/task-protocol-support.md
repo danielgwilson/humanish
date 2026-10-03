@@ -22,8 +22,8 @@ session loop. Their task support does not depend on which provider chooses actio
 Custom session hooks remain caller-owned implementations of that same contract;
 this preflight does not certify arbitrary hook behavior.
 
-The parser reports `HUMANISH_LAB_INVALID` with the unsupported field path. `runLab`
-reports `HUMANISH_LAB_TASKS_UNSUPPORTED` in the route's failure envelope, from
+The parser reports `HUMANISH_STUDY_INVALID` with the unsupported field path. `runLab`
+reports `HUMANISH_STUDY_TASKS_UNSUPPORTED` in the route's failure envelope, from
 `planLab` (`src/lab/plan.ts`) and each route's plan.
 Refusal precedes run storage, source preparation, user hooks, local processes,
 sandbox allocation, and model calls. No task content appears in the error.

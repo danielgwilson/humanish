@@ -32,9 +32,9 @@ Everything it shows has a machine-readable equivalent, which is what you want:
 
 | Instead of the TUI  | Use                                                                                    |
 | ------------------- | -------------------------------------------------------------------------------------- |
-| browsing labs       | `npx humanish lab list --json`                                                         |
+| browsing labs       | `npx humanish study list --json`                                                       |
 | browsing runs       | `npx humanish runs --json`                                                             |
-| starting a run      | `npx humanish lab run <lab> --json --no-open`                                          |
+| starting a run      | `npx humanish run <lab> --json --no-open`                                              |
 | a run's outcome     | `npx humanish review --run <id> --json`                                                |
 | communication setup | `npx humanish comms providers --json` and `npx humanish comms connections list --json` |
 
@@ -51,7 +51,7 @@ authorized credential source), followed by
 and `HUMANISH_STRICT_KEYS=1` still apply. Read installed provider capabilities:
 use `humanish comms check --online --json` for read-only authentication.
 Authentication does not establish mailbox permissions, capacity or delivery.
-`humanish comms configure --lab <path> --json` previews an ignored lab copy;
+`humanish comms configure --study <path> --json` previews an ignored lab copy;
 add `--apply --plan-token <digest>` to save the reviewed version. Launch its
 exact returned path, not a basename that could resolve to another manifest.
 
@@ -87,9 +87,9 @@ exact returned path, not a basename that could resolve to another manifest.
 5. Confirm the layout:
    - commit `humanish/` source files;
    - ignore `.humanish/` runtime artifacts;
-   - keep committed labs under `humanish/labs/*.yaml`;
-   - keep private/local labs under ignored `.humanish/labs/*.yaml` or
-     `.humanish/local/labs/*.yaml`;
+   - keep committed labs under `humanish/studies/*.yaml`;
+   - keep private/local labs under ignored `.humanish/studies/*.yaml` or
+     `.humanish/local/studies/*.yaml`;
    - keep `.env.example` commit-safe and value-free;
    - never commit generated run bundles.
 
@@ -109,7 +109,7 @@ Do not pass numeric `maxCostUsd`/`maxOutputTokens` or their CLI flags to the
 account branch. It cannot enforce those ceilings and rejects them. Account dollar
 cost remains unknown even when token usage is reported. There is no fallback to
 an API key or another provider. `analyze --dry-run --provider codex` validates
-local evidence/configuration only; `doctor --lab` checks setup without a model
+local evidence/configuration only; `doctor --study` checks setup without a model
 request. Inspect a failed attempt before explicitly retrying `--provider codex
 --rerun`. Opening Observer never starts analysis.
 
@@ -121,16 +121,16 @@ Mac with native ARM64 Node and Lima 2.2+, an `app-url` lab can set `execution.ta
 OpenAI API key. Inference is remote and consumes account quota. Existing hosted
 labs stay hosted; never silently change their execution or billing provider.
 
-Use `humanish runtime status --json` and `humanish doctor --lab <path> --json`
+Use `humanish runtime status --json` and `humanish doctor --study <path> --json`
 for read-only setup inspection. `humanish runtime setup` downloads and verifies
 the pinned runtime; a live local run also prepares it automatically. The normal
-`humanish lab run <path>` command and TUI use the same study runner and Observer.
+`humanish run <path>` command and TUI use the same study runner and Observer.
 See [the complete example and limits](https://humanish.dev/docs/local-browser).
 
 Local browsers currently require a loopback app URL with an explicit port above
 1023 and use a 960×720 Chromium desktop. For email-gated local apps, start
 `humanish comms catch`, point the app's email sends at it, and declare
-`comms.email.external.catchBaseUrl`. Use `doctor --lab` to check its recipient
+`comms.email.external.catchBaseUrl`. Use `doctor --study` to check its recipient
 routes. This captures app sends without mailbox-provider credentials; it does
 not receive arbitrary internet email. Each participant gets only its assigned
 inbox through the local desktop. Real receiving still needs a supported hosted
@@ -188,7 +188,7 @@ background: |
 A profile with `background` receives only explicitly declared trait directives.
 Legacy profiles without it retain medium defaults for missing patience and
 technical confidence. Avoid contradictory prose and traits; inspect the compiled
-brief with `humanish lab inspect <lab> --json` before running.
+brief with `humanish study show <lab> --json` before running.
 
 For an autonomous participant study, use a computer-use/local-agent lab and write
 its `mission` as a believable situation and desired outcome. Supply fixture facts
@@ -251,7 +251,7 @@ defaults:
 
 A lab is a composition (`subject` × `actors` × `execution` × `scenario` ×
 `policies`), not a hardcoded kind; there is no v1 compatibility. Run
-`npx humanish lab inspect <lab>` to see how a manifest parses, including
+`npx humanish study show <lab>` to see how a manifest parses, including
 warnings for fields the engine does not consume yet.
 
 ### Many actors at once (fan-out, shared worlds, concurrency)
@@ -274,8 +274,8 @@ warnings for fields the engine does not consume yet.
   run looks like idle tiles — another reason to leave the cap out unless you
   need it.
 
-Use committed `humanish/labs/*.yaml` for public-safe, reproducible labs. Use
-ignored `.humanish/labs/*.yaml` or `.humanish/local/labs/*.yaml` for private repo
+Use committed `humanish/studies/*.yaml` for public-safe, reproducible labs. Use
+ignored `.humanish/studies/*.yaml` or `.humanish/local/studies/*.yaml` for private repo
 targets, local-only dogfood, or machine-specific settings. Never commit private
 repo names, stream URLs, credential values, screenshots, logs, source snippets,
 or operational details.
@@ -283,10 +283,10 @@ or operational details.
 Useful commands:
 
 ```bash
-npx humanish lab list
-npx humanish lab inspect first-run
+npx humanish study list
+npx humanish study show first-run
 npx humanish watch first-run
-npx humanish lab run first-run --json --no-open
+npx humanish run first-run --json --no-open
 ```
 
 ### Off-app email verification (comms)
@@ -386,7 +386,7 @@ For CI or non-interactive proof:
 
 ```bash
 npx humanish watch --json --no-open
-npx humanish lab run first-run --json --no-open
+npx humanish run first-run --json --no-open
 ```
 
 The feedback command prints a public-safe Markdown draft. It must not call the
@@ -408,10 +408,10 @@ no browser.
 
 ```bash
 # in another terminal, start the target app on 127.0.0.1 or localhost
-npx humanish lab inspect <lab> --json
-npx humanish lab run <lab> --json --no-open
+npx humanish study show <lab> --json
+npx humanish run <lab> --json --no-open
 npx humanish verify --run latest --json
-npx humanish watch --run latest --detach --no-open --json
+npx humanish observe --run latest --open   # for a person; it serves until Ctrl-C
 ```
 
 Do not use `humanish watch --count ...` as a substitute for a scripted-browser
@@ -438,7 +438,7 @@ Do not paste values into files, prompts, run bundles, issue drafts, or logs.
 Load local values only at invocation time:
 
 ```bash
-npx humanish watch .humanish/labs/local-live.yaml --env-file .humanish/local/provider.env
+npx humanish watch .humanish/studies/local-live.yaml --env-file .humanish/local/provider.env
 ```
 
 When choosing dogfood targets, prefer apps, CLIs, or agent-facing tools with a

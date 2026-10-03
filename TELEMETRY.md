@@ -18,7 +18,7 @@ telemetry, humanish cannot tell whether new users reach a working first run.
 
 ## What is collected
 
-- which command ran (`run`, `lab run`, `init`, …)
+- which command ran (`run`, `run`, `init`, …)
 - the humanish version, your OS, your Node major version, whether you are in CI
 - whether the command succeeded (its exit code), and roughly how long it took
   (a bucket such as `1-5m`, never an exact duration)

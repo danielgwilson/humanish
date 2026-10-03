@@ -86,10 +86,10 @@ Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
 5. **Fail-closed timeout.** If the host never yields a `/lobby/CODE` within the handoff deadline
    (`min(execution.timeoutMs, max(120 s, 40% of execution.timeoutMs))`; injectable in tests), the
    latch rejects; every follower fails closed without opening (no wasted turns against a codeless
-   home page); the run returns `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT` and the bundle
+   home page); the run returns `HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT` and the bundle
    records the host window + a handoff-failed outcome for followers. If the host participant ends without a
    code before the deadline, `releaseFollowersIfUnlatched` releases the followers at once and the
-   run returns `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED` with the host's reason. A host that
+   run returns `HUMANISH_SHARED_WORLD_FAILED` with the host's reason. A host that
    reaches the lobby but whose followers fail to join is a normal per-participant non-pass (the
    concurrency-on-pass gate then simply won't see ≥2 overlap, and the verdict stays non-pass),
    not a whole-run abort.
@@ -138,6 +138,6 @@ mobile user agent. That is still not physical-device fidelity.
 ## Watch-from-phone
 
 Native live-desktop `--expose` is not supported on the concurrent path; only the computer-use
-route live-serves a run (`src/cli/io.ts`). Today, watch it from a phone via `humanish serve
+route live-serves a run (`src/cli/io.ts`). Today, watch it from a phone via `humanish observe --all
 --expose --tunnel … --oauth …` against the run directory's Observer (the concurrent path writes
 artifacts continuously and attaches per-participant runtime stream URLs to the live Observer).

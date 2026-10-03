@@ -53,12 +53,12 @@ enforced output-token ceiling are unknown, so omit `maxCostUsd` and
 `maxOutputTokens`. Numeric values are rejected before participant resources are
 allocated. There is no API fallback. Missing or unsupported account setup leaves
 an explicit failed analysis state and the original recording intact. Use
-`humanish doctor --lab <lab>` for setup checks; account allowance and model access
+`humanish doctor --study <lab>` for setup checks; account allowance and model access
 remain untested until a request. An omitted provider still means OpenAI, including
 hosted studies whose participant uses a local Codex or Claude login. This setting
 does not enable managed local desktops.
 
-The same configuration works through `humanish run <lab>`, `lab run <lab>`,
+The same configuration works through `humanish run <lab>`, `run <lab>`,
 `watch <lab>`, and TUI live starts. Direct library calls to the five recording
 producers honor it too. Supported routes are computer-use, scripted-browser,
 terminal-product and shared-world. The synthetic route
@@ -75,7 +75,7 @@ with no retained participant activity. A desktop startup failure does not start
 an analysis request. The original failure remains visible.
 
 CLI live starts disclose the selected analyst and its separate admission estimate limit or unknown account dollars before execution.
-`humanish lab preflight <lab> --json` and the TUI lab screen also expose the
+`humanish study check <lab> --json` and the TUI lab screen also expose the
 resolved budget without dispatching analysis. Library callers can inspect
 `resolveAutomaticAnalysis` or `automaticAnalysisBudget` before running.
 

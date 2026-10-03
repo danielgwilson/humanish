@@ -8,7 +8,7 @@ evidence of a computer-use, shared-world or terminal run and stores the result a
 [run.mjs](run.mjs) attaches the same module to a dry run of one computer-use lab in two ways:
 
 - from a library caller, as `runLab(config, { scorer: { score } })`;
-- from the CLI, as `humanish lab run lab.yaml --dry-run --scorer scorer.mjs`.
+- from the CLI, as `humanish run lab.yaml --dry-run --scorer scorer.mjs`.
 
 A dry run needs no keys, desktop or running app. Each run's bundle carries the score, and
 `verifyRun` checks it. The CLI run also records which module it loaded, as
