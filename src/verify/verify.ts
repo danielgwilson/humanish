@@ -3,7 +3,7 @@ import { listAnalysisExecutions } from "../analysis/store-executions.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive, REDACTED_SANDBOX_ID } from "../evidence/redaction.js";
-import { readRunSandboxIds } from "../run/sandbox-ids.js";
+import { keyedSandboxIds, readRunSandboxIds } from "../run/sandbox-ids.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
@@ -160,7 +160,10 @@ export async function verifyResolvedRun(
           : [],
       ),
       screenshotPaths: isRunBundle(bundle) ? streamScreenshotPaths(bundle) : new Set(),
-      sandboxIds: await readRunSandboxIds(runPaths),
+      // A run from before 0.110 with no receipts still names its ids in run.json.
+      sandboxIds: [
+        ...new Set([...(await readRunSandboxIds(runPaths)), ...keyedSandboxIds(bundle)]),
+      ],
       sandboxIdFiles,
     },
     unscannedArtifacts,

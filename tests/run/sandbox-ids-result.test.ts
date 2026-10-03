@@ -6,10 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   formatConcurrentSharedWorldStudyHuman,
   formatCuaStudyHuman,
+  formatTerminalStudyHuman,
 } from "../../src/cli/commands/study-format.js";
 import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import type { CuaActorStudyResult } from "../../src/routes/computer-use/types.js";
 import type { ConcurrentSharedWorldStudyResult } from "../../src/routes/shared-world/types.js";
+import type { TerminalProductStudyResult } from "../../src/routes/terminal/types.js";
 import { publicRunResult } from "../../src/run/sandbox-ids.js";
 
 // What a caller, `--json` and the human summary get from a run: each sandbox by marker and digest,
@@ -114,5 +116,28 @@ describe("a run's result as it is returned and printed", () => {
       sandbox: undefined,
     } as unknown as CuaActorStudyResult);
     expect(typeof dry === "string" ? dry : dry.stdout).not.toContain("sandbox ids:");
+  });
+
+  it("prints the sandbox and the receipts line for a terminal run", async () => {
+    const live = await publicRunResult(
+      {
+        ok: true,
+        dryRun: false,
+        studyId: "first-contact",
+        runId: RUN,
+        actor: "codex",
+        product: "humanish",
+        sandbox: { ["sandbox" + "Id"]: GUEST_ID, killed: true, remaining: 0 },
+        warnings: [],
+      },
+      cwd,
+    );
+    const stdout = formatTerminalStudyHuman(live as unknown as TerminalProductStudyResult);
+    const text = typeof stdout === "string" ? stdout : (stdout.stdout ?? "");
+    expect(text).not.toContain(GUEST_ID);
+    expect(text).toContain(
+      `sandbox: [redacted-sandbox-id ${sandboxIdDigest(GUEST_ID)}] killed=yes`,
+    );
+    expect(text.match(/^sandbox ids: /gm)).toHaveLength(1);
   });
 });

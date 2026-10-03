@@ -79,8 +79,11 @@ function redactLocalPaths(text: string, label?: string): string {
  */
 export const REDACTED_SANDBOX_ID = "[redacted-sandbox-id]";
 
-/** The keys run writers put a sandbox id under; `providerResources` entries hold one as `id`. */
+/** The keys run writers put a sandbox id under; resource entries hold one as `id`. */
 const SANDBOX_ID_KEYS = new Set(["sandboxId", "subjectSandboxId"]);
+
+/** Arrays of sandbox records: run.json's `providerResources` and cleanup.json's `resources`. */
+const RESOURCE_ARRAY_KEYS = new Set(["providerResources", "resources"]);
 
 /** A sandbox id's public stand-in: its digest matches a receipt without naming the sandbox. */
 export function sandboxIdDigest(id: string): string {
@@ -100,18 +103,47 @@ function redactIdEntries(object: object, keys: ReadonlySet<string>): [string, un
   return entries.flatMap(([key, child]): [string, unknown][] => {
     if (!keys.has(key) || typeof child !== "string" || child === REDACTED_SANDBOX_ID)
       return [[key, child]];
-    const digest: [string, unknown][] = present.has(digestKey(key))
-      ? []
-      : [[digestKey(key), sandboxIdDigest(child)]];
-    return [[key, REDACTED_SANDBOX_ID], ...digest];
+    // A label that a text scrub left at the key already carries the id's digest.
+    const digest = SANDBOX_ID_LABEL.exec(child)?.[1] ?? sandboxIdDigest(child);
+    return [
+      [key, REDACTED_SANDBOX_ID],
+      ...(present.has(digestKey(key)) ? [] : [[digestKey(key), digest] as [string, unknown]]),
+    ];
   });
 }
 
+/** How free text names a sandbox: the marker with the id's digest inside it. */
+const SANDBOX_ID_LABEL = /^\[redacted-sandbox-id ([0-9a-f]{16})\]$/;
+
 const RESOURCE_ID_KEYS = new Set(["id"]);
+
+/** A raw id at a sandbox-id key: neither the marker nor a label that names its digest. */
+const isRawSandboxId = (value: unknown): value is string =>
+  typeof value === "string" && value !== REDACTED_SANDBOX_ID && !SANDBOX_ID_LABEL.test(value);
+
+/** The raw ids at the keys redactSandboxIds replaces, anywhere in `value`. */
+export function collectSandboxIds(value: unknown, into = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) {
+    for (const item of value) collectSandboxIds(item, into);
+    return into;
+  }
+  if (value === null || typeof value !== "object") return into;
+  for (const [key, child] of Object.entries(value)) {
+    if (SANDBOX_ID_KEYS.has(key) && isRawSandboxId(child)) into.add(child);
+    if (RESOURCE_ARRAY_KEYS.has(key) && Array.isArray(child))
+      for (const resource of child) {
+        const id: unknown =
+          resource !== null && typeof resource === "object" ? Reflect.get(resource, "id") : null;
+        if (isRawSandboxId(id)) into.add(id);
+      }
+    collectSandboxIds(child, into);
+  }
+  return into;
+}
 
 /**
  * `value` with every sandbox id replaced by REDACTED_SANDBOX_ID plus its digest: strings at
- * `sandboxId` and `subjectSandboxId`, and the `id` of each `providerResources` entry. Raw ids live
+ * `sandboxId` and `subjectSandboxId`, and the `id` of each `providerResources` or `resources` entry. Raw ids live
  * only in a run's sandbox-receipts.ndjson; every record and output names a sandbox by digest.
  */
 export function redactSandboxIds(value: unknown): unknown {
@@ -122,7 +154,7 @@ export function redactSandboxIds(value: unknown): unknown {
   if (value === null || typeof value !== "object") return value;
   // fromEntries keeps a key such as __proto__ an own property, as JSON.parse made it.
   const entries = redactIdEntries(value, SANDBOX_ID_KEYS).map(([key, child]): [string, unknown] => {
-    if (key === "providerResources" && Array.isArray(child))
+    if (RESOURCE_ARRAY_KEYS.has(key) && Array.isArray(child))
       return [
         key,
         child.map((resource: unknown) =>

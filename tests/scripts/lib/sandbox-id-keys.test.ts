@@ -19,6 +19,11 @@ describe("sandbox ids found by key", () => {
       "providerResources[].id",
     ],
     [
+      "cleanup.json resources",
+      `{"resources": [{"provider": "e2b-desktop", "kind": "sandbox", "id": "fake-planted-7", "status": "already_clean"}]}`,
+      "resources[].id",
+    ],
+    [
       "a sandbox receipt line",
       `{"provider":"e2b-desktop","sandboxId":"fake-planted-7","timeoutMs":3000000}\n`,
       "sandboxId",
@@ -37,7 +42,7 @@ describe("sandbox ids found by key", () => {
 
   it("passes the redaction marker, which is the value src writes in a shared copy", () => {
     expect(SANDBOX_ID_MARKER).toBe(REDACTED_SANDBOX_ID);
-    const redacted = `{"sandboxId": "[redacted-sandbox-id]", "providerResources": [{"id": "[redacted-sandbox-id]"}]}`;
+    const redacted = `{"sandboxId": "[redacted-sandbox-id]", "providerResources": [{"id": "[redacted-sandbox-id]"}], "resources": [{"id": "[redacted-sandbox-id]"}]}`;
     expect(sandboxIdValues(redacted)).toEqual([]);
   });
 
@@ -64,6 +69,7 @@ const KEYS = ["sandbox" + "Id", "subject" + "SandboxId"];
 const planted = (value: string): string[] => [
   ...KEYS.map((key) => JSON.stringify({ result: { [key]: value } })),
   JSON.stringify({ ["provider" + "Resources"]: [{ kind: "sandbox", id: value }] }),
+  JSON.stringify({ ["re" + "sources"]: [{ kind: "sandbox", id: value }] }),
 ];
 
 describe("the scan's rule for a file", () => {

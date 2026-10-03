@@ -437,7 +437,7 @@ async function writeDerivative(
         }
         bytes = jsonBytes(transformed);
       }
-      bytes = scrubSandboxIdBytes(bytes, sandboxIds);
+      bytes = scrubSandboxIdBytes(file.path, bytes, sandboxIds);
       action = bytes.equals(file.bytes) ? "copied" : "updated";
     }
     await writeContainedOutputFile(stagePaths, file.path, bytes);

@@ -460,13 +460,13 @@ async function scanRunPublicSafetyDirectory(
       unscanned.push(relativePath);
       continue;
     }
-    // serve renders observer/index.html from run.json and export regenerates it, so the on-disk
-    // copy reaches neither. It embeds the Observer's own base64 fonts and scripts.
     if (
       relativePath !== SANDBOX_RECEIPTS_ARTIFACT &&
       media.sandboxIds?.some((id) => decoded.text.includes(id))
     )
       media.sandboxIdFiles?.push(relativePath);
+    // serve renders observer/index.html from run.json and export regenerates it, so the on-disk
+    // copy reaches neither. It embeds the Observer's own base64 fonts and scripts.
     const scan = scanEncodedTextCached(decoded.text, {
       allowOpaqueBase64: relativePath === "observer/index.html",
     });

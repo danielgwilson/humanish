@@ -485,7 +485,7 @@ describe("dry-run bundles", () => {
               {
                 provider: "e2b-desktop",
                 kind: "sandbox",
-                id: "sbx-failed",
+                id: "fake-failed",
                 status: "failed",
                 message: "synthetic failure",
               },
@@ -523,7 +523,7 @@ describe("dry-run bundles", () => {
               {
                 provider: "e2b-desktop",
                 kind: "sandbox",
-                id: "sbx-legacy",
+                id: "fake-legacy",
                 status: "killed",
                 message: "sandbox killed",
               },

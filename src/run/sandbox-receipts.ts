@@ -31,6 +31,20 @@ export interface ParsedSandboxReceipt extends Omit<SandboxReceipt, "provider"> {
 }
 
 /**
+ * The ids this process has receipted for each run directory, kept even when the append fails, so
+ * the run's other records can still be scrubbed of them. A few strings per run.
+ */
+const appended = new Map<string, Set<string>>();
+
+const rootKey = (root: PreparedOutputRoot): string =>
+  "physicalRunRoot" in root ? root.physicalRunRoot : root.physicalPath;
+
+/** The ids this process has receipted for `root`, whether or not the journal write landed. */
+export function appendedSandboxIds(root: PreparedOutputRoot): string[] {
+  return [...(appended.get(rootKey(root)) ?? [])];
+}
+
+/**
  * Append one receipt. Best-effort by design: the receipt exists to protect the run, so a failed
  * receipt write must never fail the participant. The only cost of a miss is that `reclaim` cannot see
  * this id and the TTL backstop covers it instead. Containment is the same prepare step every
@@ -40,6 +54,8 @@ export async function appendSandboxReceipt(
   root: PreparedOutputRoot,
   receipt: SandboxReceipt,
 ): Promise<void> {
+  const ids = appended.get(rootKey(root)) ?? new Set<string>();
+  appended.set(rootKey(root), ids.add(receipt.sandboxId));
   try {
     const filePath = await prepareContainedOutputFile(root, SANDBOX_RECEIPTS_ARTIFACT);
     await appendFile(filePath, `${JSON.stringify(receipt)}\n`, "utf8");

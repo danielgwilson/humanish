@@ -15,6 +15,7 @@ import { isProvenanceField, studyFields, type RunStudyProvenance } from "./study
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
 import type { ExecutionFailure, ExecutionOutcome } from "./judge.js";
 import { redactText } from "../evidence/redaction.js";
+import { readRunSandboxIds, scrubSandboxIds } from "./sandbox-ids.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
 
@@ -203,10 +204,12 @@ export function beginRunStatus(
     async settle(result) {
       if (finishedRecord === undefined) return;
       // The record is public-safe by construction, so each message passes the shape redaction
-      // again even though the routes scrubbed it.
+      // again even though the routes scrubbed it. A route settles with its own result, so an SDK
+      // error here can still name a sandbox; the receipts give the ids to replace.
+      const ids = await readRunSandboxIds(runPaths);
       const redacted = (failure: ExecutionFailure): ExecutionFailure => ({
         kind: failure.kind,
-        message: redactText(failure.message),
+        message: scrubSandboxIds(redactText(failure.message), ids),
       });
       const execution: ExecutionOutcome = {
         succeeded: result.execution.succeeded,

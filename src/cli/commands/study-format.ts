@@ -28,9 +28,9 @@ function withError(error: CliError | undefined, lines: string[]): HumanOutput {
 
 /** How a summary names a sandbox: by digest. The raw id is only in the run's receipts. */
 function sandboxName(sandbox: { sandboxId: string; sandboxIdDigest?: string }): string {
-  return sandbox.sandboxIdDigest === undefined
-    ? sandbox.sandboxId
-    : `[redacted-sandbox-id ${sandbox.sandboxIdDigest}]`;
+  return sandbox.sandboxIdDigest !== undefined
+    ? `[redacted-sandbox-id ${sandbox.sandboxIdDigest}]`
+    : sandbox.sandboxId;
 }
 
 /**
@@ -89,6 +89,10 @@ export function formatTerminalStudyHuman(result: TerminalProductStudyResult): Hu
     `run: ${result.runId}`,
     `actor: ${result.actor}`,
     `product: ${result.product}`,
+    ...(result.sandbox
+      ? [`sandbox: ${sandboxName(result.sandbox)} killed=${result.sandbox.killed ? "yes" : "no"}`]
+      : []),
+    ...sandboxIdsLine(result),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined
       ? []
