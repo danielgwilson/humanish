@@ -54,11 +54,15 @@ The scan reads every other run file by its bytes. It matches secret and local-pa
 
 ## Draft an issue
 
+Feedback needs a live run. `feedback draft`, `verify`, `issue` and `issue-url` refuse a
+dry run with `HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN` before verification starts, because a dry
+run tests no product behavior.
+
 Use `npx humanish feedback list --run latest` to see recorded candidates and any
 saved draft. With no candidates, `feedback draft` and `feedback issue` can still
-create a follow-up: a contract reminder for a dry run, or a summary of the recorded
-review for a live run. That summary is not a new finding, so the candidate list
-stays empty. Listing does not create a draft or verify that it is safe to share.
+create a follow-up that summarizes the recorded review. That summary is not a new
+finding, so the candidate list stays empty. Listing does not create a draft or verify
+that it is safe to share.
 
 For a `share_ready` run:
 
