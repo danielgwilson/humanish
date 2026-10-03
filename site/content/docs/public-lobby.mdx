@@ -3,7 +3,7 @@ title: Run three phone participants in one public lobby
 description: Point a shared-world study at a public multiplayer app you operate, and watch three phone-sized participants create and join one lobby at the same time.
 ---
 
-`humanish/labs/lobby-trivia-3player.yaml` is a worked example of the external-public shared-world
+`humanish/studies/lobby-trivia-3player.yaml` is a worked example of the external-public shared-world
 route. Three phone-sized participants play the same multiplayer lobby on a public deployment at
 once, and one Observer shows all three. Point `subject.appUrl` and `subject.publicTarget` at a
 deployment you own or operate.
@@ -47,10 +47,10 @@ A dry run is the default. It costs nothing and checks the study's plumbing and i
 contract without sandboxes or model tokens:
 
 ```bash
-npx humanish lab run lobby-trivia-3player
+npx humanish run lobby-trivia-3player
 ```
 
-For a live run, set `scenario.mode: live` in the study, then run it with `OPENAI_API_KEY` and
+For a live run, set `mode: live` in the study, then run it with `OPENAI_API_KEY` and
 `E2B_API_KEY` available:
 
 ```bash
@@ -60,11 +60,11 @@ npx humanish watch lobby-trivia-3player --env-file .env.local
 To watch from a phone, serve the run's Observer through an authenticated edge:
 
 ```bash
-npx humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com
+npx humanish observe --all --expose --tunnel ngrok --oauth google --allow-email you@example.com
 ```
 
 `watch --expose` streams live desktops only on the computer-use route, so a shared-world run is
-watched through `serve`.
+watched through `observe --all`.
 
 ## What the evidence claims
 

@@ -1,39 +1,43 @@
 ---
 title: Use Humanish as a library
-description: Run a lab, read a run, bring your own participant, or score a run from TypeScript or JavaScript.
+description: Run a study, read a run, bring your own participant, or score a run from TypeScript or JavaScript.
 ---
 
-`import ... from "humanish"` exposes what an adopter needs for four things: run a lab, read a run,
+`import ... from "humanish"` exposes what an adopter needs for four things: run a study, read a run,
 bring a participant, and score a run. Everything else is reached through the `humanish` command.
 
-## Run a lab
+## Run a study
 
 ```ts
-import { LAB_CONFIG_SCHEMA, parseLabConfig, runLab, type LabResult } from "humanish";
+import { STUDY_SCHEMA, parseStudy, runStudy, type StudyResult } from "humanish";
 
-const parsed = parseLabConfig({
-  schema: LAB_CONFIG_SCHEMA,
+const parsed = parseStudy({
+  schema: STUDY_SCHEMA,
   id: "library-example",
   title: "Library example",
+  route: "computer-use",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-  actors: [{ type: "openai-computer-use", mission: "Explore the app." }],
+  actor: { type: "openai-computer-use", mission: "Explore the app." },
   execution: { target: "e2b-desktop", timeoutMs: 15_000 },
 });
 if (!parsed.ok) throw new Error(parsed.error.message);
 
-const outcome = await runLab(parsed.config, { cwd: process.cwd(), dryRun: true });
+const outcome = await runStudy(parsed.config, { cwd: process.cwd(), dryRun: true });
 if (outcome.route === "computer-use") {
-  const result: LabResult<"computer-use"> = outcome.result;
+  const result: StudyResult<"computer-use"> = outcome.result;
   console.log(result.runId, result.ok);
 }
 ```
 
-`parseLabConfig` takes a decoded object, not YAML text. `runLab`'s options are `RunLabOptions`:
+`parseStudy` takes a decoded object, not YAML text: a `humanish.study.v3` study, or a 0.107
+`humanish.lab.v2` one, which warns. `runStudy`'s options are `RunStudyOptions`:
 `env`, `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `onEvent`, `onStream`,
 `analysisSignal` and `onObserverReady`, beside `dryRun`, `runId`, `count` and `rerun`. The
 [library options contract](repo:docs/contracts/schemas.md#library-options)
 lists which routes accept each one and the refusals for the rest. `routeOf(config)` returns the
-route a config takes, and `LabResult<route>` is that route's result type.
+route a config takes, and `StudyResult<route>` is that route's result type. The 0.107 names
+(`runLab`, `parseLabConfig`, `LAB_CONFIG_SCHEMA`, `RunLabOptions`, `LabResult` and the rest) are
+deprecated aliases with the same value until 0.109.
 
 `onStream` receives each participant's `participantId`, `recordId` (the id of its entry in
 `run.json` `simulations[]`, such as `sim-001`) and `streamId`, and on `ready` its `sandboxId` and
@@ -64,8 +68,8 @@ This reads trusted local output. `RunBundle["streams"][number]` and
 
 ## Bring a participant
 
-A participant is a `CuaProvider` (the brain) driving a `CuaExecutor` (the desktop or app). Pass
-`createProvider` to `runLab` to replace the default brain on a computer-use lab, and
+A participant is a `ComputerUseProvider` (the brain) driving a `ComputerUseExecutor` (the desktop or app). Pass
+`createProvider` to `runStudy` to replace the default brain on a computer-use study, and
 `inProcess: { executor }` with it to drive an app in this process with no desktop. An
 in-process run uses the same participant runner as hosted participants, so a declared
 `execution.caps.maxUsd` or `maxTotalUsd` applies: report usage from your provider, or the
@@ -80,18 +84,18 @@ node node_modules/humanish/examples/participant/run.mjs
 
 `runComputerUseLoop` is the loop underneath, for a caller that owns its own evidence;
 `defaultRedactionHooks` is the redaction it requires. `createOpenAiResponsesProvider` builds the
-default brain, and `CuaAdmissionLimitError` is how a provider refuses a request before sending it.
+default brain, and `ComputerUseAdmissionLimitError` is how a provider refuses a request before sending it.
 
 ## Score a run
 
 An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser routes,
-`deriveArtifacts`. Pass it as `runLab`'s `scorer`, or load the same file with
-`humanish lab run <lab> --scorer <file>`. The
+`deriveArtifacts`. Pass it as `runStudy`'s `scorer`, or load the same file with
+`humanish run <study> --scorer <file>`. The
 [scorer example](repo:examples/scorer/) does both.
 Every scoring context carries `ctx.bundle` and `ctx.runId`.
 
 A scorer written for one context passes through a helper that names it:
-`scorer: browserScorer({ score: (ctx: BrowserLabScoringContext) => … })` for computer use and
+`scorer: browserScorer({ score: (ctx: BrowserScoringContext) => … })` for computer use and
 shared world, and `terminalScorer(…)` with `TerminalProductScoringContext` for terminal runs. An
 inline scorer, or one that narrows `ctx` at runtime, passes as it is.
 
@@ -105,12 +109,12 @@ removed in the next minor. The first time a scorer reads each one, it prints a
 The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab` and
 `runConcurrentSharedWorld`, their option types, and the hook bag types are removed, along with the
 `cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks` and `automaticAnalysis` options.
-Use `runLab` with the options above. A JavaScript caller that still passes a bag is refused with
-`HUMANISH_LAB_OPTION_UNSUPPORTED`, naming the option to use.
+Use `runStudy` with the options above. A JavaScript caller that still passes a bag is refused with
+`HUMANISH_STUDY_OPTION_UNSUPPORTED`, naming the option to use.
 
 0.107.0 removed `runDryRun`, `runCuaActorSession`, the route result types, `LabOutcome.backend`,
 `LabBackend`, `selectLabBackend`, the `routesTo*` predicates and the lab helpers that
-`parseLabConfig` and `routeOf` cover. Use `runLab` and its `LabResult<route>`,
+`parseStudy` and `routeOf` cover. Use `runStudy` and its `StudyResult<route>`,
 `runComputerUseLoop`, `outcome.route` and `routeOf(config)`.
 [Library options](repo:docs/contracts/schemas.md#library-options)
 names the replacement for each.

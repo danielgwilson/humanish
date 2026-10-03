@@ -7,7 +7,7 @@ export default function Commands() {
         Run your first study with <em>one command</em>
       </h2>
       <p className="sec-sub rev" style={{ "--d": ".06s" } as React.CSSProperties}>
-        <code>humanish init</code> writes a lab file: who the participant is, what they are trying
+        <code>humanish init</code> writes a study file: who the participant is, what they are trying
         to do, and where your app is, a repo to clone or a URL you own. <code>humanish run</code>{" "}
         does the rest. The other three commands are what you do with what comes back. They need Node{" "}
         {NODE_FLOOR} or newer; a live run reads <code>OPENAI_API_KEY</code> and{" "}
@@ -19,12 +19,12 @@ export default function Commands() {
         <div className="cmd-row">
           <code>humanish init</code>
           <p>
-            Write the lab: the participant, the task, your app. <code>--yes</code> takes the
+            Write the study: the participant, the task, your app. <code>--yes</code> takes the
             defaults.
           </p>
         </div>
         <div className="cmd-row">
-          <code>{"humanish run <lab>"}</code>
+          <code>{"humanish run <study>"}</code>
           <p>
             The one command. A hosted desktop, a real browser, your app cloned and built if it is a
             repo, the participant at work, everything recorded to <code>.humanish/runs/</code>.{" "}
@@ -54,7 +54,7 @@ export default function Commands() {
       </div>
       <p className="cmd-note rev" style={{ "--d": ".18s" } as React.CSSProperties}>
         <span>
-          <code>humanish watch</code> with no lab plays a bundled sample study in the Observer: no
+          <code>humanish watch</code> with no study plays a bundled sample study in the Observer: no
           keys, no spend, and it never opens your app.
         </span>
       </p>

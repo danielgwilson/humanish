@@ -26,7 +26,7 @@ Use a specific run ID in place of `latest` when you compare studies or save a fi
 | Install, provider, or sandbox fails      | Fix the study setup; the participant may never have reached the app.    |
 | A task was never measured                | Treat it as unknown, even if the participant said they completed it.    |
 
-The review's verdict says what the participants experienced. The run's `ok` says whether the run worked as an execution, and `.humanish/runs/<id>/status.json` records it as `outcome.ok`, with `outcome.execution.failures` naming each failure. The two can disagree. A participant whose session passed still reads `pass` when its model provider's cleanup could not be confirmed, and the run has `ok: false`. A terminal run that exceeds its spend cap keeps the agent's own verdict and fails with `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`. A run with `ok: false` exits non-zero.
+The review's verdict says what the participants experienced. The run's `ok` says whether the run worked as an execution, and `.humanish/runs/<id>/status.json` records it as `outcome.ok`, with `outcome.execution.failures` naming each failure. The two can disagree. A participant whose session passed still reads `pass` when its model provider's cleanup could not be confirmed, and the run has `ok: false`. A terminal run that exceeds its spend cap keeps the agent's own verdict and fails with `HUMANISH_TERMINAL_CAPS_EXCEEDED`. A run with `ok: false` exits non-zero.
 
 Synthetic participants can miss problems or report things that do not reproduce. Confirm a finding against the app before treating it as a defect. See [known failure modes](/failure-modes) for when to recruit real people.
 
@@ -54,11 +54,15 @@ The scan reads every other run file by its bytes. It matches secret and local-pa
 
 ## Draft an issue
 
+Feedback needs a live run. `feedback draft`, `verify`, `issue` and `issue-url` refuse a
+dry run with `HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN` before verification starts, because a dry
+run tests no product behavior.
+
 Use `npx humanish feedback list --run latest` to see recorded candidates and any
 saved draft. With no candidates, `feedback draft` and `feedback issue` can still
-create a follow-up: a contract reminder for a dry run, or a summary of the recorded
-review for a live run. That summary is not a new finding, so the candidate list
-stays empty. Listing does not create a draft or verify that it is safe to share.
+create a follow-up that summarizes the recorded review. That summary is not a new
+finding, so the candidate list stays empty. Listing does not create a draft or verify
+that it is safe to share.
 
 For a `share_ready` run:
 
@@ -92,6 +96,6 @@ npx humanish stats --json
 
 By default, `export` writes a self-contained Observer HTML file with its screenshots. It requires `share_ready`; `--local-only` permits a watermarked local export, which still needs review before sharing. Use `--format bundle --redact-screenshots` for the separate redacted workspace shown above.
 
-`stats` summarizes outcomes, duration, and estimated costs. Unknown cost is reported as unknown. Use `--lab your-app` to focus on one lab and `--since` to select a period; the [CLI reference](/docs/cli#humanish-stats) lists accepted flags.
+`stats` summarizes outcomes, duration, and estimated costs. Unknown cost is reported as unknown. Use `--study your-app` to focus on one study and `--since` to select a period; the [CLI reference](/docs/cli#humanish-stats) lists accepted flags.
 
 Keep original run bundles so a later comparison can return to the same screenshots, actions, and app revision. A before/after claim is stronger when the same task succeeds for multiple participants after the change.

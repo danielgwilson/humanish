@@ -15,7 +15,7 @@ stays in that scope. An unknown scope is empty; it never falls back to all mail.
 A participant without an assigned address receives no inbox instruction.
 
 This works with separate participant worlds, shared worlds, and an external catch.
-Sharing an application world does not require sharing an inbox. If a lab deliberately
+Sharing an application world does not require sharing an inbox. If a study deliberately
 assigns the same address to two participants, both see that address's mail. Generated
 addresses that collide after normalization are made distinct. A message addressed
 to several participants appears in each recipient's inbox and retains its actual
@@ -56,11 +56,11 @@ comms:
       catchBaseUrl: http://127.0.0.1:8025
 ```
 
-Then run `humanish doctor --lab <lab>` and `humanish run <lab>`. Omit
+Then run `humanish doctor --study <study>` and `humanish run <study>`. Omit
 `recipients` to assign an address per participant automatically, or declare explicit
 `{ lane, address }` entries for an existing roster. The participant receives its
 address and inbox URL in its mission. Verification links keep their original
-app origin; ensure they target the loopback app port selected by the lab.
+app origin; ensure they target the loopback app port selected by the study.
 
 Each local desktop forwards a separate host-owned read-only proxy for its
 assigned recipient. Other recipient routes, the operator inbox, mail sends and

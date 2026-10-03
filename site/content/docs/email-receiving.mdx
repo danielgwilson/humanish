@@ -25,7 +25,7 @@ A rejected or unavailable authentication check does not delete the saved key.
 Authentication does not prove inbox creation/deletion permissions, quota or delivery.
 This release requires an organization-scoped key.
 
-Connections can preview and save a receiving-enabled local lab copy. The preview
+Connections can preview and save a receiving-enabled local study copy. The preview
 discloses hosted email, model processing, local review and separate provider charges.
 The original manifest is preserved. Select the new exact path when launching.
 
@@ -35,10 +35,10 @@ The same operations are available to agents:
 humanish keys set agentmail
 humanish comms connections add agentmail --json
 humanish comms check --online --json
-humanish comms configure --lab humanish/labs/signup.yaml --json
+humanish comms configure --study humanish/studies/signup.yaml --json
 # Review the returned path, disclosures and planToken, then:
-humanish comms configure --lab humanish/labs/signup.yaml --apply --plan-token <digest> --json
-humanish lab run .humanish/local/labs/signup-receiving.yaml --json --no-open
+humanish comms configure --study humanish/studies/signup.yaml --apply --plan-token <digest> --json
+humanish run .humanish/local/studies/signup-receiving.yaml --json --no-open
 ```
 
 Direct manifest authoring selects a saved connection:

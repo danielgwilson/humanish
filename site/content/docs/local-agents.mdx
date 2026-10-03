@@ -12,38 +12,38 @@ set `review.analysis: false`. A Codex account analyst can also be
 [selected explicitly](repo:docs/product/automatic-analysis.md);
 changing the participant alone does not change the analyst.
 
-Replace the `actors` block in your [own-app lab](/docs/your-app) with this fragment,
-and delete `execution.caps`. A Codex participant signed in with a ChatGPT account
-has no API price, so a dollar cap is refused with `HUMANISH_CUA_LAB_UNPRICED_CAP`
-(`HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP` in a shared-world lab);
+Replace the `actor` block in your [own-app study](/docs/your-app) with this fragment,
+and delete `caps`. A Codex participant signed in with a ChatGPT account
+has no API price, so a dollar cap is refused with `HUMANISH_COMPUTER_USE_UNPRICED_CAP`
+(`HUMANISH_SHARED_WORLD_UNPRICED_CAP` in a shared-world study);
 for Claude Code the cap does not bound subscription usage. Keep a finite
 `execution.timeoutMs`, which bounds both.
 
 ```yaml
-actors:
-  - type: local-agent # instead of openai-computer-use
-    localAgent: codex # use claude for Claude Code
-    persona: synthetic-new-user
-    mission: >-
-      Try the app as a newcomer. Complete its primary task, then report what happened.
+actor:
+  type: local-agent # instead of openai-computer-use
+  localAgent: codex # use claude for Claude Code
+  persona: synthetic-new-user
+  mission: >-
+    Try the app as a newcomer. Complete its primary task, then report what happened.
 ```
 
 `localAgent` chooses the installed CLI (`codex` is the default); `model` is a
 separate optional model selection passed to that CLI. When it is omitted, the
 hosted Codex route retains the operator's configured model selection. Having Codex
-installed does not change an `openai-computer-use` lab.
+installed does not change an `openai-computer-use` study.
 
-Check the CLI's sign-in state, then the lab's setup:
+Check the CLI's sign-in state, then the study's setup:
 
 ```bash
 codex login status                 # or: claude auth status
-npx humanish doctor --lab .humanish/labs/your-app.yaml
+npx humanish doctor --study .humanish/studies/your-app.yaml
 ```
 
-For a signed-in Codex participant on an E2B desktop, `doctor --lab` also starts
+For a signed-in Codex participant on an E2B desktop, `doctor --study` also starts
 Codex as the run would, up to an ephemeral thread and without a model turn: the
 release check, then `initialize`, `config/read`, `account/read` and `thread/start`
-with your Codex configuration and the lab's `model` and reasoning effort. The row
+with your Codex configuration and the study's `model` and reasoning effort. The row
 names the release, the model and whether Codex is signed in with ChatGPT or an API
 key. A refused release, configuration or model shows up there instead of in the run.
 
@@ -51,9 +51,9 @@ If signed out, use `codex login` or `claude auth login`. Before launching a
 desktop, humanish asks the selected CLI for its local authentication status.
 An unavailable or unrecognized status fails before desktop creation and asks
 you to check or update the CLI; it is not reported as a confirmed sign-out.
-A CLI that is not on PATH is refused as `HUMANISH_CUA_LAB_AGENT_MISSING`, and a
-signed-out or unrecognized status as `HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED`.
-Shared-world labs use the same endings after `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_`.
+A CLI that is not on PATH is refused as `HUMANISH_COMPUTER_USE_AGENT_MISSING`, and a
+signed-out or unrecognized status as `HUMANISH_COMPUTER_USE_AGENT_SIGNIN_REQUIRED`.
+Shared-world studies use the same endings after `HUMANISH_SHARED_WORLD_`.
 This checks local status, not remote account validity, model access or quota.
 
 [Codex supports ChatGPT sign-in or API-key authentication](https://learn.chatgpt.com/docs/auth).
@@ -102,10 +102,10 @@ inputs execute in the selected sandbox; credentials stay with the host CLI.
 - **Both agents keep one conversation for the whole run.** Codex through an
   app-server thread, Claude Code through one `claude -p` stream-json session.
   A participant that starts every turn cold cannot remember trying the menu
-  and tries it again; measured on one lab, that was 188 actions over 90 turns
+  and tries it again; measured on one study, that was 188 actions over 90 turns
   and no finish against 21 actions over 8 turns. `HUMANISH_LOCAL_AGENT_ONE_SHOT=1`
   keeps the cold-start path for the Claude agent as a measurement switch, so
-  "remembers" can be compared against "does not" on your own lab; the trace's
+  "remembers" can be compared against "does not" on your own study; the trace's
   `ids.model` says which ran.
 
 Use the [budget guide](/docs/budgets-and-privacy) to distinguish model estimates, plan usage, and desktop costs.

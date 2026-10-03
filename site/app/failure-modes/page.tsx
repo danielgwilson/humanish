@@ -104,7 +104,7 @@ export default function FailureModes() {
               <b>Missions are bounded and the clock is published.</b> The Excalidraw study ran four
               participants to completion in 6m 06s wall-clock at ~$1.54 estimated (run{" "}
               <code>cua-2026-08-07T17-44-48-760Z-87389419</code>, rates as of 2026-08-05). Nothing
-              in the shipped labs asks an actor to hold an hour-plus goal, because the benchmark
+              in the shipped studies asks an actor to hold an hour-plus goal, because the benchmark
               above says it would fail about four times in five.
             </p>
             <p className="sec-sub rev">
@@ -388,7 +388,7 @@ export default function FailureModes() {
           <h3 className="fm-sub rev">Judgment is the adopter&rsquo;s seam</h3>
           <div className="fm-prose">
             <p className="sec-sub rev">
-              Product semantics belong in the adopter&rsquo;s repo. A lab manifest can declare{" "}
+              Product semantics belong in the adopter&rsquo;s repo. A study file can declare{" "}
               <code>review.scorer.ref</code> (or pass <code>--scorer &lt;path&gt;</code>) to load
               adopter-defined scoring against the full trace. The design position, verbatim from
               humanish&rsquo;s own actor-fidelity notes: &ldquo;The harness emits facts; the adopter

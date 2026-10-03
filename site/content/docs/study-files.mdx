@@ -1,27 +1,27 @@
 ---
-title: Lab manifest reference
-description: Choose a subject route, keep private labs local, and replay scripted browser scenarios.
+title: Study file reference
+description: Choose a route, keep private studies local, and replay scripted browser scenarios.
 ---
 
-Start with the complete [own-app lab](/docs/your-app) and use this reference when changing its source, route, or execution controls.
+Start with the complete [own-app study](/docs/your-app) and use this reference when changing its source, route, or execution controls.
 
-## Where labs live
+## Where studies live
 
-Labs are authored as `.yaml` source:
+Studies are written as `.yaml` files:
 
 ```text
-humanish/labs/*.yaml          committed public-safe labs
-.humanish/labs/*.yaml         ignored local labs
-.humanish/local/labs/*.yaml   ignored private or machine-specific labs
+humanish/studies/*.yaml          committed public-safe studies
+.humanish/studies/*.yaml         ignored local studies
+.humanish/local/studies/*.yaml   ignored private or machine-specific studies
 ```
 
-Committed labs should be useful to anyone who clones the project. Private repo
+Committed studies should be useful to anyone who clones the project. Private repo
 targets, token-backed provider settings, and local-only dogfood variants belong
-in ignored `.humanish/` lab manifests and can be run explicitly:
+in ignored `.humanish/` study files and can be run explicitly:
 
 ```bash
-npx humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
-npx humanish lab run .humanish/labs/local-dogfood.yaml --json --no-open
+npx humanish watch .humanish/studies/local-dogfood.yaml --env-file .humanish/local/provider.env
+npx humanish run .humanish/studies/local-dogfood.yaml --json --no-open
 ```
 
 `--env-file` loads values into the current humanish process; declared subject
@@ -29,22 +29,42 @@ variables can then be provisioned to the sandbox. Environment provenance records
 names. Persisted text is scrubbed for known values and secret patterns, with the
 [coverage limits described under verify before sharing](/docs/read-results#verify-before-sharing).
 
+## Move files from 0.107
+
+Before 0.108.0 a study was a `humanish.lab.v2` file under a `labs/` folder. Those
+files still run in 0.108, each with a warning, and 0.109 stops reading them. A name
+that exists under both a `labs/` and a `studies/` folder is an error that names both
+paths.
+
+```bash
+npx humanish migrate --dry-run
+npx humanish migrate
+```
+
+`--dry-run` lists each file's destination and every key it moves or drops, with the
+dropped values, and writes nothing. `migrate` then rewrites each v2 file as v3 and
+moves it from `labs/` to the matching `studies/` folder; a v2 file outside `labs/` is
+rewritten in place. Comments move with their keys. A key the v2 file declared but its
+route never read is dropped and reported, and a file that uses YAML anchors is refused
+with the line number.
+
 ## Inspect the route before running
 
 ```bash
-npx humanish lab list --json
-npx humanish lab inspect first-run --json
-npx humanish lab preflight first-run --json
+npx humanish study list --json
+npx humanish study show first-run --json
+npx humanish study check first-run --json
 ```
 
-A lab's subject, execution target, actor, and scenario jointly determine its route.
-Declaring a field does not make every route support it. Read preflight warnings;
-unsupported compositions fail closed or identify inert fields.
+A study names its route in `route:`: `preview`, `computer-use`, `shared-world`,
+`terminal` or `scripted`. The parser reads that route's keys only, and a key the route
+never reads is an error that names the route, such as "route: preview reads no
+`caps`; remove the block." The subject, execution target and actor must also fit the
+route. Read the `study check` warnings; an unsupported composition fails closed.
 
-In humanish `0.83.0` and later, `lanes[]` entries and roster groups reject unknown fields
-before a run starts. For example, `runtme` produces `HUMANISH_LAB_INVALID` with the
-group or entry index; it cannot silently become a default. Use `instruction`
-to steer one participant.
+`participants` entries reject unknown fields before a run starts. For example, a
+misspelled `runtme` produces `HUMANISH_STUDY_INVALID` with the entry index; it cannot
+silently become a default. Use `instruction` to steer one participant.
 
 | Subject source     | Use                                                                                                                               |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -58,13 +78,13 @@ to steer one participant.
 
 [Computer-use controls](/docs/computer-use) cover hosted browsers, screenshots,
 devices, stopping, and reruns. For the complete schema and route validation, read
-[the lab parser](repo:src/lab/)
+[the study parser](repo:src/lab/)
 and [schema contracts](repo:docs/contracts/schemas.md).
 
 ## Scripted browser scenarios
 
-A scripted-browser lab replays committed browser steps against an app you run on
-a loopback URL. The steps come from the scenario named by `scenario.ref` and make
+A scripted study replays committed browser steps against an app you run on
+a loopback URL. The steps come from the scenario named by `scenario` and make
 no model requests. Browser steps are public-safe source, so use synthetic fixture
 values and committed relative app paths only.
 
@@ -105,28 +125,28 @@ element and presses the key; without one it presses the key on the focused
 element. Supported expectations are `text`, `selectorVisible`, `urlIncludes`,
 and `stateChanged`.
 
-Save the scenario as `humanish/scenarios/todo-onboarding.yaml` and point a lab at
-it. The repository's [`humanish/`](repo:humanish/) folder holds a complete
-example, `scripted-demo.yaml`.
+Save the scenario as `humanish/scenarios/todo-onboarding.yaml` and point a study at
+it. [`humanish/studies/scripted-demo.yaml`](repo:humanish/studies/scripted-demo.yaml)
+is a complete example.
 
 ```yaml
-schema: humanish.lab.v2
+schema: humanish.study.v3
 id: todo-onboarding
+route: scripted
+mode: live
 subject:
   source: app-url
   appUrl: http://127.0.0.1:3000
-actors:
-  - type: scripted-browser
-    count: 2
-scenario:
-  ref: todo-onboarding
-  mode: live
+actor:
+  type: scripted-browser
+surfaces: [desktop, mobile]
+scenario: todo-onboarding
 review:
   analysis: false
 ```
 
-Save it as `humanish/labs/todo-onboarding.yaml`. `count: 2` adds a mobile surface
-to the desktop one. Without `mode: live` the lab is a dry run: it validates the steps
+Save it as `humanish/studies/todo-onboarding.yaml`. `surfaces: [desktop, mobile]` adds a
+mobile surface to the desktop one. Without `mode: live` the study is a dry run: it validates the steps
 and writes a contract bundle without opening a browser. Post-run analysis is separate
 from the steps: when `OPENAI_API_KEY` is set it runs by default, and it is refused when
 its estimate exceeds $3. `analysis: false` turns it off, so the study makes no model
@@ -134,12 +154,12 @@ requests.
 
 A live run drives a local Chrome or Chromium against your app, so start the app on
 `http://127.0.0.1:3000` first. If humanish finds no browser, the run stops with
-`HUMANISH_SCRIPTED_LAB_BROWSER_MISSING`; set `HUMANISH_BROWSER_COMMAND` to the browser
+`HUMANISH_SCRIPTED_BROWSER_MISSING`; set `HUMANISH_BROWSER_COMMAND` to the browser
 binary. `--dry-run` checks the steps without either:
 
 ```bash
-npx humanish lab run todo-onboarding --dry-run --json --no-open
-npx humanish lab run todo-onboarding --json --no-open
+npx humanish run todo-onboarding --dry-run --json --no-open
+npx humanish run todo-onboarding --json --no-open
 npx humanish verify --run latest --json
 ```
 
