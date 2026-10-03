@@ -17,6 +17,7 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 import { isNodeError } from "../run/type-guards.js";
+import { studyFileCandidates, studyFileStem, STUDY_DIRECTORIES } from "../study/files.js";
 
 const LAB_LIST_SCHEMA = "humanish.lab-list.v1";
 const LAB_INSPECT_SCHEMA = "humanish.lab-inspect.v1";
@@ -35,7 +36,7 @@ export interface LabResolveFailure {
   cwd: string;
   lab: string;
   error: {
-    code: "HUMANISH_STUDY_NOT_FOUND" | "HUMANISH_STUDY_INVALID";
+    code: "HUMANISH_STUDY_NOT_FOUND" | "HUMANISH_STUDY_INVALID" | "HUMANISH_STUDY_AMBIGUOUS";
     message: string;
   };
   warnings: string[];
@@ -55,6 +56,8 @@ export interface LabListEntry {
    * stakeholder feedback that added this was, verbatim, "so i know wtf they are".
    */
   description?: string;
+  /** Why `run` refuses this file by name: its stem also names a file in the other directory family. */
+  error?: string;
 }
 
 export interface LabListResult {
@@ -96,12 +99,6 @@ type ManagedDirectoryResult =
   | { status: "unsafe"; message: string }
   | { status: "ok"; binding: ManagedDirectoryBinding };
 
-const committedLabsDir = path.join("humanish", "labs");
-const ignoredLabsDirs = [
-  path.join(".humanish", "labs"),
-  path.join(".humanish", "local", "labs"),
-] as const;
-
 export async function resolveLabManifest(cwd: string, lab: string): Promise<LabResolveResult> {
   const resolvedCwd = path.resolve(cwd);
   const warnings: string[] = [];
@@ -132,17 +129,10 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
     });
   }
 
-  const candidates = [
-    { origin: "committed" as const, relativePath: path.join(committedLabsDir, `${lab}.yaml`) },
-    { origin: "committed" as const, relativePath: path.join(committedLabsDir, `${lab}.yml`) },
-    ...ignoredLabsDirs.flatMap((dir) => [
-      { origin: "ignored" as const, relativePath: path.join(dir, `${lab}.yaml`) },
-      { origin: "ignored" as const, relativePath: path.join(dir, `${lab}.yml`) },
-    ]),
-  ];
-
+  // A studies/ file wins over every labs/ file. The same stem under both families is an error, so
+  // neither file silently shadows the other.
+  const candidates = studyFileCandidates(lab);
   for (const candidate of candidates) {
-    const requestedPath = path.join(resolvedCwd, candidate.relativePath);
     const read = await readManagedManifest(projectRoot, candidate.relativePath);
     if (read.status === "missing") {
       continue;
@@ -150,11 +140,23 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
     if (read.status === "unsafe") {
       return invalidLab({ cwd: resolvedCwd, lab, warnings }, read.message);
     }
+    if (candidate.directory.family === "studies") {
+      for (const other of candidates.filter((entry) => entry.directory.family === "labs")) {
+        const present = await inspectManagedPath(projectRoot, other.relativePath, "file");
+        if (present.status !== "missing")
+          return ambiguousStudy(
+            resolvedCwd,
+            lab,
+            [candidate.relativePath, other.relativePath],
+            warnings,
+          );
+      }
+    }
     return parseResolvedLab({
       cwd: resolvedCwd,
       lab,
-      origin: candidate.origin,
-      path: requestedPath,
+      origin: candidate.directory.origin,
+      path: path.join(resolvedCwd, candidate.relativePath),
       warnings,
       contents: read.contents,
     });
@@ -166,7 +168,7 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
 export async function listLabManifests(cwd: string): Promise<LabListResult> {
   const resolvedCwd = path.resolve(cwd);
   const warnings: string[] = [];
-  const labs = new Map<string, LabListEntry>();
+  const listed = new Map<string, LabListEntry>();
   const projectRoot = await bindProjectRoot(resolvedCwd);
   if (!projectRoot) {
     return {
@@ -178,12 +180,10 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
     };
   }
 
-  const dirs = [
-    { origin: "committed" as const, relativeDir: committedLabsDir },
-    ...ignoredLabsDirs.map((relativeDir) => ({ origin: "ignored" as const, relativeDir })),
-  ];
+  // Each stem's files by directory family, to mark the stems that name a file in both.
+  const stems = new Map<string, { studies?: string; legacy?: string; keys: string[] }>();
 
-  for (const entry of dirs) {
+  for (const entry of STUDY_DIRECTORIES) {
     const directory = await bindManagedDirectory(projectRoot, entry.relativeDir);
     if (directory.status === "missing") {
       continue;
@@ -211,6 +211,11 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
         warnings.push(`${entry.relativeDir}: unsafe lab manifest name; skipped.`);
         continue;
       }
+      const stem = stemSlot(stems, studyFileStem(name) ?? name);
+      stem[entry.family === "studies" ? "studies" : "legacy"] ??= relativeToCwd(
+        resolvedCwd,
+        path.join(resolvedCwd, relativePath),
+      );
 
       const requestedPath = path.join(resolvedCwd, relativePath);
       const read = await readManagedManifest(projectRoot, relativePath);
@@ -235,7 +240,8 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
       }
 
       const key = `${parsed.config.id}:${entry.origin}:${relativeToCwd(resolvedCwd, requestedPath)}`;
-      labs.set(key, {
+      stem.keys.push(key);
+      listed.set(key, {
         id: parsed.config.id,
         source: parsed.config.subject.source,
         origin: entry.origin,
@@ -249,11 +255,20 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
     }
   }
 
+  for (const [name, stem] of stems) {
+    if (stem.studies === undefined || stem.legacy === undefined) continue;
+    const error = `${name} names two files, ${stem.studies} and ${stem.legacy}; running it by name fails until one is removed.`;
+    for (const key of stem.keys) {
+      const entry = listed.get(key);
+      if (entry) entry.error = error;
+    }
+  }
+
   return {
     schema: LAB_LIST_SCHEMA,
     ok: true,
     cwd: resolvedCwd,
-    labs: [...labs.values()].sort((left, right) =>
+    labs: [...listed.values()].sort((left, right) =>
       `${left.origin}:${left.id}`.localeCompare(`${right.origin}:${right.id}`),
     ),
     warnings,
@@ -553,6 +568,38 @@ function invalidLab(
   };
 }
 
+function stemSlot(
+  stems: Map<string, { studies?: string; legacy?: string; keys: string[] }>,
+  name: string,
+): { studies?: string; legacy?: string; keys: string[] } {
+  let slot = stems.get(name);
+  if (slot === undefined) {
+    slot = { keys: [] };
+    stems.set(name, slot);
+  }
+  return slot;
+}
+
+/** The same stem under a studies/ and a labs/ directory: discovery reads neither. */
+function ambiguousStudy(
+  cwd: string,
+  name: string,
+  paths: [studiesPath: string, labsPath: string],
+  warnings: string[],
+): LabResolveFailure {
+  const [studiesPath, labsPath] = paths.map((entry) => entry.replace(/\\/g, "/"));
+  return {
+    ok: false,
+    cwd,
+    lab: name,
+    error: {
+      code: "HUMANISH_STUDY_AMBIGUOUS",
+      message: `${name} names two files, ${studiesPath} and ${labsPath}. Keep the one under studies/ and remove the other, or pass the path of the one to run.`,
+    },
+    warnings,
+  };
+}
+
 function labNotFound(cwd: string, lab: string, warnings: string[]): LabResolveFailure {
   return {
     ok: false,
@@ -560,7 +607,7 @@ function labNotFound(cwd: string, lab: string, warnings: string[]): LabResolveFa
     lab,
     error: {
       code: "HUMANISH_STUDY_NOT_FOUND",
-      message: `Lab not found: ${lab}. Look in humanish/labs/ or pass a .yaml path.`,
+      message: `Lab not found: ${lab}. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.`,
     },
     warnings,
   };
