@@ -204,9 +204,9 @@ export function parseParticipantIds(value: string | undefined): string[] {
 // post-write guard (invocationEnvelopeAlreadyWritten above) through the same
 // funnel every real command uses, without duplicating its stdout-vs-formatHuman
 // branching. Not re-exported from src/index.ts; this stays an internal seam.
-/** An error as a result carries it. */
+/** An error as a result carries it. A result with only a message, such as keys or comms, has no code. */
 export interface CliError {
-  code: string;
+  code?: string;
   message: string;
 }
 
@@ -216,27 +216,34 @@ export interface CliError {
  */
 export type HumanOutput = string | { stdout?: string; error?: CliError | undefined };
 
-/** The command that fixes an error, by code, when its message does not already name one. */
+/**
+ * The command to run next, by code. A code is listed only when its messages do not already name a
+ * command: the run-not-found and lab-less run messages do.
+ */
 const NEXT_COMMAND: Readonly<Record<string, string>> = {
   HUMANISH_STUDY_NOT_FOUND: "humanish lab list",
-  HUMANISH_LIVE_RUN_UNIMPLEMENTED: "humanish lab list",
 };
 
 /** `<command> failed: <message>`, then `code: <CODE>`, then `next: <command>` when one is known. */
 export function formatCliError(command: string, error: CliError): string {
-  const next = NEXT_COMMAND[error.code];
+  const next = error.code === undefined ? undefined : NEXT_COMMAND[error.code];
   return (
     [
       `${command} failed: ${error.message}`,
-      `code: ${error.code}`,
+      ...(error.code === undefined ? [] : [`code: ${error.code}`]),
       ...(next === undefined ? [] : [`next: ${next}`]),
     ].join("\n") + "\n"
   );
 }
 
+/** A result whose human output is its message: stdout when it passed, stderr when it failed. */
+export function messageOutput(value: { ok: boolean; message: string }): HumanOutput {
+  return value.ok ? `${value.message}\n` : { error: { message: value.message } };
+}
+
 /** A failed result's human output: its error on stderr and nothing on stdout. */
 export function humanError(error: CliError | undefined): HumanOutput {
-  return { error: error ?? { code: "HUMANISH_UNKNOWN_ERROR", message: "the command failed" } };
+  return { error: error ?? { message: "the command failed without a recorded error" } };
 }
 
 /** "humanish lab inspect": the command's path as a person types it. */

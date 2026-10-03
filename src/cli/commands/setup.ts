@@ -29,6 +29,7 @@ import {
   wantsJson,
   writeResult,
   formatCliError,
+  type HumanOutput,
 } from "../io.js";
 
 export function registerInitCommand(parent: Command, io: CliIo): void {
@@ -204,7 +205,8 @@ interface KeysResult {
   message: string;
 }
 
-function formatKeysHuman(result: KeysResult): string {
+function formatKeysHuman(result: KeysResult): HumanOutput {
+  if (!result.ok) return { error: { message: result.message } };
   const lines = [
     `humanish keys ${result.ok ? "ok" : "failed"}`,
     `store: ${result.store}`,

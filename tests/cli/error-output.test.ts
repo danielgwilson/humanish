@@ -57,7 +57,16 @@ const FAILURES: ReadonlyArray<readonly [name: string, args: string[], depth: num
   ["observe-bad-port", ["observe", "--port", "99999"], 1],
   ["serve-bad-port", ["serve", "--port", "99999"], 1],
   ["doctor-missing-env-file", ["doctor", "--env-file", "missing.env"], 1],
+  ["verify-verbose-missing-run", ["verify", "--run", "nope", "--verbose"], 1],
+  ["analyze-bad-timeout", ["analyze", "--timeout-ms", "0"], 1],
+  ["keys-set-bad-name", ["keys", "set", "bad-name"], 2],
+  ["comms-check-missing-lab", ["comms", "check", "--lab", "nope-lab"], 2],
 ];
+
+// keys acts on the user key store, not a project, so it takes no --cwd.
+const NO_CWD = new Set(["keys-set-bad-name"]);
+const withCwd = (name: string, args: string[], cwd: string) =>
+  NO_CWD.has(name) ? args : [...args, "--cwd", cwd];
 
 describe("failing commands in --json mode", () => {
   let cwd: string;
@@ -71,26 +80,36 @@ describe("failing commands in --json mode", () => {
       .join("[cwd]")
       .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "[time]");
 
+  const savedConfigHome = process.env.XDG_CONFIG_HOME;
+
   beforeAll(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-error-output-"));
     physical = await realpath(cwd);
+    // keys reports the user store path; keep it inside the masked project.
+    process.env.XDG_CONFIG_HOME = path.join(cwd, "user-config");
     for (const [name, args] of FAILURES)
-      runs.set(name, await runCli([...args, "--cwd", cwd, "--json"]));
+      runs.set(name, await runCli([...withCwd(name, args, cwd), "--json"]));
   });
 
   afterAll(async () => {
+    if (savedConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = savedConfigHome;
     await rm(cwd, { recursive: true, force: true });
   });
 
   it.each(FAILURES)("%s prints its error on stderr in human mode", async (name, args, depth) => {
-    const json = JSON.parse(runs.get(name)!.stdout) as { error: { code: string; message: string } };
-    const human = await runCli([...args, "--cwd", cwd]);
+    // keys and comms results carry a message and no error code.
+    const json = JSON.parse(runs.get(name)!.stdout) as {
+      message?: string;
+      error?: { code: string; message: string };
+    };
+    const human = await runCli(withCwd(name, args, cwd));
     expect(human.exitCode).toBe(2);
-    expect(human.stdout).not.toContain(json.error.code);
     const label = `humanish ${args.slice(0, depth).join(" ")}`;
-    expect(human.stderr).toContain(
-      `${label} failed: ${json.error.message}\ncode: ${json.error.code}\n`,
-    );
+    const message = json.error?.message ?? json.message ?? "";
+    const code = json.error === undefined ? "" : `code: ${json.error.code}\n`;
+    expect(human.stderr).toContain(`${label} failed: ${message}\n${code}`);
+    expect(human.stdout).not.toContain(message);
   });
 
   it("names the next command for an error whose message does not", async () => {

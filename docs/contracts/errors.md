@@ -7,8 +7,12 @@ release.
 ## Where a code appears
 
 - `--json`: the envelope has `ok: false` and `error: { code, message }`, and the command exits 2.
-  This output is the interface for scripts and agents.
-- Human mode: three lines on stderr.
+  This output is the interface for scripts and agents. Two exceptions:
+  - A command-line usage error, such as an unknown option or a missing argument, prints
+    Commander's message on stderr, exits 1 and prints no JSON.
+  - `keys` and the `comms` connection commands report a failure as `ok: false` with a `message`
+    and no `error` field.
+- Human mode: two or three lines on stderr.
 
   ```text
   humanish run failed: Lab not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.
@@ -16,9 +20,13 @@ release.
   next: humanish lab list
   ```
 
-  The `next:` line appears when the message does not already name the command to run. Stdout keeps
-  only a result's other lines, such as the run id of a run that failed after it started. Before
-  0.108.0, human mode printed the code and message on stdout.
+  A result with no code (`keys`, `comms`) prints no `code:` line. The `next:` line comes from a
+  table in `src/cli/io.ts` keyed by code, which today holds `HUMANISH_STUDY_NOT_FOUND`. Other
+  codes get no `next:` line, though some messages name a command, as the run-not-found message
+  names `humanish runs`. Stdout keeps a result's other lines: a failed run
+  prints its run id, route and participants there, and a failed `verify` prints its failing
+  checks there, since they are its result. Before 0.108.0, human mode printed the code and message
+  on stdout.
 
 - Library: the result objects `runLab` and the analysis entry points return carry the same
   `error.code`.

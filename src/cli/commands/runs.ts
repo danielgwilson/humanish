@@ -361,7 +361,8 @@ function formatVerifyHuman(result: VerifyResult): HumanOutput {
   return `${lines.join("\n")}\n`;
 }
 
-function formatVerifyVerbose(result: VerifyResult): string {
+function formatVerifyVerbose(result: VerifyResult): HumanOutput {
+  if (result.error?.code === "HUMANISH_RUN_NOT_FOUND") return humanError(result.error);
   return (
     [
       `humanish verify ${result.ok ? "passed" : "failed"}`,

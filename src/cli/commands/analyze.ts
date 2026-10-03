@@ -21,6 +21,7 @@ import {
   JSON_OPTION_DESCRIPTION,
   RUN_OPTION_DESCRIPTION,
   writeResult,
+  humanError,
 } from "../io.js";
 import { resolvePhysicalCwd } from "../../run/paths.js";
 
@@ -160,9 +161,7 @@ async function handleAnalyze(
       options.dryRun === true,
     );
     if (refusal) {
-      writeResult(command, io, refusal, (value) =>
-        forTerminal(`${value.error?.message ?? ""}\n${value.error?.code ?? ""}\n`),
-      );
+      writeResult(command, io, refusal, (value) => humanError(value.error));
       io.setExitCode(2);
       return;
     }
@@ -178,7 +177,7 @@ async function handleAnalyze(
         message: selected.ok ? "Analysis is disabled." : selected.message,
       },
     };
-    writeResult(command, io, result, (value) => `${value.error.message}\n`);
+    writeResult(command, io, result, (value) => humanError(value.error));
     io.setExitCode(2);
     return;
   }
@@ -213,8 +212,6 @@ async function handleAnalyze(
       if (value.ok && value.dryRun)
         return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
       const lines: string[] = [];
-      if (!value.ok)
-        lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
       if (value.artifactPath)
         lines.push(
           `${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`,
@@ -233,7 +230,11 @@ async function handleAnalyze(
       }
       if (value.reused) lines.push("No new request sent.");
       lines.push(...value.warnings);
-      return forTerminal(lines.filter(Boolean).join("\n") + "\n");
+      const stdout = lines.length === 0 ? "" : forTerminal(lines.join("\n") + "\n");
+      // A failed analysis keeps its artifact and usage lines on stdout; the error goes to stderr.
+      if (value.ok) return stdout;
+      const error = value.error ?? { message: "Analysis unavailable." };
+      return { ...(stdout ? { stdout } : {}), error };
     });
     io.setExitCode(result.ok ? 0 : 2);
   } finally {
