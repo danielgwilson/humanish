@@ -52,7 +52,7 @@ const FAILURES: ReadonlyArray<readonly [name: string, args: string[], depth: num
   ["feedback-missing-run", ["feedback", "draft", "--run", "nope"], 2],
   ["run-missing-lab", ["run", "nope-lab"], 1],
   ["run-bad-count", ["run", "--count", "0"], 1],
-  ["lab-inspect-missing", ["lab", "inspect", "nope-lab"], 2],
+  ["study-show-missing", ["study", "show", "nope-study"], 2],
   ["stats-bad-since", ["stats", "--since", "last tuesday"], 1],
   ["observe-bad-port", ["observe", "--port", "99999"], 1],
   ["serve-bad-port", ["serve", "--port", "99999"], 1],
@@ -60,7 +60,7 @@ const FAILURES: ReadonlyArray<readonly [name: string, args: string[], depth: num
   ["verify-verbose-missing-run", ["verify", "--run", "nope", "--verbose"], 1],
   ["analyze-bad-timeout", ["analyze", "--timeout-ms", "0"], 1],
   ["keys-set-bad-name", ["keys", "set", "bad-name"], 2],
-  ["comms-check-missing-lab", ["comms", "check", "--lab", "nope-lab"], 2],
+  ["comms-check-missing-study", ["comms", "check", "--study", "nope-study"], 2],
 ];
 
 // keys acts on the user key store, not a project, so it takes no --cwd.
@@ -115,7 +115,7 @@ describe("failing commands in --json mode", () => {
   it("names the next command for an error whose message does not", async () => {
     const human = await runCli(["run", "nope-lab", "--cwd", cwd]);
     expect(human.stderr).toBe(
-      "humanish run failed: Lab not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.\ncode: HUMANISH_STUDY_NOT_FOUND\nnext: humanish lab list\n",
+      "humanish run failed: Lab not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.\ncode: HUMANISH_STUDY_NOT_FOUND\nnext: humanish study list\n",
     );
     expect(human.stdout).toBe("");
   });

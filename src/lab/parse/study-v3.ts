@@ -132,19 +132,23 @@ export function studySpelling(
   route: StudyRoute,
   participantSource: readonly number[],
 ): string {
-  return message
-    .replaceAll(
-      /actors\[0\]\.lanes\[(\d+)\]/g,
-      (_match, index: string) => `participants[${participantSource[Number(index)] ?? index}]`,
-    )
-    .replaceAll(/actors\[0\]\.(lanes|roster)\b/g, "participants")
-    .replaceAll(/actors\[0\]\.laneFocus(\.instruction)?/g, "participants.instruction")
-    .replaceAll(/actors\[0\]\.count\b/g, route === "scripted" ? "surfaces" : "participants")
-    .replaceAll("actors[0]", "actor")
-    .replaceAll(/\b(execution|scenario)\.caps\b/g, "caps")
-    .replaceAll(/\bscenario\.mode\b/g, "mode")
-    .replaceAll(/\bscenario\.ref\b/g, "scenario")
-    .replaceAll("subject.topology: shared-world", "route: shared-world");
+  return (
+    message
+      .replaceAll(
+        /actors\[0\]\.lanes\[(\d+)\]/g,
+        (_match, index: string) => `participants[${participantSource[Number(index)] ?? index}]`,
+      )
+      // "an `actors[0].lanes` roster" reads "a `participants` list" in a v3 file.
+      .replaceAll(/\ban `actors\[0\]\.(lanes|roster)` roster\b/g, "a `participants` list")
+      .replaceAll(/actors\[0\]\.(lanes|roster)\b/g, "participants")
+      .replaceAll(/actors\[0\]\.laneFocus(\.instruction)?/g, "participants.instruction")
+      .replaceAll(/actors\[0\]\.count\b/g, route === "scripted" ? "surfaces" : "participants")
+      .replaceAll("actors[0]", "actor")
+      .replaceAll(/\b(execution|scenario)\.caps\b/g, "caps")
+      .replaceAll(/\bscenario\.mode\b/g, "mode")
+      .replaceAll(/\bscenario\.ref\b/g, "scenario")
+      .replaceAll("subject.topology: shared-world", "route: shared-world")
+  );
 }
 
 // The v2 keys a hand-converted file is most likely to keep, each with where it went.

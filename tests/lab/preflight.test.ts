@@ -217,7 +217,7 @@ describe("lab preflight", () => {
         ].join("\n"),
       },
       async (cwd) => {
-        const result = await runCli(["lab", "preflight", "first-run", "--cwd", cwd, "--json"]);
+        const result = await runCli(["study", "check", "first-run", "--cwd", cwd, "--json"]);
         const envelope = JSON.parse(result.stdout) as LabPreflightResult;
 
         expect(result.exitCode).toBe(0);

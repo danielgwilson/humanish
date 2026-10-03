@@ -58,7 +58,7 @@ describe("what to do next, resolved against this machine", () => {
       platform: "linux",
       arch: "x64",
     });
-    expect(linux.at(-1)?.command).toBe("npx humanish doctor --lab local-browser");
+    expect(linux.at(-1)?.command).toBe("npx humanish doctor --study local-browser");
     expect(linux.at(-1)?.why).toContain("Docker, KVM, TUN");
     expect(linux.at(-1)?.why).toContain("no E2B or model API key");
     expect(linux.at(-1)?.why).toContain("npx humanish runtime setup");

@@ -32,7 +32,7 @@ export interface FrameProps {
   columns: number;
   /** Right-hand header text: the project, and what is live in it. */
   context: string | undefined;
-  /** Breadcrumb under the wordmark, e.g. `‹ labs / observer-live-check`. */
+  /** Breadcrumb under the wordmark, e.g. `‹ studies / observer-live-check`. */
   breadcrumb: string | undefined;
   /** The key legend, already written for this screen. */
   hints: string;

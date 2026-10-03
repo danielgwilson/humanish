@@ -75,8 +75,8 @@ describe("llms.txt documents the CLI that actually ships", () => {
     expect(tuiRow).toMatch(/refuses detected agent sessions/i);
     expect(tuiRow).toContain("non-TTY");
     for (const command of [
-      "humanish lab list --json",
-      "humanish lab inspect <lab> --json",
+      "humanish study list --json",
+      "humanish study show <study> --json",
       "humanish runs --json",
     ]) {
       expect(tuiRow).toContain(command);

@@ -56,13 +56,19 @@ describe("one viewer", () => {
   });
 
   // An invalid port fails before any server binds, so these calls return.
-  it("runs serve as observe --all, with one stderr note", async () => {
+  it("runs serve as observe --all, with one note on stderr and in warnings", async () => {
     const args = ["--port", "99999", "--cwd", cwd, "--json"];
     const observe = await runCli(["observe", "--all", ...args]);
     const serve = await runCli(["serve", ...args]);
     expect(observe.exitCode).toBe(2);
-    expect(JSON.parse(observe.stdout).error.code).toBe("HUMANISH_INVALID_PORT");
-    expect(serve).toEqual({ ...observe, stderr: SERVE_NOTE });
+    const expected = JSON.parse(observe.stdout) as { error: { code: string }; warnings: string[] };
+    expect(expected.error.code).toBe("HUMANISH_INVALID_PORT");
+    expect(serve.exitCode).toBe(observe.exitCode);
+    expect(serve.stderr).toBe(SERVE_NOTE);
+    expect(JSON.parse(serve.stdout)).toEqual({
+      ...expected,
+      warnings: [SERVE_NOTE.slice("warning: ".length, -1), ...expected.warnings],
+    });
   });
 
   it("refuses the library flags on a one-run observe", async () => {

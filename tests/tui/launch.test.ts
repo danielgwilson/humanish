@@ -39,7 +39,6 @@ describe("starting a run from the terminal surface", () => {
     const call = calls[0]!;
     expect(call.args).toEqual([
       "/opt/humanish/dist/cli.js",
-      "lab",
       "run",
       "--cwd",
       cwd,

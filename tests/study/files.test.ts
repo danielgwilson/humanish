@@ -164,11 +164,11 @@ describe("files 0.109 stops reading", () => {
     expect(resolved.ok && retired(resolved.warnings)).toEqual([]);
   });
 
-  it("lab list counts the files in one warning", async () => {
+  it("study list counts the files in one warning", async () => {
     await writeV3("humanish/studies/clean.yaml", "clean");
     await write("humanish/studies/old.yaml", "old");
     expect(retired((await listLabManifests(cwd)).warnings)).toEqual([
-      "One study file uses humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; lab inspect names the fix for each file.",
+      "One study file uses humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; humanish study show names the fix for each file.",
     ]);
 
     await writeV3("humanish/labs/moved.yaml", "moved");

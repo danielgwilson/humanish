@@ -8,13 +8,13 @@ Provider authentication: not checked
 
 ❯ Replace stored key
   Test authentication (read-only)
-  Use real email in a lab
+  Use real email in a study
   Review inbox cleanup
   Recheck local setup
 
 Get a key: https://console.agentmail.to
 Key entry is hidden. Saved keys apply to all your projects.
 Fresh inbox per participant · hosted email
-Local capture: lab config · SMS: unavailable
+Local capture: per study · SMS: unavailable
 
 ↑↓ move  ⏎ select  esc back  q quit

@@ -261,7 +261,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
 
   if (legacyFiles > 0) {
     warnings.push(
-      `${legacyFiles === 1 ? "One study file uses" : `${legacyFiles} study files use`} humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; lab inspect names the fix for each file.`,
+      `${legacyFiles === 1 ? "One study file uses" : `${legacyFiles} study files use`} humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; humanish study show names the fix for each file.`,
     );
   }
   for (const [name, stem] of stems) {

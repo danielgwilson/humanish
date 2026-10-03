@@ -14,6 +14,6 @@ Key entry is hidden. Saved keys apply to all
 your projects.
 Email receiving in studies is not available
 yet.
-Local capture: lab config · SMS: unavailable
+Local capture: per study · SMS: unavailable
 
 ↑↓ move  ⏎ select  esc back  q quit
