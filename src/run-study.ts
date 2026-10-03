@@ -23,7 +23,8 @@ import {
   removedOptionRefusal,
 } from "./study/run-study-options.js";
 import type { RunStudyDriving, RunStudyHomes } from "./study/run-study-homes.js";
-import { type StudyConfig } from "./study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "./study/types.js";
+import { V2_UNSUPPORTED_MESSAGE } from "./study/config.js";
 import type { ObserverResult } from "./observer/render.js";
 import { admitComputerUsePlan, computerUseStudyRefusal } from "./routes/computer-use/route.js";
 import { type CuaActorStudyResult } from "./routes/computer-use/types.js";
@@ -58,17 +59,24 @@ export async function runStudyWith(
 
 /**
  * The package's study runner (`src/index.ts`): runStudyWith with the public options only. A
- * JavaScript caller that passes a field RunStudyOptions no longer has is refused in the route's own
- * result envelope before anything runs.
+ * JavaScript caller that passes a field RunStudyOptions no longer has, or a humanish.lab.v2 config,
+ * is refused in the route's own result envelope before anything runs.
  */
 export async function runStudy(
   config: StudyConfig,
   options: RunStudyOptions,
 ): Promise<StudyOutcome> {
-  const removed = removedOptionRefusal(options);
-  if (removed === undefined) return runStudyWith(config, options);
+  const refusal =
+    config.schema === V2_SCHEMA
+      ? ({
+          ok: false,
+          code: "HUMANISH_STUDY_V2_UNSUPPORTED",
+          message: V2_UNSUPPORTED_MESSAGE,
+        } as const)
+      : removedOptionRefusal(options);
+  if (refusal === undefined) return runStudyWith(config, options);
   const lab = localBrowserDefaults(config);
-  return optionRefusalOutcome(lab, routeOf(lab), options, removed);
+  return optionRefusalOutcome(lab, routeOf(lab), options, refusal);
 }
 
 /** A lab planned once: the route's refusal, or the run of its plan. */

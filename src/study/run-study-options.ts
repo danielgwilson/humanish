@@ -15,7 +15,7 @@ import { studyResultIdentity } from "../run/study-result.js";
 
 type Refusal = {
   ok: false;
-  code: "HUMANISH_STUDY_OPTION_UNSUPPORTED";
+  code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" | "HUMANISH_STUDY_V2_UNSUPPORTED";
   message: string;
 };
 

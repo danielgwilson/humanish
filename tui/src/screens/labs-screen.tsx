@@ -3,6 +3,7 @@ import React from "react";
 
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import type { StudyRow } from "../../../src/run/projection.js";
+import type { StudyListResult } from "../../../src/study/discover.js";
 import { formatDuration, studySummaryLine, listWindow } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, spinnerFrame } from "../frame.js";
@@ -36,6 +37,31 @@ export interface LabsScreenProps {
   initArmed?: boolean;
   /** The result of the last action, shown under it. */
   actionNote?: string;
+  /** Study files humanish no longer reads (humanish.lab.v2, or in a labs/ folder). */
+  retired?: StudyListResult["retired"];
+}
+
+/**
+ * What to do about study files humanish no longer reads. migrate converts a humanish.lab.v2 file
+ * and skips a v3 file, so a v3 file in a labs/ folder is one to move by hand.
+ */
+function RetiredNote({ retired }: { retired: StudyListResult["retired"] }): React.ReactElement {
+  const v2 = retired.filter((file) => file.code === "HUMANISH_STUDY_V2_UNSUPPORTED").length;
+  const moved = retired.length - v2;
+  return (
+    <Box flexDirection="column">
+      {v2 === 0 ? null : (
+        <Text color={PALETTE.warn}>
+          {`${v2} study ${v2 === 1 ? "file uses" : "files use"} humanish.lab.v2, which humanish no longer reads. Run humanish migrate to convert ${v2 === 1 ? "it" : "them"}.`}
+        </Text>
+      )}
+      {moved === 0 ? null : (
+        <Text color={PALETTE.warn}>
+          {`${moved} study ${moved === 1 ? "file is" : "files are"} in a labs/ folder, which humanish no longer reads. Move ${moved === 1 ? "it" : "them"} to the matching studies/ folder; humanish study list names each one.`}
+        </Text>
+      )}
+    </Box>
+  );
 }
 
 /**
@@ -60,6 +86,7 @@ export function LabsScreen({
   liveTotal,
   initArmed,
   actionNote,
+  retired = [],
 }: LabsScreenProps): React.ReactElement {
   if (rows.length === 0) {
     // Two different problems. "This is not a project" has to be said first, because otherwise the
@@ -67,11 +94,11 @@ export function LabsScreen({
     // they are in the wrong place, and `npx humanish tui` is easy to type anywhere.
     return initialized ? (
       <Box flexDirection="column">
-        <Text>No studies here yet.</Text>
+        {retired.length > 0 ? <RetiredNote retired={retired} /> : <Text>No studies here yet.</Text>}
         <Box marginTop={1} flexDirection="column">
           <Text dimColor>A study file says who to send, to what, and what counts as done.</Text>
           <Text dimColor>
-            Write one in humanish/labs/, or run `humanish init` for starter studies.
+            Write one in humanish/studies/, or run `humanish init` for starter studies.
           </Text>
         </Box>
       </Box>
@@ -155,6 +182,11 @@ export function LabsScreen({
           <Text dimColor>
             {unattributed} {unattributed === 1 ? "run" : "runs"} with no lab
           </Text>
+        </Box>
+      ) : null}
+      {retired.length > 0 ? (
+        <Box marginTop={1}>
+          <RetiredNote retired={retired} />
         </Box>
       ) : null}
       {/* One description line, at the foot, following the cursor: the same rule the all-runs

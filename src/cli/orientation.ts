@@ -15,6 +15,7 @@
 
 import { listStudyManifests } from "../study/discover.js";
 import { listRuns } from "../run/stored-runs.js";
+import { plural } from "../run/text.js";
 import { supportsLocalBrowser } from "./first-run-path.js";
 import { PRODUCT_SENTENCE } from "./product-sentence.js";
 
@@ -60,8 +61,15 @@ export async function readOrientation(
     .map((run) => run.runId)
     .filter((id): id is string => typeof id === "string");
   const latest = typeof runs?.latest === "string" ? runs.latest : runIds[0];
+  const retiredFiles = found?.retired ?? [];
+  const retired = {
+    v2: retiredFiles.filter((file) => file.code === "HUMANISH_STUDY_V2_UNSUPPORTED").length,
+    moved: retiredFiles.filter((file) => file.code === "HUMANISH_STUDY_RETIRED_DIRECTORY").length,
+  };
   const initialized =
-    (found?.studies ?? []).some((study) => study.origin === "committed") || studyIds.length > 0;
+    (found?.studies ?? []).some((study) => study.origin === "committed") ||
+    studyIds.length > 0 ||
+    retiredFiles.length > 0;
 
   return {
     schema: ORIENTATION_SCHEMA,
@@ -70,7 +78,13 @@ export async function readOrientation(
     studyIds: studyIds.slice(0, 3),
     runCount: runIds.length,
     ...(latest === undefined ? {} : { latestRunId: latest }),
-    nextCommands: nextCommandsFor({ initialized, studyIds, hasRun: runIds.length > 0, host }),
+    nextCommands: nextCommandsFor({
+      initialized,
+      studyIds,
+      retired,
+      hasRun: runIds.length > 0,
+      host,
+    }),
   };
 }
 
@@ -79,6 +93,41 @@ export async function readOrientation(
  * is commander's help, which nobody reads.
  */
 function nextCommandsFor(args: {
+  initialized: boolean;
+  studyIds: string[];
+  /**
+   * Study files humanish no longer reads: humanish.lab.v2 files, which migrate converts, and v3
+   * files in a labs/ directory, which migrate skips and the user moves.
+   */
+  retired: { v2: number; moved: number };
+  hasRun: boolean;
+  host: { platform: NodeJS.Platform; arch: string };
+}): OrientationCommand[] {
+  const { v2, moved } = args.retired;
+  const fixes: OrientationCommand[] = [
+    ...(v2 === 0
+      ? []
+      : [
+          {
+            command: "humanish migrate --dry-run",
+            why: `${plural(v2, "study file")} ${v2 === 1 ? "uses" : "use"} humanish.lab.v2, which humanish no longer reads; this lists the conversion, and humanish migrate writes it`,
+          },
+        ]),
+    ...(moved === 0
+      ? []
+      : [
+          {
+            command: "humanish study list",
+            why: `${plural(moved, "study file")} ${moved === 1 ? "is" : "are"} in a labs/ directory, which humanish no longer reads; this names each one and the studies/ directory to move it to`,
+          },
+        ]),
+  ];
+  // A fix that is already `humanish study list` replaces the plain suggestion of the same command.
+  const named = new Set(fixes.map((fix) => fix.command));
+  return [...fixes, ...nextCommandsForStudies(args).filter((next) => !named.has(next.command))];
+}
+
+function nextCommandsForStudies(args: {
   initialized: boolean;
   studyIds: string[];
   hasRun: boolean;

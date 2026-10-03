@@ -8,7 +8,7 @@ import path from "node:path";
 import { parse } from "yaml";
 
 import { parseStudy } from "./config.js";
-import { STUDY_SCHEMA, type StudyConfig } from "./types.js";
+import { V2_SCHEMA, type StudyConfig } from "./types.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -17,7 +17,7 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 import { isNodeError } from "../run/type-guards.js";
-import { studyFileCandidates, studyFileStem, STUDY_DIRECTORIES } from "./files.js";
+import { studyFileCandidates, STUDY_DIRECTORIES } from "./files.js";
 
 const STUDY_LIST_SCHEMA = "humanish.study-list.v1";
 const STUDY_SHOW_SCHEMA = "humanish.study-show.v1";
@@ -37,7 +37,11 @@ export interface StudyResolveFailure {
   /** The study the caller asked for, as given. */
   study: string;
   error: {
-    code: "HUMANISH_STUDY_NOT_FOUND" | "HUMANISH_STUDY_INVALID" | "HUMANISH_STUDY_AMBIGUOUS";
+    code:
+      | "HUMANISH_STUDY_NOT_FOUND"
+      | "HUMANISH_STUDY_INVALID"
+      | "HUMANISH_STUDY_V2_UNSUPPORTED"
+      | "HUMANISH_STUDY_RETIRED_DIRECTORY";
     message: string;
   };
   warnings: string[];
@@ -57,8 +61,13 @@ export interface StudyListEntry {
    * stakeholder feedback that added this was, verbatim, "so i know wtf they are".
    */
   description?: string;
-  /** Why `run` refuses this file by name: its stem also names a file in the other directory family. */
-  error?: string;
+}
+
+/** A file in a study directory that humanish no longer reads, with what to do about it. */
+interface RetiredStudyFile {
+  path: string;
+  code: "HUMANISH_STUDY_V2_UNSUPPORTED" | "HUMANISH_STUDY_RETIRED_DIRECTORY";
+  message: string;
 }
 
 export interface StudyListResult {
@@ -66,6 +75,8 @@ export interface StudyListResult {
   ok: true;
   cwd: string;
   studies: StudyListEntry[];
+  /** Each also has its message in `warnings`. */
+  retired: RetiredStudyFile[];
   warnings: string[];
 }
 
@@ -131,28 +142,15 @@ export async function resolveStudyManifest(cwd: string, lab: string): Promise<St
     });
   }
 
-  // A studies/ file wins over every labs/ file. The same stem under both families is an error, so
-  // neither file silently shadows the other.
-  const candidates = studyFileCandidates(lab);
-  for (const candidate of candidates) {
+  // The studies/ directories are read in order. A name found only under a labs/ directory is
+  // refused with what to do about it, so the user is not told the study does not exist.
+  for (const candidate of studyFileCandidates(lab)) {
     const read = await readManagedManifest(projectRoot, candidate.relativePath);
     if (read.status === "missing") {
       continue;
     }
     if (read.status === "unsafe") {
       return invalidStudy({ cwd: resolvedCwd, lab, warnings }, read.message);
-    }
-    if (candidate.directory.family === "studies") {
-      for (const other of candidates.filter((entry) => entry.directory.family === "labs")) {
-        const present = await inspectManagedPath(projectRoot, other.relativePath, "file");
-        if (present.status !== "missing")
-          return ambiguousStudy(
-            resolvedCwd,
-            lab,
-            [candidate.relativePath, other.relativePath],
-            warnings,
-          );
-      }
     }
     return parseResolvedStudy({
       cwd: resolvedCwd,
@@ -161,6 +159,7 @@ export async function resolveStudyManifest(cwd: string, lab: string): Promise<St
       path: path.join(resolvedCwd, candidate.relativePath),
       warnings,
       contents: read.contents,
+      retiredDirectory: candidate.directory.family === "labs",
     });
   }
 
@@ -170,6 +169,7 @@ export async function resolveStudyManifest(cwd: string, lab: string): Promise<St
 export async function listStudyManifests(cwd: string): Promise<StudyListResult> {
   const resolvedCwd = path.resolve(cwd);
   const warnings: string[] = [];
+  const retired: RetiredStudyFile[] = [];
   const listed = new Map<string, StudyListEntry>();
   const projectRoot = await bindProjectRoot(resolvedCwd);
   if (!projectRoot) {
@@ -178,13 +178,10 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
       ok: true,
       cwd: resolvedCwd,
       studies: [],
+      retired: [],
       warnings: ["Project root failed containment validation; study files were skipped."],
     };
   }
-
-  let legacyFiles = 0;
-  // Each stem's files by directory family, to mark the stems that name a file in both.
-  const stems = new Map<string, { studies?: string; legacy?: string; keys: string[] }>();
 
   for (const entry of STUDY_DIRECTORIES) {
     const directory = await bindManagedDirectory(projectRoot, entry.relativeDir);
@@ -214,12 +211,6 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
         warnings.push(`${entry.relativeDir}: unsafe study file name; skipped.`);
         continue;
       }
-      const stem = stemSlot(stems, studyFileStem(name) ?? name);
-      stem[entry.family === "studies" ? "studies" : "legacy"] ??= relativeToCwd(
-        resolvedCwd,
-        path.join(resolvedCwd, relativePath),
-      );
-
       const requestedPath = path.join(resolvedCwd, relativePath);
       const read = await readManagedManifest(projectRoot, relativePath);
       if (read.status !== "ok") {
@@ -236,15 +227,24 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
         path: requestedPath,
         warnings: [],
         contents: read.contents,
+        retiredDirectory: entry.family === "labs",
       });
       if (!parsed.ok) {
-        warnings.push(`${relativeToCwd(resolvedCwd, requestedPath)}: ${parsed.error.message}`);
+        const { code, message } = parsed.error;
+        if (
+          code === "HUMANISH_STUDY_V2_UNSUPPORTED" ||
+          code === "HUMANISH_STUDY_RETIRED_DIRECTORY"
+        ) {
+          // The message already starts with the file's path.
+          retired.push({ path: relativeToCwd(resolvedCwd, requestedPath), code, message });
+          warnings.push(message);
+        } else {
+          warnings.push(`${relativeToCwd(resolvedCwd, requestedPath)}: ${message}`);
+        }
         continue;
       }
-      if (legacyStudyWarning(parsed.path, parsed.config.schema) !== undefined) legacyFiles += 1;
 
       const key = `${parsed.config.id}:${entry.origin}:${relativeToCwd(resolvedCwd, requestedPath)}`;
-      stem.keys.push(key);
       listed.set(key, {
         id: parsed.config.id,
         source: parsed.config.subject.source,
@@ -259,20 +259,6 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
     }
   }
 
-  if (legacyFiles > 0) {
-    warnings.push(
-      `${legacyFiles === 1 ? "One study file uses" : `${legacyFiles} study files use`} humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; humanish study show names the fix for each file.`,
-    );
-  }
-  for (const [name, stem] of stems) {
-    if (stem.studies === undefined || stem.legacy === undefined) continue;
-    const error = `${name} names two files, ${stem.studies} and ${stem.legacy}; running it by name fails until you delete one (humanish migrate moves a kept labs/ file).`;
-    for (const key of stem.keys) {
-      const entry = listed.get(key);
-      if (entry) entry.error = error;
-    }
-  }
-
   return {
     schema: STUDY_LIST_SCHEMA,
     ok: true,
@@ -280,6 +266,7 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
     studies: [...listed.values()].sort((left, right) =>
       `${left.origin}:${left.id}`.localeCompare(`${right.origin}:${right.id}`),
     ),
+    retired,
     warnings,
   };
 }
@@ -334,6 +321,8 @@ function parseResolvedStudy(args: {
   path: string;
   warnings: string[];
   contents: string;
+  /** Found by name or listed in a labs/ directory, which humanish no longer reads. */
+  retiredDirectory?: boolean;
 }): StudyResolveResult {
   let raw: unknown;
   try {
@@ -345,14 +334,21 @@ function parseResolvedStudy(args: {
     );
   }
 
+  const refusal = retiredStudyRefusal(
+    relativeToCwd(args.cwd, args.path).replace(/\\/g, "/"),
+    raw,
+    args.retiredDirectory === true,
+  );
+  if (refusal !== undefined) {
+    return { ok: false, cwd: args.cwd, study: args.lab, error: refusal, warnings: args.warnings };
+  }
+
   const parsed = parseStudy(raw);
   if (!parsed.ok) {
     return invalidStudy(args, parsed.error.message);
   }
 
   const warnings = [...args.warnings, ...parsed.warnings];
-  const legacy = legacyStudyWarning(relativeToCwd(args.cwd, args.path), parsed.config.schema);
-  if (legacy !== undefined) warnings.push(legacy);
   if (args.path.endsWith(".yml")) {
     warnings.push("Prefer .yaml for study files; .yml is accepted for compatibility only.");
   }
@@ -367,25 +363,44 @@ function parseResolvedStudy(args: {
 }
 
 /**
- * What 0.109 stops reading in this file: the humanish.lab.v2 format, a labs/ directory, or both, and
- * what to run about it. Undefined for a v3 file outside the labs/ directories.
+ * Why humanish refuses this file, or undefined. A humanish.lab.v2 file is refused wherever it is,
+ * and `humanish migrate` converts it (and moves it out of a labs/ directory). A v3 file is refused
+ * only when it was found by name in a labs/ directory; an explicit path to it still runs.
  */
-function legacyStudyWarning(relativePath: string, schema: string): string | undefined {
-  const retiredDirectory = STUDY_DIRECTORIES.find(
-    (directory) =>
-      directory.family === "labs" && path.dirname(relativePath) === directory.relativeDir,
+function retiredStudyRefusal(
+  relativePath: string,
+  raw: unknown,
+  retiredDirectory: boolean,
+): StudyResolveFailure["error"] | undefined {
+  const directory = path.posix.dirname(relativePath);
+  const studies = directory.replace(/labs$/, "studies");
+  // migrate moves a v2 file out of a labs/ directory however the file was named.
+  const inLabs = STUDY_DIRECTORIES.some(
+    (entry) => entry.family === "labs" && entry.relativeDir.replace(/\\/g, "/") === directory,
   );
-  // A file discovery parsed has one of two schemas, so not v3 is v2.
-  const v2 = schema !== STUDY_SCHEMA;
-  if (retiredDirectory !== undefined) {
-    const studies = retiredDirectory.relativeDir.replace(/labs$/, "studies");
-    return v2
-      ? `${relativePath} is a humanish.lab.v2 file in ${retiredDirectory.relativeDir}/, and 0.109 reads neither. Run humanish migrate to convert it and move it to ${studies}/.`
-      : `${relativePath} is in ${retiredDirectory.relativeDir}/, which 0.109 stops reading. Move it to ${studies}/.`;
-  }
-  return v2
-    ? `${relativePath} is a humanish.lab.v2 file, which 0.109 stops reading. Run humanish migrate ${relativePath} to convert it.`
-    : undefined;
+  // migrate refuses a path outside its --cwd, so a file outside the project gets its own directory.
+  const migrate = path.isAbsolute(relativePath)
+    ? `humanish migrate --cwd ${shellPath(path.dirname(relativePath))} ${shellPath(path.basename(relativePath))}`
+    : `humanish migrate ${shellPath(relativePath)}`;
+  if (typeof raw === "object" && raw !== null && (raw as { schema?: unknown }).schema === V2_SCHEMA)
+    return {
+      code: "HUMANISH_STUDY_V2_UNSUPPORTED",
+      message: inLabs
+        ? `${relativePath} is a humanish.lab.v2 file in ${directory}/, which humanish no longer reads. Run ${migrate} to convert it and move it to ${studies}/.`
+        : `${relativePath} is a humanish.lab.v2 file, which humanish no longer reads. Run ${migrate} to convert it.`,
+    };
+  if (retiredDirectory)
+    return {
+      code: "HUMANISH_STUDY_RETIRED_DIRECTORY",
+      message: `${relativePath} is in ${directory}/, which humanish no longer reads. Move it to ${studies}/.`,
+    };
+  return undefined;
+}
+
+/** A path as one shell argument: quoted when the shell would split or expand it, never an option. */
+function shellPath(value: string): string {
+  const arg = value.startsWith("-") ? `./${value}` : value;
+  return /^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, "'\\''")}'`;
 }
 
 async function bindProjectRoot(cwd: string): Promise<PreparedSelectedOutputDirectory | null> {
@@ -602,38 +617,6 @@ function invalidStudy(
   };
 }
 
-function stemSlot(
-  stems: Map<string, { studies?: string; legacy?: string; keys: string[] }>,
-  name: string,
-): { studies?: string; legacy?: string; keys: string[] } {
-  let slot = stems.get(name);
-  if (slot === undefined) {
-    slot = { keys: [] };
-    stems.set(name, slot);
-  }
-  return slot;
-}
-
-/** The same stem under a studies/ and a labs/ directory: discovery reads neither. */
-function ambiguousStudy(
-  cwd: string,
-  name: string,
-  paths: [studiesPath: string, labsPath: string],
-  warnings: string[],
-): StudyResolveFailure {
-  const [studiesPath, labsPath] = paths.map((entry) => entry.replace(/\\/g, "/"));
-  return {
-    ok: false,
-    cwd,
-    study: name,
-    error: {
-      code: "HUMANISH_STUDY_AMBIGUOUS",
-      message: `${name} names two files, ${studiesPath} and ${labsPath}. Delete the one you do not want; if you keep ${labsPath}, run humanish migrate to move it. Or pass the path of the one to run.`,
-    },
-    warnings,
-  };
-}
-
 function studyNotFound(cwd: string, lab: string, warnings: string[]): StudyResolveFailure {
   return {
     ok: false,
@@ -641,7 +624,7 @@ function studyNotFound(cwd: string, lab: string, warnings: string[]): StudyResol
     study: lab,
     error: {
       code: "HUMANISH_STUDY_NOT_FOUND",
-      message: `Study not found: ${lab}. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.`,
+      message: `Study not found: ${lab}. Look in humanish/studies/, or pass a .yaml path.`,
     },
     warnings,
   };

@@ -65,6 +65,7 @@ try {
         ok: true,
         cwd,
         studies: [],
+        retired: [],
         warnings: [],
       }),
       readRunDetail: async () => null,

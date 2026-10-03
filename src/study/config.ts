@@ -91,11 +91,20 @@ import {
 import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
 import { plural } from "../run/text.js";
 
+/** The message for a humanish.lab.v2 document, which the package and the CLI no longer run. */
+export const V2_UNSUPPORTED_MESSAGE =
+  "This is a humanish.lab.v2 study, which humanish no longer reads. Convert its file with humanish migrate <path>.";
+
 /**
- * The package's study parser (src/index.ts) and the one discovery uses. It reads what
- * parseStudyDocument reads.
+ * The package's study parser (src/index.ts) and the one discovery uses: a humanish.study.v3
+ * document. It refuses a humanish.lab.v2 one with HUMANISH_STUDY_V2_UNSUPPORTED.
  */
 export function parseStudy(raw: unknown): StudyParseResult {
+  if (isRecord(raw) && raw.schema === V2_SCHEMA)
+    return {
+      ok: false,
+      error: { code: "HUMANISH_STUDY_V2_UNSUPPORTED", message: V2_UNSUPPORTED_MESSAGE },
+    };
   return parseStudyDocument(raw);
 }
 
@@ -103,7 +112,7 @@ export function parseStudy(raw: unknown): StudyParseResult {
  * Validate a parsed YAML object, humanish.study.v3 or humanish.lab.v2, into a StudyConfig. Pure:
  * the caller owns file IO. Structural validation only. Fields the engine does not yet consume are
  * accepted but reported in `warnings` so `study show` never silently swallows a setting that does
- * nothing. migrate and comms configure call it directly, since they read v2 files to convert them.
+ * nothing. migrate's conversion (convert.ts) calls it directly, since it reads v2 files.
  */
 export function parseStudyDocument(raw: unknown): StudyParseResult {
   if (!isRecord(raw)) {

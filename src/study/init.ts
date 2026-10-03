@@ -253,9 +253,12 @@ async function planStarterFiles(
         target: file.plane,
         reason: `${others.join(", ")} already uses the name ${stem}`,
       });
+      // humanish no longer reads a labs/ file, but migrate needs its name free to move it.
       const legacy = others.some((other) => other.split(path.sep).includes("labs"));
       plan.warnings.push(
-        `Skipped ${file.path}: ${others.join(", ")} already uses the name ${stem}, and a second file with that name would make \`run ${stem}\` fail.${legacy ? " Run humanish migrate to move it to a studies/ directory." : ""}`,
+        legacy
+          ? `Skipped ${file.path}: ${others.join(", ")} already uses the name ${stem}. Move it to a studies/ directory; humanish migrate converts and moves a v2 file.`
+          : `Skipped ${file.path}: ${others.join(", ")} already uses the name ${stem}, and a second file with that name would make \`run ${stem}\` fail.`,
       );
     } else if (existing === null) {
       plan.changes.push({

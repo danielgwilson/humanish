@@ -50,6 +50,54 @@ describe("readOrientation", () => {
     expect(commands.join(" ")).not.toContain("--live");
   });
 
+  it("points a project of v2 study files at humanish migrate before anything else", async () => {
+    dir = await emptyProject();
+    await mkdir(path.join(dir, "humanish", "labs"), { recursive: true });
+    await writeFile(
+      path.join(dir, "humanish", "labs", "old.yaml"),
+      ["schema: humanish.lab.v2", "id: old", "subject:", "  source: this-repo", "actors:"]
+        .concat(["  - type: synthetic-persona"])
+        .join("\n"),
+      "utf8",
+    );
+    const state = await readOrientation(dir);
+
+    expect(state.initialized).toBe(true);
+    expect(state.studyCount).toBe(0);
+    expect(state.nextCommands[0]).toEqual({
+      command: "humanish migrate --dry-run",
+      why: "1 study file uses humanish.lab.v2, which humanish no longer reads; this lists the conversion, and humanish migrate writes it",
+    });
+    expect(state.nextCommands.map((next) => next.command)).not.toContain("humanish init --yes");
+  });
+
+  it("points v3 files in a labs/ directory at study list, since migrate skips them", async () => {
+    dir = await emptyProject();
+    await mkdir(path.join(dir, ".humanish", "labs"), { recursive: true });
+    for (const id of ["one", "two"])
+      await writeFile(
+        path.join(dir, ".humanish", "labs", `${id}.yaml`),
+        ["schema: humanish.study.v3", `id: ${id}`, "route: preview", "mode: dry-run"]
+          .concat(["subject:", "  source: this-repo", "actor:", "  type: synthetic-persona"])
+          .join("\n"),
+        "utf8",
+      );
+    const state = await readOrientation(dir);
+
+    expect(state.initialized).toBe(true);
+    expect(state.nextCommands.map((next) => next.command)).not.toContain(
+      "humanish migrate --dry-run",
+    );
+    expect(state.nextCommands[0]).toEqual({
+      command: "humanish study list",
+      why: "2 study files are in a labs/ directory, which humanish no longer reads; this names each one and the studies/ directory to move it to",
+    });
+    // Named once, with the reason that matters here.
+    expect(
+      state.nextCommands.filter((next) => next.command === "humanish study list"),
+    ).toHaveLength(1);
+  });
+
   async function projectWithLabs(ids: string[]): Promise<string> {
     const created = await emptyProject();
     await mkdir(path.join(created, "humanish", "studies"), { recursive: true });

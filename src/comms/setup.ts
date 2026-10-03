@@ -18,7 +18,7 @@ import {
 } from "./providers.js";
 import { createReceivingAdapter } from "./receiving-runtime.js";
 import { RECEIVING_SCOPE_UNSUPPORTED, type ReceivingAdapter } from "./receiving-types.js";
-import { parseStudyDocument } from "../study/config.js";
+import { parseStudy } from "../study/config.js";
 import { resolveStudyManifest } from "../study/discover.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -28,7 +28,6 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { otherStudyFiles } from "../study/files.js";
-import { convertStudyText, isStudyV3 } from "../study/convert.js";
 import { isNodeError } from "../run/type-guards.js";
 
 export interface CommsCheckResult {
@@ -196,7 +195,16 @@ export async function configureCommsStudy(args: {
     const connection = (await readCommsConnections(args.cwd)).connections[args.connection];
     if (!connection) return { ...base, message: "Save the selected connection first." };
     const source = await resolveStudyManifest(args.cwd, args.lab);
-    if (!source.ok) return { ...base, message: "The selected study could not be read safely." };
+    if (!source.ok) {
+      // A v2 source or a labs/ file gets discovery's refusal, which names the fix.
+      const named =
+        source.error.code === "HUMANISH_STUDY_V2_UNSUPPORTED" ||
+        source.error.code === "HUMANISH_STUDY_RETIRED_DIRECTORY";
+      return {
+        ...base,
+        message: named ? source.error.message : "The selected study could not be read safely.",
+      };
+    }
     const root = await prepareSelectedOutputDirectory(args.cwd, args.cwd);
     const rel = path
       .relative(root.requestedPath, path.resolve(args.cwd, source.path))
@@ -216,20 +224,10 @@ export async function configureCommsStudy(args: {
         message:
           "This study uses local capture. Preserve it or make a separate study before selecting real email.",
       };
-    // The copy is a v3 study. A v2 source is converted first, so the copy keeps its comments.
-    let studyText = text;
-    if (!isStudyV3(raw)) {
-      const converted = convertStudyText(text, args.cwd);
-      if (!converted.ok)
-        return {
-          ...base,
-          message: `This study file could not be converted to v3: ${converted.reason}`,
-        };
-      studyText = converted.conversion.text;
-    }
-    const study = parseDocument(studyText);
+    // Discovery resolved the source, so it is a v3 study, and the copy keeps its comments.
+    const study = parseDocument(text);
     study.setIn(["comms", "email", "connection"], args.connection);
-    const validated = parseStudyDocument(study.toJS());
+    const validated = parseStudy(study.toJS());
     if (!validated.ok)
       return {
         ...base,
@@ -250,7 +248,8 @@ export async function configureCommsStudy(args: {
         message:
           "This is already the local receiving copy. Select its original study to configure a separate copy, or edit this study file directly.",
       };
-    // A second file with this name in another study directory would make discovery refuse both.
+    // A second file with this name in another study directory would shadow it, or take the name
+    // migrate needs to move a labs/ file.
     const stem = filename.replace(/\.yaml$/, "");
     const others = await otherStudyFiles(
       stem,

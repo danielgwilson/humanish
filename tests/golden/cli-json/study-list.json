@@ -3,6 +3,7 @@
   "shape": {
     "cwd": "string",
     "ok": "boolean",
+    "retired": [],
     "schema": "string",
     "studies": [
       {

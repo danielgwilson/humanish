@@ -1,6 +1,6 @@
 // `humanish study` replaced `humanish lab`, and `--study` replaced `--lab`. 0.108.0 ran the old
 // spellings after a warning; 0.109.0 removed them, so each fails as an unknown command or option.
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -8,6 +8,7 @@ import { CommanderError, type Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
+import { launchRun } from "../../src/tui/launch.js";
 
 interface CliRun {
   exitCode: number;
@@ -73,10 +74,11 @@ describe("the lab group", () => {
   });
 });
 
-describe("a study file's warnings", () => {
-  // A v2 file under labs/ warns about 0.109; run and watch put that warning in their JSON too.
-  const migrateLine =
-    "humanish/labs/old-run.yaml is a humanish.lab.v2 file in humanish/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to humanish/studies/.";
+describe("a humanish.lab.v2 file", () => {
+  // humanish no longer reads it. run and watch refuse it by name, naming the command that converts
+  // it, and write nothing.
+  const message =
+    "humanish/labs/old-run.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old-run.yaml to convert it and move it to humanish/studies/.";
   beforeEach(async () => {
     const v2 = await readFile(path.resolve("tests/fixtures/labs-v2/first-run.yaml"), "utf8");
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
@@ -87,19 +89,65 @@ describe("a study file's warnings", () => {
   });
 
   it.each([[["run", "old-run"]], [["watch", "old-run", "--detach", "--no-open"]]])(
-    "%j --json puts the v2 warning in warnings and on stderr",
+    "%j --json refuses it with HUMANISH_STUDY_V2_UNSUPPORTED",
     async (words) => {
       const result = await runCli([...words, "--cwd", cwd, "--json"]);
-      expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain(`warning: ${migrateLine}\n`);
-      expect((JSON.parse(result.stdout) as { warnings: string[] }).warnings).toContain(migrateLine);
+      expect(result.exitCode).toBe(2);
+      expect((JSON.parse(result.stdout) as { error: unknown }).error).toEqual({
+        code: "HUMANISH_STUDY_V2_UNSUPPORTED",
+        message,
+      });
+      await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow(/ENOENT/);
     },
   );
 
-  it("prints the v2 warning once in human mode, on stderr and not on stdout", async () => {
+  it("reaches doctor --study, comms check and the TUI's launch with its fix", async () => {
+    const doctor = JSON.parse(
+      (await runCli(["doctor", "--study", "old-run", "--cwd", cwd, "--json"])).stdout,
+    ) as {
+      checks: { ok: boolean; message: string }[];
+    };
+    expect(doctor.checks.some((check) => !check.ok && check.message.includes(message))).toBe(true);
+
+    const comms = await runCli(["comms", "check", "--study", "old-run", "--cwd", cwd, "--json"]);
+    expect(comms.exitCode).toBe(2);
+    expect((JSON.parse(comms.stdout) as { message: string }).message).toBe(message);
+
+    const launched = await launchRun({
+      cwd,
+      lab: "old-run",
+      manifestPath: "humanish/labs/old-run.yaml",
+      mode: "dry-run",
+      spawn: (() => ({ pid: 1, unref() {}, on() {} })) as never,
+    });
+    expect(!launched.ok && launched.error).toEqual({
+      code: "HUMANISH_LAUNCH_INVALID_STUDY",
+      message,
+    });
+  });
+
+  it("prints the refusal and its code on stderr in human mode", async () => {
     const result = await runCli(["run", "old-run", "--cwd", cwd]);
-    expect(result.stderr.split(`warning: ${migrateLine}\n`)).toHaveLength(2);
-    expect(result.stdout).not.toContain(migrateLine);
+    expect(result.exitCode).toBe(2);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe(
+      `humanish run failed: ${message}\ncode: HUMANISH_STUDY_V2_UNSUPPORTED\n`,
+    );
+  });
+});
+
+describe("a study file's warnings", () => {
+  it("reach run --json warnings[] as well as stderr", async () => {
+    // A .yml name is accepted with a warning; run and watch queue it into their JSON result.
+    await rename(
+      path.join(cwd, "humanish", "studies", "first-run.yaml"),
+      path.join(cwd, "humanish", "studies", "first-run.yml"),
+    );
+    const warning = "Prefer .yaml for study files; .yml is accepted for compatibility only.";
+    const result = await runCli(["run", "first-run", "--no-open", "--cwd", cwd, "--json"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toContain(`warning: ${warning}\n`);
+    expect((JSON.parse(result.stdout) as { warnings: string[] }).warnings).toContain(warning);
   });
 });
 

@@ -50,6 +50,7 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
     }),
     listLabs: async () => ({
       schema: "humanish.study-list.v1",
+      retired: [],
       ok: true,
       cwd: "/projects/acme-app",
       studies: LABS,
@@ -92,6 +93,11 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
     stdin: process.stdin,
     stdout: process.stdout,
   };
+}
+
+/** A frame with its line breaks folded, for a message that wraps at the frame's width. */
+function flat(frame: string): string {
+  return normalizeFrame(frame).replace(/\s+/g, " ");
 }
 
 async function frameAt(
@@ -200,6 +206,7 @@ describe("the labs screen, rendered", () => {
       }),
       listLabs: async () => ({
         schema: "humanish.study-list.v1",
+        retired: [],
         ok: true,
         cwd: "/projects/acme-app",
         studies: [],
@@ -226,6 +233,7 @@ describe("the labs screen, rendered", () => {
       },
       listLabs: async () => ({
         schema: "humanish.study-list.v1",
+        retired: [],
         ok: true,
         cwd: "/projects/acme-app",
         studies: [],
@@ -273,6 +281,7 @@ describe("the two empty states are different problems", () => {
     ok: true as const,
     cwd: "/x",
     studies: [],
+    retired: [],
     warnings: [],
   };
 
@@ -312,6 +321,40 @@ describe("the two empty states are different problems", () => {
     );
     expect(frame).toContain("No studies here yet.");
     expect(frame).toContain("A study file says");
+    expect(frame).toContain("Write one in humanish/studies/");
+  });
+
+  it("a project whose study files humanish no longer reads points at humanish migrate", async () => {
+    const message =
+      "humanish/labs/old.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old.yaml to convert it and move it to humanish/studies/.";
+    const frame = await frameAt(
+      80,
+      24,
+      {
+        readRunIndex: async () => empty,
+        listLabs: async () => ({
+          ...noLabs,
+          retired: [
+            {
+              path: "humanish/labs/old.yaml",
+              code: "HUMANISH_STUDY_V2_UNSUPPORTED" as const,
+              message,
+            },
+          ],
+          warnings: [message],
+        }),
+        readProjectState: () => ({
+          schema: "humanish.tui-project.v1" as const,
+          initialized: true,
+          hasRuntime: true,
+        }),
+      },
+      (candidate) => candidate.includes("1 study file uses"),
+    );
+    expect(flat(frame)).toContain(
+      "1 study file uses humanish.lab.v2, which humanish no longer reads. Run humanish migrate to convert it.",
+    );
+    expect(frame).not.toContain("No studies here yet.");
   });
 
   it("a directory that is not a project is told that first", async () => {
@@ -340,6 +383,128 @@ describe("the two empty states are different problems", () => {
     expect(frame).toContain("writes humanish/ and updates package.json");
     // And it does not offer keys that do nothing here.
     expect(frame).not.toContain("⏎ open");
+  });
+});
+
+describe("study files humanish no longer reads", () => {
+  const empty = { schema: "humanish.run-index.v1" as const, cwd: "/x", runs: [], unreadable: [] };
+  const noLabs = {
+    schema: "humanish.study-list.v1" as const,
+    ok: true as const,
+    cwd: "/x",
+    studies: [],
+    retired: [],
+    warnings: [],
+  };
+
+  it("v3 files only in .humanish/labs/ make a project, told to move them", async () => {
+    // migrate skips a v3 file, so the note names a move. With no humanish/ directory, the files
+    // alone are what make this a project rather than a place to run setup.
+    const message =
+      ".humanish/labs/old.yaml is in .humanish/labs/, which humanish no longer reads. Move it to .humanish/studies/.";
+    const frame = await frameAt(
+      120,
+      24,
+      {
+        readRunIndex: async () => empty,
+        listLabs: async () => ({
+          ...noLabs,
+          retired: [
+            {
+              path: ".humanish/labs/old.yaml",
+              code: "HUMANISH_STUDY_RETIRED_DIRECTORY" as const,
+              message,
+            },
+          ],
+          warnings: [message],
+        }),
+        readProjectState: () => ({
+          schema: "humanish.tui-project.v1" as const,
+          initialized: false,
+          hasRuntime: true,
+        }),
+      },
+      (candidate) => candidate.includes("labs/ folder"),
+    );
+    expect(flat(frame)).toContain(
+      "1 study file is in a labs/ folder, which humanish no longer reads. Move it to the matching studies/ folder",
+    );
+    expect(frame).not.toContain("humanish migrate");
+    expect(frame).not.toContain("not a humanish project");
+  });
+
+  it("a study known only from its runs says why humanish no longer reads its file", async () => {
+    const message =
+      "humanish/labs/old.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old.yaml to convert it and move it to humanish/studies/.";
+    const surface = await renderToText(
+      <App
+        options={options({
+          readRunIndex: async () => ({ ...empty, runs: [{ ...RUNS[1]!, study: { id: "old" } }] }),
+          listLabs: async () => ({
+            ...noLabs,
+            retired: [
+              {
+                path: "humanish/labs/old.yaml",
+                code: "HUMANISH_STUDY_V2_UNSUPPORTED" as const,
+                message,
+              },
+            ],
+            warnings: [message],
+          }),
+        })}
+        now={NOW}
+        tick={0}
+      />,
+      { columns: 240, until: (frame) => frame.includes("1 study file uses humanish.lab.v2") },
+    );
+    try {
+      const lab = await surface.press(KEY.enter, (frame) => frame.includes("is a humanish.lab.v2"));
+      expect(flat(lab)).toContain(message);
+      expect(lab).not.toContain("no manifest here");
+      await surface.press(KEY.enter, (frame) => frame.includes("Run again"));
+      const again = await surface.press(KEY.enter, (frame) =>
+        frame.includes("cannot run this again"),
+      );
+      expect(flat(again)).toContain(`cannot run this again: ${message}`);
+    } finally {
+      surface.unmount();
+    }
+  });
+
+  it("matches a study's runs to the file they recorded, whatever its declared id", async () => {
+    // signup.yaml declares id onboarding. Its runs record the file's path, so an unrelated
+    // onboarding.yaml must not lend its refusal.
+    const v2 = (file: string): string =>
+      `humanish/labs/${file} is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/${file} to convert it and move it to humanish/studies/.`;
+    const surface = await renderToText(
+      <App
+        options={options({
+          readRunIndex: async () => ({
+            ...empty,
+            runs: [{ ...RUNS[1]!, study: { id: "onboarding", path: "humanish/labs/signup.yaml" } }],
+          }),
+          listLabs: async () => ({
+            ...noLabs,
+            retired: ["onboarding.yaml", "signup.yaml"].map((file) => ({
+              path: `humanish/labs/${file}`,
+              code: "HUMANISH_STUDY_V2_UNSUPPORTED" as const,
+              message: v2(file),
+            })),
+            warnings: [],
+          }),
+        })}
+        now={NOW}
+        tick={0}
+      />,
+      { columns: 80, until: (frame) => frame.includes("2 study files use humanish.lab.v2") },
+    );
+    try {
+      const lab = await surface.press(KEY.enter, (frame) => frame.includes("is a humanish.lab.v2"));
+      expect(flat(lab)).toContain(v2("signup.yaml"));
+      expect(flat(lab)).not.toContain("onboarding.yaml is");
+    } finally {
+      surface.unmount();
+    }
   });
 });
 

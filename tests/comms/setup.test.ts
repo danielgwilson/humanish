@@ -134,7 +134,7 @@ describe("connection authentication", () => {
   );
 });
 describe("receiving lab selection", () => {
-  /** The source study: v3 under humanish/studies, or the v2 file under humanish/labs. */
+  /** The source study: v3 under humanish/studies, or a v2 file under humanish/labs. */
   async function source(options: { v2?: boolean } = {}) {
     const dir = options.v2 ? "humanish/labs" : "humanish/studies";
     await mkdir(path.join(cwd, dir), { recursive: true });
@@ -143,9 +143,19 @@ describe("receiving lab selection", () => {
       options.v2 ? stringify(lab) : studyFileText(lab, cwd),
     );
   }
-  it("previews without mutation, then saves a resolvable local copy while preserving source", async () => {
+  it("refuses a v2 source, naming the command that converts it", async () => {
     await source({ v2: true });
-    const before = await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8");
+    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
+    expect(plan).toMatchObject({
+      ok: false,
+      applied: false,
+      message:
+        "humanish/labs/signup.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/signup.yaml to convert it and move it to humanish/studies/.",
+    });
+  });
+  it("previews without mutation, then saves a resolvable local copy while preserving source", async () => {
+    await source();
+    const before = await readFile(path.join(cwd, "humanish/studies/signup.yaml"), "utf8");
     const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({
       ok: true,
@@ -167,9 +177,8 @@ describe("receiving lab selection", () => {
       kind: "real",
       connection: "agentmail",
     });
-    // The copy is a v3 study, converted from the v2 source.
     expect(selected.ok && selected.config.schema).toBe("humanish.study.v3");
-    expect(await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8")).toBe(before);
+    expect(await readFile(path.join(cwd, "humanish/studies/signup.yaml"), "utf8")).toBe(before);
   });
   it("rejects stale preview when the source or destination changes", async () => {
     await source();

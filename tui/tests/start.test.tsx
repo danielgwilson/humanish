@@ -25,6 +25,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
     }),
     listLabs: async () => ({
       schema: "humanish.study-list.v1",
+      retired: [],
       ok: true,
       cwd: "/projects/acme-app",
       studies: LABS,
@@ -301,6 +302,7 @@ describe("starting a run", () => {
     const { started, options } = harness({
       listLabs: async () => ({
         schema: "humanish.study-list.v1",
+        retired: [],
         ok: true,
         cwd: "/projects/acme-app",
         studies: [],
@@ -542,23 +544,24 @@ describe("a lab whose live plan is refused", () => {
       // summary reads it, so the screen shows the message `humanish run` would print.
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-tui-refusal-"));
       try {
-        await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
+        await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
         await writeFile(
-          path.join(cwd, "humanish/labs/uncapped.yaml"),
+          path.join(cwd, "humanish/studies/uncapped.yaml"),
           JSON.stringify({
-            schema: "humanish.lab.v2",
+            schema: "humanish.study.v3",
             id: "uncapped",
+            route: "terminal",
+            mode: "live",
             subject: {
               source: "terminal-product",
               product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
             },
-            actors: [{ type: "codex-exec", mission: "Use the CLI." }],
+            actor: { type: "codex-exec", mission: "Use the CLI." },
             execution: {
               target: "e2b-terminal",
               runtimeAuth: "openai-env",
               terminal: { transport: "exec-stream", stdin: "disabled" },
             },
-            scenario: { mode: "live" },
           }),
         );
         const { options } = harness({
