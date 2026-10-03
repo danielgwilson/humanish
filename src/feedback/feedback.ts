@@ -51,7 +51,8 @@ export interface FeedbackResult {
       | "HUMANISH_INVALID_RUN_BUNDLE"
       | "HUMANISH_INVALID_FEEDBACK_DRAFT"
       | "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED"
-      | "HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND";
+      | "HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND"
+      | "HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN";
     message: string;
   };
 }
@@ -108,6 +109,24 @@ async function draftFeedbackBound(
         error: {
           code: "HUMANISH_RUN_NOT_FOUND",
           message: await runNotFoundMessage(cwd, runInput),
+        },
+      },
+    };
+  }
+
+  // A dry run exercised no product, so it has nothing to report upstream; analyze refuses it the
+  // same way (ANALYSIS_REQUIRES_LIVE_RUN).
+  if (context.loaded.bundle.mode !== "live") {
+    return {
+      context,
+      result: {
+        schema: FEEDBACK_RESULT_SCHEMA,
+        ok: false,
+        cwd,
+        run: runInput,
+        error: {
+          code: "HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN",
+          message: `Run ${context.storedRunId} is a dry run, which tests no product behavior. Feedback drafts need a live run.`,
         },
       },
     };

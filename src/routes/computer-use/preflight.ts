@@ -7,7 +7,7 @@ import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-ag
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { catchTokenOf, catchTokenRefusal } from "../../comms/external-evidence.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
-import { MODEL_RATES } from "../../run/pricing.js";
+import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
 import type { CuaActorLabErrorCode } from "./types.js";
 
 /** The computer-use code for each local-agent refusal; shared-world keeps the same kinds. */
@@ -76,15 +76,15 @@ export async function liveCuaRejection(args: {
   // If the operator set execution.caps.maxUsd but src/run/pricing.ts has no rate for the resolved
   // model, the loop could not enforce the cap, and silently running uncapped would break the
   // runaway-retry protection. Refuse at preflight (before any sandbox/spend) rather than run
-  // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
-  // src/run/pricing.ts (the honest place) or removes the cap.
+  // uncapped: an unenforceable cap is more dangerous than none. The operator picks a priced model
+  // or removes the cap; a source checkout can also add a rate to src/run/pricing.ts.
   if (caps.maxUsd !== undefined || caps.maxTotalUsd !== undefined) {
     const model = pricedModel(brain);
     const capModelId = model.trim().toLowerCase();
     if (!MODEL_RATES[capModelId]) {
       return {
         code: "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
-        message: `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model "${model}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
+        message: unpricedCapMessage(model),
       };
     }
   }

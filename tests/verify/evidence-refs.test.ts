@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import { draftFeedback, verifyFeedback } from "../../src/feedback/feedback.js";
-import { runDryRun } from "../../src/run/dry-run.js";
+import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 
@@ -20,7 +20,7 @@ describe("verify declared evidence references", () => {
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-evidence-refs-"));
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-    await runDryRun({ cwd, dryRun: true, runId: RUN });
+    await runSyntheticLive({ cwd, dryRun: true, runId: RUN });
     runDir = path.join(cwd, ".humanish", "runs", RUN);
     bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     png = PNG.sync.write(new PNG({ width: 4, height: 4 }));

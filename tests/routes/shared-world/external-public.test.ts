@@ -1038,7 +1038,7 @@ describe("handoff timeout fail-closed", () => {
     config.execution!.caps = { maxTotalUsd: 1 };
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
-    expect(result.error?.message).toContain("unpriced model");
+    expect(result.error?.message).toContain("humanish has no rate for model");
     expect(created).toHaveLength(0);
   });
 

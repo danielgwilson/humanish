@@ -1220,7 +1220,7 @@
         "total": 0
       },
       "desktopMinutes": "[desktopMinutes]",
-      "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+      "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Each line's reason says what is missing. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
     }
   },
   "sandbox-receipts.ndjson": [
