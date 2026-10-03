@@ -26,10 +26,7 @@ study: # optional, additive: which study file produced this run
   id: "<study id>"
   path: "humanish/studies/<study id>.yaml"
   origin: "committed|ignored|explicit"
-lab: # the same value as study, written until 0.109
-  id: "<study id>"
-  path: "humanish/studies/<study id>.yaml"
-  origin: "committed|ignored|explicit"
+# Runs saved by 0.108 and earlier also have `lab:`, with the same value as `study:`.
 source:
   packageName: "<public package name or null>"
   humanishSource: "present|missing"
