@@ -20,11 +20,11 @@ targets, token-backed provider settings, and local-only dogfood variants belong
 in ignored `.humanish/` study files and can be run explicitly:
 
 ```bash
-npx humanish watch .humanish/studies/local-dogfood.yaml --env-file .humanish/local/provider.env
+npx humanish watch .humanish/studies/local-dogfood.yaml --dotenv .humanish/local/provider.env
 npx humanish run .humanish/studies/local-dogfood.yaml --json --no-open
 ```
 
-`--env-file` loads values into the current humanish process; declared subject
+`--dotenv` loads values into the current humanish process; declared subject
 variables can then be provisioned to the sandbox. Environment provenance records
 names. Persisted text is scrubbed for known values and secret patterns, with the
 [coverage limits described under verify before sharing](/docs/read-results#verify-before-sharing).

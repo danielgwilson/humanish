@@ -28,7 +28,7 @@ npx humanish init --yes
 npx humanish doctor --study try-live
 ```
 
-The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--env-file <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --study` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
+The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--dotenv <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --study` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
 
 `init` writes example studies and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. Run it after `keys set`: it writes the `try-live` study for the participant it finds credentials for, and it never overwrites an existing study file.
 
