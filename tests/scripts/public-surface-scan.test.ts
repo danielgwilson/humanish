@@ -238,3 +238,30 @@ describe("public-surface commit email policy", () => {
     }
   }, 45_000);
 });
+
+describe("public-surface packed history", () => {
+  it("fails on a packed docs/history/ page or a packed `Status: HISTORICAL` banner, and not on unpacked ones", async () => {
+    const root = await createGitHistory(["noreply@github.com"]);
+    const setFiles = (files: string[]) =>
+      writeFile(
+        join(root, "package.json"),
+        `${JSON.stringify({ name: "public-surface-scan-fixture", version: "1.0.0", files }, null, 2)}\n`,
+      );
+    try {
+      await mkdir(join(root, "docs/history"), { recursive: true });
+      await writeFile(join(root, "docs/history/plan.md"), "# Old plan\n");
+      await writeFile(join(root, "docs/guide.md"), "# Guide\n\nStatus: HISTORICAL (banner)\n");
+      await setFiles(["docs/README.md"]);
+      await writeFile(join(root, "docs/README.md"), "# Docs\n");
+      expect(runScan(root).status).toBe(0);
+
+      await setFiles(["docs"]);
+      const packed = runScan(root);
+      expect(packed.status).toBe(1);
+      expect(packed.stderr).toContain("docs/history/plan.md:0: packed_history_doc");
+      expect(packed.stderr).toContain("docs/guide.md:3: packed_historical_banner");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 45_000);
+});

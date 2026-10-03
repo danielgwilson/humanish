@@ -30,6 +30,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   npm package. The README no longer shows either: it opens with the tagline, the demo poster and
   the keyless quick start. An earlier version's README loads its image from that version on
   unpkg, which keeps it.
+- `AGENTS.md`, `CONTRIBUTING.md`, `docs/status.md`, `docs/ramp/`, `docs/release/` and
+  `docs/history/roadmap/` from the npm package. These are contributor and maintainer pages; read
+  them on GitHub. The package now ships `docs/README.md`, the index of the docs it ships, and a
+  shipped doc that linked one of the removed pages links it on GitHub.
 
 ### Deprecated
 
@@ -40,6 +44,26 @@ The Unreleased section holds the full notes for the next version until it is tag
   `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
+
+- Error codes name the study or the route where they said lab. Only the prefix changes.
+  - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
+  - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
+  - `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is `HUMANISH_SHARED_WORLD_*`.
+  - `HUMANISH_TERMINAL_LAB_*` is `HUMANISH_TERMINAL_*`, and `HUMANISH_SCRIPTED_LAB_*` is
+    `HUMANISH_SCRIPTED_*`.
+  - `HUMANISH_LAUNCH_INVALID_LAB` is `HUMANISH_LAUNCH_INVALID_STUDY`.
+
+  A script or library caller that matches a code by its old name needs the new one. Runs saved
+  before the change keep the codes they were written with, and nothing reads a code back from a
+  saved run.
+
+- Computer-use streams in `run.json` are labelled `<participant id> · browser`, such as
+  `lane-01 · browser`, in place of `CUA browser — <study>` and `CUA participant <id>: <study>`, and
+  their screenshot embed title is `Desktop (raw)` or `Desktop (blurred)` in place of
+  `CUA desktop …`. Bundles written earlier keep their labels. The Observer says participant where it
+  said lane (`Participant`, `Est. participant cost`, `Assigned focus`, `Declared UI route`), calls
+  its library the study library, and uses `·` in labels and a colon in sentences where it showed an
+  em dash.
 
 - `humanish --help`, bare `humanish`, the package description and the humanish skill describe
   humanish in one sentence: "Synthetic user research for apps, CLIs, and agent-facing product
@@ -68,6 +92,57 @@ The Unreleased section holds the full notes for the next version until it is tag
   longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
   em dash and its all-caps word. A test now runs init and holds these files to zero of each
   (#1440).
+- `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
+  passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
+  as what verify found, such as "redaction did not pass (status: pending)" or "review.md is
+  missing", then names `verify --verbose`, which prints every check as before. A missing run prints
+  only that. `--json` keeps its fields.
+  - A check that reads bundle content says "not checked, because run.json failed the shape check"
+    when run.json fails its shape check. Before, it printed its pass sentence.
+  - Each check has a pass message and a different fail message, in JSON and human output. Before,
+    `run schema`, `run bundle shape`, `redaction passed` and `review artifacts exist` printed the
+    rule they enforce on both sides, such as "redaction status must be passed".
+- `humanish stats` on a project with only previews prints one line, "2 previews ($0); no live
+  runs yet". Otherwise previews get their own `previews:` line, followed by spend, outcomes and the
+  per-lab and per-day lines. Counts read "3 runs" and "1 preview" in place of "run(s)", zero counts
+  are left out, and the closing note is one sentence. docs/contracts/study-costs.md holds the
+  accounting rules.
+  - A dry run that records no cost counts as $0 in `stats --json`. It no longer adds to
+    `unpricedRuns` or `incompleteRunEstimates`, and its `runEstimatedUsd` is 0. Before, each
+    preview counted as unpriced, with incomplete accounting. A dry run that records an unknown
+    (null) figure stays unpriced.
+- Run output names real commands and says what happened in words.
+  - A lab run starts with `humanish run <lab>: dry run finished` (or `live run finished`, or
+    `failed`) and a `route:` line (`computer-use`, `terminal`, `scripted` or `shared-world`). Before,
+    it named commands that do not exist, such as `humanish lab cua dry-run`, and repeated the lab on
+    a `lab:` line, which is gone. A dry-run participant reads "dry run, nothing ran live" in place of
+    `contract_proof_only`, and a failed one reads "not ok" in place of `not-ok`.
+  - The analysis line prints a sentence, for example "analysis: skipped for dry runs" in place of
+    "analysis: skipped (AUTOMATIC_ANALYSIS_DRY_RUN)". `--json` output keeps the reason code.
+  - `humanish review` prints the verdict, the summary, the gaps as a list and the `review.json` path.
+    Before, it printed the review as raw JSON without `--json`. A dry run's verdict reads "preview
+    only; no product behavior was tested".
+  - Bare `humanish run` says "humanish run needs a lab. List labs with humanish lab list, or run
+    humanish run --dry-run for a sample bundle." (`HUMANISH_LIVE_RUN_UNIMPLEMENTED`, unchanged).
+  - A missing run reads "No runs in <dir> yet; start one with humanish run first-run" in a project
+    with no runs, and "No run <id>; humanish runs lists them" otherwise, in `verify`, `cleanup`,
+    `feedback`, `observe`, `export` and `serve`. Before, each said "Run not found: <id>".
+
+- `humanish doctor` without `--lab` passes on a project with no keys. Its key rows report presence
+  and name the project's labs that need each key, for example "missing; used by try-live; run
+  `e2b auth login`, or `humanish keys set e2b`". Before, bare doctor after `init --yes` failed on a
+  missing `E2B_API_KEY`, and on `OPENAI_API_KEY` when no local agent was signed in, although
+  init's next step, `run first-run`, needs neither. `doctor --lab <lab>` still fails on a key the
+  selected lab requires, so a script that gates a live run on doctor's exit code should pass
+  `--lab`.
+  - Each row in `doctor --json` has a `status`: `ok`, `missing`, `not_checked` or `note`. A note is
+    advisory and keeps `ok: true`. Notes are: a missing key a project lab needs (without `--lab`),
+    `humanish tui` unbuilt or unsupported on this Node, a post-run analysis that will be skipped,
+    an installed agent that is not signed in, and an absent `@e2b/desktop` without `--lab`. Human
+    output prints the status where it printed "ok" or "missing".
+  - Each installed local agent has its own row, `local agent codex` and `local agent claude`.
+    Before, one `local agents` row joined both into one line. With no agent installed, the
+    `local agents` row stays.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
@@ -114,6 +189,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   stage. CI's `observer:reliability:proof` failed on that frame twice. Every settled stage and frame
   box matches the previous release on desktop and phone, in both orientations and at every zoom
   level. The live view still measures its stage.
+- The TUI key legend fits on one line at 45 columns. Its separators are two spaces, and the
+  lab and all-runs screens say "⏎ open" for "⏎ open run". Before, the lab and run legends wrapped
+  and left "quit" alone on the last line. The start rows keep two columns between the label and
+  its price, and put the price under the label when the two do not fit. At 45 columns, run rows
+  keep their two-column gutter and the labs list keeps the ▸ before the selected description.
+  "Start a LIVE run" reads "Start a live run", empty states are sentences, and on-screen em
+  dashes became colons or semicolons.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

@@ -1,0 +1,32 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "disabledBy": "string",
+    "enabled": "boolean",
+    "example": {
+      "distinct_id": "string",
+      "event": "string",
+      "properties": {
+        "$geoip_disable": "boolean",
+        "$process_person_profile": "boolean",
+        "brain": "string",
+        "ci": "boolean",
+        "command": "string",
+        "diagnostic_category": "string",
+        "duration": "string",
+        "lab": "string",
+        "mode": "string",
+        "node": "string",
+        "ok": "boolean",
+        "os": "string",
+        "outcome": "string",
+        "stop_cause": "string",
+        "studyParticipant": "boolean",
+        "version": "string"
+      }
+    },
+    "ok": "boolean",
+    "schema": "string",
+    "statePath": "string"
+  }
+}

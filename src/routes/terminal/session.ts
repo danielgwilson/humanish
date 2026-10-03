@@ -48,7 +48,7 @@ export function checkLiveTerminalMachine(
   if (missingKeys(plan.requirements, env).length > 0) {
     return {
       ok: false,
-      code: "HUMANISH_TERMINAL_LAB_KEYS_MISSING",
+      code: "HUMANISH_TERMINAL_KEYS_MISSING",
       message: `Live terminal-product labs need E2B_API_KEY in the environment (values are never persisted). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
     };
   }

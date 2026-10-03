@@ -1,6 +1,6 @@
-// Reads a lobby code (the /lobby/CODE path segment) from a URL, from a seat's narration or, through
-// a vision model call, from a seat's screenshot. The external-public plane uses it to hand the
-// host's lobby to the followers.
+// Reads a lobby code (the /lobby/CODE path segment) from a URL, from a participant's narration or,
+// through a vision model call, from a participant's screenshot. The external-public plane uses it
+// to hand the host's lobby to the followers.
 
 import { OPENAI_RESPONSES_URL } from "../../actors/openai-endpoint.js";
 

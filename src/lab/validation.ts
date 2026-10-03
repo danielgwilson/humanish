@@ -33,8 +33,9 @@ export function computerUseValidationReason(config: LabConfig): string | null {
   if (structuralReason) {
     return structuralReason;
   }
-  // clone.fanout is a declared behavior change: rejected on the cua route (was inert-warned).
-  // Fan-out is declared via `actors[0].count` or `actors[0].lanes`; subject.clone.fanout never applied here.
+  // clone.fanout is a declared behavior change: rejected on the computer-use route (was
+  // inert-warned). Fan-out is declared via `actors[0].count` or `actors[0].lanes`;
+  // subject.clone.fanout never applied here.
   if (config.subject.clone?.fanout !== undefined) {
     return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)";
   }
@@ -308,7 +309,8 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
  * Shared-world participants share one live app, so at least two must be live at once. The
  * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0; the parser
  * fills an omitted concurrency with the participant count. Both callers check it after their
- * two-participant roster floor, so a one-seat roster gets the roster refusal, never this one.
+ * two-participant roster floor, so a one-participant roster gets the roster refusal, never this
+ * one.
  */
 function sharedWorldConcurrencyReason(config: LabConfig): string | null {
   // Direct library callers skip the parser, so an omitted value defaults here exactly as the

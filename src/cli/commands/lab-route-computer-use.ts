@@ -77,7 +77,7 @@ export function computerUseRouteRun(args: ComputerUseRouteArgs): RouteRun | unde
   };
 }
 
-/** Parsed options for one CUA lab invocation. */
+/** Parsed options for one computer-use study invocation. */
 interface CuaRunSettings {
   wantsMachine: boolean;
   shouldOpen: boolean;

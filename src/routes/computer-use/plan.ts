@@ -155,7 +155,7 @@ export function plannedAppUrl(subject: ComputerUseRunner["subject"]): string {
 type Rejection = { code: CuaActorLabErrorCode; message: string } | undefined;
 
 const invalid = (message: string): Rejection => ({
-  code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+  code: "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
   message,
 });
 
@@ -261,7 +261,7 @@ function entryTargetReason(config: LabConfig, subjectRoute: DeclaredSubjectRoute
   );
   if (entryTargetSafe) return undefined;
   return {
-    code: "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+    code: "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
     message:
       provisionedRoute || localAppSubject || !allowPublicTargets
         ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
@@ -278,14 +278,14 @@ function driverReason(
   // and would fail closed against an executor that returns no screenshot.
   if (driving.inProcess && !driving.createProvider)
     return {
-      code: "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      code: "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
       message:
         "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
     };
   // There is no built-in in-process driver for a local app.
   if (localAppSubject && !inProcessRoute)
     return {
-      code: "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      code: "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
       message:
         "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider.",
     };
@@ -297,7 +297,7 @@ function rosterShapeReason(config: LabConfig): Rejection {
   // `lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap, unique ids,
   // allowPublicTargets with more than one participant, clone.fanout.
   const fanoutReason = computerUseValidationReason(config);
-  if (fanoutReason) return { code: "HUMANISH_CUA_LAB_FANOUT_INVALID", message: fanoutReason };
+  if (fanoutReason) return { code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID", message: fanoutReason };
   // The sandbox deadline is derived from the session budget, so a lab can ask for a session that
   // cannot legally be provisioned. Show the arithmetic: the provider's own error names a limit
   // but not which knob produced it.
@@ -359,9 +359,9 @@ export function planComputerUseLab(
 
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok)
-    return refuse("before-scope", "HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
+    return refuse("before-scope", "HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, true);
-  if (tasksReason) return refuse("before-scope", "HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+  if (tasksReason) return refuse("before-scope", "HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
 
   // The parser checks the actor too; a library caller skips the parser.
   const actorType = config.actors[0]?.type ?? "";
@@ -369,7 +369,7 @@ export function planComputerUseLab(
   if (!descriptor || !isCuaActorDescriptor(descriptor))
     return refuse(
       "in-scope",
-      "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
       `actors[0].type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
@@ -380,13 +380,13 @@ export function planComputerUseLab(
     declaredSubjectRoute(config, driving),
   );
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
-  // A shared world runs every seat against one app; this route would run them as separate participants.
-  // It comes after the rules above, so a shared-world config that breaks one of them, which runLab
-  // sends here, still gets that rule's message.
+  // A shared world runs every participant against one app; this route would run them as separate
+  // participants. It comes after the rules above, so a shared-world config that breaks one of them,
+  // which runLab sends here, still gets that rule's message.
   if (config.subject.topology === "shared-world")
     return refuse(
       "in-scope",
-      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld.",
       actor,
     );
@@ -399,20 +399,20 @@ export function planComputerUseLab(
   )
     return refuse(
       "in-scope",
-      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       `RunLabOptions.inProcess drives subject.appUrl in this process, and a ${source} subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with inProcess, or remove inProcess to run on a hosted desktop.`,
       actor,
     );
   // The parser's rule; without a product the desktop study fails later.
   const productReason = desktopCliProductReason(config);
   if (productReason)
-    return refuse("in-scope", "HUMANISH_CUA_LAB_SUBJECT_INVALID", productReason, actor);
+    return refuse("in-scope", "HUMANISH_COMPUTER_USE_SUBJECT_INVALID", productReason, actor);
 
   const participants = computerUseParticipants(config, input.countOverride);
   if (participants.length > MAX_COMPUTER_USE_PARTICIPANTS)
     return refuse(
       "after-personas",
-      "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       `Computer-use fan-out is capped at ${MAX_COMPUTER_USE_PARTICIPANTS} participants (resolved ${participants.length}); N concurrent paid desktops is real spend.`,
       actor,
     );
@@ -420,7 +420,7 @@ export function planComputerUseLab(
   if (driving.inProcess && rest.length > 0)
     return refuse(
       "after-personas",
-      "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
       "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route.",
       actor,
     );

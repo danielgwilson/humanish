@@ -12,7 +12,8 @@ From the repo root (pnpm workspace):
 
 - `pnpm install` installs the site workspace too.
 - `pnpm --filter humanish-site dev` runs the dev server on http://localhost:3000.
-- `pnpm --filter humanish-site build` makes a production build.
+- `pnpm --filter humanish-site build` makes a production build, then
+  `scripts/check-docs-highlighting.mjs` fails it if a docs page lost its syntax colors in one theme.
 - `pnpm --filter humanish-site start` serves the production build.
 - `pnpm --filter humanish-site typecheck` runs TypeScript only.
 - `pnpm --filter humanish-site registry:build` regenerates the component registry: it extracts
@@ -80,7 +81,9 @@ Requests for `/` pass through a proxy and a feature flag before a page renders:
 - Existing marketing design and copy are fixtures. Preserve the approved hero and section
   vocabulary. Documentation must match the current CLI and runnable examples. Design tokens live
   once in `app/globals.css` (`:root` plus the two dark blocks), and both themes must stay in
-  sync.
+  sync. The footer, dark in both themes, sets its own `--foot-*` colors on `.site-foot`, which
+  keeps them out of the registry's token export. Rules read colors from tokens;
+  `pnpm site-css:check` counts the hex colors still written into rules.
 - Keep dependencies minimal: Next, React, Tailwind, Vercel Analytics, Fumadocs UI/Core/MDX (docs
   only) with its `zod` schema peer, the homepage flag stack (`flags`, `@flags-sdk/posthog`,
   `posthog-js`), and `shadcn` as a dev dependency. No motion libraries. The only committed font

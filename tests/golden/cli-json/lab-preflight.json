@@ -1,0 +1,30 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "checks": [
+      {
+        "message": "string",
+        "name": "string",
+        "ok": "boolean"
+      }
+    ],
+    "cwd": "string",
+    "lab": "string",
+    "labId": "string",
+    "ok": "boolean",
+    "origin": "string",
+    "path": "string",
+    "reachability": "string",
+    "route": "string",
+    "sandbox": {
+      "created": "boolean"
+    },
+    "schema": "string",
+    "spend": {
+      "e2bDesktop": "boolean",
+      "model": "boolean"
+    },
+    "targets": [],
+    "warnings": []
+  }
+}

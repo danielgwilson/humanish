@@ -118,7 +118,7 @@ describe("local browser study selection", () => {
     if (outcome.route !== "computer-use") return;
     // The local study is not started, so the run has no local desktop and refuses before either
     // caller function runs.
-    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
+    expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");
     expect(executor).not.toHaveBeenCalled();
     expect(createProvider).not.toHaveBeenCalled();
   });

@@ -172,7 +172,7 @@ async function handleWatch(
     return;
   }
 
-  // Exposure is only meaningful for a live CUA lab run (it serves the live desktop). The
+  // Exposure is only meaningful for a live computer-use study run (it serves the live desktop). The
   // non-lab watch path (existing evidence, or a fresh synthetic run) has no live desktop to
   // stream, so exposure flags there are refused rather than silently ignored; use `serve`.
   if (watchExposeRequested(options)) {

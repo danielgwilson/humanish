@@ -1,3 +1,4 @@
+import path from "node:path";
 import { Command, Option } from "commander";
 import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
@@ -10,6 +11,7 @@ import {
   type ReclaimResult,
 } from "../../run/reclaim.js";
 import type { CleanupResult, RunResult } from "../../run/results.js";
+import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { runLabCommand } from "./lab-run.js";
@@ -157,12 +159,17 @@ export function registerVerifyCommand(parent: Command, io: CliIo): void {
     .summary("Validate a run bundle and public-safety gates.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--verbose", "Print every check, passing ones included.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
-      const result = await verifyRun(options.cwd, options.run);
-      writeResult(command, io, result, formatVerifyHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (options: { cwd: string; json?: boolean; run: string; verbose?: boolean }, command) => {
+        const result = await verifyRun(options.cwd, options.run);
+        writeResult(command, io, result, (value) =>
+          options.verbose ? formatVerifyVerbose(value) : formatVerifyHuman(value),
+        );
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 export function registerCleanupCommand(parent: Command, io: CliIo): void {
@@ -185,14 +192,14 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
 export function registerReviewCommand(parent: Command, io: CliIo): void {
   parent
     .command("review")
-    .description("Build a review packet from verified run evidence.")
+    .description("Show a run's review: verdict, summary and gaps.")
     .summary("Build a review packet from verified run evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await readReview(options.cwd, options.run);
-      writeResult(command, io, result, (value) => `${JSON.stringify(value, null, 2)}\n`);
+      writeResult(command, io, result, formatReviewHuman);
       io.setExitCode("ok" in result && result.ok === false ? 2 : 0);
     });
 }
@@ -390,11 +397,80 @@ function formatReclaimHuman(result: ReclaimResult): string {
   return lines.join("\n");
 }
 
+const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
+  contract_proof_only: "preview only; no product behavior was tested",
+  pass: "pass",
+  fail: "fail",
+  blocked: "blocked",
+  timed_out: "timed out",
+};
+
+/** A run's review: its verdict, summary and gaps, and where review.json is. */
+function formatReviewHuman(
+  result: VerifyResult | (ReviewSummary & { path: string; runId: string }),
+): string {
+  if (!("verdict" in result)) {
+    const why = result.error
+      ? `${result.error.code}: ${result.error.message}`
+      : `the run did not pass verify; humanish verify --run ${result.run} shows why`;
+    return `humanish review failed\nrun: ${result.run}\n${why}\n`;
+  }
+  return (
+    [
+      `humanish review ${result.runId}: ${REVIEW_VERDICTS[result.verdict]}`,
+      "",
+      result.summary,
+      ...(result.gaps.length === 0 ? [] : ["", "gaps:", ...result.gaps.map((gap) => `- ${gap}`)]),
+      "",
+      `review: ${result.path}`,
+    ].join("\n") + "\n"
+  );
+}
+
+/** The run id verify read, from the bundle path, so `latest` prints as the id it points at. */
+function verifiedRunId(result: VerifyResult): string {
+  return result.bundlePath === undefined
+    ? result.run
+    : path.basename(path.dirname(result.bundlePath));
+}
+
+/** Share-safety reasons, except VERIFY_FAILED, which the failing checks above it already say. */
+function shareSafetyLines(result: VerifyResult): string[] {
+  return result.shareSafety.reasons
+    .filter((reason) => reason.code !== "VERIFY_FAILED")
+    .map((reason) => `share-safety: ${reason.code}: ${reason.message}`);
+}
+
+/**
+ * One line for a pass. A failure lists only the failing checks. `--verbose` prints every check.
+ * A run that does not exist prints only that.
+ */
 function formatVerifyHuman(result: VerifyResult): string {
+  if (result.error?.code === "HUMANISH_RUN_NOT_FOUND")
+    return `verify failed: ${result.error.message}\n`;
+  const runId = verifiedRunId(result);
+  const total = result.checks.length;
+  const failed = result.checks.filter((check) => !check.ok);
+  const lines = result.ok
+    ? [`verified ${runId} · ${result.shareSafety.status} · ${total} checks passed`]
+    : [
+        `verify failed: ${runId} · ${result.shareSafety.status} · ${failed.length} of ${total} checks failed`,
+        ...failed.map((check) => `- ${check.message}`),
+      ];
+  lines.push(
+    ...shareSafetyLines(result),
+    ...result.warnings.map((warning) => `warning: ${warning}`),
+  );
+  const cwdFlag = result.cwd === process.cwd() ? "" : ` --cwd ${result.cwd}`;
+  if (!result.ok) lines.push(`every check: humanish verify --run ${runId}${cwdFlag} --verbose`);
+  return `${lines.join("\n")}\n`;
+}
+
+function formatVerifyVerbose(result: VerifyResult): string {
   return (
     [
       `humanish verify ${result.ok ? "passed" : "failed"}`,
-      `run: ${result.run}`,
+      `run: ${verifiedRunId(result)}`,
       `share-safety: ${result.shareSafety.status}`,
       ...result.shareSafety.reasons.map(
         (reason) => `share-safety reason: ${reason.code}: ${reason.message}`,

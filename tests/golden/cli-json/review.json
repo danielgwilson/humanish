@@ -1,0 +1,13 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "gaps": [
+      "string"
+    ],
+    "path": "string",
+    "runId": "string",
+    "schema": "string",
+    "summary": "string",
+    "verdict": "string"
+  }
+}

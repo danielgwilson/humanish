@@ -1,8 +1,9 @@
-// External-public plane: no subject sandbox, no getHost, no prober. The shared plane
-// is the operator-declared public deployment (publicAppUrl); each seat opens it directly and reaches
-// the shared session through the real UI. A host-first barrier extracts the /lobby/CODE from the host
-// seat's CDP-observed URL (onObservedUrl) and threads it into the follower missions; a follower fails
-// closed without opening if the host never yields a code within the handoff deadline.
+// External-public plane: no subject sandbox, no getHost, no prober. The shared plane is the
+// operator-declared public deployment (publicAppUrl); each participant opens it directly and
+// reaches the shared session through the real UI. A host-first barrier extracts the /lobby/CODE
+// from the host's CDP-observed URL (onObservedUrl) and threads it into the follower missions; a
+// follower fails closed without opening if the host never yields a code within the handoff
+// deadline.
 
 import { liveObserverResult } from "../../observer/live.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
@@ -37,8 +38,9 @@ export interface ExternalPublicPlaneOutcome {
  * The operator-declared origin (from subject.appUrl), recorded for evidence and reference only. The
  * operator-ownership claim rests on the subject.publicTarget.authorized attestation + this declared
  * appUrl; digest equality plays no part: a normal cross-origin redirect (apex->www, http->https;
- * lobby-trivia.example.test 307-redirects) makes the seats' observed origin differ from the declared one, which
- * is expected and must not fail the run. Persisted digest-only (never the raw origin).
+ * lobby-trivia.example.test 307-redirects) makes the participants' observed origin differ from the
+ * declared one, which is expected and must not fail the run. Persisted digest-only (never the raw
+ * origin).
  */
 export function declaredOriginDigestOf(publicAppUrl: string): string | undefined {
   return publicAppUrl ? hostOriginDigest(publicAppUrl) : undefined;
@@ -61,8 +63,9 @@ export async function runExternalPublicPlane(
     timeoutMs: ctx.timeoutMs,
     deadlineMs: seams.handoffDeadlineMs,
     scrubKnownValues: ctx.scrubKnownValues,
-    // The per-seat vision lobby-code reader (default: the real single-frame OpenAI read). Injectable
-    // so the barrier's handoff + convergence proof are testable without a live vision call.
+    // The per-participant vision lobby-code reader (default: the real single-frame OpenAI read).
+    // Injectable so the barrier's handoff + convergence proof are testable without a live vision
+    // call.
     readLobbyCode: seams.readLobbyCodeFromFrame ?? readLobbyCodeFromFrame,
     openaiApiKey: ctx.openaiApiKey,
   });
@@ -89,8 +92,9 @@ export async function runExternalPublicPlane(
     subject: { source: "app-url", envNames: [], state: { provenance: "external-public" } },
     seedDigest: ctx.seedDigest,
     planeClass: "external-public",
-    // Pre-fan-out snapshot: no seat has observed an origin yet, so the observed publicOriginDigest
-    // is not available; surface the declared origin for the live Observer's reference.
+    // Pre-fan-out snapshot: no participant has observed an origin yet, so the observed
+    // publicOriginDigest is not available; surface the declared origin for the live Observer's
+    // reference.
     ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
   };
   const inProgressBundle = buildConcurrentSharedWorldBundle({

@@ -2,6 +2,7 @@
 // as an issue body or URL, and list a run's candidates. What a draft contains is in draft.ts.
 
 import { realpath } from "node:fs/promises";
+import { runNotFoundMessage } from "../run/run-not-found.js";
 import path from "node:path";
 import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
 import {
@@ -106,7 +107,7 @@ async function draftFeedbackBound(
         run: runInput,
         error: {
           code: "HUMANISH_RUN_NOT_FOUND",
-          message: `Run not found: ${runInput}`,
+          message: await runNotFoundMessage(cwd, runInput),
         },
       },
     };
@@ -339,7 +340,7 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
       run: runInput,
       error: {
         code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`,
+        message: await runNotFoundMessage(cwd, runInput),
       },
     };
   }

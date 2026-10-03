@@ -119,7 +119,7 @@ export async function runDryTerminalLab(args: {
       ? {}
       : {
           error: {
-            code: "HUMANISH_TERMINAL_LAB_FAILED" as const,
+            code: "HUMANISH_TERMINAL_FAILED" as const,
             message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
           },
         }),

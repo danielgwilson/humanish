@@ -305,7 +305,7 @@ export function toParticipantResult(
       ok: false,
       diagnostics: cuaParticipantDiagnostics({ dryRun, skipped: true }),
       skippedReason: outcome.skippedReason,
-      error: { code: "HUMANISH_CUA_LAB_FAILED", message: outcome.skippedReason },
+      error: { code: "HUMANISH_COMPUTER_USE_FAILED", message: outcome.skippedReason },
     };
   }
   const session = outcome.session;
@@ -357,7 +357,7 @@ export function toParticipantResult(
       ? {}
       : {
           error: {
-            code: outcome.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
+            code: outcome.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED",
             message:
               outcome.sessionError ??
               (outcome.noEngagement

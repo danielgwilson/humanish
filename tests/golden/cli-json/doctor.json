@@ -1,0 +1,16 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "checks": [
+      {
+        "message": "string",
+        "name": "string",
+        "ok": "boolean",
+        "status": "string"
+      }
+    ],
+    "cwd": "string",
+    "ok": "boolean",
+    "schema": "string"
+  }
+}

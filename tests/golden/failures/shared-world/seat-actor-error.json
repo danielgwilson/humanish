@@ -82,7 +82,7 @@
           "killed": true
         },
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+          "code": "HUMANISH_SHARED_WORLD_FAILED",
           "message": "Actor did not produce a terminal session."
         }
       },
@@ -132,7 +132,7 @@
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      "code": "HUMANISH_SHARED_WORLD_FAILED",
       "message": "Concurrent shared-world run did not run coherently: 2/3 actor(s) reached a terminal, engaged passed session."
     },
     "automaticAnalysisTrigger": "default",

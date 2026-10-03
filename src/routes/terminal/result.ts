@@ -171,10 +171,10 @@ export function terminalLabResult(args: {
       : {
           error: {
             code: (!cleanupProven
-              ? "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
+              ? "HUMANISH_TERMINAL_CLEANUP_UNPROVEN"
               : capFailure !== undefined
-                ? "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
-                : "HUMANISH_TERMINAL_LAB_FAILED") as NonNullable<
+                ? "HUMANISH_TERMINAL_CAPS_EXCEEDED"
+                : "HUMANISH_TERMINAL_FAILED") as NonNullable<
               TerminalProductLabResult["error"]
             >["code"],
             message: !cleanupProven

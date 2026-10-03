@@ -18,7 +18,7 @@ import { rosterOf } from "./parse/actors.js";
 
 type Refusal = {
   ok: false;
-  code: "HUMANISH_LAB_OPTION_UNSUPPORTED";
+  code: "HUMANISH_STUDY_OPTION_UNSUPPORTED";
   message: string;
 };
 
@@ -34,7 +34,7 @@ type Normalized = {
 
 const unsupported = (option: string, route: LabRoute, reason: string): Refusal => ({
   ok: false,
-  code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+  code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
   message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
 });
 
@@ -56,7 +56,7 @@ export function removedOptionRefusal(options: RunLabOptions): Refusal | undefine
   if (options.rerun !== undefined && Reflect.get(options.rerun, "laneIds") !== undefined)
     return {
       ok: false,
-      code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+      code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
       message:
         'RunLabOptions.rerun.laneIds was removed. Use rerun.participantIds. See docs/contracts/schemas.md, "Library options".',
     };
@@ -64,7 +64,7 @@ export function removedOptionRefusal(options: RunLabOptions): Refusal | undefine
   if (field === undefined) return undefined;
   return {
     ok: false,
-    code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+    code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
     message: `RunLabOptions.${field} was removed. ${REMOVED_OPTIONS[field]} See docs/contracts/schemas.md, "Library options".`,
   };
 }
