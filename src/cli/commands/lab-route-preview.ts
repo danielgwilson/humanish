@@ -34,7 +34,7 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
       cwd: args.options.cwd,
       warnings: [],
       error: {
-        code: "HUMANISH_INVALID_SIM_COUNT",
+        code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
         message: "--count must be a positive integer.",
       },
     };
