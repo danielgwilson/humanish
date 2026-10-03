@@ -70,15 +70,7 @@ function fakeModule(
   } as unknown as E2BDesktopModule;
 }
 
-describe("sandbox receipts + humanish reclaim", () => {
-  let cwd: string;
-  beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-reclaim-"));
-  });
-  afterEach(async () => {
-    await rm(cwd, { recursive: true, force: true });
-  });
-
+describe("parseSandboxReceipts", () => {
   it("parseSandboxReceipts keeps valid lines and drops a torn final line", () => {
     const text = `${JSON.stringify({ at: "t", laneId: "lane-01", sandboxId: "fake-sb-1", timeoutMs: 5 })}\n{"laneId":"lane-02","sandbo`;
     expect(parseSandboxReceipts(text)).toEqual([
@@ -96,6 +88,16 @@ describe("sandbox receipts + humanish reclaim", () => {
       { at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: "fake-sb-1" },
       { at: "t2", laneId: "lane-02", provider: "example-cloud", sandboxId: "fake-sb-2" },
     ]);
+  });
+});
+
+describe("sandbox receipts + humanish reclaim", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-reclaim-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
   });
 
   it("reports a receipt from an unknown provider without loading or calling E2B", async () => {
