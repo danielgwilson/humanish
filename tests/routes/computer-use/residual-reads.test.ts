@@ -12,7 +12,7 @@ import {
 } from "../../../src/actors/computer-use/actor.js";
 import type { CuaExecutor, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
@@ -40,7 +40,7 @@ afterEach(async () => {
 const KEYS = { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" };
 
 function appUrlLab(): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "config-lab",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -118,7 +118,7 @@ describe("computer-use run reads the plan's residual fields", () => {
   });
 
   it("injects the plan's fake-email catch env into a clone's sandbox", async () => {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "config-lab",
       subject: {
@@ -150,7 +150,7 @@ describe("computer-use run reads the plan's residual fields", () => {
   });
 
   it("warns about the plan's per-participant cap on a fan-out", async () => {
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "config-lab",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

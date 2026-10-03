@@ -6,7 +6,7 @@ import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
 } from "../../src/study/validation.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
@@ -99,10 +99,10 @@ describe("declared camera capabilities must reach an implemented route", () => {
     change(config);
     const withoutMedia = structuredClone(config);
     delete withoutMedia.execution!.desktop!.media;
-    const baseline = parseStudy(withoutMedia);
+    const baseline = parseStudyDocument(withoutMedia);
     expect(baseline.ok, baseline.ok ? undefined : baseline.error.message).toBe(true);
     expect(desktopMediaValidationReason(config)).toContain(reason);
-    const parsed = parseStudy(config);
+    const parsed = parseStudyDocument(config);
     expect(parsed.ok).toBe(false);
     expect(parsed.ok ? undefined : parsed.error.message).toContain(reason);
   });
@@ -117,7 +117,7 @@ describe("declared camera capabilities must reach an implemented route", () => {
     }
     const config = structuredClone(base);
     config.execution!.desktop!.browser = "chromium";
-    expect(parseStudy(config).ok).toBe(true);
+    expect(parseStudyDocument(config).ok).toBe(true);
   });
 
   it("rechecks direct backend calls before desktop creation or participant dispatch", async () => {

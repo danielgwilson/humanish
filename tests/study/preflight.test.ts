@@ -8,6 +8,7 @@ import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e
 import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 interface CliResult {
   exitCode: number;
@@ -49,7 +50,7 @@ describe("lab preflight", () => {
   it("preflights public-preview targets from a sandbox without exposing raw URLs", async () => {
     await withTempLab(
       {
-        "humanish/labs/preview.yaml": publicPreviewLab("https://preview.example.test/start"),
+        "humanish/studies/preview.yaml": publicPreviewLab("https://preview.example.test/start"),
       },
       async (cwd) => {
         let created = 0;
@@ -87,7 +88,7 @@ describe("lab preflight", () => {
   it("blocks loopback targets in public-preview mode before launching a sandbox", async () => {
     await withTempLab(
       {
-        "humanish/labs/loopback.yaml": publicPreviewLab("http://127.0.0.1:3000/start"),
+        "humanish/studies/loopback.yaml": publicPreviewLab("http://127.0.0.1:3000/start"),
       },
       async (cwd) => {
         let created = 0;
@@ -118,7 +119,7 @@ describe("lab preflight", () => {
   it("checks participant targets instead of blocking an unused loopback appUrl", async () => {
     await withTempLab(
       {
-        "humanish/labs/target-roster.yaml": [
+        "humanish/studies/target-roster.yaml": [
           "schema: humanish.lab.v2",
           "id: target-roster",
           "subject:",
@@ -174,18 +175,19 @@ describe("lab preflight", () => {
   it("fails public-preview without allowPublicTargets before launching a sandbox", async () => {
     await withTempLab(
       {
-        "humanish/labs/no-policy.yaml": [
-          "schema: humanish.lab.v2",
+        // Written as v3 by hand: the converter refuses a file that does not parse.
+        "humanish/studies/no-policy.yaml": [
+          "schema: humanish.study.v3",
           "id: no-policy",
+          "route: computer-use",
+          "mode: live",
           "subject:",
           "  source: app-url",
           "  appUrl: https://preview.example.test/start",
           "execution:",
           "  target: e2b-desktop",
-          "actors:",
-          "  - type: openai-computer-use",
-          "scenario:",
-          "  mode: live",
+          "actor:",
+          "  type: openai-computer-use",
         ].join("\n"),
       },
       async (cwd) => {
@@ -205,7 +207,7 @@ describe("lab preflight", () => {
   it("supports metadata-only CLI preflight with clean JSON", async () => {
     await withTempLab(
       {
-        "humanish/labs/first-run.yaml": [
+        "humanish/studies/first-run.yaml": [
           "schema: humanish.lab.v2",
           "id: first-run",
           "subject:",
@@ -303,7 +305,8 @@ async function withTempLab<T>(
     for (const [relativePath, contents] of Object.entries(files)) {
       const filePath = path.join(cwd, relativePath);
       await mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, `${contents}\n`, "utf8");
+      const v2 = contents.startsWith("schema: humanish.lab.v2");
+      await writeFile(filePath, v2 ? studyFileText(contents, cwd) : `${contents}\n`, "utf8");
     }
     return await callback(cwd);
   } finally {

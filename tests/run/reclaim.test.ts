@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // real run-dir resolution chain (a $0 dry-run creates the managed dir + latest pointer) with a
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import {
@@ -24,7 +24,7 @@ import { RECLAIM_RECEIPT_ARTIFACT, reclaimRunSandboxes } from "../../src/run/rec
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 function dryRunConfig(): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "reclaim-fixture",
     subject: {

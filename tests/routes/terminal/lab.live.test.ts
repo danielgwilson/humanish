@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -31,7 +31,7 @@ const LIVE =
   Boolean(process.env.E2B_API_KEY);
 
 function liveConfig(): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "terminal-product-live-proof",
     title: "Terminal-product live proof",

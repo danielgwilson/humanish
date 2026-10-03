@@ -32,7 +32,7 @@ import {
   sharedWorldValidationReason,
 } from "../../../src/study/validation.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { prepareStudy, runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -381,7 +381,7 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): St
     persona: `persona-${i + 1}`,
     entry: `/seat-${i + 1}`,
   }));
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "concurrent-shared-world-proof",
     title: "Concurrent shared-world proof",
@@ -1138,7 +1138,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // The second participant has no id, and email has no recipients: the parser fills one per
     // participant.
     const labWith = (email: Record<string, unknown>) =>
-      parseStudy({
+      parseStudyDocument({
         ...declared,
         actors: [{ ...declared.actors[0], lanes: [named, unnamedSeat] }],
         comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, ...email } },
@@ -1876,7 +1876,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       persona: `persona-${i + 1}`,
       entry: `/seat-${i + 1}`,
     }));
-    const parsed = parseStudy({
+    const parsed = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "concurrent-shared-world-local-tree-proof",
       title: "Concurrent shared-world local-tree proof",
@@ -2410,7 +2410,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
         "utf8",
       ),
     );
-    const parsed = parseStudy(raw);
+    const parsed = parseStudyDocument(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
   }

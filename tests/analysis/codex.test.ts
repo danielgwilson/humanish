@@ -13,7 +13,7 @@ import {
   resolveAutomaticAnalysis,
 } from "../../src/analysis/automatic-config.js";
 import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../src/analysis/automatic.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { createProgram } from "../../src/cli/program.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -139,7 +139,7 @@ describe("explicit Codex account analysis", () => {
     const analysis = { provider: "codex", ...fields };
     expect(resolveAutomaticAnalysis(analysis).ok).toBe(false);
     expect(
-      parseStudy({
+      parseStudyDocument({
         schema: "humanish.lab.v2",
         id: "synthetic",
         subject: { source: "app-url", appUrl: "https://example.test" },

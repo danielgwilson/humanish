@@ -21,7 +21,7 @@ import {
 import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
 import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { freePort } from "../helpers/free-port.js";
 
 const TOKEN = "test-token-not-a-secret";
@@ -138,7 +138,7 @@ describe("comms.email.external config", () => {
   });
 
   it("makes comms live on an app-url subject instead of warning it inert", () => {
-    const result = parseStudy(
+    const result = parseStudyDocument(
       appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
     );
     expect(result.ok).toBe(true);
@@ -154,13 +154,13 @@ describe("comms.email.external config", () => {
   });
 
   it("drops the injectEnv requirement for an external catch (there is no subject env to inject)", () => {
-    const withoutInject = parseStudy(
+    const withoutInject = parseStudyDocument(
       appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
     );
     expect(withoutInject.ok).toBe(true);
     // ...but still refuses when nothing declares where mail should go, and the message names every
     // transport that would satisfy it rather than only the HTTP one.
-    const neither = parseStudy(appUrlLab({ email: {} }));
+    const neither = parseStudyDocument(appUrlLab({ email: {} }));
     expect(neither.ok).toBe(false);
     if (!neither.ok) {
       expect(neither.error.message).toContain("injectEnv");
@@ -170,9 +170,11 @@ describe("comms.email.external config", () => {
   });
 
   it("rejects a non-absolute URL and a malformed token env name", () => {
-    const badUrl = parseStudy(appUrlLab({ email: { external: { catchBaseUrl: "/relative" } } }));
+    const badUrl = parseStudyDocument(
+      appUrlLab({ email: { external: { catchBaseUrl: "/relative" } } }),
+    );
     expect(badUrl.ok).toBe(false);
-    const badEnv = parseStudy(
+    const badEnv = parseStudyDocument(
       appUrlLab({
         email: { external: { catchBaseUrl: "https://c.example.test", authTokenEnv: "not a var" } },
       }),
@@ -182,7 +184,7 @@ describe("comms.email.external config", () => {
   });
 
   it("warns when an external catch is declared on a route where humanish hosts its own", () => {
-    const provisioned = parseStudy({
+    const provisioned = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "conflict",
       subject: {

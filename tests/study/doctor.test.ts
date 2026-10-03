@@ -13,6 +13,7 @@ import { runStudyWith } from "../../src/run-study.js";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
 // What a hosted Codex participant's operator handshake reports when it passes.
@@ -42,13 +43,20 @@ const lab = (actor = "openai-computer-use", mode = "live") =>
     "  allowPublicTargets: true",
   ].join("\n");
 
-async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): Promise<T> {
+async function project<T>(
+  manifest: string,
+  run: (cwd: string) => Promise<T>,
+  options: { v2?: boolean } = {},
+): Promise<T> {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-doctor-lab-"));
   try {
-    await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
+    await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
     await writeFile(path.join(cwd, "package.json"), "{}");
     await writeFile(path.join(cwd, ".gitignore"), ".humanish/\n");
-    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), manifest);
+    await writeFile(
+      path.join(cwd, "humanish/studies/preview.yaml"),
+      options.v2 ? manifest : studyFileText(manifest, cwd),
+    );
     return await run(cwd);
   } finally {
     await rm(cwd, { recursive: true, force: true });
@@ -607,7 +615,7 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
     return project(stringify(raw), (cwd) =>
       studySetupChecks({
         cwd,
-        lab: "humanish/labs/preview.yaml",
+        lab: "humanish/studies/preview.yaml",
         env: keyless,
         agents,
         keyPresent: () => false,
@@ -651,15 +659,18 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
 });
 
 describe("doctor reads a live run's needs from the lab's plan", () => {
-  const check = (raw: Record<string, unknown>, env: NodeJS.ProcessEnv = keyless) =>
-    project(stringify(raw), (cwd) =>
-      studySetupChecks({
-        cwd,
-        lab: "humanish/labs/preview.yaml",
-        env,
-        agents: [],
-        keyPresent: () => false,
-      }),
+  const check = (raw: Record<string, unknown>, env: NodeJS.ProcessEnv = keyless, v2 = false) =>
+    project(
+      stringify(raw),
+      (cwd) =>
+        studySetupChecks({
+          cwd,
+          lab: "humanish/studies/preview.yaml",
+          env,
+          agents: [],
+          keyPresent: () => false,
+        }),
+      { v2 },
     );
 
   it("reports each subject env name the plan requires, present or missing", async () => {
@@ -689,7 +700,9 @@ describe("doctor reads a live run's needs from the lab's plan", () => {
       personas: [persona],
     });
     expect(stringify(raw)).toContain("*");
-    expect(await check(raw)).toMatchObject({
+    // Only a humanish.lab.v2 file can carry this: v3 rejects the top-level personas list, which no
+    // route reads.
+    expect(await check(raw, keyless, true)).toMatchObject({
       desktop: true,
       keys: ["E2B_API_KEY", "OPENAI_API_KEY"],
     });

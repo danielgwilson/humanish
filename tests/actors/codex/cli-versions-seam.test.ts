@@ -5,7 +5,7 @@ import { parseSync } from "oxc-parser";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createProgram } from "../../../src/cli/program.js";
 import type { RunStudyOptions } from "../../../src/run-study.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 
 // `RestrictedCodexSessionOptions.cliVersions` bypasses per-host qualification for
@@ -142,7 +142,7 @@ describe("the cliVersions qualification bypass", () => {
       { ...base, execution: { ...base.execution, ...smuggled } },
       { ...base, review: { analysis: { provider: "codex", ...smuggled } } },
     ])
-      expect(parseStudy(raw).ok).toBe(false);
+      expect(parseStudyDocument(raw).ok).toBe(false);
   });
 
   it("has no CLI flag and no RunLabOptions or LabDeps field", () => {

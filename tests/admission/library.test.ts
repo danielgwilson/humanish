@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import type { RunCuaActorStudyOptions } from "../../src/routes/computer-use/types.js";
 import { resolveStudyDryRun, routeOf, type StudyRoute } from "../../src/study/plan.js";
@@ -206,7 +206,7 @@ function normalize(value: Json, paths: string[]): Json {
 
 async function pin(testCase: AdmissionCase): Promise<void> {
   const options = testCase.options ?? {};
-  const parsed = parseStudy(testCase.raw);
+  const parsed = parseStudyDocument(testCase.raw);
   if (testCase.parser === "accepts") {
     expect(parsed.ok, parsed.ok ? "" : parsed.error.message).toBe(true);
   } else {

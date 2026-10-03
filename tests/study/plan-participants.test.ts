@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 import {
   computerUseParticipants,
@@ -39,7 +39,7 @@ async function tempProject(): Promise<string> {
 }
 
 function parsed(raw: Record<string, unknown>): StudyConfig {
-  const result = parseStudy({ schema: V2_SCHEMA, id: "plan-participants", ...raw });
+  const result = parseStudyDocument({ schema: V2_SCHEMA, id: "plan-participants", ...raw });
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
