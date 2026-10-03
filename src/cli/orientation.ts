@@ -16,6 +16,7 @@
 import { listLabManifests } from "../lab/discover.js";
 import { listRuns } from "../run/stored-runs.js";
 import { supportsLocalBrowser } from "./first-run-path.js";
+import { PRODUCT_SENTENCE } from "./product-sentence.js";
 
 export const ORIENTATION_SCHEMA = "humanish.orientation.v1" as const;
 
@@ -132,10 +133,7 @@ function nextCommandsFor(args: {
  * has no answer that is true in every project.
  */
 export function formatOrientationHuman(state: OrientationState): string {
-  const lines: string[] = [
-    "humanish — run realistic synthetic personas against your app and keep the evidence.",
-    "",
-  ];
+  const lines: string[] = [`humanish: ${PRODUCT_SENTENCE}`, ""];
 
   if (!state.initialized) {
     lines.push("This project is not set up yet.");

@@ -49,6 +49,7 @@ import {
   runFactsFor,
   wantsJson,
 } from "./io.js";
+import { PRODUCT_SENTENCE } from "./product-sentence.js";
 
 // The single structured envelope for errors the command-boundary catch-all
 // produces when an action handler throws or rejects unexpectedly (see
@@ -384,7 +385,7 @@ export function createProgram(
 
   program
     .name("humanish")
-    .description("Open-source-safe persona simulation CLI and proof harness.")
+    .description(PRODUCT_SENTENCE)
     .version(CLI_VERSION)
     .showHelpAfterError()
     .option("--json", "Print machine-readable JSON responses where supported.")
