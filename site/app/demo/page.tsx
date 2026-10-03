@@ -140,11 +140,11 @@ export default function Demo() {
           </p>
         </section>
         <section className="band demo-how" aria-labelledby="demo-how-title">
-          <h2 id="demo-how-title">This is one lab file and one command</h2>
+          <h2 id="demo-how-title">This is one study file and one command</h2>
           <p>
-            A lab declares the app, eight participants with a persona each, one marked host, and the
-            missions. The orchestrator reads the join code off the host&apos;s screen and hands it
-            to the followers. Each participant is a real desktop; the model key stays on this
+            A study declares the app, eight participants with a persona each, one marked host, and
+            the missions. The orchestrator reads the join code off the host&apos;s screen and hands
+            it to the followers. Each participant is a real desktop; the model key stays on this
             machine. The run wrote itself under <code>.humanish/runs/</code>, and{" "}
             <code>humanish analyze</code> ran once afterwards at an $11.38 admission estimate that
             came to $2.29.

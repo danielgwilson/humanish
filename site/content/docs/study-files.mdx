@@ -29,6 +29,23 @@ variables can then be provisioned to the sandbox. Environment provenance records
 names. Persisted text is scrubbed for known values and secret patterns, with the
 [coverage limits described under verify before sharing](/docs/read-results#verify-before-sharing).
 
+## Move files from 0.107
+
+Before 0.108.0 a study was a `humanish.lab.v2` file under a `labs/` folder. Those
+files still run in 0.108, each with a warning, and 0.109 stops reading them. A name
+that exists under both a `labs/` and a `studies/` folder is an error that names both
+paths.
+
+```bash
+npx humanish migrate --dry-run
+npx humanish migrate
+```
+
+`--dry-run` lists each file's destination and every key it moves or drops, with the
+dropped values, and writes nothing. `migrate` then rewrites each v2 file as v3 and
+moves it from `labs/` to the matching `studies/` folder. A key the v2 file declared
+but its route never read is dropped and reported.
+
 ## Inspect the route before running
 
 ```bash

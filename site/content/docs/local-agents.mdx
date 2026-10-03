@@ -43,7 +43,7 @@ npx humanish doctor --study .humanish/studies/your-app.yaml
 For a signed-in Codex participant on an E2B desktop, `doctor --study` also starts
 Codex as the run would, up to an ephemeral thread and without a model turn: the
 release check, then `initialize`, `config/read`, `account/read` and `thread/start`
-with your Codex configuration and the lab's `model` and reasoning effort. The row
+with your Codex configuration and the study's `model` and reasoning effort. The row
 names the release, the model and whether Codex is signed in with ChatGPT or an API
 key. A refused release, configuration or model shows up there instead of in the run.
 
@@ -53,7 +53,7 @@ An unavailable or unrecognized status fails before desktop creation and asks
 you to check or update the CLI; it is not reported as a confirmed sign-out.
 A CLI that is not on PATH is refused as `HUMANISH_COMPUTER_USE_AGENT_MISSING`, and a
 signed-out or unrecognized status as `HUMANISH_COMPUTER_USE_AGENT_SIGNIN_REQUIRED`.
-Shared-world labs use the same endings after `HUMANISH_SHARED_WORLD_`.
+Shared-world studies use the same endings after `HUMANISH_SHARED_WORLD_`.
 This checks local status, not remote account validity, model access or quota.
 
 [Codex supports ChatGPT sign-in or API-key authentication](https://learn.chatgpt.com/docs/auth).
@@ -102,10 +102,10 @@ inputs execute in the selected sandbox; credentials stay with the host CLI.
 - **Both agents keep one conversation for the whole run.** Codex through an
   app-server thread, Claude Code through one `claude -p` stream-json session.
   A participant that starts every turn cold cannot remember trying the menu
-  and tries it again; measured on one lab, that was 188 actions over 90 turns
+  and tries it again; measured on one study, that was 188 actions over 90 turns
   and no finish against 21 actions over 8 turns. `HUMANISH_LOCAL_AGENT_ONE_SHOT=1`
   keeps the cold-start path for the Claude agent as a measurement switch, so
-  "remembers" can be compared against "does not" on your own lab; the trace's
+  "remembers" can be compared against "does not" on your own study; the trace's
   `ids.model` says which ran.
 
 Use the [budget guide](/docs/budgets-and-privacy) to distinguish model estimates, plan usage, and desktop costs.

@@ -24,14 +24,14 @@ const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">cua-2026-08-07
   <span class="cy">app:</span> <span class="cv">Excalidraw</span>
   <span class="cy">clone:</span> <span class="cv">excalidraw/excalidraw · commit-pinned</span>
 <span class="cy">desktop:</span> <span class="cv">hosted sandbox · 1920×1080</span>
-<span class="cy">lanes:</span>
+<span class="cy">participants:</span>
   - <span class="ca">01</span> <span class="cv">diagram-login-flow</span>
   - <span class="ca">02</span> <span class="cv">sticky-notes</span>
   - <span class="ca">03</span> <span class="cv">sketch-shapes</span>
   - <span class="ca">04</span> <span class="cv">export-drawing</span>`;
 
 const RAIL_ITEMS: Array<[string, string, string, boolean?]> = [
-  ["00", "Brief", "the lab, in YAML"],
+  ["00", "Brief", "the study, in YAML"],
   ["01", "Participant 01", "diagram-login-flow"],
   ["02", "Participant 02", "sticky-notes"],
   ["03", "Participant 03", "sketch-shapes · gave up", true],
@@ -266,9 +266,9 @@ export default function PinnedReplay() {
             <header className="pbar">
               <span className="pl">
                 <b className="pidx">00</b>
-                <span className="pname">brief · the lab</span>
+                <span className="pname">brief · the study</span>
               </span>
-              <span className="pr">lab.yaml</span>
+              <span className="pr">study.yaml</span>
             </header>
             <div className="pbody pbody-brief">
               <dl className="brief-facts">
@@ -293,7 +293,7 @@ export default function PinnedReplay() {
             </div>
             <footer className="pcap">
               <p className="prep">
-                <span className="plab">The lab</span>One YAML lab declares the persona, its four
+                <span className="plab">The study</span>One YAML study declares the persona, its four
                 missions, and a commit-pinned Excalidraw clone. Each participant gets its own hosted
                 1920×1080 desktop.
               </p>

@@ -116,9 +116,9 @@ This command index is generated from the shipped CLI. Full arguments and options
 detected coding-agent sessions even with a TTY (`HUMANISH_TUI_AGENT_SESSION`), or
 non-TTY input/output (`HUMANISH_TUI_REQUIRES_TTY`); both return exit code 2.
 `--json` reports that refusal; it does not make the TUI usable by an agent.
-Use `humanish study list --json`, `humanish study show <lab> --json`, and
+Use `humanish study list --json`, `humanish study show <study> --json`, and
 `humanish runs --json` for read-only browsing. `humanish review --run latest --json`
-reads an existing result. `humanish run <lab> --json` starts a run and may
+reads an existing result. `humanish run <study> --json` starts a run and may
 incur provider spend; it is not a browsing command. `--force` is only for a person
 actually at the keyboard; it does not bypass TTY or Node requirements.
 Details: https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts
@@ -140,7 +140,7 @@ The hosted API route needs:
   `E2B_API_KEY` is still required for that hosted desktop. Analysis defaults to
   the OpenAI API separately; an account participant does not change that default.
 
-`humanish doctor --study <lab> --json` checks the selected route's setup and names
+`humanish doctor --study <study> --json` checks the selected route's setup and names
 the command to fix missing prerequisites without printing key values. Persisted text is scrubbed for known
 secret values and patterns; this is not a guarantee that all sensitive content is detected.
 

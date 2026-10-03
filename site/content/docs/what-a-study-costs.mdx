@@ -23,7 +23,7 @@ Rates in the table carry an `asOf` date and a source. On 2026-09-05 the desktop 
 
 | Study                                                                   | Participants per run | Median estimated cost per run      | Median duration        |
 | ----------------------------------------------------------------------- | -------------------- | ---------------------------------- | ---------------------- |
-| `try-live` starter lab, one participant on drawDB                       | 1                    | $0.13                              | 1 min 51 s             |
+| `try-live` starter study, one participant on drawDB                     | 1                    | $0.13                              | 1 min 51 s             |
 | Planted-defect detection, one participant on a small task app           | 1                    | $0.16 clean, $0.22 planted         | 1 min 24 s, 1 min 51 s |
 | Observer live check, one participant                                    | 1                    | $0.71                              | 4 min 27 s             |
 | Persona contrast on drawDB, two participants                            | 2                    | $1.11                              | 5 min 31 s             |
@@ -59,4 +59,4 @@ A six-participant, ten-minute study on the hosted route therefore lands between 
 - A desktop kept for debugging or with unconfirmed cleanup: its line is marked incomplete and you should check the provider console.
 - Model usage on the local-agent route, which stays unpriced by design.
 
-Every kept bundle carries its own `cost` block with the same breakdown, and `npx humanish stats --study <id> --json` rolls them up per lab.
+Every kept bundle carries its own `cost` block with the same breakdown, and `npx humanish stats --study <id> --json` rolls them up per study.

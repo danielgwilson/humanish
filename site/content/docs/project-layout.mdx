@@ -6,20 +6,20 @@ description: What `humanish init` puts in `humanish/` and `.humanish/`, and whic
 `humanish init` gives a project two roots:
 
 ```text
-humanish/   # committed lab source
+humanish/   # committed study source
 .humanish/  # ignored runtime state, evidence and local overrides
 ```
 
-## Committed lab source: `humanish/`
+## Committed study source: `humanish/`
 
 `init` writes:
 
 ```text
 humanish/
   README.md
-  labs/
+  studies/
     first-run.yaml          # keyless preview
-    try-live.yaml           # first live lab
+    try-live.yaml           # first live study
     cua-browser.yaml        # computer-use participants on a hosted desktop
     local-browser.yaml      # computer-use participants on a local desktop
     lobby-trivia-3player.yaml
@@ -33,9 +33,9 @@ humanish/
   coverage-matrix.md
 ```
 
-Labs select their subject, actors, personas, scenarios, tasks, budgets and
-policies. Personas and scenarios are referenced by id. An adopter scorer is an
-`.mjs` module that a lab names under `review.scorer.ref`.
+Studies select their subject, actor, participants, personas, scenarios, tasks,
+budgets and policies. Personas and scenarios are referenced by id. An adopter scorer is an
+`.mjs` module that a study names under `review.scorer.ref`.
 
 Keep this directory reviewable and reproducible from a clean clone. Everything in
 it is public-safe: synthetic personas and fixtures, env var names without values.
@@ -44,10 +44,10 @@ it is public-safe: synthetic personas and fixtures, env var names without values
 
 ```text
 .humanish/
-  runs/           # run bundles, screenshots, transcripts, Observer output
-  labs/           # private labs; a committed lab with the same id wins
-  local/labs/     # machine-local labs
-  local/personas/ # machine-local personas; a committed persona with the same id wins
+  runs/             # run bundles, screenshots, transcripts, Observer output
+  studies/          # private studies; a committed study with the same id wins
+  local/studies/    # machine-local studies
+  local/personas/   # machine-local personas; a committed persona with the same id wins
   cache/ tmp/ logs/
 ```
 
@@ -56,7 +56,7 @@ secrets. `init` adds `.humanish/` to `.gitignore`.
 
 ## Formats
 
-- `.yaml` for human-authored source: labs, personas, scenarios.
+- `.yaml` for human-authored source: studies, personas, scenarios.
   Prefer `.yaml` over `.yml`.
 - `.mjs` for executable adopter scorers.
 - `.json` for generated artifacts and synthetic fixtures; `.ndjson` for

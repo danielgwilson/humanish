@@ -11,10 +11,10 @@ description: Browse studies as a person, read results through JSON as an agent, 
 npx humanish tui
 ```
 
-Arrow keys move, Enter opens, Esc goes back, q quits. There are six screens. Three are the main path: all labs, one lab, one run. The row below the last lab opens **all runs**, every participant working now across every lab. `?` shows the keys, and `c` opens **connections**, the email catch and provider key setup. A run you are watching updates in place, from running to its verdict, without the screen jumping.
+Arrow keys move, Enter opens, Esc goes back, q quits. There are six screens. Three are the main path: all studies, one study, one run. The row below the last study opens **all runs**, every participant working now across every study. `?` shows the keys, and `c` opens **connections**, the email catch and provider key setup. A run you are watching updates in place, from running to its verdict, without the screen jumping.
 
-- **labs**: every lab in the project, with the ones running now listed first. Each row shows what a live run of it usually takes. A lab that has never run says `never run`, and one with only dry runs says `<n> runs, none live`; dry runs spend nothing and take no time, so they are not averaged.
-- **lab**: that lab's history and two ways to start it. A dry run starts on one keypress because it costs nothing. A live run takes two, with the cost shown between them.
+- **studies**: every study in the project, with the ones running now listed first. Each row shows what a live run of it usually takes. A study that has never run says `never run`, and one with only dry runs says `<n> runs, none live`; dry runs spend nothing and take no time, so they are not averaged.
+- **study**: that study's history and two ways to start it. A dry run starts on one keypress because it costs nothing. A live run takes two, with the cost shown between them.
 - **run**: who is in the run, what each participant is doing now, and how far along it is, with time and money underneath. A terminal cannot show screenshots, so when the run has an Observer file, the run screen's **Open in Observer** action opens it in your browser.
 
 A run started from the TUI is detached: it keeps going if you quit, and it survives a dropped SSH session. The TUI follows it by reading `.humanish/runs/<id>/status.json` and holds no handle on it, so you can quit mid-run, reopen, and find it still there.
@@ -45,13 +45,13 @@ npx humanish review --run latest --json
 npx humanish stats --json
 ```
 
-`study list` shows available labs, `study show` shows a lab's source,
+`study list` shows available studies, `study show` shows a study's source,
 `runs` lists run history, and `review` reads an existing run. If there are no runs
 yet, do the [keyless dry run](/docs#preview-without-keys)
 before asking for `latest`.
 
 Starting a run is a separate action. `npx humanish run first-run --json --no-open`
-creates a keyless preview; replacing `first-run` with a live lab can launch providers
+creates a keyless preview; replacing `first-run` with a live study can launch providers
 and incur spend. See the [CLI reference](/docs/cli) for all flags.
 
 ## Watch and review in the Observer
@@ -63,7 +63,7 @@ never cropped to fill a wide tile.
 
 ### Choose an entry point
 
-`humanish watch <lab>` starts a study and keeps its viewer attached. The process
+`humanish watch <study>` runs the study and keeps its viewer attached. The process
 that owns a hosted desktop can offer its live stream while it runs. `--no-open`
 keeps that attachment without launching a browser. `--json` is the machine-result
 path and does not keep an interactive stream server attached.
@@ -191,7 +191,7 @@ recordings and original feedback remain available while you review ranked
 observations and follow their evidence links.
 
 Supported live studies request analysis by default when the recording finishes;
-`review.analysis: false` in the lab turns it off.
+`review.analysis: false` in the study turns it off.
 [Automatic analysis](repo:docs/product/automatic-analysis.md)
 has the model, the $3 admission limit and the failure behavior. For an existing
 recording, inspect the admission estimate, then generate:
@@ -268,17 +268,17 @@ lists each combination and its error code.
 
 ## Watch a live run from your phone
 
-`humanish watch <cua-lab> --expose --tunnel ngrok --oauth google --allow-email
+`humanish watch <study> --expose --tunnel ngrok --oauth google --allow-email
 you@example.com` streams the live desktop of a computer-use run to an
 edge-authenticated remote viewer while it plays. The attached server comes up
 during the run and survives a timed-out/failed run, so you can inspect a failed
 run's evidence too. A live run is never `share_ready`, so `watch --expose` always
-requires edge auth; `--safe` is a `serve` library filter and is rejected on watch
+requires edge auth; `--safe` is an `observe --all` library filter and is rejected on watch
 (`HUMANISH_WATCH_SAFE_NOT_APPLICABLE`). An exposed watch serves only the attached
 run (its history lists just that run and every other run id 404s), so a remote
 viewer can never reach your other runs' raw evidence.
 
 Live E2B desktop stream URLs reach a remote viewer only on `watch --expose`, and only
-behind edge auth; `serve` never injects them (remote viewers of the library see only
+behind edge auth; `observe --all` never injects them (remote viewers of the library see only
 persisted evidence: screenshots, events, terminal tails). See
 [Serve architecture](repo:docs/architecture/serve.md).

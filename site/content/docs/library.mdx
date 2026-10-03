@@ -1,12 +1,12 @@
 ---
 title: Use Humanish as a library
-description: Run a lab, read a run, bring your own participant, or score a run from TypeScript or JavaScript.
+description: Run a study, read a run, bring your own participant, or score a run from TypeScript or JavaScript.
 ---
 
-`import ... from "humanish"` exposes what an adopter needs for four things: run a lab, read a run,
+`import ... from "humanish"` exposes what an adopter needs for four things: run a study, read a run,
 bring a participant, and score a run. Everything else is reached through the `humanish` command.
 
-## Run a lab
+## Run a study
 
 ```ts
 import { LAB_CONFIG_SCHEMA, parseLabConfig, runLab, type LabResult } from "humanish";
@@ -65,7 +65,7 @@ This reads trusted local output. `RunBundle["streams"][number]` and
 ## Bring a participant
 
 A participant is a `CuaProvider` (the brain) driving a `CuaExecutor` (the desktop or app). Pass
-`createProvider` to `runLab` to replace the default brain on a computer-use lab, and
+`createProvider` to `runLab` to replace the default brain on a computer-use study, and
 `inProcess: { executor }` with it to drive an app in this process with no desktop. An
 in-process run uses the same participant runner as hosted participants, so a declared
 `execution.caps.maxUsd` or `maxTotalUsd` applies: report usage from your provider, or the
@@ -86,7 +86,7 @@ default brain, and `CuaAdmissionLimitError` is how a provider refuses a request 
 
 An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser routes,
 `deriveArtifacts`. Pass it as `runLab`'s `scorer`, or load the same file with
-`humanish run <lab> --scorer <file>`. The
+`humanish run <study> --scorer <file>`. The
 [scorer example](repo:examples/scorer/) does both.
 Every scoring context carries `ctx.bundle` and `ctx.runId`.
 

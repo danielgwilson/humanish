@@ -30,7 +30,7 @@ npx humanish doctor --study try-live
 
 The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--env-file <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --study` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
 
-`init` writes example labs and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. Run it after `keys set`: it writes the `try-live` lab for the participant it finds credentials for, and it never overwrites an existing lab file.
+`init` writes example studies and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. Run it after `keys set`: it writes the `try-live` study for the participant it finds credentials for, and it never overwrites an existing study file.
 
 Two alternatives, each on its own page:
 
@@ -43,11 +43,11 @@ Two alternatives, each on its own page:
 npx humanish run try-live
 ```
 
-`try-live` is the starter lab `init` wrote. It clones drawDB, an open-source database diagram editor, builds it inside the hosted desktop, and asks one synthetic newcomer to add two tables and name them. It studies drawDB, not your project; drawDB is the application studied, not a humanish adopter or endorser.
+`try-live` is the starter study `init` wrote. It clones drawDB, an open-source database diagram editor, builds it inside the hosted desktop, and asks one synthetic newcomer to add two tables and name them. It studies drawDB, not your project; drawDB is the application studied, not a humanish adopter or endorser.
 
-Allow a few minutes for the build and the participant. With an OpenAI key, the lab caps estimated model spend at $2: the run stops before its next model request once the estimate passes $2, and hosted desktop time is billed separately. If `init` found no OpenAI key and a signed-in Codex or Claude Code, it wrote a `local-agent` participant instead, on Codex when it is signed in and otherwise on Claude Code, bounded by a ten-minute session limit with no dollar cap. Fresh installs with an OpenAI key have finished in 108 to 183 seconds at $0.16 to $0.35 of model spend; [what a study costs](/docs/what-a-study-costs) has the measured runs. Your run will differ.
+Allow a few minutes for the build and the participant. With an OpenAI key, the study caps estimated model spend at $2: the run stops before its next model request once the estimate passes $2, and hosted desktop time is billed separately. If `init` found no OpenAI key and a signed-in Codex or Claude Code, it wrote a `local-agent` participant instead, on Codex when it is signed in and otherwise on Claude Code, bounded by a ten-minute session limit with no dollar cap. Fresh installs with an OpenAI key have finished in 108 to 183 seconds at $0.16 to $0.35 of model spend; [what a study costs](/docs/what-a-study-costs) has the measured runs. Your run will differ.
 
-With an OpenAI key, a post-run analysis also runs by default when the participant finishes. It sends selected text and captures from the run to OpenAI. On five `try-live` runs on 2026-09-30, `humanish stats` recorded about $0.15 for the participant and $0.49 to $0.59 for the analysis, about $0.50 typical; yours will differ. Before sending, humanish estimates the analysis with its full output allowance, so the estimate runs well above the bill, and it refuses the analysis when that estimate exceeds $3. To skip it, add `review.analysis: false` to the lab.
+With an OpenAI key, a post-run analysis also runs by default when the participant finishes. It sends selected text and captures from the run to OpenAI. On five `try-live` runs on 2026-09-30, `humanish stats` recorded about $0.15 for the participant and $0.49 to $0.59 for the analysis, about $0.50 typical; yours will differ. Before sending, humanish estimates the analysis with its full output allowance, so the estimate runs well above the bill, and it refuses the analysis when that estimate exceeds $3. To skip it, add `review.analysis: false` to the study.
 
 To watch the desktop while it runs, use `npx humanish watch try-live` instead.
 
@@ -78,7 +78,7 @@ npx humanish run first-run
 npx humanish observe --run latest --open
 ```
 
-This writes a synthetic sample bundle and opens it. Nothing is spent and no participant visits any app; it exists so you can see the evidence format before adding keys. `humanish run --dry-run` and `humanish watch` with no lab do the same.
+This writes a synthetic sample bundle and opens it. Nothing is spent and no participant visits any app; it exists so you can see the evidence format before adding keys. `humanish run --dry-run` and `humanish watch` with no study do the same.
 
 ## Next
 
