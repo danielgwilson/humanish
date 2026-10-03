@@ -444,7 +444,13 @@ export interface RunProviderResource {
   schema: "humanish.provider-resource.v1";
   provider: "e2b-desktop";
   kind: "sandbox";
+  /**
+   * "[redacted-sandbox-id]" in runs from 0.110 on; earlier runs recorded the raw id here. The raw id
+   * is in the run's sandbox-receipts.ndjson.
+   */
   id: string;
+  /** The id's digest, which matches its receipt. Absent on runs recorded before 0.110. */
+  idDigest?: string;
   owner: "humanish";
   status: "running" | "killed" | "unknown";
   simId?: string;

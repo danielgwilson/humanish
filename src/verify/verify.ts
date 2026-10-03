@@ -2,7 +2,8 @@ import path from "node:path";
 import { listAnalysisExecutions } from "../analysis/store-executions.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
-import { containsSensitive } from "../evidence/redaction.js";
+import { containsSensitive, REDACTED_SANDBOX_ID } from "../evidence/redaction.js";
+import { keyedSandboxIds, readRunSandboxIds } from "../run/sandbox-ids.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
@@ -59,6 +60,7 @@ export interface VerifyResult {
         | "PUBLIC_SAFETY_FINDINGS"
         | "ANALYSIS_UNVERIFIED"
         | "RAW_SCREENSHOTS"
+        | "RAW_SANDBOX_ID"
         | "CONTINUOUS_MEDIA"
         | "REAL_COMMUNICATIONS"
         | "UNSCANNED_ARTIFACT";
@@ -147,6 +149,7 @@ export async function verifyResolvedRun(
   );
   const derivedPublicSafetyFindings: string[] = [];
   const unscannedArtifacts: string[] = [];
+  const sandboxIdFiles: string[] = [];
   const publicSafetyFindings = await scanRunPublicSafetyArtifacts(
     runPaths,
     derivedPublicSafetyFindings,
@@ -157,6 +160,11 @@ export async function verifyResolvedRun(
           : [],
       ),
       screenshotPaths: isRunBundle(bundle) ? streamScreenshotPaths(bundle) : new Set(),
+      // A run from before 0.110 with no receipts still names its ids in run.json.
+      sandboxIds: [
+        ...new Set([...(await readRunSandboxIds(runPaths)), ...keyedSandboxIds(bundle)]),
+      ],
+      sandboxIdFiles,
     },
     unscannedArtifacts,
   );
@@ -223,6 +231,7 @@ export async function verifyResolvedRun(
         publicSafetyFindings,
         unscannedArtifacts,
         redactedShapeFrames,
+        sandboxIdFiles,
       })
     : {
         status: "blocked" as const,
@@ -503,6 +512,8 @@ function buildShareSafety(args: {
   unscannedArtifacts: string[];
   /** Declared frames whose bytes have the redactor's output shape. */
   redactedShapeFrames: ReadonlySet<string>;
+  /** Files other than sandbox-receipts.ndjson that name one of the run's raw sandbox ids. */
+  sandboxIdFiles: readonly string[];
 }): VerifyResult["shareSafety"] {
   const reasons: VerifyResult["shareSafety"]["reasons"] = [];
 
@@ -542,6 +553,20 @@ function buildShareSafety(args: {
     reasons.push({
       code: "UNSCANNED_ARTIFACT",
       message: `The public-safety scan cannot read ${plural(paths.length, "file")} as text that ${paths.length === 1 ? "is not a stream screenshot under screenshots/ or a registered recording" : "are not stream screenshots under screenshots/ or registered recordings"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
+    });
+  }
+  // Runs from 0.110 keep raw sandbox ids only in sandbox-receipts.ndjson. An earlier run records
+  // them in run.json, and any file that names one is not share-ready as it is.
+  const rawResources = (args.bundle.providerResources ?? []).some(
+    (resource) => resource.id !== REDACTED_SANDBOX_ID,
+  );
+  if (rawResources || args.sandboxIdFiles.length > 0) {
+    const files = [
+      ...new Set([...(rawResources ? [RUN_BUNDLE_FILE] : []), ...args.sandboxIdFiles]),
+    ];
+    reasons.push({
+      code: "RAW_SANDBOX_ID",
+      message: `Raw sandbox ids appear in ${files.sort().join(", ")}. Runs from 0.110 keep them only in sandbox-receipts.ndjson; \`humanish export --format bundle --redact-screenshots\` writes a copy without them.`,
     });
   }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle, args.redactedShapeFrames);

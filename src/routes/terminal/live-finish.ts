@@ -1,5 +1,6 @@
 // Finishing a live terminal session: the actor trace from the captured stream, the spend ledger
 // and its caps check, the evidence files, the bundle, and the study result.
+import { publicSandboxView, readRunSandboxIds, scrubSandboxIds } from "../../run/sandbox-ids.js";
 import { buildRunCostSummary } from "../../run/cost-summary.js";
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import type { RunBundle } from "../../run/bundle.js";
@@ -314,28 +315,33 @@ async function writeTerminalEvidence(
   },
 ): Promise<void> {
   const { terminalEvents, normalizedTranscript, ledgers, trace } = evidence;
+  // The sandbox's raw id stays in sandbox-receipts.ndjson; these files name it by digest.
+  const ids = await readRunSandboxIds(runPaths);
+  const scrub = (text: string): string => scrubSandboxIds(text, ids);
   await writeContainedOutputFile(
     runPaths,
     TERMINAL_EVENTS_ARTIFACT,
-    `${terminalEvents.map((e) => JSON.stringify(e)).join("\n")}${terminalEvents.length > 0 ? "\n" : ""}`,
+    scrub(
+      `${terminalEvents.map((e) => JSON.stringify(e)).join("\n")}${terminalEvents.length > 0 ? "\n" : ""}`,
+    ),
     "utf8",
   );
   await writeContainedOutputFile(
     runPaths,
     TERMINAL_TRANSCRIPT_ARTIFACT,
-    `${normalizedTranscript}\n`,
+    scrub(`${normalizedTranscript}\n`),
     "utf8",
   );
   await writeContainedOutputFile(
     runPaths,
     TERMINAL_LEDGERS_ARTIFACT,
-    `${JSON.stringify(ledgers, null, 2)}\n`,
+    `${JSON.stringify(publicSandboxView(ledgers, ids), null, 2)}\n`,
     "utf8",
   );
   await writeContainedOutputFile(
     runPaths,
     "actor.json",
-    `${JSON.stringify(trace, null, 2)}\n`,
+    scrub(`${JSON.stringify(trace, null, 2)}\n`),
     "utf8",
   );
 }

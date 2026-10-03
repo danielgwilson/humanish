@@ -276,6 +276,7 @@ describe("public-surface sandbox ids", () => {
     `${JSON.stringify(
       {
         [resourcesKey]: [{ kind: "sandbox", id: value }],
+        cleanup: { ["re" + "sources"]: [{ kind: "sandbox", id: value }] },
         lease: { [sandboxIdKey]: value },
         [subjectKey]: value,
       },
@@ -304,7 +305,7 @@ describe("public-surface sandbox ids", () => {
         .map(
           (line) => `${line.split(":")[0]} ${line.split(": sandbox_id_value: ")[1]!.split(":")[0]}`,
         );
-      const keys = ["providerResources[].id", "sandboxId", "subjectSandboxId"];
+      const keys = ["providerResources[].id", "resources[].id", "sandboxId", "subjectSandboxId"];
       expect(flagged.sort()).toEqual(
         [
           ...keys.map((key) => `site/public/runs/demo/run.json ${key}`),

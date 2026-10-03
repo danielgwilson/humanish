@@ -16,7 +16,8 @@
       "screenshots": 2
     },
     "sandbox": {
-      "sandboxId": "fake-sandbox-01",
+      "sandboxId": "[redacted-sandbox-id]",
+      "sandboxIdDigest": "f0181e966fe22f0f",
       "killed": true,
       "streamUrlPresent": true
     },
@@ -109,7 +110,8 @@
           "screenshots": 2
         },
         "sandbox": {
-          "sandboxId": "fake-sandbox-01",
+          "sandboxId": "[redacted-sandbox-id]",
+          "sandboxIdDigest": "f0181e966fe22f0f",
           "killed": true,
           "streamUrlPresent": true
         }
@@ -141,7 +143,8 @@
           "screenshots": 2
         },
         "sandbox": {
-          "sandboxId": "fake-sandbox-02",
+          "sandboxId": "[redacted-sandbox-id]",
+          "sandboxIdDigest": "56c141705c90712d",
           "killed": true,
           "streamUrlPresent": true
         }
@@ -173,7 +176,8 @@
           "screenshots": 2
         },
         "sandbox": {
-          "sandboxId": "fake-sandbox-03",
+          "sandboxId": "[redacted-sandbox-id]",
+          "sandboxIdDigest": "6fba0e006e83037e",
           "killed": true,
           "streamUrlPresent": true
         }
@@ -205,7 +209,8 @@
           "screenshots": 2
         },
         "sandbox": {
-          "sandboxId": "fake-sandbox-04",
+          "sandboxId": "[redacted-sandbox-id]",
+          "sandboxIdDigest": "c18db0916f6b5e44",
           "killed": true,
           "streamUrlPresent": true
         }
@@ -2071,7 +2076,8 @@
         "schema": "humanish.provider-resource.v1",
         "provider": "e2b-desktop",
         "kind": "sandbox",
-        "id": "fake-sandbox-01",
+        "id": "[redacted-sandbox-id]",
+        "idDigest": "f0181e966fe22f0f",
         "owner": "humanish",
         "status": "killed",
         "simId": "sim-001",
@@ -2087,7 +2093,8 @@
         "schema": "humanish.provider-resource.v1",
         "provider": "e2b-desktop",
         "kind": "sandbox",
-        "id": "fake-sandbox-02",
+        "id": "[redacted-sandbox-id]",
+        "idDigest": "56c141705c90712d",
         "owner": "humanish",
         "status": "killed",
         "simId": "sim-002",
@@ -2103,7 +2110,8 @@
         "schema": "humanish.provider-resource.v1",
         "provider": "e2b-desktop",
         "kind": "sandbox",
-        "id": "fake-sandbox-03",
+        "id": "[redacted-sandbox-id]",
+        "idDigest": "6fba0e006e83037e",
         "owner": "humanish",
         "status": "killed",
         "simId": "sim-003",
@@ -2119,7 +2127,8 @@
         "schema": "humanish.provider-resource.v1",
         "provider": "e2b-desktop",
         "kind": "sandbox",
-        "id": "fake-sandbox-04",
+        "id": "[redacted-sandbox-id]",
+        "idDigest": "c18db0916f6b5e44",
         "owner": "humanish",
         "status": "killed",
         "simId": "sim-004",

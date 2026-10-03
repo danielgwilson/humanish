@@ -1,6 +1,6 @@
 export declare const SANDBOX_ID_MARKER: "[redacted-sandbox-id]";
 export interface SandboxIdValue {
-  key: "sandboxId" | "subjectSandboxId" | "providerResources[].id";
+  key: "sandboxId" | "subjectSandboxId" | "providerResources[].id" | "resources[].id";
   value: string;
   index: number;
 }

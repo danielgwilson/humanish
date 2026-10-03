@@ -16,6 +16,7 @@ import {
 } from "./paths.js";
 import { registerActiveRun } from "./active-runs.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./contained-output.js";
+import { scrubRunSandboxIds, withPublicSandboxIds } from "./sandbox-ids.js";
 import { beginRunStatus, runStatusOutcome, type RunStatusHandle } from "./status.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
 
@@ -137,6 +138,17 @@ export class FinishedRun {
 
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
 
+/** Where FinishedRun renders the Observer, when the run was started with one. */
+function observerTarget(options: StartRunOptions): ObserverTarget | undefined {
+  return options.observer === undefined
+    ? undefined
+    : {
+        cwd: options.cwd,
+        open: options.observer.open,
+        render: options.observer.render ?? renderObserver,
+      };
+}
+
 /**
  * Run `fn` as the lifetime of at most one run. When `fn` settles the scope closes synchronously,
  * so the scope and its run admit no further calls, even through references `fn` leaked into
@@ -190,14 +202,7 @@ export async function runScope<T>(
   ): Run => {
     const now = options.now ?? Date.now;
     const createdAt = new Date(now()).toISOString();
-    const observer: ObserverTarget | undefined =
-      options.observer === undefined
-        ? undefined
-        : {
-            cwd: options.cwd,
-            open: options.observer.open,
-            render: options.observer.render ?? renderObserver,
-          };
+    const observer = observerTarget(options);
     let finishCalled = false;
     let pointerWritten = false;
     // One chain serializes every write. A rejection reaches only the caller of that write; the
@@ -233,7 +238,7 @@ export async function runScope<T>(
       afterBundle: (publicBundle: RunBundle) => Promise<void>,
     ): Promise<void> => {
       await validatePreparedRunArtifactPaths(paths);
-      const publicBundle: RunBundle = { ...bundle, cwd: PUBLIC_TARGET_CWD };
+      const publicBundle = await withPublicSandboxIds(paths, { ...bundle, cwd: PUBLIC_TARGET_CWD });
       await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
       await afterBundle(publicBundle);
       await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");
@@ -262,6 +267,7 @@ export async function runScope<T>(
       await writeBundleFiles(bundle, (publicBundle) =>
         runStatus.finish(runStatusOutcome(publicBundle)),
       );
+      await scrubRunSandboxIds(paths);
       await writePointer();
       return new FinishedRun(issueKey, runId, paths, observer, runStatus);
     };

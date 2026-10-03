@@ -217,7 +217,10 @@ export interface CuaParticipantResult {
     screenshots: number;
   };
   sandbox?: {
+    /** "[redacted-sandbox-id]"; the raw id is only in the run's sandbox-receipts.ndjson. */
     sandboxId: string;
+    /** The id's digest, which matches its receipt. */
+    sandboxIdDigest?: string;
     killed: boolean;
     streamUrlPresent: boolean;
   };
@@ -354,7 +357,10 @@ export interface CuaActorStudyResult
     screenshots: number;
   };
   sandbox?: {
+    /** "[redacted-sandbox-id]"; the raw id is only in the run's sandbox-receipts.ndjson. */
     sandboxId: string;
+    /** The id's digest, which matches its receipt. */
+    sandboxIdDigest?: string;
     killed: boolean;
     /** The stream URL itself (carries an auth key) is runtime-only and is deliberately not
      * surfaced on the result; the sandbox is already dead by the time the result exists. */

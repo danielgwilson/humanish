@@ -19,6 +19,40 @@ The Unreleased section holds the full notes for the next version until it is tag
   `pass via --env-file` now say `pass via --dotenv`, and the starter study's comment names
   `--dotenv`.
 
+- Raw sandbox ids are only in a run's `sandbox-receipts.ndjson`, which `humanish reclaim` reads and
+  export omits. Every other record and output names a sandbox as `[redacted-sandbox-id]` with its
+  digest, so output pasted into an issue carries no id:
+  - `runStudy` results and `humanish run --json`: `sandbox.sandboxId`, `lanes[].sandbox.sandboxId`,
+    `roles[].sandbox.sandboxId` and `subjectSandbox.sandboxId` read `[redacted-sandbox-id]`, with
+    the id's digest in `sandboxIdDigest`. Shared-world's `host` URL and any warning that quoted an
+    id name the sandbox as `[redacted-sandbox-id <digest>]`.
+  - The human summary of `humanish run` names each sandbox by digest and prints one line,
+    `sandbox ids: .humanish/runs/<run>/sandbox-receipts.ndjson`, naming the file that holds them.
+  - `run.json`: each `providerResources[].id` reads `[redacted-sandbox-id]`, with `idDigest`, and
+    lifecycle and event messages name the sandbox by digest, as do `events.ndjson`, the Observer's
+    data, `review.md` and the terminal route's ledgers, events, transcript and `actor.json`. When
+    the run finishes, any other text file in its directory that quotes an id, such as a
+    participant's `actor.json` holding an SDK error, names the sandbox by digest, and so does an
+    error in `status.json`'s settled outcome.
+  - `humanish reclaim`: each outcome, in its result, `--json` and `reclaim-receipt.json`, reads
+    `[redacted-sandbox-id]` with `sandboxIdDigest`, and its lines name the sandbox by digest.
+  - `humanish cleanup`: each resource, in its result, `--json` and `cleanup.json`, reads
+    `[redacted-sandbox-id]` with `idDigest`. A run recorded before 0.110 keeps raw ids in
+    `run.json`; cleanup digests them.
+  - `humanish export --format bundle` also reads `[redacted-sandbox-id]` at cleanup.json's
+    `resources[].id`, which runs before 0.110 left raw. It replaces each id the run names in every
+    text file it copies, `review.md`, logs and YAML included: the ids in its receipts, and any raw
+    id at a sandbox-id key, so a run from before 0.110 with no receipts is covered. In YAML the label
+    is `redacted-sandbox-id-<digest>`, without brackets, so a value keeps its type.
+    `pnpm public-surface:scan` checks `resources[].id` too.
+
+- `humanish verify` grades a run `local_only` with `RAW_SANDBOX_ID` when a file other than
+  `sandbox-receipts.ndjson` names one of its raw sandbox ids, or a JSON file holds a raw id at a
+  sandbox-id key, as cleanup.json in a 0.109 export copy can. Runs recorded before 0.110 hold raw
+  ids in `run.json`, so they grade `local_only` until `humanish export --format bundle
+--redact-screenshots` writes a copy without them; `humanish observe --all --safe` hides them
+  until then.
+
 ### Deprecated
 
 - `--env-file <path>` stays as a hidden alias of `--dotenv` and is removed in 0.111.0. It prints

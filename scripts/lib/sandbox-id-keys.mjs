@@ -1,8 +1,8 @@
 // Finds values at the keys humanish's run writers use for an E2B sandbox id: `sandboxId`,
-// `subjectSandboxId`, and the `id` of each `providerResources` entry in run.json. Matched by key,
-// not by the id's shape, so an id in any format is caught; the redaction marker is the only value
-// that passes. A run bundle keeps raw ids as local evidence; a committed or published copy must
-// carry the marker.
+// `subjectSandboxId`, and the `id` of each entry in run.json's `providerResources` or cleanup.json's
+// `resources`. Matched by key, not by the id's shape, so an id in any format is caught; the
+// redaction marker is the only value that passes. A run bundle keeps raw ids as local evidence; a
+// committed or published copy must carry the marker.
 
 export const SANDBOX_ID_MARKER = "[redacted-sandbox-id]";
 
@@ -10,10 +10,13 @@ export const SANDBOX_ID_MARKER = "[redacted-sandbox-id]";
 const KEYED_VALUE =
   /(["'`]?)\b(sandboxId|subjectSandboxId)\1\s*[:=]\s*(["'`])((?:(?!\3)[^\n\\])*)\3/g;
 
-/** Where each `"providerResources": [` array closes, skipping brackets inside strings. */
-function providerResourceArrays(text) {
+/**
+ * Each `"providerResources": [` or `"resources": [` array, as its key and span, skipping brackets
+ * inside strings.
+ */
+function resourceArrays(text) {
   const spans = [];
-  const opener = /(["']?)providerResources\1\s*:\s*\[/g;
+  const opener = /(["']?)\b(providerResources|resources)\1\s*:\s*\[/g;
   for (const match of text.matchAll(opener)) {
     const start = (match.index ?? 0) + match[0].length;
     let depth = 1;
@@ -28,12 +31,12 @@ function providerResourceArrays(text) {
       else if (char === "[" || char === "{") depth += 1;
       else if (char === "]" || char === "}") depth -= 1;
     }
-    spans.push([start, index]);
+    spans.push([match[2], start, index]);
   }
   return spans;
 }
 
-/** The quoted id values inside providerResources arrays. */
+/** The quoted id values inside resource arrays. */
 const RESOURCE_ID = /(["']?)\bid\1\s*:\s*(["'`])((?:(?!\2)[^\n\\])*)\2/g;
 
 /**
@@ -48,14 +51,10 @@ export function sandboxIdValues(text, allowed = new Set()) {
   };
   for (const match of text.matchAll(KEYED_VALUE))
     keep(match[2], match[4], (match.index ?? 0) + match[0].indexOf(match[4]));
-  for (const [start, end] of providerResourceArrays(text)) {
+  for (const [arrayKey, start, end] of resourceArrays(text)) {
     const span = text.slice(start, end);
     for (const match of span.matchAll(RESOURCE_ID))
-      keep(
-        "providerResources[].id",
-        match[3],
-        start + (match.index ?? 0) + match[0].indexOf(match[3]),
-      );
+      keep(`${arrayKey}[].id`, match[3], start + (match.index ?? 0) + match[0].indexOf(match[3]));
   }
   return found;
 }

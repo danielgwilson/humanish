@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../../src/evidence/redaction.js";
 import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
 import {
   phaseEvent,
@@ -1294,8 +1295,10 @@ describe("runCuaActorLab", () => {
 
     // Teardown happened even on success.
     expect(killed).toEqual(["fake-sandbox-001"]);
+    // The result names the sandbox by digest; the raw id is only in the run's receipts.
     expect(result.sandbox).toEqual({
-      sandboxId: "fake-sandbox-001",
+      sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: sandboxIdDigest("fake-sandbox-001"),
       killed: true,
       streamUrlPresent: true,
     });
@@ -4056,7 +4059,11 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     expect(killed).toEqual(["fake-sandbox-001"]);
-    expect(outcome.result.sandbox).toMatchObject({ sandboxId: "fake-sandbox-001", killed: true });
+    expect(outcome.result.sandbox).toMatchObject({
+      sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: sandboxIdDigest("fake-sandbox-001"),
+      killed: true,
+    });
   });
 
   it("passes a managed executor to the participant and closes it after the run", async () => {

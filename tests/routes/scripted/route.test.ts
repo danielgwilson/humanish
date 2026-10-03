@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../../src/evidence/redaction.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { CommanderError } from "commander";
 import { createServer, type Server } from "node:http";
@@ -766,7 +767,11 @@ describe("runScriptedBrowserLab", () => {
     );
     expect(result.runId).toBe(runId);
     expect(result.appUrl).toBe("[provisioned-subject]");
-    expect(result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: true });
+    expect(result.subjectSandbox).toEqual({
+      sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: sandboxIdDigest("fake-subject-001"),
+      killed: true,
+    });
     expect(result.hostDigest).toMatch(/^[a-f0-9]{16}$/);
     expect(fakeE2B.created).toHaveLength(1);
     expect(fakeE2B.templates).toEqual(["adopter-ui-sim-base"]);
@@ -848,7 +853,12 @@ describe("runScriptedBrowserLab", () => {
     });
     expect(reclaimed.ok).toBe(true);
     expect(reclaimed.outcomes).toEqual([
-      { sandboxId: "fake-subject-001", laneId: "subject", state: "already-gone" },
+      {
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest("fake-subject-001"),
+        laneId: "subject",
+        state: "already-gone",
+      },
     ]);
   });
 
@@ -1747,7 +1757,11 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       hooks.deps,
     );
     if (outcome.route !== "scripted") throw new Error(`unexpected backend ${outcome.route}`);
-    expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed });
+    expect(outcome.result.subjectSandbox).toEqual({
+      sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: sandboxIdDigest("fake-subject-001"),
+      killed,
+    });
     expect(outcome.result.warnings.join("\n")).toContain(warning);
   });
 
@@ -1797,7 +1811,11 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       hooks.deps,
     );
     if (outcome.route !== "scripted") throw new Error(`unexpected backend ${outcome.route}`);
-    expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: false });
+    expect(outcome.result.subjectSandbox).toEqual({
+      sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: sandboxIdDigest("fake-subject-001"),
+      killed: false,
+    });
 
     const reclaimed: string[] = [];
     await reclaimRunSandboxes(cwd, runId, {

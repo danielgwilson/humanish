@@ -28,14 +28,23 @@ import {
 } from "./sandbox-receipts.js";
 
 import { destroyE2BSandbox } from "../substrates/e2b/sandbox.js";
-import { redactText, toErrorMessage } from "../evidence/redaction.js";
+import {
+  REDACTED_SANDBOX_ID,
+  redactText,
+  sandboxIdDigest,
+  toErrorMessage,
+} from "../evidence/redaction.js";
+import { scrubSandboxIds } from "./sandbox-ids.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 
 const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
 export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";
 
 interface ReclaimOutcome {
+  /** "[redacted-sandbox-id]"; the raw id is only in the run's sandbox-receipts.ndjson. */
   sandboxId: string;
+  /** The id's digest, which matches its receipt. */
+  sandboxIdDigest: string;
   laneId: string;
   /** killed = kill(id) confirmed; already-gone = the server no longer knows the id (TTL or a
    *  prior cleanup got it); kill-failed = the attempt errored (the TTL backstop still applies);
@@ -285,10 +294,16 @@ async function reclaimJournal(
     const key = JSON.stringify([receipt.provider, receipt.sandboxId]);
     if (seen.has(key)) continue;
     seen.add(key);
+    // The result and reclaim-receipt.json name the sandbox by digest, and a provider error that
+    // quotes the id is scrubbed; the raw id stays in sandbox-receipts.ndjson.
+    const attempt = await destroy(receipt);
     outcomes.push({
-      sandboxId: receipt.sandboxId,
+      sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: sandboxIdDigest(receipt.sandboxId),
       laneId: receipt.laneId,
-      ...(await destroy(receipt)),
+      ...("detail" in attempt
+        ? { ...attempt, detail: scrubSandboxIds(attempt.detail, [receipt.sandboxId]) }
+        : attempt),
     });
   }
   return { kind: "done", receiptCount: receipts.length, outcomes };

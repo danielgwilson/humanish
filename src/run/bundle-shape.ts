@@ -100,6 +100,7 @@ function isRunProviderResource(value: unknown): value is RunProviderResource {
     value.kind === "sandbox" &&
     typeof value.id === "string" &&
     value.id.trim().length > 0 &&
+    (value.idDigest === undefined || typeof value.idDigest === "string") &&
     value.owner === "humanish" &&
     (value.status === "running" || value.status === "killed" || value.status === "unknown") &&
     (value.simId === undefined || typeof value.simId === "string") &&

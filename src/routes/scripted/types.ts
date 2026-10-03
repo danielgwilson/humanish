@@ -53,7 +53,7 @@ export interface ScriptedBrowserStudyResult
   dryRun: boolean;
   runId: string;
   subject?: RunSubjectProvenance;
-  subjectSandbox?: { sandboxId: string; killed: boolean };
+  subjectSandbox?: { sandboxId: string; sandboxIdDigest?: string; killed: boolean };
   hostDigest?: string;
   /** The consumed scenario.ref: digest-pinned provenance of the executable steps. */
   scenario?: {

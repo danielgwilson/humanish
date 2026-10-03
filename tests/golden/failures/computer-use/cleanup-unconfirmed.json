@@ -16,7 +16,8 @@
       "screenshots": 2
     },
     "sandbox": {
-      "sandboxId": "fake-sandbox-001",
+      "sandboxId": "[redacted-sandbox-id]",
+      "sandboxIdDigest": "a4eb1cc8d8ae464a",
       "killed": false,
       "streamUrlPresent": true
     },
@@ -76,7 +77,8 @@
           "screenshots": 2
         },
         "sandbox": {
-          "sandboxId": "fake-sandbox-001",
+          "sandboxId": "[redacted-sandbox-id]",
+          "sandboxIdDigest": "a4eb1cc8d8ae464a",
           "killed": false,
           "streamUrlPresent": true
         }
@@ -777,7 +779,8 @@
         "schema": "humanish.provider-resource.v1",
         "provider": "e2b-desktop",
         "kind": "sandbox",
-        "id": "fake-sandbox-001",
+        "id": "[redacted-sandbox-id]",
+        "idDigest": "a4eb1cc8d8ae464a",
         "owner": "humanish",
         "status": "unknown",
         "simId": "sim-001",

@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -144,7 +145,12 @@ describe("a live run signalled mid-session", () => {
       });
       expect(reclaimed.ok).toBe(true);
       expect(reclaimed.outcomes).toEqual([
-        { sandboxId: "fake-sb-signalled", laneId: "lane-01", state: "killed" },
+        {
+          sandboxId: REDACTED_SANDBOX_ID,
+          sandboxIdDigest: sandboxIdDigest("fake-sb-signalled"),
+          laneId: "lane-01",
+          state: "killed",
+        },
       ]);
       expect(killed).toEqual(["fake-sb-signalled"]);
     },

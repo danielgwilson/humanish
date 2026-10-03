@@ -184,7 +184,7 @@
         {
           "at": "[ts]",
           "event": "terminal-lab.sandbox.created",
-          "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
+          "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
         },
         {
           "at": "[ts]",
@@ -224,7 +224,7 @@
         {
           "at": "[ts]",
           "event": "terminal-lab.cleanup.unconfirmed",
-          "message": "Sandbox fake-sandbox-1 kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id)."
+          "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id)."
         },
         {
           "at": "[ts]",
@@ -360,7 +360,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.sandbox.created",
-        "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
+        "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
       },
       {
         "at": "[ts]",
@@ -400,7 +400,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.cleanup.unconfirmed",
-        "message": "Sandbox fake-sandbox-1 kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id)."
+        "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id)."
       },
       {
         "at": "[ts]",
@@ -580,7 +580,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.sandbox.created",
-        "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables.",
+        "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -652,7 +652,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.cleanup.unconfirmed",
-        "message": "Sandbox fake-sandbox-1 kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id).",
+        "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id).",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -802,7 +802,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.sandbox.created",
-        "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
+        "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
       },
       {
         "at": "[ts]",
@@ -842,7 +842,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.cleanup.unconfirmed",
-        "message": "Sandbox fake-sandbox-1 kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id)."
+        "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] kill(id) returned true (found and killed), but getInfo(id) still reports state=running (not confirmed reclaimed by id)."
       },
       {
         "at": "[ts]",

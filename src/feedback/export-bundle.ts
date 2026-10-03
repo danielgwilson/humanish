@@ -10,6 +10,7 @@ import { ACTOR_TRACE_SCHEMA } from "../actors/contract.js";
 import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";
+import { inventorySandboxIds, scrubSandboxIdBytes } from "../run/sandbox-ids.js";
 import {
   containsSensitive,
   redactSandboxIds,
@@ -388,6 +389,7 @@ async function writeDerivative(
 ): Promise<{ images: number; entries: DerivationEntry[] }> {
   const entries: DerivationEntry[] = [];
   const imagePaths = keptPngPaths(source, bundle);
+  const sandboxIds = inventorySandboxIds(source.files);
   let images = 0;
   for (const file of source.files) {
     const isPng = path.extname(file.path).toLowerCase() === ".png";
@@ -435,6 +437,7 @@ async function writeDerivative(
         }
         bytes = jsonBytes(transformed);
       }
+      bytes = scrubSandboxIdBytes(file.path, bytes, sandboxIds);
       action = bytes.equals(file.bytes) ? "copied" : "updated";
     }
     await writeContainedOutputFile(stagePaths, file.path, bytes);
@@ -654,7 +657,10 @@ async function verifyFrozenSource(
         verified.shareSafety.reasons.every(
           // Both are repaired in the copy: frames are blurred, and an unread PNG is dropped or
           // refused by keptPngPaths. Any other unread file fails as an unsupported format.
-          (reason) => reason.code === "RAW_SCREENSHOTS" || reason.code === "UNSCANNED_ARTIFACT",
+          (reason) =>
+            reason.code === "RAW_SCREENSHOTS" ||
+            reason.code === "RAW_SANDBOX_ID" ||
+            reason.code === "UNSCANNED_ARTIFACT",
         )
       ))
   ) {

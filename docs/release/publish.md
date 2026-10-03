@@ -25,8 +25,9 @@ the participant said before you tag.
 `dist/`. It fails on common secret tokens, absolute local user paths, local workspace paths,
 unapproved commit email metadata, known private upstream system names, and binary assets missing
 from its SHA-256 allowlist. It also fails on any value at a sandbox-id key (`sandboxId`,
-`subjectSandboxId`, `providerResources[].id`) other than `[redacted-sandbox-id]`, whatever the id
-looks like; under `tests/`, a value with a `fake-` or `synthetic-` prefix passes.
+`subjectSandboxId`, `providerResources[].id`, `resources[].id`) other than
+`[redacted-sandbox-id]`, whatever the id looks like; under `tests/`, a value with a `fake-` or
+`synthetic-` prefix passes.
 
 The tarball must not contain `.env*`, `.humanish/`, run bundles, private screenshots, raw
 transcripts, `.npmrc`, tests, fixtures, operations notes or local runtime caches. Every shipped

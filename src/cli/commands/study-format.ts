@@ -26,6 +26,23 @@ function withError(error: CliError | undefined, lines: string[]): HumanOutput {
   return error === undefined ? stdout : { stdout, error };
 }
 
+/** How a summary names a sandbox: by digest. The raw id is only in the run's receipts. */
+function sandboxName(sandbox: { sandboxId: string; sandboxIdDigest?: string }): string {
+  return sandbox.sandboxIdDigest !== undefined
+    ? `[redacted-sandbox-id ${sandbox.sandboxIdDigest}]`
+    : sandbox.sandboxId;
+}
+
+/**
+ * One line per run naming the file that holds its raw sandbox ids, for the operator, when the
+ * result names a sandbox at all (each one carries a digest).
+ */
+function sandboxIdsLine(result: { runId?: string }): string[] {
+  return result.runId && JSON.stringify(result).includes('"sandboxIdDigest"')
+    ? [`sandbox ids: .humanish/runs/${result.runId}/sandbox-receipts.ndjson`]
+    : [];
+}
+
 /** A participant's status in words: a dry run's placeholder status says that nothing ran live. */
 function participantStatus(status: string): string {
   return status === "contract_proof_only" ? "dry run, nothing ran live" : status;
@@ -54,9 +71,10 @@ export function formatConcurrentSharedWorldStudyHuman(
     ),
     ...(result.subjectSandbox
       ? [
-          `subject sandbox: ${result.subjectSandbox.sandboxId} killed=${result.subjectSandbox.killed ? "yes" : "no"}`,
+          `subject sandbox: ${sandboxName(result.subjectSandbox)} killed=${result.subjectSandbox.killed ? "yes" : "no"}`,
         ]
       : []),
+    ...sandboxIdsLine(result),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined
       ? []
@@ -71,6 +89,10 @@ export function formatTerminalStudyHuman(result: TerminalProductStudyResult): Hu
     `run: ${result.runId}`,
     `actor: ${result.actor}`,
     `product: ${result.product}`,
+    ...(result.sandbox
+      ? [`sandbox: ${sandboxName(result.sandbox)} killed=${result.sandbox.killed ? "yes" : "no"}`]
+      : []),
+    ...sandboxIdsLine(result),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined
       ? []
@@ -94,6 +116,12 @@ export function formatScriptedStudyHuman(result: ScriptedBrowserStudyResult): Hu
       (session) =>
         `session ${session.surface}: ${session.status} (${session.completionReason}) · ${session.reason} [${session.screenshots} screenshot${session.screenshots === 1 ? "" : "s"}]`,
     ),
+    ...(result.subjectSandbox
+      ? [
+          `subject sandbox: ${sandboxName(result.subjectSandbox)} killed=${result.subjectSandbox.killed ? "yes" : "no"}`,
+        ]
+      : []),
+    ...sandboxIdsLine(result),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined
       ? []
@@ -131,9 +159,10 @@ export function formatCuaStudyHuman(result: CuaActorStudyResult): HumanOutput {
       : []),
     ...(result.sandbox
       ? [
-          `sandbox: ${result.sandbox.sandboxId} stream=${result.sandbox.streamUrlPresent ? "connected" : "missing"} killed=${result.sandbox.killed ? "yes" : "no"}`,
+          `sandbox: ${sandboxName(result.sandbox)} stream=${result.sandbox.streamUrlPresent ? "connected" : "missing"} killed=${result.sandbox.killed ? "yes" : "no"}`,
         ]
       : []),
+    ...sandboxIdsLine(result),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined
       ? []

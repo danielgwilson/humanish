@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { readRunIndex } from "../../src/run/run-index.js";
@@ -95,6 +96,7 @@ describe("verify on a run that did not finish", () => {
     await expect(indexLiveness()).resolves.toBe("finished");
   });
 
+  // A reclaim receipt written before 0.110 names raw ids, as this one does; liveness digests them.
   it("names the stale record, the streams and the reclaim receipt of a killed, reclaimed run", async () => {
     await kill(stopped);
     await writeJson("reclaim-receipt.json", {
@@ -115,6 +117,25 @@ describe("verify on a run that did not finish", () => {
       ],
     });
     await expect(indexLiveness()).resolves.toBe("interrupted");
+  });
+
+  it("matches a reclaim receipt that names its sandboxes by digest to the journal", async () => {
+    await kill(stopped);
+    await writeJson("reclaim-receipt.json", {
+      schema: "humanish.reclaim-result.v1",
+      at: "2026-10-03T13:38:14.809Z",
+      runId: RUN,
+      receiptCount: 2,
+      outcomes: ["synthetic-sandbox-a", "synthetic-sandbox-b"].map((id, index) => ({
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest(id),
+        laneId: `lane-0${index + 1}`,
+        state: "killed",
+      })),
+    });
+
+    const text = (await notFinished()).warnings.join("\n");
+    expect(text).toMatch(/reclaim-receipt\.json records 2 of 2 sandboxes gone\.(?! .*not in it)/);
   });
 
   it("says which journaled sandboxes a reclaim receipt did not cover", async () => {

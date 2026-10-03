@@ -299,7 +299,7 @@ function formatReclaimHuman(result: ReclaimResult): HumanOutput {
   );
   for (const outcome of result.outcomes) {
     lines.push(
-      `  ${outcome.sandboxId} (${outcome.laneId}): ${outcome.state}${outcome.detail ? ` — ${outcome.detail}` : ""}`,
+      `  sandbox ${outcome.sandboxIdDigest} (${outcome.laneId}): ${outcome.state}${outcome.detail ? ` — ${outcome.detail}` : ""}`,
     );
   }
   for (const warning of result.warnings) lines.push(`  warning: ${warning}`);

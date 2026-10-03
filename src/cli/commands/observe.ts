@@ -502,9 +502,16 @@ function hiddenRunLines(groups: readonly HiddenRunGroup[]): string[] {
     const reasons = group.reasons.length > 0 ? ` (${group.reasons.join(", ")})` : "";
     lines.push(`  ${runs(group.runs)} ${group.status}${reasons}`);
   }
-  if (groups.some((group) => group.reasons.join(",") === "RAW_SCREENSHOTS"))
+  // Export clears both: it blurs screenshots and writes no raw sandbox id.
+  const exportable = new Set(["RAW_SCREENSHOTS", "RAW_SANDBOX_ID"]);
+  if (
+    groups.some(
+      (group) =>
+        group.reasons.length > 0 && group.reasons.every((reason) => exportable.has(reason)),
+    )
+  )
     lines.push(
-      "share: a run held back only for RAW_SCREENSHOTS can be copied with blurred screenshots: `humanish export --run <id> --format bundle --redact-screenshots --out <dir>`, then `humanish observe --all --safe --cwd <dir>`",
+      "share: a run held back only for RAW_SCREENSHOTS or RAW_SANDBOX_ID can be copied with blurred screenshots and no sandbox ids: `humanish export --run <id> --format bundle --redact-screenshots --out <dir>`, then `humanish observe --all --safe --cwd <dir>`",
     );
   lines.push("why: `humanish verify --run <id>` explains each reason");
   return lines;

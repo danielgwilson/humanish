@@ -197,7 +197,7 @@
         {
           "at": "[ts]",
           "event": "terminal-lab.sandbox.created",
-          "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
+          "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
         },
         {
           "at": "[ts]",
@@ -222,7 +222,7 @@
         {
           "at": "[ts]",
           "event": "terminal-lab.cleanup.verified",
-          "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
+          "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
         },
         {
           "at": "[ts]",
@@ -377,7 +377,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.sandbox.created",
-        "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
+        "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
       },
       {
         "at": "[ts]",
@@ -402,7 +402,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.cleanup.verified",
-        "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
+        "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
       },
       {
         "at": "[ts]",
@@ -568,7 +568,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.sandbox.created",
-        "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables.",
+        "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -613,7 +613,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.cleanup.verified",
-        "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.",
+        "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -747,7 +747,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.sandbox.created",
-        "message": "E2B shell sandbox fake-sandbox-1 created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
+        "message": "E2B shell sandbox [redacted-sandbox-id 1a4f122a9da1597c] created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables."
       },
       {
         "at": "[ts]",
@@ -772,7 +772,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.cleanup.verified",
-        "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
+        "message": "Sandbox [redacted-sandbox-id 1a4f122a9da1597c] reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
       },
       {
         "at": "[ts]",

@@ -17,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { PNG } from "pngjs";
+import { parse as parseYaml } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -30,8 +31,9 @@ import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/fe
 import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import { REDACTED_SANDBOX_ID } from "../../src/evidence/redaction.js";
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { computeStats } from "../../src/run/stats.js";
+import { cleanupRun } from "../../src/run/stored-runs.js";
 import { createProgram } from "../../src/cli/program.js";
 
 const execFileAsync = promisify(execFile);
@@ -252,23 +254,107 @@ describe("redacted bundle export", () => {
       JSON.stringify({ sandbox: { sandboxId: raw }, subjectSandboxId: raw }),
     );
     await writeFile(path.join(runDir, "leases.ndjson"), `${JSON.stringify({ sandboxId: raw })}\n`);
+    // Free text names the sandbox too: the receipts give export the exact id to replace there.
+    await writeFile(
+      path.join(runDir, "sandbox-receipts.ndjson"),
+      `${JSON.stringify({ at: "t", laneId: "lane-01", provider: "e2b", sandboxId: raw })}\n`,
+    );
+    const review = path.join(runDir, "review.md");
+    await writeFile(review, `${await readFile(review, "utf8")}\nSandbox ${raw} reclaimed.\n`);
+    await writeFile(path.join(runDir, "teardown.log"), `kill(${raw}) returned true\n`);
     const result = await exportRun(cwd, RUN, OPTIONS);
     if (!result.ok) throw new Error(result.error.message);
     const copy = path.join(cwd, "shared", ".humanish", "runs", RUN);
     const shared = JSON.parse(await readFile(path.join(copy, "run.json"), "utf8")) as RunBundle;
-    expect(shared.providerResources?.map((resource) => resource.id)).toEqual([REDACTED_SANDBOX_ID]);
+    const digest = sandboxIdDigest(raw);
+    expect(shared.providerResources?.map(({ id, idDigest }) => ({ id, idDigest }))).toEqual([
+      { id: REDACTED_SANDBOX_ID, idDigest: digest },
+    ]);
     expect(JSON.parse(await readFile(path.join(copy, "lease.json"), "utf8"))).toEqual({
-      sandbox: { sandboxId: REDACTED_SANDBOX_ID },
+      sandbox: { sandboxId: REDACTED_SANDBOX_ID, sandboxIdDigest: digest },
       subjectSandboxId: REDACTED_SANDBOX_ID,
+      subjectSandboxIdDigest: digest,
     });
     expect(JSON.parse(await readFile(path.join(copy, "leases.ndjson"), "utf8"))).toEqual({
       sandboxId: REDACTED_SANDBOX_ID,
+      sandboxIdDigest: digest,
     });
-    for (const file of ["run.json", "lease.json", "leases.ndjson"])
+    expect(await readFile(path.join(copy, "review.md"), "utf8")).toContain(
+      `Sandbox [redacted-sandbox-id ${digest}] reclaimed.`,
+    );
+    expect(await readFile(path.join(copy, "teardown.log"), "utf8")).toBe(
+      `kill([redacted-sandbox-id ${digest}]) returned true\n`,
+    );
+    for (const file of ["run.json", "lease.json", "leases.ndjson", "review.md", "teardown.log"])
       expect(await readFile(path.join(copy, file), "utf8")).not.toContain(raw);
+    await expect(readFile(path.join(copy, "sandbox-receipts.ndjson"), "utf8")).rejects.toThrow(
+      /ENOENT/,
+    );
     const source = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     expect(source.providerResources?.[0]?.id).toBe(raw);
   });
+
+  // Before 0.110, cleanup.json echoed run.json's raw id at resources[].id, with no digest beside it.
+  it.each([
+    ["with", true],
+    ["without", false],
+  ])(
+    "names no sandbox from an older run's records and text, %s receipts",
+    async (_label, receipts) => {
+      const raw = ["i", "z5a8c3e1g7", "k2m4o6q9b"].join("");
+      const resource = { kind: "sandbox" as const, owner: "humanish" as const, status: "killed" };
+      await writeFile(
+        path.join(runDir, "run.json"),
+        JSON.stringify({
+          ...original,
+          providerResources: [
+            {
+              schema: "humanish.provider-resource.v1",
+              provider: "e2b-desktop",
+              ...resource,
+              id: raw,
+            },
+          ],
+        }),
+      );
+      await cleanupRun(cwd, RUN);
+      const cleanupFile = path.join(runDir, "cleanup.json");
+      const cleanup = JSON.parse(await readFile(cleanupFile, "utf8")) as {
+        resources: { id: string; idDigest?: string }[];
+      };
+      for (const entry of cleanup.resources) {
+        entry.id = raw;
+        delete entry.idDigest;
+      }
+      await writeFile(cleanupFile, JSON.stringify(cleanup, null, 2));
+      // Free text and YAML name it too; without receipts, run.json's keyed id is how export knows it.
+      const review = path.join(runDir, "review.md");
+      await writeFile(review, `${await readFile(review, "utf8")}\nSandbox ${raw} reclaimed.\n`);
+      await writeFile(path.join(runDir, "lease.yaml"), `sandboxId: ${raw}\n`);
+      if (receipts)
+        await writeFile(
+          path.join(runDir, "sandbox-receipts.ndjson"),
+          `${JSON.stringify({ at: "t", laneId: "lane-01", provider: "e2b", sandboxId: raw })}\n`,
+        );
+
+      const result = await exportRun(cwd, RUN, OPTIONS);
+      if (!result.ok) throw new Error(result.error.message);
+      const copy = path.join(cwd, "shared", ".humanish", "runs", RUN);
+      const shared = JSON.parse(await readFile(path.join(copy, "cleanup.json"), "utf8")) as {
+        resources: unknown[];
+      };
+      expect(shared.resources).toMatchObject([
+        { id: REDACTED_SANDBOX_ID, idDigest: sandboxIdDigest(raw) },
+      ]);
+      // YAML drops the brackets, which would turn the value into a list.
+      const label = `redacted-sandbox-id-${sandboxIdDigest(raw)}`;
+      expect(parseYaml(await readFile(path.join(copy, "lease.yaml"), "utf8"))).toEqual({
+        sandboxId: label,
+      });
+      for (const file of Object.keys(await treeHashes(copy)))
+        expect((await readFile(path.join(copy, file))).includes(raw), file).toBe(false);
+    },
+  );
 
   it("drops unreferenced copies, keeps referenced frames and rebuilds stale cached Observer content", async () => {
     await writeFile(path.join(runDir, "screenshots", "unused.PNG"), png);

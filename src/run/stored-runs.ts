@@ -1,3 +1,4 @@
+import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../evidence/redaction.js";
 import { lstat, readdir } from "node:fs/promises";
 import { runNotFoundMessage } from "./run-not-found.js";
 import path from "node:path";
@@ -99,7 +100,15 @@ function cleanupRefusal(
 function recordedResourceResult(
   resource: NonNullable<RunBundle["providerResources"]>[number],
 ): CleanupResourceResult {
-  const base = { provider: resource.provider, kind: resource.kind, id: resource.id };
+  // Named by digest: a run recorded before 0.110 holds the raw id here, which is digested.
+  const raw = resource.id === REDACTED_SANDBOX_ID ? undefined : resource.id;
+  const idDigest = resource.idDigest ?? (raw === undefined ? undefined : sandboxIdDigest(raw));
+  const base = {
+    provider: resource.provider,
+    kind: resource.kind,
+    id: REDACTED_SANDBOX_ID,
+    ...(idDigest === undefined ? {} : { idDigest }),
+  };
   if (resource.provider !== "e2b-desktop" || resource.kind !== "sandbox") {
     return {
       ...base,
