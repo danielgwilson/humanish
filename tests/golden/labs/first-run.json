@@ -3,7 +3,7 @@
   "runId": "golden-first-run",
   "mode": "dry-run",
   "simCount": 4,
-  "createdAt": "2026-10-03T02:12:16.444Z",
+  "createdAt": "2026-10-03T02:31:08.772Z",
   "cwd": "[target-cwd]",
   "artifactRoot": ".humanish/runs/golden-first-run",
   "lab": {
@@ -17,9 +17,9 @@
     "git": {
       "schema": "humanish.git-state.v1",
       "status": "clean",
-      "capturedAt": "2026-10-03T02:12:16.444Z",
+      "capturedAt": "2026-10-03T02:31:08.772Z",
       "head": {
-        "shortSha": "a0d274d37435",
+        "shortSha": "a268d87f5d90",
         "refState": "attached"
       },
       "changes": {
@@ -46,22 +46,22 @@
   },
   "lifecycle": [
     {
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "event": "run.created",
-      "message": "Synthetic dry-run contract bundle created with 4 simulated participants."
+      "message": "Synthetic dry-run bundle created with 4 simulated participants."
     },
     {
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "event": "persona.selected",
       "message": "Selected public-safe synthetic persona."
     },
     {
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "event": "scenario.selected",
       "message": "Selected public-safe first-run scenario."
     },
     {
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "event": "review.skeleton.created",
       "message": "Created review skeleton without claiming product proof."
     }
@@ -76,13 +76,13 @@
       "streamKind": "ui",
       "mode": "browser-sim",
       "progress": 100,
-      "currentStep": "Route and viewport contract captured",
+      "currentStep": "Route and viewport recorded",
       "summary": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
       "streamIds": [
         "sim-01-ui"
       ],
-      "startedAt": "2026-10-03T02:12:16.444Z",
-      "updatedAt": "2026-10-03T02:12:16.444Z"
+      "startedAt": "2026-10-03T02:31:08.772Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z"
     },
     {
       "id": "sim-02",
@@ -93,13 +93,13 @@
       "streamKind": "terminal",
       "mode": "cli-sim",
       "progress": 100,
-      "currentStep": "Command transcript contract captured",
+      "currentStep": "Command transcript recorded",
       "summary": "Simulated CLI participant reserved for command-by-command persona runs with stdout/stderr and artifact links.",
       "streamIds": [
         "sim-02-terminal"
       ],
-      "startedAt": "2026-10-03T02:12:16.444Z",
-      "updatedAt": "2026-10-03T02:12:16.444Z"
+      "startedAt": "2026-10-03T02:31:08.772Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z"
     },
     {
       "id": "sim-03",
@@ -110,13 +110,13 @@
       "streamKind": "tui",
       "mode": "tui-sim",
       "progress": 100,
-      "currentStep": "Terminal UI frame contract captured",
+      "currentStep": "Terminal UI frame recorded",
       "summary": "Simulated TUI participant reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
       "streamIds": [
         "sim-03-tui"
       ],
-      "startedAt": "2026-10-03T02:12:16.444Z",
-      "updatedAt": "2026-10-03T02:12:16.444Z"
+      "startedAt": "2026-10-03T02:31:08.772Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z"
     },
     {
       "id": "sim-04",
@@ -127,13 +127,13 @@
       "streamKind": "codex-ui",
       "mode": "codex-app-sim",
       "progress": 100,
-      "currentStep": "App-server embed contract captured",
+      "currentStep": "App-server embed recorded",
       "summary": "Simulated Codex UI participant reserved for app-server sessions that can be watched beside terminal evidence.",
       "streamIds": [
         "sim-04-codex-ui"
       ],
-      "startedAt": "2026-10-03T02:12:16.444Z",
-      "updatedAt": "2026-10-03T02:12:16.444Z"
+      "startedAt": "2026-10-03T02:31:08.772Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z"
     }
   ],
   "streams": [
@@ -144,7 +144,7 @@
       "label": "UI journey",
       "status": "contract_proof_only",
       "transport": "polling",
-      "updatedAt": "2026-10-03T02:12:16.444Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z",
       "embed": {
         "kind": "placeholder",
         "title": "UI journey"
@@ -190,7 +190,7 @@
       "label": "CLI actor",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-10-03T02:12:16.444Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z",
       "embed": {
         "kind": "terminal",
         "title": "CLI actor"
@@ -226,7 +226,7 @@
       "label": "TUI actor",
       "status": "contract_proof_only",
       "transport": "pty",
-      "updatedAt": "2026-10-03T02:12:16.444Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z",
       "embed": {
         "kind": "terminal",
         "title": "TUI actor"
@@ -262,7 +262,7 @@
       "label": "Codex UI",
       "status": "contract_proof_only",
       "transport": "app-server",
-      "updatedAt": "2026-10-03T02:12:16.444Z",
+      "updatedAt": "2026-10-03T02:31:08.772Z",
       "embed": {
         "kind": "placeholder",
         "title": "Codex UI"
@@ -276,7 +276,7 @@
         "title": "Codex UI",
         "format": "plain",
         "stdin": "disabled",
-        "tail": "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned"
+        "tail": "codex-app-server session (dry run)\nstate: not_connected\nembed: pending provider URL\nreceipts: planned"
       },
       "ui": {
         "route": "/codex/session",
@@ -310,23 +310,23 @@
   "events": [
     {
       "id": "event-000",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "info",
       "type": "observer.contract.created",
-      "message": "Created public-safe observer stream contract."
+      "message": "Created the public-safe Observer streams."
     },
     {
       "id": "event-001-a",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "info",
       "type": "sim.contract.ready",
-      "message": "UI journey stream contract ready.",
+      "message": "UI journey stream ready.",
       "simId": "sim-01",
       "streamId": "sim-01-ui"
     },
     {
       "id": "event-001-b",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -335,16 +335,16 @@
     },
     {
       "id": "event-002-a",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "info",
       "type": "sim.contract.ready",
-      "message": "CLI actor stream contract ready.",
+      "message": "CLI actor stream ready.",
       "simId": "sim-02",
       "streamId": "sim-02-terminal"
     },
     {
       "id": "event-002-b",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -353,16 +353,16 @@
     },
     {
       "id": "event-003-a",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "info",
       "type": "sim.contract.ready",
-      "message": "TUI actor stream contract ready.",
+      "message": "TUI actor stream ready.",
       "simId": "sim-03",
       "streamId": "sim-03-tui"
     },
     {
       "id": "event-003-b",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
@@ -371,16 +371,16 @@
     },
     {
       "id": "event-004-a",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "info",
       "type": "sim.contract.ready",
-      "message": "Codex UI stream contract ready.",
+      "message": "Codex UI stream ready.",
       "simId": "sim-04",
       "streamId": "sim-04-codex-ui"
     },
     {
       "id": "event-004-b",
-      "at": "2026-10-03T02:12:16.444Z",
+      "at": "2026-10-03T02:31:08.772Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",

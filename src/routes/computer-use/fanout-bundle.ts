@@ -106,13 +106,13 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
         args.inProgress === true
           ? `Live computer-use fan-out is running (${specs.length} participants, one world each); terminal participant evidence has not been written yet.`
           : args.dryRun
-            ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} participants composed for ${args.descriptor.id} against ${args.appUrl}, one world each; no desktops launched, $0 spend.`
+            ? `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out: ${specs.length} participants composed for ${args.descriptor.id} against ${args.appUrl}, one world each; no desktops launched, $0 spend.`
             : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${specs.length} participant(s) reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${runTasks ? `; tasks: ${formatRunTaskFunnel(runTasks)}` : ""}.`,
       gaps:
         args.inProgress === true
           ? ["Live fan-out session is still running."]
           : args.dryRun
-            ? ["Live fan-out session not yet run (dry-run contract only)."]
+            ? ["Live fan-out session not yet run (dry run only)."]
             : specs
                 .map((spec, index) => ({ spec, outcome: outcomes?.[index] }))
                 .filter(
@@ -317,7 +317,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
         ? anyRaw
           ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some participants captured FULL-FIDELITY (raw) screenshots, retained for local use and NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
           : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
-        : "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
+        : "Dry-run fan-out bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },
     artifacts: bundleArtifacts(),
     review,

@@ -620,10 +620,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       review: bundle.review,
     }).toLowerCase();
     expect(publicTruth).toContain(
-      "this contract-only run proves no live concurrency, scale, or adoption",
+      "this dry run proves nothing about live concurrency, scale, or adoption",
     );
     expect(publicTruth).toContain(
-      "proves contract shape only, not live behavior, scale, or adopter-harness replacement",
+      "checks the evidence shape only, not live behavior, scale, or adopter-harness replacement",
     );
     expect(publicTruth).not.toContain("receipt");
     expect(publicTruth).not.toContain("deferred live receipt");
