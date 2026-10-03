@@ -21,8 +21,8 @@ export function finalize(
       checks.every((check) => check.ok) &&
       ctx.targets.every((target) => target.status !== "failed" && target.status !== "blocked"),
     cwd: ctx.cwd,
-    study: ctx.lab,
-    studyId: ctx.labId,
+    study: ctx.study,
+    studyId: ctx.studyId,
     origin: ctx.origin,
     path: ctx.path,
     route: ctx.route,

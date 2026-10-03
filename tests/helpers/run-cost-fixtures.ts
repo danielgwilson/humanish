@@ -69,7 +69,7 @@ async function writeRun(cwd: string, runId: string, createdAt: string): Promise<
     appUrl: "http://127.0.0.1:3000/",
     run: { runId, mode: "live", createdAt },
     dryRun: false,
-    labId: FIXTURE_STUDY,
+    studyId: FIXTURE_STUDY,
     mission: "Add two tables, then say what you did.",
     persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
     resolution: [1440, 960],

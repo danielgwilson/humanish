@@ -56,7 +56,7 @@ async function bundle(runner: Runner, state: "finished" | "running"): Promise<Ru
       createdAt: "2026-01-01T00:00:00.000Z",
     },
     dryRun: false,
-    labId: "substrate-wording",
+    studyId: "substrate-wording",
     mission: "Add a note, then stop.",
     persona: trace.persona,
     resolution: [1440, 960],

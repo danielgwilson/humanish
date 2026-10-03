@@ -108,7 +108,7 @@ type StudySetup = Awaited<ReturnType<typeof studySetupChecks>>;
 export async function doctor(
   cwdInput: string,
   options: {
-    lab?: string;
+    study?: string;
     env?: NodeJS.ProcessEnv;
     localAgents?: DetectLocalAgentsOptions;
     /** Where the key probe looks for vendor stores; tests point it at a temp home. */
@@ -142,13 +142,13 @@ export async function doctor(
 
   const env = options.env ?? process.env;
   const agents = await detectLocalAgents({ ...options.localAgents, env });
-  const { probes, receivingKey } = await probeDoctorKeys(cwd, env, options.lab, options.keyDeps);
+  const { probes, receivingKey } = await probeDoctorKeys(cwd, env, options.study, options.keyDeps);
   const keyPresent = (name: string) =>
     probes.some((probe) => probe.name === name && probe.source !== null);
-  const setup = options.lab
+  const setup = options.study
     ? await studySetupChecks({
         cwd,
-        lab: options.lab,
+        study: options.study,
         env,
         agents,
         keyPresent,
@@ -330,14 +330,14 @@ function terminalSurfaceCheck(): DoctorCheck {
 async function probeDoctorKeys(
   cwd: string,
   env: NodeJS.ProcessEnv,
-  lab: string | undefined,
+  study: string | undefined,
   keyDeps: KeyResolutionDeps | undefined,
 ): Promise<{ probes: KeySourceProbe[]; receivingKey: string | null }> {
   const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
   let receivingKey: string | null = null;
-  if (lab) {
+  if (study) {
     const { resolveStudyManifest } = await import("../study/discover.js");
-    const resolved = await resolveStudyManifest(cwd, lab);
+    const resolved = await resolveStudyManifest(cwd, study);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
       const { receivingRequiredKey } = await import("../comms/setup.js");
       receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);

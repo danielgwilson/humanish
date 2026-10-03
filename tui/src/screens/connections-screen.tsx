@@ -14,12 +14,12 @@ import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 import { useTerminalSize } from "../use-terminal-size.js";
 
-type Lab = { title: string; path: string };
+type Study = { title: string; path: string };
 type View =
   | { kind: "home" }
   | { kind: "check" }
-  | { kind: "labs" }
-  | { kind: "preview"; lab: Lab; plan: CommsConfigureResult; openedAt: number }
+  | { kind: "studies" }
+  | { kind: "preview"; study: Study; plan: CommsConfigureResult; openedAt: number }
   | { kind: "saved"; path: string }
   | { kind: "recovery" }
   | { kind: "recover"; entry: CommsRecoveryEntry; openedAt: number };
@@ -47,7 +47,7 @@ export function ConnectionsScreen({
   const [selected, setSelected] = useState(0);
   const [view, setView] = useState<View>({ kind: "home" });
   const [check, setCheck] = useState<CommsCheckResult>();
-  const [labs, setLabs] = useState<Lab[]>([]);
+  const [studies, setStudies] = useState<Study[]>([]);
   const [recovery, setRecovery] = useState<CommsRecoveryEntry[]>([]);
   const { rows } = useTerminalSize();
   const read = useCallback(async () => {
@@ -76,7 +76,7 @@ export function ConnectionsScreen({
       : source?.includes("provider.env")
         ? "project env file"
         : "saved key";
-  const receivingAvailable = !!capabilities.labs && !!capabilities.configure;
+  const receivingAvailable = !!capabilities.studies && !!capabilities.configure;
   const pending = recovery.filter(
     (entry) => entry.status !== "closed" || entry.unresolvedCount > 0,
   );
@@ -93,7 +93,7 @@ export function ConnectionsScreen({
                 ? [{ id: "check", label: "Test authentication (read-only)" }]
                 : []),
               ...(status.credential.present && configured && receivingAvailable
-                ? [{ id: "labs", label: "Use real email in a study" }]
+                ? [{ id: "studies", label: "Use real email in a study" }]
                 : []),
             ]
           : []),
@@ -108,12 +108,12 @@ export function ConnectionsScreen({
             { id: "check", label: "Check again" },
             { id: "home", label: "Back to Connections" },
           ]
-        : view.kind === "labs"
-          ? labs.map((lab, index) => ({ id: `lab-${index}`, label: lab.title }))
+        : view.kind === "studies"
+          ? studies.map((study, index) => ({ id: `study-${index}`, label: study.title }))
           : view.kind === "preview"
             ? [
                 { id: "apply", label: "Save study copy" },
-                { id: "labs", label: "Cancel" },
+                { id: "studies", label: "Cancel" },
               ]
             : view.kind === "saved"
               ? [{ id: "home", label: "Back to Connections" }]
@@ -140,7 +140,7 @@ export function ConnectionsScreen({
     if (view.kind === "home") onBack();
     else
       go({
-        kind: view.kind === "preview" ? "labs" : view.kind === "recover" ? "recovery" : "home",
+        kind: view.kind === "preview" ? "studies" : view.kind === "recover" ? "recovery" : "home",
       });
   }
   async function run(action: () => Promise<void>): Promise<void> {
@@ -202,21 +202,21 @@ export function ConnectionsScreen({
         setCheck(await capabilities.check());
         return;
       }
-      if (action === "labs" && capabilities.labs) {
-        const result = await capabilities.labs();
-        setLabs(result);
-        go({ kind: "labs" });
+      if (action === "studies" && capabilities.studies) {
+        const result = await capabilities.studies();
+        setStudies(result);
+        go({ kind: "studies" });
         return;
       }
-      if (action.startsWith("lab-") && capabilities.configure) {
-        const lab = labs[active];
-        if (!lab) return;
-        const plan = await capabilities.configure(lab.path, false);
+      if (action.startsWith("study-") && capabilities.configure) {
+        const study = studies[active];
+        if (!study) return;
+        const plan = await capabilities.configure(study.path, false);
         if (!plan.ok || !plan.path || !plan.planToken) {
           setMessage(plan.message);
           return;
         }
-        go({ kind: "preview", lab, plan, openedAt: Date.now() });
+        go({ kind: "preview", study, plan, openedAt: Date.now() });
         return;
       }
       if (
@@ -225,9 +225,9 @@ export function ConnectionsScreen({
         capabilities.configure &&
         view.plan.planToken
       ) {
-        const result = await capabilities.configure(view.lab.path, true, view.plan.planToken);
+        const result = await capabilities.configure(view.study.path, true, view.plan.planToken);
         if (!result.ok || !result.applied || !result.path) {
-          go({ kind: "labs" });
+          go({ kind: "studies" });
           setMessage(result.message);
           return;
         }
@@ -262,7 +262,7 @@ export function ConnectionsScreen({
     total: actions.length,
     selected: active,
     viewport:
-      view.kind === "labs" || view.kind === "recovery" ? Math.max(2, rows - 14) : actions.length,
+      view.kind === "studies" || view.kind === "recovery" ? Math.max(2, rows - 14) : actions.length,
   });
   const menu = (
     <Box marginTop={1} flexDirection="column">
@@ -381,25 +381,25 @@ export function ConnectionsScreen({
           )}
           {menu}
         </>
-      ) : view.kind === "labs" ? (
+      ) : view.kind === "studies" ? (
         <>
           <Text bold color={PALETTE.accent}>
-            Choose a lab for real email
+            Choose a study for real email
           </Text>
           <Text dimColor>Preview a local copy before saving.</Text>
-          {labs.length ? menu : <Text>No studies are available in this project.</Text>}
-          {labs[active] ? (
+          {studies.length ? menu : <Text>No studies are available in this project.</Text>}
+          {studies[active] ? (
             <Box marginTop={1}>
-              <Text dimColor>{labs[active]!.path}</Text>
+              <Text dimColor>{studies[active]!.path}</Text>
             </Box>
           ) : null}
         </>
       ) : view.kind === "preview" ? (
         <>
           <Text bold color={PALETTE.accent}>
-            Save email-enabled lab
+            Save email-enabled study
           </Text>
-          <Text dimColor>From: {view.lab.path}</Text>
+          <Text dimColor>From: {view.study.path}</Text>
           <Box marginTop={1} flexDirection="column">
             <Text>Save as:</Text>
             <Text>{view.plan.path}</Text>
@@ -415,7 +415,7 @@ export function ConnectionsScreen({
       ) : view.kind === "saved" ? (
         <>
           <Text bold color={PALETTE.ok}>
-            Email lab saved
+            Email study saved
           </Text>
           <Text>{view.path}</Text>
           <Box marginTop={1} flexDirection="column">

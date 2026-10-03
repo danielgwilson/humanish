@@ -40,7 +40,7 @@ const options = (): TuiOptions => ({
       runs: RUNS,
       unreadable: [],
     }),
-    listLabs: async () => ({
+    listStudies: async () => ({
       schema: "humanish.study-list.v1",
       retired: [],
       ok: true,
@@ -51,7 +51,7 @@ const options = (): TuiOptions => ({
     startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
-    readLabSummary: async () => null,
+    readStudySummary: async () => null,
     readProjectState: () => ({
       schema: "humanish.tui-project.v1" as const,
       initialized: true,
@@ -253,11 +253,11 @@ describe("the navigation model itself", () => {
   it("remembers a selection per screen, so going back restores where you were", () => {
     let state = initialNav();
     state = navigate(state, { type: "move", delta: 1, total: 5 });
-    state = navigate(state, { type: "enter", screen: { name: "lab", labId: "alpha" } });
+    state = navigate(state, { type: "enter", screen: { name: "study", labId: "alpha" } });
     state = navigate(state, { type: "move", delta: 2, total: 5 });
     expect(selectedIndex(state)).toBe(2);
     state = navigate(state, { type: "back" });
-    expect(currentScreen(state).name).toBe("labs");
+    expect(currentScreen(state).name).toBe("studies");
     expect(selectedIndex(state)).toBe(1);
   });
 });

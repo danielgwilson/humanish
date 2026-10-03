@@ -12,7 +12,7 @@ describe("bundleHead", () => {
 
   it("starts every bundle with the same fields in the saved order, artifactRoot before study", () => {
     const head = bundleHead(
-      { runId: "run-1", mode: "live", createdAt, lab: { id: "lab-1" } as never },
+      { runId: "run-1", mode: "live", createdAt, study: { id: "lab-1" } as never },
       { participants: 2, source },
     );
     expect(Object.keys(head)).toEqual([

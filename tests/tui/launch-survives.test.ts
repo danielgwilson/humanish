@@ -44,7 +44,7 @@ describe("a launched run outlives the process that started it", () => {
       parent,
       [
         `const { launchRun } = await import(${JSON.stringify(launchModule)});`,
-        `const result = await launchRun({ cwd: ${JSON.stringify(dir)}, lab: 'stub', mode: 'dry-run', cliPath: ${JSON.stringify(stub)} });`,
+        `const result = await launchRun({ cwd: ${JSON.stringify(dir)}, study: 'stub', mode: 'dry-run', cliPath: ${JSON.stringify(stub)} });`,
         "if (!result.ok) { console.error(result.error.message); process.exit(1); }",
         "process.exit(0);",
       ].join("\n"),

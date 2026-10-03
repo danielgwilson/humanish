@@ -82,7 +82,7 @@ describe("selected lab setup without paid dispatch", () => {
           compatible = ready;
           const result = await studySetupChecks({
             cwd,
-            lab: "preview",
+            study: "preview",
             env: keyless,
             agents: [],
             keyPresent: () => false,
@@ -111,7 +111,7 @@ describe("selected lab setup without paid dispatch", () => {
     await project(manifest, async (cwd) => {
       const result = await studySetupChecks({
         cwd,
-        lab: "preview",
+        study: "preview",
         env: keyless,
         agents: [],
         keyPresent: () => false,
@@ -139,7 +139,7 @@ describe("selected lab setup without paid dispatch", () => {
     await project(manifest, async (cwd) => {
       const result = await studySetupChecks({
         cwd,
-        lab: "preview",
+        study: "preview",
         env: keyless,
         agents: [],
         keyPresent: () => false,
@@ -171,7 +171,7 @@ describe("selected lab setup without paid dispatch", () => {
       await project(manifest, async (cwd) => {
         const result = await studySetupChecks({
           cwd,
-          lab: "preview",
+          study: "preview",
           env: keyless,
           agents: [],
           keyPresent: () => false,
@@ -197,7 +197,7 @@ describe("selected lab setup without paid dispatch", () => {
     await project(manifest, async (cwd) => {
       const result = await studySetupChecks({
         cwd,
-        lab: "preview",
+        study: "preview",
         env: keyless,
         agents: [],
         keyPresent: () => false,
@@ -248,7 +248,7 @@ describe("selected lab setup without paid dispatch", () => {
       await project(localCodexLab, async (cwd) => {
         const result = await studySetupChecks({
           cwd,
-          lab: "preview",
+          study: "preview",
           env: keyless,
           agents: [],
           keyPresent: () => false,
@@ -281,7 +281,7 @@ describe("selected lab setup without paid dispatch", () => {
       await project(localCodexLab, async (cwd) => {
         const result = await studySetupChecks({
           cwd,
-          lab: "preview",
+          study: "preview",
           env: { ...keyless, PATH: bin },
           agents: [],
           keyPresent: () => false,
@@ -318,7 +318,7 @@ describe("selected lab setup without paid dispatch", () => {
           };
           const result = await studySetupChecks({
             cwd,
-            lab: "preview",
+            study: "preview",
             env,
             agents: [],
             keyPresent: () => false,
@@ -341,7 +341,7 @@ describe("selected lab setup without paid dispatch", () => {
         for (const ready of [true, false]) {
           const result = await studySetupChecks({
             cwd,
-            lab: "preview",
+            study: "preview",
             env: keyless,
             agents: [],
             keyPresent: () => false,
@@ -381,7 +381,7 @@ describe("selected lab setup without paid dispatch", () => {
       async (cwd) => {
         const result = await studySetupChecks({
           cwd,
-          lab: "preview",
+          study: "preview",
           env: keyless,
           agents: [],
           keyPresent: () => false,
@@ -399,12 +399,12 @@ describe("selected lab setup without paid dispatch", () => {
 
   it("permits a keyless dry-run but identifies the missing live API credentials", async () => {
     await project(lab("openai-computer-use", "dry-run"), async (cwd) => {
-      expect((await doctor(cwd, { lab: "preview", env: keyless, localAgents: noAgents })).ok).toBe(
-        true,
-      );
+      expect(
+        (await doctor(cwd, { study: "preview", env: keyless, localAgents: noAgents })).ok,
+      ).toBe(true);
     });
     await project(lab(), async (cwd) => {
-      const result = await doctor(cwd, { lab: "preview", env: keyless, localAgents: noAgents });
+      const result = await doctor(cwd, { study: "preview", env: keyless, localAgents: noAgents });
       expect(result.ok).toBe(false);
       expect(result.checks.filter((check) => !check.ok).map((check) => check.name)).toEqual([
         "key OPENAI_API_KEY",
@@ -419,7 +419,7 @@ describe("selected lab setup without paid dispatch", () => {
   it("does not require an API key for an authenticated local participant, and explicitly skips analysis", async () => {
     await project(lab("local-agent"), async (cwd) => {
       const result = await doctor(cwd, {
-        lab: "preview",
+        study: "preview",
         env: { ...keyless, E2B_API_KEY: "synthetic-desktop-marker" },
         localAgents: {
           which: async (bin) => (bin === "codex" ? "/synthetic/codex" : undefined),
@@ -448,7 +448,7 @@ describe("selected lab setup without paid dispatch", () => {
   it("refuses installed but uncheckable authentication without pretending it is signed out", async () => {
     await project(lab("local-agent"), async (cwd) => {
       const result = await doctor(cwd, {
-        lab: "preview",
+        study: "preview",
         env: { ...keyless, E2B_API_KEY: "synthetic-desktop-marker" },
         localAgents: {
           which: async (bin) => (bin === "codex" ? "/synthetic/codex" : undefined),
@@ -469,7 +469,7 @@ describe("selected lab setup without paid dispatch", () => {
   it("calls keys present without claiming remote validity", async () => {
     await project(lab(), async (cwd) => {
       const result = await doctor(cwd, {
-        lab: "preview",
+        study: "preview",
         env: {
           ...keyless,
           OPENAI_API_KEY: "synthetic-invalid-model",
@@ -498,7 +498,7 @@ describe("selected lab setup without paid dispatch", () => {
   ])("says when a present key is one the lab does not read, %s", async (_name, extra, codexRow) => {
     await project(lab("local-agent") + extra, async (cwd) => {
       const result = await doctor(cwd, {
-        lab: "preview",
+        study: "preview",
         env: {
           ...keyless,
           OPENAI_API_KEY: "synthetic-model",
@@ -524,7 +524,7 @@ describe("selected lab setup without paid dispatch", () => {
         .replace("target: e2b-desktop", "target: local")
         .replace("policies:\n  allowPublicTargets: true", ""),
       async (cwd) => {
-        const result = await doctor(cwd, { lab: "preview", env: keyless, localAgents: noAgents });
+        const result = await doctor(cwd, { study: "preview", env: keyless, localAgents: noAgents });
         expect(result.ok).toBe(false);
         expect(result.checks.find((check) => check.name === "live route")?.message).toContain(
           "caller-supplied executor",
@@ -535,7 +535,7 @@ describe("selected lab setup without paid dispatch", () => {
 
   it("separates successful metadata parsing from unverified setup", async () => {
     await project(lab(), async (cwd) => {
-      const result = await runStudyPreflight({ cwd, lab: "preview", env: keyless });
+      const result = await runStudyPreflight({ cwd, study: "preview", env: keyless });
       expect(result.ok).toBe(true);
       expect(result.checks.find((check) => check.name === "reachability")?.message).toContain(
         "Credentials, local login, dependencies and target reachability were not checked",
@@ -608,7 +608,7 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
     return project(stringify(raw), (cwd) =>
       studySetupChecks({
         cwd,
-        lab: "humanish/studies/preview.yaml",
+        study: "humanish/studies/preview.yaml",
         env: keyless,
         agents,
         keyPresent: () => false,
@@ -656,7 +656,7 @@ describe("doctor reads a live run's needs from the lab's plan", () => {
     project(stringify(raw), (cwd) =>
       studySetupChecks({
         cwd,
-        lab: "humanish/studies/preview.yaml",
+        study: "humanish/studies/preview.yaml",
         env,
         agents: [],
         keyPresent: () => false,

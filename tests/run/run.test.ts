@@ -1105,7 +1105,7 @@ async function writeCuaRunFixture(
     appUrl: "http://127.0.0.1:3000/",
     run: { runId, mode: args.dryRun ? "dry-run" : "live", createdAt: "2026-01-01T00:00:00.000Z" },
     dryRun: args.dryRun,
-    labId: "verify-hardening-proof",
+    studyId: "verify-hardening-proof",
     mission: "Explore the app and stop.",
     persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
     resolution: [1440, 960],

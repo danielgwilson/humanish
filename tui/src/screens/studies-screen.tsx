@@ -10,7 +10,7 @@ import { glyphColor, gutter, spinnerFrame } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
-export interface LabsScreenProps {
+export interface StudiesScreenProps {
   rows: StudyRow[];
   selected: number;
   columns: number;
@@ -72,7 +72,7 @@ function RetiredNote({ retired }: { retired: StudyListResult["retired"] }): Reac
  * here, so the parallel-runs question needs no separate screen. Cost belongs one level in, on the
  * screen where you decide to spend it.
  */
-export function LabsScreen({
+export function StudiesScreen({
   rows,
   selected,
   columns,
@@ -87,7 +87,7 @@ export function LabsScreen({
   initArmed,
   actionNote,
   retired = [],
-}: LabsScreenProps): React.ReactElement {
+}: StudiesScreenProps): React.ReactElement {
   if (rows.length === 0) {
     // Two different problems. "This is not a project" has to be said first, because otherwise the
     // advice is unfollowable: someone in their home directory reading "write a lab" has no idea
@@ -151,7 +151,7 @@ export function LabsScreen({
                 <Text dimColor>{"  "}not yet run</Text>
               </Box>
             ) : null}
-            <LabRowView
+            <StudyRowView
               row={row}
               columns={columns}
               active={index === selected}
@@ -180,7 +180,7 @@ export function LabsScreen({
       {unattributed > 0 ? (
         <Box marginTop={1}>
           <Text dimColor>
-            {unattributed} {unattributed === 1 ? "run" : "runs"} with no lab
+            {unattributed} {unattributed === 1 ? "run" : "runs"} with no study
           </Text>
         </Box>
       ) : null}
@@ -218,7 +218,7 @@ function describe(row: StudyRow | undefined, peerSelected: boolean): string {
     : "no description in the manifest";
 }
 
-function LabRowView({
+function StudyRowView({
   row,
   columns,
   active,

@@ -250,7 +250,7 @@ describe("retained study cost accounting", () => {
     await writeAnalysisExecutionReceipt(early, artifact("old-study", "late-analysis", 10));
     await writeAnalysisExecutionReceipt(recent, artifact("new-study", "new-analysis", 0.5));
     const byDate = await computeStats(cwd, { since: "2026-09-01" });
-    const byLab = await computeStats(cwd, { lab: "new-lab" });
+    const byLab = await computeStats(cwd, { study: "new-lab" });
     expect(byDate.ok && byDate.totals.costs.estimatedTotalUsd).toBe(0.75);
     expect(byLab.ok && byLab.totals.costs.estimatedTotalUsd).toBe(0.75);
     expect((await stats()).days[0]).toMatchObject({
@@ -311,7 +311,7 @@ describe("retained study cost accounting", () => {
     });
     expect(result.days[0]?.day).toBe("(undated)");
     expect(result.studies[0]?.study).toBe("(no study)");
-    for (const options of [{ lab: "sample-lab" }, { since: "2026-09-01" }]) {
+    for (const options of [{ study: "sample-lab" }, { since: "2026-09-01" }]) {
       const filtered = await computeStats(cwd, options);
       expect(filtered.ok && filtered.totals.runs).toBe(0);
       expect(filtered.ok && filtered.unreadable).toEqual(["study-a"]);

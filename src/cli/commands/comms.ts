@@ -239,7 +239,7 @@ async function handleCommsConfigure(
 ): Promise<void> {
   const result = await configureCommsStudy({
     cwd: resolve(options.cwd),
-    lab: options.study,
+    study: options.study,
     connection: options.connection,
     ...(options.apply === undefined ? {} : { apply: options.apply }),
     ...(options.planToken === undefined ? {} : { planToken: options.planToken }),

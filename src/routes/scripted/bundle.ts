@@ -37,8 +37,8 @@ interface ScriptedBundleArgs {
   dryRun: boolean;
   hostDigest?: string;
   journey: BrowserPersonaJourney;
-  labId: string;
-  labTitle?: string;
+  studyId: string;
+  studyTitle?: string;
   persona: ActorPersonaRef;
   scenarioSource: string;
   scenarioSourceDigest: string;
@@ -90,7 +90,7 @@ export function buildScriptedStudyBundle(args: ScriptedBundleArgs): RunBundle {
     persona: {
       id: args.persona.id,
       name: `Scripted journey persona (${args.persona.id})`,
-      source: `study:${args.labId}`,
+      source: `study:${args.studyId}`,
       sourceDigest: args.persona.promptDigest,
     },
     scenario: {
@@ -133,7 +133,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.run.created",
-      message: `Created a scripted-browser run for ${args.labId} (actor ${args.actorId}, ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"}).`,
+      message: `Created a scripted-browser run for ${args.studyId} (actor ${args.actorId}, ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"}).`,
     },
     {
       id: "event-001-subject",

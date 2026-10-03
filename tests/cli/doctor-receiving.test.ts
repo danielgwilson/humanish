@@ -58,7 +58,7 @@ describe("doctor checks the selected receiving credential without contacting its
   });
   const inspect = async () => {
     const before = { ...env };
-    const result = await doctor(cwd, { lab: "preview", env, localAgents: noAgents });
+    const result = await doctor(cwd, { study: "preview", env, localAgents: noAgents });
     expect(env).toEqual(before);
     expect(JSON.stringify(result)).not.toContain("synthetic-");
     return result;
@@ -141,7 +141,7 @@ describe("doctor checks the selected receiving credential without contacting its
     );
     const e2bMessage = async (homeDir: string) => {
       const result = await doctor(cwd, {
-        lab: "preview",
+        study: "preview",
         env,
         localAgents: noAgents,
         keyDeps: { homeDir, execText: async () => null },

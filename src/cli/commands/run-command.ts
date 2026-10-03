@@ -102,7 +102,7 @@ export async function handleRun(
   if (!loaded) return;
 
   if (study !== undefined) {
-    await runStudyCommand({ command, io, lab: study, mode: "run", options });
+    await runStudyCommand({ command, io, study, mode: "run", options });
     return;
   }
 

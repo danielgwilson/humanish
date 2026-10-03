@@ -116,7 +116,7 @@ function isNonRuntimeCredentialName(name: string): boolean {
  * prompt/token/secret shapes; this builder makes that true by construction.
  */
 export function buildSandboxMetadata(allowlist: {
-  labId: string;
+  studyId: string;
   recordId: string;
   runId: string;
 }): Record<string, string> {
@@ -124,7 +124,7 @@ export function buildSandboxMetadata(allowlist: {
     mode: TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA.mode,
     tool: TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA.tool,
     provider: "codex",
-    labId: allowlist.labId,
+    labId: allowlist.studyId,
     recordId: allowlist.recordId,
     // The run id is a harness-minted token (terminal-<ts>-<hex>), not user data.
     runId: allowlist.runId,

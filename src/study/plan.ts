@@ -90,28 +90,28 @@ export function planStudy(
   options: InternalRunStudyOptions,
   deps: StudyDeps = {},
 ): PlanResult {
-  const lab = localBrowserDefaults(config);
-  const input = { dryRun: resolveStudyDryRun(lab, options.dryRun, true) ?? true };
-  const result = planRoute(routeOf(config), lab, options, input, deps);
+  const study = localBrowserDefaults(config);
+  const input = { dryRun: resolveStudyDryRun(study, options.dryRun, true) ?? true };
+  const result = planRoute(routeOf(config), study, options, input, deps);
   if (!result.ok) return result;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
   // plan.lab for the run's status record and bundle.
-  const plan = options.lab === undefined ? result.plan : { ...result.plan, lab: options.lab };
+  const plan = options.study === undefined ? result.plan : { ...result.plan, study: options.study };
   return { ok: true, planned: { plan } };
 }
 
 function planRoute(
   route: StudyRoute,
-  lab: StudyConfig,
+  study: StudyConfig,
   options: InternalRunStudyOptions,
   input: { readonly dryRun: boolean },
   deps: StudyDeps,
 ): RoutePlanResult {
   switch (route) {
     case "preview":
-      return planPreview(lab, options, input);
+      return planPreview(study, options, input);
     case "computer-use":
-      return planComputerUseStudy(lab, {
+      return planComputerUseStudy(study, {
         ...input,
         hasRunSession: deps.runSession !== undefined,
         driving: callerDrivingOf(options),
@@ -119,13 +119,13 @@ function planRoute(
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
       });
     case "shared-world":
-      return planSharedWorldStudy(lab, {
+      return planSharedWorldStudy(study, {
         ...input,
         hasRunSession: deps.runSession !== undefined,
       });
     case "terminal":
-      return planTerminalStudy(lab, { ...input, hasCostProbe: deps.costProbe !== undefined });
+      return planTerminalStudy(study, { ...input, hasCostProbe: deps.costProbe !== undefined });
     case "scripted":
-      return planScriptedStudy(lab, { ...input, injectedBrowser: injectedBrowser(deps) });
+      return planScriptedStudy(study, { ...input, injectedBrowser: injectedBrowser(deps) });
   }
 }

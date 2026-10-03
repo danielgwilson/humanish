@@ -29,7 +29,7 @@ describe("starting a run from the terminal surface", () => {
     const { calls, spawn } = recordingSpawn();
     const result = await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn,
       cliPath: "/opt/humanish/dist/cli.js",
@@ -61,7 +61,7 @@ describe("starting a run from the terminal surface", () => {
     const dry = recordingSpawn();
     await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "dry-run",
       spawn: dry.spawn,
       cliPath: "/x/cli.js",
@@ -71,7 +71,7 @@ describe("starting a run from the terminal surface", () => {
     const live = recordingSpawn();
     await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn: live.spawn,
       cliPath: "/x/cli.js",
@@ -84,7 +84,7 @@ describe("starting a run from the terminal surface", () => {
     const before = Date.now();
     const result = await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn,
       cliPath: "/x/cli.js",
@@ -110,7 +110,7 @@ describe("starting a run from the terminal surface", () => {
     const { calls, spawn } = recordingSpawn();
     const result = await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn,
       cliPath: "/x/cli.js",
@@ -138,7 +138,7 @@ describe("starting a run from the terminal surface", () => {
     })) as never;
     const result = await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn,
       cliPath: "/x/cli.js",
@@ -157,7 +157,7 @@ describe("starting a run from the terminal surface", () => {
       const { calls, spawn } = recordingSpawn();
       const result = await launchRun({
         cwd,
-        lab: handle,
+        study: handle,
         mode: "live",
         spawn,
         cliPath: "/x/cli.js",
@@ -177,7 +177,7 @@ describe("starting a run from the terminal surface", () => {
     const { spawn } = recordingSpawn();
     const result = await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn,
       cliPath: "/x/cli.js",
@@ -199,7 +199,7 @@ describe("starting a run from the terminal surface", () => {
     }) as never;
     const result = await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn,
       cliPath: "/x/cli.js",
@@ -213,7 +213,7 @@ describe("starting a run from the terminal surface", () => {
     const { spawn } = recordingSpawn();
     const result = await launchRun({
       cwd,
-      lab: "signup-flow",
+      study: "signup-flow",
       mode: "live",
       spawn,
       cliPath: "/x/cli.js",

@@ -215,8 +215,8 @@ export async function finishLiveTerminalSession(
   const bundle = buildLiveTerminalProductBundle({
     run,
     actorId: plan.actor,
-    labId: plan.studyId,
-    ...(plan.title ? { labTitle: plan.title } : {}),
+    studyId: plan.studyId,
+    ...(plan.title ? { studyTitle: plan.title } : {}),
     mission: sanitize(mission),
     persona,
     productName: product.name,
@@ -280,7 +280,7 @@ export async function finishLiveTerminalSession(
   );
   const result = terminalStudyResult({
     cwd,
-    labId: plan.studyId,
+    studyId: plan.studyId,
     actorId: plan.actor,
     productName: product.name,
     runId,

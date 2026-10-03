@@ -98,7 +98,7 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
         // The golden is captured through the real CLI, which resolves the manifest and stamps the
         // run's study provenance. Faithfulness means invoking the same way, so this test
         // supplies exactly what the resolution step supplies.
-        lab: { id: resolved.config.id, path: file, origin: "committed" },
+        study: { id: resolved.config.id, path: file, origin: "committed" },
       });
       expect(outcome.result.ok ?? true).not.toBe(false);
 

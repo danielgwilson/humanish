@@ -145,7 +145,7 @@ describe("receiving lab selection", () => {
   }
   it("refuses a v2 source, naming the command that converts it", async () => {
     await source({ v2: true });
-    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, study: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({
       ok: false,
       applied: false,
@@ -156,7 +156,7 @@ describe("receiving lab selection", () => {
   it("previews without mutation, then saves a resolvable local copy while preserving source", async () => {
     await source();
     const before = await readFile(path.join(cwd, "humanish/studies/signup.yaml"), "utf8");
-    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, study: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({
       ok: true,
       applied: false,
@@ -166,7 +166,7 @@ describe("receiving lab selection", () => {
     expect(
       await configureCommsStudy({
         cwd,
-        lab: "signup",
+        study: "signup",
         connection: "agentmail",
         apply: true,
         planToken: plan.planToken!,
@@ -182,7 +182,7 @@ describe("receiving lab selection", () => {
   });
   it("rejects stale preview when the source or destination changes", async () => {
     await source();
-    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, study: "signup", connection: "agentmail" });
     await writeFile(
       path.join(cwd, "humanish/studies/signup.yaml"),
       studyFileText({ ...lab, title: "Changed" }, cwd),
@@ -190,7 +190,7 @@ describe("receiving lab selection", () => {
     expect(
       await configureCommsStudy({
         cwd,
-        lab: "signup",
+        study: "signup",
         connection: "agentmail",
         apply: true,
         planToken: plan.planToken!,
@@ -209,7 +209,7 @@ describe("receiving lab selection", () => {
     await writeFile(path.join(cwd, "humanish/studies/signup.yaml"), original);
     const result = await configureCommsStudy({
       cwd,
-      lab: "signup",
+      study: "signup",
       connection: "agentmail",
       apply: true,
     });
@@ -222,7 +222,7 @@ describe("receiving lab selection", () => {
     await source();
     const first = await configureCommsStudy({
       cwd,
-      lab: "signup",
+      study: "signup",
       connection: "agentmail",
       apply: true,
     });
@@ -230,7 +230,7 @@ describe("receiving lab selection", () => {
     for (const apply of [false, true]) {
       const result = await configureCommsStudy({
         cwd,
-        lab: first.path!,
+        study: first.path!,
         connection: "agentmail",
         apply,
       });
@@ -249,7 +249,7 @@ describe("receiving lab selection", () => {
     const spawn = vi.fn(() => ({ pid: 4242, unref() {}, on() {} }));
     const launched = await launchRun({
       cwd,
-      lab: "signup",
+      study: "signup",
       manifestPath: ".humanish/local/studies/signup.yaml",
       mode: "live",
       spawn: spawn as never,

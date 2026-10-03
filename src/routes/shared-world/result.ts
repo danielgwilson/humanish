@@ -195,7 +195,7 @@ function concurrentStudyError(args: {
  */
 export function concurrentStudyFailure(envelope: {
   cwd: string;
-  labId: string;
+  studyId: string;
   actor: string;
   participantCount: number;
   concurrency: number;
@@ -207,7 +207,7 @@ export function concurrentStudyFailure(envelope: {
   actorLabel?: string,
 ) => ConcurrentSharedWorldStudyResult {
   return (code, message, actorLabel) => ({
-    ...studyResultIdentity("shared-world", envelope.labId),
+    ...studyResultIdentity("shared-world", envelope.studyId),
     ok: false,
     cwd: envelope.cwd,
     actor: actorLabel ?? envelope.actor,

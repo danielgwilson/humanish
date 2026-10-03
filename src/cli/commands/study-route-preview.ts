@@ -15,7 +15,7 @@ import type { RouteRun } from "./study-route-run.js";
 interface PreviewRouteArgs {
   command: Command;
   io: CliIo;
-  lab: string;
+  study: string;
   config: StudyConfig;
   mode: "run" | "watch";
   options: StudyCommandOptions;

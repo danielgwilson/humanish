@@ -26,7 +26,7 @@ interface StartRunOptions {
   runId?: string | undefined;
   mintRunId: () => string;
   mode: "dry-run" | "live";
-  lab?: RunStudyProvenance | undefined;
+  study?: RunStudyProvenance | undefined;
   /** review.md for the published bundle. */
   renderReview: (bundle: RunBundle) => string;
   /** Used by `FinishedRun.renderObserver`; `render` is the `StudyDeps.renderObserver` seam. */
@@ -40,7 +40,7 @@ interface Run {
   readonly createdAt: string;
   readonly mode: "dry-run" | "live";
   /** The manifest the run came from; bundleHead copies it into the bundle. */
-  readonly lab?: RunStudyProvenance;
+  readonly study?: RunStudyProvenance;
   /** Routes write their evidence files through these and hand them to participants. */
   readonly paths: PreparedRunArtifactPaths;
   /**
@@ -270,7 +270,7 @@ export async function runScope<T>(
       runId,
       createdAt,
       mode: options.mode,
-      ...(options.lab === undefined ? {} : { lab: options.lab }),
+      ...(options.study === undefined ? {} : { study: options.study }),
       paths,
       writeSnapshot(bundle) {
         if (closed) return refuse("The run scope has closed.");

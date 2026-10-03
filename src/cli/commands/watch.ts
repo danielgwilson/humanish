@@ -218,7 +218,7 @@ async function watchStudy(
   options: WatchOptions,
 ): Promise<void> {
   // Forwarded wholesale, as `run` forwards its options, so a run flag reaches the lab either way.
-  await runStudyCommand({ command, io, lab: study, mode: "watch", options });
+  await runStudyCommand({ command, io, study, mode: "watch", options });
 }
 
 /** Without a study, watch starts a fresh synthetic run of `--count` participants, 4 by default. */

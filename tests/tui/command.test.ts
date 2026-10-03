@@ -222,8 +222,14 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
         loadTui: async () => ({
           startTui: async (options) => {
             expect(JSON.stringify(options)).not.toContain("synthetic-file");
-            await options.capabilities.readLabSummary(options.cwd, "preview", { checkKeys: true });
-            await options.capabilities.startRun({ cwd: options.cwd, lab: "preview", mode: "live" });
+            await options.capabilities.readStudySummary(options.cwd, "preview", {
+              checkKeys: true,
+            });
+            await options.capabilities.startRun({
+              cwd: options.cwd,
+              study: "preview",
+              mode: "live",
+            });
             return 0;
           },
         }),

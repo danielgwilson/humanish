@@ -60,7 +60,7 @@ describe("every lab `humanish init` writes is runnable", () => {
         cwd,
         dryRun: true,
         open: false,
-        lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin },
+        study: { id: resolved.config.id, path: resolved.path, origin: resolved.origin },
       });
 
       const result = outcome.result as {
@@ -115,7 +115,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
         cwd,
         dryRun: true,
         open: false,
-        lab: { id: config.id, path: file.path, origin: "committed" },
+        study: { id: config.id, path: file.path, origin: "committed" },
       });
       const dry = outcome.result as { ok?: boolean; error?: { code?: string; message?: string } };
       expect(

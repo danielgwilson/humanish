@@ -14,9 +14,9 @@ import type { TuiOptions } from "../../src/tui/contract.js";
 import { currentScreen, initialNav, navigate, selectedIndex, type NavState } from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
 import { AllRunsScreen } from "./screens/all-runs-screen.js";
-import { LabScreen, labItems } from "./screens/lab-screen.js";
+import { StudyScreen, studyItems } from "./screens/study-screen.js";
 import { runActions } from "./screens/run-screen.js";
-import { LabsScreen } from "./screens/labs-screen.js";
+import { StudiesScreen } from "./screens/studies-screen.js";
 import { RunScreen } from "./screens/run-screen.js";
 import { useTerminalSize } from "./use-terminal-size.js";
 
@@ -24,7 +24,7 @@ import { useTerminalSize } from "./use-terminal-size.js";
 interface ProjectData {
   rows: StudyRow[];
   unattributed: RunIndexEntry[];
-  runsByLab: Map<string, RunIndexEntry[]>;
+  runsByStudy: Map<string, RunIndexEntry[]>;
   runsById: Map<string, RunIndexEntry>;
   unreadable: string[];
   /**
@@ -91,11 +91,11 @@ export function App({
   // Launch state is scoped to the study it belongs to: it is one surface with one piece of state, and
   // an unscoped note follows the operator to a different lab's screen and reports something about
   // that lab which is not true of it.
-  const [launchError, setLaunchError] = useState<{ labKey: string; text: string } | undefined>(
+  const [launchError, setLaunchError] = useState<{ studyKey: string; text: string } | undefined>(
     undefined,
   );
   /** A launch in flight, or one whose record has not appeared yet. Not an error. */
-  const [launchNote, setLaunchNote] = useState<{ labKey: string; text: string } | undefined>(
+  const [launchNote, setLaunchNote] = useState<{ studyKey: string; text: string } | undefined>(
     undefined,
   );
   /** When the live confirmation was armed, so a held key cannot blow through it. */
@@ -133,7 +133,7 @@ export function App({
   // starts, the wrong one.
   const selectedIdRef = useRef<string | undefined>(undefined);
   /** Where the operator is right now, readable from an async launch that started long ago. */
-  const screenRef = useRef<ReturnType<typeof currentScreen>>({ name: "labs" });
+  const screenRef = useRef<ReturnType<typeof currentScreen>>({ name: "studies" });
 
   useEffect(() => {
     let cancelled = false;
@@ -141,15 +141,15 @@ export function App({
       try {
         // Read both sides before rendering either: a labs list assembled from history alone is
         // empty on a fresh project, and one from manifests alone hides real runs.
-        const [index, labs] = await Promise.all([
+        const [index, studies] = await Promise.all([
           // Caching is the capability's business, not the view's: the injected reader keeps a
           // stat-keyed cache across these calls, so a refresh re-reads only what changed.
           options.capabilities.readRunIndex(options.cwd),
-          options.capabilities.listLabs(options.cwd),
+          options.capabilities.listStudies(options.cwd),
         ]);
         if (cancelled) return;
         setError(undefined);
-        setData(project(index, labs.studies, labs.retired));
+        setData(project(index, studies.studies, studies.retired));
       } catch (cause) {
         if (cancelled) return;
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -213,16 +213,16 @@ export function App({
       setConfirming(undefined);
       setArmedAt(undefined);
       setLaunchError(undefined);
-      setLaunchNote({ labKey: row.key, text: `starting ${row.name}…` });
+      setLaunchNote({ studyKey: row.key, text: `starting ${row.name}…` });
       const result = await options.capabilities.startRun({
         cwd: options.cwd,
-        lab: row.name,
+        study: row.name,
         ...(row.path ? { manifestPath: row.path } : {}),
         mode,
       });
       if (!result.ok) {
         setLaunchNote(undefined);
-        setLaunchError({ labKey: row.key, text: result.error.message });
+        setLaunchError({ studyKey: row.key, text: result.error.message });
         return;
       }
 
@@ -247,16 +247,16 @@ export function App({
           // navigating leaves `data` on its pre-launch snapshot, so the run screen looks the new run
           // up in a map that does not contain it and reports the run it just started as "no longer
           // on disk": on every single start.
-          const labs = await options.capabilities.listLabs(options.cwd);
-          setData(project(index, labs.studies, labs.retired));
+          const studies = await options.capabilities.listStudies(options.cwd);
+          setData(project(index, studies.studies, studies.retired));
           setLaunchNote(undefined);
           // Only follow the run if the operator is still where they launched from. This resolves up
           // to LAUNCH_RECORD_TIMEOUT_MS later, by which time they may have gone somewhere else, and
           // yanking the screen out from under them is worse than not following.
-          if (screenRef.current.name === "lab" && screenRef.current.labKey === row.key) {
+          if (screenRef.current.name === "study" && screenRef.current.studyKey === row.key) {
             dispatch({
               type: "enter",
-              screen: { name: "run", labId: row.labId, runId: started.runId },
+              screen: { name: "run", studyId: row.studyId, runId: started.runId },
             });
           }
           return;
@@ -270,7 +270,7 @@ export function App({
       const log = await options.capabilities.readLaunchLog(result.run.logPath);
       setLaunchNote(undefined);
       setLaunchError({
-        labKey: row.key,
+        studyKey: row.key,
         text:
           log === ""
             ? `${row.name} started (pid ${result.run.pid}) but has not reported in. Check ${result.run.logPath}.`
@@ -334,12 +334,13 @@ export function App({
         return;
       }
       // Run again: the same study, in the same mode it ran in, launched the same detached way.
-      const labId = run.study?.id;
+      const studyId = run.study?.id;
       const matching =
-        labId === undefined
+        studyId === undefined
           ? []
-          : (data?.rows.filter((candidate) => candidate.labId === labId && candidate.declared) ??
-            []);
+          : (data?.rows.filter(
+              (candidate) => candidate.studyId === studyId && candidate.declared,
+            ) ?? []);
       if (matching.length > 1) {
         setActionNote(
           "multiple manifests share this study id; choose the exact one from the list to run again",
@@ -348,7 +349,7 @@ export function App({
       }
       const row = matching[0];
       if (row === undefined || !row.declared) {
-        const retired = data === undefined ? undefined : retiredFileOf(data, labId);
+        const retired = data === undefined ? undefined : retiredFileOf(data, studyId);
         setActionNote(
           retired === undefined
             ? "cannot run this again: its study has no manifest here any more"
@@ -359,7 +360,7 @@ export function App({
       setActionNote(`starting ${row.name}…`);
       const started = await options.capabilities.startRun({
         cwd: options.cwd,
-        lab: row.name,
+        study: row.name,
         ...(row.path ? { manifestPath: row.path } : {}),
         mode: run.mode === "live" ? "live" : "dry-run",
       });
@@ -452,7 +453,7 @@ export function App({
         if (key.return || key.rightArrow) {
           // The empty-project screen has exactly one action, so Enter means it. Armed, because it
           // writes into the operator's directory and touches package.json.
-          if (screen.name === "labs" && !initialized) {
+          if (screen.name === "studies" && !initialized) {
             if (initArmedAt === undefined) {
               setInitArmedAt(Date.now());
               return;
@@ -475,8 +476,8 @@ export function App({
               }
             }
           }
-          if (screen.name === "lab" && data !== undefined) {
-            const { row, items } = itemsForLab(data, screen.labKey);
+          if (screen.name === "study" && data !== undefined) {
+            const { row, items } = itemsForStudy(data, screen.studyKey);
             const item = items[selected];
             if (row !== undefined && item?.kind === "start") {
               void start(row, item.mode);
@@ -553,10 +554,12 @@ export function App({
 
   // Live participants plus the latest run of the open study, so its post-run analysis stays visible.
   // Never open all historical bundles merely to populate a list.
-  const watchedLab =
-    screen.name === "lab" ? data?.rows.find((row) => row.key === screen.labKey) : undefined;
+  const watchedStudy =
+    screen.name === "study" ? data?.rows.find((row) => row.key === screen.studyKey) : undefined;
   const watchedLatestId =
-    watchedLab === undefined ? undefined : data?.runsByLab.get(watchedLab.labId)?.[0]?.runId;
+    watchedStudy === undefined
+      ? undefined
+      : data?.runsByStudy.get(watchedStudy.studyId)?.[0]?.runId;
   const liveRunIds = [
     ...new Set([
       ...(data?.rows ?? []).flatMap((row) => row.liveRuns.map((run) => run.runId)),
@@ -599,12 +602,12 @@ export function App({
 
   // What the open study is. Includes the key probe, which is why it is read per study rather than for
   // the whole list.
-  const openLabKey = screen.name === "lab" ? screen.labKey : undefined;
-  const openLabRow =
-    openLabKey === undefined ? undefined : data?.rows.find((row) => row.key === openLabKey);
-  const openLabName = openLabRow?.path ?? openLabRow?.name;
+  const openStudyKey = screen.name === "study" ? screen.studyKey : undefined;
+  const openStudyRow =
+    openStudyKey === undefined ? undefined : data?.rows.find((row) => row.key === openStudyKey);
+  const openStudyName = openStudyRow?.path ?? openStudyRow?.name;
   useEffect(() => {
-    if (openLabName === undefined) {
+    if (openStudyName === undefined) {
       setSummary(undefined);
       return;
     }
@@ -612,14 +615,14 @@ export function App({
     setSummary(undefined);
     void (async () => {
       const read = await options.capabilities
-        .readLabSummary(options.cwd, openLabName, { checkKeys: true })
+        .readStudySummary(options.cwd, openStudyName, { checkKeys: true })
         .catch(() => null);
       if (!cancelled) setSummary(read);
     })();
     return () => {
       cancelled = true;
     };
-  }, [openLabName, options]);
+  }, [openStudyName, options]);
 
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
@@ -735,14 +738,14 @@ function breadcrumbOf(
   screen: ReturnType<typeof currentScreen>,
   data: ProjectData | undefined,
 ): string | undefined {
-  if (screen.name === "labs") return undefined;
+  if (screen.name === "studies") return undefined;
   if (screen.name === "all-runs") return "‹ studies / all runs";
-  if (screen.name === "lab") {
-    const row = data?.rows.find((candidate) => candidate.key === screen.labKey);
-    return `‹ studies / ${row?.name ?? screen.labKey}`;
+  if (screen.name === "study") {
+    const row = data?.rows.find((candidate) => candidate.key === screen.studyKey);
+    return `‹ studies / ${row?.name ?? screen.studyKey}`;
   }
-  const lab = screen.labId;
-  return lab === undefined ? "‹ studies / run" : `‹ studies / ${lab} / run`;
+  const study = screen.studyId;
+  return study === undefined ? "‹ studies / run" : `‹ studies / ${study} / run`;
 }
 
 /**
@@ -759,17 +762,17 @@ function keyHints(
 ): string {
   const move = "↑↓ move";
   switch (screen.name) {
-    case "labs":
+    case "studies":
       // Nothing to move through or open on an empty screen, and a legend that lists inert keys
       // teaches the wrong model of the surface.
       if ((data?.rows.length ?? 0) > 0) return `${move}  ⏎ open  ? keys  q quit`;
       // An empty screen with one action still has that action; a legend that omits it makes the
       // row look decorative.
       return initialized === false ? "⏎ set up humanish here  ? keys  q quit" : "? keys  q quit";
-    case "lab": {
+    case "study": {
       if (confirming !== undefined) return "⏎ confirm  esc cancel";
       const item =
-        data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
+        data === undefined ? undefined : itemsForStudy(data, screen.studyKey).items[selected];
       const enter = item?.kind === "start" ? "⏎ start" : "⏎ open";
       return `${move}  ${enter}  esc back  ? keys  q quit`;
     }
@@ -797,47 +800,47 @@ function keyHints(
  */
 function retiredFileOf(
   data: ProjectData,
-  labId: string | undefined,
+  studyId: string | undefined,
 ): StudyListResult["retired"][number] | undefined {
-  if (labId === undefined) return undefined;
+  if (studyId === undefined) return undefined;
   const slashed = (value: string): string => value.replace(/\\/g, "/");
   const recorded = new Set(
-    (data.runsByLab.get(labId) ?? []).flatMap((run) =>
+    (data.runsByStudy.get(studyId) ?? []).flatMap((run) =>
       run.study?.path === undefined ? [] : [slashed(run.study.path)],
     ),
   );
   if (recorded.size > 0) return data.retired.find((file) => recorded.has(slashed(file.path)));
   return data.retired.find(
-    (file) => studyFileStem(slashed(file.path).split("/").pop() ?? "") === labId,
+    (file) => studyFileStem(slashed(file.path).split("/").pop() ?? "") === studyId,
   );
 }
 
 function project(
   index: RunIndexResult,
-  labs: readonly StudyListEntry[],
+  studies: readonly StudyListEntry[],
   retired: StudyListResult["retired"],
 ): ProjectData {
   const { rows, unattributed } = studyRows(
-    labs.map((lab) => ({
-      id: lab.id,
-      ...(lab.title === undefined ? {} : { title: lab.title }),
-      ...(lab.description === undefined ? {} : { description: lab.description }),
-      path: lab.path,
-      origin: lab.origin,
+    studies.map((study) => ({
+      id: study.id,
+      ...(study.title === undefined ? {} : { title: study.title }),
+      ...(study.description === undefined ? {} : { description: study.description }),
+      path: study.path,
+      origin: study.origin,
     })),
     index.runs,
   );
-  const runsByLab = new Map<string, RunIndexEntry[]>();
+  const runsByStudy = new Map<string, RunIndexEntry[]>();
   const runsById = new Map<string, RunIndexEntry>();
   for (const run of index.runs) {
     runsById.set(run.runId, run);
-    const labId = run.study?.id;
-    if (labId === undefined) continue;
-    const bucket = runsByLab.get(labId);
-    if (bucket === undefined) runsByLab.set(labId, [run]);
+    const studyId = run.study?.id;
+    if (studyId === undefined) continue;
+    const bucket = runsByStudy.get(studyId);
+    if (bucket === undefined) runsByStudy.set(studyId, [run]);
     else bucket.push(run);
   }
-  return { rows, unattributed, runsByLab, runsById, unreadable: index.unreadable, retired };
+  return { rows, unattributed, runsByStudy, runsById, unreadable: index.unreadable, retired };
 }
 
 /**
@@ -859,19 +862,19 @@ function liveRunsOf(data: ProjectData): RunIndexEntry[] {
 }
 
 /** A lab's display name from its id, for screens that only carry the id. */
-function labelForLab(data: ProjectData, labId: string | undefined): string {
-  if (labId === undefined) return "";
-  return data.rows.find((row) => row.labId === labId)?.label ?? labId;
+function labelForStudy(data: ProjectData, studyId: string | undefined): string {
+  if (studyId === undefined) return "";
+  return data.rows.find((row) => row.studyId === studyId)?.label ?? studyId;
 }
 
 /** The lab screen's rows, from the one definition both counting and opening share. */
-function itemsForLab(
+function itemsForStudy(
   data: ProjectData,
-  labKey: string,
-): { row?: StudyRow; items: ReturnType<typeof labItems> } {
-  const row = data.rows.find((candidate) => candidate.key === labKey);
+  studyKey: string,
+): { row?: StudyRow; items: ReturnType<typeof studyItems> } {
+  const row = data.rows.find((candidate) => candidate.key === studyKey);
   if (row === undefined) return { items: [] };
-  return { row, items: labItems(data.runsByLab.get(row.labId) ?? [], row.declared) };
+  return { row, items: studyItems(data.runsByStudy.get(row.studyId) ?? [], row.declared) };
 }
 
 function countRows(
@@ -881,13 +884,13 @@ function countRows(
 ): number {
   if (data === undefined) return 0;
   switch (screen.name) {
-    case "labs":
+    case "studies":
       // The labs, plus the "All runs" peer beneath them.
       return data.rows.length + 1;
     case "all-runs":
       return liveRunsOf(data).length;
-    case "lab":
-      return itemsForLab(data, screen.labKey).items.length;
+    case "study":
+      return itemsForStudy(data, screen.studyKey).items.length;
     case "run": {
       const run = data.runsById.get(screen.runId);
       return run === undefined ? 0 : runActions(run, detail).length;
@@ -907,10 +910,10 @@ function identityOf(
   selected: number,
 ): string | undefined {
   if (data === undefined) return undefined;
-  if (screen.name === "labs") return data.rows[selected]?.key ?? "peer:all-runs";
+  if (screen.name === "studies") return data.rows[selected]?.key ?? "peer:all-runs";
   if (screen.name === "all-runs") return liveRunsOf(data)[selected]?.runId;
-  if (screen.name === "lab") {
-    const item = itemsForLab(data, screen.labKey).items[selected];
+  if (screen.name === "study") {
+    const item = itemsForStudy(data, screen.studyKey).items[selected];
     if (item === undefined) return undefined;
     return item.kind === "start" ? `start:${item.mode}` : `run:${item.run.runId}`;
   }
@@ -923,7 +926,7 @@ function indexOfIdentity(
   data: ProjectData,
   identity: string,
 ): number {
-  if (screen.name === "labs") {
+  if (screen.name === "studies") {
     return identity === "peer:all-runs"
       ? data.rows.length
       : data.rows.findIndex((row) => row.key === identity);
@@ -931,8 +934,8 @@ function indexOfIdentity(
   if (screen.name === "all-runs") {
     return liveRunsOf(data).findIndex((run) => run.runId === identity);
   }
-  if (screen.name === "lab") {
-    return itemsForLab(data, screen.labKey).items.findIndex((item) =>
+  if (screen.name === "study") {
+    return itemsForStudy(data, screen.studyKey).items.findIndex((item) =>
       item.kind === "start"
         ? identity === `start:${item.mode}`
         : `run:${item.run.runId}` === identity,
@@ -947,11 +950,11 @@ function openSelected(
   selected: number,
 ): NavState["stack"][number] | undefined {
   if (data === undefined) return undefined;
-  if (screen.name === "labs") {
+  if (screen.name === "studies") {
     const row = data.rows[selected];
     // Past the last lab is the peer.
     if (row === undefined) return selected === data.rows.length ? { name: "all-runs" } : undefined;
-    return { name: "lab", labKey: row.key };
+    return { name: "study", studyKey: row.key };
   }
   if (screen.name === "all-runs") {
     const run = liveRunsOf(data)[selected];
@@ -959,18 +962,18 @@ function openSelected(
       ? undefined
       : {
           name: "run",
-          ...(run.study?.id === undefined ? {} : { labId: run.study.id }),
+          ...(run.study?.id === undefined ? {} : { studyId: run.study.id }),
           runId: run.runId,
         };
   }
-  if (screen.name === "lab") {
+  if (screen.name === "study") {
     // Indexed through the same item list that counting uses. Reading `selected` as an index into
     // runs alone is off by the number of action rows above them: selecting the first run then
     // opens nothing at all, silently.
-    const { row, items } = itemsForLab(data, screen.labKey);
+    const { row, items } = itemsForStudy(data, screen.studyKey);
     const item = items[selected];
     if (row === undefined || item === undefined || item.kind !== "run") return undefined;
-    return { name: "run", labId: row.labId, runId: item.run.runId };
+    return { name: "run", studyId: row.studyId, runId: item.run.runId };
   }
   return undefined;
 }
@@ -983,8 +986,8 @@ function renderScreen(args: {
   viewport: number;
   now: number;
   confirming: "live" | undefined;
-  launchError: { labKey: string; text: string } | undefined;
-  launchNote: { labKey: string; text: string } | undefined;
+  launchError: { studyKey: string; text: string } | undefined;
+  launchNote: { studyKey: string; text: string } | undefined;
   detail: RunDetail | null | undefined;
   summary: StudySummary | null | undefined;
   liveDetails: Map<string, RunDetail>;
@@ -1006,9 +1009,9 @@ function renderScreen(args: {
     detail,
   } = args;
   const { summary, liveDetails, tick, initialized, actionNote } = args;
-  if (screen.name === "labs") {
+  if (screen.name === "studies") {
     return (
-      <LabsScreen
+      <StudiesScreen
         rows={data.rows}
         selected={selected}
         columns={columns}
@@ -1035,18 +1038,18 @@ function renderScreen(args: {
       />
     );
   }
-  if (screen.name === "lab") {
-    const row = data.rows.find((candidate) => candidate.key === screen.labKey);
+  if (screen.name === "study") {
+    const row = data.rows.find((candidate) => candidate.key === screen.studyKey);
     if (row === undefined)
       return <Text color={PALETTE.warn}>that study is no longer in this project</Text>;
-    const retired = row.declared ? undefined : retiredFileOf(data, row.labId)?.message;
+    const retired = row.declared ? undefined : retiredFileOf(data, row.studyId)?.message;
     return (
-      <LabScreen
+      <StudyScreen
         row={row}
         summary={summary}
-        runs={data.runsByLab.get(row.labId) ?? []}
+        runs={data.runsByStudy.get(row.studyId) ?? []}
         liveDetail={liveDetails.get(
-          row.liveRuns[0]?.runId ?? data.runsByLab.get(row.labId)?.[0]?.runId ?? "",
+          row.liveRuns[0]?.runId ?? data.runsByStudy.get(row.studyId)?.[0]?.runId ?? "",
         )}
         selected={selected}
         columns={columns}
@@ -1056,8 +1059,8 @@ function renderScreen(args: {
         canStart={row.declared}
         {...(retired === undefined ? {} : { retired })}
         confirming={confirming}
-        launchError={launchError?.labKey === row.key ? launchError.text : undefined}
-        launchNote={launchNote?.labKey === row.key ? launchNote.text : undefined}
+        launchError={launchError?.studyKey === row.key ? launchError.text : undefined}
+        launchNote={launchNote?.studyKey === row.key ? launchNote.text : undefined}
       />
     );
   }
@@ -1067,14 +1070,14 @@ function renderScreen(args: {
       <AllRunsScreen
         runs={live}
         details={liveDetails}
-        labels={new Map(live.map((run) => [run.runId, labelForLab(data, run.study?.id)]))}
+        labels={new Map(live.map((run) => [run.runId, labelForStudy(data, run.study?.id)]))}
         expected={
           new Map(
             data.rows
               .map((row): [string, number] | null =>
                 row.liveExpectation.medianDurationMs === undefined
                   ? null
-                  : [row.labId, row.liveExpectation.medianDurationMs],
+                  : [row.studyId, row.liveExpectation.medianDurationMs],
               )
               .filter((entry): entry is [string, number] => entry !== null),
           )

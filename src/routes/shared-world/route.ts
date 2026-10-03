@@ -101,7 +101,7 @@ export function sharedWorldStudyRefusal(
   const declared = rosterOf(config.actors[0]) ?? [];
   const fail = concurrentStudyFailure({
     cwd: path.resolve(options.cwd),
-    labId: config.id,
+    studyId: config.id,
     actor: config.actors[0]?.type ?? "",
     participantCount: declared.length,
     // The parser fills concurrency for multi-participant studies, so this fallback serves only
@@ -238,7 +238,7 @@ function completeSharedWorldAnalysis(
 function sharedWorldFailure(plan: SharedWorldPlan, input: SharedWorldRunInput) {
   return concurrentStudyFailure({
     cwd: path.resolve(input.cwd),
-    labId: plan.studyId,
+    studyId: plan.studyId,
     actor: plan.actor,
     participantCount: plan.plane.participants.length,
     concurrency: plan.concurrency,

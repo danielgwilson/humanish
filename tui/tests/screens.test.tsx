@@ -48,7 +48,7 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
       runs: RUNS,
       unreadable: [],
     }),
-    listLabs: async () => ({
+    listStudies: async () => ({
       schema: "humanish.study-list.v1",
       retired: [],
       ok: true,
@@ -59,7 +59,7 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
     startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
-    readLabSummary: async () => null,
+    readStudySummary: async () => null,
     readProjectState: () => ({
       schema: "humanish.tui-project.v1" as const,
       initialized: true,
@@ -192,8 +192,8 @@ describe("the labs screen, rendered", () => {
     expect(liveRow).not.toContain("CUA browser");
   });
 
-  it("counts runs with no lab separately instead of inventing a lab for them", async () => {
-    expect(await frameAt(80)).toContain("1 run with no lab");
+  it("counts runs with no study separately instead of inventing a lab for them", async () => {
+    expect(await frameAt(80)).toContain("1 run with no study");
   });
 
   it("says the project is empty in a way that tells you what to do next", async () => {
@@ -204,7 +204,7 @@ describe("the labs screen, rendered", () => {
         runs: [],
         unreadable: [],
       }),
-      listLabs: async () => ({
+      listStudies: async () => ({
         schema: "humanish.study-list.v1",
         retired: [],
         ok: true,
@@ -231,7 +231,7 @@ describe("the labs screen, rendered", () => {
       readRunIndex: async () => {
         throw new Error("EACCES: permission denied");
       },
-      listLabs: async () => ({
+      listStudies: async () => ({
         schema: "humanish.study-list.v1",
         retired: [],
         ok: true,
@@ -285,13 +285,13 @@ describe("the two empty states are different problems", () => {
     warnings: [],
   };
 
-  it("a project with no labs is told to write one", async () => {
+  it("a project with no studys is told to write one", async () => {
     const frame = await frameAt(
       80,
       24,
       {
         readRunIndex: async () => empty,
-        listLabs: async () => noLabs,
+        listStudies: async () => noLabs,
         readProjectState: () => ({
           schema: "humanish.tui-project.v1" as const,
           initialized: true,
@@ -332,7 +332,7 @@ describe("the two empty states are different problems", () => {
       24,
       {
         readRunIndex: async () => empty,
-        listLabs: async () => ({
+        listStudies: async () => ({
           ...noLabs,
           retired: [
             {
@@ -365,7 +365,7 @@ describe("the two empty states are different problems", () => {
       24,
       {
         readRunIndex: async () => empty,
-        listLabs: async () => noLabs,
+        listStudies: async () => noLabs,
         readProjectState: () => ({
           schema: "humanish.tui-project.v1" as const,
           initialized: false,
@@ -407,7 +407,7 @@ describe("study files humanish no longer reads", () => {
       24,
       {
         readRunIndex: async () => empty,
-        listLabs: async () => ({
+        listStudies: async () => ({
           ...noLabs,
           retired: [
             {
@@ -440,7 +440,7 @@ describe("study files humanish no longer reads", () => {
       <App
         options={options({
           readRunIndex: async () => ({ ...empty, runs: [{ ...RUNS[1]!, study: { id: "old" } }] }),
-          listLabs: async () => ({
+          listStudies: async () => ({
             ...noLabs,
             retired: [
               {
@@ -483,7 +483,7 @@ describe("study files humanish no longer reads", () => {
             ...empty,
             runs: [{ ...RUNS[1]!, study: { id: "onboarding", path: "humanish/labs/signup.yaml" } }],
           }),
-          listLabs: async () => ({
+          listStudies: async () => ({
             ...noLabs,
             retired: ["onboarding.yaml", "signup.yaml"].map((file) => ({
               path: `humanish/labs/${file}`,

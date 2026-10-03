@@ -102,7 +102,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     runId: options.runId,
     mintRunId: () => `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`,
     mode: options.dryRun ? "dry-run" : "live",
-    lab: options.lab,
+    study: options.study,
     renderReview: renderReviewMarkdown,
     // The run starts at the time its id and source were stamped with.
     now: () => Date.parse(createdAt),

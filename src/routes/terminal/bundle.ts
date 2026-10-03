@@ -41,8 +41,8 @@ export function buildTerminalProductBundle(args: {
   run: BundleRun;
   actorId: string;
   dryRun: boolean;
-  labId: string;
-  labTitle?: string;
+  studyId: string;
+  studyTitle?: string;
   mission: string;
   persona: ActorPersonaRef;
   productName: string;
@@ -88,7 +88,7 @@ export function buildTerminalProductBundle(args: {
       at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.run.created",
-      message: `Created a terminal-product run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`,
+      message: `Created a terminal-product run for ${args.studyId} (actor ${args.actorId}, product ${args.productName}).`,
     },
     participantEvent(TERMINAL_IDS, {
       id: "event-001-subject",
@@ -164,8 +164,8 @@ export function buildLiveTerminalProductBundle(args: {
   /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
   run: BundleRun;
   actorId: string;
-  labId: string;
-  labTitle?: string;
+  studyId: string;
+  studyTitle?: string;
   mission: string;
   persona: ActorPersonaRef;
   productName: string;
@@ -290,8 +290,8 @@ export function buildLiveTerminalProductBundle(args: {
 interface TerminalBundleCommon {
   run: BundleRun;
   actorId: string;
-  labId: string;
-  labTitle?: string;
+  studyId: string;
+  studyTitle?: string;
   mission: string;
   persona: ActorPersonaRef;
   productName: string;
@@ -317,7 +317,7 @@ function terminalParticipant(
 ): { simulation: RunSimulation; stream: RunStream } {
   const simulation = participantRecord(TERMINAL_IDS, 1, {
     personaId: args.persona.id,
-    scenarioId: `terminal-${args.labId}`,
+    scenarioId: `terminal-${args.studyId}`,
     status: session.status,
     streamKind: "terminal",
     mode: "cli-sim",
@@ -330,7 +330,7 @@ function terminalParticipant(
   const stream = participantStream(TERMINAL_IDS, {
     assignment: participantAssignment({ mission: args.mission }),
     kind: "terminal",
-    label: `Terminal agent · ${args.labId}`,
+    label: `Terminal agent · ${args.studyId}`,
     status: session.status,
     transport: "snapshot",
     updatedAt: session.updatedAt,
@@ -369,17 +369,17 @@ function terminalRunBundle(
     persona: {
       id: args.persona.id,
       name: `Autonomous terminal agent (${args.persona.id})`,
-      source: `study:${args.labId}`,
+      source: `study:${args.studyId}`,
       sourceDigest: args.persona.promptDigest,
     },
     scenario: {
-      id: `terminal-${args.labId}`,
-      title: args.labTitle ?? `Terminal-product run: ${args.labId}`,
+      id: `terminal-${args.studyId}`,
+      title: args.studyTitle ?? `Terminal-product run: ${args.studyId}`,
       // The author mission is public-safe committed study text. It is recorded plaintext as the goal,
       // redacted defensively before persisting (it never carries a secret, but the harness never
       // trusts that). The full composed prompt is bound by digest, not text.
       goal: redactText(args.mission),
-      source: `study:${args.labId}`,
+      source: `study:${args.studyId}`,
       sourceDigest: args.persona.promptDigest,
     },
     lifecycle: parts.lifecycle,

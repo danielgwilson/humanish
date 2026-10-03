@@ -80,7 +80,7 @@ async function fixture() {
   });
   const deps: CuaParticipantDeps = {
     residual: parsed.config,
-    labId: parsed.config.id,
+    studyId: parsed.config.id,
     caps: {},
     brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
     appUrl: "http://127.0.0.1:3000/",
@@ -93,7 +93,7 @@ async function fixture() {
     timeoutMs: 60_000,
     participantCount: 1,
     artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
-    labCwd: cwd,
+    studyCwd: cwd,
     redactScreenshots: false,
     scrubKnownValues: (value) => value.replaceAll("synthetic-secret-canary", "[scrubbed]"),
     runSession: vi.fn(async () => {

@@ -94,7 +94,7 @@ function buildParticipantSummary(
  * verdict failed; otherwise the error names the first reason.
  */
 function cuaStudyResult(args: {
-  labId: string;
+  studyId: string;
   cwd: string;
   runId: string;
   actorId: string;
@@ -118,7 +118,7 @@ function cuaStudyResult(args: {
   adapterWarnings: string[];
 }): CuaActorStudyResult {
   const {
-    labId,
+    studyId,
     cwd,
     runId,
     appUrl,
@@ -206,7 +206,7 @@ function cuaStudyResult(args: {
   })();
 
   return {
-    ...studyResultIdentity("computer-use", labId),
+    ...studyResultIdentity("computer-use", studyId),
     ok,
     cwd,
     actor: args.actorId,
@@ -386,7 +386,7 @@ export async function finishCuaRun(
     OUTCOME_POLICIES["computer-use"],
   );
   const result = cuaStudyResult({
-    labId: plan.studyId,
+    studyId: plan.studyId,
     cwd,
     runId,
     actorId: descriptor.id,

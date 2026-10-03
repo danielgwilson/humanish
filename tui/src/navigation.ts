@@ -11,10 +11,10 @@
 // than a condition spread across three components.
 
 export type Screen =
-  | { name: "labs" }
+  | { name: "studies" }
   | { name: "all-runs" }
-  | { name: "lab"; labKey: string }
-  | { name: "run"; labId?: string; runId: string };
+  | { name: "study"; studyKey: string }
+  | { name: "run"; studyId?: string; runId: string };
 
 export interface NavState {
   /** Top of the stack is the current screen. Never empty: `labs` is the floor. */
@@ -35,23 +35,23 @@ export type NavEvent =
 /** A stable key per screen instance, so selection is remembered per lab and per run. */
 function screenKey(screen: Screen): string {
   switch (screen.name) {
-    case "labs":
-      return "labs";
+    case "studies":
+      return "studies";
     case "all-runs":
       return "all-runs";
-    case "lab":
-      return `lab:${screen.labKey}`;
+    case "study":
+      return `study:${screen.studyKey}`;
     default:
       return `run:${screen.runId}`;
   }
 }
 
 export function initialNav(): NavState {
-  return { stack: [{ name: "labs" }], selection: {}, quit: false };
+  return { stack: [{ name: "studies" }], selection: {}, quit: false };
 }
 
 export function currentScreen(state: NavState): Screen {
-  return state.stack[state.stack.length - 1] ?? { name: "labs" };
+  return state.stack[state.stack.length - 1] ?? { name: "studies" };
 }
 
 export function selectedIndex(state: NavState): number {

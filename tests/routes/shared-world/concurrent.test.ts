@@ -564,7 +564,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       origin: "committed" as const,
     };
     // runStudyWith takes the provenance the CLI resolved, and planStudy puts it on the plan.
-    const outcome = await runStudyWith(concurrentConfig(), { cwd, dryRun: true, lab });
+    const outcome = await runStudyWith(concurrentConfig(), { cwd, dryRun: true, study: lab });
     if (outcome.route !== "shared-world") throw new Error(`routed to ${outcome.route}`);
     const { result } = outcome;
     expect(result.ok).toBe(true);

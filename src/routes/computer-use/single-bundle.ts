@@ -132,7 +132,7 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
   const { publicAppUrl, status, reason } = view;
   return participantRecord(SINGLE, 1, {
     personaId: args.persona.id,
-    scenarioId: `cua-${args.labId}`,
+    scenarioId: `cua-${args.studyId}`,
     status,
     streamKind: "browser",
     mode: "browser-sim",
@@ -222,7 +222,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
       at: args.run.createdAt,
       level: "info",
       type: "cua-lab.run.created",
-      message: `Created a computer-use run for ${args.labId} (actor ${args.actorId}).`,
+      message: `Created a computer-use run for ${args.studyId} (actor ${args.actorId}).`,
     },
     args.subjectProvenance
       ? participantEvent(SINGLE, {
@@ -386,8 +386,8 @@ export function buildSingleParticipantBundle(args: {
   surface?: string;
   caseGroup?: string;
   dryRun: boolean;
-  labId: string;
-  labTitle?: string;
+  studyId: string;
+  studyTitle?: string;
   mission: string;
   assignment?: RunStream["assignment"];
   persona: ActorPersonaRef;
@@ -468,14 +468,14 @@ export function buildSingleParticipantBundle(args: {
     persona: {
       id: args.persona.id,
       name: `Computer-use operator (${args.persona.id})`,
-      source: `study:${args.labId}`,
+      source: `study:${args.studyId}`,
       sourceDigest: args.persona.promptDigest,
     },
     scenario: {
-      id: `cua-${args.labId}`,
-      title: args.labTitle ?? `Computer-use run: ${args.labId}`,
+      id: `cua-${args.studyId}`,
+      title: args.studyTitle ?? `Computer-use run: ${args.studyId}`,
       goal: redactText(args.mission),
-      source: `study:${args.labId}`,
+      source: `study:${args.studyId}`,
       sourceDigest: args.persona.promptDigest,
     },
     lifecycle: [
@@ -508,8 +508,8 @@ export function buildSingleParticipantBundle(args: {
         ? []
         : participantFeedbackCandidates({
             runId: args.run.runId,
-            scenarioId: `cua-${args.labId}`,
-            adapterId: args.labId,
+            scenarioId: `cua-${args.studyId}`,
+            adapterId: args.studyId,
             goal: redactText(args.mission),
             substrate: runnerSubstrate(args),
             participants: [

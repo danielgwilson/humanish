@@ -57,7 +57,7 @@ describe("lab preflight", () => {
         let killed = 0;
         const result = await runStudyPreflight({
           cwd,
-          lab: "preview",
+          study: "preview",
           reachability: "public-preview",
           env: { E2B_API_KEY: "e2b_test_key_for_preflight" },
           hooks: {
@@ -94,7 +94,7 @@ describe("lab preflight", () => {
         let created = 0;
         const result = await runStudyPreflight({
           cwd,
-          lab: "loopback",
+          study: "loopback",
           reachability: "public-preview",
           env: { E2B_API_KEY: "e2b_test_key_for_preflight" },
           hooks: {
@@ -144,7 +144,7 @@ describe("lab preflight", () => {
         let created = 0;
         const result = await runStudyPreflight({
           cwd,
-          lab: "target-roster",
+          study: "target-roster",
           reachability: "public-preview",
           env: { E2B_API_KEY: "e2b_test_key_for_preflight" },
           hooks: {
@@ -193,7 +193,7 @@ describe("lab preflight", () => {
       async (cwd) => {
         const result = await runStudyPreflight({
           cwd,
-          lab: "no-policy",
+          study: "no-policy",
           reachability: "public-preview",
         });
 

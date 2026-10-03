@@ -31,7 +31,7 @@ for (const fixture of fixtures.filter(({ supported }) => !supported)) {
         success: { any: [{ textIncludes: "HIDDEN_SUCCESS_SENTINEL" }] },
       },
     ];
-    await writeFile(join(cwd, "lab.yaml"), JSON.stringify(config));
+    await writeFile(join(cwd, "study.yaml"), JSON.stringify(config));
     for (const [label, command, flags] of [
       ["inspect", ["study", "show"], []],
       ["declared-mode", ["run"], ["--no-open"]],
@@ -46,7 +46,7 @@ for (const fixture of fixtures.filter(({ supported }) => !supported)) {
           preload,
           cli,
           ...command,
-          "lab.yaml",
+          "study.yaml",
           "--cwd",
           cwd,
           "--json",

@@ -92,7 +92,7 @@ export interface StatsOptions {
   /** ISO date or datetime; runs that started before it are excluded. */
   since?: string;
   /** Lab id; runs from other labs are excluded. */
-  lab?: string;
+  study?: string;
   nowMs?: number;
 }
 
@@ -139,16 +139,16 @@ function entryTime(entry: RunIndexEntry): string | undefined {
 type StudyAccumulator = StatsStudyRow & { durations: number[]; runCosts: number[] };
 
 function addToStudyRow(
-  labs: Map<string, StudyAccumulator>,
+  studies: Map<string, StudyAccumulator>,
   entry: RunIndexEntry,
   runUsd: number | undefined,
   costs: CostTotals,
 ): void {
-  const labId = entry.study?.id ?? "(no study)";
-  let row = labs.get(labId);
+  const studyId = entry.study?.id ?? "(no study)";
+  let row = studies.get(studyId);
   if (row === undefined) {
     row = {
-      study: labId,
+      study: studyId,
       runs: 0,
       live: 0,
       dryRun: 0,
@@ -162,7 +162,7 @@ function addToStudyRow(
       costs: emptyCostTotals(),
       runCosts: [],
     };
-    labs.set(labId, row);
+    studies.set(studyId, row);
   }
   row.runs += 1;
   if (entry.mode === "live") row.live += 1;
@@ -244,7 +244,7 @@ export async function computeStats(
       })),
   ];
   const selected = entries.filter((entry) => {
-    if (options.lab !== undefined && entry.study?.id !== options.lab) return false;
+    if (options.study !== undefined && entry.study?.id !== options.study) return false;
     if (sinceMs !== undefined) {
       const at = entryTime(entry);
       if (at === undefined) return false;
@@ -265,7 +265,7 @@ export async function computeStats(
     verdicts: {},
     costs: emptyCostTotals(),
   };
-  const labs = new Map<string, StudyAccumulator>();
+  const studies = new Map<string, StudyAccumulator>();
   const days = new Map<string, StatsDayRow>();
   const costsByRun: CostRow[] = [];
 
@@ -284,11 +284,11 @@ export async function computeStats(
     if (entry.verdict !== undefined)
       totals.verdicts[entry.verdict] = (totals.verdicts[entry.verdict] ?? 0) + 1;
 
-    addToStudyRow(labs, entry, runUsd, accounting.costs);
+    addToStudyRow(studies, entry, runUsd, accounting.costs);
     addToDayRow(days, entry, runUsd, accounting.costs);
   }
 
-  const labRows: StatsStudyRow[] = [...labs.values()]
+  const studyRows: StatsStudyRow[] = [...studies.values()]
     .map(({ durations, runCosts, ...row }) => ({
       ...row,
       ...(row.judged === 0 ? {} : { passRate: round6(row.passed / row.judged) }),
@@ -304,9 +304,9 @@ export async function computeStats(
     ok: true,
     cwd,
     ...(options.since === undefined ? {} : { since: options.since }),
-    ...(options.lab === undefined ? {} : { study: options.lab }),
+    ...(options.study === undefined ? {} : { study: options.study }),
     totals: { ...totals, estimatedSpendUsd: round6(totals.estimatedSpendUsd) },
-    studies: labRows,
+    studies: studyRows,
     days: [...days.values()]
       .map((row) => ({ ...row, estimatedSpendUsd: round6(row.estimatedSpendUsd) }))
       .sort((a, b) => a.day.localeCompare(b.day)),

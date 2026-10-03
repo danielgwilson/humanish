@@ -100,7 +100,7 @@ describe("real inbox wiring through the actual computer-use route", () => {
         });
         const deps: CuaParticipantDeps & { receiving: CommsReceivingRun } = {
           residual: parsed.config,
-          labId: parsed.config.id,
+          studyId: parsed.config.id,
           caps: {},
           brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
           appUrl: "http://127.0.0.1:3000/",
@@ -113,7 +113,7 @@ describe("real inbox wiring through the actual computer-use route", () => {
           timeoutMs: 60_000,
           participantCount: 1,
           artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
-          labCwd: cwd,
+          studyCwd: cwd,
           redactScreenshots: true,
           scrubKnownValues: (value) => value,
           receiving,

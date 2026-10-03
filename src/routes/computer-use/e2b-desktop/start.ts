@@ -86,7 +86,7 @@ export async function openParticipantSurface(
           desktop,
           requestedMedia,
           residual.policies?.mediaPermission ?? "prompt",
-          deps.labCwd,
+          deps.studyCwd,
           deps.requestTimeoutMs,
         );
   const emulationFlags = mobileLaunchFlags(residual, spec);

@@ -10,14 +10,14 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(root, "dist/cli.js");
 const preload = join(root, "tests/fixtures/e2b-desktop-startup/fault-preload.mjs");
-const lab = (
+const study = (
   await readFile(join(root, "humanish/studies/terminal-product-demo.yaml"), "utf8")
 ).replace("mode: dry-run", "mode: live");
 
 for (const phase of ["Xvfb", "startxfce4"]) {
   const cwd = await mkdtemp(join(tmpdir(), "humanish-startup-exit-"));
   try {
-    await writeFile(join(cwd, "lab.yaml"), lab);
+    await writeFile(join(cwd, "study.yaml"), study);
     const proofPath = join(cwd, "proof.json");
     const child = spawn(
       process.execPath,
@@ -27,7 +27,7 @@ for (const phase of ["Xvfb", "startxfce4"]) {
         preload,
         cli,
         "run",
-        "lab.yaml",
+        "study.yaml",
         "--cwd",
         cwd,
         "--json",

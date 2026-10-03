@@ -9,7 +9,7 @@ export const CLEANUP_SCHEMA = "humanish.cleanup-result.v1";
 
 export interface RunOptions {
   /** Which manifest produced this run. */
-  lab?: RunStudyProvenance;
+  study?: RunStudyProvenance;
   cwd: string;
   dryRun?: boolean;
   runId?: string;

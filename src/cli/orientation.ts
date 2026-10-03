@@ -149,7 +149,7 @@ function nextCommandsForStudies(args: {
 
   // The starter live study this host can run. The other starter studies are templates whose subject
   // still names your-org/your-app, so they are never suggested.
-  const liveLab = (
+  const liveStudy = (
     supportsLocalBrowser(args.host.platform, args.host.arch)
       ? ["local-browser", "try-live"]
       : ["try-live"]
@@ -157,18 +157,18 @@ function nextCommandsForStudies(args: {
   if (!args.hasRun) {
     return [
       dryRun,
-      liveLab === undefined
+      liveStudy === undefined
         ? { command: "humanish study list", why: "see the studies this project declares" }
         : {
-            command: `humanish doctor --study ${liveLab}`,
-            why: `check what the ${liveLab} study still needs before a live run`,
+            command: `humanish doctor --study ${liveStudy}`,
+            why: `check what the ${liveStudy} study still needs before a live run`,
           },
     ];
   }
   return [
-    ...(liveLab === undefined
+    ...(liveStudy === undefined
       ? []
-      : [{ command: `humanish run ${liveLab}`, why: "run a real participant against an app" }]),
+      : [{ command: `humanish run ${liveStudy}`, why: "run a real participant against an app" }]),
     {
       command: "humanish verify --run latest",
       why: "check the last run's evidence and public-safety gates",

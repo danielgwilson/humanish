@@ -55,7 +55,7 @@ async function fixture() {
   });
   const deps: CuaParticipantDeps = {
     residual: parsed.config,
-    labId: parsed.config.id,
+    studyId: parsed.config.id,
     caps: {},
     brain: { kind: "caller" },
     appUrl: "http://127.0.0.1:3000/",
@@ -68,7 +68,7 @@ async function fixture() {
     timeoutMs: 60_000,
     participantCount: 1,
     artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
-    labCwd: cwd,
+    studyCwd: cwd,
     redactScreenshots: false,
     scrubKnownValues: (value) => value,
     runSession: runCuaActorSession,

@@ -19,7 +19,7 @@ import { doctor } from "../../src/cli/doctor.js";
 
 const execFileAsync = promisify(execFile);
 const env = { HUMANISH_STRICT_KEYS: "1", PATH: "" };
-const options = { lab: "first-run", env, localAgents: { which: async () => undefined } };
+const options = { study: "first-run", env, localAgents: { which: async () => undefined } };
 
 async function standaloneProject(
   check: (cwd: string, root: string) => Promise<void>,

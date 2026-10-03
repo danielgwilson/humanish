@@ -54,7 +54,7 @@ function runPreviewPlan(
   input: Pick<RunStudyOptions, "cwd" | "runId" | "open">,
 ): Promise<RunResult> {
   return runDryRun({
-    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    ...(plan.study === undefined ? {} : { study: plan.study }),
     cwd: input.cwd,
     dryRun: true,
     participantCount: plan.participantCount,

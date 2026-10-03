@@ -185,7 +185,7 @@ export interface CommsConfigureResult {
 /** Save a local copy, never rewrite a committed manifest or silently shadow it by handle. */
 export async function configureCommsStudy(args: {
   cwd: string;
-  lab: string;
+  study: string;
   connection: string;
   apply?: boolean;
   planToken?: string;
@@ -194,7 +194,7 @@ export async function configureCommsStudy(args: {
   try {
     const connection = (await readCommsConnections(args.cwd)).connections[args.connection];
     if (!connection) return { ...base, message: "Save the selected connection first." };
-    const source = await resolveStudyManifest(args.cwd, args.lab);
+    const source = await resolveStudyManifest(args.cwd, args.study);
     if (!source.ok) {
       // A v2 source or a labs/ file gets discovery's refusal, which names the fix.
       const named =
@@ -216,8 +216,8 @@ export async function configureCommsStudy(args: {
     const raw: unknown = parse(text);
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
       return { ...base, message: "The study file must be a mapping." };
-    const lab = raw as Record<string, unknown>;
-    const existing = lab.comms as { email?: { connection?: string } } | undefined;
+    const studyRecord = raw as Record<string, unknown>;
+    const existing = studyRecord.comms as { email?: { connection?: string } } | undefined;
     if (existing?.email && existing.email.connection === undefined)
       return {
         ...base,

@@ -18,7 +18,7 @@ export interface ScriptedSurfaceContext {
   appUrl: string;
   createdAt: string;
   journey: BrowserPersonaJourney;
-  labId: string;
+  studyId: string;
   persona: ActorPersonaRef;
   sessionError?: string;
 }
@@ -70,7 +70,7 @@ export function scriptedSurfaceRecords(
 
   const stream = participantStream(ids, {
     kind: "browser",
-    label: `${surface.label} · ${context.labId}`,
+    label: `${surface.label} · ${context.studyId}`,
     status,
     transport: "snapshot",
     updatedAt: result?.capture.capturedAt ?? context.createdAt,

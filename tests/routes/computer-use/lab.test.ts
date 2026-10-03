@@ -1084,7 +1084,7 @@ describe("runCuaActorLab", () => {
       throw new Error("expected an app-url computer-use plan");
     const plan = {
       ...planned.plan,
-      lab: {
+      study: {
         id: "planned-lab",
         path: "humanish/labs/planned-lab.yaml",
         origin: "committed" as const,
@@ -3979,7 +3979,7 @@ describe("runCuaActorLab", () => {
       cuaConfig(),
       {
         cwd,
-        lab: { id: "cua-demo", path: "humanish/labs/cua-demo.yaml", origin: "committed" },
+        study: { id: "cua-demo", path: "humanish/labs/cua-demo.yaml", origin: "committed" },
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
       },
       {
@@ -6079,7 +6079,7 @@ describe("buildSingleParticipantBundle", () => {
       appUrl: "http://127.0.0.1:3000/",
       run: { runId: "cua-test-run", mode: "dry-run", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: true,
-      labId: "shape-proof",
+      studyId: "shape-proof",
       mission: "Explore.",
       persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
       resolution: [1440, 960],
@@ -6126,7 +6126,7 @@ describe("buildSingleParticipantBundle", () => {
       appUrl: rawUrl,
       run: { runId: "cua-test-run", mode: "dry-run", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: true,
-      labId: "shape-proof",
+      studyId: "shape-proof",
       mission: "Explore.",
       persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
       resolution: [414, 896],
@@ -6166,7 +6166,7 @@ describe("buildSingleParticipantBundle", () => {
       appUrl: "http://127.0.0.1:3000/",
       run: { runId: "cua-test-run", mode: "live" as const, createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: false,
-      labId: "shape-proof",
+      studyId: "shape-proof",
       mission: "Explore.",
       persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
       resolution: [1440, 960] as [number, number],

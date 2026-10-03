@@ -86,7 +86,7 @@ interface AdmittedStudy {
 
 /** The provisioned plane's setup, or undefined when the lab declares no `subject.serve`. */
 function provisionedSetup(
-  lab: AdmittedStudy,
+  study: AdmittedStudy,
   prepared: Pick<
     ProvisionedPlaneSetup,
     | "localTreeArchive"
@@ -97,16 +97,16 @@ function provisionedSetup(
     | "proberCadenceMs"
   > & { subjectComms: SubjectComms },
 ): ProvisionedPlaneSetup | undefined {
-  if (!lab.serve) return undefined;
+  if (!study.serve) return undefined;
   const { subjectComms, ...rest } = prepared;
   return {
-    serve: lab.serve,
-    localTreeRoute: lab.localTreeRoute,
-    subjectRepo: lab.subjectRepo,
-    publicRepo: lab.publicRepo,
-    subjectEnvNames: lab.subjectEnvNames,
-    hasGithubToken: lab.hasGithubToken,
-    checkpoints: lab.checkpoints,
+    serve: study.serve,
+    localTreeRoute: study.localTreeRoute,
+    subjectRepo: study.subjectRepo,
+    publicRepo: study.publicRepo,
+    subjectEnvNames: study.subjectEnvNames,
+    hasGithubToken: study.hasGithubToken,
+    checkpoints: study.checkpoints,
     commsEmail: subjectComms.email,
     commsPort: subjectComms.port,
     commsEnv: subjectComms.env,
@@ -126,17 +126,17 @@ async function bindPhysicalProject(requestedCwd: string): Promise<string> {
 }
 
 function startConcurrentRun(
-  lab: AdmittedStudy,
+  study: AdmittedStudy,
   cwd: string,
   scope: RunScope,
 ): ReturnType<RunScope["startRun"]> {
-  const { plan, input, deps } = lab;
+  const { plan, input, deps } = study;
   return scope.startRun({
     cwd,
     runId: input.runId,
     mintRunId: makeRunId,
     mode: plan.dryRun ? "dry-run" : "live",
-    lab: plan.lab,
+    study: plan.study,
     renderReview: renderConcurrentReviewMarkdown,
     observer: { open: input.open === true, render: deps.renderObserver },
   });
@@ -147,7 +147,7 @@ function startConcurrentRun(
  * specs, comms, the packed tree and email receiving. Returns the refusal when one of them fails.
  */
 export async function prepareConcurrentRun(
-  lab: AdmittedStudy,
+  study: AdmittedStudy,
   scope: RunScope,
 ): Promise<
   | { ok: false; result: ConcurrentSharedWorldStudyResult }
@@ -160,9 +160,9 @@ export async function prepareConcurrentRun(
       finish: FinishFacts;
     }
 > {
-  const { plan, input, config, requestedCwd, deps, env, descriptor, planeClass, fail } = lab;
-  const { runBudget, runSession, localTreeRoute, subjectEnvNames, publicRepo } = lab;
-  const { openaiApiKey, e2bApiKey, knownSecretValues, scrubKnownValues } = lab;
+  const { plan, input, config, requestedCwd, deps, env, descriptor, planeClass, fail } = study;
+  const { runBudget, runSession, localTreeRoute, subjectEnvNames, publicRepo } = study;
+  const { openaiApiKey, e2bApiKey, knownSecretValues, scrubKnownValues } = study;
   const { dryRun, concurrency } = plan;
   const cwd = await bindPhysicalProject(requestedCwd);
   const warnings: string[] = [];
@@ -193,7 +193,7 @@ export async function prepareConcurrentRun(
   const localTreeArchive = packed.archive;
   const localTreeArchiveBuffer = packed.buffer;
 
-  const started = await startConcurrentRun(lab, cwd, scope);
+  const started = await startConcurrentRun(study, cwd, scope);
   if (!started.ok) return { ok: false, result: fail(started.code, started.message, descriptor.id) };
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
@@ -276,7 +276,7 @@ export async function prepareConcurrentRun(
     receiving,
     warnings,
   };
-  const provisioned = provisionedSetup(lab, {
+  const provisioned = provisionedSetup(study, {
     localTreeArchive,
     localTreeArchiveBuffer,
     subjectComms,

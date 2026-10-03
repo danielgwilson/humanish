@@ -563,7 +563,7 @@ export interface BundleRun {
   readonly mode: RunBundle["mode"];
   readonly createdAt: string;
   /** The manifest the run came from, as the plan carried it to startRun. */
-  readonly lab?: RunStudyProvenance | undefined;
+  readonly study?: RunStudyProvenance | undefined;
 }
 
 /**
@@ -592,7 +592,6 @@ export function bundleHead(
   | "cwd"
   | "artifactRoot"
   | "study"
-  | "lab"
   | "source"
 > {
   return {
@@ -604,7 +603,7 @@ export function bundleHead(
     createdAt: run.createdAt,
     cwd: args.cwd ?? PUBLIC_TARGET_CWD,
     artifactRoot: args.artifactRoot ?? path.join(".humanish", "runs", run.runId),
-    ...studyFields(run.lab),
+    ...studyFields(run.study),
     source: args.source,
   };
 }

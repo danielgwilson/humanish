@@ -262,7 +262,7 @@ describe("writers", () => {
     });
     await writeV3("humanish/studies/signup-receiving.yaml", "signup-receiving");
 
-    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, study: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({
       ok: false,
       message:
@@ -282,7 +282,7 @@ describe("writers", () => {
     await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
     await symlink("missing.yaml", path.join(cwd, "humanish/labs/signup-receiving.yaml"));
 
-    const plan = await configureCommsStudy({ cwd, lab: "signup", connection: "agentmail" });
+    const plan = await configureCommsStudy({ cwd, study: "signup", connection: "agentmail" });
     expect(plan).toMatchObject({ ok: false });
     expect((plan as { message: string }).message).toContain(
       "humanish/labs/signup-receiving.yaml already uses the name signup-receiving.",

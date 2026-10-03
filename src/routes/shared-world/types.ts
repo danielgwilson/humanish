@@ -82,10 +82,7 @@ export interface RunConcurrentSharedWorldStudyOptions {
 }
 
 /** What a shared-world run takes besides its plan. The plan carries the config, dry run and lab. */
-export type SharedWorldRunInput = Omit<
-  RunConcurrentSharedWorldStudyOptions,
-  "config" | "dryRun" | "lab"
->;
+export type SharedWorldRunInput = Omit<RunConcurrentSharedWorldStudyOptions, "config" | "dryRun">;
 
 export type ConcurrentSharedWorldStudyErrorCode =
   | "HUMANISH_STUDY_ANALYSIS_INVALID"
