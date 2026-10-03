@@ -152,7 +152,7 @@ Labs:
 
 - committed reusable labs live in humanish/labs/*.yaml;
 - private or machine-local labs live in ignored .humanish/labs/*.yaml or .humanish/local/labs/*.yaml;
-- run a lab with \`humanish watch <lab>\` or \`humanish lab run <lab>\`.
+- run a lab with \`humanish run <lab>\`, or \`humanish watch <lab>\` to stay attached.
 
 Format standard:
 

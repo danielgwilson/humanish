@@ -188,7 +188,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
           `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. ` +
           "It renders frames of escape codes into a transcript, and its keys can start runs. " +
           "`humanish runs --json` lists runs, `humanish lab list --json` lists the labs in this project, " +
-          "and `humanish lab run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
+          "and `humanish run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
       },
     };
   }
@@ -200,7 +200,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
       error: {
         code: "HUMANISH_TUI_REQUIRES_TTY",
         message:
-          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish lab run --json` starts one.",
+          "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish run <lab> --json` starts one.",
       },
     };
   }

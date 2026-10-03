@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 import { createProgram } from "../../src/cli/program.js";
 
 // Clig.dev, "Subcommands": be consistent across subcommands, and do not have ambiguous or
-// similarly-named commands. `humanish run <lab>` and `humanish lab run <lab>` are the same
-// operation on the same dispatcher: a participant reached for `humanish run … --no-open`, which
-// its sibling accepts, and got a bare "unknown option".
+// similarly-named commands. `humanish lab run <lab>` is a hidden alias of `humanish run <lab>` for
+// one minor; both register their flags through one helper (src/cli/commands/run-command.ts).
 
 function flagsOf(argv: readonly string[]): string[] {
   let command: any = createProgram({
@@ -23,42 +22,9 @@ function flagsOf(argv: readonly string[]): string[] {
     .sort();
 }
 
-describe("the two ways to run a lab agree", () => {
-  it("every flag `humanish run` needs to share with `lab run` is present on both", () => {
-    const run = new Set(flagsOf(["run"]));
-    const labRun = new Set(flagsOf(["lab", "run"]));
-    // The ones that mean the same thing on both. `lab run` also carries fan-out knobs (repos,
-    // lanes, scorer) that are manifest-specific and genuinely do not belong on the short form.
-    for (const shared of [
-      "--cwd",
-      "--dry-run",
-      "--env-file",
-      "--json",
-      "--open",
-      "--no-open",
-      "--detach",
-      "--port",
-      "--run-id",
-      "--count",
-      "--sims",
-    ]) {
-      expect(run.has(shared), `humanish run is missing ${shared}`).toBe(true);
-      expect(labRun.has(shared), `humanish lab run is missing ${shared}`).toBe(true);
-    }
-  });
-
-  it("says which one is the everyday command, so the pair is not ambiguous", () => {
-    const program: any = createProgram({
-      writeOut: () => {},
-      writeErr: () => {},
-      setExitCode: () => {},
-    });
-    const run = program.commands.find((c: any) => c.name() === "run");
-    const lab = program.commands.find((c: any) => c.name() === "lab");
-    const labRun = lab.commands.find((c: any) => c.name() === "run");
-    expect(run.description()).toContain("everyday");
-    // The long form points at the short one rather than describing itself as a separate thing.
-    expect(labRun.description()).toContain("humanish run");
+describe("the hidden lab run alias", () => {
+  it("takes exactly the flags of humanish run", () => {
+    expect(flagsOf(["lab", "run"])).toEqual(flagsOf(["run"]));
   });
 });
 

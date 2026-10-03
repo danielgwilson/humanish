@@ -16,7 +16,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-terminal-live-no-caps --json": {
+  "run adm-terminal-live-no-caps --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -46,7 +46,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-scripted --rerun-failed-from prior-run --json": {
+  "run adm-scripted --rerun-failed-from prior-run --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.run-result.v1",
@@ -63,7 +63,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --participants lane-01 --json": {
+  "run adm-cu --participants lane-01 --json": {
     "exitCode": 2,
     "stdout": "",
     "stderr": "error: --participants requires --rerun-failed-from.\n",
@@ -71,7 +71,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --count 0 --json": {
+  "run adm-cu --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
     "stderr": "error: --count must be a positive integer.\n",
@@ -79,7 +79,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --port 99999 --json": {
+  "run adm-cu --port 99999 --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -103,7 +103,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-preview --count 0 --json": {
+  "run adm-preview --count 0 --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -123,7 +123,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-scripted --scorer ./scorer.mjs --json": {
+  "run adm-scripted --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.run-result.v1",
@@ -140,7 +140,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --scorer ./scorer.mjs --count 0 --json": {
+  "run adm-cu --scorer ./scorer.mjs --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
     "stderr": "error: --count must be a positive integer.\n",
@@ -148,7 +148,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-terminal-live-no-caps --scorer ./scorer.mjs --json": {
+  "run adm-terminal-live-no-caps --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -178,7 +178,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu-local-app --scorer ./scorer.mjs --json": {
+  "run adm-cu-local-app --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -209,7 +209,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu-unpriced --json": {
+  "run adm-cu-unpriced --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -240,7 +240,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-shared-unpriced --json": {
+  "run adm-shared-unpriced --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -274,7 +274,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-terminal-live --scorer ./scorer.mjs --json": {
+  "run adm-terminal-live --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -304,7 +304,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu-unpriced --scorer ./scorer.mjs --json": {
+  "run adm-cu-unpriced --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -335,7 +335,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-shared-live --scorer ./scorer.mjs --json": {
+  "run adm-shared-live --scorer ./scorer.mjs --json": {
     "exitCode": 2,
     "stdout": {
       "schema": "humanish.study-result.v1",
@@ -393,7 +393,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -410,7 +410,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -427,7 +427,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
-        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "message": "watch streams a single live run that is never share_ready, so --safe (a share_ready library filter for `observe --all`) cannot apply. Restrict viewers with edge auth: --allow-email / --allow-domain."
       }
     },
     "stderr": "",
@@ -435,7 +435,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-clone-codex-app-server --json": {
+  "run adm-clone-codex-app-server --json": {
     "exitCode": 2,
     "stdout": {
       "ok": false,
@@ -470,7 +470,7 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-clone-no-serve --json": {
+  "run adm-clone-no-serve --json": {
     "exitCode": 2,
     "stdout": {
       "ok": false,

@@ -35,14 +35,13 @@ humanish [options] [command]
 - [humanish export](#humanish-export): Export a run as an Observer page or a redacted bundle.
 - [humanish runs](#humanish-runs): List this project's runs and which one is latest.
 - [humanish stats](#humanish-stats): Show cost, outcomes and durations across runs.
-- [humanish lab](#humanish-lab): List, inspect and run the studies in humanish/labs/.
+- [humanish lab](#humanish-lab): List, inspect and check the studies in humanish/labs/.
 - [humanish comms](#humanish-comms): Catch the email an app sends, for email-gated flows.
 - [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
 - [humanish reclaim](#humanish-reclaim): Stop an interrupted run's leftover sandboxes.
 - [humanish cleanup](#humanish-cleanup): Check that a run's resources were stopped.
 - [humanish keys](#humanish-keys): Store and manage your provider keys.
 - [humanish telemetry](#humanish-telemetry): Show or change anonymous usage collection.
-- [humanish serve](#humanish-serve): Serve your run library over HTTP.
 - [humanish tui](#humanish-tui): Browse studies and runs in a terminal UI for people.
 
 ## humanish init
@@ -99,6 +98,9 @@ humanish run [options] [lab]
 | `--detach` | Render/open once and exit without an attached watch server. |
 | `--port <port>` | Local observer server port when following. (default: "0") |
 | `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
+| `--rerun-failed-from <run>` | Computer-use labs only: start a new run for the failed participants of a prior run. |
+| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The lab's actors[0].lanes[] decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
+| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--env-file <path>` | Load a local env file for this run without persisting values. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
@@ -107,7 +109,7 @@ humanish run [options] [lab]
 
 ## humanish watch
 
-Run a study, open its Observer and keep the shell attached. With --run, watch a saved run in place of a new one.
+Run a study, open its Observer and keep the shell attached.
 
 ```text
 humanish watch [options] [lab]
@@ -120,17 +122,19 @@ humanish watch [options] [lab]
 | Option | Description |
 | --- | --- |
 | `--lab <id-or-path>` | Explicit lab id or .yaml path. |
-| `--run <id>` | Watch an existing run id or latest pointer. |
-| `--dry-run` | Lab only: render contract evidence without live provider spend. |
-| `--count <count>` | With a lab, override a preview or computer-use lab's participant count. Without one, start a fresh synthetic run with this many participants; 4 when --run is omitted. |
-| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
-| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--env-file <path>` | Load a local env file for this watch without persisting values. |
+| `--dry-run` | Generate contract proof without browser, keys, or provider spend. |
 | `--open` | Open the observer in the default browser. |
 | `--no-open` | Render without opening a browser. |
-| `--detach` | Render/open once and exit without attached watch server. |
+| `--detach` | Render/open once and exit without an attached watch server. |
 | `--port <port>` | Local observer server port when following. (default: "0") |
+| `--count <count>` | Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab. |
+| `--rerun-failed-from <run>` | Computer-use labs only: start a new run for the failed participants of a prior run. |
+| `--participants <ids>` | With --rerun-failed-from: comma-separated ids of the participants to rerun. The lab's actors[0].lanes[] decide who takes part; ids are their id, or lane-01, lane-02, … by position. |
+| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
+| `--cwd <path>` | Target project directory. (default: ".") |
+| `--env-file <path>` | Load a local env file for this run without persisting values. |
+| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
+| `--json` | Print a machine-readable JSON response. |
 | `--expose` | CUA lab only: expose the live run through an authenticated edge so you can watch from a phone. Requires edge auth. |
 | `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
 | `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
@@ -138,13 +142,12 @@ humanish watch [options] [lab]
 | `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. (default: []) |
 | `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. (default: []) |
 | `--public-url <origin>` | Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose. |
-| `--safe` | Not applicable to watch: a live run is never share_ready, so --safe (a `serve` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain). |
-| `--json` | Print a machine-readable JSON response. |
+| `--safe` | Not applicable to watch: a live run is never share_ready, so --safe (an `observe --all` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain). |
 | `-h, --help` | Show help for this command. |
 
 ## humanish observe
 
-Open a saved run in the Observer, served on http://127.0.0.1.
+Open a saved run in the Observer, served on http://127.0.0.1. With --all, serve the run library.
 
 ```text
 humanish observe [options]
@@ -152,12 +155,21 @@ humanish observe [options]
 
 | Option | Description |
 | --- | --- |
-| `--run <id>` | Run id or latest pointer. (default: "latest") |
+| `--run <id>` | Run id or latest pointer; latest when omitted. With --all, the run the library opens on. |
+| `--all` | Serve the whole run library, with optional tunnel-edge exposure. |
 | `--port <port>` | Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port. (default: "0") |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--open` | Open the observer in the default browser. |
 | `--no-open` | Serve without opening a browser. |
 | `--json` | Print a machine-readable JSON response. |
+| `--safe` | Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed). |
+| `--expose` | Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe. |
+| `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
+| `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
+| `--oauth <provider>` | Turn on ngrok edge OAuth. Requires --tunnel. (choices: "google") |
+| `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. (default: []) |
+| `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. (default: []) |
+| `--public-url <origin>` | Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding. |
 | `-h, --help` | Show help for this command. |
 
 ## humanish verify
@@ -419,7 +431,7 @@ humanish stats [options]
 
 ## humanish lab
 
-List, inspect and run the studies in humanish/labs/.
+List, inspect and check the studies in humanish/labs/.
 
 ```text
 humanish lab [options] [command]
@@ -479,35 +491,6 @@ humanish lab preflight [options] <lab>
 | `--reachability <mode>` | Reachability mode. (choices: "metadata", "public-preview", "sandbox-loopback", "prepared-host", default: "metadata") |
 | `--timeout-ms <ms>` | Target reachability timeout. (default: "30000") |
 | `--env-file <path>` | Load a local env file for this preflight without persisting values. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | Show help for this command. |
-
-### humanish lab run
-
-Run a humanish lab manifest. Same as `humanish run &lt;lab&gt;`, grouped under `lab`.
-
-```text
-humanish lab run [options] <lab>
-```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Lab id or .yaml path. |
-
-| Option | Description |
-| --- | --- |
-| `--env-file <path>` | Load a local env file for this lab without persisting values. |
-| `--dry-run` | Render contract evidence without live provider spend. |
-| `--open` | Open the observer in the default browser. |
-| `--no-open` | Render without opening a browser. |
-| `--detach` | Render/open once and exit without attached watch server. |
-| `--port <port>` | Local observer server port when following. (default: "0") |
-| `--count <count>` | Override the participant count of a preview or computer-use lab. |
-| `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed participants from a prior run. |
-| `--participants <ids>` | CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position. |
-| `--run-id <id>` | Explicit lab run id; refused when that run already exists. |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -832,32 +815,6 @@ humanish telemetry disable [options]
 
 | Option | Description |
 | --- | --- |
-| `-h, --help` | Show help for this command. |
-
-## humanish serve
-
-Serve your run library on http://127.0.0.1, optionally shared through an authenticated tunnel. With --run, it opens on that run.
-
-```text
-humanish serve [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--cwd <path>` | Target project directory. (default: ".") |
-| `--port <port>` | Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port. (default: "0") |
-| `--run <id>` | Land on this run id (or latest) instead of the library index. |
-| `--safe` | Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed). |
-| `--expose` | Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe. |
-| `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
-| `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
-| `--oauth <provider>` | Turn on ngrok edge OAuth. Requires --tunnel. (choices: "google") |
-| `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. (default: []) |
-| `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. (default: []) |
-| `--public-url <origin>` | Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding. |
-| `--open` | Open the library in the default browser. |
-| `--no-open` | Serve without opening a browser. |
-| `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
 ## humanish tui

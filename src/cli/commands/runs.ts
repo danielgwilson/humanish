@@ -4,155 +4,31 @@ import { shellQuote } from "../../substrates/shell.js";
 import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
 import { cleanupRun, listRuns, readReview } from "../../run/stored-runs.js";
-import { runDryRun } from "../../run/dry-run.js";
 import { verifyRun } from "../../verify/verify.js";
 import {
   reclaimPreflightSandboxes,
   reclaimRunSandboxes,
   type ReclaimResult,
 } from "../../run/reclaim.js";
-import type { CleanupResult, RunResult } from "../../run/results.js";
+import type { CleanupResult } from "../../run/results.js";
 import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
-import { runLabCommand } from "./lab-run.js";
-import { countOption } from "../renamed-options.js";
-import {
-  applyEnvFileOption,
-  type CliIo,
-  formatRunHuman,
-  JSON_OPTION_DESCRIPTION,
-  type LabCommandOptions,
-  parsePositiveInteger,
-  writeResult,
-} from "../io.js";
-
-const SCRIPTED_BROWSER_DOCS_URL =
-  "https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios";
+import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
+import { type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
-  parent
-    .command("run")
-    .argument("[lab]", "Optional lab id or .yaml path.")
-    .description(
-      "Run a study, as a dry run or with live participants. This is the everyday command.",
-    )
-    .summary("Run a study, as a dry run or with live participants.")
-    .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
-    // `humanish run <lab>` and `humanish lab run <lab>` are the same operation on the same
-    // dispatcher, but this one used to forward four options while its sibling forwarded all of
-    // them, so `humanish run first-run --no-open` failed while `lab run` accepted it. A
-    // participant hit exactly that and filed it as a documentation mismatch. Same command, same
-    // flags (clig.dev: "be consistent across subcommands").
-    .option("--open", "Open the observer in the default browser.")
-    .option("--no-open", "Render without opening a browser.")
-    .option("--detach", "Render/open once and exit without an attached watch server.")
-    .option("--port <port>", "Local observer server port when following.", "0")
-    .option(
-      "--count <count>",
-      "Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab.",
-    )
-    // The older spelling of --count, hidden and noted on stderr (renamed-options.ts).
-    .addOption(new Option("--sims <count>").hideHelp())
-    // Agents with an older installed skill still send --app-url. Accepting it hidden lets the
-    // refusal name the replacement; commander's bare unknown-option error names nothing. Delete
-    // after 0.106.x.
-    .addOption(new Option("--app-url <url>").hideHelp())
-    .option("--cwd <path>", "Target project directory.", ".")
-    .option("--env-file <path>", "Load a local env file for this run without persisting values.")
-    .option(
-      "--run-id <id>",
-      "Explicit run id for deterministic fixture tests; refused when that run already exists.",
-    )
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        lab: string | undefined,
-        options: {
-          appUrl?: string;
-          count?: string;
-          cwd: string;
-          dryRun?: boolean;
-          envFile?: string;
-          json?: boolean;
-          runId?: string;
-          sims?: string;
-        },
-        command,
-      ) => {
-        const count = countOption(io, options);
-        if (options.appUrl !== undefined) {
-          const result: RunResult = {
-            schema: "humanish.run-result.v1",
-            ok: false,
-            cwd: options.cwd,
-            warnings: [],
-            error: {
-              code: "HUMANISH_APP_URL_REMOVED",
-              message: `--app-url was removed. To drive an app on a loopback URL, write a scripted-browser lab and run \`humanish run <lab>\`: ${SCRIPTED_BROWSER_DOCS_URL}`,
-            },
-          };
-          writeResult(command, io, result, formatRunHuman);
-          io.setExitCode(2);
-          return;
-        }
-
-        if (
-          !(await applyEnvFileOption({
-            command,
-            cwd: options.cwd,
-            envFile: options.envFile,
-            io,
-            // runLabCommand discovers keys for a live lab; the lab-less preview needs none.
-            discoverKeys: false,
-          }))
-        ) {
-          return;
-        }
-
-        if (lab) {
-          await runLabCommand({
-            command,
-            io,
-            lab,
-            mode: "run",
-            // Forwarded wholesale, exactly as `lab run` does. Cherry-picking a subset here is what
-            // made the two commands disagree in the first place.
-            options: { ...options, count } as LabCommandOptions,
-          });
-          return;
-        }
-
-        const participantCount = count === undefined ? undefined : parsePositiveInteger(count);
-        if (participantCount === null) {
-          const result: RunResult = {
-            schema: "humanish.run-result.v1",
-            ok: false,
-            cwd: options.cwd,
-            warnings: [],
-            error: {
-              code: "HUMANISH_INVALID_SIM_COUNT",
-              message: "--count must be a positive integer.",
-            },
-          };
-          writeResult(command, io, result, formatRunHuman);
-          io.setExitCode(2);
-          return;
-        }
-
-        const result = await runDryRun({
-          cwd: options.cwd,
-          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-          ...(options.runId === undefined ? {} : { runId: options.runId }),
-          ...(participantCount === undefined ? {} : { participantCount }),
-          // Rendered the way `watch` renders it, so a bundle is the same bundle whichever command
-          // produced it. A render failure is a warning on the result.
-          observer: { open: false },
-        });
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+  addRunOptions(
+    parent
+      .command("run")
+      .argument("[lab]", "Optional lab id or .yaml path.")
+      .description(
+        "Run a study, as a dry run or with live participants. This is the everyday command.",
+      )
+      .summary("Run a study, as a dry run or with live participants."),
+  ).action((study: string | undefined, options: RunOptions, command: Command) =>
+    handleRun(io, study, options, command),
+  );
 }
 
 export function registerVerifyCommand(parent: Command, io: CliIo): void {
