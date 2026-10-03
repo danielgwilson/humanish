@@ -286,7 +286,7 @@ describe("stream, rerun and analysis options land where the route reads them", (
     const ready: StreamEvent = {
       type: "ready",
       participantId: "lane-01",
-      sandboxId: "sbx",
+      sandboxId: "fake-sbx",
       recordId: "sim-001",
       streamId: "stream-001",
       url: "https://stream.invalid/key",

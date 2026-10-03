@@ -258,7 +258,7 @@ function fakeDesktopModule(args: {
   probeReady: boolean;
 }): E2BDesktopModule {
   const sandbox: E2BDesktopSandbox = {
-    sandboxId: "sandbox_preflight_fixture",
+    sandboxId: "fake-sandbox_preflight_fixture",
     ...inertDesktopInput(),
     commands: {
       run: async (command: string) => {

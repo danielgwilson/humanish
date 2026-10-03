@@ -68,7 +68,7 @@ function fakeProvider(behavior: {
   const module = {
     Sandbox: {
       async create(options: E2BDesktopCreateOptions) {
-        const sandboxId = `sb-boundary-${allocated.length + 1}`;
+        const sandboxId = `fake-sb-boundary-${allocated.length + 1}`;
         allocated.push({ sandboxId, options });
         await behavior.afterAllocate?.(sandboxId);
         if (behavior.rejectAfterAllocate)
@@ -77,7 +77,7 @@ function fakeProvider(behavior: {
           sandboxId,
           commands: {
             run: async () => {
-              if (behavior.rewriteHandleId) handle.sandboxId = "sb-unrelated";
+              if (behavior.rewriteHandleId) handle.sandboxId = "fake-sb-unrelated";
               return { exitCode: 1, stdout: "", stderr: "synthetic failure" };
             },
           },
@@ -112,7 +112,7 @@ async function killRouteAfterReceipt(
       Sandbox: {
         async create() {
           return {
-            sandboxId: "sb-boundary-orphan",
+            sandboxId: "fake-sb-boundary-orphan",
             // Every exec hangs on an open handle, as a stuck provider socket would, so the run
             // is inside the sandbox when it is killed.
             commands: { run: () => new Promise(() => setInterval(() => {}, 60_000)) },
@@ -163,7 +163,7 @@ async function killRouteAfterReceipt(
     const receipts = path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT);
     const landed = async (): Promise<boolean> =>
       (await readFile(receipts, "utf8").catch(() => "")).includes(
-        '"sandboxId":"sb-boundary-orphan"',
+        '"sandboxId":"fake-sb-boundary-orphan"',
       );
     while (!(await landed())) {
       if (exitedEarly) throw new Error(`The route exited before its receipt landed: ${stderr}`);
@@ -205,8 +205,8 @@ describe("terminal sandbox acquisition boundary", () => {
     });
 
     expect(result.runId).toBe(RUN_ID);
-    expect(provider.allocated.map((sandbox) => sandbox.sandboxId)).toEqual(["sb-boundary-1"]);
-    expect(provider.killed).toEqual(["sb-boundary-1"]);
+    expect(provider.allocated.map((sandbox) => sandbox.sandboxId)).toEqual(["fake-sb-boundary-1"]);
+    expect(provider.killed).toEqual(["fake-sb-boundary-1"]);
     expect((await stat(path.join(runDir, "run.json"))).isFile()).toBe(true);
     // A best-effort receipt is not durable registration: reclaim has nothing to act on.
     const loadModule = vi.fn(async () => provider.module);
@@ -229,7 +229,7 @@ describe("terminal sandbox acquisition boundary", () => {
       deps: { desktopModule: async () => provider.module },
     });
 
-    expect(provider.killed).toEqual(["sb-boundary-1"]);
+    expect(provider.killed).toEqual(["fake-sb-boundary-1"]);
   });
 
   it("after the receipt lands and the process dies, reclaim kills the recorded id", async () => {
@@ -240,9 +240,9 @@ describe("terminal sandbox acquisition boundary", () => {
       loadModule: async () => provider.module,
     });
     expect(provider.allocated).toEqual([]);
-    expect(provider.killed).toEqual(["sb-boundary-orphan"]);
+    expect(provider.killed).toEqual(["fake-sb-boundary-orphan"]);
     expect(reclaim.outcomes).toEqual([
-      { sandboxId: "sb-boundary-orphan", laneId: "terminal", state: "killed" },
+      { sandboxId: "fake-sb-boundary-orphan", laneId: "terminal", state: "killed" },
     ]);
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
       state: "running" | "finished";

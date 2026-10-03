@@ -39,7 +39,7 @@ describe("scriptedExecutionFailures", () => {
 
   it("records a subject sandbox whose release is unconfirmed, and nothing for a released one", () => {
     const subject = {
-      sandboxId: "sb-subject",
+      sandboxId: "fake-sb-subject",
       killed: false,
       releaseWarning: "Subject sandbox teardown failed.",
     };

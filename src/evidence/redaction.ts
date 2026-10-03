@@ -73,6 +73,52 @@ function redactLocalPaths(text: string, label?: string): string {
   );
 }
 
+/**
+ * What a shared copy of a run says in place of a provider sandbox id. scripts/public-surface-scan.mjs
+ * passes only this value at a sandbox-id key.
+ */
+export const REDACTED_SANDBOX_ID = "[redacted-sandbox-id]";
+
+/** The keys run writers put a sandbox id under; `providerResources` entries hold one as `id`. */
+const SANDBOX_ID_KEYS = new Set(["sandboxId", "subjectSandboxId"]);
+
+/**
+ * `value` with every sandbox id replaced by REDACTED_SANDBOX_ID: strings at `sandboxId` and
+ * `subjectSandboxId`, and the `id` of each `providerResources` entry. A run keeps raw ids as local
+ * evidence for cleanup; a copy made to be shared names no sandbox.
+ */
+export function redactSandboxIds(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const items = value.map(redactSandboxIds);
+    return items.every((item, index) => item === value[index]) ? value : items;
+  }
+  if (value === null || typeof value !== "object") return value;
+  let changed = false;
+  // fromEntries keeps a key such as __proto__ an own property, as JSON.parse made it.
+  const entries = Object.entries(value).map(([key, child]): [string, unknown] => {
+    let next: unknown;
+    if (SANDBOX_ID_KEYS.has(key) && typeof child === "string") next = REDACTED_SANDBOX_ID;
+    else if (key === "providerResources" && Array.isArray(child))
+      next = child.map((resource: unknown) =>
+        resource !== null &&
+        typeof resource === "object" &&
+        !Array.isArray(resource) &&
+        "id" in resource
+          ? Object.fromEntries(
+              Object.entries(redactSandboxIds(resource) as object).map(([field, entry]) => [
+                field,
+                field === "id" ? REDACTED_SANDBOX_ID : entry,
+              ]),
+            )
+          : redactSandboxIds(resource),
+      );
+    else next = redactSandboxIds(child);
+    if (next !== child && JSON.stringify(next) !== JSON.stringify(child)) changed = true;
+    return [key, next];
+  });
+  return changed ? Object.fromEntries(entries) : value;
+}
+
 /** Redact secrets to [REDACTED_SECRET] and local paths to their path labels. */
 export function redactText(text: string): string {
   const withoutSecrets = SECRET_PATTERNS.reduce(

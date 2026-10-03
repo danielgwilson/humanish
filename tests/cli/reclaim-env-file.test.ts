@@ -98,7 +98,7 @@ describe("humanish reclaim --env-file", () => {
       at: "t1",
       laneId: "lane-01",
       provider: "e2b",
-      sandboxId: "sb-left-running",
+      sandboxId: "fake-sb-left-running",
     });
   });
   afterEach(async () => {

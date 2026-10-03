@@ -70,6 +70,27 @@ function fakeModule(
   } as unknown as E2BDesktopModule;
 }
 
+describe("parseSandboxReceipts", () => {
+  it("parseSandboxReceipts keeps valid lines and drops a torn final line", () => {
+    const text = `${JSON.stringify({ at: "t", laneId: "lane-01", sandboxId: "fake-sb-1", timeoutMs: 5 })}\n{"laneId":"lane-02","sandbo`;
+    expect(parseSandboxReceipts(text)).toEqual([
+      { at: "t", laneId: "lane-01", provider: "e2b", sandboxId: "fake-sb-1", timeoutMs: 5 },
+    ]);
+  });
+
+  it("parseSandboxReceipts keeps a recorded provider, including one it does not know", () => {
+    const lines = [
+      { at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: "fake-sb-1" },
+      { at: "t2", laneId: "lane-02", provider: "example-cloud", sandboxId: "fake-sb-2" },
+      { at: "t3", laneId: "lane-03", provider: 7, sandboxId: "fake-sb-3" },
+    ];
+    expect(parseSandboxReceipts(lines.map((line) => JSON.stringify(line)).join("\n"))).toEqual([
+      { at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: "fake-sb-1" },
+      { at: "t2", laneId: "lane-02", provider: "example-cloud", sandboxId: "fake-sb-2" },
+    ]);
+  });
+});
+
 describe("sandbox receipts + humanish reclaim", () => {
   let cwd: string;
   beforeEach(async () => {
@@ -77,25 +98,6 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
-  });
-
-  it("parseSandboxReceipts keeps valid lines and drops a torn final line", () => {
-    const text = `${JSON.stringify({ at: "t", laneId: "lane-01", sandboxId: "sb-1", timeoutMs: 5 })}\n{"laneId":"lane-02","sandbo`;
-    expect(parseSandboxReceipts(text)).toEqual([
-      { at: "t", laneId: "lane-01", provider: "e2b", sandboxId: "sb-1", timeoutMs: 5 },
-    ]);
-  });
-
-  it("parseSandboxReceipts keeps a recorded provider, including one it does not know", () => {
-    const lines = [
-      { at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: "sb-1" },
-      { at: "t2", laneId: "lane-02", provider: "example-cloud", sandboxId: "sb-2" },
-      { at: "t3", laneId: "lane-03", provider: 7, sandboxId: "sb-3" },
-    ];
-    expect(parseSandboxReceipts(lines.map((line) => JSON.stringify(line)).join("\n"))).toEqual([
-      { at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: "sb-1" },
-      { at: "t2", laneId: "lane-02", provider: "example-cloud", sandboxId: "sb-2" },
-    ]);
   });
 
   it("reports a receipt from an unknown provider without loading or calling E2B", async () => {
@@ -109,7 +111,7 @@ describe("sandbox receipts + humanish reclaim", () => {
     const runPaths = await resolveRunPath(cwd, "latest");
     await writeFile(
       path.join(runPaths!.absoluteRunRoot, SANDBOX_RECEIPTS_ARTIFACT),
-      `${JSON.stringify({ at: "t1", laneId: "lane-01", provider: "example-cloud", sandboxId: "sb-elsewhere" })}\n`,
+      `${JSON.stringify({ at: "t1", laneId: "lane-01", provider: "example-cloud", sandboxId: "fake-sb-elsewhere" })}\n`,
     );
     const loadModule = vi.fn(async () => fakeModule({}, []));
 
@@ -119,7 +121,7 @@ describe("sandbox receipts + humanish reclaim", () => {
     expect(result.ok).toBe(false);
     expect(result.outcomes).toEqual([
       {
-        sandboxId: "sb-elsewhere",
+        sandboxId: "fake-sb-elsewhere",
         laneId: "lane-01",
         state: "unsupported-provider",
         detail: expect.stringContaining('"example-cloud"'),
@@ -136,20 +138,24 @@ describe("sandbox receipts + humanish reclaim", () => {
     });
     expect(run.ok).toBe(true);
     const runPaths = await resolveRunPath(cwd, "latest");
-    await appendSandboxReceipt(runPaths!, { at: "t1", laneId: "lane-01", sandboxId: "sb-old" });
+    await appendSandboxReceipt(runPaths!, {
+      at: "t1",
+      laneId: "lane-01",
+      sandboxId: "fake-sb-old",
+    });
     await appendSandboxReceipt(runPaths!, {
       at: "t2",
       laneId: "lane-02",
       provider: "e2b",
-      sandboxId: "sb-new",
+      sandboxId: "fake-sb-new",
     });
     const killedIds: string[] = [];
 
     const result = await reclaimRunSandboxes(cwd, "latest", {
-      loadModule: async () => fakeModule({ "sb-old": "ok", "sb-new": "ok" }, killedIds),
+      loadModule: async () => fakeModule({ "fake-sb-old": "ok", "fake-sb-new": "ok" }, killedIds),
     });
 
-    expect(killedIds).toEqual(["sb-old", "sb-new"]);
+    expect(killedIds).toEqual(["fake-sb-old", "fake-sb-new"]);
     expect(result.ok).toBe(true);
   });
 
@@ -164,29 +170,45 @@ describe("sandbox receipts + humanish reclaim", () => {
     const runPaths = await resolveRunPath(cwd, "latest");
     expect(runPaths).not.toBeNull();
 
-    await appendSandboxReceipt(runPaths!, { at: "t1", laneId: "lane-01", sandboxId: "sb-alive" });
-    await appendSandboxReceipt(runPaths!, { at: "t2", laneId: "lane-02", sandboxId: "sb-gone" });
-    await appendSandboxReceipt(runPaths!, { at: "t3", laneId: "lane-03", sandboxId: "sb-broken" });
-    await appendSandboxReceipt(runPaths!, { at: "t4", laneId: "lane-01", sandboxId: "sb-alive" }); // raced duplicate
+    await appendSandboxReceipt(runPaths!, {
+      at: "t1",
+      laneId: "lane-01",
+      sandboxId: "fake-sb-alive",
+    });
+    await appendSandboxReceipt(runPaths!, {
+      at: "t2",
+      laneId: "lane-02",
+      sandboxId: "fake-sb-gone",
+    });
+    await appendSandboxReceipt(runPaths!, {
+      at: "t3",
+      laneId: "lane-03",
+      sandboxId: "fake-sb-broken",
+    });
+    await appendSandboxReceipt(runPaths!, {
+      at: "t4",
+      laneId: "lane-01",
+      sandboxId: "fake-sb-alive",
+    }); // raced duplicate
 
     const killedIds: string[] = [];
     const result = await reclaimRunSandboxes(cwd, "latest", {
       loadModule: async () =>
         fakeModule(
-          { "sb-alive": "ok", "sb-gone": "not-found-throw", "sb-broken": "boom" },
+          { "fake-sb-alive": "ok", "fake-sb-gone": "not-found-throw", "fake-sb-broken": "boom" },
           killedIds,
         ),
     });
 
     // One attempt per unique id, exactly the journaled ids, nothing else, and no list call exists
     // on the fake to begin with (the module type never offers one to reclaim).
-    expect(killedIds.sort()).toEqual(["sb-alive", "sb-broken", "sb-gone"]);
+    expect(killedIds.sort()).toEqual(["fake-sb-alive", "fake-sb-broken", "fake-sb-gone"]);
     expect(result.receiptCount).toBe(4);
     const states = Object.fromEntries(result.outcomes.map((o) => [o.sandboxId, o.state]));
     expect(states).toEqual({
-      "sb-alive": "killed",
-      "sb-gone": "already-gone",
-      "sb-broken": "kill-failed",
+      "fake-sb-alive": "killed",
+      "fake-sb-gone": "already-gone",
+      "fake-sb-broken": "kill-failed",
     });
     // A kill-failed means the reclaim did not fully succeed: the exit says so, and the TTL is the
     // backstop.
@@ -253,7 +275,7 @@ describe("reclaim of unreadable receipts", () => {
       await appendSandboxReceipt(runPaths!, {
         at: "t1",
         laneId: "lane-01",
-        sandboxId: "sb-hidden",
+        sandboxId: "fake-sb-hidden",
       });
       await chmod(path.join(runPaths!.absoluteRunRoot, SANDBOX_RECEIPTS_ARTIFACT), 0o000);
       const killedIds: string[] = [];
@@ -290,10 +312,14 @@ describe("reclaim with E2B_DEBUG=true", () => {
     expect(run.ok).toBe(true);
     const runPaths = await resolveRunPath(cwd, "latest");
     if (!runPaths) throw new Error("dry run left no run");
-    await appendSandboxReceipt(runPaths, { at: "t1", laneId: "lane-01", sandboxId: "sb-alive" });
+    await appendSandboxReceipt(runPaths, {
+      at: "t1",
+      laneId: "lane-01",
+      sandboxId: "fake-sb-alive",
+    });
     vi.stubEnv("E2B_DEBUG", "true");
     const killedIds: string[] = [];
-    const loadModule = vi.fn(async () => fakeModule({ "sb-alive": "ok" }, killedIds));
+    const loadModule = vi.fn(async () => fakeModule({ "fake-sb-alive": "ok" }, killedIds));
 
     const result = await reclaimRunSandboxes(cwd, "latest", { loadModule });
 

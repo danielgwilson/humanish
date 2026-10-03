@@ -21,7 +21,7 @@ const endpoint = { targetUrl: "http://127.0.0.1:3000/" };
 
 function failingDesktop(error: unknown): E2BDesktopSandbox {
   return {
-    sandboxId: "sb-command-exits",
+    sandboxId: "fake-sb-command-exits",
     commands: {
       run: vi.fn(async () => {
         throw error;
@@ -106,7 +106,7 @@ describe("an E2B desktop command that exits non-zero", () => {
 
 describe("releasing an E2B sandbox that is already gone", () => {
   function moduleWith(kill: (id: string) => Promise<unknown>): E2BDesktopModule {
-    const desktop = { sandboxId: "sb-gone" } as E2BDesktopSandbox;
+    const desktop = { sandboxId: "fake-sb-gone" } as E2BDesktopSandbox;
     return {
       Sandbox: { create: vi.fn(async () => desktop), kill },
     } as unknown as E2BDesktopModule;
@@ -122,7 +122,7 @@ describe("releasing an E2B sandbox that is already gone", () => {
       receipt: null,
     });
     expect(await allocation.close()).toEqual({ status: "released", reason: "already_gone" });
-    expect(await destroyE2BSandbox(module, "sb-gone", { requestTimeoutMs: 1_000 })).toEqual({
+    expect(await destroyE2BSandbox(module, "fake-sb-gone", { requestTimeoutMs: 1_000 })).toEqual({
       state: "already-gone",
     });
   });
@@ -135,7 +135,9 @@ describe("releasing an E2B sandbox that is already gone", () => {
       receipt: null,
     });
     expect(await allocation.close()).toEqual({ status: "unconfirmed", reason: "invalid_result" });
-    expect(await destroyE2BSandbox(module, "sb-gone", { requestTimeoutMs: 1_000 })).toMatchObject({
+    expect(
+      await destroyE2BSandbox(module, "fake-sb-gone", { requestTimeoutMs: 1_000 }),
+    ).toMatchObject({
       state: "kill-failed",
     });
   });

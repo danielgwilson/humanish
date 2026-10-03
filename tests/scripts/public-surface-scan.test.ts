@@ -265,3 +265,55 @@ describe("public-surface packed history", () => {
     }
   }, 45_000);
 });
+
+describe("public-surface sandbox ids", () => {
+  // Shaped like an E2B id. Keys are built at run time so this file holds no id at one.
+  const realShaped = ["i", "q7m2x9k4w8", "n1p3v6z5a"].join("");
+  const sandboxIdKey = ["sandbox", "Id"].join("");
+  const subjectKey = ["subject", "Sandbox", "Id"].join("");
+  const resourcesKey = ["provider", "Resources"].join("");
+  const planted = (value: string): string =>
+    `${JSON.stringify(
+      {
+        [resourcesKey]: [{ kind: "sandbox", id: value }],
+        lease: { [sandboxIdKey]: value },
+        [subjectKey]: value,
+      },
+      null,
+      2,
+    )}\n`;
+
+  it("fails a real-shaped id at every key, in tests/ and out of it, and passes only the marker or a test's fake id", async () => {
+    const root = await createGitHistory(["noreply@github.com"]);
+    try {
+      await mkdir(join(root, "site/public/runs/demo"), { recursive: true });
+      await mkdir(join(root, "tests/fixtures/copied-run"), { recursive: true });
+      await writeFile(join(root, "site/public/runs/demo/run.json"), planted(realShaped));
+      await writeFile(join(root, "tests/fixtures/copied-run/run.json"), planted(realShaped));
+      await writeFile(join(root, "tests/fixtures/synthetic.json"), planted("fake-sandbox-001"));
+      await writeFile(join(root, "site/public/runs/demo/fake.json"), planted("fake-sandbox-001"));
+      await writeFile(
+        join(root, "site/public/runs/demo/redacted.json"),
+        planted("[redacted-sandbox-id]"),
+      );
+      const scan = runScan(root);
+      expect(scan.status).toBe(1);
+      const flagged = scan.stderr
+        .split("\n")
+        .filter((line) => line.includes(": sandbox_id_value: "))
+        .map(
+          (line) => `${line.split(":")[0]} ${line.split(": sandbox_id_value: ")[1]!.split(":")[0]}`,
+        );
+      const keys = ["providerResources[].id", "sandboxId", "subjectSandboxId"];
+      expect(flagged.sort()).toEqual(
+        [
+          ...keys.map((key) => `site/public/runs/demo/run.json ${key}`),
+          ...keys.map((key) => `tests/fixtures/copied-run/run.json ${key}`),
+          ...keys.map((key) => `site/public/runs/demo/fake.json ${key}`),
+        ].sort(),
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});

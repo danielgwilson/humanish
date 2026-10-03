@@ -35,6 +35,12 @@ it`), the summary line names each removed directory, and `--json` lists them in
   was removed in 0.107.0. Use `rerun.participantIds`." and "`cuaHooks` was removed." with the
   field's replacement.
 
+- `humanish export --format bundle` no longer copies sandbox ids into the redacted workspace. The
+  copy omitted `sandbox-receipts.ndjson` but kept each `providerResources[].id` in `run.json`. Every
+  JSON and NDJSON file it copies now reads `[redacted-sandbox-id]` at `sandboxId`,
+  `subjectSandboxId` and `providerResources[].id`; the source run keeps its ids for cleanup and
+  reclaim. `pnpm public-surface:scan` fails on any other value at those keys.
+
 ## 0.109.0: Lab names removed, v2 study files refused (2026-10-03)
 
 humanish 0.109.0 removes what 0.108.0 deprecated. A `humanish.lab.v2` file, or any study file in a

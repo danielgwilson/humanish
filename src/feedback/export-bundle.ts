@@ -10,7 +10,12 @@ import { ACTOR_TRACE_SCHEMA } from "../actors/contract.js";
 import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";
-import { containsSensitive, redactScreenshot, redactText } from "../evidence/redaction.js";
+import {
+  containsSensitive,
+  redactSandboxIds,
+  redactScreenshot,
+  redactText,
+} from "../evidence/redaction.js";
 import { decodeEscapes } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
 import { streamScreenshotPaths } from "../verify/artifacts.js";
@@ -294,7 +299,8 @@ function transformText(file: InventoryFile, imagePaths: ReadonlySet<string>): Bu
     const parsed: unknown = JSON.parse(text);
     // Parsing also resolves escape sequences in string values before inspection.
     assertNoInlineRaster(JSON.stringify(parsed));
-    const transformed = updateScreenshotDeclarations(parsed, imagePaths);
+    // The copy names no sandbox: an id is local operational evidence, and the copy is shared.
+    const transformed = redactSandboxIds(updateScreenshotDeclarations(parsed, imagePaths));
     if (JSON.stringify(transformed) === JSON.stringify(parsed)) return file.bytes;
     assertRewritableNumbers(text);
     return jsonBytes(transformed);
@@ -305,7 +311,9 @@ function transformText(file: InventoryFile, imagePaths: ReadonlySet<string>): Bu
       if (line.trim().length === 0) return line;
       const parsed: unknown = JSON.parse(line);
       assertNoInlineRaster(JSON.stringify(parsed));
-      const updated = JSON.stringify(updateScreenshotDeclarations(parsed, imagePaths));
+      const updated = JSON.stringify(
+        redactSandboxIds(updateScreenshotDeclarations(parsed, imagePaths)),
+      );
       if (updated === JSON.stringify(parsed)) return line;
       assertRewritableNumbers(line);
       return updated;
@@ -412,7 +420,9 @@ async function writeDerivative(
       bytes = transformText(file, imagePaths);
       if (file.path === "run.json") {
         assertRewritableNumbers(file.bytes.toString("utf8"));
-        const transformed = updateScreenshotDeclarations(bundle, imagePaths) as RunBundle;
+        const transformed = redactSandboxIds(
+          updateScreenshotDeclarations(bundle, imagePaths),
+        ) as RunBundle;
         transformed.redaction = {
           status: "passed",
           notes: `${bundle.redaction.notes} Exported copy: screenshots were blurred during export; the original capture is retained separately. See derivation.json.`,

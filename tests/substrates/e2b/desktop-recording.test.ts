@@ -42,7 +42,7 @@ function recordingDesktop(contents = Buffer.from("abcdef")): {
     return { exitCode: 0 };
   });
   const desktop = {
-    sandboxId: "sandbox-owned",
+    sandboxId: "fake-sandbox-owned",
     commands: { run },
     files: {
       read: vi.fn(

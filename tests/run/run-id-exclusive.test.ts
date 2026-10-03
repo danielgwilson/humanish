@@ -66,7 +66,7 @@ describe("a new run creates its directory exclusively", () => {
   it("refuses the id of an interrupted run that left only sandbox receipts", async () => {
     const runDir = path.join(cwd, ".humanish", "runs", "interrupted");
     await mkdir(runDir, { recursive: true });
-    const receipts = `${JSON.stringify({ at: "2026-09-30T00:00:00.000Z", laneId: "lane-01", sandboxId: "sbx-1", timeoutMs: 1_000 })}\n`;
+    const receipts = `${JSON.stringify({ at: "2026-09-30T00:00:00.000Z", laneId: "lane-01", sandboxId: "fake-sbx-1", timeoutMs: 1_000 })}\n`;
     await writeFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), receipts, "utf8");
 
     const refused = await runDryRun({ cwd, dryRun: true, runId: "interrupted" });
@@ -78,7 +78,7 @@ describe("a new run creates its directory exclusively", () => {
     await reclaimRunSandboxes(cwd, "interrupted", {
       loadModule: async () => killRecordingModule(killed),
     });
-    expect(killed).toEqual(["sbx-1"]);
+    expect(killed).toEqual(["fake-sbx-1"]);
   });
 
   it("keeps an existing run readable after a refused reuse of its id", async () => {
