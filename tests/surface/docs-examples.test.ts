@@ -74,7 +74,7 @@ describe("website documentation examples", () => {
     expect(failures).toEqual([]);
   });
 
-  it("accepts the complete own-app example as a live lab with a study budget, including the isolated two-participant variant", () => {
+  it("accepts the complete own-app example as a live study with a study budget, including the isolated two-participant variant", () => {
     const page = pages.find(({ name }) => name === "your-app")!;
     const yaml = page.text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!;
     const result = parseLabConfig(parse(yaml));
@@ -89,7 +89,7 @@ describe("website documentation examples", () => {
     isolated.subject = blocks
       .map((block) => parse(block[1]!))
       .find((block) => block.subject?.source === "clone").subject;
-    isolated.actors[0].count = 2;
+    isolated.participants = 2;
     delete isolated.policies.allowPublicTargets;
     const panel = parseLabConfig(isolated);
     expect(panel.ok, JSON.stringify(panel)).toBe(true);
