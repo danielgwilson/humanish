@@ -125,6 +125,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- The README, the shipped docs and the agent skill teach 0.108's study files
+  (`humanish.study.v3`), `humanish study` commands, `--study`, `observe --all` and the
+  `humanish/studies/` paths. `docs/contracts/schemas.md` documents the v3 study file, the
+  participants and caps each route accepts, and the v2-to-v3 key map.
 - The `--json` results that list, show, check and count studies say study where they said lab.
   - `study list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
   - `study show`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.
