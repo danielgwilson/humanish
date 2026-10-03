@@ -20,7 +20,7 @@ AgentMail key. Hidden entry saves it in the existing user key store and checks
 authentication without creating an inbox; Ctrl+C cancels entry and returns to the TUI.
 The project profile, `.humanish/local/comms.yaml`, stores only the provider and
 environment-variable name.
-Environment and explicit env-file values retain precedence over saved keys.
+Environment and `--dotenv` values retain precedence over saved keys.
 A rejected or unavailable authentication check does not delete the saved key.
 Authentication does not prove inbox creation/deletion permissions, quota or delivery.
 This release requires an organization-scoped key.

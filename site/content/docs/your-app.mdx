@@ -63,7 +63,7 @@ npx humanish study show .humanish/studies/your-app.yaml
 npx humanish doctor --study .humanish/studies/your-app.yaml
 ```
 
-`study show` prints the resolved study, including the persona text the participant will get. `doctor` tells the participant's authentication apart from desktop access and analysis; it does not check keys against the provider or confirm quota. With `--env-file <path>`, pass it to both `doctor` and the run command.
+`study show` prints the resolved study, including the persona text the participant will get. `doctor` tells the participant's authentication apart from desktop access and analysis; it does not check keys against the provider or confirm quota. With `--dotenv <path>`, pass it to both `doctor` and the run command.
 
 Next, check that a hosted desktop can reach the preview. This needs `E2B_API_KEY`, creates one desktop for the probe and shuts it down afterwards, and makes no model call:
 

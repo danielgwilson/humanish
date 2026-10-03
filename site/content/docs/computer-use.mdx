@@ -13,7 +13,7 @@ Hosted browser studies support these sources:
   actor): the study clones your repo into the sandbox, runs your declared
   `serve.install`/`serve.build`/`serve.start` commands (detached, with readiness
   probing), and drives the served app at `serve.url`. Subject env var names declared
-  in `subject.env` are provisioned from `--env-file` (provenance records names;
+  in `subject.env` are provisioned from `--dotenv` (provenance records names;
   persisted text uses known-value and pattern redaction). The bundle records provenance: repo, cloned commit, env names.
 - **`subject.source: app-url`**: drive your reachable deployment with
   `policies.allowPublicTargets: true`. The standard independent-world route
@@ -47,7 +47,7 @@ npx humanish run cua-browser --dry-run --json --no-open
 ```
 
 Live runs (`mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (from
-`humanish keys set`, the environment, or `--env-file`) and the optional peer dependency: `npm i -D @e2b/desktop`. A cloned
+`humanish keys set`, the environment, or `--dotenv`) and the optional peer dependency: `npm i -D @e2b/desktop`. A cloned
 subject is served **inside** the sandbox on loopback; to instead drive a deployment
 you own (a Vercel preview, staging), use an `app-url` subject with
 `policies.allowPublicTargets: true`. The actor's API key never enters the sandbox;
