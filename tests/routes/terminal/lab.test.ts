@@ -34,7 +34,7 @@ import { inertDesktopInput } from "../../helpers/inert-desktop-input.js";
 // fake E2B module + a mock codex CLI at zero spend. The assertions that matter are the
 // credential-boundary ones: the runtime key reaches only the per-command envs, never
 // Sandbox.create envs / metadata / the persisted bundle, because that is the inversion this
-// lane introduces and the single most dangerous surface in the project.
+// route introduces and the single most dangerous surface in the project.
 
 // A fake key value the test controls. Deliberately not secret-shaped (no sk-/ghp_ prefix) so it
 // would not be caught by pattern redaction alone: only the literal scrub of known provisioned
@@ -417,7 +417,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect(result.session?.completionReason).toBe("harness_error");
       expect(result.error).toMatchObject({ code: "HUMANISH_TERMINAL_FAILED" });
       expect(result.error?.message).toContain(`synthetic ${phase} startup failure`);
-      expect(result.sandbox).toBeUndefined(); // The lane never received a handle or ID.
+      expect(result.sandbox).toBeUndefined(); // The route never received a handle or ID.
       expect(probe.constructed()).toBe(1);
       expect(probe.killed).toEqual([1]);
       expect(probe.allocation).not.toHaveBeenCalled();
@@ -2017,7 +2017,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(String(bootstrapEvent?.message)).not.toMatch(/FAILED/);
   });
 
-  it("fails the lane closed via a structured error (not a raw throw) when the runtime bootstrap command throws a CommandExitError", async () => {
+  it("fails the route closed via a structured error (not a raw throw) when the runtime bootstrap command throws a CommandExitError", async () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
@@ -2030,7 +2030,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
             creates,
             runs,
             killed,
-            // If this ever runs, the lane failed to fail closed on the bootstrap error first.
+            // If this ever runs, the route failed to fail closed on the bootstrap error first.
             codexBehavior: () => ({
               exitCode: 0,
               stdout: "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=should-not-run\n",
@@ -2054,8 +2054,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     // The keyed exec is never attempted once the runtime bootstrap has failed.
     expect(runs.some((r) => r.command.includes(" exec "))).toBe(false);
 
-    // Fails closed as a structured lane result: the run completes (no unhandled throw escapes
-    // the lane), is recorded as a harness error, and cleanup still runs.
+    // Fails closed as a structured route result: the run completes (no unhandled throw escapes
+    // the route), is recorded as a harness error, and cleanup still runs.
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_FAILED");
     expect(result.session?.status).toBe("failed");

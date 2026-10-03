@@ -533,10 +533,10 @@ describe("prose:check counts prose in src strings apart from comments", () => {
 describe("prose:check reads the title and description of each lab", () => {
   /** The `prose.labs.<kind>` lines `--list` prints for one fixture lab file. */
   async function labHits(yaml: string): Promise<{ status: number; lines: string[] }> {
-    const { status, stdout } = await run(["--list"], yaml, "humanish/labs/demo.yaml");
+    const { status, stdout } = await run(["--list"], yaml, "humanish/studies/demo.yaml");
     return {
       status,
-      lines: stdout.split("\n").filter((line) => line.includes("humanish/labs/demo.yaml")),
+      lines: stdout.split("\n").filter((line) => line.includes("humanish/studies/demo.yaml")),
     };
   }
 
@@ -555,11 +555,11 @@ describe("prose:check reads the title and description of each lab", () => {
 
     expect(status).toBe(1);
     expect(lines).toEqual([
-      "  humanish/labs/demo.yaml:3 title #164",
-      "  humanish/labs/demo.yaml:3 title ONE",
-      "  humanish/labs/demo.yaml:4 description \u2014",
-      "  humanish/labs/demo.yaml:4 description seat",
-      "  humanish/labs/demo.yaml:4 description honest",
+      "  humanish/studies/demo.yaml:3 title #164",
+      "  humanish/studies/demo.yaml:3 title ONE",
+      "  humanish/studies/demo.yaml:4 description \u2014",
+      "  humanish/studies/demo.yaml:4 description seat",
+      "  humanish/studies/demo.yaml:4 description honest",
     ]);
   });
 

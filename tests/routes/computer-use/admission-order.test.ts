@@ -250,7 +250,7 @@ describe("computer-use admission order", () => {
     );
   });
 
-  it("reads committed personas before it refuses the lane cap", async () => {
+  it("reads committed personas before it refuses the participant cap", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cu-admission-"));
     dirs.push(cwd);
     await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });

@@ -1,0 +1,89 @@
+schema: humanish.study.v3
+id: last-mile
+title: How far a coding agent gets toward a live study without keys (self-study, terminal route)
+description: >-
+  first-contact showed that an agent can find humanish and get it running. This study measures the
+  next step without spending: whether an agent can take a person from installed to a live study.
+  That step is four questions. Does the agent learn that a live run needs credentials, does it work
+  out which ones and where they go, can it write the exact command, and can it read the bundle that
+  comes back? The first three are where adoption fails and need no credential, so the participant
+  gets no provider keys and is asked to reach the launch command and describe it precisely. The
+  measurement is the gap between what it says it would run and what would work. Read afterwards: 1)
+  the exact command it produced and whether it would run, since a wrong flag, a missing study id or
+  an invented subcommand is a docs defect with an address; 2) where it looked for key setup and
+  what it tried first; 3) whether it chose the right credentials for the right route; 4) whether it
+  believed it had succeeded when it had not. Committed as a dry run, which builds a dry-run bundle
+  at no cost. A live run needs OPENAI_API_KEY for the participant, E2B_API_KEY for its sandbox and
+  a gitignored .humanish/labs/ copy.
+route: terminal
+mode: dry-run # committed fixture stays contract-only
+subject:
+  source: terminal-product
+  product:
+    name: humanish
+    publicSurfaces:
+      - https://www.npmjs.com/package/humanish
+      - https://github.com/danielgwilson/humanish
+actor:
+  type: codex-exec # REAL dispatch key: resolves to the registered terminal actor
+  persona: autonomous-coding-agent # composed into the agent prompt + bundle provenance
+  mission: >-
+    You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine. A
+    teammate is considering adopting a tool called humanish and has asked you to take it as far as
+    it goes: not just install it, but work out how they would actually use it for what it is for.
+    Find out what it is from its public surfaces and get it running. Your only credential is a
+    proxied model credential for your own reasoning. It is not for humanish, and there are no
+    provider API keys here to give humanish, so you cannot complete anything that spends money.
+    When you reach something that needs credentials you do not have, work out precisely what would
+    be required: which credentials, what they are called, where they go, and the exact command your
+    teammate should run next. Then carry on with whatever else you can still reach. Work in a
+    scratch directory. When you are done, tell your teammate plainly: what it does, how far you
+    got, the exact next command and what it needs in order to work, where you got stuck or had to
+    guess, and whether you would recommend adopting it.
+caps:
+  maxUsd: 0 # the participant has no provider budget of its own
+  maxJobs: 0 # no billable product jobs
+  maxMinutes: 12
+execution:
+  target: e2b-terminal
+  runtimeAuth: openai-egress # live: the raw key stays in E2B's api.openai.com header rule
+  # Deny-all egress with a measured allowlist (#538). The raw runtime key stays outside the
+  # sandbox, but any process in it can still send requests through the api.openai.com rule; this
+  # allowlist bounds every other destination without relying on the participant's cooperation.
+  # Every host below was established by a live run failing without it:
+  #   no DNS resolver          -> nothing resolves
+  #   no distro archives       -> runtime bootstrap exits 100 (apt) after ~20s, empty transcript
+  # Verified live 2026-09-01 under openai-env: the participant completed this study under this
+  # policy and reached the same next command as the unrestricted runs.
+  egressAllow:
+    - 8.8.8.8 # DNS. Domain rules match Host/SNI, which is AFTER resolution (UDP:53).
+    - 8.8.4.4
+    - 1.1.1.1
+    - deb.debian.org # the runtime bootstrap installs Node with apt before codex can run
+    - security.debian.org
+    - archive.ubuntu.com
+    - security.ubuntu.com
+    - deb.nodesource.com
+    - registry.npmjs.org # installing humanish and codex
+    - "*.npmjs.org"
+    - api.openai.com # the participant's own model
+    - chatgpt.com
+    - github.com # the public surfaces the mission points at
+    - "*.github.com"
+    - "*.githubusercontent.com"
+    - nodejs.org
+    - "*.nodejs.org"
+  terminal:
+    transport: exec-stream # captured non-interactive exec output (NOT an interactive PTY)
+    stdin: disabled # autonomous, and comparable to an unassisted baseline
+policies:
+  # No provider credentials reach the participant. That is the study condition as well as the
+  # safety bound: it reproduces a developer on day one, before any keys are set.
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
+
+# The description promises no spending; post-run model review would be a paid request.
+review:
+  analysis: false

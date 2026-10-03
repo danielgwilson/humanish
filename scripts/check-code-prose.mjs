@@ -23,7 +23,7 @@
 //   participant, the computer-use route, a plain claim and the current behavior.
 // - `series-codes`, `name-refs`: a test name that opens with a code such as `L14:` or `W5:`, or
 //   that cites an issue (`#123`). Test names only; the name says the behavior.
-// - The `labs` root reads the `title` and `description` of each `humanish/labs/*.yaml`, which
+// - The `labs` root reads the `title` and `description` of each `humanish/studies/*.yaml`, which
 //   `lab list`, `lab inspect` and the TUI show, and counts every kind above except the two test-name
 //   kinds, at `prose.labs.<kind>`.
 // - `title-case-headers`: a Title Case header (`## How It Works`) in a root `*.md` file, outside
@@ -138,9 +138,10 @@ const STRING_KIND_NAMES = [
   "script-markers",
 ];
 
-// The title and description of each committed lab, which `lab list`, `lab inspect` and the TUI
-// show. They are held to the comment rules; the test-name kinds do not apply.
-const LABS_DIR = "humanish/labs";
+// The title and description of each committed study, which `lab list`, `lab inspect` and the TUI
+// show. They are held to the comment rules; the test-name kinds do not apply. The caps keep the
+// `labs` root name until the rename's prose PR.
+const LABS_DIR = "humanish/studies";
 const LAB_KINDS = KINDS.filter((kind) => kind !== "series-codes" && kind !== "name-refs");
 const LAB_FIELDS = ["title", "description"];
 

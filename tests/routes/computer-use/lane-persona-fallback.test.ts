@@ -4,9 +4,9 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 
 // With a `lanes` roster present, participant persona resolution once read only `lane.persona`. Every
-// fan-out lane of every lab that declared `actors[0].persona` therefore ran with no persona:
-// no personaLine in the prompt, traitsApplied empty, and nothing warned. The field's own doc
-// comment in src/lab/types.ts says "Default: actors[0].persona", and its sibling fields
+// fan-out participant of every study that declared `actors[0].persona` therefore ran with no
+// persona: no personaLine in the prompt, traitsApplied empty, and nothing warned. The field's own
+// doc comment in src/lab/types.ts says "Default: actors[0].persona", and its sibling fields
 // (stopWhen, reasoningEffort) already fell back that way. Doc and code disagreed; code won.
 //
 // personas drive the app. A fan-out result produced without one is not the study that was
@@ -27,7 +27,7 @@ function planFor(actor: Record<string, unknown>) {
 }
 
 describe("participant persona resolution", () => {
-  it("falls back to actors[0].persona when a lane does not name one", () => {
+  it("falls back to actors[0].persona when a participant does not name one", () => {
     const plan = planFor({
       type: "openai-computer-use",
       persona: "synthetic-new-user",
@@ -43,7 +43,7 @@ describe("participant persona resolution", () => {
     }
   });
 
-  it("lets a lane override the actor's persona", () => {
+  it("lets a participant override the actor's persona", () => {
     const plan = planFor({
       type: "openai-computer-use",
       persona: "synthetic-new-user",
@@ -51,13 +51,13 @@ describe("participant persona resolution", () => {
       lanes: [{ id: "a", persona: "power-user" }, { id: "b" }],
     });
     expect(plan.lanes[0]?.persona).toBe("power-user");
-    // The un-overridden lane still inherits, so one override does not strip the rest.
+    // The un-overridden participant still inherits, so one override does not strip the rest.
     expect(plan.lanes[1]?.persona).toBe("synthetic-new-user");
   });
 
-  it("uses the documented default when neither the lane nor the actor names one", () => {
+  it("uses the documented default when neither the participant nor the actor names one", () => {
     // src/routes/computer-use/participant-prompt.ts falls back to `cua-operator`. Asserted so the fallback chain is
-    // pinned end to end: lane, then actor, then the built-in default.
+    // pinned end to end: participant, then actor, then the built-in default.
     const plan = planFor({
       type: "openai-computer-use",
       mission: "Look at the page.",

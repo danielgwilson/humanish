@@ -36,7 +36,7 @@ export interface RunLabProvenance {
   id: string;
   /** Repo-relative manifest path, when the run came from a file on disk. */
   path?: string;
-  /** `committed` = humanish/labs, `ignored` = a local overlay, `explicit` = a path the operator passed. */
+  /** `committed` = humanish/studies or humanish/labs, `ignored` = a local overlay, `explicit` = a path the operator passed. */
   origin?: "committed" | "ignored" | "explicit";
 }
 

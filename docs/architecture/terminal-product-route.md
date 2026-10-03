@@ -264,7 +264,7 @@ built.
 
 The requesting adopter is a public creative-CLI product. Committed source and docs here
 stay codename-neutral per the public-surface scan; the committed CI fixture
-([`humanish/labs/terminal-product-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/labs/terminal-product-demo.yaml))
+([`humanish/studies/terminal-product-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/studies/terminal-product-demo.yaml))
 uses a fictional mock CLI (`widgetsmith-cli`) with `example.com` surfaces. The adopter's
 real public surfaces appear only in operator-run docs and a GitHub issue, never in
 scanned committed text.

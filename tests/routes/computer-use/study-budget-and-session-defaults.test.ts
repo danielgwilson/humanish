@@ -1,5 +1,5 @@
 // The budget sizing pass: a session ends because the participant finished, and the budget a
-// researcher sets is the study's, not a lane's.
+// researcher sets is the study's, not a participant's.
 //
 // Also pins the closing-observation fix the first live funnel run exposed: a done turn takes no
 // actions, so the loop never observed the participant's final state: both participants reached
@@ -169,11 +169,11 @@ describe("the study budget stops a participant with budget_reached", () => {
     expect(result.reason).toContain("maxTotalUsd");
   });
 
-  it("sums lane estimates on the shared ledger and ignores unpriceable readings", () => {
+  it("sums participant estimates on the shared ledger and ignores unpriceable readings", () => {
     const budget = makeCuaRunBudget(10);
     expect(budget.note("lane-a", 2)).toBe(2);
     expect(budget.note("lane-b", 3)).toBe(5);
-    // A lane's estimate replaces its previous reading: running totals, not increments.
+    // A participant's estimate replaces its previous reading: running totals, not increments.
     expect(budget.note("lane-a", 4)).toBe(7);
     expect(budget.note("lane-b", null)).toBe(7);
     expect(budget.maxTotalUsd).toBe(10);

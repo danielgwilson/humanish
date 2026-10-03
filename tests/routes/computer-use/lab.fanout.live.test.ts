@@ -11,15 +11,15 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
-// The single live rung for multi-lane fan-out. Written, gated, and not run in the
+// The single live rung for multi-participant fan-out. Written, gated, and not run in the
 // deterministic suite: it is a separately-authorized paid receipt (see the provider spend
 // policy). Gated exactly like the other live rungs:
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
-// Two per-lane worlds (mobile + desktop), each serving a neutral loopback page inside its own
-// sandbox via the per-lane prepareDesktop hook, never a shared public target (allowPublicTargets
-// + N>1 is rejected; that is the shared-world topology). Max concurrent paid
+// Two per-participant worlds (mobile + desktop), each serving a neutral loopback page inside its
+// own sandbox via the per-participant prepareDesktop hook, never a shared public target
+// (allowPublicTargets + N>1 is rejected; that is the shared-world topology). Max concurrent paid
 // desktops is the execution.concurrency bound (the spend control). Asserts only that two distinct
 // sandboxes came back, both terminal + engaged, both reclaimed by ID, and the bundle verifies:
 // never task success.
@@ -48,7 +48,7 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (live, spend-gated)", () => {
   });
 
   it(
-    "fans out two per-lane worlds (mobile + desktop) to two distinct desktops, both reclaimed by id",
+    "fans out two per-participant worlds (mobile + desktop) to two distinct desktops, both reclaimed by id",
     { timeout: 600_000 },
     async () => {
       const parsed = parseLabConfig({
@@ -75,7 +75,8 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (live, spend-gated)", () => {
 
       const outcome = await runLab(parsed.config, {
         cwd,
-        // Per-lane prepareDesktop: serve the neutral page inside each lane's own sandbox.
+        // Per-participant prepareDesktop: serve the neutral page inside each participant's own
+        // sandbox.
         prepareDesktop: async (desktop) => {
           await desktop.files.write("/home/user/www/proof.html", PROOF_HTML);
           await desktop.commands.run(
@@ -92,7 +93,8 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (live, spend-gated)", () => {
       if (outcome.route !== "computer-use") return;
       const result = outcome.result;
 
-      // Two lanes, both terminal + engaged, each its own distinct sandbox, all reclaimed by id.
+      // Two participants, both terminal + engaged, each its own distinct sandbox, all reclaimed by
+      // id.
       expect(result.lanes).toHaveLength(2);
       const sandboxIds = (result.lanes ?? []).map((lane) => lane.sandbox?.sandboxId);
       expect(new Set(sandboxIds).size).toBe(2);

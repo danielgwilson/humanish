@@ -1,0 +1,83 @@
+schema: humanish.study.v3
+id: lobby-trivia-3player
+title: Three mobile participants in one multiplayer lobby on a public app (shared world, dry run)
+description: >-
+  Three participants on mobile layouts play the same multiplayer lobby on a public deployment at the
+  same time: the external-public shared-world route. The public site is the shared plane, so there is no
+  getHost, clone, subject sandbox or seed. The host creates the lobby; humanish reads the lobby code
+  from the host's page URL and gives it to the other participants, who join through the app's join flow,
+  since visiting /lobby/CODE directly does not join a non-member. A dry run, the default, writes one run
+  bundle with the external-public shared-world evidence (attributionClass: shared-world; planeClass:
+  external-public; laneWindows and outcomes; publicOriginDigest; the external-public attributionLimits)
+  at no cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and scenario.mode: live. On this route Chrome
+  refuses a window narrower than 500px, so the mobile (414) and small-mobile (360) participants both
+  render 500 wide and only their heights differ (896 and 740). The preset widths stay the device
+  identity in the persona prompt and metadata, and desktopGeometry.screen.verified confirms the 500px
+  width, not the preset's. There is no touch input. This study does not set
+  execution.desktop.fidelity.mobileEmulation, which requests the preset's CSS viewport, touch, pixel
+  ratio and user agent on Chrome or Chromium. The operator attests owning or operating the deployment
+  (subject.publicTarget). humanish observes that each participant reached the declared origin and the
+  same lobby path, and does not provision, seed or control the app, so the bundle claims less than a
+  provisioned run: provenance is external-public, there is no synthetic-data attestation or
+  authoritative shared-state proof, and concurrency rests on overlapping sessions and the shared lobby.
+  One run implies nothing about adoption, scale or repeatability.
+route: shared-world # the declared override of the per-lane-worlds default (#164)
+mode: dry-run # default; the live path opens 3 real mobile-layout participants against the public app
+subject:
+  source: app-url # the real public deployment IS the shared plane (no clone, no getHost)
+  appUrl: https://lobby-trivia.example.test/
+  # REQUIRED ownership attestation (the honest analog of exposure: synthetic — you cannot attest
+  # synthetic on a real site, but you MUST attest you own/operate it). Author-trust; unverifiable.
+  publicTarget:
+    owner: your-org/your-app # REPLACE: the repo/org identity of a deployment YOU own and operate
+    authorized: true
+policies:
+  # REQUIRED: the shared plane is a real non-loopback public deployment the operator owns.
+  allowPublicTargets: true
+actor:
+  type: openai-computer-use # REAL dispatch key: resolves in the actor registry
+  mission: >-
+    You are one of several friends playing a round of an online multiplayer trivia game together on your
+    phones at the same time. Play your role, then stop.
+# The roster IS the persona roster (>=2) with EXACTLY ONE host: true participant. On the external-public
+# route every participant opens the SAME public appUrl; the host creates the shared lobby and the
+# followers join it through the real UI with the code the host is told.
+participants:
+  - id: host
+    host: true # the designated host participant that creates the shared lobby
+    device: mobile # 414x896 preset, RENDERED AT 500 wide (see the width-floor caveat above)
+    persona: party-host
+    # The host-first barrier means the followers only start provisioning AFTER this participant has
+    # created the lobby, so being alone in the waiting room is the EXPECTED opening state, not a
+    # blocker. Say so explicitly: a 2026-08-03 run had the host see "1/8", decide it was blocked
+    # from starting, and end its own session 32s in, before either follower had finished joining.
+    # The harness already raises this participant's idle backstop (HOST_WAIT_IDLE_STEPS); this stops the
+    # MODEL from declaring itself done first.
+    instruction: >-
+      Create a lobby. While you wait in the waiting room, open the host settings and pick the shortest
+      round timer so the game moves fast. You will be alone at first, which is normal: your friends are
+      still opening the app on their own phones and will appear over the next minute. Keep waiting and
+      re-checking the player list. Do NOT end your turn while you are waiting, and do NOT treat being
+      alone as being blocked. Once the other players show up, start the game and play your guesses.
+  - id: player-2
+    device: mobile
+    persona: competitive-friend
+    instruction: >-
+      Join the lobby you're told the code for, then play your guesses. Pick a name that is actually
+      yours, not the example shown in the name field.
+  - id: player-3
+    device: small-mobile # 360x740 small-phone LAYOUT
+    persona: casual-friend
+    instruction: >-
+      Join the lobby you're told the code for, then play your guesses. Pick a name that is actually
+      yours, not the example shown in the name field.
+execution:
+  target: e2b-desktop # required: each persona drives a hosted desktop browser (mobile LAYOUT)
+  # PER-PERSONA session budget; also caps the host-first handoff deadline. Budget the WHOLE arc:
+  # ~35s participant provisioning + ~45s shared-session assembly + the subject app's own round pacing. A
+  # first live run of this worked example died at 120000 with every participant expiring mid round 1 and
+  # zero guesses submitted. 7 minutes fits a full game once the host picks the fastest timer.
+  timeoutMs: 420000
+  concurrency: 3 # all 3 participants live at once (also the default when omitted: concurrency = participant count); lower it only to cap simultaneous paid desktops
+defaults:
+  open: true

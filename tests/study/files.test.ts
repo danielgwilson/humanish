@@ -114,6 +114,68 @@ describe("study discovery", () => {
   });
 });
 
+describe("files 0.109 stops reading", () => {
+  async function writeV3(relativePath: string, id: string) {
+    await mkdir(path.dirname(path.join(cwd, relativePath)), { recursive: true });
+    await writeFile(
+      path.join(cwd, relativePath),
+      stringify({
+        schema: "humanish.study.v3",
+        id,
+        route: "preview",
+        mode: "dry-run",
+        subject: { source: "this-repo" },
+        actor: { type: "synthetic-persona" },
+      }),
+    );
+  }
+  const retired = (warnings: string[]) => warnings.filter((entry) => entry.includes("0.109"));
+
+  it.each([
+    [
+      "a v2 file in a studies directory",
+      "humanish/studies/a.yaml",
+      "v2",
+      "humanish/studies/a.yaml is a humanish.lab.v2 file, which 0.109 stops reading. Run humanish migrate humanish/studies/a.yaml to convert it.",
+    ],
+    [
+      "a v2 file in a labs directory",
+      ".humanish/local/labs/a.yaml",
+      "v2",
+      ".humanish/local/labs/a.yaml is a humanish.lab.v2 file in .humanish/local/labs/, and 0.109 reads neither. Run humanish migrate to convert it and move it to .humanish/local/studies/.",
+    ],
+    [
+      "a v3 file in a labs directory",
+      "humanish/labs/a.yaml",
+      "v3",
+      "humanish/labs/a.yaml is in humanish/labs/, which 0.109 stops reading. Move it to humanish/studies/.",
+    ],
+  ])("warns about %s, naming the fix", async (_name, relativePath, format, warning) => {
+    await (format === "v2" ? write(relativePath, "a") : writeV3(relativePath, "a"));
+
+    const resolved = await resolveLabManifest(cwd, "a");
+    expect(resolved.ok && retired(resolved.warnings)).toEqual([warning]);
+  });
+
+  it("does not warn about a v3 file in a studies directory", async () => {
+    await writeV3(".humanish/studies/a.yaml", "a");
+
+    const resolved = await resolveLabManifest(cwd, "a");
+    expect(resolved.ok && retired(resolved.warnings)).toEqual([]);
+  });
+
+  it("lab list counts the files in one warning", async () => {
+    await writeV3("humanish/studies/clean.yaml", "clean");
+    await write("humanish/studies/old.yaml", "old");
+    expect(retired((await listLabManifests(cwd)).warnings)).toEqual([
+      "One study file uses humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; lab inspect names the fix for each file.",
+    ]);
+
+    await writeV3("humanish/labs/moved.yaml", "moved");
+    expect(retired((await listLabManifests(cwd)).warnings)[0]).toMatch(/^2 study files use /);
+  });
+});
+
 describe("writers", () => {
   it("init skips a starter whose name a labs file already uses, and names migrate", async () => {
     await write("humanish/labs/first-run.yaml", "first-run");

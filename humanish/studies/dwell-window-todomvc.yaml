@@ -1,0 +1,61 @@
+schema: humanish.study.v3
+id: dwell-window-todomvc
+title: "A declared observation window on TodoMVC: hold for a minute after the first task, then continue"
+description: >-
+  One participant adds a task. When the list says "1 item left", the harness holds the page for 60 seconds, capturing a
+  frame every 10 seconds and requesting no model turn, and then the participant adds a second task. The bundle's trace
+  records the window: its start and end notices and six dwell frames. Study record:
+  docs/evidence/computer-use/dwell-window-2026-09-04.md. Committed as a dry run. A live run needs OPENAI_API_KEY and
+  E2B_API_KEY and costs about $0.05.
+route: computer-use
+mode: dry-run
+subject:
+  source: clone
+  repos:
+    - tastejs/todomvc
+  clone:
+    depth: 1
+  serve:
+    start: python3 -m http.server 3000 --directory examples/javascript-es6/dist
+    url: http://127.0.0.1:3000/
+actor:
+  type: openai-computer-use
+  maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
+  persona: synthetic-new-user
+  mission: >-
+    Add one task called "water the plants". The study will then hold the page for a while; when you are asked to
+    continue, add a second task called "call the bank", then stop. Report what you did.
+  dwell:
+    when:
+      any:
+        - id: one-left
+          textIncludes: "1 item left"
+    ms: 60000
+    everyMs: 10000
+    then: continue
+  tasks:
+    - id: first-task
+      goal: Add the first task.
+      success:
+        any:
+          - id: one-left
+            textIncludes: "1 item left"
+    - id: second-task
+      goal: Add the second task.
+      success:
+        any:
+          - id: two-left
+            textIncludes: "2 items left"
+caps:
+  maxUsd: 2
+  maxTotalUsd: 2
+execution:
+  target: e2b-desktop
+  timeoutMs: 300000
+defaults:
+  open: false
+policies:
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false

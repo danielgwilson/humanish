@@ -6,8 +6,8 @@ import { buildRunSource, type RunBundle } from "../../../src/run/bundle.js";
 import { buildSingleParticipantBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { verdictForStatus } from "../../../src/run/judge.js";
 
-// The single-lane bundle says where the participant's browser ran. That place comes from the
-// lane's runner (its substrate), so a local VM run is not described as a hosted desktop.
+// The single-participant bundle says where the participant's browser ran. That place comes from the
+// participant's runner (its substrate), so a local VM run is not described as a hosted desktop.
 
 const trace: ActorTrace = {
   schema: ACTOR_TRACE_SCHEMA,
@@ -79,7 +79,7 @@ const place: Record<Runner, string> = {
 };
 
 describe.each(["e2b-desktop", "local-desktop", "local-filesystem"] as const)(
-  "a single-lane bundle from the %s runner",
+  "a single-participant bundle from the %s runner",
   (runner) => {
     it("names the runner in the finished summary and the stream intent", async () => {
       const run = await bundle(runner, "finished");

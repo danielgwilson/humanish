@@ -14,8 +14,8 @@ import type { LocalFirecrackerDesktop } from "../../../src/substrates/local/fire
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 
-// The Firecracker VM and the runtime image are the only fakes: the study, its desktop lane, the
-// participant loop and the bundle are the real local route.
+// The Firecracker VM and the runtime image are the only fakes: the study, its desktop participant,
+// the participant loop and the bundle are the real local route.
 const seams = vi.hoisted(() => ({
   actions: [] as CuaAction[],
   released: [] as string[],
@@ -110,7 +110,7 @@ function localVmConfig(): LabConfig {
 }
 
 // Characterization: the complete run directory of a live local VM study on a fake VM, pinned so a
-// refactor of the local route, its desktop lane or bundle assembly shows up as a diff.
+// refactor of the local route, its desktop participant or bundle assembly shows up as a diff.
 // Regenerate with `pnpm vitest run tests/routes/computer-use/local-vm.golden.test.ts -u`.
 describe("local VM run directory golden", () => {
   let cwd: string;

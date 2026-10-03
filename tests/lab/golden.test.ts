@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -31,6 +31,14 @@ let project: string;
 beforeEach(async () => {
   project = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-golden-"));
   await cp(path.join(ROOT, "humanish"), path.join(project, "humanish"), { recursive: true });
+  // The golden is a v2 run: the pre-refactor first-run file at its pre-0.108 path, with its v3
+  // twin removed so the name resolves to one file.
+  await rm(path.join(project, "humanish", "studies", "first-run.yaml"));
+  await mkdir(path.join(project, "humanish", "labs"), { recursive: true });
+  await cp(
+    path.join(ROOT, "tests", "fixtures", "labs-v2", "first-run.yaml"),
+    path.join(project, "humanish", "labs", "first-run.yaml"),
+  );
   await cp(path.join(ROOT, "package.json"), path.join(project, "package.json"));
   // The golden records a clean, attached work tree; its values are masked, its shape is not.
   await git(project, "init", "--quiet");
@@ -75,7 +83,7 @@ const GOLDENS = [{ id: "first-run", runId: "golden-first-run" }] as const;
 describe("lab golden equivalence (rung 2: faithfulness)", () => {
   for (const golden of GOLDENS) {
     it(`${golden.id} v2 config reproduces the pre-refactor golden bundle`, async () => {
-      const resolved = await resolveLabManifest(ROOT, golden.id);
+      const resolved = await resolveLabManifest(project, golden.id);
       expect(resolved.ok).toBe(true);
       if (!resolved.ok) return;
 
