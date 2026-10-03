@@ -161,7 +161,7 @@ humanish observe [options]
 | `--open` | Open the Observer in the default browser. |
 | `--no-open` | Serve without opening a browser. |
 | `--json` | Print a machine-readable JSON response. |
-| `--safe` | Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed). |
+| `--safe` | Serve only runs whose verify shareSafety is share_ready; other runs are not served at all. |
 | `--expose` | Share the library beyond this machine. Requires --oauth or --public-url, or --safe. |
 | `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |
 | `--tunnel-domain <domain>` | Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel. |
@@ -392,7 +392,7 @@ humanish export [options]
 | `--format <format>` | Output format; bundle creates a new standalone workspace. (choices: "html", "bundle", default: "html") |
 | `--redact-screenshots` | Bundle only: blur PNG screenshots in a verified copy; keep original evidence unchanged. |
 | `--out <path>` | HTML file or new bundle workspace. Default: .humanish/exports/&lt;runId&gt;.html or &lt;runId&gt;-redacted/. |
-| `--local-only` | Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file. |
+| `--local-only` | Export a bundle that is not share_ready, with a "Local only" banner in the file. |
 | `--max-bytes <n>` | Refuse an export larger than this many bytes. (default: 25 MB) |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--json` | Print a machine-readable JSON response. |
@@ -561,7 +561,7 @@ humanish comms connections add [options] [name]
 | --- | --- |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--provider <id>` | Installed provider id. (default: "agentmail") |
-| `--api-key-env <name>` | Environment variable NAME, never its value. (default: "AGENTMAIL_API_KEY") |
+| `--api-key-env <name>` | The name of an environment variable, never its value. (default: "AGENTMAIL_API_KEY") |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -632,7 +632,7 @@ humanish comms catch [options]
 | `--dir <path>` | Directory for the deliveries log and rendered inbox. (default: ".humanish/comms-catch") |
 | `--token <value>` | Require this bearer token, at least 16 characters, on GET /deliveries (recommended when reachable off-host). |
 | `--smtp-port <port>` | Also capture SMTP mail on 127.0.0.1:&lt;port&gt;. Point your app's SMTP transport here. |
-| `--inbox-port <port>` | Also serve a READ-ONLY inbox listener on 0.0.0.0:&lt;port&gt;, so a persona on another machine can open /inbox. Without it the catch stays loopback-only. |
+| `--inbox-port <port>` | Also serve a read-only inbox listener on 0.0.0.0:&lt;port&gt;, so a persona on another machine can open /inbox. Without it the catch stays loopback-only. |
 | `--recipient <address>` | Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed. |
 | `-h, --help` | Show help for this command. |
 
@@ -756,7 +756,7 @@ humanish keys unset [options] <vendor-or-name>
 
 ### humanish keys list
 
-List the NAMES stored in the user store. Values are never printed.
+List the key names in the user store. Values are never printed.
 
 ```text
 humanish keys list [options]

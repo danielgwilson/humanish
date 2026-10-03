@@ -56,7 +56,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--provider <id>", "Installed provider id.", "agentmail")
     .option(
       "--api-key-env <name>",
-      "Environment variable NAME, never its value.",
+      "The name of an environment variable, never its value.",
       "AGENTMAIL_API_KEY",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -123,7 +123,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     )
     .option(
       "--inbox-port <port>",
-      "Also serve a READ-ONLY inbox listener on 0.0.0.0:<port>, so a persona on another machine can open /inbox. Without it the catch stays loopback-only.",
+      "Also serve a read-only inbox listener on 0.0.0.0:<port>, so a persona on another machine can open /inbox. Without it the catch stays loopback-only.",
     )
     .option(
       "--recipient <address>",
