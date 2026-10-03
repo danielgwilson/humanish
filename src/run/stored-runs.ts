@@ -1,4 +1,5 @@
 import { lstat, readdir } from "node:fs/promises";
+import { runNotFoundMessage } from "./run-not-found.js";
 import path from "node:path";
 import { redactText } from "../evidence/redaction.js";
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
@@ -140,7 +141,7 @@ export async function cleanupRun(
   if (!resolved) {
     return cleanupRefusal(cwd, runInput, checkedAt, {
       code: "HUMANISH_RUN_NOT_FOUND",
-      message: `Run not found: ${runInput}`,
+      message: await runNotFoundMessage(cwd, runInput),
     });
   }
 

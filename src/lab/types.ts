@@ -5,6 +5,9 @@ import { type ReasoningEffort } from "../actors/reasoning-effort.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
 
+/** The study format: it declares its route, one actor, its participants and one caps block. */
+export const STUDY_SCHEMA = "humanish.study.v3";
+
 // Must start alphanumeric so an id never collides with the path-vs-id resolver heuristic
 // (a leading "." or "/" is read as a file path; a leading "-" collides with CLI flags).
 export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
@@ -14,9 +17,9 @@ export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * (`app-url`), an already-running local dev server driven in-process via a custom
  * CuaExecutor with no clone and no E2B desktop (`local-app`), or the operator's own local
  * working tree packed and provisioned in-sandbox in place of a clone (`local-tree`).
- * `local-app` routes to the cua backend and is library-assisted: a caller supplies
+ * `local-app` routes to the computer-use route and is library-assisted: a caller supplies
  * `RunLabOptions.inProcess` + `createProvider` (no built-in driver exists yet), and the engine
- * fails closed (HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
+ * fails closed (HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
 type LabSubjectSource =
@@ -211,9 +214,9 @@ export interface LabSubject {
   /**
    * World topology across participants. Absent == `per-lane-worlds` (the isolation default; every
    * existing lab is byte-stable). `shared-world` is the declared override: one mutable
-   * service plane, N role seats at once. Consumed only on the shared-world routes (a provisioned
-   * clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2 participants);
-   * inert/warned elsewhere.
+   * service plane, N role participants at once. Consumed only on the shared-world routes (a
+   * provisioned clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2
+   * participants); inert/warned elsewhere.
    */
   topology?: LabSubjectTopology;
   /**
@@ -356,9 +359,9 @@ export interface LabParticipantEntry {
   entry?: string;
   /**
    * External-public shared-world only: marks this participant as the host. It
-   * creates the shared session (e.g. a multiplayer lobby) that the follower seats then join. Exactly
+   * creates the shared session (e.g. a multiplayer lobby) that the followers then join. Exactly
    * one participant in the roster may carry `host: true` (validated in externalPublicSharedWorldValidationReason).
-   * The orchestrator watches the host seat's observed URL for the shared-session code and threads it
+   * The orchestrator watches the host's observed URL for the shared-session code and threads it
    * into the follower missions at a host-first barrier. Inert/warned on every other route.
    */
   host?: boolean;
@@ -407,7 +410,8 @@ export interface LabActor {
    * The two halves belong to different people. `goal` reaches the participant's prompt; `success`
    * never does. A moderator does not read the success criterion aloud, because telling someone how
    * they will be judged changes what they do. See src/lab/tasks.ts.
-   * Supported only on the first actor of per-participant CUA routes; other routes fail preflight.
+   * Supported only on the first actor of per-participant computer-use routes; other routes fail
+   * preflight.
    */
   tasks?: LabTask[];
   /** Provider model override. Consumed on the app-url route. */
@@ -568,16 +572,17 @@ export interface LabExecution {
   concurrency?: number;
   desktop?: LabExecutionDesktop;
   /**
-   * Blast-radius budget for each computer-use participant. Consumed on the CUA route: `caps.maxUsd`, when
-   * set, is a fail-closed abort: the session stops the moment its running estimated spend crosses
-   * it (the runaway-retry guard), and a cap on a model src/run/pricing.ts cannot price is refused at
-   * preflight rather than run uncapped. It is a per-participant cap: enforced inside each participant's loop,
-   * so an N-participant fan-out can spend up to N × maxUsd before any participant aborts (the run warns with the
-   * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared study budget: one ledger
-   * across every participant, the knob a researcher actually reasons with. Absent = uncapped (the
-   * historical CUA behavior); maxUsd: 0 still permits a request before reported usage trips it. Inert
-   * (warned) on non-CUA routes. Reuses the same LabScenarioCaps shape as the terminal route's
-   * `scenario.caps` (not a fork).
+   * Blast-radius budget for each computer-use participant. Consumed on the computer-use route:
+   * `caps.maxUsd`, when set, is a fail-closed abort: the session stops the moment its running
+   * estimated spend crosses it (the runaway-retry guard), and a cap on a model src/run/pricing.ts
+   * cannot price is refused at preflight rather than run uncapped. It is a per-participant cap:
+   * enforced inside each participant's loop, so an N-participant fan-out can spend up to N × maxUsd
+   * before any participant aborts (the run warns with the true ~N × cap ceiling).
+   * `caps.maxTotalUsd` is the shared study budget: one ledger across every participant, the knob a
+   * researcher actually reasons with. Absent = uncapped (the historical CUA behavior); maxUsd: 0
+   * still permits a request before reported usage trips it. Inert (warned) on non-computer-use
+   * routes. Reuses the same LabScenarioCaps shape as the terminal route's `scenario.caps` (not a
+   * fork).
    */
   caps?: LabScenarioCaps;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
@@ -611,7 +616,7 @@ type LabScenarioMode = "dry-run" | "live";
  * All values are non-negative numbers (0 is the no-spend default). Live runs require maxUsd and a
  * positive maxMinutes; maxUsd/maxJobs are checked after the session against known ledger signals
  * and maxMinutes is enforced as the command wall clock. Codex tokens are unpriced, so a live run
- * refuses a positive maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_LAB_UNPRICED_CAP).
+ * refuses a positive maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_UNPRICED_CAP).
  */
 export interface LabScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
@@ -787,11 +792,12 @@ interface LabCommsCaptureEmail {
   /** Each participant's inbox address: the actor is told to sign up with it (the injected inbox
    *  instruction carries it) and the teardown drain matches captured mail against it. Omit the
    *  whole list and the parser fills one deterministic address per participant (`<laneId>@example.test`)
-   *  so every seat can do email out of the box. When declared: a `lane` naming a participant that
-   *  does not exist is a hard parse error (a mismatch silently disables the funnel for that seat),
-   *  zero covered participants is a hard error, and partial coverage warns with the uncovered ones. An
-   *  entry without `address` is legal but inert for the funnel: the drain does not match it,
-   *  and its participant gets no inbox instruction; captured mail to an undeclared address is warned,
+   *  so every participant can do email out of the box. When declared: a `lane` naming a participant
+   * that  does not exist is a hard parse error (a mismatch silently disables the funnel for that
+   * participant),  zero covered participants is a hard error, and partial coverage warns with the
+   * uncovered ones. An  entry without `address` is legal but inert for the funnel: the drain does
+   * not match it,  and its participant gets no inbox instruction; captured mail to an undeclared
+   * address is warned,
    *  never silently dropped. */
   recipients?: LabCommsRecipient[];
   /**
@@ -823,7 +829,8 @@ export interface LabCommsRecipient {
 }
 
 export interface LabConfig {
-  schema: typeof LAB_CONFIG_SCHEMA;
+  /** The format the file was written in. Both parse into this one shape. */
+  schema: typeof LAB_CONFIG_SCHEMA | typeof STUDY_SCHEMA;
   id: string;
   title?: string;
   description?: string;
@@ -847,7 +854,7 @@ interface LabConfigParseSuccess {
 
 export interface LabConfigParseFailure {
   ok: false;
-  error: { code: "HUMANISH_LAB_INVALID"; message: string };
+  error: { code: "HUMANISH_STUDY_INVALID"; message: string };
 }
 
 export type LabConfigParseResult = LabConfigParseSuccess | LabConfigParseFailure;

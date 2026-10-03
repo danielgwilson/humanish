@@ -201,7 +201,7 @@ export interface SharedWorldPlan extends PlanBase {
   readonly plane: SharedWorldPlane;
   /** At least 2. */
   readonly concurrency: number;
-  /** The declared seat session timeout; the route supplies its default. */
+  /** The declared participant session timeout; the route supplies its default. */
   readonly sessionTimeoutMs?: number;
   readonly brain: Extract<Brain, { kind: "openai" | "local-agent" }>;
   readonly caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };
@@ -280,10 +280,10 @@ export type RoutePlanResult<Plan, Refusal> =
 
 /** The error codes the preview route returns before a run starts. */
 export type PreviewRefusalCode =
-  | "HUMANISH_LAB_COMMS_UNSUPPORTED"
-  | "HUMANISH_LAB_ANALYSIS_INVALID"
-  | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
+  | "HUMANISH_STUDY_COMMS_UNSUPPORTED"
+  | "HUMANISH_STUDY_ANALYSIS_INVALID"
+  | "HUMANISH_STUDY_ANALYSIS_UNSUPPORTED"
+  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
   | "HUMANISH_INVALID_SIM_COUNT"
   | "HUMANISH_LIVE_RUN_UNIMPLEMENTED";
 

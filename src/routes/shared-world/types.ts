@@ -1,5 +1,5 @@
 // The concurrent shared-world route's schema constants, attribution limits, options and result
-// types, and the per-seat result the planes collect.
+// types, and the per-participant result the planes collect.
 
 import type { LabDeps } from "../../lab/lab-deps.js";
 import type { LabEvent } from "../../lab/run-lab-events.js";
@@ -65,7 +65,8 @@ export interface RunConcurrentSharedWorldLabOptions {
   env?: Readonly<Record<string, string | undefined>>;
   /**
    * Runs after a sandbox exists and before anything is provisioned on it: the provisioned plane's
-   * subject sandbox, then each seat's desktop. The external-public plane has seats only.
+   * subject sandbox, then each participant's desktop. The external-public plane has participants
+   * only.
    */
   prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
@@ -88,29 +89,29 @@ export type SharedWorldRunInput = Omit<
 >;
 
 export type ConcurrentSharedWorldLabErrorCode =
-  | "HUMANISH_LAB_ANALYSIS_INVALID"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-  | "HUMANISH_LAB_OPTION_UNSUPPORTED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
+  | "HUMANISH_STUDY_ANALYSIS_INVALID"
+  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
+  | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
+  | "HUMANISH_SHARED_WORLD_FAILED"
+  | "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED"
+  | "HUMANISH_SHARED_WORLD_INVALID"
+  | "HUMANISH_SHARED_WORLD_KEYS_MISSING"
   /** A local-agent brain's CLI is not on `PATH`. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING"
+  | "HUMANISH_SHARED_WORLD_AGENT_MISSING"
   /** A local-agent brain's CLI is signed out, or could not report its sign-in status. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
+  | "HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED"
   /** A dollar cap that cannot be priced: an unpriced model, or a ChatGPT-account Codex brain. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
+  | "HUMANISH_SHARED_WORLD_UNPRICED_CAP"
+  | "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING"
+  | "HUMANISH_SHARED_WORLD_GETHOST_UNAVAILABLE"
+  | "HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT"
   | "HUMANISH_RUN_ID_IN_USE"
   /** A declared adopter-hosted comms catch did not answer as a humanish catch. Fail closed
    *  before any actor spend, since the funnel would silently collect nothing. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE"
+  | "HUMANISH_SHARED_WORLD_COMMS_CATCH_UNREACHABLE"
   /** comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
    *  well-formed Unicode (src/comms/external-evidence.ts). Refused before the catch is probed. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID";
+  | "HUMANISH_SHARED_WORLD_COMMS_TOKEN_INVALID";
 
 /** The two plane classes of the concurrent shared-world route. */
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";
@@ -196,8 +197,8 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface PlaneContext {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Read for the subject's serve URL, which each seat's subject names. Seats, their count and
-   *  their host and entry come from the plan's participants. */
+  /** Read for the subject's serve URL, which each participant's subject names. Participants, their
+   *  count and their host and entry come from the plan's participants. */
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   /** The run's test seams; empty outside tests. */
@@ -209,7 +210,8 @@ export interface PlaneContext {
   openaiApiKey: string;
   e2bApiKey: string;
   scrubKnownValues: (text: string) => string;
-  /** The values scrubKnownValues removes. Real email receiving adds its secrets before seats start. */
+  /** The values scrubKnownValues removes. Real email receiving adds its secrets before participants
+   *  start. */
   knownSecretValues: readonly string[];
   cwd: string;
   run: StartedRun;
@@ -230,8 +232,9 @@ export interface PlaneContext {
 }
 
 /**
- * What the seats feed while they run. A plane sets the attached Observer and starts the trace
- * flush; each seat's onStream appends stream URLs; the orchestrator reads all three at finish.
+ * What the participants feed while they run. A plane sets the attached Observer and starts the
+ * trace flush; each participant's onStream appends stream URLs; the orchestrator reads all three at
+ * finish.
  */
 export interface LiveParticipants {
   observer?: ObserverResult & { ok: true };
@@ -270,13 +273,14 @@ export interface ConcurrentBundleArgs {
   commsArtifactPath?: string;
   /** The plane-class discriminator (default provisioned-getHost, byte-stable). */
   planeClass?: ConcurrentSharedWorldPlaneClass;
-  /** external-public only: sha256-16 of the observed origin the seats converged on (the convergence
-   *  proof: what the seats actually reached, tolerant of a declared->observed redirect). */
+  /** external-public only: sha256-16 of the observed origin the participants converged on (the
+   *  convergence proof: what the participants actually reached, tolerant of a declared->observed
+   *  redirect). */
   publicOriginDigest?: string;
   /** external-public only: sha256-16 of the operator-declared plane origin (evidence/reference only;
    *  never asserted equal to the observed origin, since a cross-origin redirect is normal). */
   declaredOriginDigest?: string;
-  /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
+  /** external-public only: sha256-16 of the /lobby/CODE path all participants converged on. */
   lobbyConvergenceDigest?: string;
   runError?: string;
   /** The provisioned plane's own desktop; absent on external-public planes and dry runs. */
@@ -294,8 +298,8 @@ export interface PlaneResults {
   subjectReleaseWarning: string | undefined;
   subjectDesktop: SubjectDesktopUsage | undefined;
   getHostUrl: string | undefined;
-  // The observed convergence origin, computed after fan-out from what the seats reached (the
-  // convergence proof is what the seats observed). Set iff every observing seat
+  // The observed convergence origin, computed after fan-out from what the participants reached (the
+  // convergence proof is what the participants observed). Set iff every observing participant
   // agrees on one origin; that agreement is the convergence proof and becomes plane.publicOriginDigest.
   publicOriginDigest: string | undefined;
   lobbyConvergenceDigest: string | undefined;

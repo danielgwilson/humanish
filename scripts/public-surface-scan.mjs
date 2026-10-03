@@ -92,7 +92,7 @@ function isFixedGuestHomeConstant(file, text, match) {
 }
 
 // PHI/PII detection. Labeled patterns keep false positives low in a repo full of
-// numbers; bare SSN is specific. Email is allowlisted by safe domain so synthetic
+// numbers; bare ssn is specific. Email is allowlisted by safe domain so synthetic
 // fixtures and the maintainer's own address do not trip the gate.
 const piiPatterns = [
   ["us_ssn", /\b\d{3}-\d{2}-\d{4}\b/g],
@@ -219,8 +219,42 @@ function packageFiles() {
   }
 }
 
+// Dated history is kept in the repo and never shipped: a packed page under docs/history/, or one
+// still marked `Status: HISTORICAL`, would give npm users an unmaintained page as reference.
+function checkPackedHistory(packed) {
+  for (const file of packed) {
+    if (file.startsWith("docs/history/")) {
+      findings.push({
+        file,
+        line: 0,
+        name: "packed_history_doc",
+        value: "docs/history/ is not shipped",
+      });
+      continue;
+    }
+    if (!/\.(md|mdx)$/.test(file)) continue;
+    let text;
+    try {
+      text = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    const banner = /^Status: HISTORICAL/m.exec(text);
+    if (banner) {
+      findings.push({
+        file,
+        line: lineNumberFor(text, banner.index),
+        name: "packed_historical_banner",
+        value: banner[0],
+      });
+    }
+  }
+}
+
 function publicSurfaceFiles() {
-  return [...new Set([...trackedFiles(), ...packageFiles()])].sort();
+  const packed = packageFiles();
+  checkPackedHistory(packed);
+  return [...new Set([...trackedFiles(), ...packed])].sort();
 }
 
 function gitRefExists(ref) {
@@ -235,25 +269,25 @@ function gitRefExists(ref) {
 function reachableCommitEmails() {
   // Scope the walk to what is actually being judged, which differs by context:
   //
-  //   pull request  the PR's own commits (HEAD^2) — the change under review
-  //   tag / publish the history being published (HEAD) — what ships in the tarball
-  //   anything else every ref (--all) — the local sweep, which should be the widest
+  //   pull request  the PR's own commits (HEAD^2): the change under review
+  //   tag / publish the history being published (HEAD): what ships in the tarball
+  //   anything else every ref (--all): the local sweep, which should be the widest
   //
   // The tag case is the one that needed saying. A release publishes main, but `--all` also walks
   // unmerged feature branches, so someone else's in-flight branch could block a release of code it
   // is not part of. Nothing escapes by narrowing it: an unapproved author on a feature branch is
   // still caught by the pull-request scope when that branch is proposed, and by the local sweep
-  // meanwhile — it simply stops holding an unrelated release hostage.
+  // meanwhile: it simply stops holding an unrelated release hostage.
   const githubRef = process.env.GITHUB_REF ?? "";
   const ref =
     githubRef.startsWith("refs/pull/") && gitRefExists("HEAD^2")
       ? "HEAD^2"
       : githubRef.startsWith("refs/tags/") && gitRefExists("HEAD")
         ? "HEAD"
-        : null; // the local sweep: every ref WE control, resolved below
+        : null; // the local sweep: every ref we control, resolved below
   try {
-    // The local sweep deliberately does NOT use `--all`. A clone that has fetched GitHub pull
-    // refs carries commits from FORKS, authored by external contributors whose email addresses
+    // The local sweep deliberately does not use `--all`. A clone that has fetched GitHub pull
+    // refs carries commits from forks, authored by external contributors whose email addresses
     // are their own business and already public on GitHub. Judging those fails our gate on
     // somebody else's normal gmail address, every time, for a contribution we should welcome.
     //
@@ -298,8 +332,8 @@ function lineNumberFor(text, index) {
   return line;
 }
 
-// GitHub documents two personal-account noreply forms: ID+USERNAME for newer
-// accounts and USERNAME for accounts using the pre-July 18, 2017 privacy form.
+// GitHub documents two personal-account noreply forms: ID+username for newer
+// accounts and username for accounts using the pre-July 18, 2017 privacy form.
 // Keep the exact GitHub Actions bot address and GitHub-generated fallback explicit.
 // A GitHub username is 1-39 alphanumeric characters or single interior hyphens.
 const githubUsername = String.raw`[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}`;
@@ -307,13 +341,13 @@ const githubNoreplyEmail = new RegExp(
   String.raw`^(?:noreply@github\.com|github-actions\[bot\]@users\.noreply\.github\.com|(?:\d+\+)?${githubUsername}@users\.noreply\.github\.com)$`,
 );
 // GitHub's own merge machinery commits as exactly this address when a PR is merged through the
-// web/API. A squash merge writes the CONTRIBUTOR as the author of the commit it mints on main —
+// web/API. A squash merge writes the contributor as the author of the commit it mints on main:
 // so an accepted external contribution puts a personal address into published history through no
 // act of ours or theirs. That change already passed the pull-request scope above (the moment the
 // sweep note says judging actually matters), and a contributor's address is their own business.
-// So: a commit COMMITTED by GitHub's merge machinery is exempt from the author-identity rule;
+// So: a commit committed by GitHub's merge machinery is exempt from the author-identity rule;
 // every commit our own tooling writes (committer = a personal machine) is judged on both fields.
-// The #402 class stays caught — an agent committing locally with a wrong identity has that
+// The wrong-identity case stays caught: an agent committing locally with a wrong identity has that
 // identity in the committer field.
 const GITHUB_MERGE_COMMITTER = "noreply@github.com";
 const flaggedIdentityEmails = new Set();

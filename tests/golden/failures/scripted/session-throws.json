@@ -36,7 +36,7 @@
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "error": {
-      "code": "HUMANISH_SCRIPTED_LAB_FAILED",
+      "code": "HUMANISH_SCRIPTED_FAILED",
       "message": "session exploded with [REDACTED_SECRET]"
     },
     "automaticAnalysisTrigger": "default",

@@ -161,13 +161,13 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
       ...(args.surface === undefined ? {} : { surface: args.surface }),
       ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
       kind: "browser",
-      label: `CUA browser — ${args.labId}`,
+      label: `${args.participantId ?? "lane-01"} · browser`,
       status,
       transport: "snapshot",
       updatedAt: args.run.createdAt,
       embed: lastScreenshot
-        ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop (${screenshotMode})` }
-        : { kind: "placeholder", title: "CUA desktop" },
+        ? { kind: "screenshot", url: lastScreenshot, title: `Desktop (${screenshotMode})` }
+        : { kind: "placeholder", title: "Desktop" },
       ...(desktopGeometry?.viewport === undefined
         ? {}
         : {

@@ -77,7 +77,8 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
   if (!options.dryRun) {
     return refused(requestedCwd, warnings, {
       code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-      message: "Only run --dry-run is implemented here. Run a lab for a live study.",
+      message:
+        "humanish run needs a lab. List labs with humanish lab list, or run humanish run --dry-run for a sample bundle.",
     });
   }
 

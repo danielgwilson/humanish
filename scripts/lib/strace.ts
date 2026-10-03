@@ -5,7 +5,7 @@
 import { accessSync, constants } from "node:fs";
 import path from "node:path";
 
-/** The strace executable on PATH, or undefined when process events cannot be recorded. */
+/** The strace executable on `PATH`, or undefined when process events cannot be recorded. */
 export function findStrace(env: NodeJS.ProcessEnv = process.env): string | undefined {
   for (const directory of (env.PATH ?? "")
     .split(path.delimiter)
@@ -15,7 +15,7 @@ export function findStrace(env: NodeJS.ProcessEnv = process.env): string | undef
       accessSync(candidate, constants.X_OK);
       return candidate;
     } catch {
-      // Continue PATH.
+      // Continue `PATH`.
     }
   }
   return undefined;
@@ -372,7 +372,7 @@ function netOf(
   const addresses = [...text.matchAll(/\{sa_family=[^}]*\}/g)].map((match) =>
     destination(match[0], strings, labels, normalize),
   );
-  // -yy names a netlink socket's subsystem (ROUTE, AUDIT, ...) when it can, else only its inode.
+  // -yy names a netlink socket's subsystem (route, audit, ...) when it can, else only its inode.
   const subsystem = family === "netlink" ? /^([A-Z_]+):/.exec(inode ?? "")?.[1] : undefined;
   const protocol = subsystem ? ` ${subsystem}` : "";
   if (addresses.length > 0) {
@@ -525,7 +525,7 @@ function trackCwd(call: Syscall, outcome: string, cwds: Map<string, Cwd>): void 
 
 /**
  * Parses an strace log. The first exec must be `root` (the traced command); it is returned
- * separately. Failed PATH probes are dropped from execs; socket and file operations count whether
+ * separately. Failed `PATH` probes are dropped from execs; socket and file operations count whether
  * or not they succeeded. A truncated argument, a line that does not parse, an exec path without a
  * known directory, or a call start and resumption that do not pair up sets `error`.
  */

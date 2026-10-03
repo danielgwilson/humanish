@@ -1165,7 +1165,7 @@ export function Player({
                         <summary
                           className="arow thought"
                           {...attrs}
-                          title="Reported thinking — the participant's own narration, not ground truth"
+                          title="Reported thinking: the participant's own narration, not ground truth"
                           onClick={() => seekEntry(row)}
                         >
                           <span className="tc">{stamp}</span>
@@ -1193,7 +1193,7 @@ export function Player({
                         <span className="atext">
                           {count > 1
                             ? `${count} recorded waits · ${stamp}–${formatElapsed(rowElapsedMs(model, last))}`
-                            : `${row.title}${row.text ? ` — ${row.text}` : ""}`}
+                            : `${row.title}${row.text ? `: ${row.text}` : ""}`}
                         </span>
                       </button>
                     );
@@ -1230,7 +1230,7 @@ export function Player({
                 </span>
                 <span className="k">Scenario</span>
                 <span className="v">{data.run.scenario.title}</span>
-                <span className="k">Lane</span>
+                <span className="k">Participant</span>
                 <span className="v">{stream.label}</span>
                 {actor ? (
                   <>
@@ -1307,7 +1307,7 @@ export function Player({
               ) : actor?.estimatedCost &&
                 typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
                 <div className="blk">
-                  <span className="o-label">Est. lane cost</span>
+                  <span className="o-label">Est. participant cost</span>
                   <p className="verbatim">
                     ~${actor.estimatedCost.estimatedCostUsd.toFixed(2)} (rates as of{" "}
                     {actor.estimatedCost.ratesAsOf})

@@ -114,8 +114,8 @@ export interface RunDesktopGeometry {
      * Without this, a floored run is indistinguishable from a faithful one: `verified` compares
      * the floored number with itself and reports a match, so a reader of the bundle sees
      * requested 500 / verified 500 and reasonably concludes a 500-wide preset was asked for. A
-     * `mobile` (414) and a `small-mobile` (360) seat both render at 500 and look identical here.
-     * When this field is set, the preset width did not render.
+     * `mobile` (414) and a `small-mobile` (360) participant both render at 500 and look identical
+     * here. When this field is set, the preset width did not render.
      */
     declared?: { width: number; height: number; preset: string };
   };

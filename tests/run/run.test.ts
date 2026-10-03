@@ -1329,7 +1329,8 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(jsonBody.warnings[0]).toContain("FULL-FIDELITY (raw)");
       const human = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd]);
       expect(human.exitCode).toBe(0);
-      expect(human.stdout).toContain("share-safety: local_only");
+      expect(human.stdout).toMatch(/^verified raw-posture-live · local_only · \d+ checks passed\n/);
+      expect(human.stdout).toContain("share-safety: RAW_SCREENSHOTS: ");
       expect(human.stdout).toContain("warning: Screenshots are FULL-FIDELITY (raw)");
     });
   });

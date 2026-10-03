@@ -171,7 +171,8 @@ function makeFakeModule(
         n += 1;
         const [width, height] = createOptions.resolution ?? [1440, 950];
         const sandbox = makeFakeSandbox(`fake-sandbox-${String(n).padStart(3, "0")}`, (command) => {
-          // A phone seat has its own physical display, including in the committed live fixture.
+          // A phone participant has its own physical display, including in the committed live
+          // fixture.
           if (fitToResolution && command.includes("xdpyinfo"))
             return { stdout: `dimensions: ${width}x${height} pixels\n` };
           if (fitToResolution && command.includes("xwininfo -id"))
@@ -331,7 +332,7 @@ function makeRunSession(
         reason?: string;
         actions?: number;
         messages?: number;
-        /** False leaves the shared world unchanged by this seat's turn. */
+        /** False leaves the shared world unchanged by this participant's turn. */
         mutates?: boolean;
       }
     | undefined,
@@ -702,7 +703,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const module = await deps.desktopModule!();
     const seatKill = module.Sandbox.kill!;
-    // The subject is the first sandbox created; the seats keep the ordinary kill.
+    // The subject is the first sandbox created; the participants keep the ordinary kill.
     module.Sandbox.kill = async (sandboxId, options) =>
       sandboxId === "fake-sandbox-001" ? subjectKill(sandboxId) : seatKill(sandboxId, options);
     const result = await runConcurrentSharedWorld({
@@ -734,11 +735,11 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     );
   });
 
-  it("records a seat sandbox whose release is unconfirmed as a status.json warning", async () => {
+  it("records a participant sandbox whose release is unconfirmed as a status.json warning", async () => {
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const module = await deps.desktopModule!();
     const kill = module.Sandbox.kill!;
-    // fake-sandbox-001 is the subject; the next one is the first seat's.
+    // fake-sandbox-001 is the subject; the next one is the first participant's.
     module.Sandbox.kill = async (sandboxId, options) =>
       sandboxId === "fake-sandbox-002" ? ("ok" as unknown as boolean) : kill(sandboxId, options);
     const result = await runConcurrentSharedWorld({
@@ -1107,7 +1108,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ).toBe(true);
   });
 
-  it("tells named and unnamed seats their own inbox, from the recipients the parser filled", async () => {
+  it("tells named and unnamed participants their own inbox, from the recipients the parser filled", async () => {
     const commsPort = 8025;
     const state = { worldVersion: 0 };
     const baseHandler = makeCommandHandler(state);
@@ -1131,7 +1132,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const declared = concurrentConfig(2, 2);
     const [named, unnamed] = declared.actors[0]!.lanes!;
     const { id: _id, ...unnamedSeat } = unnamed!;
-    // The second seat has no id, and email has no recipients: the parser fills one per seat.
+    // The second participant has no id, and email has no recipients: the parser fills one per
+    // participant.
     const labWith = (email: Record<string, unknown>) =>
       parseLabConfig({
         ...declared,
@@ -1144,7 +1146,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       "persona-01",
       "role-02",
     ]);
-    // A recipient may name the unnamed seat by the id the route gives it.
+    // A recipient may name the unnamed participant by the id the route gives it.
     expect(labWith({ recipients: [{ lane: "role-02", address: "b@example.test" }] }).ok).toBe(true);
 
     const result = await runConcurrentSharedWorld({
@@ -1460,7 +1462,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   });
 
   // One judgment decides the bundle's verdict and the result's ok, and status.json repeats the
-  // bundle's verdict. Seat 2 ends each way; seats 1 and 3 pass.
+  // bundle's verdict. Participant 2 ends each way; participants 1 and 3 pass.
   it.each<[string, Parameters<typeof makeRunSession>[2], RunBundle["review"]["verdict"], boolean]>([
     ["every seat passes", undefined, "pass", true],
     [
@@ -1513,9 +1515,9 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.overlapProven).toBe(true);
   });
 
-  // A shared-world pass requires what verify's shared-world check requires of one: two seats live
-  // at once and, on this provisioned plane, a state change after they overlapped. Every seat
-  // passes in each case below; only the world differs.
+  // A shared-world pass requires what verify's shared-world check requires of one: two participants
+  // live at once and, on this provisioned plane, a state change after they overlapped. Every
+  // participant passes in each case below; only the world differs.
   type WorldCase = "overlap" | "no overlap" | "overlap without a state change";
   function worldSeams(world: WorldCase): { env: Record<string, string>; deps: LabDeps } {
     const { env, deps } = baseSeams(
@@ -1523,7 +1525,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       makeRendezvous(3),
       world === "overlap without a state change" ? () => ({ mutates: false }) : undefined,
     );
-    // A clock that never advances gives every seat a zero-width window, so none overlap.
+    // A clock that never advances gives every participant a zero-width window, so none overlap.
     return { env, deps: world === "no overlap" ? { ...deps, now: () => 1_000 } : deps };
   }
   const WORLD_CASES: Array<[WorldCase, RunBundle["review"]["verdict"], string | undefined]> = [
@@ -1583,7 +1585,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     },
   );
 
-  it("exits non-zero through the CLI when every seat passed but none overlapped", async () => {
+  it("exits non-zero through the CLI when every participant passed but none overlapped", async () => {
     const exitCodes: Array<number | undefined> = [];
     for (const world of ["overlap", "no overlap"] as const) {
       const config = concurrentConfig(3, 3);
@@ -1668,7 +1670,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
           [result.runId, "[run]"],
           [cwd, "[cwd]"],
         ],
-        // Seats tear down in parallel, so their sandbox receipts append in completion order.
+        // Participants tear down in parallel, so their sandbox receipts append in completion order.
         unorderedFiles: ["sandbox-receipts.ndjson"],
         // Desktop minutes are host-measured wall-clock spans of the fake sandboxes.
         maskKeys: ["minutes", "desktopMinutes"],
@@ -1723,7 +1725,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(outcome.result.ok).toBe(true);
   });
 
-  it("a seat without its own persona takes actors[0].persona, as independent lanes do", async () => {
+  it("a participant without its own persona takes actors[0].persona, as independent lanes do", async () => {
     const state = { worldVersion: 0 };
     const seen: Array<{ persona: string; instructions: string }> = [];
     const baseRun = makeRunSession(state, makeRendezvous(3));
@@ -1819,7 +1821,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
           [result.runId, "[run]"],
           [cwd, "[cwd]"],
         ],
-        // Seats tear down in parallel, so their sandbox receipts append in completion order.
+        // Participants tear down in parallel, so their sandbox receipts append in completion order.
         unorderedFiles: ["sandbox-receipts.ndjson"],
         // Desktop minutes are host-measured wall-clock spans of the fake sandboxes.
         maskKeys: ["minutes", "desktopMinutes"],
@@ -2044,7 +2046,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_FAILED");
     expect(result.error?.message).toContain("zero packable entries");
     expect(created).toHaveLength(0);
     // Packing runs before the run starts: no run directory, no run id, and a refusal is never
@@ -2061,7 +2063,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const broken = { ...valid, subject: subjectWithoutServe } as unknown as LabConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.error?.message).toContain("subject.serve");
   });
 
@@ -2085,7 +2087,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.runId).toBe("not-created");
     expect(desktopLoads).toBe(0);
   });
@@ -2109,7 +2111,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.error?.message).toContain("execution.caps.maxTotalUsd");
     expect(desktopLoads).toBe(0);
   });
@@ -2122,7 +2124,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     };
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.error?.message).toContain("subject.localTree.keep");
   });
 
@@ -2134,7 +2136,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     } as unknown as LabConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
   });
 
   it("routes through runLab to the concurrent-shared-world backend", async () => {
@@ -2354,7 +2356,7 @@ describe("concurrent shared-world verify findings golden", () => {
 });
 
 describe("concurrent physical geometry guard", () => {
-  it("starts no participant on clipped seats and reclaims the host plus every actor desktop", async () => {
+  it("starts no participant on clipped desktops and reclaims the host plus every actor desktop", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, async () => undefined);
     const handler = makeCommandHandler(state);
@@ -2651,7 +2653,7 @@ it("routes actor output limits and per-lane reasoning to concurrent provider req
 });
 
 describe("concurrent shared-world run cost", () => {
-  it("prices every seat's model tokens and desktop plus the subject desktop, and stats reads it", async () => {
+  it("prices every participant's model tokens and desktop plus the subject desktop, and stats reads it", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const inner = await deps.desktopModule!();
@@ -2684,7 +2686,8 @@ describe("concurrent shared-world run cost", () => {
         desktopModule: async () => sized,
         runSession: async (options) => {
           const session = await runSession(options);
-          // A priced model id and reported usage; the seat runner turns them into the estimate.
+          // A priced model id and reported usage; the participant runner turns them into the
+          // estimate.
           session.trace.ids.model = "gpt-5.6-sol";
           session.trace.tokenUsage = { input: 1000, output: 200, total: 1200 };
           return session;
@@ -2723,8 +2726,8 @@ describe("concurrent shared-world run cost", () => {
   });
 });
 
-// Characterization: the complete run directory of a three-seat concurrent run on the fake E2B
-// module, pinned so a refactor of bundle assembly or artifact writing shows up as a diff.
+// Characterization: the complete run directory of a three-participant concurrent run on the fake
+// E2B module, pinned so a refactor of bundle assembly or artifact writing shows up as a diff.
 // Regenerate with `pnpm vitest run tests/routes/shared-world/concurrent.test.ts -u`.
 describe("concurrent shared-world run directory goldens", () => {
   let goldenCwd: string;
@@ -2738,7 +2741,7 @@ describe("concurrent shared-world run directory goldens", () => {
   it.each([
     ["dry run", true, "shared-world-concurrent-dry-run.json"],
     ["live run", false, "shared-world-concurrent-live.json"],
-  ] as const)("%s with three seats", async (_label, dryRun, golden) => {
+  ] as const)("%s with three participants", async (_label, dryRun, golden) => {
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const stderr = captureStderr();
     const result = await runConcurrentSharedWorld({
@@ -2748,7 +2751,7 @@ describe("concurrent shared-world run directory goldens", () => {
       env,
       deps: { ...deps, analysis: { run: automaticAnalysisBoundary() } },
     }).finally(stderr.stop);
-    // Seats tear down in parallel, so their sandbox receipts append in completion order.
+    // Participants tear down in parallel, so their sandbox receipts append in completion order.
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", result.runId), {
       result,
       stderr: stderr.text(),
@@ -2795,7 +2798,7 @@ describe("concurrent run lifetime", () => {
     expect(status).not.toHaveProperty("outcome");
   });
 
-  it("after every teardown kill fails, reclaim kills the subject and each seat", async () => {
+  it("after every teardown kill fails, reclaim kills the subject and each participant", async () => {
     const { env, created, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const module = await deps.desktopModule!();
     const kill = module.Sandbox.kill!.bind(module.Sandbox);
@@ -2842,7 +2845,7 @@ describe("concurrent run lifetime", () => {
     ]);
   });
 
-  it("publishes the in-progress bundle and each seat's live trace with no Observer attached", async () => {
+  it("publishes the in-progress bundle and each participant's live trace with no Observer attached", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, async () => {});
     const runId = "concurrent-unattached-snapshot";
@@ -2888,8 +2891,8 @@ describe("concurrent run lifetime", () => {
           (await readBundle()).streams.every((stream) =>
             stream.liveActor?.items.some((item) => item.id === "live-click"),
           ),
-        // The seat flush writes at most every 2 s; with the 8 s wait above this stays under the
-        // 20 s test timeout.
+        // The participant flush writes at most every 2 s; with the 8 s wait above this stays under
+        // the 20 s test timeout.
         10_000,
       );
       const midRun = await readBundle();
@@ -2970,7 +2973,7 @@ describe("concurrent shared-world project binding", () => {
 });
 
 describe("the subject state prober", () => {
-  it("snapshots the subject on its cadence while the seats run", async () => {
+  it("snapshots the subject on its cadence while the participants run", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const result = await runConcurrentSharedWorld({
@@ -2991,7 +2994,7 @@ describe("the subject state prober", () => {
 });
 
 describe("RunLabOptions homes on the concurrent route", () => {
-  it("prepareDesktop sees the subject, then each seat; onStream sees each seat's stream start and end", async () => {
+  it("prepareDesktop sees the subject, then each participant; onStream sees each participant's stream start and end", async () => {
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const targets: unknown[] = [];
     const streams: string[] = [];
@@ -3056,7 +3059,7 @@ describe("concurrent shared-world run failure naming", () => {
     });
     expect(result.ok).toBe(false);
     expect(result.error).toEqual({
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      code: "HUMANISH_SHARED_WORLD_FAILED",
       message: "synthetic desktop module load failure The run bundle it left failed verification.",
     });
     const status = JSON.parse(

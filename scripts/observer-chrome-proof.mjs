@@ -227,7 +227,7 @@ try {
         assert.equal(await page.getByLabel("Pinned participant", { exact: true }).count(), 0);
         record.checks.pin = "Visible, persisted on reload, removed when unpinned";
 
-        const toggle = page.getByRole("button", { name: "Toggle run library", exact: true });
+        const toggle = page.getByRole("button", { name: "Toggle study library", exact: true });
         if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
         const side = phone ? page.locator(".drawer-pop .side") : page.locator(".frame > .side");
         await side.waitFor();

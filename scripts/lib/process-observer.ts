@@ -30,7 +30,7 @@ export interface ProcessObservation {
   /** Paths of unix sockets the processes bound, and of the listeners their clients reached. */
   unixSockets: string[];
   tcpRemotes: string[];
-  /** Connected UDP remotes; `*` is an unconnected UDP socket. */
+  /** Connected udp remotes; `*` is an unconnected udp socket. */
   udpRemotes: string[];
   /** Descendants whose descriptors the kernel refused; their sockets are only in the strace log. */
   uninspectable: ObservedProcess[];
@@ -61,7 +61,7 @@ function onPath(name: string): string {
       accessSync(candidate, constants.X_OK);
       return candidate;
     } catch {
-      // Continue PATH.
+      // Continue `PATH`.
     }
   }
   throw new Error(`${name} is not on PATH; unix socket peers cannot be resolved`);
@@ -156,7 +156,7 @@ function fdInodes(io: ObserverIo, fdDir: string): string[] {
   });
 }
 /**
- * Socket inodes a process holds, or DENIED when the kernel refuses its descriptors. A process that
+ * Socket inodes a process holds, or denied when the kernel refuses its descriptors. A process that
  * dropped dumpability (bubblewrap's sandboxed child does) refuses them even to its own user.
  */
 function socketInodes(io: ObserverIo, proc: string, pid: number): string[] | typeof DENIED {
@@ -171,7 +171,7 @@ function socketInodes(io: ObserverIo, proc: string, pid: number): string[] | typ
  * A task that has begun to exit drops its memory map, and the kernel then hands its /proc entries
  * to root; a leader that exited alone is a zombie while its threads run. So when the process's
  * descriptors refuse, each thread's are read. A refusing thread counts as holding nothing only if
- * it has begun to exit (PF_EXITING) or has exited; any other refusal is DENIED.
+ * it has begun to exit (PF_EXITING) or has exited; any other refusal is denied.
  */
 function threadInodes(io: ObserverIo, proc: string, pid: number): string[] | typeof DENIED {
   const dir = path.join(proc, String(pid), "task");
@@ -227,7 +227,7 @@ function ipv4(hex: string): string {
 }
 /**
  * Socket inode to remote address, from /proc/net/{tcp,tcp6,udp,udp6}. TCP listeners are skipped;
- * an unconnected UDP socket's remote is `*`.
+ * an unconnected udp socket's remote is `*`.
  */
 export function parseInetTable(text: string, protocol: "tcp" | "udp"): Map<string, string> {
   const table = new Map<string, string>();

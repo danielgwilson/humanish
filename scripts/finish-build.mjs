@@ -1,6 +1,6 @@
-// Post-build placement of the two artifacts that are BUILT ELSEWHERE and shipped inside dist:
+// Post-build placement of the two artifacts that are built elsewhere and shipped inside dist:
 // the Observer's single-file app and the TUI bundle. Both are loaded at runtime by path, so a
-// missing one is a broken command rather than a compile error — this script fails loudly instead.
+// missing one is a broken command rather than a compile error: this script fails loudly instead.
 
 import { chmodSync, copyFileSync, existsSync, statSync } from "node:fs";
 

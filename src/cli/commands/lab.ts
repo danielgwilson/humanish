@@ -165,7 +165,7 @@ async function handleLabPreflight(
       spend: { e2bDesktop: false, model: false },
       warnings: [],
       error: {
-        code: "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION",
+        code: "HUMANISH_STUDY_PREFLIGHT_INVALID_OPTION",
         message: "--timeout-ms must be a positive integer.",
       },
     };

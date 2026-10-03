@@ -128,7 +128,7 @@ describe("--participants and its older spelling --lanes", () => {
     for (const result of [participants, lanes]) {
       expect(result.exitCode).toBe(2);
       // No earlier run exists, so the selection reaches the rerun check and stops there.
-      expect(JSON.parse(result.stdout).error.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
+      expect(JSON.parse(result.stdout).error.code).toBe("HUMANISH_COMPUTER_USE_RERUN_INVALID");
     }
     expect(participants.stderr).not.toContain("--lanes");
     expect(lanes.stderr.split(LANES_NOTE)).toHaveLength(2);

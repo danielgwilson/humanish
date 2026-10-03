@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { runNotFoundMessage } from "../run/run-not-found.js";
 import { accessSync, constants } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -103,6 +104,11 @@ export function attachObserverRuntimeStreamUrls(
   );
 }
 
+async function runNotFound(cwd: string, runInput: string): Promise<ObserverResult> {
+  const message = await runNotFoundMessage(cwd, runInput);
+  return observerRunError(cwd, runInput, "HUMANISH_RUN_NOT_FOUND", message);
+}
+
 export async function renderObserver(
   cwdInput: string,
   runInput: string,
@@ -130,7 +136,7 @@ export async function renderObserver(
   }
 
   if (!selection) {
-    return observerRunError(cwd, runInput, "HUMANISH_RUN_NOT_FOUND", `Run not found: ${runInput}`);
+    return runNotFound(cwd, runInput);
   }
 
   let preparedRunPaths;
@@ -179,7 +185,7 @@ export async function renderObserver(
   const loaded = await loadRunBundlePrepared(selectedPhysicalCwd, preparedRunPaths);
   await validatePreparedRunArtifactPaths(preparedRunPaths);
   if (!loaded) {
-    return observerRunError(cwd, runInput, "HUMANISH_RUN_NOT_FOUND", `Run not found: ${runInput}`);
+    return runNotFound(cwd, runInput);
   }
 
   if (

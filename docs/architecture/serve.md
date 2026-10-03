@@ -16,7 +16,7 @@ reverse proxy you own).
 ## What serve is
 
 `humanish serve` is the third observer surface, and the first whose subject is
-the LIBRARY rather than a run:
+the library rather than a run:
 
 - `humanish watch` serves one attached run: the process that created the run
   serves it and may inject runtime stream URLs for live following (see the
@@ -37,8 +37,8 @@ One shared validator (`validateExposure` in `src/observer/exposure.ts`) governs
 both `serve` and `watch`. `--expose` must always resolve to a reachable public
 origin (a `--tunnel` or a `--public-url`), even under `--safe`, since an
 origin-less exposed server is an unreachable loopback no-op. With an origin
-present, exposure requires EITHER edge auth (`--oauth` on the ngrok edge, or a
-`--public-url` you secure) OR `--safe` (share_ready runs only). A tunnel with
+present, exposure requires either edge auth (`--oauth` on the ngrok edge, or a
+`--public-url` you secure) or `--safe` (share_ready runs only). A tunnel with
 neither is a wide-open public URL to local bundles and is refused.
 
 | `--expose` | `--tunnel` | `--oauth` | `--public-url` | `--safe` | Outcome                                                                                       |
@@ -46,11 +46,11 @@ neither is a wide-open public URL to local bundles and is refused.
 | no         | no         | no        | no             | any      | `loopback` (no exposure)                                                                      |
 | yes        | yes        | yes       | no             | any      | OK → `exposed` (edge-authed; all runs unless `--safe`)                                        |
 | yes        | yes        | no        | no             | yes      | OK → `share-safe-open` (public, share_ready only)                                             |
-| yes        | yes        | no        | no             | no       | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`                                |
+| yes        | yes        | no        | no             | no       | **refused** `HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`                                |
 | yes        | no         | no        | yes            | any      | OK → `exposed` (operator-secured edge)                                                        |
-| yes        | no         | no        | no             | any      | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN` (no reachable origin, even with `--safe`) |
-| yes        | no         | yes       | no             | any      | **REFUSED** `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL`                                            |
-| yes        | yes        | yes       | yes            | any      | **REFUSED** `HUMANISH_SERVE_OPTION_CONFLICT` (tunnel + public-url)                            |
+| yes        | no         | no        | no             | any      | **refused** `HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN` (no reachable origin, even with `--safe`) |
+| yes        | no         | yes       | no             | any      | **refused** `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL`                                            |
+| yes        | yes        | yes       | yes            | any      | **refused** `HUMANISH_SERVE_OPTION_CONFLICT` (tunnel + public-url)                            |
 
 Guard order (all before any bind/spawn): `--allow-email`/`--allow-domain` without
 `--oauth` → `HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH`; `--oauth` without `--tunnel` →
@@ -61,8 +61,8 @@ http(s) origin → conflict; a tunnel/public-url without `--expose` →
 no `--public-url` (even under `--safe`) →
 `HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN`; `--expose` with an origin but without
 edge auth and without `--safe` →
-`HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`. `--oauth google` with NO
-allow rule is ALLOWED (any Google account authenticates) but pushes a prominent
+`HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`. `--oauth google` with no
+allow rule is allowed (any Google account authenticates) but pushes a prominent
 warning recommending at least one `--allow-email`/`--allow-domain`.
 
 The `watch` surface reuses the same validator but is stricter: a live,
@@ -72,7 +72,7 @@ therefore refused outright with `HUMANISH_WATCH_SAFE_NOT_APPLICABLE` (exit 2), s
 never silently ignored.
 `watch --expose` always requires edge auth (`--tunnel --oauth` or `--public-url`),
 and is also refused with `--dry-run`/`--detach`/`--json` (no live desktop / no
-attached follow). An exposed watch serves ONLY the attached live run: its
+attached follow). An exposed watch serves only the attached live run: its
 `/_humanish/history.json` lists just that run and every other run id 404s
 byte-identically to a nonexistent one, so a remote viewer can never enumerate or
 reach any prior run's raw evidence (loopback watch still serves the full library).
@@ -124,7 +124,7 @@ which adds `sandbox allow-scripts` to that policy.
 ## Keep stream URLs off the library surface
 
 Live desktop stream URLs (auth-bearing hosted-VNC links) are never served by the
-LIBRARY surface, in any mode, and the guarantee is layered:
+library surface, in any mode, and the guarantee is layered:
 
 - **Structural:** runtime stream URLs live in a `WeakMap` keyed by the watch
   process's in-memory `ObserverResult` (`src/observer/render.ts`) and are never
@@ -144,12 +144,14 @@ disk). See observer.md.
 
 ## Know what `share_ready` checks
 
-`share_ready` was designed as the bar for FEEDBACK payloads: evidence eligible
+`share_ready` was designed as the bar for feedback payloads: evidence eligible
 to leave the machine inside a public issue draft. Serve's `share-safe-open` mode
-extends that same gate to arbitrary-audience BROWSING, which is a broader
-exposure of the same artifacts. The honest caveat carries over unchanged:
+extends that same gate to arbitrary-audience browsing, which is a broader
+exposure of the same artifacts. The same caveat carries over:
 `humanish verify` does not yet detect free-form PII/PHI (names, emails, medical
-identifiers; see the README's public-safety boundary and issue #108), so
+identifiers; see
+[Share evidence safely](../../README.md#share-evidence-safely) and the
+[open detector issue](https://github.com/danielgwilson/humanish/issues/108)), so
 `share_ready` means the automated secret/path scan passed, not that a human would
 publish every pixel. Maintainers should treat open mode accordingly: synthetic
 data upstream, review before exposing, and treat `--safe` without edge auth as
@@ -168,13 +170,13 @@ any mutating route ships, the contract is:
 - an operator identity distinct from a viewer, sourced from the edge/control
   plane, not from a humanish-minted cookie;
 - mutating routes require CSRF defenses appropriate to the chosen edge session;
-- the spend rule is invariant 3 applied to remote hands: a phone-initiated LIVE
+- the live-spend rule applies to remote hands too: a phone-initiated live
   run needs its own affirmative declaration at serve startup (an explicit opt-in
   naming the lab and budget), never a default the viewer UI can reach.
 
 ## Why not Better Auth here
 
-Better Auth is a strong TypeScript auth framework, but it is deliberately NOT
+Better Auth is a strong TypeScript auth framework, but it is deliberately not
 used for this CLI serve surface: serve is an ephemeral, no-database,
 per-invocation loopback server whose only job is to hand persisted evidence to an
 already-authenticated edge. A password/session/social-login framework with a
@@ -188,6 +190,6 @@ where accounts, org membership, and durable sessions actually exist.
 - **Traffic Policy for ngrok.** Migrate off the deprecated `--oauth*` flags to a
   generated Traffic Policy YAML once ngrok requires it (the `yaml` dep is already
   available); pin the behavior in `tests/observer/tunnel.test.ts` first.
-- **Shipped in 0.18.0: `watch --expose`.** Remote LIVE following of a run,
+- **Shipped in 0.18.0: `watch --expose`.** Remote live following of a run,
   including its live E2B desktop stream, behind the same edge auth. It is the one
   surface that deliberately serves runtime stream URLs. See observer.md.
