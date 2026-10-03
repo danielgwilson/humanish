@@ -28,7 +28,7 @@ vi.mock("node:child_process", async (importOriginal) =>
   (await import("./subprocess-spy.js")).countedChildProcess(await importOriginal(), subprocess),
 );
 
-type Entry = "runLab" | "runner";
+type Entry = "runStudy" | "runner";
 type Json = unknown;
 
 interface Calls {
@@ -114,7 +114,7 @@ async function runEntry(
   subprocess.calls = 0;
   let result: Json;
   try {
-    if (entry === "runLab") {
+    if (entry === "runStudy") {
       const outcome = await runStudyWith(
         config,
         {
@@ -187,15 +187,15 @@ function summary(result: Json): Json {
 }
 
 /** The runner usually returns what runStudyWith returned; say so instead of repeating it. */
-function sameAsRunLab(runner: Record<string, Json>, runLabRecord: Json): Record<string, Json> {
-  if (runLabRecord === undefined) return runner;
+function sameAsRunStudy(runner: Record<string, Json>, runStudyRecord: Json): Record<string, Json> {
+  if (runStudyRecord === undefined) return runner;
   const { runner: name, ...rest } = runner;
   const strip = (record: Json): string => {
     const value = structuredClone(record) as { result?: Record<string, Json> };
     if (value.result) delete value.result.route;
     return JSON.stringify(value);
   };
-  return strip(rest) === strip(runLabRecord) ? { runner: name, sameAsRunLab: true } : runner;
+  return strip(rest) === strip(runStudyRecord) ? { runner: name, sameAsRunStudy: true } : runner;
 }
 
 function normalize(value: Json, paths: string[]): Json {
@@ -219,13 +219,13 @@ async function pin(testCase: AdmissionCase): Promise<void> {
   const config = (
     options.parsed && parsed.ok ? parsed.config : (testCase.typed ?? testCase.raw)
   ) as StudyConfig;
-  for (const entry of testCase.entries ?? (["runLab", "runner"] as const)) {
+  for (const entry of testCase.entries ?? (["runStudy", "runner"] as const)) {
     const pinned = await runEntry(entry, config, options);
     if (pinned.runs === false) {
       const calls = pinned.calls as Calls;
       expect(calls.desktop + calls.executor + calls.provider).toBe(0);
     }
-    record[entry] = entry === "runner" ? sameAsRunLab(pinned, record.runLab) : pinned;
+    record[entry] = entry === "runner" ? sameAsRunStudy(pinned, record.runStudy) : pinned;
   }
   records[testCase.name] = record;
 }
@@ -246,7 +246,7 @@ describe("library admission today", () => {
     "refuses a live scripted run with no browser before any side effect",
     async () => {
       const raw = lab("scriptedAppUrl", { scenario: { mode: "live", ref: "adm-journey" } });
-      for (const entry of ["runLab", "runner"] as const) {
+      for (const entry of ["runStudy", "runner"] as const) {
         expect(
           await runEntry(entry, raw as unknown as StudyConfig, { isolateBrowser: true }),
         ).toMatchObject({

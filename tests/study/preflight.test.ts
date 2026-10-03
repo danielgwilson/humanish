@@ -8,7 +8,6 @@ import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e
 import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 interface CliResult {
   exitCode: number;
@@ -120,22 +119,22 @@ describe("lab preflight", () => {
     await withTempLab(
       {
         "humanish/studies/target-roster.yaml": [
-          "schema: humanish.lab.v2",
+          "schema: humanish.study.v3",
           "id: target-roster",
+          "route: computer-use",
+          "mode: live",
           "subject:",
           "  source: app-url",
           "  appUrl: http://127.0.0.1:3000/",
           "execution:",
           "  target: e2b-desktop",
-          "actors:",
-          "  - type: openai-computer-use",
-          "    lanes:",
-          "      - id: reviewer",
-          "        target: https://reviewer-preview.example.test/work",
-          "      - id: operator",
-          "        target: https://operator-preview.example.test/work",
-          "scenario:",
-          "  mode: live",
+          "actor:",
+          "  type: openai-computer-use",
+          "participants:",
+          "  - id: reviewer",
+          "    target: https://reviewer-preview.example.test/work",
+          "  - id: operator",
+          "    target: https://operator-preview.example.test/work",
           "policies:",
           "  allowPublicTargets: true",
         ].join("\n"),
@@ -208,14 +207,14 @@ describe("lab preflight", () => {
     await withTempLab(
       {
         "humanish/studies/first-run.yaml": [
-          "schema: humanish.lab.v2",
+          "schema: humanish.study.v3",
           "id: first-run",
+          "route: preview",
+          "mode: dry-run",
           "subject:",
           "  source: this-repo",
-          "actors:",
-          "  - type: synthetic-persona",
-          "scenario:",
-          "  mode: dry-run",
+          "actor:",
+          "  type: synthetic-persona",
         ].join("\n"),
       },
       async (cwd) => {
@@ -237,17 +236,17 @@ describe("lab preflight", () => {
 
 function publicPreviewLab(target: string): string {
   return [
-    "schema: humanish.lab.v2",
+    "schema: humanish.study.v3",
     "id: preview",
+    "route: computer-use",
+    "mode: live",
     "subject:",
     "  source: app-url",
     `  appUrl: ${target}`,
     "execution:",
     "  target: e2b-desktop",
-    "actors:",
-    "  - type: openai-computer-use",
-    "scenario:",
-    "  mode: live",
+    "actor:",
+    "  type: openai-computer-use",
     "policies:",
     "  allowPublicTargets: true",
   ].join("\n");
@@ -305,8 +304,7 @@ async function withTempLab<T>(
     for (const [relativePath, contents] of Object.entries(files)) {
       const filePath = path.join(cwd, relativePath);
       await mkdir(path.dirname(filePath), { recursive: true });
-      const v2 = contents.startsWith("schema: humanish.lab.v2");
-      await writeFile(filePath, v2 ? studyFileText(contents, cwd) : `${contents}\n`, "utf8");
+      await writeFile(filePath, `${contents}\n`, "utf8");
     }
     return await callback(cwd);
   } finally {

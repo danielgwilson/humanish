@@ -145,7 +145,7 @@ describe("the cliVersions qualification bypass", () => {
       expect(parseStudyDocument(raw).ok).toBe(false);
   });
 
-  it("has no CLI flag and no RunLabOptions or LabDeps field", () => {
+  it("has no CLI flag and no RunStudyOptions or StudyDeps field", () => {
     const flags: string[] = [];
     const visit = (command: ReturnType<typeof createProgram>): void => {
       for (const option of command.options) flags.push(option.flags);

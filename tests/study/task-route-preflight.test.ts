@@ -62,7 +62,7 @@ describe("declared task protocol admission", () => {
   );
 
   it.each(fixtures.filter(({ supported }) => !supported))(
-    "refuses live runLab $name before any runner side effect",
+    "refuses live runStudy $name before any runner side effect",
     async ({ config }) => {
       const parsed = validConfig(config);
       parsed.actors[0]!.tasks = tasks; // Direct library caller bypasses parse.

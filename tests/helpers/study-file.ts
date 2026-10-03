@@ -1,6 +1,8 @@
-// Test studies on disk are humanish.study.v3 files under humanish/studies/. Many fixtures are
-// still written in the humanish.lab.v2 shape, so this converts them the way `humanish migrate`
-// does. The converter plans the v2 and the v3 study and refuses when the plans differ, so the file
+// Test studies on disk are humanish.study.v3 files under humanish/studies/. The shared fixtures in
+// tests/admission/fixtures.ts and tests/fixtures/task-route-preflight/labs.json stay in the
+// humanish.lab.v2 shape, because the library admission tests also pass them to the runner as
+// configs, and doctor.test.ts and summary-keys.test.ts build theirs from those. This converts them
+// the way `humanish migrate` does. The converter plans the v2 and the v3 study and refuses when the plans differ, so the file
 // a test writes runs the same as the object it describes.
 import { parse, stringify } from "yaml";
 

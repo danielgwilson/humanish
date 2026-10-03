@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import { studySetupChecks, type StudySetupCheckArgs } from "../../src/study/doctor.js";
-import { studyFileText } from "../helpers/study-file.js";
+import { stringify } from "yaml";
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -26,13 +26,14 @@ const codex = (authStatus: DetectedLocalAgent["authStatus"]): DetectedLocalAgent
 
 /** A hosted local-agent Codex lab, with the declared model and effort a run would use. */
 const hostedLab = (actor: Record<string, unknown> = {}) =>
-  studyFileText({
-    schema: "humanish.lab.v2",
+  stringify({
+    schema: "humanish.study.v3",
     id: "hosted-codex",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "https://preview.example.test/" },
-    actors: [{ type: "local-agent", localAgent: "codex", ...actor }],
+    actor: { type: "local-agent", localAgent: "codex", ...actor },
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "live" },
     review: { analysis: false },
     policies: { allowPublicTargets: true },
   });

@@ -14,7 +14,7 @@ export interface AdmissionCase {
   readonly parser: string;
   readonly options?: AdmissionOptions;
   /** Entry points beyond the parser. Default: runStudyWith and the route's exported runner. */
-  readonly entries?: readonly ("runLab" | "runner")[];
+  readonly entries?: readonly ("runStudy" | "runner")[];
 }
 
 export interface AdmissionOptions {

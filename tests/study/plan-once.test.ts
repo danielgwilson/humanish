@@ -80,7 +80,7 @@ const runs: readonly (readonly [string, () => StudyConfig, string, number])[] = 
   ["local browser study", () => parsed("cuAppUrl", { execution: { target: "local" } }), "cua", 1],
 ];
 
-describe("runLab plans each lab once", () => {
+describe("runStudy plans each study once", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-plan-once-"));

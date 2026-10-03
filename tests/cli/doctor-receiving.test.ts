@@ -5,29 +5,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { doctor } from "../../src/cli/doctor.js";
 import { saveCommsConnection } from "../../src/comms/connections.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 const noAgents = { which: async () => undefined };
-const manifest = studyFileText(
-  [
-    "schema: humanish.lab.v2",
-    "id: preview",
-    "subject:",
-    "  source: app-url",
-    "  appUrl: https://preview.example.test/",
-    "actors:",
-    "  - type: openai-computer-use",
-    "execution:",
-    "  target: e2b-desktop",
-    "scenario:",
-    "  mode: live",
-    "policies:",
-    "  allowPublicTargets: true",
-    "comms:",
-    "  email:",
-    "    connection: study-mail",
-  ].join("\n"),
-);
+const manifest = [
+  "schema: humanish.study.v3",
+  "id: preview",
+  "route: computer-use",
+  "mode: live",
+  "subject:",
+  "  source: app-url",
+  "  appUrl: https://preview.example.test/",
+  "actor:",
+  "  type: openai-computer-use",
+  "execution:",
+  "  target: e2b-desktop",
+  "policies:",
+  "  allowPublicTargets: true",
+  "comms:",
+  "  email:",
+  "    connection: study-mail",
+].join("\n");
 
 describe("doctor checks the selected receiving credential without contacting its provider", () => {
   let cwd: string;

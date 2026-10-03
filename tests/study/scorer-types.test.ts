@@ -72,7 +72,7 @@ function refused(): unknown[] {
   ];
 }
 
-describe("RunLabOptions.scorer", () => {
+describe("RunStudyOptions.scorer", () => {
   it("takes inline scorers, union scorers, and narrowed ones through their helper", () => {
     expect(accepted()).toHaveLength(5);
     expect(refused()).toHaveLength(3);

@@ -262,7 +262,7 @@ describe("automatic analysis admission and producer boundary", () => {
     await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
   });
   it.each(["computer-use", "scripted", "terminal", "shared-world"])(
-    "runLab %s dry-run skips post-run spend exactly once",
+    "runStudy %s dry-run skips post-run spend exactly once",
     async (route) => {
       const base = fixtures.find((row) => row.route === route)!.config;
       const run = vi.fn();
