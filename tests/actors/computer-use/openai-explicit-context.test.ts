@@ -175,6 +175,17 @@ describe("an explicit-context conversation", () => {
     expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
   });
 
+  it("leaves a threaded conversation's requests as they were", async () => {
+    const { bodies, provider } = await runTurns(3);
+    expect(bodies[2]!.previous_response_id).toBe("resp_2");
+    expect(bodies[2]!.store).toBeUndefined();
+    expect(bodies[2]!.include).toBeUndefined();
+    expect(bodies[2]!.input.map((item) => item.type)).toEqual(["computer_call_output"]);
+    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
+  });
+});
+
+describe("the mode switch", () => {
   it("switches mid-session and records when, keeping what came before the switch", async () => {
     const bodies: SentBody[] = [];
     let n = 0;
@@ -259,15 +270,6 @@ describe("an explicit-context conversation", () => {
       switchedAtRequest: 3,
       requests: [{ mode: "threaded" }, { mode: "threaded" }, { mode: "explicit_context" }],
     });
-  });
-
-  it("leaves a threaded conversation's requests as they were", async () => {
-    const { bodies, provider } = await runTurns(3);
-    expect(bodies[2]!.previous_response_id).toBe("resp_2");
-    expect(bodies[2]!.store).toBeUndefined();
-    expect(bodies[2]!.include).toBeUndefined();
-    expect(bodies[2]!.input.map((item) => item.type)).toEqual(["computer_call_output"]);
-    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
   });
 });
 
