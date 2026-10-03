@@ -6,10 +6,8 @@
 // optional because older SDKs lack it (the computer-use route then falls back to launch). It
 // satisfies the executor's E2BDesktopLike port (src/substrates/e2b/desktop-executor.ts) as is.
 
-import { sep } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { protectDesktopScreenshotCleanup } from "./desktop-screenshot-cleanup.js";
+import { desktopPeerAdvice, humanishInstall } from "./peer-install.js";
 
 export interface E2BDesktopModule {
   Sandbox: {
@@ -172,14 +170,9 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
     return guardDesktopSandboxCreate((await import("@e2b/desktop")) as unknown as E2BDesktopModule);
   } catch (error) {
     if (isMissingE2BDesktopDependency(error)) {
+      const { where, advice } = desktopPeerAdvice(humanishInstall());
       throw new Error(
-        runningFromProject()
-          ? "Live E2B desktop launch requires the optional peer @e2b/desktop. Install it beside humanish " +
-              "in this project: `npm i -D @e2b/desktop`."
-          : "Live E2B desktop launch requires the optional peer @e2b/desktop, and humanish is running from an " +
-              "npx cache. Node resolves the peer relative to humanish itself, so a copy installed in this project " +
-              "is not found. Install both into the project and run it from there: " +
-              "`npm i -D humanish @e2b/desktop` then `npx humanish run <study>`.",
+        `Live E2B desktop launch requires the optional peer @e2b/desktop${where}. ${advice}`,
       );
     }
 
@@ -325,19 +318,6 @@ async function reclaimFailedDesktopCreate(
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }
-}
-
-/**
- * Is humanish running from this project's node_modules, or from an npx cache?
- *
- * It decides which advice is true. `npx humanish@latest` resolves its optional peer relative to
- * itself, so "install @e2b/desktop in this project" is advice that cannot work there, and that
- * message cost two cold verification runs before the difference was noticed. A one-shot npx
- * invocation cannot do a live desktop run at all; humanish has to be installed alongside the peer.
- */
-function runningFromProject(): boolean {
-  const here = fileURLToPath(import.meta.url);
-  return here.startsWith(`${process.cwd()}${sep}node_modules${sep}`);
 }
 
 function isMissingE2BDesktopDependency(error: unknown): boolean {

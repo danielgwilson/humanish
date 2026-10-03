@@ -32,11 +32,12 @@ export interface FirstRunEnvironment {
    */
   hasDesktopSdk: boolean;
   /**
-   * Whether humanish itself is installed in this project rather than running from an npx cache.
-   * It changes what advice is true: a one-shot `npx humanish` resolves its optional peer relative
-   * to itself, so "install the peer here" cannot work; humanish has to be installed alongside it.
+   * The command that installs `@e2b/desktop` where this humanish resolves it, ahead of
+   * `npx humanish`: beside humanish in its project, or humanish and the peer together in this one
+   * when humanish runs from an npx cache, a global install or another directory. Undefined where
+   * `npm i` would prune a node_modules that no package.json declares.
    */
-  installedInProject: boolean;
+  desktopPeerCommand: string | undefined;
   /** A provider API key for the model. */
   hasProviderKey: boolean;
   /** The coding agents already signed in locally: Codex, Claude Code, or both. */
@@ -134,13 +135,16 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
       : `${preferredAgent(env)?.label} (already signed in, so no API key is needed)`;
     // Everything the step needs, in one line. Splitting it across two commands means the second
     // one fails, which is the same dead end this guidance exists to remove.
+    if (!env.hasDesktopSdk && env.desktopPeerCommand === undefined) {
+      steps.push({
+        command: `${HUMANISH} doctor`,
+        why: "the hosted starter needs the desktop SDK, and installing it from here would remove what this directory's node_modules holds; doctor names the command to run from your project's directory",
+      });
+      return steps;
+    }
     const command = env.hasDesktopSdk
       ? `${HUMANISH} run try-live`
-      : env.installedInProject
-        ? `npm i -D @e2b/desktop && ${HUMANISH} run try-live`
-        : // Running from an npx cache: installing only the peer here would not be found, because
-          // Node resolves it relative to humanish. Both, or neither.
-          `npm i -D humanish @e2b/desktop && ${HUMANISH} run try-live`;
+      : `${env.desktopPeerCommand} && ${HUMANISH} run try-live`;
     steps.push({
       command,
       why:

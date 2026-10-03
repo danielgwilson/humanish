@@ -23,6 +23,11 @@ import {
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
+import {
+  desktopPeerAdvice,
+  humanishInstall,
+  type HumanishInstall,
+} from "../substrates/e2b/peer-install.js";
 import { validateCwd } from "../run/project.js";
 import { pathExists, readTextIfExists, validateInitProjectPaths } from "./init-paths.js";
 import { planGitignore, planPackageJson, type PlannedWrite } from "./init-plan.js";
@@ -409,6 +414,19 @@ function validateLocalBrowserStarter(
  * `e2b auth login`, the `humanish keys set` store) and only their presence is read, never a value.
  * Local authentication status is not a fresh provider/account-validity test.
  */
+
+/**
+ * The first-run hint's peer install, ahead of `npx humanish`: beside humanish in its project, else
+ * humanish and the peer together here, where `npx humanish` then finds them. None where `npm i`
+ * would prune a node_modules that no package.json declares.
+ */
+function initDesktopPeerCommand(install: HumanishInstall): string | undefined {
+  if (install.kind === "project") return desktopPeerAdvice(install).command;
+  if ((install.kind === "one-shot" || install.kind === "other") && install.unmanagedCwd)
+    return undefined;
+  return "npm i -D humanish @e2b/desktop";
+}
+
 async function firstRunEnvironment(
   env: NodeJS.ProcessEnv,
   cwd: string,
@@ -431,10 +449,8 @@ async function firstRunEnvironment(
   } catch {
     hasDesktopSdk = false;
   }
-  const { fileURLToPath } = await import("node:url");
-  const here = fileURLToPath(import.meta.url);
   return {
-    installedInProject: here.startsWith(path.join(process.cwd(), "node_modules") + path.sep),
+    desktopPeerCommand: initDesktopPeerCommand(humanishInstall()),
     hasDesktopSdk,
     hasE2bKey: present("E2B_API_KEY"),
     hasProviderKey: present("OPENAI_API_KEY"),
