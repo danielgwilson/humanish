@@ -7,6 +7,7 @@ import { checkCommsConnection, configureCommsLab } from "../../comms/setup.js";
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { resolveLabManifest } from "../../lab/discover.js";
+import { oldStudyOption, studyOptionValue } from "../deprecations.js";
 import { runCommsCatchHost } from "../../comms/catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "../../comms/sandbox-catch.js";
 import {
@@ -35,7 +36,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
   const connections = comms
     .command("connections")
     .description(
-      "Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.",
+      "Manage project-local non-secret connection profiles. A study explicitly selects its receiving connection.",
     );
   connections
     .command("list")
@@ -50,7 +51,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .command("add")
     .argument("[name]", "Project connection name.", "agentmail")
     .description(
-      "Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.",
+      "Save an AgentMail connection profile. Does not write a key, alter a study or contact the provider.",
     )
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--provider <id>", "Installed provider id.", "agentmail")
@@ -69,7 +70,8 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     )
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
-    .option("--lab <path>", "Check the connection selected by this exact lab.")
+    .option("--study <path>", "Check the connection this study selects.")
+    .addOption(oldStudyOption("path"))
     .option("--online", "Make a read-only provider authentication request.")
     .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -77,17 +79,25 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
   comms
     .command("configure")
     .description(
-      "Preview or save a local receiving-enabled copy of a supported lab. No provider requests.",
+      "Preview or save a local receiving-enabled copy of a supported study. No provider requests.",
     )
-    .requiredOption("--lab <path>", "Exact source lab path or handle.")
+    // Required, but checked in the action, so --lab still works for one minor.
+    .option("--study <path>", "Source study path or name. Required.")
+    .addOption(oldStudyOption("path"))
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
-    .option("--apply", "Save the local copy; original lab remains unchanged.")
+    .option("--apply", "Save the local copy; the source study stays unchanged.")
     .option(
       "--plan-token <digest>",
       "Require the source and destination to match a previous preview.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
+    .hook("preAction", (command) => {
+      const options = command.opts<{ study?: string; lab?: string }>();
+      // The message commander gives a missing required option.
+      if (options.study === undefined && options.lab === undefined)
+        command.error("error: required option '--study <path>' not specified");
+    })
     .action((options, command) => handleCommsConfigure(io, options, command));
   comms
     .command("recover")
@@ -104,7 +114,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
   comms
     .command("catch")
     .description(
-      "Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.",
+      "Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your study's comms.email.external.catchBaseUrl at this server.",
     )
     .summary("Run the email catch on this host.")
     .option("--port <port>", PORT_OPTION_DESCRIPTION, String(DEFAULT_SANDBOX_CATCH_PORT))
@@ -186,6 +196,7 @@ async function handleCommsCheck(
   options: {
     cwd: string;
     connection: string;
+    study?: string;
     lab?: string;
     online?: boolean;
     envFile?: string;
@@ -195,18 +206,19 @@ async function handleCommsCheck(
   if (!(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })))
     return;
   let connection = options.connection;
-  if (options.lab) {
-    const lab = await resolveLabManifest(options.cwd, options.lab);
-    if (!lab.ok || lab.config.comms?.email?.kind !== "real") {
+  const study = studyOptionValue(command, io, options);
+  if (study) {
+    const resolved = await resolveLabManifest(options.cwd, study);
+    if (!resolved.ok || resolved.config.comms?.email?.kind !== "real") {
       const result = {
         ok: false,
-        message: "This lab does not select a real email connection.",
+        message: "This study does not select a real email connection.",
       };
       writeResult(command, io, result, messageOutput);
       io.setExitCode(2);
       return;
     }
-    connection = lab.config.comms.email.connection;
+    connection = resolved.config.comms.email.connection;
   }
   const result = await checkCommsConnection({
     cwd: resolve(options.cwd),
@@ -222,14 +234,24 @@ async function handleCommsConfigure(
   io: CliIo,
   options: {
     cwd: string;
-    lab: string;
+    study?: string;
+    lab?: string;
     connection: string;
     apply?: boolean;
     planToken?: string;
   },
   command: Command,
 ): Promise<void> {
-  const result = await configureCommsLab({ ...options, cwd: resolve(options.cwd) });
+  const study = studyOptionValue(command, io, options);
+  // The preAction hook refuses a call without either option.
+  if (study === undefined) return;
+  const result = await configureCommsLab({
+    cwd: resolve(options.cwd),
+    lab: study,
+    connection: options.connection,
+    ...(options.apply === undefined ? {} : { apply: options.apply }),
+    ...(options.planToken === undefined ? {} : { planToken: options.planToken }),
+  });
   writeResult(command, io, result, messageOutput);
   io.setExitCode(result.ok ? 0 : 2);
 }

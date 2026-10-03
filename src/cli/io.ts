@@ -12,6 +12,7 @@ import { loadEnvFile } from "../keys/env-file.js";
 import { discoverProviderKeys } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
+import { withQueuedWarnings } from "./deprecations.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
 import type { RunResult } from "../run/results.js";
 
@@ -221,7 +222,7 @@ export type HumanOutput = string | { stdout?: string; error?: CliError | undefin
  * command: the run-not-found and lab-less run messages do.
  */
 const NEXT_COMMAND: Readonly<Record<string, string>> = {
-  HUMANISH_STUDY_NOT_FOUND: "humanish lab list",
+  HUMANISH_STUDY_NOT_FOUND: "humanish study list",
 };
 
 /** `<command> failed: <message>`, then `code: <CODE>`, then `next: <command>` when one is known. */
@@ -246,7 +247,7 @@ export function humanError(error: CliError | undefined): HumanOutput {
   return { error: error ?? { message: "the command failed without a recorded error" } };
 }
 
-/** "humanish lab inspect": the command's path as a person types it. */
+/** "humanish study show": the command's path as a person types it. */
 function commandLabel(command: Command): string {
   const names: string[] = [];
   for (let current: Command | null = command; current !== null; current = current.parent)
@@ -272,7 +273,8 @@ export function writeResult<T>(
 ): void {
   const output = automaticAnalysisEnvelope(result);
   if (wantsJson(command)) {
-    io.writeOut(`${JSON.stringify(output, null, 2)}\n`);
+    // Queued warnings are on stderr already; a JSON caller gets them in warnings[] as well.
+    io.writeOut(`${JSON.stringify(withQueuedWarnings(command, output), null, 2)}\n`);
   } else {
     writeHuman(command, io, formatHuman(output));
     if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {

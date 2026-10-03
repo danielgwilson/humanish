@@ -17,6 +17,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   turns 2 to 4. Across 113 distinct live participant traces the lowest was 1.21; a zero-data-retention
   computer-use participant that kept about 3,100 tokens for 527 turns is near 1.0. The warning does
   not change share safety.
+- `humanish study list`, `humanish study show <study>` and `humanish study check <study>` list the
+  studies in a project, show one study's parsed file and warnings, and check its file and named
+  endpoints. `--study <study>` selects a study on `doctor`, `stats`, `watch`, `comms check` and
+  `comms configure`.
 - `humanish migrate [--dry-run] [--json] [path…]` converts `humanish.lab.v2` study files to
   `humanish.study.v3`.
   - Without paths it converts every v2 file in the six study directories. A file under a `labs/`
@@ -95,13 +99,24 @@ The Unreleased section holds the full notes for the next version until it is tag
   minor removes it.
 - `humanish lab run` is a hidden alias of `humanish run` and is removed in the next minor. It takes
   the same flags and prints "warning: humanish lab run is deprecated and is removed in the next
-  minor. Use humanish run <lab>." on stderr. `humanish lab --help` no longer lists it.
+  minor. Use humanish run <study>." on stderr. `humanish lab --help` no longer lists it.
 - `humanish serve` is a hidden alias of `humanish observe --all` and is removed in the next minor.
   It prints "warning: humanish serve is deprecated and is removed in the next minor. Use humanish
   observe --all." on stderr.
 - `humanish watch --run <id>` is hidden and is removed in the next minor. It prints "warning:
   humanish watch --run is deprecated and is removed in the next minor. Use humanish observe --run
   <id>." on stderr and still shows the saved run.
+- `humanish lab list`, `lab inspect` and `lab preflight` are hidden aliases of `study list`,
+  `study show` and `study check`, and are removed in the next minor. Each prints a warning such as
+  "warning: humanish lab list is deprecated and is removed in the next minor. Use humanish study
+  list." on stderr. The `lab` group no longer shows in `humanish --help`.
+- `--lab` on `doctor`, `stats`, `watch`, `comms check` and `comms configure` is a hidden spelling
+  of `--study`, and is removed in the next minor. It prints a warning such as "warning: humanish
+  doctor --lab is deprecated and is removed in the next minor. Use humanish doctor --study
+  <study>." on stderr. Passing both `--lab` and `--study` is an error.
+- Each deprecation warning above is also the first entry of the JSON result's `warnings` under
+  `--json`. A result without a `warnings` array gains one.
+
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
   carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
   `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
@@ -111,15 +126,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 ### Changed
 
 - The `--json` results that list, show, check and count studies say study where they said lab.
-  - `lab list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
-  - `lab inspect`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.
-  - `lab preflight`: `humanish.lab-preflight-result.v1` is `humanish.study-check.v1`, and `lab`
+  - `study list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
+  - `study show`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.
+  - `study check`: `humanish.lab-preflight-result.v1` is `humanish.study-check.v1`, and `lab`
     and `labId` are `study` and `studyId`.
   - `stats`: `humanish.stats.v1` is `humanish.stats.v2`. `lab` is `study`, `labs` is `studies`,
     and each row's `lab` is `study`.
   - A study that cannot be found or parsed reports `study` where it reported `lab`.
   - The summary the TUI reads is `humanish.study-summary.v1`, with `studyId`.
 
+- `run --json` and `watch --json` list a study file's warnings in the result's `warnings`, as well
+  as on stderr: a `humanish.lab.v2` file, a file under `labs/`, a field the route does not read,
+  and a `.yml` name.
+- The terminal UI says study: its breadcrumbs read `‹ studies / <id>`, its email actions read "Use
+  real email in a study" and "Save study copy", and it starts a run with `humanish run`.
+- Messages that named `humanish lab list`, `lab inspect`, `lab preflight` or `doctor --lab` name
+  `humanish study list`, `study show`, `study check` and `doctor --study`.
 - `humanish init` writes its starter studies as `humanish.study.v3` files under
   `humanish/studies/`, and creates `.humanish/studies/` and `.humanish/local/studies/` where it
   created the `labs/` ones. A starter whose name is already a file under `humanish/labs/` is

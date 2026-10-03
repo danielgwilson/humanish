@@ -166,7 +166,7 @@ export async function doctor(
         name: "setup route",
         ok: true,
         message:
-          "General capabilities only. Use humanish doctor --lab <lab> for the selected participant's requirements and separate analysis readiness.",
+          "General capabilities only. Use humanish doctor --study <study> for the selected participant's requirements and separate analysis readiness.",
       },
     ]),
   ];

@@ -236,7 +236,7 @@ describe("starting a run", () => {
 
     expect(started).toHaveLength(1);
     expect(started[0]?.mode).toBe("dry-run");
-    // Started by the handle that `humanish lab run` resolves, never by the declared id: those are
+    // Started by the handle that `humanish run` resolves, never by the declared id: those are
     // different strings whenever a manifest's filename differs from the id inside it.
     expect(started[0]?.lab).toBe("signup-flow");
   });
@@ -539,7 +539,7 @@ describe("a lab whose live plan is refused", () => {
     "shows an uncapped terminal lab's planner refusal in place of its keys at %i columns",
     async (columns) => {
       // A live terminal lab without scenario.caps parses, and the planner refuses it. The real
-      // summary reads it, so the screen shows the message `humanish lab run` would print.
+      // summary reads it, so the screen shows the message `humanish run` would print.
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-tui-refusal-"));
       try {
         await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });

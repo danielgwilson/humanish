@@ -112,7 +112,7 @@ export function registerTuiCommand(
   parent
     .command("tui")
     .description(
-      "Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish lab list --json, humanish lab inspect <lab> --json and humanish runs --json.",
+      "Browse studies and runs in an interactive terminal UI. It refuses detected agent sessions and non-TTY input or output; agents use humanish study list --json, humanish study show <study> --json and humanish runs --json.",
     )
     .summary("Browse studies and runs in a terminal UI for people.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
@@ -186,8 +186,8 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
         message:
           `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. ` +
           "It renders frames of escape codes into a transcript, and its keys can start runs. " +
-          "`humanish runs --json` lists runs, `humanish lab list --json` lists the labs in this project, " +
-          "and `humanish run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
+          "`humanish runs --json` lists runs, `humanish study list --json` lists the studies in this project, " +
+          "and `humanish run <study> --json` starts one. If you are a person at this keyboard, add --force.",
       },
     };
   }

@@ -109,10 +109,10 @@ function nextCommandsFor(args: {
     return [
       dryRun,
       liveLab === undefined
-        ? { command: "humanish lab list", why: "see the labs this project declares" }
+        ? { command: "humanish study list", why: "see the studies this project declares" }
         : {
-            command: `humanish doctor --lab ${liveLab}`,
-            why: `check what the ${liveLab} lab still needs before a live run`,
+            command: `humanish doctor --study ${liveLab}`,
+            why: `check what the ${liveLab} study still needs before a live run`,
           },
     ];
   }

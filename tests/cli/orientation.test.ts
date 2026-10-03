@@ -69,16 +69,16 @@ describe("readOrientation", () => {
   it("starts an initialized project with the preview, then the live starter lab this host runs", async () => {
     dir = await projectWithLabs(starterLabs);
     const onLinux = (await readOrientation(dir, linux)).nextCommands.map((next) => next.command);
-    expect(onLinux).toEqual(["humanish run first-run", "humanish doctor --lab local-browser"]);
+    expect(onLinux).toEqual(["humanish run first-run", "humanish doctor --study local-browser"]);
     // Local browsers run on Linux x64 and Apple Silicon only.
     const onIntelMac = (await readOrientation(dir, intelMac)).nextCommands.map((n) => n.command);
-    expect(onIntelMac).toEqual(["humanish run first-run", "humanish doctor --lab try-live"]);
+    expect(onIntelMac).toEqual(["humanish run first-run", "humanish doctor --study try-live"]);
   });
 
   it("never suggests a template lab whose subject is a placeholder", async () => {
     dir = await projectWithLabs(["cua-browser", "terminal-cli", "demo-lab"]);
     const commands = (await readOrientation(dir, linux)).nextCommands.map((n) => n.command);
-    expect(commands).toEqual(["humanish run first-run", "humanish lab list"]);
+    expect(commands).toEqual(["humanish run first-run", "humanish study list"]);
   });
 
   it("after a run, offers the live lab, then the last run's verify and Observer", async () => {

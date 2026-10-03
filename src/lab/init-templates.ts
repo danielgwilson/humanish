@@ -35,7 +35,7 @@ description: >-
   Runs one participant on your Codex account in an isolated local browser against your loopback
   app. Needs no E2B or OpenAI API key: inference is remote and uses your Codex account quota.
   Before the first live run, check the Codex login and the local runtime with humanish doctor
-  --lab local-browser.
+  --study local-browser.
 route: computer-use
 mode: live
 subject:

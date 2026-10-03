@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { Command } from "commander";
 import { deriveRunFacts } from "../telemetry.js";
 import { resolveLabManifest } from "../../lab/discover.js";
+import { warnAndQueue } from "../deprecations.js";
 import type { LabResolveFailure } from "../../lab/discover.js";
 import { planLab, resolveLabDryRun } from "../../lab/plan.js";
 import { keyNamesOf } from "../../lab/requirements.js";
@@ -49,9 +50,8 @@ export async function runLabCommand(args: {
 
   // Surface forward-declared-field + .yml warnings on run/watch too, not only on inspect.
   // Otherwise a setting that does nothing is silently swallowed on the path users actually run.
-  for (const warning of resolved.warnings) {
-    args.io.writeErr(`warning: ${warning}\n`);
-  }
+  // Each also goes into the JSON result's warnings[], so a --json caller sees it.
+  for (const warning of resolved.warnings) warnAndQueue(args.command, args.io, warning);
 
   const config = resolved.config;
   // The run's identity: which manifest, where it lives, and whether it is committed, a

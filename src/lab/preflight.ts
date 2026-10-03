@@ -182,7 +182,7 @@ export async function runLabPreflight(
           name: "reachability",
           ok: true,
           message:
-            "metadata-only; no network, sandbox, or model calls. Credentials, local login, dependencies and target reachability were not checked; use humanish doctor --lab <lab> for setup checks.",
+            "metadata-only; no network, sandbox, or model calls. Credentials, local login, dependencies and target reachability were not checked; use humanish doctor --study <study> for setup checks.",
         },
       });
     case "public-preview":

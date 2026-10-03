@@ -30,7 +30,7 @@ export function addRunOptions(command: Command): Command {
     .addOption(freePortOption())
     .option(
       "--count <count>",
-      "Override the participant count of a preview or computer-use lab, or of the synthetic run without a lab.",
+      "Override the participant count of a preview or computer-use study, or of the synthetic run without a study.",
     )
     .option(
       "--rerun-failed-from <run>",
@@ -38,7 +38,7 @@ export function addRunOptions(command: Command): Command {
     )
     .option(
       "--participants <ids>",
-      "With --rerun-failed-from: comma-separated ids of the participants to rerun. The lab's actors[0].lanes[] decide who takes part; ids are their id, or lane-01, lane-02, … by position.",
+      "With --rerun-failed-from: comma-separated ids of the participants to rerun. The study's participants decide who takes part; ids are their id, or lane-01, lane-02, … by position.",
     )
     .option(
       "--scorer <path>",
@@ -53,7 +53,7 @@ export function addRunOptions(command: Command): Command {
     .option("--json", JSON_OPTION_DESCRIPTION);
 }
 
-/** The flags that only a lab file can use, as typed on the command line, when they are set. */
+/** The flags that only a study file can use, as typed on the command line, when they are set. */
 export function studyOnlyFlags(options: RunOptions): string[] {
   return [
     options.scorer === undefined ? [] : ["--scorer"],
@@ -74,7 +74,7 @@ function refuseRun(command: Command, io: CliIo, cwd: string, error: RunResult["e
   io.setExitCode(2);
 }
 
-/** `humanish run [lab]`: the named lab, or the synthetic preview when no lab is given. */
+/** `humanish run [study]`: the named study, or the synthetic preview when no study is given. */
 export async function handleRun(
   io: CliIo,
   named: string | undefined,
@@ -87,7 +87,7 @@ export async function handleRun(
   if (study === undefined && studyOnly.length > 0) {
     refuseRun(command, io, options.cwd, {
       code: "HUMANISH_RUN_OPTION_CONFLICT",
-      message: `${studyOnly.join(", ")} ${studyOnly.length === 1 ? "needs" : "need"} a lab: humanish run <lab>.`,
+      message: `${studyOnly.join(", ")} ${studyOnly.length === 1 ? "needs" : "need"} a study: humanish run <study>.`,
     });
     return;
   }

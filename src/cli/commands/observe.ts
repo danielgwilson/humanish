@@ -7,6 +7,7 @@ import { startExposedObserver, validateExposure } from "../../observer/exposure.
 import type { ExposurePlan, ExposureResult } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { RunResult } from "../../run/results.js";
+import { deprecationMessage, warnAndQueue } from "../deprecations.js";
 import {
   type CliIo,
   collectRepeated,
@@ -284,13 +285,10 @@ export function registerServeCommand(parent: Command, io: CliIo): void {
       .option("--no-open", "Serve without opening a browser.")
       .option("--json", JSON_OPTION_DESCRIPTION),
   ).action((options: ServeOptions, command: Command) => {
-    io.writeErr(SERVE_DEPRECATION);
+    warnAndQueue(command, io, deprecationMessage("humanish serve", "humanish observe --all"));
     return handleServe(io, options, command);
   });
 }
-
-const SERVE_DEPRECATION =
-  "warning: humanish serve is deprecated and is removed in the next minor. Use humanish observe --all.\n";
 
 interface ServeOptions {
   cwd: string;

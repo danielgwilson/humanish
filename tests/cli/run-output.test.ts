@@ -97,7 +97,7 @@ describe("lab run output", () => {
     const { exitCode, output } = await runCli(["run", "--cwd", cwd]);
     expect(exitCode).toBe(2);
     expect(output).toContain(
-      "humanish run needs a lab. List labs with humanish lab list, or run humanish run --dry-run for a sample bundle.",
+      "humanish run needs a study. List studies with humanish study list, or run humanish run --dry-run for a sample bundle.",
     );
   });
 });

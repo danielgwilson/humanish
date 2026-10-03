@@ -93,7 +93,7 @@ export function ConnectionsScreen({
                 ? [{ id: "check", label: "Test authentication (read-only)" }]
                 : []),
               ...(status.credential.present && configured && receivingAvailable
-                ? [{ id: "labs", label: "Use real email in a lab" }]
+                ? [{ id: "labs", label: "Use real email in a study" }]
                 : []),
             ]
           : []),
@@ -112,7 +112,7 @@ export function ConnectionsScreen({
           ? labs.map((lab, index) => ({ id: `lab-${index}`, label: lab.title }))
           : view.kind === "preview"
             ? [
-                { id: "apply", label: "Save lab copy" },
+                { id: "apply", label: "Save study copy" },
                 { id: "labs", label: "Cancel" },
               ]
             : view.kind === "saved"
@@ -348,7 +348,7 @@ export function ConnectionsScreen({
             ) : (
               <Text color={PALETTE.warn}>Email receiving in studies is not available yet.</Text>
             )}
-            <Text dimColor>Local capture: lab config · SMS: unavailable</Text>
+            <Text dimColor>Local capture: per study · SMS: unavailable</Text>
           </Box>
         </>
       ) : view.kind === "check" ? (
@@ -419,9 +419,9 @@ export function ConnectionsScreen({
           </Text>
           <Text>{view.path}</Text>
           <Box marginTop={1} flexDirection="column">
-            <Text>Select this lab from Labs to start.</Text>
+            <Text>Select this study from Studies to start.</Text>
             <Text dimColor>Or run this exact path:</Text>
-            <Text>humanish lab run {view.path}</Text>
+            <Text>humanish run {view.path}</Text>
           </Box>
           {menu}
         </>

@@ -15,6 +15,7 @@ import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
+import { oldStudyOption, studyOptionValue } from "../deprecations.js";
 import {
   type CliIo,
   CWD_OPTION_DESCRIPTION,
@@ -29,7 +30,7 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
   addRunOptions(
     parent
       .command("run")
-      .argument("[lab]", "Optional lab id or .yaml path.")
+      .argument("[study]", "Optional study id or .yaml path.")
       .description(
         "Run a study, as a dry run or with live participants. This is the everyday command.",
       )
@@ -96,7 +97,7 @@ export function registerExportCommand(parent: Command, io: CliIo): void {
     .description(
       "Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.",
     )
-    .summary("Export a run as an Observer page or a redacted bundle.")
+    .summary("Export a run as an Observer page or redacted bundle.")
     .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .addOption(
       new Option("--format <format>", "Output format; bundle creates a new standalone workspace.")
@@ -165,14 +166,19 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
       "Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.",
     )
     .summary("Show cost, outcomes and durations across runs.")
-    .option("--lab <id>", "Only runs from this lab id.")
+    .option("--study <id>", "Only runs of this study id.")
+    .addOption(oldStudyOption("id"))
     .option("--since <date>", "Only runs that started on or after this ISO date or datetime.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
-      async (options: { cwd: string; json?: boolean; lab?: string; since?: string }, command) => {
+      async (
+        options: { cwd: string; json?: boolean; study?: string; lab?: string; since?: string },
+        command,
+      ) => {
+        const study = studyOptionValue(command, io, options);
         const result = await computeStats(options.cwd, {
-          ...(options.lab === undefined ? {} : { lab: options.lab }),
+          ...(study === undefined ? {} : { lab: study }),
           ...(options.since === undefined ? {} : { since: options.since }),
         });
         writeResult(command, io, result, formatStatsHuman);
@@ -250,7 +256,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
     .addOption(
       new Option(
         "--preflight",
-        "Reclaim sandboxes left by interrupted `humanish lab preflight` probes (journaled in .humanish/preflight) instead of a run's.",
+        "Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's.",
       ).conflicts("run"),
     )
     .option("--json", JSON_OPTION_DESCRIPTION)

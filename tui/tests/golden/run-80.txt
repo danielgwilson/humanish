@@ -1,5 +1,5 @@
 human(ish)                                                signup-flow · cc33dd44
-‹ labs / signup-flow / run
+‹ studies / signup-flow / run
 
 ✓ 2/2 reached the goal · 1 reported friction
 
