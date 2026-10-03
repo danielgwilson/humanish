@@ -160,7 +160,7 @@ export function registerTelemetryCommand(parent: Command, io: CliIo): void {
             `telemetry: ${result.enabled ? "on" : "off"}${envOff ? " (DO_NOT_TRACK / HUMANISH_TELEMETRY_DISABLED)" : ""}`,
             `state: ${result.statePath}`,
             "",
-            "a complete example of what is sent — there are no other fields:",
+            "every field that is sent, with example values:",
             JSON.stringify(sample, null, 2),
             "",
             "never sent: labs you wrote, subjects, personas, missions, paths, run evidence, key names or values.",

@@ -144,7 +144,7 @@ async function handleTui(
       ok: false,
       error: {
         code: "HUMANISH_TUI_BUNDLE_MISSING",
-        message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; in an install, this package is incomplete — please report it.`,
+        message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; an installed package always ships it, so please report this as a bug.`,
       },
     });
     return;
@@ -355,7 +355,7 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
         ? {
             schema: TUI_ACTION_SCHEMA,
             ok: true as const,
-            message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`,
+            message: `set up humanish here: ${result.changes.filter((change) => change.action !== "skip").length} files written`,
           }
         : {
             schema: TUI_ACTION_SCHEMA,
