@@ -50,8 +50,8 @@ export function focusOf(
 // from running on a route that ignores actors[0].type, such as a this-repo dry run.
 const REMOVED_ACTOR_TYPES: ReadonlySet<string> = new Set(["pi-agent-core", "claude-agent-sdk"]);
 
-// Only actors on a lane a route dispatches. codex-app-server is registered but declares only the
-// "code" lane, which no lab route runs, so naming it would lead to the same dead end.
+// Only actors of a run kind a route dispatches. codex-app-server is registered but declares only
+// the "code" run kind, which no study route runs, so naming it would lead to the same dead end.
 function routableActorTypes(): string[] {
   return [
     ...registeredComputerUseActors(),

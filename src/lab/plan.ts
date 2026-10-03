@@ -1,6 +1,6 @@
 // The route decision. A lab's route follows from its composition (subject.source,
-// execution.target, the first actor's registered lane, subject.topology), never from a declared
-// kind. This is the only function that decides it.
+// execution.target, the first actor's registered run kind, subject.topology), never from a
+// declared kind. This is the only function that decides it.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import { callerDrivingOf, planComputerUseLab } from "../routes/computer-use/plan.js";

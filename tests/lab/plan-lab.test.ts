@@ -59,7 +59,7 @@ describe("planLab", () => {
     );
   });
 
-  it("derives computer-use concurrency, session budget and sandbox time as the lane plan does", async () => {
+  it("derives computer-use concurrency, session budget and sandbox time as the participant plan does", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
       ...(await committedLabs(ROOT))
         .filter(([, config]) => routeOf(config) === "computer-use")

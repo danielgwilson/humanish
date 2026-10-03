@@ -115,7 +115,7 @@ describe("lab preflight", () => {
     );
   });
 
-  it("checks lane targets instead of blocking an unused loopback appUrl", async () => {
+  it("checks participant targets instead of blocking an unused loopback appUrl", async () => {
     await withTempLab(
       {
         "humanish/labs/target-roster.yaml": [

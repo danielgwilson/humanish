@@ -94,10 +94,10 @@ export type ActorCompletionReason =
   | "step_failed"
   | "harness_error";
 
-// "scripted-browser" is the deterministic, model-free browser-actuation lane, distinct from
-// "computer-use" (raw pixels + a model). "terminal" is the autonomous-agent lane: a
+// "scripted-browser" is the deterministic, model-free browser-actuation run kind, distinct from
+// "computer-use" (raw pixels + a model). "terminal" is the autonomous-agent run kind: a
 // real coding agent (Codex) driving a CLI/product from inside an E2B shell, distinct from
-// "code" (the local/app-server Codex lanes that run on the operator's machine).
+// "code" (the local/app-server Codex actors that run on the operator's machine).
 type ActorRunKind = "code" | "computer-use" | "scripted-browser" | "terminal";
 
 // "terminal-exec" is the captured non-interactive exec stream of an in-sandbox agent (stdin
@@ -525,12 +525,13 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
 
 // Terminal agent (src/routes/terminal/route.ts): a real autonomous coding agent (Codex) discovering
 // and using a CLI/product from inside an E2B shell, capturing its non-interactive exec output as
-// a redacted event stream + normalized transcript. The "terminal" lane is the autonomous-agent
-// study lane (distinct from "code", the operator-machine Codex lanes). byoModel is false: the
-// agent runs its own model via the command-scoped runtime auth, not a humanish-supplied provider.
-// keyPlacement is "in-sandbox-command-scoped": the inversion of every other
-// E2B route's external-key default (the agent is the keyed process and it runs inside the sandbox). The
-// terminal-product live route enforces the boundary before sandbox creation.
+// a redacted event stream + normalized transcript. The "terminal" run kind is the
+// autonomous-agent study run kind (distinct from "code", the operator-machine Codex
+// actors). byoModel is false: the agent runs its own model via the command-scoped runtime
+// auth, not a humanish-supplied provider. keyPlacement is "in-sandbox-command-scoped": the
+// inversion of every other E2B route's external-key default (the agent is the keyed process and it
+// runs inside the sandbox). The terminal-product live route enforces the boundary before sandbox
+// creation.
 export const TERMINAL_AGENT_CAPABILITIES: ActorCapabilities = {
   headless: true,
   structuredTrace: true,

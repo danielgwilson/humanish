@@ -104,7 +104,7 @@ it("budget reached: the running estimate crosses maxUsd before the next turn", a
   await expectGolden("budget-reached-max-usd", await outcome(probe, options));
 });
 
-it("study budget: overRunBudget stops the lane as budget_reached", async () => {
+it("study budget: overRunBudget stops the participant as budget_reached", async () => {
   const probe = new Probe();
   const paid = turn({ actions: [click(10, 20)], usage: { input: 1000, output: 50 } });
   const provider = scriptedProvider(probe, [paid, paid, paid, paid, paid]);

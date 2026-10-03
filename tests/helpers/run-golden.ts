@@ -49,7 +49,8 @@ export interface RunDirSnapshotOptions {
   unorderedFiles?: readonly string[];
   /** What the run wrote to stderr, from `captureStderr`; snapshotted under `<stderr>` by line. */
   stderr?: string;
-  /** Parallel lanes interleave their progress lines, so their stderr order is not deterministic. */
+  /** Parallel participants interleave their progress lines, so their stderr order is not
+   *  deterministic. */
   unorderedStderr?: boolean;
 }
 

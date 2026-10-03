@@ -128,8 +128,8 @@ async function exitWith(caps: Partial<Record<Count, number>>, source: string) {
   return (await run([], source, undefined, capsFile(caps))).status;
 }
 
-describe("prose:check counts lane in comment prose", () => {
-  it("counts lane and lanes as words, in any case and comment style", async () => {
+describe("prose:check counts `lane` in comment prose", () => {
+  it("counts `lane` and `lanes` as words, in any case and comment style", async () => {
     const hits = await laneHits(
       [
         "// Each lane runs its own desktop.",
@@ -159,7 +159,7 @@ describe("prose:check counts lane in comment prose", () => {
     expect(hits.count).toBe(0);
   });
 
-  it("fails both above and below its lane-comments cap", async () => {
+  it("fails both above and below its `lane-comments` cap", async () => {
     const source = "// one lane\n// another lane\n";
     expect(await exitWith({ "lane-comments": 2 }, source)).toBe(0);
     expect(await exitWith({ "lane-comments": 1 }, source)).toBe(1);

@@ -82,7 +82,7 @@ describe("the serve pipeline's Node bootstrap", () => {
   });
 
   it("gives up on a stalled bootstrap at its own bound, not the lab's install budget", async () => {
-    // The bootstrap never finishes, the way an apt refresh hung for ten minutes on a live lane.
+    // The bootstrap never finishes, the way an apt refresh hung for ten minutes in a live run.
     const { outcome, launched, elapsedMs } = await run({ [NODE_STEP]: [null] });
     expect(outcome?.message).toMatch(/needs a Node runtime/);
     expect(elapsedMs).toBeGreaterThanOrEqual(NODE_BOOTSTRAP_TIMEOUT_MS);

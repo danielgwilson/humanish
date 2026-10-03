@@ -35,7 +35,7 @@ const COMPLETION_REASONS = [
   "blocked_approval",
   "timed_out",
   "actor_error",
-  // The scripted-browser lane's reason: a deterministic step/expectation evaluated false:
+  // The scripted-browser run kind's reason: a deterministic step/expectation evaluated false:
   // the subject failed the script while the harness executed faithfully.
   "step_failed",
   "harness_error",

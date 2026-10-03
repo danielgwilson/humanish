@@ -158,7 +158,7 @@ describe("the labs screen, rendered", () => {
     expect(new Set(rowLines).size).toBe(rowLines.length);
   });
 
-  it("a live lab names the participant, not the lane the harness ran them in", async () => {
+  it("a live study names the participant, not the `lane-NN` id the harness ran them in", async () => {
     // "CUA browser: observer-live-check" is the harness describing itself. The row is about who is
     // in there, so the persona wins whenever the live flush carries one.
     const frame = await frameAt(

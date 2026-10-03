@@ -3,7 +3,7 @@
 // take the route it declares and set no field that route does not read.
 //
 // Scope (read before trusting field names): the engine routes by
-// subject.source × execution.target (disambiguated by the actor lane where both axes
+// subject.source × execution.target (disambiguated by the actor's run kind where both axes
 // collide) and consumes a deliberately small set of fields:
 //   subject.source/repos/appUrl/serve/env/state/clone.{depth,fanout,keep}, actors[0].count,
 //   execution.target + execution.desktop.codexAppServer, scenario.mode,
