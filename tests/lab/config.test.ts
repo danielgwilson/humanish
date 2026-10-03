@@ -310,7 +310,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
   });
 
   it("accepts a free-form actor.type on non-app-url routes (registry-resolved only where consumed)", () => {
-    // Honest contract: on this-repo/clone routes actor.type is a free-form label and routing
+    // The contract: on this-repo/clone routes actor.type is a free-form label and routing
     // ignores it. Only the app-url (computer-use) route resolves it against the actor registry,
     // because only there does the descriptor actually run the session.
     const result = parseLabConfig({

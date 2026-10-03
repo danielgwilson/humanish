@@ -264,7 +264,7 @@ describe("terminal-product parse matrix", () => {
     expect(parsed.error.message).toContain("non-negative number");
   });
 
-  it("rejects an interactive PTY transport label and assisted stdin (honest-label + safety contract)", () => {
+  it("rejects an interactive PTY transport label and assisted stdin (protocol-label + safety contract)", () => {
     const ptyRaw = terminalConfig() as { execution: { terminal: { transport: string } } };
     ptyRaw.execution.terminal.transport = "pty";
     expect(parseLabConfig(ptyRaw).ok).toBe(false);
@@ -360,7 +360,7 @@ describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", (
 });
 
 // ---------------------------------------------------------------------------
-// Dry-run contract bundle (verified, honest, unpinned)
+// Dry-run contract bundle (verified, unpinned)
 // ---------------------------------------------------------------------------
 
 describe("runTerminalProductLab (dry-run)", () => {
@@ -450,7 +450,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.simulations[0].streamKind).toBe("terminal");
-    // The terminal stream is an honest contract placeholder: stdin disabled, empty tail, not pty.
+    // The terminal stream is a contract placeholder: stdin disabled, empty tail, not pty.
     const stream = bundle.streams[0];
     expect(stream.assignment).toEqual({
       mission: "Discover widgetsmith-cli from public surfaces and stay within no-spend caps.",
@@ -460,7 +460,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(stream.transport).not.toBe("pty");
     expect(stream.terminal.stdin).toBe("disabled");
     expect(stream.terminal.tail).toBe("");
-    expect(stream.actor).toBeUndefined(); // no session ran (mirrors cua/scripted dry-run honesty)
+    expect(stream.actor).toBeUndefined(); // no session ran, so no actor trace
     expect(bundle.review.verdict).toBe("contract_proof_only");
     const publicTruth = JSON.stringify({
       currentStep: bundle.simulations[0].currentStep,
@@ -499,7 +499,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
-    // latest.json points at this run so `verify --run latest` stays honest.
+    // latest.json points at this run so `verify --run latest` verifies it.
     const pointer = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"),
     );
@@ -598,7 +598,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("keeps the committed demo honest about the shipped live route and its dry-run fixture scope", async () => {
+  it("keeps the committed demo accurate about the shipped live route and its dry-run fixture scope", async () => {
     const lab = await readFile(
       path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"),
       "utf8",

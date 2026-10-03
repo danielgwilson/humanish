@@ -184,7 +184,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
     return findings;
   }
 
-  // Honesty check: the no-spend proof must not claim zero on a line the ledger marks `null`. A
+  // Claim check: the no-spend proof must not claim zero on a line the ledger marks `null`. A
   // knownZeroLines entry that is actually unmeasured in the ledger means the proof claimed more than
   // it measured, so it fails closed.
   const knownZeroLines = Array.isArray(proof.knownZeroLines) ? proof.knownZeroLines : [];

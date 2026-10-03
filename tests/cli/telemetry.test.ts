@@ -17,7 +17,7 @@ import {
   TELEMETRY_NOTICE,
 } from "../../src/cli/telemetry.js";
 
-// Default-on collection is only honest if the promises are enforced rather than written down.
+// Default-on collection is acceptable only if the promises are enforced rather than written down.
 // humanish is stricter than the Next.js/Vercel convention it follows, because a lab id can name an
 // unannounced product and a subject is somebody else's roadmap.
 
@@ -407,7 +407,7 @@ describe("what a study reports about itself", () => {
 });
 
 describe("finite CUA diagnostics", () => {
-  it("labels successful N1/N2 previews honestly, failed previews as errors, and leaves live rollup unchanged", () => {
+  it("labels successful N1/N2 previews contract_proof_only, failed previews as errors, and leaves live rollup unchanged", () => {
     for (const total of [1, 2]) {
       const base = {
         schema: "humanish.study-result.v1",

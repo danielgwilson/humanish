@@ -19,7 +19,7 @@ describe("run index: list and classify without parsing bundles", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("reads the status record first and classifies each run honestly", async () => {
+  it("reads the status record first and classifies each run from its records", async () => {
     await writeFixtureRuns(
       cwd,
       [
@@ -85,7 +85,7 @@ describe("run index: list and classify without parsing bundles", () => {
   it("an in-progress bundle with no status record is interrupted, never finished", async () => {
     // A live run flushes an in-progress bundle as it goes, and that bundle marks its simulations
     // `running`. Reaching the bundle branch means there was no status record to judge freshness
-    // from, so "it started and nothing says it finished" is the honest reading.
+    // from, so the run reads as "it started and nothing says it finished".
     const runDir = path.join(cwd, ".humanish", "runs", "r-inflight");
     await writeFixtureRun(cwd, { runId: "r-inflight", state: "orphan" }, NOW);
     await writeFile(

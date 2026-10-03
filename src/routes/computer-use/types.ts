@@ -82,7 +82,7 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
 // per-persona device dimension (N personas × devices, as the bespoke sims author) lands with
 // fan-out. On this E2B-desktop route only width/height physically render; isMobile/DSF are
-// honest metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
+// metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
 // rendered width is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
 // screen the browser can't shrink to does not overflow + clip (see resolveParticipantDevice).
 

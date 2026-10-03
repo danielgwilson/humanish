@@ -98,7 +98,7 @@ function commandExitError(fields: { exitCode?: number; stderr?: string; message?
 }
 
 // An executor that actuates normally but throws a caller-chosen error on selected actions:
-// used to prove a single desktop CommandExitError is a recoverable skipped action while any
+// it proves a single desktop CommandExitError is a recoverable skipped action while any
 // other throw stays fatal. `executed` records only actions that actually actuated.
 class FlakyExecutor implements CuaExecutor {
   private i = 0;
@@ -1074,7 +1074,7 @@ describe("runComputerUseLoop", () => {
       noProgressSteps: 3,
     });
 
-    // The existing no-progress backstop still terminates the run honestly.
+    // The existing no-progress backstop still terminates the run as gave_up.
     expect(result.completionReason).toBe("gave_up");
     expect(result.status).toBe("abandoned");
     // Not fatal, and every failed action was skipped (no material progress ever counted).
@@ -1404,7 +1404,7 @@ describe("runComputerUseLoop", () => {
     let t = 0;
     const now = (): number => t;
     // The model only waits/screenshots (idle), then the clock jumps past the deadline. Zero material
-    // actions → an honest stuck timeout, not a budget stop.
+    // actions → a stuck timeout, not a budget stop.
     const provider: CuaProvider = {
       id: "idle-tick",
       version: "t",

@@ -421,7 +421,7 @@ export async function runFollower(
   // reliable signal instead of the flaky CDP url-read, so lobbyConvergenceDigest can prove all
   // participants reached the same /lobby/CODE. If a follower somehow joined another lobby, it reads
   // a different code and convergence correctly fails (no false proof); if it never reads one, the
-  // participant stays a hole and convergence is honestly "not observed" for that participant.
+  // participant stays a hole and convergence is recorded as "not observed" for that participant.
   const onScreenshot = handoff.makeLobbyCodeVisionReader(
     () => handoff.observedLobbyCodes[participantIndex] !== undefined,
     (observed) => {

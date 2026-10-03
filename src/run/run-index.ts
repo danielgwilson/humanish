@@ -6,11 +6,11 @@
 // over SSH. This module reads the small `status.json` record each run now writes (586 bytes beside
 // a 92KB bundle) and caches per-run entries keyed on the stat of the file each was derived from.
 //
-// Honesty rules, unchanged from the record itself:
+// Rules, unchanged from the record itself:
 //   - `run.json` is the evidence-of-record. Every field here is a projection for listing and
 //     classification; nothing here is a claim about what a participant did.
 //   - A run with no status record is not assumed finished. It is classified from what is on disk:
-//     a bundle means finished, receipts without a bundle mean interrupted. That is the honest
+//     a bundle means finished, receipts without a bundle mean interrupted. That is the
 //     reading of a run whose process died (and, before this contract existed, of every run).
 //   - One unreadable run directory degrades that run, never the listing.
 
@@ -179,7 +179,7 @@ function usableStatusRecord(raw: unknown, runId: string): raw is RunStatusRecord
  * The bundle-only reading, for a run with no usable status record. A bundle on disk usually means
  * the run reached its final write. But a live run now flushes an in-progress bundle as it goes (so
  * anything asking what a participant is doing has something to read), and that bundle marks its
- * simulations `running`. With no status record there is no freshness to judge, and the honest
+ * simulations `running`. With no status record there is no freshness to judge, and the
  * reading of "it started, and nothing here says it finished" is interrupted, not finished.
  */
 function bundleLiveness(bundle: Pick<BundleFacts, "simulations">): RunLiveness {

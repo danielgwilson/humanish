@@ -143,7 +143,7 @@ export interface SharedWorldCheckpoint {
   deltaFromPrev: boolean;
 }
 
-/** A timeline turn: one role's participant session against the shared plane. Carries the plane
+/** A timeline turn: one participant's session against the shared plane. Carries the plane
  *  provenance it observed (identical across turns by construction: the single-plane proof). */
 interface SharedWorldTurn {
   kind: "turn";
@@ -201,7 +201,7 @@ export interface SharedWorldEvidence {
    * default to provisioned-getHost, byte-stable.
    */
   planeClass?: "provisioned-getHost" | "external-public";
-  /** The declared number of role participants. */
+  /** The declared number of participants. */
   roleCount: number;
   plane: SharedWorldPlane;
   /** The pinned, verify-enforced attribution ceiling (the set differs per topologyMode/planeClass). */

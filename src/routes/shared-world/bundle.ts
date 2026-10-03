@@ -47,7 +47,7 @@ import {
   type ConcurrentBundleArgs,
 } from "./types.js";
 
-/** Max windows live at the same instant (sweep over start/end points). The honest simultaneity
+/** Max windows live at the same instant (sweep over start/end points). The simultaneity
  *  count: the participant count says how many existed; this says how many ever ran at once. */
 export function maxSimultaneousWindows(
   windows: Array<{ startedAt: number; endedAt: number }>,

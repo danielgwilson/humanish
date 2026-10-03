@@ -219,7 +219,7 @@ export function renderCuaReviewMarkdown(bundle: RunBundle): string {
     ...(trace
       ? [
           `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,
-          // Honest count: name the trace's actual screenshot mode ("raw" | "blurred"); say
+          // Name the trace's actual screenshot mode ("raw" | "blurred"); say
           // nothing when no frames exist ("n/a") rather than claim a redaction that never ran.
           `- evidence: ${trace.items.length} trace item(s), ${trace.counts.screenshots ?? 0} ${
             trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"

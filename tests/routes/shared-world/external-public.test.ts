@@ -984,9 +984,9 @@ describe("review.summary is external-public plane-aware", () => {
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({
         seen,
-        // Exact captured live shape (humanish 0.36.0): all three traces were `passed`
-        // even though every completionReason was `budget_reached`. Current actors normalize that
-        // pairing to `incomplete`, but the durable summary must remain honest for either producer.
+        // Exact captured live shape (humanish 0.36.0): all three traces were `passed` even though
+        // every completionReason was `budget_reached`. Current actors normalize that pairing to
+        // `incomplete`, but the durable summary must report it unfinished for either producer.
         sessionOutcome: { status: "passed", completionReason: "budget_reached" },
       }),
     );

@@ -261,8 +261,8 @@ export function buildLiveTerminalProductBundle(args: {
         ? []
         : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]),
       ...(args.capFailure === undefined ? [] : [args.capFailure]),
-      // Honesty gap: the no-spend proof always declares which spend lines it could not measure, so a
-      // green run never silently over-claims a fully-proven $0.
+      // Measurement gap: the no-spend proof always declares which spend lines it could not measure,
+      // so a green run never silently over-claims a fully-proven $0.
       ...(noSpend.unmeasuredLines.length > 0
         ? [
             `${noSpendLineMeasured(noSpend) ? noSpendNotEstablished(noSpend.maxUsd ?? 0) : "No-spend proof is partial."} ${describeMeasuredSpend(args.ledgers.cost, args.trace.tokenUsage)} An adapter may supply the missing signals through costProbe.`,
