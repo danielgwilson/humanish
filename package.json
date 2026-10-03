@@ -56,7 +56,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm prose:check && pnpm vocabulary:check && pnpm site-css:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm cli:dotenv:test && pnpm tui:smoke",
+    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm prose:check && pnpm vocabulary:check && pnpm docs:check && pnpm site-css:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm cli:dotenv:test && pnpm tui:smoke",
     "cli:startup:test": "node scripts/terminal-startup-exit-proof.mjs",
     "cli:preflight:test": "node scripts/task-route-preflight-proof.mjs",
     "cli:dotenv:test": "node scripts/dotenv-proof.mjs",

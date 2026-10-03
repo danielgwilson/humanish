@@ -24,8 +24,9 @@ pnpm release:check               # check + API proof + public-surface scan + ski
 ```
 
 `pnpm check` runs format:check, lint (oxlint, type-aware), knip, prose:check, vocabulary:check,
-site-css:check, typecheck, the vitest suite, the TUI tests, build, the startup proofs and a TUI smoke test. After
-changing a CLI option, run `pnpm docs:generate`; CI fails on a stale `site/content/docs/cli.mdx`.
+docs:check, site-css:check, typecheck, the vitest suite, the TUI tests, build, the startup proofs and a
+TUI smoke test. docs:check fails on a stale `site/content/docs/cli.mdx`, so after changing a CLI option
+run `pnpm docs:generate`. It also fails on a doc comment that documents nothing.
 Observer changes also need `pnpm build` and the four `observer:*:proof` scripts, which CI's observer
 job runs in Chromium. `pnpm api:proof` (after `pnpm build`) installs the packed tarball in a
 temporary project, compares its export names with `tests/golden/public-api.json` and runs
