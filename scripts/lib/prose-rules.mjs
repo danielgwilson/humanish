@@ -12,7 +12,7 @@ export const ACRONYMS = new Set(
     "ENOENT EEXIST ENOTEMPTY ENOTDIR EISDIR EACCES EPERM EPIPE EBUSY ELOOP EXDEV SIGTERM SIGKILL SIGINT " +
     "CA GNU GUI LTS OCR SSG ABA CIDR SNI TOCTOU DSF ENOSPC OSS SQL " +
     "CRC CSD EAGAIN EMFILE ENOMEM FIFO HAR ICC IDAT IEND IME NUL OOM PEM PHI RPC SIGHUP SMS SVG TOML UA " +
-    "VFR XFCE XML GPT MAS MDN"
+    "VFR XFCE XML GPT MAS MDN ADR GPG"
   ).split(" "),
 );
 
@@ -48,7 +48,7 @@ export const LINT_DIRECTIVE = /^(\s*(?:oxlint|eslint)-(?:disable|enable)\S*[^\n]
 // Word kinds matched against prose with code spans blanked.
 export const WORD_KINDS = {
   "invariant-refs": /\binvariants? #?\d+\b/gi,
-  authority: /\b(?:load-bearing|doctrine|canonical(?:ly)?)\b/gi,
+  authority: /\b(?:load-bearing|doctrine)\b/gi,
   archaeology:
     /\b(?:red-team(?:ed)?|blocker \d+|goal packet|safety contract item \d+|this slice|layer[- ]\d+)\b/gi,
   "seat-comments": /\bseats?\b/gi,

@@ -1,10 +1,10 @@
-// #392: a live run's feedback draft described a different kind of run entirely.
+// A live run's feedback draft described a different kind of run entirely.
 //
-// Two halves, pinned separately. The CUA routes never built a feedback candidate, so every live
-// browser run fell through to the dry-run template — a draft claiming "no browser behavior was
+// Two halves, pinned separately. The computer-use routes never built a feedback candidate, so every
+// live browser run fell through to the dry-run template: a draft claiming "no browser behavior was
 // exercised" over a run with fifteen screenshots of browser behavior. And the fallback itself was
 // mode-blind, so even after candidates exist, a clean live run must still get a draft describing
-// THE RUN THAT HAPPENED rather than the dry-run letter.
+// the run that happened rather than the dry-run letter.
 
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -104,7 +104,7 @@ describe("participantFeedbackCandidates", () => {
     expect(candidate.idempotency_key).toBe("humanish:run-1:power-user:participant-report");
   });
 
-  it("turns abandonment into a candidate — the finding the study paid for", () => {
+  it("turns abandonment into a candidate: the finding the study paid for", () => {
     const session = fakeSession(
       "abandoned",
       "gave_up",
@@ -146,7 +146,7 @@ describe("participantFeedbackCandidates", () => {
     for (const friction of [
       "REACHED THE GOAL. Renaming was confusing.",
       "REACHED THE GOAL. Two tables overlapped exactly and looked locked.",
-      // Negations that describe a DEFECT stay friction, whichever verb introduces them (#622).
+      // Negations that describe a defect stay friction, whichever verb introduces them.
       "REACHED THE GOAL. The delete control shows no visible focus.",
       "REACHED THE GOAL. The delete control had no visible focus.",
       "REACHED THE GOAL. I found no keyboard path to the rename and had no visible focus indicator.",
@@ -221,7 +221,7 @@ describe("the live fallback draft describes the run that happened", () => {
       await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
       await runDryRun({ cwd, dryRun: true, runId: "live-draft-test" });
 
-      // Rewrite the persisted bundle as a LIVE run with a participants tally and no candidates —
+      // Rewrite the persisted bundle as a live run with a participants tally and no candidates:
       // the exact shape the field failure had (15 screenshots, zero feedbackCandidates).
       const runJsonPath = path.join(cwd, ".humanish", "runs", "live-draft-test", "run.json");
       const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
@@ -262,7 +262,7 @@ describe("a multi-participant study's second finding is one flag away", () => {
       await runDryRun({ cwd, dryRun: true, runId: "candidate-test" });
 
       // Three participants: a keyboard-first report, a phone participant that gave up, a clean pass.
-      // Before #609 the phone finding (the study's new one) could not reach a draft at all.
+      // The phone finding (the study's new one) must be able to reach a draft.
       const candidates = participantFeedbackCandidates({
         runId: "candidate-test",
         scenarioId: "cua-persona-axis",

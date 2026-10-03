@@ -491,7 +491,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
       concurrency: undefined as unknown as number,
       lanes: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }],
     });
-    // No declared concurrency on a 5-lane roster → every seat runs at once: 5 lanes, 1 wave.
+    // No declared concurrency on a 5-lane roster → every participant runs at once: 5 lanes, 1 wave.
     const planDefault = resolveCuaParticipantPlan({
       ...config,
       execution: { target: "e2b-desktop" },
@@ -1377,7 +1377,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(ghost.route).toBe("computer-use");
     if (ghost.route !== "computer-use") return;
     expect(ghost.result.ok).toBe(false);
-    expect(ghost.result.error?.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
+    expect(ghost.result.error?.code).toBe("HUMANISH_COMPUTER_USE_RERUN_INVALID");
     expect(ghost.result.error?.message).toContain("ghost-lane");
   });
 
@@ -2192,7 +2192,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY");
     // The sandbox was still torn down by id (fail-closed never leaks).
     expect(handle.killed).toEqual(handle.createdIds);
   });
@@ -2282,7 +2282,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
       }),
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
     // Nothing was provisioned.
     expect(handle.created).toHaveLength(0);
   });
@@ -2292,7 +2292,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
     const tampered = { ...base, subject: { ...base.subject, clone: { fanout: 2 } } } as LabConfig;
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
   });
 });
 
@@ -2448,8 +2448,8 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
       preset: "small-mobile",
     });
 
-    // ...and the two floored seats really are indistinguishable by rendered width, which is the
-    // reason a lab cannot claim it exercised two different mobile layouts on this route.
+    // ...and the two floored participants really are indistinguishable by rendered width, which is
+    // the reason a study cannot claim it exercised two different mobile layouts on this route.
     expect(mobile.resolution[0]).toBe(small.resolution[0]);
   });
 

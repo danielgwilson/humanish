@@ -52,6 +52,8 @@ const nextConfig = {
       })),
       // The docs sidebar calls the failure-modes page "Known limits"; a participant guessed this path.
       { source: "/docs/known-limits", destination: "/failure-modes", permanent: false },
+      // The 2026-09-16 run was published here before the 2026-09-27 run replaced it on /demo.
+      { source: "/runs/lobby-0916-full/:path*", destination: "/demo", permanent: true },
     ];
   },
   async headers() {

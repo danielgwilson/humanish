@@ -18,7 +18,7 @@ function request(overrides: Partial<ExposureRequest> = {}): ExposureRequest {
   };
 }
 
-describe("validateExposure: serve surface (edge auth OR --safe)", () => {
+describe("validateExposure: serve surface (edge auth or --safe)", () => {
   it("no exposure flags → loopback plan", () => {
     const result = validateExposure("serve", request());
     expect(result.ok).toBe(true);
@@ -146,7 +146,7 @@ describe("validateExposure: serve surface (edge auth OR --safe)", () => {
   });
 });
 
-describe("validateExposure: watch surface (edge auth REQUIRED)", () => {
+describe("validateExposure: watch surface (edge auth required)", () => {
   const live = { dryRun: false, detach: false, json: false };
 
   it("--expose --tunnel ngrok --oauth google --allow-email → ok, exposed", () => {

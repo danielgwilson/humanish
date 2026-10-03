@@ -9,7 +9,7 @@ import { writeFixtureRuns } from "../helpers/run-fixtures.js";
 
 const NOW = Date.parse("2026-09-01T20:00:00.000Z");
 
-// "What has this month of studies cost" meant reading run.json files by hand (#472). The roll-up
+// "What has this month of studies cost" meant reading run.json files by hand. The roll-up
 // keeps the per-run rules: estimates stay estimates, an unknown cost is unknown and never zero,
 // every rate carries its denominator.
 describe("humanish stats", () => {
@@ -90,7 +90,7 @@ describe("humanish stats", () => {
     expect(result.totals.unpricedRuns).toBe(2);
     expect(result.totals.participants).toEqual({ total: 3, reachedGoal: 2, reportedFriction: 2 });
     expect(result.totals.verdicts).toEqual({ pass: 3, blocked: 1 });
-    expect(result.note).toContain("never a provider charge");
+    expect(result.note).toContain("never provider charges");
   });
 
   it("gives every lab a pass rate with its denominator, and medians over the runs that have the number", async () => {
@@ -159,14 +159,16 @@ describe("humanish stats", () => {
   it("reads as a short report, with the unpriced count next to the sum", async () => {
     const result = await computeStats(cwd, { nowMs: NOW });
     const text = formatStatsHuman(result);
-    expect(text).toContain("runs: 5 (4 live, 1 dry-run, 1 running)");
+    expect(text).toContain("live runs: 4 (1 still running)\npreviews: 1\n");
     expect(text).toContain("known estimated spend: $0.33");
-    expect(text).toContain("analysis: no retained estimate over 0 recorded attempt(s)");
-    expect(text).toContain("analysis history: 5 run(s) missing or uncertain");
-    expect(text).toContain("participants: 2/3 recorded goal completions, 2 reported friction");
+    expect(text).toContain("analysis: none recorded");
+    expect(text).toContain("analysis history: 5 runs missing or uncertain");
+    expect(text).toContain("participants: 2 of 3 reached the goal, 2 reported friction");
     expect(text).toContain(
-      "- try-live: 4 run(s), 4 live; 2/3 pass; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced",
+      "- try-live: 4 runs, 4 live; 2 of 3 passed; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced runs, 0 unpriced analyses",
     );
+    expect(text).not.toContain("(s)");
+    expect(text.trimEnd().split("\n").at(-1)).toBe(result.ok ? result.note : "");
   });
 
   it("an empty project is an empty report, not an error", async () => {
@@ -176,9 +178,67 @@ describe("humanish stats", () => {
       if (!result.ok) throw new Error(result.error.message);
       expect(result.totals.runs).toBe(0);
       expect(result.labs).toEqual([]);
-      expect(formatStatsHuman(result)).toContain("runs: 0");
+      expect(formatStatsHuman(result)).toBe(
+        "humanish stats\nno runs yet; start one with humanish run first-run\n",
+      );
     } finally {
       await rm(empty, { recursive: true, force: true });
+    }
+  });
+
+  it("prints one line for previews alone and counts a preview with no cost record as $0", async () => {
+    const previews = await mkdtemp(path.join(tmpdir(), "humanish-stats-previews-"));
+    try {
+      await writeFixtureRuns(
+        previews,
+        ["p1", "p2"].map((runId) => ({
+          runId,
+          labId: "first-run",
+          mode: "dry-run" as const,
+          state: "finished" as const,
+          startedAt: "2026-08-31T10:00:00.000Z",
+          durationMs: 800,
+        })),
+        NOW,
+      );
+      const result = await computeStats(previews, { nowMs: NOW });
+      if (!result.ok) throw new Error(result.error.message);
+      expect(result.totals).toMatchObject({ unpricedRuns: 0, estimatedSpendUsd: 0 });
+      expect(result.totals.costs).toMatchObject({ runEstimatedUsd: 0, incompleteRunEstimates: 0 });
+      expect(formatStatsHuman(result)).toBe("humanish stats\n2 previews ($0); no live runs yet\n");
+    } finally {
+      await rm(previews, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps a preview that records an unknown cost unpriced, with the full report", async () => {
+    const previews = await mkdtemp(path.join(tmpdir(), "humanish-stats-unknown-preview-"));
+    try {
+      await writeFixtureRuns(
+        previews,
+        [
+          { runId: "p1", estimatedCostUsd: null },
+          { runId: "p2", estimatedCostUsd: undefined },
+        ].map(({ runId, estimatedCostUsd }) => ({
+          runId,
+          labId: "first-run",
+          mode: "dry-run" as const,
+          state: "finished" as const,
+          startedAt: "2026-08-31T10:00:00.000Z",
+          durationMs: 800,
+          ...(estimatedCostUsd === undefined ? {} : { estimatedCostUsd }),
+        })),
+        NOW,
+      );
+      const result = await computeStats(previews, { nowMs: NOW });
+      if (!result.ok) throw new Error(result.error.message);
+      expect(result.totals.unpricedRuns).toBe(1);
+      expect(result.totals.costs.incompleteRunEstimates).toBe(1);
+      const text = formatStatsHuman(result);
+      expect(text).toContain("live runs: 0\npreviews: 2\n");
+      expect(text).toContain("participants and desktops: $0.00; 1 run with incomplete accounting");
+    } finally {
+      await rm(previews, { recursive: true, force: true });
     }
   });
 });

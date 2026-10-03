@@ -95,7 +95,7 @@ describe("fixed canonical guest bootstrap", () => {
       p.left.destroy();
     },
   );
-  it("admits a canonical initial loopback URL without changing the READY identity", async () => {
+  it("admits a canonical initial loopback URL without changing the `READY` identity", async () => {
     const p = pair(true),
       reader = new GuestBootstrapReader(
         p.right,
@@ -116,7 +116,7 @@ describe("fixed canonical guest bootstrap", () => {
     reader.close();
     p.left.destroy();
   });
-  it("admits only an explicit native media configuration, while READY stays unchanged", async () => {
+  it("admits only an explicit native media configuration, while `READY` stays unchanged", async () => {
     const p = pair(true),
       reader = new GuestBootstrapReader(
         p.right,
@@ -187,7 +187,7 @@ describe("fixed canonical guest bootstrap", () => {
     const bytes = Buffer.from(JSON.stringify({ version: 1, identity, initialUrl }));
     expect(() => parseGuestBootstrap(bytes, identity.runtimeRevision)).toThrow();
   });
-  it("does not admit an initial URL on READY or enlarge the READY byte bound", async () => {
+  it("does not admit an initial URL on `READY` or enlarge the `READY` byte bound", async () => {
     expect(() => encodeGuestBootstrap(identity, true, "http://localhost:3000/")).toThrow();
     const p = pair(),
       reader = new GuestBootstrapReader(
@@ -233,7 +233,7 @@ describe("fixed canonical guest bootstrap", () => {
       p.left.destroy();
     }
   });
-  it("CONNECT accepts the assigned host port and preserves a bounded coalesced READY tail", async () => {
+  it("`CONNECT` accepts the assigned host port and preserves a bounded coalesced `READY` tail", async () => {
     const p = pair(),
       calls: Buffer[] = [];
     p.right.on("data", (data: Buffer) => {
@@ -250,7 +250,7 @@ describe("fixed canonical guest bootstrap", () => {
     p.right.destroy();
   });
   it.each(["OK 0\n", "OK 4294967296\n", "OK 4 extra\n", "OK 4\r\n", "x".repeat(65)])(
-    "refuses malformed CONNECT response %#",
+    "refuses a malformed `CONNECT` response %#",
     async (line) => {
       const p = pair();
       p.right.once("data", () => p.right.write(line));
@@ -260,7 +260,7 @@ describe("fixed canonical guest bootstrap", () => {
       p.right.destroy();
     },
   );
-  it("returns a fully handed-off client that completes HELLO without caller resume", async () => {
+  it("returns a fully handed-off client that completes `HELLO` without caller resume", async () => {
     const p = pair(),
       c = new AbortController();
     let runtime: Awaited<ReturnType<typeof runGuestRuntime>> | undefined;
@@ -291,7 +291,7 @@ describe("fixed canonical guest bootstrap", () => {
     expect(runtime).toBeDefined();
     await runtime?.closed;
   });
-  it("rejects high-bit bytes before ASCII decoding the CONNECT preface", async () => {
+  it("rejects high-bit bytes before ASCII decoding the `CONNECT` preface", async () => {
     const p = pair();
     p.right.once("data", () => p.right.write(Buffer.from([0xcf, 0xcb, 32, 49, 10])));
     await expect(
@@ -299,7 +299,7 @@ describe("fixed canonical guest bootstrap", () => {
     ).rejects.toBeDefined();
     p.right.destroy();
   });
-  it("contains a native error queued in the CONNECT-to-bootstrap ownership gap", () => {
+  it("contains a native error queued in the connect-to-bootstrap ownership gap", () => {
     const module = new URL("../../src/guest/bootstrap.ts", import.meta.url).href;
     const output = execFileSync(
       process.execPath,

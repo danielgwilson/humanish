@@ -243,6 +243,7 @@ humanish verify [options]
 | --- | --- |
 | `--run <id>` | Run id or latest pointer. (default: "latest") |
 | `--cwd <path>` | Target project directory. (default: ".") |
+| `--verbose` | Print every check, passing ones included. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 
@@ -263,7 +264,7 @@ humanish cleanup [options]
 
 ## humanish review
 
-Build a review packet from verified run evidence.
+Show a run's review: verdict, summary and gaps.
 
 ```text
 humanish review [options]

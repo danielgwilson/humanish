@@ -64,7 +64,7 @@ describe("real receiving admission on non-receiving backends", () => {
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.message).toMatch(/Real email receiving is unsupported/);
         if (route === "preview") {
-          expect(outcome.result.error?.code).toBe("HUMANISH_LAB_COMMS_UNSUPPORTED");
+          expect(outcome.result.error?.code).toBe("HUMANISH_STUDY_COMMS_UNSUPPORTED");
         }
       }
       expect(forbidden).not.toHaveBeenCalled();
@@ -75,10 +75,10 @@ describe("real receiving admission on non-receiving backends", () => {
   );
 
   it.each([
-    ["terminal", runTerminalProductLab, "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID"],
-    ["scripted", runScriptedBrowserLab, "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID"],
+    ["terminal", runTerminalProductLab, "HUMANISH_TERMINAL_SUBJECT_INVALID"],
+    ["scripted", runScriptedBrowserLab, "HUMANISH_SCRIPTED_SCENARIO_INVALID"],
   ] as const)(
-    "refuses direct %s even when the config describes a supported CUA route",
+    "refuses direct %s even when the config describes a supported computer-use route",
     async (_name, runner, code) => {
       const source = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!;
       const config = receiving(baseline(source.config));

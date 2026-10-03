@@ -1,4 +1,6 @@
 // humanish.lab.v2: a lab is a composition over code primitives. There is no hardcoded lab kind.
+// A humanish.study.v3 file is rewritten into this spelling first (parse/study-v3.ts), and then must
+// take the route it declares and set no field that route does not read.
 //
 // Scope (read before trusting field names): the engine routes by
 // subject.source × execution.target (disambiguated by the actor lane where both axes
@@ -19,7 +21,7 @@
 // clone slice it also consumes subject.{repos,serve,env,state,exposure,clone.depth} and
 // execution.desktop.template. actors[0].{mission,laneFocus,model} are inert on that route
 // because no model runs, and most execution.desktop.* fields remain forward-declared (device
-// presets belong to the cua route; scripted surfaces are the driver's own desktop/mobile
+// presets belong to the computer-use route; scripted surfaces are the driver's own desktop/mobile
 // viewports where isMobile/DSF genuinely render via playwright emulation).
 // On the other routes those fields remain forward-declared and are not yet consumed:
 // parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
@@ -29,8 +31,8 @@
 // scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
 // defaults-table single-participant row governs; count: 2 is the declared override); computer-use
 // E2B route: the homogeneous fan-out participant count (N identical participants, each its own E2B
-// desktop), capped at 16; the in-process/local-app cua route stays single-participant (no E2B to
-// fan out).
+// desktop), capped at 16; the in-process/local-app computer-use route stays single-participant (no
+// E2B to fan out).
 //
 // NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route): a
 // differentiated fan-out roster: each `{ id?, persona?, device?, instruction?, target? }` becomes one
@@ -40,10 +42,10 @@
 // XOR `actors[0].laneFocus` (each entry's `instruction` is the roster's steer); `lanes[].device` XOR
 // raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight participants (default:
 // the participant count, all at once; env HUMANISH_CUA_MAX_CONCURRENCY may only lower it, per invariant
-// 3). On every non-cua route normalized `lanes` are inert (warned). subject.clone.fanout is
-// rejected on the cua route. `lanes[].target` is app-url × computer-use only: an absolute browser
-// URL this participant opens instead of `subject.appUrl`; it is the generic setup-produced-target
-// handoff, not a service topology primitive.
+// 3). On every non-computer-use route normalized `lanes` are inert (warned). subject.clone.fanout
+// is rejected on the computer-use route. `lanes[].target` is app-url × computer-use only: an
+// absolute browser URL this participant opens instead of `subject.appUrl`; it is the generic
+// setup-produced-target handoff, not a service topology primitive.
 //
 // There is deliberately no v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
@@ -66,13 +68,15 @@ import {
   parseReview,
   parseScenario,
 } from "./parse/execution.js";
+import { studySpelling, studyToV2 } from "./parse/study-v3.js";
 import { parseSubject } from "./parse/subject.js";
 import { invalid, optionalStr, str } from "./parse/values.js";
-import { isComputerUseComposition, isSharedWorldComposition } from "./routing.js";
+import { isComputerUseComposition, isSharedWorldComposition, routeOf } from "./routing.js";
 import { declaredParticipantIds } from "./plan-participants.js";
 import {
   ID_PATTERN,
   LAB_CONFIG_SCHEMA,
+  STUDY_SCHEMA,
   type LabConfig,
   type LabConfigParseResult,
 } from "./types.js";
@@ -84,7 +88,7 @@ import {
   scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "./validation.js";
-import { forwardDeclaredWarnings } from "./warnings.js";
+import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
 
 /**
  * Validate a parsed YAML object into a LabConfig. Pure: the caller owns file IO. Structural
@@ -95,9 +99,46 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (!isRecord(raw)) {
     return invalid("Lab manifest must be a YAML object.");
   }
+  if (raw.schema === STUDY_SCHEMA) return parseStudy(raw);
   if (raw.schema !== LAB_CONFIG_SCHEMA) {
-    return invalid(`Lab schema must be ${LAB_CONFIG_SCHEMA}.`);
+    return invalid(`Lab schema must be ${STUDY_SCHEMA} or ${LAB_CONFIG_SCHEMA}.`);
   }
+  return parseV2(raw);
+}
+
+/**
+ * A v3 study parses through the v2 parser, then must take the route it declares and set no field
+ * that route does not read. A v2 file gets those fields as a warning instead.
+ */
+function parseStudy(raw: Record<string, unknown>): LabConfigParseResult {
+  const document = studyToV2(raw);
+  if (!document.ok) return document;
+  const { route, v2, participantSource } = document.value;
+  const spell = (message: string) => studySpelling(message, route, participantSource);
+  const parsed = parseV2(v2);
+  if (!parsed.ok) return invalid(spell(parsed.error.message));
+  const taken = routeOf(parsed.config);
+  if (taken !== route) {
+    return invalid(
+      `This study declares route: ${route}, but its subject (source: ${parsed.config.subject.source}) and actor (type: ${parsed.config.actors[0]?.type}) take the ${taken} route. Change \`route\`, or change the subject or actor.`,
+    );
+  }
+  const inert = inertFieldLabels(parsed.config);
+  if (inert.length > 0) {
+    return invalid(
+      spell(
+        `route: ${route} does not read ${inert.join(", ")}. Remove ${inert.length === 1 ? "it" : "them"}.`,
+      ),
+    );
+  }
+  return {
+    ok: true,
+    config: { ...parsed.config, schema: STUDY_SCHEMA },
+    warnings: parsed.warnings.map(spell),
+  };
+}
+
+function parseV2(raw: Record<string, unknown>): LabConfigParseResult {
   const unknownKey = findUnknownLabKey(raw);
   if (unknownKey) return invalid(unknownKey);
 
@@ -179,11 +220,12 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const scenarioCapsReason = scenarioCapsValidationReason(config);
   if (scenarioCapsReason) return invalid(scenarioCapsReason);
 
-  // All-parallel default: a multi-seat lab that does not declare execution.concurrency runs
-  // every seat at once; the declared field is a cap the author chose, never a mode. Independent
-  // computer-use participants resolve that default from the final participant count when they plan, after any
-  // --count override, so the parser leaves it unset for them. A shared world's roster is fixed, so
-  // its default is filled here for the envelopes and warnings that read the parsed config.
+  // All-parallel default: a multi-participant study that does not declare execution.concurrency
+  // runs every participant at once; the declared field is a cap the author chose, never a mode.
+  // Independent computer-use participants resolve that default from the final participant count
+  // when they plan, after any --count override, so the parser leaves it unset for them. A shared
+  // world's roster is fixed, so its default is filled here for the envelopes and warnings that read
+  // the parsed config.
   {
     const participantCount = rosterOf(config.actors[0])?.length ?? config.actors[0]?.count ?? 1;
     if (
@@ -241,5 +283,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     const reason = localBrowserUnsupportedReason(normalized);
     if (reason) return invalid(reason);
   }
-  return { ok: true, config: normalized, warnings: forwardDeclaredWarnings(normalized) };
+  return {
+    ok: true,
+    config: normalized,
+    warnings: forwardDeclaredWarnings(normalized),
+  };
 }

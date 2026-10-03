@@ -94,8 +94,8 @@ export class DesktopObserver {
 
   /**
    * Hand an observation the next turn may react to to the runtime hooks, and note whether it
-   * carried app state. Runtime-only: the seat's live location.href goes back to the orchestrator
-   * and is never persisted.
+   * carried app state. Runtime-only: the participant's live location.href goes back to the
+   * orchestrator and is never persisted.
    */
   private handToHooks(observation: CuaObservation): CuaObservation {
     const { onObservedUrl, onScreenshot } = this.session.settings;

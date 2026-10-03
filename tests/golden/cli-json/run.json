@@ -1,0 +1,31 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "artifactRoot": "string",
+    "bundlePath": "string",
+    "cwd": "string",
+    "latestPath": "string",
+    "mode": "string",
+    "observer": {
+      "bundlePath": "string",
+      "cwd": "string",
+      "eventsPath": "string",
+      "observerDataPath": "string",
+      "observerPath": "string",
+      "observerUrl": "string",
+      "ok": "boolean",
+      "opened": "boolean",
+      "run": "string",
+      "schema": "string",
+      "warnings": [
+        "string"
+      ]
+    },
+    "ok": "boolean",
+    "reviewPath": "string",
+    "runId": "string",
+    "schema": "string",
+    "simCount": "number",
+    "warnings": []
+  }
+}

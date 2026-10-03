@@ -15,7 +15,7 @@ describe("starting a run from the terminal surface", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  /** Records the spawn instead of performing it, so these assert the CONTRACT with the OS. */
+  /** Records the spawn instead of performing it, so these assert the contract with the OS. */
   function recordingSpawn() {
     const calls: { command: string; args: string[]; options: Record<string, unknown> }[] = [];
     const spawn = ((command: string, args: string[], options: Record<string, unknown>) => {
@@ -53,7 +53,7 @@ describe("starting a run from the terminal surface", () => {
     expect(call.options.detached).toBe(true);
     const stdio = call.options.stdio as unknown[];
     expect(stdio[0]).toBe("ignore");
-    // stdout and stderr both go to the SAME opened descriptor, never to an unread pipe.
+    // stdout and stderr both go to the same opened descriptor, never to an unread pipe.
     expect(typeof stdio[1]).toBe("number");
     expect(stdio[2]).toBe(stdio[1]);
   });
@@ -80,7 +80,7 @@ describe("starting a run from the terminal surface", () => {
     expect(live.calls[0]!.args).not.toContain("--dry-run");
   });
 
-  it("returns the pid AND when the launch happened — a pid alone is not an identity", async () => {
+  it("returns the pid and when the launch happened: a pid alone is not an identity", async () => {
     const { spawn } = recordingSpawn();
     const before = Date.now();
     const result = await launchRun({
@@ -126,9 +126,9 @@ describe("starting a run from the terminal surface", () => {
   });
 
   it("survives an asynchronous spawn failure instead of taking the surface down with it", async () => {
-    // uv_spawn reports EAGAIN/EMFILE/ENOMEM by EMITTING an 'error' event. An 'error' event with no
+    // uv_spawn reports EAGAIN/EMFILE/ENOMEM by emitting an 'error' event. An 'error' event with no
     // listener is re-thrown by EventEmitter as an uncaught exception, which would tear down the
-    // whole TUI — the one thing this module promises never to do.
+    // whole TUI: the one thing this module promises never to do.
     const listeners: Record<string, ((error: Error) => void)[]> = {};
     const spawn = (() => ({
       pid: 4242,
@@ -151,7 +151,7 @@ describe("starting a run from the terminal surface", () => {
   });
 
   it("refuses a lab handle that could be read as a flag", async () => {
-    // argv is positional and there is no shell, so this is the entire injection surface — but a lab
+    // argv is positional and there is no shell, so this is the entire injection surface, but a study
     // named `--json` would still be handed to the CLI as an option.
     for (const handle of ["--json", "-x", "", "../etc/passwd", "a/b", "a\0b", "a b"]) {
       expect(isSafeLabHandle(handle)).toBe(false);
@@ -164,8 +164,8 @@ describe("starting a run from the terminal surface", () => {
         cliPath: "/x/cli.js",
       });
       expect(result.ok).toBe(false);
-      expect(result.ok === false && result.error.code).toBe("HUMANISH_LAUNCH_INVALID_LAB");
-      // Nothing was spawned — the refusal happens before any process exists.
+      expect(result.ok === false && result.error.code).toBe("HUMANISH_LAUNCH_INVALID_STUDY");
+      // Nothing was spawned: the refusal happens before any process exists.
       expect(calls).toHaveLength(0);
     }
     // And the handles this project actually uses still pass, colons included (`oss:meta`).

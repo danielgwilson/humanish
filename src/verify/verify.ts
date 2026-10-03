@@ -8,6 +8,7 @@ import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundl
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
 import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "../run/locate.js";
 import { isRecord } from "../run/type-guards.js";
+import { runNotFoundMessage } from "../run/run-not-found.js";
 import {
   actorVerdictConsistencyFindings,
   noEngagementActorFindings,
@@ -117,26 +118,16 @@ export async function verifyResolvedRun(
   const checks: VerifyResult["checks"] = [];
 
   if (!runPaths) {
+    const message = await runNotFoundMessage(cwd, runInput);
     return {
       schema: VERIFY_SCHEMA,
       ok: false,
       cwd,
       run: runInput,
       checks,
-      shareSafety: {
-        status: "blocked",
-        reasons: [
-          {
-            code: "VERIFY_FAILED",
-            message: `Run not found: ${runInput}`,
-          },
-        ],
-      },
+      shareSafety: { status: "blocked", reasons: [{ code: "VERIFY_FAILED", message }] },
       warnings: [],
-      error: {
-        code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`,
-      },
+      error: { code: "HUMANISH_RUN_NOT_FOUND", message },
     };
   }
 
@@ -146,7 +137,12 @@ export async function verifyResolvedRun(
   const reviewJson = await readRunJsonIfExists(runPaths, "review.json");
   const reviewMarkdown = await readRunTextIfExists(runPaths, "review.md");
 
-  checks.push(...bundlePresenceChecks(bundle, reviewJson !== null && reviewMarkdown !== null));
+  checks.push(
+    ...bundlePresenceChecks(bundle, {
+      json: reviewJson !== null,
+      markdown: reviewMarkdown !== null,
+    }),
+  );
   const derivedPublicSafetyFindings: string[] = [];
   const unscannedArtifacts: string[] = [];
   const publicSafetyFindings = await scanRunPublicSafetyArtifacts(
@@ -176,7 +172,7 @@ export async function verifyResolvedRun(
     ok: publicSafetyFindings.length === 0,
     message:
       publicSafetyFindings.length === 0
-        ? "run text artifacts and public-proof paths must not match known secret or browser-profile patterns"
+        ? "no run text artifact or public-proof path matches a known secret or browser-profile pattern"
         : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`,
   });
   const missingEvidenceArtifacts = isRunBundle(bundle)
@@ -191,7 +187,9 @@ export async function verifyResolvedRun(
     ok: missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0,
     message:
       missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0
-        ? "referenced local screenshot/trace/log/filesystem artifacts are present"
+        ? isRunBundle(bundle)
+          ? "every referenced screenshot, trace, log and filesystem artifact is present"
+          : SHAPE_UNCHECKED
         : invalidEvidenceReferences.length > 0
           ? `invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`
           : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`,
@@ -273,34 +271,82 @@ export async function verifyRunPrepared(
 
 type VerifyCheck = VerifyResult["checks"][number];
 
-/** Whether run.json, its schema, shape and redaction, and the review artifacts are present. */
-function bundlePresenceChecks(bundle: unknown, reviewArtifactsExist: boolean): VerifyCheck[] {
+/** The top-level run.json sections the shape guard requires. */
+const REQUIRED_SECTIONS = [
+  "source",
+  "persona",
+  "scenario",
+  "lifecycle",
+  "simulations",
+  "streams",
+  "events",
+  "artifacts",
+  "review",
+  "redaction",
+  "feedbackCandidates",
+] as const;
+
+/**
+ * Whether run.json, its schema, shape and redaction, and the review artifacts are present. Each
+ * check says what it found, so a failing row never prints the rule it enforces.
+ */
+function bundlePresenceChecks(
+  bundle: unknown,
+  review: { json: boolean; markdown: boolean },
+): VerifyCheck[] {
+  const record = isRecord(bundle) ? bundle : undefined;
+  const schema = record?.schema;
+  const schemaOk = schema === RUN_BUNDLE_SCHEMA;
+  const redactionRecord = record?.redaction;
+  const redaction = isRecord(redactionRecord) ? redactionRecord.status : undefined;
+  const missingSections = REQUIRED_SECTIONS.filter((key) => record?.[key] === undefined);
+  const missingReview = [
+    ...(review.json ? [] : ["review.json is missing or not valid JSON"]),
+    ...(review.markdown ? [] : ["review.md is missing"]),
+  ];
   return [
     {
       name: "run.json exists",
       ok: bundle !== null,
-      message: bundle === null ? "run.json missing" : "run.json present",
+      message: bundle === null ? "run.json is missing or not valid JSON" : "run.json is present",
     },
     {
       name: "run schema",
-      ok: isRecord(bundle) && bundle.schema === RUN_BUNDLE_SCHEMA,
-      message: "run bundle schema is humanish.run-bundle.v1",
+      ok: schemaOk,
+      message: schemaOk
+        ? `run.json declares ${RUN_BUNDLE_SCHEMA}`
+        : record === undefined
+          ? "no readable run.json, so no schema"
+          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA}`,
     },
     {
       name: "run bundle shape",
       ok: isRunBundle(bundle),
-      message:
-        "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates",
+      message: isRunBundle(bundle)
+        ? "run.json has every required section"
+        : record === undefined
+          ? "no readable run.json, so no sections"
+          : missingSections.length > 0
+            ? `run.json is missing ${missingSections.join(", ")}`
+            : schemaOk
+              ? "one or more run.json sections have the wrong shape"
+              : "sections not checked, because the schema differs",
     },
     {
       name: "redaction passed",
-      ok: isRecord(bundle) && isRecord(bundle.redaction) && bundle.redaction.status === "passed",
-      message: "redaction status must be passed",
+      ok: redaction === "passed",
+      message:
+        redaction === "passed"
+          ? "redaction passed"
+          : `redaction did not pass (status: ${typeof redaction === "string" ? redaction : "missing"})`,
     },
     {
       name: "review artifacts exist",
-      ok: reviewArtifactsExist,
-      message: "review.json and review.md must exist",
+      ok: missingReview.length === 0,
+      message:
+        missingReview.length === 0
+          ? "review.json and review.md are present"
+          : missingReview.join("; "),
     },
   ];
 }
@@ -341,15 +387,19 @@ function findingsCheck(
   findings: readonly string[],
   okMessage: string,
   failLabel: string,
-  failSuffix = "",
 ): VerifyCheck {
   return {
     name,
     ok: findings.length === 0,
-    message:
-      findings.length === 0 ? okMessage : `${failLabel}: ${findings.join(", ")}${failSuffix}`,
+    message: findings.length === 0 ? okMessage : `${failLabel}: ${findings.join(", ")}`,
   };
 }
+
+/**
+ * The pass message of a check that reads bundle content when run.json failed its shape guard. The
+ * check has no findings and stays ok; the shape check is the failure.
+ */
+const SHAPE_UNCHECKED = "not checked, because run.json failed the shape check";
 
 /** The bundle-content checks, in report order. A bundle that fails its shape guard has no findings. */
 async function evidenceChecks(
@@ -358,42 +408,48 @@ async function evidenceChecks(
   cleanupJson: unknown,
 ): Promise<VerifyCheck[]> {
   const valid = isRunBundle(bundle) ? bundle : null;
+  const pass = (message: string) => (valid ? message : SHAPE_UNCHECKED);
   const checks: VerifyCheck[] = [
     findingsCheck(
       "terminal-product evidence",
       valid ? await validateTerminalProductEvidence(runPaths, valid) : [],
-      "live terminal-product streams either are absent or carry the substrate/cleanup/interventions/cost ledgers + a ledger-derived no-spend proof + redacted terminal evidence, with proven teardown and known spend within the declared cap",
+      pass(
+        "live terminal-product evidence is complete (ledgers, redacted output, proven teardown, known spend within the cap), or the run has none",
+      ),
       "terminal-product findings",
     ),
     findingsCheck(
       "codex app-server evidence",
       valid ? await validateCodexAppServerEvidence(runPaths, valid) : [],
-      "live Codex app-server streams either are absent or include valid redacted trace evidence",
+      pass("live Codex app-server traces are valid and redacted, or the run has none"),
       "codex app-server findings",
     ),
     findingsCheck(
       "actor engagement",
       valid ? noEngagementActorFindings(valid) : [],
-      "live actor traces that claim goal_satisfied carry at least one action or message",
+      pass("every live actor that claims its goal took at least one action or sent a message"),
       "no-engagement findings",
-      " — a hollow run is not credible evidence",
     ),
     findingsCheck(
       "actor verdict consistency",
       valid ? actorVerdictConsistencyFindings(valid) : [],
-      "live pass verdicts do not hide failed, blocked, or timed-out actor traces",
+      pass("no live pass verdict hides a failed, blocked or timed-out actor"),
       "actor verdict findings",
     ),
     findingsCheck(
       "subject state provenance",
       valid ? subjectStateFindings(valid) : [],
-      "subject state claims match the recorded seed/external evidence (or the subject block is honestly absent)",
+      pass(
+        "subject state claims match the recorded seed and external evidence, or the run makes none",
+      ),
       "subject state findings",
     ),
     findingsCheck(
       "shared-world evidence",
       valid ? sharedWorldEvidenceFindings(valid) : [],
-      "live shared-world runs either are absent or carry well-formed evidence for their mode (concurrent participant windows, state series and outcomes covering every role, or an older run's sequential timeline), single-plane provenance, digest-only checkpoints and the mandatory attributionLimits",
+      pass(
+        "live shared-world evidence is well formed for its mode, with single-plane provenance, digest-only checkpoints and attributionLimits, or the run has none",
+      ),
       "shared-world findings",
     ),
     {
@@ -401,15 +457,19 @@ async function evidenceChecks(
       ok: cleanupJson === null || (isCleanupResult(cleanupJson) && cleanupJson.ok),
       message:
         cleanupJson === null
-          ? "cleanup receipt not present; cleanup was not requested"
-          : isCleanupResult(cleanupJson) && cleanupJson.ok
-            ? "cleanup receipt is present and successful"
-            : "cleanup receipt is present but malformed or failed",
+          ? "no cleanup.json; cleanup was not requested"
+          : !isCleanupResult(cleanupJson)
+            ? "cleanup.json is malformed"
+            : cleanupJson.ok
+              ? "cleanup.json records a successful cleanup"
+              : "cleanup.json records a failed cleanup",
     },
     findingsCheck(
       "rerun lineage",
       valid ? rerunLineageFindings(valid) : [],
-      "rerun bundles either are absent or link selected participants to their prior status and a fan-out rerun event",
+      pass(
+        "rerun participants link to their prior status and a fan-out rerun event, or this run is not a rerun",
+      ),
       "rerun lineage findings",
     ),
     // Cost is advisory on magnitude and fail-closed on labeling/provenance (claims match mechanism).
@@ -419,7 +479,9 @@ async function evidenceChecks(
     findingsCheck(
       "cost estimate labeling",
       valid ? costAndReceiptFindings(valid) : [],
-      "cost figures are absent, or every claimed estimate carries its ratesAsOf date + source and the total matches its known lines (estimates never presented as exact)",
+      pass(
+        "every cost estimate carries its ratesAsOf date and source and the total matches its lines, or the run claims no cost",
+      ),
       "cost labeling findings",
     ),
   ];

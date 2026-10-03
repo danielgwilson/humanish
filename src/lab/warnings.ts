@@ -54,7 +54,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
     applies: (actor, routes) =>
       Boolean(rosterOf(actor)?.some((entry) => entry.entry !== undefined)) && !routes.shared,
   },
-  // The host-seat marker acts only on the external-public shared-world route; inert elsewhere.
+  // The host marker acts only on the external-public shared-world route; inert elsewhere.
   {
     field: "lanes[].host",
     reason:
@@ -132,7 +132,8 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     applies: (config, routes) => Boolean(config.subject.state) && !routes.cua && !routes.scripted,
   },
   // topology + checkpoint act only on the shared-world route; a set-but-unconsumed value
-  // (incl. an explicit per-lane-worlds, which the cua route already is by mechanism) warns inert.
+  // (incl. an explicit per-lane-worlds, which the computer-use route already is by mechanism) warns
+  // inert.
   {
     field: "subject.topology",
     reason:
@@ -189,9 +190,9 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
       Boolean(config.comms?.email?.external) &&
       (config.subject.source === "clone" || config.subject.source === "local-tree"),
   },
-  // clone.keep is consumed on the cua route (honored on failure: the sandbox is left up to debug
-  // a failed install/boot; otherwise always killed). clone.fanout is rejected on the cua route
-  // (a hard parse error above), so it can never reach this warning list there.
+  // clone.keep is consumed on the computer-use route (honored on failure: the sandbox is left up to
+  // debug a failed install/boot; otherwise always killed). clone.fanout is rejected on the
+  // computer-use route (a hard parse error above), so it can never reach this warning list there.
   {
     field: "execution.timeoutMs",
     applies: (config, routes) =>
@@ -204,14 +205,15 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     field: "execution.completionTimeoutMs",
     applies: (config) => config.execution?.completionTimeoutMs !== undefined,
   },
-  // execution.concurrency is consumed on the cua route (it bounds in-flight fan-out participants);
-  // inert (warned) everywhere else.
+  // execution.concurrency is consumed on the computer-use route (it bounds in-flight fan-out
+  // participants); inert (warned) everywhere else.
   {
     field: "execution.concurrency",
     applies: (config, routes) => config.execution?.concurrency !== undefined && !routes.cua,
   },
-  // execution.caps is consumed on the cua route (maxUsd is the fail-closed spend abort); inert
-  // (warned) everywhere else so a misplaced budget field is never trusted to cap a route it cannot.
+  // execution.caps is consumed on the computer-use route (maxUsd is the fail-closed spend abort);
+  // inert (warned) everywhere else so a misplaced budget field is never trusted to cap a route it
+  // cannot.
   {
     field: "execution.caps",
     reason:
@@ -289,8 +291,8 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   },
   // execution.desktop.template (the custom E2B desktop image) is consumed only where a desktop is
   // actually created via Sandbox.create: the e2b-desktop computer-use routes (cua/shared-world/
-  // concurrent). It is inert on every other route (incl. the in-process local-app cua route, which
-  // creates no desktop): warn so an unconsumed template is never silently ignored.
+  // concurrent). It is inert on every other route (incl. the in-process local-app computer-use
+  // route, which creates no desktop): warn so an unconsumed template is never silently ignored.
   {
     field: "execution.desktop.template",
     reason:
@@ -363,9 +365,11 @@ function rowLabel(row: InertRow<never>, prefix = ""): string {
     : `${prefix}${row.field} (${row.reason})`;
 }
 
-// Report fields that are present but not yet consumed by the engine, so a user never trusts a
-// setting that silently does nothing. Keeps the schema forward-correct and honest.
-export function forwardDeclaredWarnings(config: LabConfig): string[] {
+/**
+ * The fields a config sets that its route does not read, each as `field` or `field (reason)`. A v2
+ * file gets them as one warning; a v3 study is refused for any of them.
+ */
+export function inertFieldLabels(config: LabConfig): string[] {
   const routes = routesOf(config);
   const inert: string[] = [];
   for (const [index, actor] of config.actors.entries()) {
@@ -373,15 +377,23 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
       if (row.applies(actor, routes)) inert.push(rowLabel(row, `actors[${index}].`));
   }
   for (const row of CONFIG_ROWS) if (row.applies(config, routes)) inert.push(rowLabel(row));
+  return inert;
+}
+
+// Report fields that are present but not yet consumed by the engine, so a user never trusts a
+// setting that silently does nothing.
+export function forwardDeclaredWarnings(config: LabConfig): string[] {
+  const routes = routesOf(config);
+  const inert = inertFieldLabels(config);
   const warnings =
     inert.length === 0
       ? []
       : [
           `Forward-declared fields are set but not yet consumed by the engine (planned for a later slice): ${inert.join(", ")}.`,
         ];
-  // A declared cap below the seat count is legal but loud: the roster promises N live actors and
-  // the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in waves
-  // is otherwise indistinguishable from the all-live run the author meant.
+  // A declared cap below the participant count is legal but loud: the roster promises N live actors
+  // and the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in
+  // waves is otherwise indistinguishable from the all-live run the author meant.
   {
     const participantCount = rosterOf(config.actors[0])?.length ?? config.actors[0]?.count ?? 1;
     const cap = config.execution?.concurrency;
@@ -392,7 +404,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
     }
   }
   // Partial email coverage is legal but loud: a participant without an addressed recipient never
-  // hears an inbox exists, so an email-gated flow on that seat dead-ends by construction.
+  // hears an inbox exists, so an email-gated flow on that participant dead-ends by construction.
   if (routes.cua && config.comms?.email?.recipients) {
     const participantIds = declaredParticipantIds(config);
     const covered = new Set(

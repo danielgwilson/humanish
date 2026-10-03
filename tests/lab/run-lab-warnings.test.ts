@@ -69,6 +69,6 @@ describe("a scorer that joins after the route's checks", () => {
     // Scripted runs take no scorer, so one that joins after the checks is refused.
     const late = await prepared("scriptedAppUrl");
     const outcome = await late.run({ scorer, scorerProvenance });
-    expect(outcome.result.error?.code).toBe("HUMANISH_LAB_OPTION_UNSUPPORTED");
+    expect(outcome.result.error?.code).toBe("HUMANISH_STUDY_OPTION_UNSUPPORTED");
   });
 });

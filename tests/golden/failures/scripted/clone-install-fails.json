@@ -51,7 +51,7 @@
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "error": {
-      "code": "HUMANISH_SCRIPTED_LAB_FAILED",
+      "code": "HUMANISH_SCRIPTED_FAILED",
       "message": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
     },
     "automaticAnalysisTrigger": "default",

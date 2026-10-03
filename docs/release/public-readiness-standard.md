@@ -165,7 +165,7 @@ Nice-to-have after public launch:
 
 ## humanish Application
 
-For `humanish`, the honest standard is:
+For `humanish`, the standard is:
 
 - Keep `docs/ramp/` and `docs/history/goals/` if they are public-safe. They are essential
   project memory for future coding agents and contributors.

@@ -11,7 +11,7 @@ import { initialNav, navigate, currentScreen, selectedIndex } from "../src/navig
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
 // Driving the surface the way a person does: arrow keys and Enter, through Ink's real input
-// handling. Asserting on the reducer alone would prove the model and none of the wiring — and the
+// handling. Asserting on the reducer alone would prove the model and none of the wiring, and the
 // wiring is where "Enter opened the wrong run" lives.
 
 const GOLDEN_DIR = path.join(import.meta.dirname, "golden");
@@ -83,7 +83,7 @@ const options = (): TuiOptions => ({
 /**
  * Press a key until the screen shows what the test is after.
  *
- * Tests navigate by INTENT, not by counting keystrokes: encoding "Down twice" bakes the current row
+ * Tests navigate by intent, not by counting keystrokes: encoding "Down twice" bakes the current row
  * layout into every test, so adding a row to a screen breaks tests that have nothing to do with it.
  */
 async function pressUntil(
@@ -92,7 +92,7 @@ async function pressUntil(
   predicate: (frame: string) => boolean,
   limit = 8,
 ): Promise<string> {
-  // Waits for the frame the predicate wants BEFORE deciding to press again. Pressing and then
+  // Waits for the frame the predicate wants before deciding to press again. Pressing and then
   // testing whatever frame came back overshoots, because Ink's first frame after a key can predate
   // the state change the key caused.
   let last = "";
@@ -124,7 +124,7 @@ describe("moving through the surface", () => {
     // The first lab is selected by default and is the live one, so Enter lands on Signup flow.
     expect(lab).toContain("‹ labs / signup-flow");
     // Both of signup-flow's runs, and neither of diagram-editor's. Rows are identified by when they
-    // ran and what happened, not by their id — the id is on the run screen, one level in.
+    // ran and what happened, not by their id: the id is on the run screen, one level in.
     expect(lab).toContain("2/2 reached the goal");
     expect(lab).toContain("~$1.20");
     expect(lab).not.toContain("0/1 reached the goal");
@@ -141,7 +141,7 @@ describe("moving through the surface", () => {
 
     const back = await surface.press(KEY.escape, (frame) => frame.includes("never-run-lab"));
     surface.unmount();
-    // Back where we were, still on the second row rather than reset to the top — a list that
+    // Back where we were, still on the second row rather than reset to the top: a list that
     // forgets its position makes every "just check that one" cost the scroll again.
     expect(back).toMatch(/❯[^\n]*diagram-editor/);
   });
@@ -163,7 +163,7 @@ describe("moving through the surface", () => {
   it("renders one run on a phone-width terminal, wrapping rather than overflowing", async () => {
     const surface = await openSurface(45);
     await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
-    // The FINISHED run, deliberately: it is the one carrying a participants line long enough to
+    // The finished run, deliberately: it is the one carrying a participants line long enough to
     // run off a phone-width screen.
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*2\/2 reached the goal/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("reached the goal"));
@@ -205,10 +205,10 @@ describe("moving through the surface", () => {
     );
     surface.unmount();
 
-    // `null` is a DECLARED absent cost. Rendering it as $0.00 would claim the run was free.
+    // `null` is a declared absent cost. Rendering it as $0.00 would claim the run was free.
     expect(run).toContain("cost declared absent");
     expect(run).not.toContain("$0.00");
-    // The card leads with the DENOMINATOR, not the label: "fail" says a run failed without saying
+    // The card leads with the denominator, not the label: "fail" says a run failed without saying
     // at what, and the count is the finding.
     expect(run).toContain("0/1 reached the goal");
   });
@@ -222,8 +222,8 @@ describe("moving through the surface", () => {
     surface.unmount();
 
     // The interrupted card sits at the same level as a finished one: what it managed, what it
-    // spent, and whether anything is still running — which is the part that keeps costing money.
-    expect(run).toContain("interrupted — no outcome recorded");
+    // spent, and whether anything is still running, which is the part that keeps costing money.
+    expect(run).toContain("interrupted: no outcome recorded");
     expect(run).toContain("sandboxes");
     expect(run).toContain("Reclaim");
   });
@@ -231,7 +231,7 @@ describe("moving through the surface", () => {
 
 describe("the navigation model itself", () => {
   it("Escape at the top level means leave, not nothing", async () => {
-    // One key always means "out of here" — which is what a person reaches for when a surface has
+    // One key always means "out of here", which is what a person reaches for when a surface has
     // taken their screen.
     const state = navigate(initialNav(), { type: "back" });
     expect(state.quit).toBe(true);

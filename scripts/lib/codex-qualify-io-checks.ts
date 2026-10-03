@@ -118,7 +118,7 @@ const perScenario = (
     }),
   );
 const INET = new Set(["tcp", "tcpv6", "udp", "udpv6"]);
-/** Connects and sends over TCP or UDP whose destination fails `allowed`. */
+/** Connects and sends over TCP or udp whose destination fails `allowed`. */
 function strayDestinations(net: readonly string[], allowed: (to: string) => boolean): string[] {
   return net.filter((event) => {
     const [op, family, to] = JSON.parse(event) as string[];

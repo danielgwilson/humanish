@@ -28,6 +28,10 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
 - `content/docs/`: the focused user guides in MDX. `cli.mdx` is generated from Commander
   metadata. `content/docs/meta.json` sets the sidebar order; a page missing from its `pages`
   list does not appear in the sidebar.
+  A page links a repository file as `repo:<path>` (a folder ends in `/`), which
+  `components/docs/mdx.tsx` opens at the release tag of the root `package.json` version.
+  docs:check fails on a GitHub link to main, except for `docs/evidence/` records and
+  `SECURITY.md`, and on a `repo:` path missing here or at that tag.
 - `app/`: root layout (fonts via next/font, theme-init inline script, JSON-LD), `page.tsx` (the
   fallback homepage when the proxy does not run), `failure-modes/page.tsx`, `docs/`,
   `api/search/`, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `icon.svg`.
@@ -77,7 +81,9 @@ Requests for `/` pass through a proxy and a feature flag before a page renders:
 - Existing marketing design and copy are fixtures. Preserve the approved hero and section
   vocabulary. Documentation must match the current CLI and runnable examples. Design tokens live
   once in `app/globals.css` (`:root` plus the two dark blocks), and both themes must stay in
-  sync.
+  sync. The footer, dark in both themes, sets its own `--foot-*` colors on `.site-foot`, which
+  keeps them out of the registry's token export. Rules read colors from tokens;
+  `pnpm site-css:check` counts the hex colors still written into rules.
 - Keep dependencies minimal: Next, React, Tailwind, Vercel Analytics, Fumadocs UI/Core/MDX (docs
   only) with its `zod` schema peer, the homepage flag stack (`flags`, `@flags-sdk/posthog`,
   `posthog-js`), and `shadcn` as a dev dependency. No motion libraries. The only committed font

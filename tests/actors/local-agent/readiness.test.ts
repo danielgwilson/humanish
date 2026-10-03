@@ -1,5 +1,5 @@
 // Whether a local-agent participant can run here, checked before any sandbox exists. A fake `codex`
-// on a temporary PATH stands in for each case; computer use and shared world map the kind to their
+// on a temporary `PATH` stands in for each case; computer use and shared world map the kind to their
 // own error codes.
 
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -17,7 +17,7 @@ afterAll(async () => {
   await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-/** A directory to use as PATH, holding a `codex` that runs `script`, or empty when it is undefined. */
+/** A directory to use as `PATH`, holding a `codex` that runs `script`, or empty when it is undefined. */
 async function pathWithCodex(script: string | undefined): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-local-agent-readiness-"));
   dirs.push(dir);
@@ -46,7 +46,7 @@ async function refusal(script: string | undefined, caps: { maxUsd?: number } = {
 }
 
 describe("localAgentRefusal", () => {
-  it("reports a missing CLI when it is not on PATH", async () => {
+  it("reports a missing CLI when it is not on `PATH`", async () => {
     const result = await refusal(undefined);
     expect(result?.kind).toBe("agent-missing");
     expect(result?.message).toContain("needs the codex CLI on PATH and signed in");

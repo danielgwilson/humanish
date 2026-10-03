@@ -60,7 +60,7 @@ type StarterActor = "openai-computer-use" | "local-agent";
 
 /**
  * The flagship live lab. A ChatGPT-account Codex participant has no API-dollar price, so preflight
- * refuses a dollar cap on it (HUMANISH_CUA_LAB_UNPRICED_CAP); that variant is bounded by the
+ * refuses a dollar cap on it (HUMANISH_COMPUTER_USE_UNPRICED_CAP); that variant is bounded by the
  * session timeout instead of a cap it could never enforce.
  */
 function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): StarterFile {

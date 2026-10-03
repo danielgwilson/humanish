@@ -173,7 +173,7 @@ export interface CuaParticipantPlanEntry {
 export interface CuaParticipantPlan {
   strategy: typeof CUA_FANOUT_STRATEGY;
   laneCount: number;
-  /** Effective in-flight bound (defaults to laneCount, all seats live; a declared
+  /** Effective in-flight bound (defaults to laneCount, all participants live; a declared
    *  execution.concurrency is a cap; the env override may only lower it). */
   concurrency: number;
   /** Present when the env override lowered the bound below the config's value, recorded so the
@@ -242,42 +242,43 @@ export interface CuaParticipantSummary {
 }
 
 export type CuaActorLabErrorCode =
-  | "HUMANISH_LAB_ANALYSIS_INVALID"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-  | "HUMANISH_LAB_OPTION_UNSUPPORTED"
-  | "HUMANISH_CUA_LAB_FAILED"
-  | "HUMANISH_CUA_LAB_KEYS_MISSING"
+  | "HUMANISH_STUDY_ANALYSIS_INVALID"
+  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
+  | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
+  | "HUMANISH_COMPUTER_USE_FAILED"
+  | "HUMANISH_COMPUTER_USE_KEYS_MISSING"
   // A local-agent participant's CLI is not on `PATH`. Refused at preflight (before any sandbox).
-  | "HUMANISH_CUA_LAB_AGENT_MISSING"
+  | "HUMANISH_COMPUTER_USE_AGENT_MISSING"
   // A local-agent participant's CLI reports not signed in, or could not report its sign-in status.
   // Refused at preflight (before any sandbox); the message names the fix.
-  | "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED"
-  | "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING"
-  | "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED"
-  | "HUMANISH_CUA_LAB_SUBJECT_INVALID"
-  | "HUMANISH_CUA_LAB_SUBJECT_UNSAFE"
-  | "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER"
-  | "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR"
-  | "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING"
-  | "HUMANISH_CUA_LAB_FANOUT_INVALID"
-  | "HUMANISH_CUA_LAB_RERUN_INVALID"
-  | "HUMANISH_CUA_LAB_DEVICE_GEOMETRY"
+  | "HUMANISH_COMPUTER_USE_AGENT_SIGNIN_REQUIRED"
+  | "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING"
+  | "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED"
+  | "HUMANISH_COMPUTER_USE_SUBJECT_INVALID"
+  | "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE"
+  | "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER"
+  | "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR"
+  | "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING"
+  | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
+  | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
+  | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"
   | "HUMANISH_RUN_ID_IN_USE"
   // A fail-closed spend cap (execution.caps.maxUsd) was set but src/run/pricing.ts has no rate for the
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
   // rather than run uncapped: an unenforceable cap is more dangerous than none.
-  | "HUMANISH_CUA_LAB_UNPRICED_CAP"
+  | "HUMANISH_COMPUTER_USE_UNPRICED_CAP"
   // comms.email.external was declared but its catch did not answer as a humanish comms catch.
   // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
   // nothing while every participant still spends.
-  | "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE"
+  | "HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE"
   // comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
   // well-formed Unicode (src/comms/external-evidence.ts). Refused at preflight, before the catch is
   // probed.
-  | "HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID"
+  | "HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID"
   // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by prepareCuaWatch
-  // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
-  // render through the same formatter as any other CUA lab failure.
+  // before or around the run. Carried on the computer-use route's envelope so
+  // `watch <cua-lab> --expose` refusals render through the same formatter as any other computer-use
+  // study failure.
   | "HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH"
   | "HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL"
   | "HUMANISH_WATCH_OPTION_CONFLICT"
@@ -419,8 +420,8 @@ export interface CuaRunBudget {
  * The subject as a participant's desktop meets it. A computer-use participant gets the plan's
  * subject: a clone or local tree is provisioned in its own sandbox with the declared env, a
  * desktop-cli product is set up there, and an app-url or local-app subject is only opened. A
- * shared-world seat gets `shared-app`: it opens the one app the plane serves, with no subject env
- * names forwarded, no GitHub token and no provisioning in its sandbox.
+ * shared-world participant gets `shared-app`: it opens the one app the plane serves, with no
+ * subject env names forwarded, no GitHub token and no provisioning in its sandbox.
  */
 export type ParticipantSubject =
   | ComputerUseRunner["subject"]
@@ -509,16 +510,16 @@ export interface ParticipantModelDeps {
   runBudget?: CuaRunBudget;
   /**
    * runtime-only observed-URL callback (the shared-world handoff): threaded into the participant's session so the
-   * orchestrator watches this seat's live location.href mid-run. Never persisted (see
-   * CuaLoopOptions.onObservedUrl). The concurrent shared-world barrier passes a host-seat latch here
+   * orchestrator watches this participant's live location.href mid-run. Never persisted (see
+   * CuaLoopOptions.onObservedUrl). The concurrent shared-world barrier passes a host latch here
    * to extract a /lobby/CODE; on ordinary routes it is undefined (no-op).
    */
   onObservedUrl?: (url: string | undefined) => void;
   /** runtime-only per-turn narration callback; see CuaLoopOptions.onMessage. The concurrent
-   * shared-world barrier passes a host-seat message scanner here to latch the lobby code. */
+   * shared-world barrier passes a host message scanner here to latch the lobby code. */
   onMessage?: (text: string) => void;
   /** runtime-only per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
-   * shared-world barrier passes a host-seat vision reader here to latch the lobby code off-screen. */
+   * shared-world barrier passes a host vision reader here to latch the lobby code off-screen. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot from a participant's loop, keyed by participant. The live path
    * wires the incremental in-progress flush here so the attached Observer's timeline grows mid-run. */

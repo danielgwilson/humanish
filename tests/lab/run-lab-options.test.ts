@@ -142,7 +142,7 @@ describe("an option the route cannot honor is refused before anything runs", () 
       expect(result.ok).toBe(true);
       return;
     }
-    expect(result).toMatchObject({ ok: false, code: "HUMANISH_LAB_OPTION_UNSUPPORTED" });
+    expect(result).toMatchObject({ ok: false, code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" });
     if (result.ok) return;
     expect(result.message).toContain(`RunLabOptions.${refusedOption}`);
     expect(result.message).toContain(`the ${routeOf(labConfig)} route`);
@@ -186,7 +186,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
     expect(outcome.result).toMatchObject({
       schema,
       ok: false,
-      error: { code: "HUMANISH_LAB_OPTION_UNSUPPORTED" },
+      error: { code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" },
     });
     expect(desktopLoads).toBe(0);
     expect(await readdir(cwd)).toEqual([]);
@@ -213,7 +213,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
     );
     expect(outcome.result).toMatchObject({
       ok: false,
-      error: { code: "HUMANISH_CUA_LAB_FANOUT_INVALID" },
+      error: { code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID" },
     });
     expect(outcome.result.error?.message).toContain("RunLabOptions.inProcess");
     expect(desktopLoads).toBe(0);
@@ -504,7 +504,7 @@ describe("an onEvent failure never escapes", () => {
 describe("an in-process run has no desktop to prepare", () => {
   it("refuses prepareDesktop beside inProcess", () => {
     const result = normalize(config("cuAppUrl"), { inProcess, createProvider, prepareDesktop });
-    expect(result).toMatchObject({ ok: false, code: "HUMANISH_LAB_OPTION_UNSUPPORTED" });
+    expect(result).toMatchObject({ ok: false, code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" });
     if (!result.ok) expect(result.message).toContain("RunLabOptions.prepareDesktop");
   });
 });

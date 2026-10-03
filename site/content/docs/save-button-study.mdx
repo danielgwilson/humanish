@@ -40,13 +40,13 @@ That recovered the Save-button account in all three broken/automatic confirmatio
 
 The working/natural controls caught a separate error. Each participant explicitly reported no friction, but humanish's legacy text parser created a feedback candidate anyway. Those three candidates are false positives in this study.
 
-They prompted the narrow parser correction in [PR #671](https://github.com/danielgwilson/humanish/pull/671). That correction has deterministic regression proof. We have not substituted corrected counts into the frozen table or run another independent paid cohort to confirm it.
+They prompted a [narrow parser correction](https://github.com/danielgwilson/humanish/pull/671). That correction has deterministic regression proof. We have not substituted corrected counts into the frozen table or run another independent paid cohort to confirm it.
 
 All twelve bundles passed verification as `share_ready`, and all nine candidates could produce issue drafts. That includes the false positives. Share-safety checks and successful draft generation do not establish whether a finding is correct; the participant's account still needs comparison with the screenshots and actions.
 
 ## Repeat the comparison
 
-Use the [public fixtures and recipe](https://github.com/danielgwilson/humanish/blob/main/bench/feedback-ending-study.md). For the runtime before the separate parser correction, start from [commit `1699665`](https://github.com/danielgwilson/humanish/tree/169966525703d188b01edace72867e6bd54da988). Current main includes that correction, so the working/natural candidate counts should differ from the frozen table. Make four local lab configurations: each Save variant with the shown `stopWhen`, and each with that condition removed for a natural ending.
+Use the [public fixtures and recipe](repo:bench/feedback-ending-study.md). For the runtime before the separate parser correction, start from [commit `1699665`](https://github.com/danielgwilson/humanish/tree/169966525703d188b01edace72867e6bd54da988). Current main includes that correction, so the working/natural candidate counts should differ from the frozen table. Make four local lab configurations: each Save variant with the shown `stopWhen`, and each with that condition removed for a natural ending.
 
 Keep the model and mission fixed. Use fresh sandboxes, alternate condition order between repetitions, and retain failed attempts. Score task completion separately from participant reports and candidate correctness. Both fixtures retain a 120-character add-field limit; this short mission does not exercise it.
 

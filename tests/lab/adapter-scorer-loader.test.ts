@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// #316 CLI-loadable adopter scorer. The loader itself is CLI-internal (declared via review.scorer.ref
-// / --scorer), so tests reach it through the deep module; the adopter-facing TYPES ship on the barrel.
+// The CLI-loadable adopter scorer. The loader itself is CLI-internal (declared via review.scorer.ref
+// / --scorer), so tests reach it through the deep module; the adopter-facing types ship on the barrel.
 import { loadAdapterScorer } from "../../src/lab/adapter-scorer-loader.js";
 import type { AdapterScorerModule, AdapterScoringContext } from "../../src/index.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
@@ -43,7 +43,7 @@ async function readBundle(cwd: string, runId: string): Promise<RunBundle> {
 
 describe("adopter-scorer contract types are reachable from the public barrel", () => {
   it('an AdapterScorerModule types against `import("humanish")` alone', () => {
-    // This would not COMPILE if AdapterScorerModule / AdapterScoringContext were not exported.
+    // This would not compile if AdapterScorerModule / AdapterScoringContext were not exported.
     const mod: AdapterScorerModule = {
       score: (ctx: AdapterScoringContext): RunAdapterScore => ({
         schema: "humanish.adapter-score.v1",
@@ -57,7 +57,7 @@ describe("adopter-scorer contract types are reachable from the public barrel", (
   });
 });
 
-describe("loadAdapterScorer — resolution", () => {
+describe("loadAdapterScorer: resolution", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-res-"));
@@ -104,7 +104,7 @@ describe("loadAdapterScorer — resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
   it("rejects a cwd-parent node_modules ref", async () => {
@@ -116,7 +116,7 @@ describe("loadAdapterScorer — resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
   it("rejects an absolute path (BAD_REF)", async () => {
@@ -130,7 +130,7 @@ describe("loadAdapterScorer — resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
   it("rejects a .ts ref (no shipped TypeScript loader)", async () => {
@@ -143,7 +143,7 @@ describe("loadAdapterScorer — resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
     expect(result.error.message).toContain(".ts");
   });
 
@@ -156,10 +156,10 @@ describe("loadAdapterScorer — resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
-  it("rejects a symlink entry (NOT_FOUND — fail-closed containment)", async () => {
+  it("rejects a symlink entry (NOT_FOUND: fail-closed containment)", async () => {
     await writeScorer(cwd, "real.mjs", PASS_SCORER);
     await symlink(path.join(cwd, "real.mjs"), path.join(cwd, "s-link.mjs"));
     const result = await loadAdapterScorer({
@@ -170,10 +170,10 @@ describe("loadAdapterScorer — resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NOT_FOUND");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NOT_FOUND");
   });
 
-  it("rejects a hardlinked entry (nlink>1 — fail-closed containment)", async () => {
+  it("rejects a hardlinked entry (nlink>1: fail-closed containment)", async () => {
     await writeScorer(cwd, "orig.mjs", PASS_SCORER);
     await link(path.join(cwd, "orig.mjs"), path.join(cwd, "hard.mjs"));
     const result = await loadAdapterScorer({
@@ -184,7 +184,7 @@ describe("loadAdapterScorer — resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NOT_FOUND");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NOT_FOUND");
   });
 
   it("two distinct module bytes produce two distinct digests", async () => {
@@ -208,7 +208,7 @@ describe("loadAdapterScorer — resolution", () => {
   });
 });
 
-describe("loadAdapterScorer — load + whitelist", () => {
+describe("loadAdapterScorer: load + whitelist", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-load-"));
@@ -262,7 +262,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_LOAD_FAILED");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_LOAD_FAILED");
   });
 
   it("maps a SyntaxError to LOAD_FAILED with an actionable hint", async () => {
@@ -275,7 +275,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_LOAD_FAILED");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_LOAD_FAILED");
   });
 
   it("hard-errors when a module exports none of the hooks (NO_HOOKS)", async () => {
@@ -288,10 +288,10 @@ describe("loadAdapterScorer — load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NO_HOOKS");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NO_HOOKS");
   });
 
-  it("on the terminal route, a module exporting ONLY browser-only deriveArtifacts fails closed (never a silent no-op)", async () => {
+  it("on the terminal route, a module exporting only browser-only deriveArtifacts fails closed (never a silent no-op)", async () => {
     await writeScorer(
       cwd,
       "artifacts-only.mjs",
@@ -305,11 +305,11 @@ describe("loadAdapterScorer — load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NO_HOOKS");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NO_HOOKS");
     expect(result.error.message).toContain("deriveArtifacts");
   });
 
-  it("on a browser route, deriveArtifacts IS wired + recorded", async () => {
+  it("on a browser route, deriveArtifacts is wired + recorded", async () => {
     await writeScorer(cwd, "artifacts.mjs", `export function deriveArtifacts() { return []; }\n`);
     const result = await loadAdapterScorer({
       cwd,
@@ -323,7 +323,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     expect(typeof result.hooks.deriveArtifacts).toBe("function");
   });
 
-  it("does NOT wire costProbe / executor / env — only the whitelist", async () => {
+  it("does not wire costProbe / executor / env: only the whitelist", async () => {
     await writeScorer(
       cwd,
       "extra.mjs",
@@ -349,7 +349,7 @@ export const env = {};
   });
 });
 
-describe("loadAdapterScorer — route guards (declared gate that cannot run must ABORT)", () => {
+describe("loadAdapterScorer: route guards (declared gate that cannot run must abort)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-route-"));
@@ -370,7 +370,7 @@ describe("loadAdapterScorer — route guards (declared gate that cannot run must
       });
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND");
+      expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_UNSUPPORTED_BACKEND");
     },
   );
 });
@@ -384,7 +384,7 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("attaches the loaded score AND records scorerProvenance {ref,digest,source,exports}; the bundle verifies", async () => {
+  it("attaches the loaded score and records scorerProvenance {ref,digest,source,exports}; the bundle verifies", async () => {
     const ref = await writeScorer(cwd, "scorers/product.mjs", PASS_SCORER);
     const loaded = await loadAdapterScorer({ cwd, ref, route: "terminal", source: "cli-flag" });
     expect(loaded.ok).toBe(true);
@@ -445,7 +445,7 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
   });
 });
 
-describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers", () => {
+describe("terminal verdict: §5 decision is flip for config-declared scorers", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-flip-"));
@@ -470,7 +470,7 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
     exports: ["score"] as ("score" | "deriveFeedback" | "deriveArtifacts")[],
   };
 
-  it("a CONFIG-DECLARED terminal scorer returning fail FLIPS review.verdict to fail", async () => {
+  it("a config-declared terminal scorer returning fail flips review.verdict to fail", async () => {
     const inputs = passingRun({ scorer: { score: () => failScore() } });
     const result = await runTerminalProductLab({
       cwd,
@@ -483,15 +483,15 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
 
     const bundle = await readBundle(cwd, result.runId);
     expect(bundle.adapterScore?.status).toBe("fail");
-    expect(bundle.review.verdict).toBe("fail"); // FLIPPED — the declared product rubric owns the verdict
-    expect(result.ok).toBe(false); // the declared gate fails the RUN RESULT (exit code), not just the persisted verdict
+    expect(bundle.review.verdict).toBe("fail"); // Flipped: the declared product rubric owns the verdict
+    expect(result.ok).toBe(false); // the declared gate fails the run result (exit code), not just the persisted verdict
     expect(bundle.scorerProvenance?.ref).toBe("scorers/product.mjs");
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
   });
 
-  it("a LIBRARY caller (no scorerProvenance) keeps the additive no-flip behavior", async () => {
+  it("a library caller (no scorerProvenance) keeps the additive no-flip behavior", async () => {
     const inputs = passingRun({ scorer: { score: () => failScore() } });
     const result = await runTerminalProductLab({
       cwd,
@@ -503,12 +503,12 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
 
     const bundle = await readBundle(cwd, result.runId);
     expect(bundle.adapterScore?.status).toBe("fail");
-    expect(bundle.review.verdict).toBe("pass"); // UNCHANGED mission verdict — back-compat preserved
+    expect(bundle.review.verdict).toBe("pass"); // Unchanged mission verdict: back-compat preserved
     expect(result.ok).toBe(true); // additive: a library score never fails the run
     expect(bundle.scorerProvenance).toBeUndefined();
   });
 
-  it("a DECLARED scorer that THROWS becomes a visible review.gaps entry (never a silent pass)", async () => {
+  it("a declared scorer that throws becomes a visible review.gaps entry (never a silent pass)", async () => {
     const inputs = passingRun({
       scorer: {
         score: () => {
@@ -535,9 +535,9 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
     expect(result.warnings.some((w) => w.includes("threw"))).toBe(true);
   });
 
-  it("a DECLARED terminal scorer returning a MALFORMED value fails the run (never a silent green)", async () => {
-    // status/score/summary present but namespace empty → fails isAdapterScoreShape. A scorer that MEANT
-    // to fail but mis-shaped its return must not silent-green (red-team finding #1).
+  it("a declared terminal scorer returning a malformed value fails the run (never a silent green)", async () => {
+    // status/score/summary present but namespace empty → fails isAdapterScoreShape. A scorer that meant
+    // to fail but mis-shaped its return must not pass.
     const inputs = passingRun({
       scorer: {
         score: () => ({
@@ -566,7 +566,7 @@ describe("terminal verdict — §5 decision is FLIP for CONFIG-DECLARED scorers"
   });
 });
 
-describe("browser routes flip AND stamp provenance", () => {
+describe("browser routes flip and stamp provenance", () => {
   const provenance = {
     schema: "humanish.scorer-provenance.v1" as const,
     ref: "scorers/browser.mjs",
@@ -592,7 +592,7 @@ describe("browser routes flip AND stamp provenance", () => {
     participantCount: 1,
   });
 
-  it("a DECLARED fail score is a failure the fold turns into a fail, and stamps provenance", async () => {
+  it("a declared fail score is a failure the fold turns into a fail, and stamps provenance", async () => {
     const bundle = freshBundle();
     const res = await applyBrowserScorer({
       scorer: {
@@ -661,7 +661,7 @@ describe("browser routes flip AND stamp provenance", () => {
     expect(foldScorerFailures(bundle.review, res.failures).verdict).toBe("fail");
   });
 
-  it("a LIBRARY browser scorer that throws does NOT flip and signals no failure (back-compat)", async () => {
+  it("a library browser scorer that throws does not flip and signals no failure (back-compat)", async () => {
     const bundle = freshBundle();
     const res = await applyBrowserScorer({
       scorer: {
@@ -700,11 +700,11 @@ describe("browser routes flip AND stamp provenance", () => {
       warnings: [],
       scorerProvenance: provenance,
     });
-    // The REAL bundle was never mutated by the scorer (it saw a frozen clone).
+    // The real bundle was never mutated by the scorer (it saw a frozen clone).
     expect((bundle as unknown as { noSpend: { satisfied: boolean } }).noSpend.satisfied).toBe(
       false,
     );
-    // The tamper is caught and treated as a declared-gate failure — no laundered pass.
+    // The tamper is caught and treated as a declared-gate failure: no laundered pass.
     expect(res.failures).toHaveLength(1);
     expect(foldScorerFailures(bundle.review, res.failures).verdict).toBe("fail");
   });
@@ -734,7 +734,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
     expect(verified.ok).toBe(true);
   });
 
-  it("a bundle with a MALFORMED scorerProvenance digest fails verification (fail-closed guard)", async () => {
+  it("a bundle with a malformed scorerProvenance digest fails verification (fail-closed guard)", async () => {
     const ref = await writeScorer(cwd, "s.mjs", PASS_SCORER);
     const loaded = await loadAdapterScorer({ cwd, ref, route: "terminal", source: "manifest" });
     expect(loaded.ok).toBe(true);
@@ -760,8 +760,8 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
   });
 });
 
-describe("parser — review.scorer consumed on scorer-capable routes, typos rejected", () => {
-  it("a terminal lab declaring review.scorer emits NO 'not yet consumed' warning for scorer", () => {
+describe("parser: review.scorer consumed on scorer-capable routes, typos rejected", () => {
+  it("a terminal study declaring review.scorer emits no 'not yet consumed' warning for scorer", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "terminal-scorer",
@@ -790,7 +790,7 @@ describe("parser — review.scorer consumed on scorer-capable routes, typos reje
     expect(result.warnings.some((w) => w.includes("review.scorer"))).toBe(false);
   });
 
-  it("a scripted lab declaring review.scorer WARNS inert (the scripted actor has no scorer seam)", () => {
+  it("a scripted study declaring review.scorer warns inert (the scripted actor has no scorer seam)", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "scripted-scorer",

@@ -1,5 +1,5 @@
 // The in-sandbox DevTools probe, run the way a sandbox runs it: the real python3, against a real
-// headless Chrome. The #514 root cause was an interpreter that was not there, so the contract is
+// headless Chrome. A missing interpreter once blinded the probe, so the contract is
 // executed, never simulated. Chrome-backed cases skip (loudly) where no Chrome binary exists.
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createServer, type Server } from "node:http";
@@ -20,6 +20,7 @@ import {
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { makeChromeDesktopGeometryObserver } from "../../../src/substrates/e2b/desktop-geometry.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
+import { launchReadableChrome, stopChrome } from "../../helpers/readable-chrome.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -144,7 +145,7 @@ describe("chrome-cdp-probe: port resolution under the real python3", () => {
   );
 
   it.skipIf(!python3)(
-    "a dead endpoint is reported as unavailable WITH the reason, not as an empty success",
+    "a dead endpoint is reported as unavailable with the reason, not as an empty success",
     async () => {
       // Nothing listens on this port; the probe must say so instead of printing {}.
       const result = await runProbe({
@@ -158,39 +159,15 @@ describe("chrome-cdp-probe: port resolution under the real python3", () => {
   );
 });
 
-/** Signal a process group; a group that is already gone is not an error. */
-function signalGroup(group: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-group, signal);
-  } catch {
-    // ESRCH: nothing left in the group.
-  }
-}
-
-/** True once no process is left in the group, false if one still is after `timeoutMs`. */
-async function groupGone(group: number, timeoutMs: number): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    try {
-      process.kill(-group, 0);
-    } catch {
-      return true;
-    }
-    if (Date.now() >= deadline) return false;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-}
-
 describe("chrome-cdp-probe: against a real headless Chrome", () => {
   let server: Server | undefined;
   let pageUrl = "";
   let profileDir = "";
   let browser: ChildProcess | undefined;
   let cdpPort = 0;
-  // Set once the page is readable through the socket. A runner where Chrome never comes up in
-  // time is not a defect in the probe, so those cases SKIP with a note instead of failing (the
-  // node-22 main leg on 2026-09-03 waited 20 s for DevToolsActivePort and failed five cases).
-  let chromeUp = false;
+  // Why a first launch was replaced, for the first case to annotate. A Chrome that never reads
+  // back fails the hook with one reason per launch instead.
+  let launchFailures: string[] = [];
 
   beforeAll(async () => {
     if (!python3 || chrome === undefined) return;
@@ -204,78 +181,20 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     });
     await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
     pageUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/index.html`;
-    profileDir = await mkdtemp(path.join(tmpdir(), "humanish-cdp-chrome-"));
-    // Detached, so Chrome leads its own process group: its zygote, GPU, network and renderer
-    // helpers join that group, and afterAll can signal and wait for all of them at once.
-    browser = spawn(
-      chrome,
-      [
-        "--headless=new",
-        "--no-sandbox",
-        "--disable-gpu",
-        "--no-first-run",
-        "--remote-debugging-port=0",
-        `--user-data-dir=${profileDir}`,
-        pageUrl,
-      ],
-      { stdio: "ignore", detached: true },
-    );
-    // A worker that exits without afterAll must not leave a detached Chrome running.
-    const group = browser.pid;
-    if (group !== undefined)
-      process.once("exit", () => {
-        signalGroup(group, "SIGKILL");
-      });
-    // Same seam the sandbox uses: the marker file appears once DevTools is listening.
-    const markerPath = path.join(profileDir, "DevToolsActivePort");
-    for (let attempt = 0; attempt < 240; attempt += 1) {
-      const marker = await readFile(markerPath, "utf8").catch(() => "");
-      const parsed = Number.parseInt(marker.split("\n")[0] ?? "", 10);
-      if (Number.isInteger(parsed) && parsed > 0) {
-        cdpPort = parsed;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-    // Let the tab finish navigating so the "active" read is the page, not the launch blank.
-    for (let attempt = 0; attempt < 80 && cdpPort > 0; attempt += 1) {
-      const state = await runProbe({
-        mode: "state",
-        prefer: "active",
-        cdpPort,
-        targetUrl: pageUrl,
-      });
-      if (state.url === pageUrl && state.text !== undefined) {
-        chromeUp = true;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-    if (!chromeUp) {
-      console.warn(
-        `chrome-cdp-probe: headless Chrome at ${chrome} did not become readable (cdpPort=${cdpPort}); Chrome-backed cases will skip`,
+    // 60 s for at most two launches keeps the hook well inside its own timeout, so a Chrome that
+    // never reads back fails here with the reason for each launch, not with a hook timeout.
+    const launch = await launchReadableChrome(chrome, pageUrl, 60_000);
+    launchFailures = launch.failures;
+    if (!launch.chrome)
+      throw new Error(
+        `headless Chrome at ${chrome} never read back: ${launch.failures.join("; ")}`,
       );
-    }
+    ({ browser, profileDir, cdpPort } = launch.chrome);
   }, 120_000);
 
   afterAll(async () => {
-    // Chrome's helpers outlive its main process, and one still running can write into the profile
-    // dir after rm. Stop the whole group and wait until it is empty before removing anything.
-    const group = browser?.pid;
-    if (group !== undefined) {
-      signalGroup(group, "SIGTERM");
-      if (!(await groupGone(group, 5_000))) {
-        signalGroup(group, "SIGKILL");
-        await groupGone(group, 3_000);
-      }
-    }
+    await stopChrome(browser, profileDir);
     await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()));
-    if (profileDir) {
-      await rm(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
-      // A writer the group wait missed recreates the dir; look once more and remove it again.
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      await rm(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
-    }
   }, 20_000);
 
   const live = python3 && chrome !== undefined;
@@ -283,7 +202,8 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   it.skipIf(!live)(
     "state mode reads url, title, innerText and scrollY through the page socket",
     async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+      // A first launch that stalled and was replaced is a clue to why launches stall here.
+      if (launchFailures.length > 0) await ctx.annotate(launchFailures.join("; "), "notice");
       const state = await runProbe({
         mode: "state",
         prefer: "active",
@@ -301,8 +221,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
 
   it.skipIf(!live)(
     "pinned mode attributes the page by the lane's target URL when no target id is known",
-    async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    async () => {
       const state = await runProbe({
         mode: "state",
         prefer: "pinned",
@@ -315,8 +234,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
 
   it.skipIf(!live)(
     "geometry mode reads outer window bounds, the CSS viewport and the page target id",
-    async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    async () => {
       const geometry = await runProbe({ mode: "geometry", cdpPort, targetUrl: pageUrl });
       expect(geometry.unavailable).toBeUndefined();
       expect(geometry.viewport?.width).toBeGreaterThan(0);
@@ -337,8 +255,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
 
   it.skipIf(!live)(
     "a target URL that matches no page (pinned, several tabs would be ambiguous) still reads the single page",
-    async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    async () => {
       // One http page: the single-page fallback applies, as it did in the node probe.
       const state = await runProbe({
         mode: "state",
@@ -383,7 +300,6 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   it.skipIf(!live)(
     "emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page",
     async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
       await settleLaunchPage();
       const emulation = {
         width: 414,
@@ -453,7 +369,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
       });
       try {
         // The holder announces once its socket is up; on a slow runner that can take a while, and a
-        // holder that never comes up is the runner's Chrome, not the probe (same posture as chromeUp).
+        // holder that never comes up is the runner's Chrome, not the probe.
         const announceLine = async (): Promise<string | undefined> => {
           for (let attempt = 0; attempt < 80; attempt += 1) {
             const line = announced.split("\n").find((candidate) => candidate.startsWith("{"));
@@ -525,7 +441,6 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   it.skipIf(!live)(
     "hold mode emulates a page target opened after it attached, without pausing it",
     async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
       await settleLaunchPage();
       const emulation = {
         width: 414,
@@ -577,7 +492,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
           return ctx.skip("the hold-mode applier did not come up on this runner");
         }
         expect(parseChromeCdpProbeOutput(announce).unavailable, announce).toBeUndefined();
-        // A second tab, opened the way a target=_blank link opens one, AFTER the holder attached.
+        // A second tab, opened the way a target=_blank link opens one, after the holder attached.
         // Chrome's legacy endpoint needs PUT; the reply is the new target's /json entry.
         const created = (await (
           await fetch(`http://127.0.0.1:${cdpPort}/json/new?${pageUrl}?second`, { method: "PUT" })
@@ -585,7 +500,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         expect(typeof created.id, JSON.stringify(created)).toBe("string");
         const secondId = created.id as string;
         openedTab = secondId;
-        // The page's own read-back on THAT target: the phone viewport, DPR and touch, never inherited
+        // The page's own read-back on that target: the phone viewport, DPR and touch, never inherited
         // from the window (the launch page is emulated by its own session).
         let read = await runProbe({
           mode: "fidelity",
@@ -650,8 +565,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
 
   it.skipIf(!live)(
     "the shipped command (python3 -c ... '<json>') runs end to end through a shell",
-    async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    async () => {
       await settleLaunchPage();
       const command = chromeCdpProbeCommand({
         mode: "state",
@@ -667,8 +581,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
 
   it.skipIf(!live)(
     "final geometry follows a new foreground tab and still measures it after the launch tab closes",
-    async (ctx) => {
-      if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    async () => {
       const created: string[] = [];
       const desktop = {
         commands: { run: async (command: string) => execFileAsync("sh", ["-c", command]) },
@@ -863,7 +776,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(reasons).toEqual(["CDP endpoint 127.0.0.1:9222/json unreachable (URLError)"]);
   });
 
-  // A fake desktop whose "state" probe reports the launch tab first and OTHER-TAB afterwards, and
+  // A fake desktop whose "state" probe reports the launch tab first and other-tab afterwards, and
   // whose "fidelity" probe on that tab answers with the given read-back (or exits non-zero).
   function driftingDesktop(fidelityStdout: string | undefined): {
     desktop: E2BDesktopSandbox;
@@ -948,7 +861,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(covered).toEqual([
       ["OTHER-TAB", { innerWidth: 414, devicePixelRatio: 3, maxTouchPoints: 5 }],
     ]);
-    // The read-back was taken ONCE for the new target, pinned to its id, not on every observation.
+    // The read-back was taken once for the new target, pinned to its id, not on every observation.
     const fidelityReads = commands().filter((command) => command.includes('"mode":"fidelity"'));
     expect(fidelityReads).toHaveLength(1);
     expect(fidelityReads[0]).toContain('"targetId":"OTHER-TAB"');

@@ -70,7 +70,7 @@ describe("isCommandExitError", () => {
     expect(isCommandExitError({ exitCode: 0 })).toBe(true); // 0 is still a numeric exit signal
   });
 
-  it("is FALSE for a generic Error with no name override and no exitCode (deadline/abort-shaped)", () => {
+  it("is false for a generic Error with no name override and no exitCode (deadline/abort-shaped)", () => {
     class CuaDeadlineError extends Error {}
     class CuaAbortError extends Error {}
     expect(isCommandExitError(new Error("request timed out"))).toBe(false);
@@ -78,7 +78,7 @@ describe("isCommandExitError", () => {
     expect(isCommandExitError(new CuaAbortError())).toBe(false);
   });
 
-  it("is FALSE for a non-object throw or a non-numeric exitCode", () => {
+  it("is false for a non-object throw or a non-numeric exitCode", () => {
     expect(isCommandExitError(undefined)).toBe(false);
     expect(isCommandExitError(null)).toBe(false);
     expect(isCommandExitError("boom")).toBe(false);

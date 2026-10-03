@@ -1,4 +1,4 @@
-// Builds the run bundle for a concurrent shared-world run: per-seat simulations, streams and
+// Builds the run bundle for a concurrent shared-world run: per-participant simulations, streams and
 // events, the sharedWorld evidence block and the review summary.
 
 import { receivingPublication } from "../../comms/receiving-runtime.js";
@@ -68,10 +68,10 @@ export function maxSimultaneousWindows(
 }
 
 /**
- * The judgment for a shared-world bundle's inputs: how each seat ended, plus what the run observed
- * about its world: overlap, a state change under overlap on the provisioned plane, and lobby
- * convergence on the external-public plane. The bundle's verdict and the lab result's ok both read
- * it.
+ * The judgment for a shared-world bundle's inputs: how each participant ended, plus what the run
+ * observed about its world: overlap, a state change under overlap on the provisioned plane, and
+ * lobby convergence on the external-public plane. The bundle's verdict and the study result's ok
+ * both read it.
  */
 export function judgeSharedWorldRun(
   args: Omit<ConcurrentBundleArgs, "judgment">,
@@ -190,7 +190,8 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
   return events;
 }
 
-/** The sharedWorld block: seat windows, the state series, seat outcomes and the plane. */
+/** The sharedWorld block: participant windows, the state series, participant outcomes and the
+ *  plane. */
 function sharedWorldEvidence(
   args: ConcurrentBundleArgs,
   external: boolean,
@@ -204,8 +205,9 @@ function sharedWorldEvidence(
 } {
   const { plan, dryRun, actorSpecs, actorResults } = args;
   // Build the concurrent shared-world evidence block. routeHostDigest is sha256-16 of the origin each
-  // seat reached: on getHost the seat URL the actor drove (verify confirms == plane.hostDigest); on
-  // external-public the seat's CDP-observed URL origin (verify confirms == plane.publicOriginDigest).
+  // participant reached: on getHost the participant URL the actor drove (verify confirms ==
+  // plane.hostDigest); on external-public the participant's CDP-observed URL origin (verify
+  // confirms == plane.publicOriginDigest).
   const fallbackHostDigest = external
     ? (args.publicOriginDigest ?? commandDigestOf("[external-public-plane]"))
     : (args.hostDigest ?? commandDigestOf("[provisioned-subject]"));
@@ -305,8 +307,8 @@ function sharedWorldEvidence(
 }
 
 /**
- * A finished run's gaps: each seat that did not pass, or, when every seat passed, the world
- * shortfall that failed the run.
+ * A finished run's gaps: each participant that did not pass, or, when every participant passed, the
+ * world shortfall that failed the run.
  */
 function finishedGaps(
   actorResults: ConcurrentBundleArgs["actorResults"],
@@ -368,9 +370,9 @@ function concurrencyReview(
     message: `Concurrency: ${windows.length} participant(s)${dryRun ? " (dry-run contract; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
   });
 
-  // The judge's verdict (judgeSharedWorld): every seat produced a terminal, engaged, passed session.
-  // Mission endpoint and completion reasons are reported separately below; `outcomes[].ok` is not
-  // renamed into mission success.
+  // The judge's verdict (judgeSharedWorld): every participant produced a terminal, engaged, passed
+  // session. Mission endpoint and completion reasons are reported separately below; `outcomes[].ok`
+  // is not renamed into mission success.
   const verdict = args.judgment.verdict;
   const actorOutcomeSummary = formatSharedWorldActorOutcomes(outcomes, actorSpecs.length);
 

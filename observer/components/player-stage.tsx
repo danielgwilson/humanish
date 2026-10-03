@@ -205,7 +205,7 @@ export function PlayerStage({
               key={streamRevision}
               sandbox={sandbox}
               src={live}
-              title={`Live view — ${label}`}
+              title={`Live view · ${label}`}
               tabIndex={-1}
               aria-hidden="true"
               referrerPolicy="no-referrer"
@@ -276,7 +276,7 @@ function RecordedImage({
               ? ""
               : status !== "ready" && decoded
                 ? "Previous capture while the selected frame is unavailable"
-                : `Frame ${frame.index + 1} of ${count} — ${frame.title}`
+                : `Frame ${frame.index + 1} of ${count} · ${frame.title}`
           }
           aria-hidden={slot.pending || undefined}
           decoding="async"

@@ -9,7 +9,7 @@ On this hosted route, automatic findings default to the OpenAI API and require
 `OPENAI_API_KEY`, even with a local-agent participant. Without that key the
 participant can run, but automatic analysis is skipped. To opt out deliberately,
 set `review.analysis: false`. A Codex account analyst can also be
-[selected explicitly](https://github.com/danielgwilson/humanish/blob/main/docs/product/automatic-analysis.md);
+[selected explicitly](repo:docs/product/automatic-analysis.md);
 changing the participant alone does not change the analyst.
 
 Replace the `actors` block in your [own-app lab](/docs/your-app) with this fragment,
@@ -63,7 +63,7 @@ its own [authentication commands](https://code.claude.com/docs/en/cli-reference)
 
 ## Where execution happens
 
-humanish's [local-agent discovery](https://github.com/danielgwilson/humanish/blob/main/src/actors/local-agent/cli.ts)
+humanish's [local-agent discovery](repo:src/actors/local-agent/cli.ts)
 uses each CLI's status command; a credential-file hint is not treated as proof
 of authentication. This supports Codex's `CODEX_HOME` and keyring-backed login
 without assuming an `auth.json` file must exist. Status output is classified

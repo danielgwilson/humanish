@@ -45,6 +45,16 @@ describe("findUnindexedDocs", () => {
     ).toEqual(["docs/principles/three-roles.md", "docs/contracts/README.md"]);
   });
 
+  it("accepts a GitHub URL to the page on main, as a shipped index writes it", () => {
+    expect(
+      unindexed({
+        "docs/README.md":
+          "- [status](https://github.com/danielgwilson/humanish/blob/main/docs/status.md)\n",
+        "docs/status.md": "# Status\n",
+      }),
+    ).toEqual([]);
+  });
+
   it("does not count a link to another page's folder as a link to the page", () => {
     expect(
       unindexed({

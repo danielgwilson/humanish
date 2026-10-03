@@ -97,7 +97,7 @@ describe("lab manifest resolution", () => {
     expect(compat.ok).toBe(true);
     expect(compat.warnings.join("\n")).toContain("Prefer .yaml");
     expect(bad.ok).toBe(false);
-    expect(bad.error?.code).toBe("HUMANISH_LAB_INVALID");
+    expect(bad.error?.code).toBe("HUMANISH_STUDY_INVALID");
   });
 
   it.each(["symlink", "hardlink", "fifo"] as const)(
@@ -135,7 +135,7 @@ describe("lab manifest resolution", () => {
       );
 
       expect(resolved.ok).toBe(false);
-      expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(!resolved.ok && resolved.error.message).toMatch(
         /managed lab|single-link|containment/i,
       );
@@ -173,7 +173,7 @@ describe("lab manifest resolution", () => {
       );
 
       expect(resolved.ok).toBe(false);
-      expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(listed.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:safe-local"]);
       expect(listed.warnings.join("\n")).toMatch(/humanish[/\\]labs.*unsafe|symbolic links/i);
     },
@@ -224,7 +224,7 @@ describe("lab manifest resolution", () => {
       );
 
       expect(resolved.ok).toBe(false);
-      expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(!resolved.ok && resolved.error.message).toMatch(/single-link|containment/i);
     },
   );

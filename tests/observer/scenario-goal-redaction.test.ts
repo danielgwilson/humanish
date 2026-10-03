@@ -1,9 +1,9 @@
-// #412: verify must not fail a bundle its own writer produced.
+// Verify must not fail a bundle its own writer produced.
 //
 // Lane records are digest-only by design, but `scenario.goal` keeps one lane's composed
 // instructions verbatim, and `observer-data.json` carries a copy. An adopter whose authored lane
-// text has to name a runtime world URL — an inbox on a route where the harness does not inject one
-// — put an `*.e2b.app` address in it. That landed raw in both artifacts, the sensitive-text scanner
+// text has to name a runtime world URL (an inbox on a route where the harness does not inject one)
+// put an `*.e2b.app` address in it. That landed raw in both artifacts, the sensitive-text scanner
 // matched it, and verify failed a bundle humanish itself wrote, with every lane passing.
 //
 // The only adopter-side workaround was writing the URL scheme-less to dodge the scanner, which

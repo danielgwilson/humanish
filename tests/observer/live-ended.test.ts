@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-// #357: a finished/cleaned-up lane must fall back to recorded evidence, never render the dead
-// stream. The overlay is where that decision lives: an ENDED runtime entry stops injecting its
+// A finished/cleaned-up lane must fall back to recorded evidence, never render the dead
+// stream. The overlay is where that decision lives: an ended runtime entry stops injecting its
 // live URL and marks the stream so the page can say why the live view changed.
 import {
   withRuntimeStreamUrls,
@@ -35,7 +35,7 @@ describe("withRuntimeStreamUrls lifecycle", () => {
     expect((a!.embed as Record<string, unknown>).url).toBe("https://live.example.test/a");
     expect(a!.liveEnded).toBeUndefined();
 
-    // Ended lane: NO dead URL is served — the tile renders its recorded evidence — and the page
+    // Ended lane: no dead URL is served (the tile renders its recorded evidence) and the page
     // is told why, so "finished" can never read as "sandbox not found".
     expect(b!.embed).toBeUndefined();
     expect(b!.url).toBeUndefined();

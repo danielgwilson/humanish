@@ -38,7 +38,7 @@ describe("the action vocabulary a local agent answers in", () => {
     ]);
   });
 
-  it("DROPS an action it cannot honour rather than inventing the missing half", () => {
+  it("drops an action it cannot honour rather than inventing the missing half", () => {
     // A click with no coordinates is not a click at (0,0). Filling that in would record a
     // coordinate the participant never chose, in evidence someone is meant to trust.
     expect(toCuaActions([{ kind: "click" }])).toEqual([]);
@@ -56,7 +56,7 @@ describe("reading the agent's answer", () => {
     expect(parseAgentJson('here you go\n```json\n{"done":false}\n```\n')).toEqual({ done: false });
   });
 
-  it("treats an answer with no JSON as a turn ERROR, never as an empty turn", () => {
+  it("treats an answer with no JSON as a turn error, never as an empty turn", () => {
     // An empty turn reads to the loop as "the participant chose to do nothing", which is a
     // finding. A CLI that returned prose is a broken turn, which is not.
     expect(() => parseAgentJson("I could not see the screenshot.")).toThrow(
@@ -133,7 +133,7 @@ describe("the provider", () => {
     ).rejects.toThrow(/rate limit reached/);
   });
 
-  it("records the effort it ran at, and defaults it LOW", async () => {
+  it("records the effort it ran at, and defaults it low", async () => {
     // A run is sixty turns, and a high-effort answer per turn costs minutes.
     const provider = createLocalAgentProvider({ agent: "claude", spawnFn: fakeCli("{}") });
     expect(provider.modelSettings?.reasoningEffort).toBe("low");
@@ -162,7 +162,7 @@ describe("the provider", () => {
     expect(sawSignal).toBe(controller.signal);
   });
 
-  it("restricts the agent's own tools — it is here to look at a picture", async () => {
+  it("restricts the agent's own tools: it is here to look at a picture", async () => {
     const seen: string[][] = [];
     const spy: SpawnLike = async (_bin, args, _o) => {
       seen.push([...args]);
@@ -178,7 +178,7 @@ describe("the provider", () => {
       .catch(() => undefined);
     expect(seen[0]).toContain("--allowedTools");
     expect(seen[0]).toContain("Read");
-    // The prompt comes AFTER a `--`: --allowedTools takes a list, and a prompt placed right after
+    // The prompt comes after a `--`: --allowedTools takes a list, and a prompt placed right after
     // it was read as a tool name (Claude Code 2.1.257 exited 1, "Input must be provided", on three
     // of three live runs, 2026-09-01).
     const args = seen[0]!;
@@ -212,14 +212,13 @@ describe("telling the operator what they already have", () => {
   it("finds an installed, signed-in agent and says a run can use it", async () => {
     const found = await detect(["codex"], [".codex/auth.json"]);
     expect(found.map((a) => a.id)).toEqual(["codex"]);
-    expect(localAgentDoctorMessage(found)).toContain("instead of a provider API key");
+    expect(localAgentDoctorMessage(found[0]!)).toContain("instead of a provider API key");
   });
 
   it("distinguishes installed-but-signed-out from absent", async () => {
     const signedOut = await detect(["claude"], []);
-    expect(localAgentDoctorMessage(signedOut)).toContain("not signed in");
-    const none = await detect([], []);
-    expect(localAgentDoctorMessage(none)).toContain("needs OPENAI_API_KEY");
+    expect(localAgentDoctorMessage(signedOut[0]!)).toContain("not signed in");
+    expect(await detect([], [])).toEqual([]);
   });
 
   it("does not expose credentials or status output", async () => {
@@ -266,7 +265,7 @@ describe("telling the operator what they already have", () => {
         authProbe: async () => result,
       });
       expect(found[0]).toMatchObject({ credentialsPresent: true, authStatus: expected });
-      expect(JSON.stringify(found) + localAgentDoctorMessage(found)).not.toContain(
+      expect(JSON.stringify(found) + found.map(localAgentDoctorMessage).join()).not.toContain(
         "private-account-marker",
       );
     }

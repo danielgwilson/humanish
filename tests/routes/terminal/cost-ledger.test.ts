@@ -350,7 +350,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CAPS_EXCEEDED");
     // The sandbox was still torn down (cleanup runs in finally before the cap evaluation).
     expect(killed.length).toBe(1);
     // A blown cap is an execution failure: the agent's own status stays the verdict, the result
@@ -432,7 +432,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_UNPRICED_CAP");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_UNPRICED_CAP");
     expect(result.error?.message).toMatch(/scenario\.caps\.maxMinutes/);
     expect(result.error?.message).not.toContain(FAKE_RUNTIME_KEY);
     expect(result.runId).toBe("not-created");
@@ -559,7 +559,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
 
   it("adds an unpriced remainder line when the sandbox's teardown is not proven", async () => {
     const { result, cost } = await run({ cpuCount: 2, memoryMB: 2048 }, true);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_CLEANUP_UNPROVEN");
     // The span up to the failed cleanup is priced; what ran after it is unknown.
     expect(cost.breakdown).toContainEqual({
       kind: "desktop-minutes",
