@@ -36,7 +36,7 @@ export interface AppProps {
   now?: number;
   /**
    * Frozen spinner phase, for the same reason `now` is frozen: the spinner glyph is part of every
-   * live frame, and it advances on a 120ms timer — so a golden containing one is a coin flip on a
+   * live frame, and it advances on a 120ms timer, so a golden containing one is a coin flip on a
    * loaded machine. CI caught exactly that, passing on one Node version and failing on another.
    */
   tick?: number;
@@ -82,21 +82,21 @@ export function App({
   const [error, setError] = useState<string | undefined>(undefined);
   // A live start is armed by the first Enter and committed by the second; a dry run needs neither.
   const [confirming, setConfirming] = useState<"live" | undefined>(undefined);
-  // Launch state is SCOPED TO THE LAB it belongs to: it is one surface with one piece of state, and
+  // Launch state is scoped to the study it belongs to: it is one surface with one piece of state, and
   // an unscoped note follows the operator to a different lab's screen and reports something about
   // that lab which is not true of it.
   const [launchError, setLaunchError] = useState<{ labKey: string; text: string } | undefined>(
     undefined,
   );
-  /** A launch in flight, or one whose record has not appeared yet. NOT an error. */
+  /** A launch in flight, or one whose record has not appeared yet. Not an error. */
   const [launchNote, setLaunchNote] = useState<{ labKey: string; text: string } | undefined>(
     undefined,
   );
-  /** When the live confirmation was armed, so a HELD key cannot blow through it. */
+  /** When the live confirmation was armed, so a held key cannot blow through it. */
   const [armedAt, setArmedAt] = useState<number | undefined>(undefined);
   /**
    * The open run's participants. `undefined` means "not read yet" and `null` means "read, and it
-   * has no bundle" — a run that has just started. The screen says something different for each,
+   * has no bundle": a run that has just started. The screen says something different for each,
    * because "still loading" and "nothing there" are different facts.
    */
   const [detail, setDetail] = useState<RunDetail | null | undefined>(undefined);
@@ -106,25 +106,25 @@ export function App({
   const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
   const [showHelp, setShowHelp] = useState(false);
   const [showConnections, setShowConnections] = useState(options.initialScreen === "connections");
-  /** When the "set up humanish here" action was armed — it writes into the operator's directory. */
+  /** When the "set up humanish here" action was armed: it writes into the operator's directory. */
   const [initArmedAt, setInitArmedAt] = useState<number | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
   const [liveTick, setTick] = useState(0);
   const tick = frozenTick ?? liveTick;
   /** Which side the Start toggle is on. Per lab, so switching labs does not carry `live` across. */
   const [summary, setSummary] = useState<LabSummary | null | undefined>(undefined);
-  /** Detail for LIVE runs only, so the labs list can name who is in them. */
+  /** Detail for live runs only, so the studies list can name who is in them. */
   const [liveDetails, setLiveDetails] = useState<Map<string, RunDetail>>(new Map());
-  /** Whether this is a humanish project. Cheap and synchronous — two existence checks. */
+  /** Whether this is a humanish project. Cheap and synchronous: two existence checks. */
   const projectState = useMemo(() => options.capabilities.readProjectState(options.cwd), [options]);
   const clock = now ?? Date.now();
 
-  // Identity of the selected row, kept current so a refresh that REORDERS the list can put the
+  // Identity of the selected row, kept current so a refresh that reorders the list can put the
   // cursor back on the same thing. A live lab sorts to the top the moment a run starts, so an index
-  // held across a refresh silently points at a different lab — and that is how someone opens, or
+  // held across a refresh silently points at a different study, and that is how someone opens, or
   // starts, the wrong one.
   const selectedIdRef = useRef<string | undefined>(undefined);
-  /** Where the operator is RIGHT NOW, readable from an async launch that started long ago. */
+  /** Where the operator is right now, readable from an async launch that started long ago. */
   const screenRef = useRef<ReturnType<typeof currentScreen>>({ name: "labs" });
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export function App({
         // Read both sides before rendering either: a labs list assembled from history alone is
         // empty on a fresh project, and one from manifests alone hides real runs.
         const [index, labs] = await Promise.all([
-          // Caching is the CAPABILITY's business, not the view's — the injected reader keeps a
+          // Caching is the capability's business, not the view's: the injected reader keeps a
           // stat-keyed cache across these calls, so a refresh re-reads only what changed.
           options.capabilities.readRunIndex(options.cwd),
           options.capabilities.listLabs(options.cwd),
@@ -157,7 +157,7 @@ export function App({
   }, [options]);
 
   // Fired from its own effect so it lands after React has committed the data-bearing render and Ink
-  // has written that frame — signalling beside setState reports ready while the screen still says
+  // has written that frame: signalling beside setState reports ready while the screen still says
   // "reading…".
   useEffect(() => {
     if (data !== undefined || error !== undefined) onReady?.();
@@ -173,7 +173,7 @@ export function App({
     if (identity !== undefined) selectedIdRef.current = identity;
   }, [screen, data, selected]);
 
-  // After a refresh, put the cursor back on the SAME ROW rather than the same index. When the row
+  // After a refresh, put the cursor back on the same row rather than the same index. When the row
   // is gone entirely (a run deleted underneath us) the index is left where it was and clamped by
   // the reducer, which keeps the cursor near where the operator left it.
   useEffect(() => {
@@ -184,7 +184,7 @@ export function App({
     if (next >= 0 && next !== selected) {
       dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
     }
-    // `selected` is deliberately absent: this reacts to DATA changing, not to the operator moving.
+    // `selected` is deliberately absent: this reacts to data changing, not to the operator moving.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, screen]);
 
@@ -218,9 +218,9 @@ export function App({
         return;
       }
 
-      // Find the run this launch produced. A pid ALONE is not an identity: pids are recycled, and a
+      // Find the run this launch produced. A pid alone is not an identity: pids are recycled, and a
       // finished run keeps its pid in status.json forever, so a week-old record can carry the pid
-      // the kernel just handed this child. The record must also be NEWER than the launch.
+      // the kernel just handed this child. The record must also be newer than the launch.
       const launchedMs = Date.parse(result.run.launchedAt);
       const isOurs = (run: RunIndexEntry): boolean => {
         if (run.pid !== result.run.pid) return false;
@@ -235,10 +235,10 @@ export function App({
         const index = await options.capabilities.readRunIndex(options.cwd);
         const started = index.runs.find(isOurs);
         if (started !== undefined) {
-          // Publish what was just read BEFORE navigating. Reading the index into a local and then
+          // Publish what was just read before navigating. Reading the index into a local and then
           // navigating leaves `data` on its pre-launch snapshot, so the run screen looks the new run
           // up in a map that does not contain it and reports the run it just started as "no longer
-          // on disk" — on every single start.
+          // on disk": on every single start.
           const labs = await options.capabilities.listLabs(options.cwd);
           setData(project(index, labs.labs));
           setLaunchNote(undefined);
@@ -258,7 +258,7 @@ export function App({
       }
 
       // Still nothing. The process may have died before writing anything, and the launch log is the
-      // only account of that — so show it rather than leaving a silent gap.
+      // only account of that, so show it rather than leaving a silent gap.
       const log = await options.capabilities.readLaunchLog(result.run.logPath);
       setLaunchNote(undefined);
       setLaunchError({
@@ -325,7 +325,7 @@ export function App({
         );
         return;
       }
-      // Run again: the SAME lab, in the same mode it ran in, launched the same detached way.
+      // Run again: the same study, in the same mode it ran in, launched the same detached way.
       const labId = run.lab?.id;
       const matching =
         labId === undefined
@@ -417,7 +417,7 @@ export function App({
         if (key.escape || key.leftArrow) {
           // Escape cancels an armed confirmation before it means "go back": the nearer meaning of
           // "no" wins, so a confirmation can never be dismissed by accidentally leaving the screen.
-          // Both kinds — starting a live run, and stopping one — are armed, and both are undone
+          // Both kinds (starting a live run, and stopping one) are armed, and both are undone
           // here rather than carried to whatever screen you land on next.
           if (confirming !== undefined) {
             setConfirming(undefined);
@@ -498,8 +498,8 @@ export function App({
     if (nav.quit) exit();
   }, [nav.quit, exit]);
 
-  // Detail is fetched ONLY for the run being looked at. It opens that run's bundle, which the index
-  // deliberately does not — affordable for one run, not for a listing.
+  // Detail is fetched only for the run being looked at. It opens that run's bundle, which the index
+  // deliberately does not: affordable for one run, not for a listing.
   const openRunId = screen.name === "run" ? screen.runId : undefined;
   useEffect(() => {
     setActionNote(undefined);
@@ -538,7 +538,7 @@ export function App({
     return () => clearInterval(timer);
   }, [frozenTick]);
 
-  // Live participants plus the latest run of the OPEN lab, so its post-run analysis stays visible.
+  // Live participants plus the latest run of the open study, so its post-run analysis stays visible.
   // Never open all historical bundles merely to populate a list.
   const watchedLab =
     screen.name === "lab" ? data?.rows.find((row) => row.key === screen.labKey) : undefined;
@@ -584,7 +584,7 @@ export function App({
     };
   }, [liveRunIds, options]);
 
-  // What the open lab IS. Includes the key probe, which is why it is read per lab rather than for
+  // What the open study is. Includes the key probe, which is why it is read per study rather than for
   // the whole list.
   const openLabKey = screen.name === "lab" ? screen.labKey : undefined;
   const openLabRow =
@@ -704,7 +704,7 @@ function contextLine(
   options: TuiOptions,
 ): string | undefined {
   const project = options.cwd.split("/").filter(Boolean).pop();
-  // On a run card the context carries WHICH RUN, because the card itself leads with the verdict —
+  // On a run card the context carries which run, because the card itself leads with the verdict:
   // the id still has to be somewhere, and this is where the mock puts it.
   if (screen.name === "run" && data !== undefined) {
     const run = data.runsById.get(screen.runId);
@@ -733,8 +733,8 @@ function breadcrumbOf(
 }
 
 /**
- * Only the keys that do something HERE, and named for what they do to the CURRENT row. Enter starts
- * a run on one row and opens a run on the next, so a fixed legend would be wrong half the time —
+ * Only the keys that do something here, and named for what they do to the current row. Enter starts
+ * a run on one row and opens a run on the next, so a fixed legend would be wrong half the time:
  * and a legend that lists inert keys teaches the wrong model of the surface.
  */
 function keyHints(
@@ -750,7 +750,7 @@ function keyHints(
       // Nothing to move through or open on an empty screen, and a legend that lists inert keys
       // teaches the wrong model of the surface.
       if ((data?.rows.length ?? 0) > 0) return `${move}  ⏎ open  ? keys  q quit`;
-      // An empty screen with ONE action still has that action; a legend that omits it makes the
+      // An empty screen with one action still has that action; a legend that omits it makes the
       // row look decorative.
       return initialized === false ? "⏎ set up humanish here  ? keys  q quit" : "? keys  q quit";
     case "lab": {
@@ -763,7 +763,7 @@ function keyHints(
     case "all-runs":
       return `${move}  ⏎ open  esc back  ? keys  q quit`;
     default: {
-      // Only when the card actually has actions — an empty legend beats one promising a key that
+      // Only when the card actually has actions: an empty legend beats one promising a key that
       // does nothing on a run still in flight.
       const run =
         data === undefined
@@ -802,10 +802,10 @@ function project(index: RunIndexResult, labs: readonly LabListEntry[]): ProjectD
 }
 
 /**
- * Every live run in the project, ONCE.
+ * Every live run in the project, once.
  *
  * Not a flatMap over lab rows: two manifests can declare the same lab id, so a run belonging to
- * that id is reachable from both rows and would be listed twice — the same participant, twice, at
+ * that id is reachable from both rows and would be listed twice: the same participant, twice, at
  * the same elapsed time, which reads as two people working.
  */
 function liveRunsOf(data: ProjectData): RunIndexEntry[] {
@@ -925,8 +925,8 @@ function openSelected(
         };
   }
   if (screen.name === "lab") {
-    // Indexed through the SAME item list that counting uses. Reading `selected` as an index into
-    // runs alone is off by the number of action rows above them — selecting the first run then
+    // Indexed through the same item list that counting uses. Reading `selected` as an index into
+    // runs alone is off by the number of action rows above them: selecting the first run then
     // opens nothing at all, silently.
     const { row, items } = itemsForLab(data, screen.labKey);
     const item = items[selected];

@@ -1,9 +1,9 @@
-// Deterministic data for the text goldens (#455).
+// Deterministic data for the text goldens.
 //
 // Synthetic by construction, and for the same reason the run fixtures in the root suite are: real
 // projects carry lab ids naming the operator's own work, real costs and real participant text, and
 // a golden built from one would commit that to a public repo. These names are invented, the numbers
-// are round, and the clock is frozen — so a golden that changes means the UI changed.
+// are round, and the clock is frozen, so a golden that changes means the UI changed.
 
 import type { LabListEntry } from "../../src/lab/discover.js";
 import type { RunIndexEntry } from "../../src/run/run-index.js";
@@ -19,7 +19,7 @@ export const LABS: LabListEntry[] = [
     origin: "committed",
     path: "humanish/labs/signup-flow.yaml",
     title: "Signup flow",
-    // Two sentences on purpose: the list shows the FIRST one, because a paragraph in a status bar
+    // Two sentences on purpose: the list shows the first one, because a paragraph in a status bar
     // is a paragraph nobody reads.
     description: "Can a first-time visitor finish signing up unaided? Committed as dry-run.",
   },
@@ -36,10 +36,10 @@ export const LABS: LabListEntry[] = [
     origin: "ignored",
     path: ".humanish/labs/never-run-lab.yaml",
   },
-  // Two manifests declaring ONE id. Not hypothetical: this repo's own project has exactly this
+  // Two manifests declaring one id. Not hypothetical: this repo's own project has exactly this
   // pair, and it is what proved that keying rows by lab id renders indistinguishable duplicates.
-  // The FILENAMES differ, which is what lab resolution actually addresses.
-  // ...and it shares the TITLE too, which is what the real pair does. A fixture where only the id
+  // The filenames differ, which is what study resolution actually addresses.
+  // ...and it shares the title too, which is what the real pair does. A fixture where only the id
   // collided passed happily while the real project still rendered two identical rows.
   {
     id: "diagram-editor",
@@ -83,7 +83,7 @@ export const RUNS: RunIndexEntry[] = [
     completedAt: at(1_496),
     verdict: "fail",
     participants: { total: 1, reachedGoal: 0 },
-    // A declared-absent cost: excluded from the median AND counted, never rendered as $0.00.
+    // A declared-absent cost: excluded from the median and counted, never rendered as $0.00.
     estimatedCostUsd: null,
     durationMs: 240_000,
   },

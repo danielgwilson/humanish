@@ -39,11 +39,11 @@
       "name-refs": 0
     },
     "scripts": {
-      "issue-refs": 5,
+      "issue-refs": 0,
       "fix-tags": 0,
-      "caps": 62,
+      "caps": 0,
       "lane-comments": 5,
-      "em-dashes": 15,
+      "em-dashes": 0,
       "invariant-refs": 0,
       "authority": 0,
       "archaeology": 0,
@@ -55,11 +55,11 @@
       "name-refs": 0
     },
     "tui": {
-      "issue-refs": 11,
+      "issue-refs": 0,
       "fix-tags": 0,
-      "caps": 154,
+      "caps": 0,
       "lane-comments": 2,
-      "em-dashes": 96,
+      "em-dashes": 0,
       "invariant-refs": 0,
       "authority": 0,
       "archaeology": 0,

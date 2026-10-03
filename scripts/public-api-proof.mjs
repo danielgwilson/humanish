@@ -120,7 +120,7 @@ async function declaredNames(app) {
 
 /**
  * Typecheck a probe that imports every declared name, and the examples, against the installed
- * package, with the options the participant example's README documents.
+ * package, with the options the participant example's readme documents.
  */
 async function typecheck(app, names) {
   // Consumer files use public fields one by one; they are typechecked, never run.
