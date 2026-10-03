@@ -45,10 +45,24 @@ type Count =
   | (typeof STRING_KINDS)[number]
   | "title-case-headers";
 
+// The docs roots and their kinds, capped at 0 in every fixture here; check-doc-prose.test.ts
+// covers what they count.
+const DOC_ROOTS = ["docs", "site", "evidence"] as const;
+const DOC_KINDS = [
+  "issue-refs",
+  "caps",
+  "em-dashes",
+  "invariant-refs",
+  "authority",
+  "honest",
+  "archaeology",
+  "contrast",
+] as const;
+
 /** A fixture scripts/caps.json: every count capped at 0 except the ones given, minus `omit`. */
 function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = []): string {
-  const prose = Object.fromEntries(
-    ROOTS.map((root, index) => [
+  const prose = Object.fromEntries([
+    ...ROOTS.map((root, index) => [
       root,
       Object.fromEntries(
         [...KINDS, ...(root === "src" ? STRING_KINDS : [])].flatMap((kind) => {
@@ -57,7 +71,8 @@ function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = [])
         }),
       ),
     ]),
-  );
+    ...DOC_ROOTS.map((root) => [root, Object.fromEntries(DOC_KINDS.map((kind) => [kind, 0]))]),
+  ]);
   const titleCase: Count = "title-case-headers";
   const markdown = omit.includes(titleCase) ? {} : { [titleCase]: caps[titleCase] ?? 0 };
   return `${JSON.stringify({ prose: { ...prose, labs: LAB_CAPS, markdown } }, null, 2)}\n`;
