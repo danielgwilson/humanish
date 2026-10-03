@@ -1723,7 +1723,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ).toBe(true);
   });
 
-  it("routes through runLab to the concurrent backend", async () => {
+  it("routes through runStudy to the concurrent backend", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const config = concurrentConfig(3, 3);
@@ -2150,7 +2150,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
   });
 
-  it("routes through runLab to the concurrent-shared-world backend", async () => {
+  it("routes through runStudy to the concurrent-shared-world backend", async () => {
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     deps.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
@@ -3005,7 +3005,7 @@ describe("the subject state prober", () => {
   });
 });
 
-describe("RunLabOptions homes on the concurrent route", () => {
+describe("RunStudyOptions homes on the concurrent route", () => {
   it("prepareDesktop sees the subject, then each participant; onStream sees each participant's stream start and end", async () => {
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const targets: unknown[] = [];

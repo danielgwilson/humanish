@@ -4,7 +4,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "shared-world",
@@ -13,7 +13,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "recording on shared world": {
@@ -21,7 +21,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -57,7 +57,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "media on scripted": {
@@ -65,7 +65,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -98,7 +98,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "media with firefox": {
@@ -106,7 +106,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -139,7 +139,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "maxOutputTokens on local-agent": {
@@ -147,7 +147,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -180,7 +180,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "real receiving on scripted": {
@@ -188,7 +188,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -216,7 +216,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "real receiving with local-agent": {
@@ -224,7 +224,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -257,7 +257,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "recipient names unknown lane": {
@@ -265,7 +265,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "comms.email.recipients name 1 participant that does not exist: \"nobody\". This study's participant ids are: lane-01. A recipient's `lane` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -282,7 +282,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "recipients without address": {
@@ -290,7 +290,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "comms.email.recipients cover no participant with an address, so no actor would be told an inbox exists and no captured mail could match. Give at least one recipient an address, or omit `recipients` entirely (every participant then gets a deterministic address automatically)."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -307,7 +307,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "this-repo with target": {
@@ -315,7 +315,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`execution.target` applies only to clone/app-url/local-app subjects; this-repo studies run locally."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "preview",
@@ -331,7 +331,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "this-repo studies are dry-run only; use a clone or app-url subject for a live run."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -360,7 +360,7 @@
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -390,7 +390,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A local-app subject drives a local dev server in this process, with no E2B desktop. Set `execution.target: local` or omit it. To run on a hosted desktop, use an app-url subject with `execution.target: e2b-desktop`."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -423,7 +423,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "local-app with scripted actor": {
@@ -431,7 +431,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -464,7 +464,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "local-app count 2": {
@@ -472,7 +472,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out)."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -505,7 +505,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "local-app lanes": {
@@ -513,7 +513,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -546,7 +546,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "local-app public targets": {
@@ -554,7 +554,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.allowPublicTargets` does not apply to a local-app subject: it is always a loopback dev server, so there is no public target to allow. Remove the setting."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -587,7 +587,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted app-url on e2b-desktop": {
@@ -595,7 +595,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A scripted-browser actor on an app-url subject runs on this machine. Set `execution.target: local` or omit it. To run scripted steps on a hosted desktop, use a clone subject."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -604,7 +604,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted app-url without ref": {
@@ -612,7 +612,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -645,7 +645,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted app-url count 3": {
@@ -653,7 +653,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -662,7 +662,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted app-url redacted screenshots": {
@@ -670,7 +670,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -679,7 +679,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted app-url public targets": {
@@ -687,7 +687,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.allowPublicTargets` is not supported on the scripted-browser route: the step driver allows only loopback URLs at every navigation. Remove the setting, or drive the public URL with a computer-use actor."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -696,7 +696,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted app-url public url": {
@@ -704,7 +704,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -737,7 +737,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu app-url without target": {
@@ -745,7 +745,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "app-url computer-use subjects require `execution.target: local` or `e2b-desktop`."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -762,7 +762,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu app-url unknown actor": {
@@ -770,7 +770,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -803,7 +803,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu app-url codex-app-server": {
@@ -811,7 +811,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -844,7 +844,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu app-url public url without policy": {
@@ -852,7 +852,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -885,7 +885,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted on local-tree": {
@@ -893,7 +893,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject)."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -926,7 +926,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone on local": {
@@ -934,7 +934,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone subject with a scripted-browser actor needs `execution.target: e2b-desktop`: humanish builds the clone in an E2B sandbox, opens it at a public sandbox URL and runs the scenario's browser steps against it."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -967,7 +967,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone without serve": {
@@ -975,7 +975,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone subject with a scripted-browser actor needs `subject.serve` (start and url): humanish starts the app in the sandbox before the browser steps run."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1008,7 +1008,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone two repos": {
@@ -1016,7 +1016,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "clone scripted-browser studies require exactly one repo in subject.repos."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1025,7 +1025,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone topology": {
@@ -1033,7 +1033,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone scripted-browser study does not support `subject.topology` yet: it runs one synthetic subject for its scripted actor. Remove `subject.topology`."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1042,7 +1042,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone keep": {
@@ -1050,7 +1050,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone scripted-browser study does not support `subject.clone.fanout` or `subject.clone.keep` yet: its subject is always one sandbox, removed after the run."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1059,7 +1059,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone without ref": {
@@ -1067,7 +1067,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1100,7 +1100,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone count 3": {
@@ -1108,7 +1108,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1117,7 +1117,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone lanes": {
@@ -1125,7 +1125,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`actors[0].lanes` is not supported on the scripted-browser route yet. Use `actors[0].count` to choose the desktop and mobile surfaces."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1134,7 +1134,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone redacted screenshots": {
@@ -1142,7 +1142,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1151,7 +1151,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone public targets": {
@@ -1159,7 +1159,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.allowPublicTargets` does not apply to a clone scripted-browser study: its only public URL is the sandbox URL humanish opens for its synthetic subject. Remove the setting."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1168,7 +1168,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone without exposure": {
@@ -1176,7 +1176,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone scripted-browser study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1185,7 +1185,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone without seed": {
@@ -1193,7 +1193,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone scripted-browser study needs `subject.state.seed` and cannot use `subject.state.external`: a subject at a public sandbox URL may hold only seeded synthetic data."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1202,7 +1202,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone loopback bind": {
@@ -1210,7 +1210,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone scripted-browser study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0. The readiness probe still uses loopback."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -1219,7 +1219,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu clone on local": {
@@ -1227,7 +1227,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1260,7 +1260,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu clone without serve": {
@@ -1268,7 +1268,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1301,7 +1301,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu clone two repos": {
@@ -1309,7 +1309,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "computer-use clone studies serve one repo; declare exactly one repo in subject.repos."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -1326,7 +1326,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu local-tree without target": {
@@ -1334,7 +1334,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1367,7 +1367,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu local-tree terminal actor": {
@@ -1375,7 +1375,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for local-tree subjects (one of: local-agent, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-exec\"."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1408,7 +1408,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal actor on clone": {
@@ -1416,7 +1416,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1449,7 +1449,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "codex-app-server on clone": {
@@ -1457,7 +1457,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1490,7 +1490,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "lanes and count": {
@@ -1498,7 +1498,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1531,7 +1531,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "laneFocus and lanes": {
@@ -1539,7 +1539,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1572,7 +1572,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "lane device and raw resolution": {
@@ -1580,7 +1580,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1613,7 +1613,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "lane target on clone": {
@@ -1621,7 +1621,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`actors[0].lanes[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1654,7 +1654,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "lane target and entry": {
@@ -1662,7 +1662,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1695,7 +1695,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "partial lane targets": {
@@ -1703,7 +1703,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "When any actors[0].lanes[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1736,7 +1736,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "seventeen lanes": {
@@ -1744,7 +1744,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1777,7 +1777,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "public target fan-out": {
@@ -1785,7 +1785,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1818,7 +1818,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "clone fanout on computer use": {
@@ -1826,7 +1826,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)"
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1859,7 +1859,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "duplicate lane ids": {
@@ -1867,7 +1867,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes ids must be unique (duplicate \"a\")."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1900,7 +1900,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world on local": {
@@ -1908,7 +1908,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1941,7 +1941,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world without serve": {
@@ -1949,7 +1949,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -1985,7 +1985,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world one seat": {
@@ -1993,7 +1993,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2029,7 +2029,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world without checkpoint": {
@@ -2037,7 +2037,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.topology: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2073,7 +2073,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world cross-origin entry": {
@@ -2081,7 +2081,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes role \"author\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"https://elsewhere.example/\"."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2117,7 +2117,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world concurrency 1": {
@@ -2125,7 +2125,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2161,7 +2161,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world without exposure": {
@@ -2169,7 +2169,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A shared-world study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic and seeded."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2205,7 +2205,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world loopback bind": {
@@ -2213,7 +2213,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A shared-world study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0, and a loopback-only server answers 502. The readiness probe still uses loopback."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2249,7 +2249,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world clone keep": {
@@ -2257,7 +2257,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.clone.keep` is not supported on the concurrent shared-world route - it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2293,7 +2293,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "external without public-target policy": {
@@ -2301,7 +2301,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2334,7 +2334,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "external loopback url": {
@@ -2342,7 +2342,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "An external-public shared-world study needs a public http(s) `subject.appUrl`, not a loopback URL. For an app you run locally, use a clone or local-tree subject, which humanish serves itself."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2378,7 +2378,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "external without ownership": {
@@ -2386,7 +2386,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "An external-public shared-world study needs `subject.publicTarget: { owner, authorized: true }` to declare that you own or operate the public deployment. humanish cannot check ownership, so the study states it."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2422,7 +2422,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "external with exposure": {
@@ -2430,7 +2430,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.exposure: synthetic` does not apply to an external-public shared-world study: a real public deployment is not seeded synthetic data. Declare ownership with `subject.publicTarget` instead."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2466,7 +2466,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "external seat entry": {
@@ -2474,7 +2474,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2510,7 +2510,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "external without host": {
@@ -2518,7 +2518,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "An external-public shared-world study needs exactly one `host: true` participant, the one who creates the shared session, and this study has 0. Every other participant joins that session."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2554,7 +2554,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "external one seat": {
@@ -2562,7 +2562,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2598,7 +2598,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "desktop-cli without product name": {
@@ -2606,7 +2606,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2639,7 +2639,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "desktop-cli on local": {
@@ -2647,7 +2647,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A desktop-cli subject runs on a hosted desktop. Set `execution.target: e2b-desktop` or omit it."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -2664,7 +2664,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "desktop-cli codex-app-server": {
@@ -2672,7 +2672,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "desktop-cli subjects need a registered computer-use actor: the participant reads the screen and types, which is what makes an interactive surface studiable at all."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2705,7 +2705,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "desktop-cli blank install": {
@@ -2713,7 +2713,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.product.install` must be a non-empty command string when set."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -2730,7 +2730,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal on e2b-desktop": {
@@ -2738,7 +2738,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "A terminal-product subject runs its agent in an E2B shell. Set `execution.target: e2b-terminal` or omit it; `local` and `e2b-desktop` are not supported."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "terminal",
@@ -2747,7 +2747,7 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal computer-use actor": {
@@ -2755,7 +2755,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered terminal actor for terminal-product subjects (one of: codex-exec). Got \"openai-computer-use\"."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2787,7 +2787,7 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal count 2": {
@@ -2795,7 +2795,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1."
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "terminal",
@@ -2804,7 +2804,7 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "tasks on scripted": {
@@ -2812,7 +2812,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2840,7 +2840,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "tasks on second actor": {
@@ -2848,7 +2848,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "Multiple actors are not supported yet (only the first actor runs); declare a single actor."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2876,7 +2876,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "analysis on preview": {
@@ -2884,7 +2884,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this study's route does not produce an eligible live recording."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2919,7 +2919,7 @@
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -2952,14 +2952,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "executor without provider": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3022,7 +3022,7 @@
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3055,14 +3055,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "count override above the cap": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3095,14 +3095,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "in-process fan-out": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3135,14 +3135,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "rerun on scripted": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "scripted",
@@ -3151,14 +3151,14 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "sandbox deadline too long": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3191,14 +3191,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal live without caps": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3230,14 +3230,14 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal sandbox deadline too long": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3269,7 +3269,7 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal runtime version": {
@@ -3277,7 +3277,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`execution.runtime` must contain only an exact Codex `version` (for example 0.153.3); tags, ranges, URLs, and unknown fields are not accepted."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3309,7 +3309,7 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal product without surfaces": {
@@ -3317,7 +3317,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.product.publicSurfaces` must list at least one public surface URL."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3349,14 +3349,14 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world unpriced cap": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3392,14 +3392,14 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu unpriced cap without keys": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3432,14 +3432,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu unpriced cap with keys": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3472,14 +3472,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu live without keys": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3512,14 +3512,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu live local agent absent": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3552,14 +3552,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu clone subject env missing": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3592,14 +3592,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "cu external catch unreachable": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3632,14 +3632,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone without e2b key": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3672,14 +3672,14 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "scripted clone subject env missing": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3712,14 +3712,14 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal live without keys": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3751,14 +3751,14 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal live without e2b key": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3790,14 +3790,14 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "terminal live positive maxUsd": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3829,14 +3829,14 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared world live without keys": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -3872,7 +3872,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "shared-world config to the cu runner": {
@@ -4029,7 +4029,7 @@
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -4048,14 +4048,14 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "count override on a parsed config": {
     "parser": {
       "ok": true
     },
-    "runLab": {
+    "runStudy": {
       "runs": true,
       "result": {
         "route": "computer-use",
@@ -4074,7 +4074,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "overlap cu: unknown actor and firefox media": {
@@ -4082,7 +4082,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -4115,7 +4115,7 @@
     },
     "runner": {
       "runner": "computer-use",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "overlap scripted: real receiving and media": {
@@ -4123,7 +4123,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -4151,7 +4151,7 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "overlap terminal: real receiving and media": {
@@ -4159,7 +4159,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -4191,7 +4191,7 @@
     },
     "runner": {
       "runner": "terminal",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   },
   "overlap shared world: tasks and one seat": {
@@ -4199,7 +4199,7 @@
       "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
     },
-    "runLab": {
+    "runStudy": {
       "runs": false,
       "calls": {
         "desktop": 0,
@@ -4235,7 +4235,7 @@
     },
     "runner": {
       "runner": "shared-world",
-      "sameAsRunLab": true
+      "sameAsRunStudy": true
     }
   }
 }

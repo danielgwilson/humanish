@@ -183,7 +183,7 @@ export async function admitCuaRun(
     result: fail(...args),
   });
 
-  // runStudyWith's local VM study supplies a local-target app-url study's desktop; a direct route call or
+  // runStudyWith's `localVm` supplies the desktop of a local-target app-url study; a direct route call or
   // an in-process executor on the same study has none. It reads the declared source, as the planner
   // did: a library config the parser never saw can plan to an app-url subject from another source.
   if (

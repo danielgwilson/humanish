@@ -13,7 +13,6 @@ import { resolveRouteShouldOpen } from "../../src/cli/commands/study-route-open.
 import { followObserver } from "../../src/cli/observer-follow.js";
 import { runFactsFor, writeResult } from "../../src/cli/io.js";
 import * as humanishIndex from "../../src/index.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
 // treat "no getuid" the same as "not root" (permission fault injection still works).
@@ -75,9 +74,7 @@ async function withTempApp<T>(
     for (const [relativePath, contents] of Object.entries(files)) {
       const filePath = path.join(cwd, relativePath);
       await mkdir(path.dirname(filePath), { recursive: true });
-      // A study given in the humanish.lab.v2 shape is written as the v3 file migrate would make.
-      const v2 = /studies\/[^/]+\.yaml$/.test(relativePath) && contents.includes("humanish.lab.v2");
-      await writeFile(filePath, v2 ? studyFileText(contents, cwd) : contents, "utf8");
+      await writeFile(filePath, contents, "utf8");
     }
 
     return await callback(cwd);
@@ -466,14 +463,15 @@ describe("humanish CLI scaffold", () => {
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
         "humanish/studies/first-run.yaml": [
-          "schema: humanish.lab.v2",
+          "schema: humanish.study.v3",
           "id: first-run",
           "title: First run",
+          "route: preview",
           "subject:",
           "  source: this-repo",
-          "actors:",
-          "  - type: synthetic-persona",
-          "    count: 2",
+          "actor:",
+          "  type: synthetic-persona",
+          "participants: 2",
         ].join("\n"),
       },
       async (cwd) => {
@@ -512,15 +510,15 @@ describe("humanish CLI scaffold", () => {
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
         "humanish/studies/first-run.yaml": [
-          "schema: humanish.lab.v2",
+          "schema: humanish.study.v3",
           "id: first-run",
+          "route: preview",
+          "mode: dry-run",
           "subject:",
           "  source: this-repo",
-          "actors:",
-          "  - type: synthetic-persona",
-          "    count: 2",
-          "scenario:",
-          "  mode: dry-run",
+          "actor:",
+          "  type: synthetic-persona",
+          "participants: 2",
         ].join("\n"),
       },
       async (cwd) => {
@@ -581,15 +579,15 @@ describe("humanish CLI scaffold", () => {
         {
           "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
           "humanish/studies/first-run.yaml": [
-            "schema: humanish.lab.v2",
+            "schema: humanish.study.v3",
             "id: first-run",
+            "route: preview",
+            "mode: dry-run",
             "subject:",
             "  source: this-repo",
-            "actors:",
-            "  - type: synthetic-persona",
-            "    count: 2",
-            "scenario:",
-            "  mode: dry-run",
+            "actor:",
+            "  type: synthetic-persona",
+            "participants: 2",
           ].join("\n"),
         },
         async (cwd) => {
@@ -627,14 +625,14 @@ describe("humanish CLI scaffold", () => {
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
         "humanish/studies/first-run.yaml": [
-          "schema: humanish.lab.v2",
+          "schema: humanish.study.v3",
           "id: first-run",
+          "route: preview",
+          "mode: dry-run",
           "subject:",
           "  source: this-repo",
-          "actors:",
-          "  - type: synthetic-persona",
-          "scenario:",
-          "  mode: dry-run",
+          "actor:",
+          "  type: synthetic-persona",
         ].join("\n"),
       },
       async (cwd) => {
@@ -1011,15 +1009,15 @@ interface ServeEnvelope {
 const SERVE_LAB_FIXTURE: Record<string, string> = {
   "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
   "humanish/studies/first-run.yaml": [
-    "schema: humanish.lab.v2",
+    "schema: humanish.study.v3",
     "id: first-run",
+    "route: preview",
+    "mode: dry-run",
     "subject:",
     "  source: this-repo",
-    "actors:",
-    "  - type: synthetic-persona",
-    "    count: 2",
-    "scenario:",
-    "  mode: dry-run",
+    "actor:",
+    "  type: synthetic-persona",
+    "participants: 2",
   ].join("\n"),
 };
 
@@ -1503,20 +1501,20 @@ describe("humanish observe --all", () => {
 const CUA_LAB_FIXTURE: Record<string, string> = {
   "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
   "humanish/studies/cua-live.yaml": [
-    "schema: humanish.lab.v2",
+    "schema: humanish.study.v3",
     "id: cua-live",
+    "route: computer-use",
+    "mode: live",
     "subject:",
     "  source: app-url",
     "  appUrl: http://127.0.0.1:3000/",
-    "actors:",
-    "  - type: openai-computer-use",
-    "    persona: first-time-visitor",
-    "    mission: Explore the app and stop.",
+    "actor:",
+    "  type: openai-computer-use",
+    "  persona: first-time-visitor",
+    "  mission: Explore the app and stop.",
     "execution:",
     "  target: e2b-desktop",
     "  timeoutMs: 60000",
-    "scenario:",
-    "  mode: live",
   ].join("\n"),
 };
 
@@ -1733,20 +1731,17 @@ describe("study provenance survives the whole CLI path", () => {
       await mkdir(path.dirname(labPath), { recursive: true });
       await writeFile(
         labPath,
-        studyFileText(
-          [
-            "schema: humanish.lab.v2",
-            "id: provenance-demo",
-            "subject:",
-            "  source: this-repo",
-            "actors:",
-            "  - type: synthetic-persona",
-            "scenario:",
-            "  mode: dry-run",
-            "",
-          ].join("\n"),
-          cwd,
-        ),
+        [
+          "schema: humanish.study.v3",
+          "id: provenance-demo",
+          "route: preview",
+          "mode: dry-run",
+          "subject:",
+          "  source: this-repo",
+          "actor:",
+          "  type: synthetic-persona",
+          "",
+        ].join("\n"),
         "utf8",
       );
 
@@ -1897,14 +1892,15 @@ describe("run writes the same bundle watch does", () => {
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
         "humanish/studies/first-run.yaml": [
-          "schema: humanish.lab.v2",
+          "schema: humanish.study.v3",
           "id: first-run",
           "title: First run",
+          "route: preview",
           "subject:",
           "  source: this-repo",
-          "actors:",
-          "  - type: synthetic-persona",
-          "    count: 2",
+          "actor:",
+          "  type: synthetic-persona",
+          "participants: 2",
         ].join("\n"),
       },
       async (cwd) => {
@@ -1983,10 +1979,12 @@ describe("CUA ending output", () => {
 
   it("prints and verifies an actual N2 preview with no live participant verdict", async () => {
     const manifest = {
-      schema: "humanish.lab.v2",
+      schema: "humanish.study.v3",
       id: "preview",
+      route: "computer-use",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", count: 2 }],
+      actor: { type: "openai-computer-use" },
+      participants: 2,
       execution: { target: "e2b-desktop" },
     };
     await withTempApp(

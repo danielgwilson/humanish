@@ -8,6 +8,8 @@
 //    name, so no file this run did not write is ever overwritten. A failure undoes the commits.
 // 4. Clean up: delete each moved source and each rewrite's original, once checked (owned-files.ts).
 //    A file that changed since the plan is kept and listed; a rewrite's original as <name>.v2.bak.
+//    Then a labs/ directory whose every entry moved is removed with a plain rmdir, which fails, and
+//    keeps the directory, when anything else is in it by then.
 
 import { randomUUID } from "node:crypto";
 import { link, lstat, readdir, readFile, realpath, rename, rmdir } from "node:fs/promises";
@@ -59,6 +61,8 @@ export interface MigrateResult {
   readonly files: readonly MigrateFile[];
   /** Files left behind after a clean-up step found them changed: sources, backups or temp files. */
   readonly unresolved?: readonly string[];
+  /** The labs/ directories the moves emptied and migrate removed, or with `--dry-run` would remove. */
+  readonly removedDirectories?: readonly string[];
   readonly error?: {
     readonly code: "HUMANISH_MIGRATE_REFUSED" | "HUMANISH_MIGRATE_FAILED";
     readonly phase: "plan" | "stage" | "commit" | "clean-up";
@@ -73,8 +77,11 @@ export interface MigrateOptions {
   /** Files to convert. Without any, the six study directories are scanned. */
   readonly paths?: readonly string[];
   readonly dryRun?: boolean;
-  /** Called with the plan before anything is written, so a caller can print every destination. */
-  readonly onPlan?: (files: readonly MigrateFile[]) => void;
+  /**
+   * Called with the plan before anything is written, so a caller can print every destination and
+   * each labs/ directory the moves empty, which migrate then removes.
+   */
+  readonly onPlan?: (files: readonly MigrateFile[], emptied: readonly string[]) => void;
   /** Replaces `fs.link`. Tests use it to stand in for a filesystem without hard links. */
   readonly link?: (from: string, to: string) => Promise<void>;
   /** Called between stage and commit, and between commit and clean-up. Tests change files there. */
@@ -477,6 +484,52 @@ async function undoCommits(
   return unrestored;
 }
 
+// Each labs/ directory whose every entry, a dotfile or a subdirectory included, is a file this run
+// moves out. Only these are removed after the move.
+async function emptiedRetiredDirectories(
+  root: string,
+  writes: readonly PlannedWrite[],
+): Promise<PlannedWrite[]> {
+  const moving = new Map<string, { write: PlannedWrite; names: Set<string> }>();
+  for (const write of writes) {
+    if (write.file.action !== "move") continue;
+    const directory = path.dirname(write.sourcePath);
+    const relative = path.relative(root, directory);
+    const retired = STUDY_DIRECTORIES.some(
+      (entry) => entry.family === "labs" && entry.relativeDir === relative,
+    );
+    if (!retired) continue;
+    const entry = moving.get(directory) ?? { write, names: new Set<string>() };
+    entry.names.add(path.basename(write.sourcePath));
+    moving.set(directory, entry);
+  }
+  const emptied: PlannedWrite[] = [];
+  for (const [directory, { write, names }] of moving) {
+    const entries = await readdir(directory).catch(() => undefined);
+    if (entries !== undefined && entries.every((name) => names.has(name))) emptied.push(write);
+  }
+  return emptied;
+}
+
+// Remove each emptied labs/ directory, if it is still the one the plan read. rmdir is not
+// recursive, so a file that appeared in it since the plan keeps it. Returns the removed paths.
+async function removeEmptiedDirectories(
+  root: string,
+  emptied: readonly PlannedWrite[],
+): Promise<string[]> {
+  const removed: string[] = [];
+  for (const write of emptied) {
+    try {
+      await assertDirectory(write.sourceDirectory, root);
+      await rmdir(path.dirname(write.sourcePath));
+      removed.push(path.relative(root, path.dirname(write.sourcePath)));
+    } catch {
+      // Not empty, or not the directory the plan read: it stays.
+    }
+  }
+  return removed;
+}
+
 // Delete each moved source and each rewrite's original, but only once the v3 file is in place as
 // written, and only if the old file is still the one the plan read (removeChecked). Anything kept
 // is listed; a rewrite's original is kept as <name>.v2.bak.
@@ -520,8 +573,19 @@ export async function migrateStudies(options: MigrateOptions): Promise<MigrateRe
   const linkFile = options.link ?? link;
   try {
     ({ files, writes } = await planWrites(root, options));
-    options.onPlan?.(files);
-    if (options.dryRun === true || writes.length === 0) return { ...base, ok: true, files };
+    const emptied = await emptiedRetiredDirectories(root, writes);
+    const emptiedPaths = emptied.map((write) =>
+      path.relative(root, path.dirname(write.sourcePath)),
+    );
+    options.onPlan?.(files, emptiedPaths);
+    if (options.dryRun === true || writes.length === 0) {
+      return {
+        ...base,
+        ok: true,
+        files,
+        ...(emptiedPaths.length === 0 ? {} : { removedDirectories: emptiedPaths }),
+      };
+    }
     try {
       await stage(root, writes, created);
       options.onPhase?.("stage");
@@ -554,7 +618,13 @@ export async function migrateStudies(options: MigrateOptions): Promise<MigrateRe
         },
       };
     }
-    return { ...base, ok: true, files };
+    const removed = await removeEmptiedDirectories(root, emptied);
+    return {
+      ...base,
+      ok: true,
+      files,
+      ...(removed.length === 0 ? {} : { removedDirectories: removed }),
+    };
   } catch (error) {
     const failure =
       error instanceof MigrateError

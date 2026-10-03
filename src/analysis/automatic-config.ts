@@ -17,7 +17,7 @@ interface StudyAnalysisSettings {
   question?: string;
   timeoutMs?: number;
 }
-/** The study's review.analysis: a provider selection for a separate review after a live study. */
+/** The study's review.analysis: a provider selection for a separate review after a live run. */
 export type StudyAnalysis = StudyAnalysisSettings &
   (
     | { provider?: "openai"; maxCostUsd: number; maxOutputTokens?: number }

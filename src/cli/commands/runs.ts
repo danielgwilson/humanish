@@ -16,8 +16,10 @@ import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
 import {
+  applyEnvFileOption,
   type CliIo,
   CWD_OPTION_DESCRIPTION,
+  ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
   RUN_OPTION_DESCRIPTION,
   writeResult,
@@ -243,7 +245,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
   parent
     .command("reclaim")
     .description(
-      "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.",
+      "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --env-file.",
     )
     .summary("Stop an interrupted run's leftover sandboxes.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
@@ -254,12 +256,24 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
         "Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's.",
       ).conflicts("run"),
     )
+    .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
-        options: { cwd: string; run: string; preflight?: boolean; json?: boolean },
+        options: {
+          cwd: string;
+          run: string;
+          preflight?: boolean;
+          envFile?: string;
+          json?: boolean;
+        },
         command,
       ) => {
+        // The kill calls read E2B_API_KEY from the environment: the env file, then discovered keys.
+        if (
+          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
+        )
+          return;
         const result = options.preflight
           ? await reclaimPreflightSandboxes(options.cwd)
           : await reclaimRunSandboxes(options.cwd, options.run);

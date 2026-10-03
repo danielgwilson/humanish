@@ -642,9 +642,12 @@ describe("writing", () => {
       from: "node",
     });
     expect(events[0]).toBe(
-      "err:humanish/labs/a.yaml -> humanish/studies/a.yaml (route: preview)\n  moved: actors[0] -> actor, actors[0].count -> participants\n",
+      "err:humanish/labs/a.yaml -> humanish/studies/a.yaml (route: preview)\n  moved: actors[0] -> actor, actors[0].count -> participants\nhumanish/labs/: removed after the move, since nothing else is in it\n",
     );
-    expect(JSON.parse(events[1]!.slice("out:".length))).toMatchObject({ ok: true });
+    expect(JSON.parse(events[1]!.slice("out:".length))).toMatchObject({
+      ok: true,
+      removedDirectories: ["humanish/labs"],
+    });
     // The plan printed while the destination did not exist yet, and the run then wrote it.
     expect(written).toEqual([false]);
     expect(existsSync(destination)).toBe(true);
