@@ -703,7 +703,7 @@ describe("runScriptedBrowserLab", () => {
         const verified = await verifyRun(cwd, result.runId);
         expect(verified.ok).toBe(true);
         expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
-        expect(verified.warnings.join("\n")).toContain("FULL-FIDELITY (raw)");
+        expect(verified.warnings.join("\n")).toContain("are unblurred");
         expect(result.warnings.join("\n")).toContain("full-fidelity");
 
         // Public safety: no absolute machine paths or secret-shaped text in any text artifact.

@@ -12,7 +12,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: attributionLimits is missing the mandatory disclosure \"no-concurrent-races\" — an absent ceiling overclaims"
+        "message": "shared-world findings: attributionLimits is missing the required disclosure \"no-concurrent-races\"; without it the bundle claims more than the run can show"
       }
     ]
   },
@@ -21,7 +21,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: checkpoint \"cp-baseline\" carries an unexpected field \"rawValue\" — checkpoints persist digest-only"
+        "message": "shared-world findings: checkpoint \"cp-baseline\" carries an unexpected field \"rawValue\": checkpoints store digests only"
       }
     ]
   },
@@ -30,7 +30,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane, turn \"role-author\" plane provenance diverges from sharedWorld.plane"
+        "message": "shared-world findings: turns reference different plane provenance (commit or seedDigest), but a shared-world run uses one plane, turn \"role-author\" plane provenance diverges from sharedWorld.plane"
       }
     ]
   },
@@ -48,7 +48,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)"
+        "message": "shared-world findings: the review verdict is pass, but no checkpoint shows deltaFromPrev, so no change to the shared app was observed"
       }
     ]
   },
@@ -66,7 +66,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch)"
+        "message": "shared-world findings: a sequential shared-world bundle must not carry concurrent laneWindows (topologyMode mismatch)"
       }
     ]
   },
@@ -299,7 +299,7 @@
     "failing": [
       {
         "name": "subject state provenance",
-        "message": "subject state findings: state marker \"seeded\" on a dry-run bundle — a contract bundle cannot claim executed state"
+        "message": "subject state findings: state marker \"seeded\" on a dry-run bundle: a dry run executes no state steps"
       },
       {
         "name": "shared-world evidence",
@@ -316,7 +316,7 @@
       },
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch), attributionLimits is missing the mandatory disclosure \"no-concurrent-races\" — an absent ceiling overclaims, phantom/dropped role: sequence length (1), roleCount (2), and timeline turn count (2) must all match, turn order does not match the declared sequence at position 1 (turn \"role-reviewer\" vs sequence \"undefined\"), checkpoint \"cp-baseline\" carries an unexpected field \"rawValue\" — checkpoints persist digest-only, turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane, turn \"role-author\" plane provenance diverges from sharedWorld.plane, review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)"
+        "message": "shared-world findings: a sequential shared-world bundle must not carry concurrent laneWindows (topologyMode mismatch), attributionLimits is missing the required disclosure \"no-concurrent-races\"; without it the bundle claims more than the run can show, phantom/dropped role: sequence length (1), roleCount (2), and timeline turn count (2) must all match, turn order does not match the declared sequence at position 1 (turn \"role-reviewer\" vs sequence \"undefined\"), checkpoint \"cp-baseline\" carries an unexpected field \"rawValue\": checkpoints store digests only, turns reference different plane provenance (commit or seedDigest), but a shared-world run uses one plane, turn \"role-author\" plane provenance diverges from sharedWorld.plane, the review verdict is pass, but no checkpoint shows deltaFromPrev, so no change to the shared app was observed"
       }
     ]
   },

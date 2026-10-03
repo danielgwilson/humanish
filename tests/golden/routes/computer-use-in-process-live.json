@@ -637,7 +637,7 @@
         "total": 0
       },
       "desktopMinutes": null,
-      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model."
+      "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Add a rate to src/run/pricing.ts to estimate this model."
     }
   },
   "status.json": {

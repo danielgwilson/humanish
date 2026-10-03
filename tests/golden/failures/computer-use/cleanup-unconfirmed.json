@@ -817,7 +817,7 @@
         "total": 0
       },
       "desktopMinutes": 1,
-      "note": "Estimated 0.00888 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+      "note": "Estimated 0.00888 USD total (a lower bound: some lines are unmeasured or unpriced). Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
     }
   },
   "sandbox-receipts.ndjson": [
