@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { lstat, open, unlink } from "node:fs/promises";
 import path from "node:path";
-import { parse, stringify } from "yaml";
+import { parse, parseDocument } from "yaml";
 import { COMMS_CONFIG_PATH, readCommsConnections } from "./connections.js";
 import {
   discoverProviderKeys,
@@ -28,6 +28,8 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { otherStudyFiles } from "../study/files.js";
+import { convertStudyText, isStudyV3 } from "../study/convert.js";
+import { isNodeError } from "../run/type-guards.js";
 
 export interface CommsCheckResult {
   schema: "humanish.comms-check.v1";
@@ -202,7 +204,8 @@ export async function configureCommsLab(args: {
     const bytes = await readContainedRegularFile(root, rel);
     if (!bytes || bytes.length > 1024 * 1024)
       return { ...base, message: "The lab is missing or too large." };
-    const raw: unknown = parse(bytes.toString("utf8"));
+    const text = bytes.toString("utf8");
+    const raw: unknown = parse(text);
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
       return { ...base, message: "The lab must be a mapping." };
     const lab = raw as Record<string, unknown>;
@@ -213,8 +216,20 @@ export async function configureCommsLab(args: {
         message:
           "This lab uses local capture. Preserve it or make a separate lab before selecting real email.",
       };
-    lab.comms = { ...existing, email: { ...existing?.email, connection: args.connection } };
-    const validated = parseLabConfig(lab);
+    // The copy is a v3 study. A v2 source is converted first, so the copy keeps its comments.
+    let studyText = text;
+    if (!isStudyV3(raw)) {
+      const converted = convertStudyText(text, args.cwd);
+      if (!converted.ok)
+        return {
+          ...base,
+          message: `This lab could not be converted to a v3 study: ${converted.reason}`,
+        };
+      studyText = converted.conversion.text;
+    }
+    const study = parseDocument(studyText);
+    study.setIn(["comms", "email", "connection"], args.connection);
+    const validated = parseLabConfig(study.toJS());
     if (!validated.ok)
       return {
         ...base,
@@ -228,8 +243,8 @@ export async function configureCommsLab(args: {
         .replace(/-receiving$/, "") + "-receiving.yaml";
     if (!/^[A-Za-z0-9_][A-Za-z0-9._-]{0,110}\.yaml$/.test(filename))
       return { ...base, message: "Use a simple lab filename before configuring email." };
-    const destination = `.humanish/local/labs/${filename}`;
-    if (rel === destination)
+    const destination = `.humanish/local/studies/${filename}`;
+    if (path.basename(rel) === filename)
       return {
         ...base,
         message:
@@ -239,11 +254,13 @@ export async function configureCommsLab(args: {
     const stem = filename.replace(/\.yaml$/, "");
     const others = await otherStudyFiles(
       stem,
+      // Any directory entry counts, a dangling symbolic link included: discovery would see it too.
       async (candidate) => {
         try {
-          return (await readContainedRegularFile(root, candidate.replace(/\\/g, "/"))) !== null;
-        } catch {
+          await lstat(path.join(root.requestedPath, candidate));
           return true;
+        } catch (error) {
+          return !(isNodeError(error) && error.code === "ENOENT");
         }
       },
       destination,
@@ -259,7 +276,7 @@ export async function configureCommsLab(args: {
     } catch {
       return { ...base, message: "The local destination could not be read safely." };
     }
-    const content = stringify(lab);
+    const content = String(study);
     const token = createHash("sha256")
       .update(bytes)
       .update("\0")
@@ -283,7 +300,7 @@ export async function configureCommsLab(args: {
         ...base,
         message: "The lab or destination changed since preview. Preview again before saving.",
       };
-    const directory = await prepareManagedHumanishOutputDirectory(args.cwd, "local", "labs");
+    const directory = await prepareManagedHumanishOutputDirectory(args.cwd, "local", "studies");
     const lockPath = path.join(directory.physicalPath, ".comms-configure.lock");
     const lock = await open(
       lockPath,

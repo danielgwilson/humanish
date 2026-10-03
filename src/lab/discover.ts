@@ -259,7 +259,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
 
   for (const [name, stem] of stems) {
     if (stem.studies === undefined || stem.legacy === undefined) continue;
-    const error = `${name} names two files, ${stem.studies} and ${stem.legacy}; running it by name fails until one is removed.`;
+    const error = `${name} names two files, ${stem.studies} and ${stem.legacy}; running it by name fails until you delete one (humanish migrate moves a kept labs/ file).`;
     for (const key of stem.keys) {
       const entry = listed.get(key);
       if (entry) entry.error = error;
@@ -596,7 +596,7 @@ function ambiguousStudy(
     study: name,
     error: {
       code: "HUMANISH_STUDY_AMBIGUOUS",
-      message: `${name} names two files, ${studiesPath} and ${labsPath}. Keep the one under studies/ and remove the other, or pass the path of the one to run.`,
+      message: `${name} names two files, ${studiesPath} and ${labsPath}. Delete the one you do not want; if you keep ${labsPath}, run humanish migrate to move it. Or pass the path of the one to run.`,
     },
     warnings,
   };

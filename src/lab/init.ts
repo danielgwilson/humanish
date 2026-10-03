@@ -236,10 +236,10 @@ async function planStarterFiles(
     if (
       existing !== null &&
       localBrowserRequested &&
-      file.path === "humanish/labs/local-browser.yaml"
+      file.path === "humanish/studies/local-browser.yaml"
     ) {
       plan.warnings.push(
-        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.",
+        "Skipped --local-browser/--local-mission: humanish/studies/local-browser.yaml already exists and init never overwrites it.",
       );
     }
 
@@ -253,8 +253,9 @@ async function planStarterFiles(
         target: file.plane,
         reason: `${others.join(", ")} already uses the name ${stem}`,
       });
+      const legacy = others.some((other) => other.split(path.sep).includes("labs"));
       plan.warnings.push(
-        `Skipped ${file.path}: ${others.join(", ")} already uses the name ${stem}, and a second file with that name would make \`run ${stem}\` fail.`,
+        `Skipped ${file.path}: ${others.join(", ")} already uses the name ${stem}, and a second file with that name would make \`run ${stem}\` fail.${legacy ? " Run humanish migrate to move it to a studies/ directory." : ""}`,
       );
     } else if (existing === null) {
       plan.changes.push({

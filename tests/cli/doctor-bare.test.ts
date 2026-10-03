@@ -43,7 +43,7 @@ describe("doctor without --lab", () => {
   });
 
   it("finds a lab whose file name differs from its id", async () => {
-    const labs = path.join(cwd, "humanish", "labs");
+    const labs = path.join(cwd, "humanish", "studies");
     const tryLive = await readFile(path.join(labs, "try-live.yaml"), "utf8");
     expect(tryLive).toMatch(/^id: try-live$/m);
     await writeFile(

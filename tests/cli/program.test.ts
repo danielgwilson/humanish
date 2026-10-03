@@ -289,7 +289,7 @@ describe("humanish CLI scaffold", () => {
         expect(envelope.ok).toBe(true);
         expect(envelope.mode).toBe("dry-run");
         expect(
-          envelope.changes.some((change) => change.path === "humanish/labs/first-run.yaml"),
+          envelope.changes.some((change) => change.path === "humanish/studies/first-run.yaml"),
         ).toBe(true);
 
         await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
@@ -328,9 +328,9 @@ describe("humanish CLI scaffold", () => {
         await expect(
           stat(path.join(cwd, "humanish/personas/synthetic-new-user.yaml")),
         ).resolves.toBeTruthy();
-        await expect(stat(path.join(cwd, "humanish/labs/first-run.yaml"))).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, "humanish/studies/first-run.yaml"))).resolves.toBeTruthy();
         await expect(stat(path.join(cwd, ".humanish/runs"))).resolves.toBeTruthy();
-        await expect(stat(path.join(cwd, ".humanish/local/labs"))).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, ".humanish/local/studies"))).resolves.toBeTruthy();
 
         const gitignore = await readFile(path.join(cwd, ".gitignore"), "utf8");
         expect(gitignore).toContain(".humanish/");
