@@ -1,7 +1,7 @@
-// Where you are and how you got there (#455).
+// Where you are and how you got there.
 //
-// The shape Daniel's sketch settles on: OBJECTS navigate, lifecycle renders in place. You move
-// between things that exist — the set of labs, one lab, one run — and a run's state (queued,
+// The shape Daniel's sketch settles on: objects navigate, lifecycle renders in place. You move
+// between things that exist (the set of studies, one study, one run) and a run's state (queued,
 // running, finished, interrupted) is something the run screen renders, never somewhere you go. An
 // earlier design had a screen per state; it made the same run feel like four different objects and
 // left no answer to "where am I".
@@ -17,7 +17,7 @@ export type Screen =
   | { name: "run"; labId?: string; runId: string };
 
 export interface NavState {
-  /** Top of the stack is the current screen. Never empty — `labs` is the floor. */
+  /** Top of the stack is the current screen. Never empty: `labs` is the floor. */
   stack: Screen[];
   /** Selected row index per screen key, so going back restores where you were. */
   selection: Record<string, number>;
@@ -63,8 +63,8 @@ export function navigate(state: NavState, event: NavEvent): NavState {
     case "enter":
       return { ...state, stack: [...state.stack, event.screen] };
     case "back":
-      // Back from the top level is a request to leave. Making Esc quit there — rather than doing
-      // nothing — means one key always means "out of here", which is what a person reaches for
+      // Back from the top level is a request to leave. Making Esc quit there (rather than doing
+      // nothing) means one key always means "out of here", which is what a person reaches for
       // when a surface has taken their screen.
       return state.stack.length <= 1
         ? { ...state, quit: true }

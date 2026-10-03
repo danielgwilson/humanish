@@ -1,4 +1,4 @@
-// The external-public plane's host-first handoff. The host seat opens a lobby; each follower waits
+// The external-public plane's host-first handoff. The host opens a lobby; each follower waits
 // for the host's lobby code, read from the host's URL, narration or screen, and then joins with it.
 // A follower fails closed without opening if the host never yields a code within the deadline.
 //
@@ -26,25 +26,26 @@ import {
 } from "./participant-specs.js";
 import type { ActorRunResult, ExternalCommsWiring } from "./types.js";
 
-// The floor for the host-first handoff barrier deadline (ms). The host seat must surface a
+// The floor for the host-first handoff barrier deadline (ms). The host must surface a
 // shared-session (/lobby/CODE) URL within the deadline or the run fails closed and no follower
-// opens. The effective deadline scales with the per-seat run budget (execution.timeoutMs): a fixed
-// 2 min is too tight for a real create-a-lobby flow on a mobile-layout seat once you subtract the
-// seat's own desktop provisioning: the host reaches /lobby/CODE, but after the followers already
-// gave up. So use max(floor, 40% of the budget), capped at the budget. The latch resolves the
-// instant the host actually reaches /lobby, so a generous ceiling only affects the fail-closed case.
+// opens. The effective deadline scales with the per-participant run budget (execution.timeoutMs): a
+// fixed 2 min is too tight for a real create-a-lobby flow on a mobile-layout participant once you
+// subtract the participant's own desktop provisioning: the host reaches /lobby/CODE, but after the
+// followers already gave up. So use max(floor, 40% of the budget), capped at the budget. The latch
+// resolves the instant the host actually reaches /lobby, so a generous ceiling only affects the
+// fail-closed case.
 const DEFAULT_HANDOFF_DEADLINE_MS = 120_000;
 
 const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
 
-// Per-seat runaway backstop for the vision-off-frame lobby-code read (used by the host to latch the
-// handoff code, and by each follower to independently observe its own code for the convergence proof):
-// at most this many single-frame reads before the seat is assumed to be somewhere without a code. Each
-// reader stops the instant it has what it needs, so in practice only a handful fire (a seat reaches its
-// /lobby within a few turns). NOTE: these reads are out-of-band OpenAI calls (external-public route
-// only) and are left out of execution.caps.maxUsd, so this hard cap is what bounds their spend
-// (each read is one cheap single-frame OCR call). If this route ever runs under a strict
-// budget, fold the estimate in.
+// Per-participant runaway backstop for the vision-off-frame lobby-code read (used by the host to
+// latch the handoff code, and by each follower to independently observe its own code for the
+// convergence proof): at most this many single-frame reads before the participant is assumed to be
+// somewhere without a code. Each reader stops the instant it has what it needs, so in practice only
+// a handful fire (a participant reaches its /lobby within a few turns). NOTE: these reads are
+// out-of-band OpenAI calls (external-public route only) and are left out of execution.caps.maxUsd,
+// so this hard cap is what bounds their spend (each read is one cheap single-frame OCR call). If
+// this route ever runs under a strict budget, fold the estimate in.
 const MAX_LOBBY_CODE_VISION_READS = 30;
 
 // Idle/no-progress backstop for the host participant specifically (default is 6/8). The host legitimately sits
@@ -99,21 +100,23 @@ export interface HandoffParticipantDeps {
 }
 
 /**
- * The handoff latch, its deadline and what each seat observed. The latched code and observed URLs
- * are runtime-only and land in persisted metadata only as digests (origin + convergence). (The code
- * is a shareable game code, not a secret, and it still renders in the host's screenshots, which are
- * full-fidelity unless redactScreenshots is set. The digesting is about narration/URL metadata.)
+ * The handoff latch, its deadline and what each participant observed. The latched code and observed
+ * URLs are runtime-only and land in persisted metadata only as digests (origin + convergence). (The
+ * code is a shareable game code, not a secret, and it still renders in the host's screenshots,
+ * which are full-fidelity unless redactScreenshots is set. The digesting is about narration/URL
+ * metadata.)
  */
 export class LobbyHandoff {
   // Per-participant runtime-only observed state (never persisted raw): the last observed URL and the last
-  // observed /lobby/CODE per seat, fed by onObservedUrl. The URL is digested to its origin for each seat's
-  // routeHostDigest (no code leaks); the codes drive the cross-seat lobby-convergence digest.
+  // observed /lobby/CODE per participant, fed by onObservedUrl. The URL is digested to its origin
+  // for each participant's routeHostDigest (no code leaks); the codes drive the cross-participant
+  // lobby-convergence digest.
   readonly observedFinalUrls: (string | undefined)[];
   readonly observedLobbyCodes: (string | undefined)[];
   latchedLobbyCode: string | undefined;
   /** A follower gave up because the deadline passed. */
   timedOut = false;
-  /** Why the host seat ended without producing a lobby code. */
+  /** Why the host ended without producing a lobby code. */
   hostFailure: string | undefined;
   readonly deadlineMs: number;
   private readonly lobbyCodeLatch = deferred<string>();
@@ -187,11 +190,12 @@ export class LobbyHandoff {
     this.lobbyCodeLatch.resolve(code);
   }
 
-  // Build an onScreenshot handler that vision-reads the lobby code off this seat's own frame (the
-  // CDP-independent observation). `done()` short-circuits once this seat has what it needs (the host
-  // once latched; a follower once it has recorded its own observed code), `onCode` records/latches the
-  // result. One read in flight at a time, bounded by MAX_LOBBY_CODE_VISION_READS so a seat that never
-  // reaches a lobby can't rack up unbounded calls (fire-and-forget; the loop never awaits it).
+  // Build an onScreenshot handler that vision-reads the lobby code off this participant's own frame
+  // (the CDP-independent observation). `done()` short-circuits once this participant has what it
+  // needs (the host once latched; a follower once it has recorded its own observed code), `onCode`
+  // records/latches the result. One read in flight at a time, bounded by
+  // MAX_LOBBY_CODE_VISION_READS so a participant that never reaches a lobby can't rack up unbounded
+  // calls (fire-and-forget; the loop never awaits it).
   makeLobbyCodeVisionReader(
     done: () => boolean,
     onCode: (code: string) => void,
@@ -244,17 +248,17 @@ export class LobbyHandoff {
     }
   }
 
-  /** The digest-only convergence proofs over what the seats observed. */
+  /** The digest-only convergence proofs over what the participants observed. */
   convergence(declaredOriginDigest: string | undefined): {
     publicOriginDigest: string | undefined;
     lobbyConvergenceDigest: string | undefined;
   } {
-    // Observed-origin convergence proof: the convergence claim is about what the seats
-    // observed. Digest each observing seat's origin and require one shared origin; that agreement is
-    // the convergence proof and becomes plane.publicOriginDigest. A normal
-    // cross-origin redirect (declared apex -> observed www) is therefore tolerated: the seats still
-    // converge on one observed origin. Leave it undefined (verify fails closed) only if the seats did
-    // not converge on a single observed origin (or none observed one).
+    // Observed-origin convergence proof: the convergence claim is about what the participants
+    // observed. Digest each observing participant's origin and require one shared origin; that
+    // agreement is the convergence proof and becomes plane.publicOriginDigest. A normal
+    // cross-origin redirect (declared apex -> observed www) is therefore tolerated: the
+    // participants still converge on one observed origin. Leave it undefined (verify fails closed)
+    // only if the participants did not converge on a single observed origin (or none observed one).
     const observedOriginDigests = this.observedFinalUrls
       .filter((url): url is string => typeof url === "string" && url.length > 0)
       .map((url) => hostOriginDigest(url));
@@ -262,19 +266,21 @@ export class LobbyHandoff {
     const publicOriginDigest =
       distinctObservedOrigins.size === 1
         ? [...distinctObservedOrigins][0]
-        : // Nothing observed (e.g. a handoff-timeout run where no seat ever navigated): fall back to the
-          // declared origin so a failed run's bundle stays structurally valid (every seat's route then
-          // digests to the declared origin too). The run still fails closed for its own reason
-          // (`HANDOFF_TIMEOUT`, no lobby convergence, no overlap-on-pass). Real divergence (≥2 distinct observed
-          // origins) leaves it undefined so verify fails closed on the non-convergence.
+        : // Nothing observed (e.g. a handoff-timeout run where no participant ever navigated): fall
+          // back to the declared origin so a failed run's bundle stays structurally valid (every
+          // participant's route then digests to the declared origin too). The run still fails
+          // closed for its own reason (`HANDOFF_TIMEOUT`, no lobby convergence, no
+          // overlap-on-pass). Real divergence (≥2 distinct observed origins) leaves it undefined so
+          // verify fails closed on the non-convergence.
           distinctObservedOrigins.size === 0
           ? declaredOriginDigest
           : undefined;
 
-    // Lobby-convergence proof: a digest of the shared /lobby/CODE path iff every seat converged on the
-    // same code (a follower stuck on "/" yields no code, so no false convergence). Digest-only.
-    // observedLobbyCodes may be a sparse array (a seat that never observed a code leaves a hole), and
-    // Array.prototype.every skips holes, so count the defined codes explicitly instead of every().
+    // Lobby-convergence proof: a digest of the shared /lobby/CODE path iff every participant
+    // converged on the same code (a follower stuck on "/" yields no code, so no false convergence).
+    // Digest-only. observedLobbyCodes may be a sparse array (a participant that never observed a
+    // code leaves a hole), and Array.prototype.every skips holes, so count the defined codes
+    // explicitly instead of every().
     const definedCodes = this.observedLobbyCodes.filter(
       (code): code is string => code !== undefined,
     );
@@ -339,7 +345,8 @@ export async function runHost(
   // followers provision their own desktops and walk the Join flow (easily 15-30 turns of an
   // unchanging "waiting for players" screen). At the default idle backstop (6) the host would give up
   // before anyone arrives, orphaning the lobby (exactly the earlier failure). Raise the host's idle /
-  // no-progress tolerance so it waits patiently; the per-seat timeout still bounds a truly stuck host.
+  // no-progress tolerance so it waits patiently; the per-participant timeout still bounds a truly
+  // stuck host.
   const hostSpec: DesktopParticipantRun = {
     ...withParticipantInbox(spec, deps.inbox),
     backstop: {
@@ -399,7 +406,8 @@ export async function runFollower(
   }
   // Followers also idle-wait: in the waiting room until the host starts, and between rounds. Raise
   // their idle backstop too (less than the host's: they wait less), so a follower that joins ahead of
-  // the other does not give up before the game begins. Per-seat timeout still bounds a stuck follower.
+  // the other does not give up before the game begins. Per-participant timeout still bounds a stuck
+  // follower.
   const followerSpec: DesktopParticipantRun = {
     ...withLobbyCodeMission(withParticipantInbox(spec, deps.inbox), code),
     backstop: {
@@ -408,12 +416,12 @@ export async function runFollower(
     },
   };
   // Independently observe this follower's own lobby code by vision-reading its waiting-room frame,
-  // and record it for the cross-seat convergence proof. This latches nothing (followers gate on the
-  // host's code). It fills this seat's observedLobbyCodes slot from a
-  // reliable signal instead of the flaky CDP url-read, so lobbyConvergenceDigest can prove all seats
-  // reached the same /lobby/CODE. If a follower somehow joined another lobby, it reads a different
-  // code and convergence correctly fails (no false proof); if it never reads one, the seat stays a
-  // hole and convergence is honestly "not observed" for that seat.
+  // and record it for the cross-participant convergence proof. This latches nothing (followers gate
+  // on the host's code). It fills this participant's observedLobbyCodes slot from a
+  // reliable signal instead of the flaky CDP url-read, so lobbyConvergenceDigest can prove all
+  // participants reached the same /lobby/CODE. If a follower somehow joined another lobby, it reads
+  // a different code and convergence correctly fails (no false proof); if it never reads one, the
+  // participant stays a hole and convergence is honestly "not observed" for that participant.
   const onScreenshot = handoff.makeLobbyCodeVisionReader(
     () => handoff.observedLobbyCodes[participantIndex] !== undefined,
     (observed) => {

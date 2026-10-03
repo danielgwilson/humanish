@@ -104,7 +104,7 @@ describe("loadAdapterScorer: resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
   it("rejects a cwd-parent node_modules ref", async () => {
@@ -116,7 +116,7 @@ describe("loadAdapterScorer: resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
   it("rejects an absolute path (BAD_REF)", async () => {
@@ -130,7 +130,7 @@ describe("loadAdapterScorer: resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
   it("rejects a .ts ref (no shipped TypeScript loader)", async () => {
@@ -143,7 +143,7 @@ describe("loadAdapterScorer: resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
     expect(result.error.message).toContain(".ts");
   });
 
@@ -156,7 +156,7 @@ describe("loadAdapterScorer: resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_BAD_REF");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_BAD_REF");
   });
 
   it("rejects a symlink entry (NOT_FOUND: fail-closed containment)", async () => {
@@ -170,7 +170,7 @@ describe("loadAdapterScorer: resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NOT_FOUND");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NOT_FOUND");
   });
 
   it("rejects a hardlinked entry (nlink>1: fail-closed containment)", async () => {
@@ -184,7 +184,7 @@ describe("loadAdapterScorer: resolution", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NOT_FOUND");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NOT_FOUND");
   });
 
   it("two distinct module bytes produce two distinct digests", async () => {
@@ -262,7 +262,7 @@ describe("loadAdapterScorer: load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_LOAD_FAILED");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_LOAD_FAILED");
   });
 
   it("maps a SyntaxError to LOAD_FAILED with an actionable hint", async () => {
@@ -275,7 +275,7 @@ describe("loadAdapterScorer: load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_LOAD_FAILED");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_LOAD_FAILED");
   });
 
   it("hard-errors when a module exports none of the hooks (NO_HOOKS)", async () => {
@@ -288,7 +288,7 @@ describe("loadAdapterScorer: load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NO_HOOKS");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NO_HOOKS");
   });
 
   it("on the terminal route, a module exporting only browser-only deriveArtifacts fails closed (never a silent no-op)", async () => {
@@ -305,7 +305,7 @@ describe("loadAdapterScorer: load + whitelist", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HUMANISH_LAB_SCORER_NO_HOOKS");
+    expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_NO_HOOKS");
     expect(result.error.message).toContain("deriveArtifacts");
   });
 
@@ -370,7 +370,7 @@ describe("loadAdapterScorer: route guards (declared gate that cannot run must ab
       });
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND");
+      expect(result.error.code).toBe("HUMANISH_STUDY_SCORER_UNSUPPORTED_BACKEND");
     },
   );
 });

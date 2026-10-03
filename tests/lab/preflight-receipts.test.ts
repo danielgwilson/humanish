@@ -341,7 +341,7 @@ describe("lab preflight receipts", () => {
       hooks: { loadDesktopModule: async () => odd.module },
     });
 
-    expect(result.error?.code).toBe("HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_STUDY_PREFLIGHT_TEARDOWN_FAILED");
     expect(result.warnings.join("\n")).toContain("Sandbox teardown returned an unexpected result");
     expect(await journals(cwd)).toHaveLength(1);
   });
@@ -358,7 +358,7 @@ describe("lab preflight receipts", () => {
       hooks: { loadDesktopModule: async () => failing.module },
     });
 
-    expect(result.error?.code).toBe("HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_STUDY_PREFLIGHT_TEARDOWN_FAILED");
     expect(result.warnings.join("\n")).toContain("humanish reclaim --preflight");
     const [id] = await journals(cwd);
     expect(id).toMatch(/^preflight-\d+-/);

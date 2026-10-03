@@ -28,11 +28,11 @@ const DEFAULT_SURFACE_COUNT = 1;
 /** The error a scripted lab returns before a run starts. */
 export interface ScriptedRefusal extends RouteRefusal<
   "scripted",
-  | "HUMANISH_LAB_ANALYSIS_INVALID"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-  | "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
-  | "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID"
-  | "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE"
+  | "HUMANISH_STUDY_ANALYSIS_INVALID"
+  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
+  | "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED"
+  | "HUMANISH_SCRIPTED_SCENARIO_INVALID"
+  | "HUMANISH_SCRIPTED_SUBJECT_UNSAFE"
 > {
   /**
    * Set on the receiving, analysis and tasks refusals. The route returns those before it opens its
@@ -80,24 +80,24 @@ export function planScriptedLab(
 
   if (String(config.comms?.email?.kind) === "real")
     return refuse(
-      "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "HUMANISH_SCRIPTED_SCENARIO_INVALID",
       "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab.",
       beforeScope,
     );
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  if (!analysis.ok) return refuse("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message, beforeScope);
+  if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message, beforeScope);
   const tasksReason = taskProtocolValidationReason(config, false);
-  if (tasksReason) return refuse("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason, beforeScope);
+  if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason, beforeScope);
 
   const mediaReason = desktopMediaValidationReason(config);
-  if (mediaReason) return refuse("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", mediaReason);
+  if (mediaReason) return refuse("HUMANISH_SCRIPTED_SCENARIO_INVALID", mediaReason);
   const cloneTargetReason = cloneTargetValidationReason(config);
-  if (cloneTargetReason) return refuse("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE", cloneTargetReason);
+  if (cloneTargetReason) return refuse("HUMANISH_SCRIPTED_SUBJECT_UNSAFE", cloneTargetReason);
   const actorType = config.actors[0]?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isScriptedBrowserActorDescriptor(descriptor))
     return refuse(
-      "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED",
       `actors[0].type "${actorType}" is not a registered scripted-browser actor.`,
     );
   const actor = descriptor.id;
@@ -109,7 +109,7 @@ export function planScriptedLab(
     const provisioned = provisionedSubject(config);
     if (provisioned?.kind !== "clone" || !provisioned.repo)
       return refuse(
-        "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+        "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
         "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config.",
         { actor, appUrl: "[provisioned-subject]" },
       );
@@ -118,7 +118,7 @@ export function planScriptedLab(
     const appUrl = normalizeLocalAppUrl(config.subject.appUrl ?? "");
     if (!appUrl)
       return refuse(
-        "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+        "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
         "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) on the scripted-browser route.",
         { actor },
       );
@@ -129,7 +129,7 @@ export function planScriptedLab(
   const scenarioRef = config.scenario?.ref;
   if (!scenarioRef?.trim())
     return refuse(
-      "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "HUMANISH_SCRIPTED_SCENARIO_INVALID",
       "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.",
       { actor, appUrl: evidenceAppUrlOf(subject) },
     );

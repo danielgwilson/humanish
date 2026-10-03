@@ -1,5 +1,5 @@
 // Starts a concurrent shared-world run and prepares what its plane reads: the physical project,
-// the run, the seat specs, comms, the packed tree and email receiving.
+// the run, the participant specs, comms, the packed tree and email receiving.
 
 import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
@@ -52,8 +52,8 @@ function makeRunId(): string {
 interface AdmittedLab {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Read for the subject's serve URL, which each seat's subject names. Seats, their count and
-   *  their host and entry come from the plan's participants. */
+  /** Read for the subject's serve URL, which each participant's subject names. Participants, their
+   *  count and their host and entry come from the plan's participants. */
   config: LabConfig;
   requestedCwd: string;
   deps: LabDeps;
@@ -139,7 +139,7 @@ function startConcurrentRun(
 }
 
 /**
- * Starts the run and prepares what the planes read: the physical project, the run, the seat
+ * Starts the run and prepares what the planes read: the physical project, the run, the participant
  * specs, comms, the packed tree and email receiving. Returns the refusal when one of them fails.
  */
 export async function prepareConcurrentRun(
@@ -183,7 +183,7 @@ export async function prepareConcurrentRun(
   if (!packed.ok) {
     return {
       ok: false,
-      result: fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", packed.message, descriptor.id),
+      result: fail("HUMANISH_SHARED_WORLD_FAILED", packed.message, descriptor.id),
     };
   }
   const localTreeArchive = packed.archive;
@@ -235,7 +235,7 @@ export async function prepareConcurrentRun(
     return {
       ok: false,
       result: {
-        ...fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", email.message, descriptor.id),
+        ...fail("HUMANISH_SHARED_WORLD_INVALID", email.message, descriptor.id),
         runId,
       },
     };

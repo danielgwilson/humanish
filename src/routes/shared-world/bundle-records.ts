@@ -52,7 +52,8 @@ function participantView(
   const session = outcome?.session;
   const screenshots = outcome?.screenshots ?? [];
   const lastScreenshot = screenshots[screenshots.length - 1];
-  // public-safe (origin redacted): external-public seats open the public plane; getHost seats a seat path.
+  // public-safe (origin redacted): external-public participants open the public plane; getHost
+  // participants open their own path.
   const route = external
     ? "[external-public-plane]"
     : publicSafeRouteLabel(args.plan.plane.participants[index]?.entry);
@@ -193,7 +194,7 @@ function sharedWorldStream(
         : []),
       // Run-level comms evidence belongs to the one shared app, and to no persona: register it once, on
       // the first stream, so the bundle's existence-verify + public-safety scan cover it without
-      // double-counting across seats.
+      // double-counting across participants.
       ...(index === 0 && args.commsArtifactPath
         ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
         : []),

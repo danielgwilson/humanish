@@ -1,5 +1,5 @@
 /**
- * ARCHITECTURE.md's code map is the table under "Find the code for each part of the system". Every
+ * Architecture.md's code map is the table under "Find the code for each part of the system". Every
  * directory directly under src/, and every folder under src/routes/, needs a row, and every row
  * that names a directory must name one that exists. Directories only: files are not listed.
  */

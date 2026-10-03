@@ -157,7 +157,7 @@ export function ParticipantCard({
               sandbox={liveEmbedSandbox(stream)}
               className="thumb-live"
               src={liveUrl}
-              title={`Live thumb — ${name}`}
+              title={`Live thumb · ${name}`}
               referrerPolicy="no-referrer"
               aria-hidden="true"
               tabIndex={-1}

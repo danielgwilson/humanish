@@ -1,8 +1,8 @@
-// The surface's own colours (#455).
+// The surface's own colours.
 //
-// These are the tokens from the reviewed design, not ANSI names. `"cyan"` and `"green"` hand the
+// These are the tokens from the reviewed design, not ansi names. `"cyan"` and `"green"` hand the
 // decision to whoever themed the terminal, so the same build looks different on every machine and
-// matches the agreed design on none of them — including the ones where a themed "yellow" is barely
+// matches the agreed design on none of them, including the ones where a themed "yellow" is barely
 // distinguishable from the body text it is meant to warn against.
 //
 // Hex is downsampled by chalk to 256 or 16 colours when the terminal cannot do better, so the

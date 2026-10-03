@@ -316,8 +316,8 @@ function concurrencyOnPassFindings(
 }
 
 /**
- * External-public concurrent branch: N seats drove one real operator-owned public deployment at
- * once. The evidence class for a plane the harness does not own. Verify fails closed on the
+ * External-public concurrent branch: N participants drove one real operator-owned public deployment
+ * at once. The evidence class for a plane the harness does not own. Verify fails closed on the
  * downgrades (asserted-absent, never silently dropped): provenance is "external-public" (never
  * seeded), exposure is absent (claiming synthetic on a real site would be false), plane control is
  * operator-attested (publicOriginDigest; there is no harness-minted hostDigest), there is no
@@ -389,8 +389,8 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
 
 /**
  * The external-public plane (the counterpart of the harness-minted-URL rule, with a weaker,
- * disclosed claim): the seats converged on one observed origin, nothing claims harness control
- * or a synthetic seeded subject, and every laneWindow shares the plane's provenance.
+ * disclosed claim): the participants converged on one observed origin, nothing claims harness
+ * control or a synthetic seeded subject, and every laneWindow shares the plane's provenance.
  */
 function externalPublicPlaneFindings(
   bundle: RunBundle,
@@ -398,14 +398,15 @@ function externalPublicPlaneFindings(
   windows: Row[],
 ): string[] {
   const findings: string[] = [];
-  // The convergence proof is about what the seats observed; the declared origin is not part of it.
-  // plane.publicOriginDigest is the observed origin the seats converged on; verify requires every
-  // seat's CDP-observed routeHostDigest to agree on one origin, and that publicOriginDigest be that
-  // origin. Convergence on one observed origin proves inter-seat co-location. It does not prove harness control
-  // of the plane. Operator ownership rests on the subject.publicTarget.authorized
-  // attestation + the declared appUrl. Digest equality plays no part, because a normal cross-origin redirect
-  // (apex->www, http->https) makes the observed origin differ from the declared one, which is
-  // expected and must never fail verify (declaredOriginDigest is evidence-only).
+  // The convergence proof is about what the participants observed; the declared origin is not part
+  // of it. plane.publicOriginDigest is the observed origin the participants converged on; verify
+  // requires every participant's CDP-observed routeHostDigest to agree on one origin, and that
+  // publicOriginDigest be that origin. Convergence on one observed origin proves cross-participant
+  // co-location. It does not prove harness control of the plane. Operator ownership rests on the
+  // subject.publicTarget.authorized attestation + the declared appUrl. Digest equality plays no
+  // part, because a normal cross-origin redirect (apex->www, http->https) makes the observed origin
+  // differ from the declared one, which is expected and must never fail verify
+  // (declaredOriginDigest is evidence-only).
   const plane: Row = isRecord(sw.plane) ? sw.plane : {};
   const publicOriginDigest =
     typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
@@ -414,7 +415,8 @@ function externalPublicPlaneFindings(
       "sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the participants converged on) is required on the external-public plane class",
     );
   }
-  // The observed origins across seats must agree on exactly one (that agreement is the convergence).
+  // The observed origins across participants must agree on exactly one (that agreement is the
+  // convergence).
   const observedOrigins = windows
     .map((window) =>
       typeof window.routeHostDigest === "string" ? window.routeHostDigest : undefined,
@@ -481,7 +483,8 @@ function externalPublicPlaneFindings(
   );
 
   // The lobby-convergence proof (optional-but-strong): if present it must be a sha256-16 digest of the
-  // shared `/lobby/CODE` path all seats converged on (digest-only; the raw lobby code never lands).
+  // shared `/lobby/CODE` path all participants converged on (digest-only; the raw lobby code never
+  // lands).
   const lobbyConvergenceDigest = (sw as { lobbyConvergenceDigest?: unknown })
     .lobbyConvergenceDigest;
   if (

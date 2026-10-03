@@ -1,7 +1,7 @@
 {
   "smtp on shared world": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "SMTP capture is not yet wired for shared-world labs. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world labs."
     },
     "runLab": {
@@ -18,7 +18,7 @@
   },
   "recording on shared world": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     },
     "runLab": {
@@ -45,7 +45,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
         },
         "automaticAnalysisTrigger": "default",
@@ -62,7 +62,7 @@
   },
   "media on scripted": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
     "runLab": {
@@ -86,7 +86,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+          "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
           "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
         },
         "automaticAnalysisTrigger": "default",
@@ -103,7 +103,7 @@
   },
   "media with firefox": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
     },
     "runLab": {
@@ -127,7 +127,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
         },
         "automaticAnalysisTrigger": "default",
@@ -144,7 +144,7 @@
   },
   "maxOutputTokens on local-agent": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
     },
     "runLab": {
@@ -168,7 +168,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
         },
         "automaticAnalysisTrigger": "default",
@@ -185,7 +185,7 @@
   },
   "real receiving on scripted": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Real email receiving requires a hosted computer-use browser lab with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported."
     },
     "runLab": {
@@ -209,7 +209,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+          "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
           "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
         }
       }
@@ -221,7 +221,7 @@
   },
   "real receiving with local-agent": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
     },
     "runLab": {
@@ -245,7 +245,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -262,7 +262,7 @@
   },
   "recipient names unknown lane": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "comms.email.recipients name participant(s) that do not exist: \"nobody\". This lab's participant ids are: lane-01. A recipient's `lane` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant."
     },
     "runLab": {
@@ -287,7 +287,7 @@
   },
   "recipients without address": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "comms.email.recipients cover no participant with an address, so no actor would be told an inbox exists and no captured mail could match. Give at least one recipient an address, or omit `recipients` entirely (every participant then gets a deterministic address automatically)."
     },
     "runLab": {
@@ -312,7 +312,7 @@
   },
   "this-repo with target": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally."
     },
     "runLab": {
@@ -328,7 +328,7 @@
   },
   "this-repo live": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "this-repo labs are dry-run only; use a clone or app-url subject for a live run."
     },
     "runLab": {
@@ -385,7 +385,7 @@
   },
   "local-app on e2b-desktop": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "local-app subjects drive an in-process LOCAL dev server with NO E2B desktop — set `execution.target: local` or omit it (absent means local); `e2b-desktop` is rejected (use an app-url subject for the hosted-desktop route)."
     },
     "runLab": {
@@ -409,7 +409,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+          "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
           "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
         },
         "automaticAnalysisTrigger": "default",
@@ -426,7 +426,7 @@
   },
   "local-app with scripted actor": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
     },
     "runLab": {
@@ -450,7 +450,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"scripted-browser\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -467,7 +467,7 @@
   },
   "local-app count 2": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out)."
     },
     "runLab": {
@@ -491,7 +491,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+          "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
           "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
         },
         "automaticAnalysisTrigger": "default",
@@ -508,7 +508,7 @@
   },
   "local-app lanes": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop."
     },
     "runLab": {
@@ -532,7 +532,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+          "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
           "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
         },
         "automaticAnalysisTrigger": "default",
@@ -549,7 +549,7 @@
   },
   "local-app public targets": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow."
     },
     "runLab": {
@@ -573,7 +573,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+          "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
           "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
         },
         "automaticAnalysisTrigger": "default",
@@ -590,7 +590,7 @@
   },
   "scripted app-url on e2b-desktop": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice."
     },
     "runLab": {
@@ -607,7 +607,7 @@
   },
   "scripted app-url without ref": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
     },
     "runLab": {
@@ -631,7 +631,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+          "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
           "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
         },
         "automaticAnalysisTrigger": "default",
@@ -648,7 +648,7 @@
   },
   "scripted app-url count 3": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice."
     },
     "runLab": {
@@ -665,7 +665,7 @@
   },
   "scripted app-url redacted screenshots": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected."
     },
     "runLab": {
@@ -682,7 +682,7 @@
   },
   "scripted app-url public targets": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.allowPublicTargets` is not supported on the scripted-browser route — the scripted step driver enforces loopback at every navigation; public targets on this route are a later slice."
     },
     "runLab": {
@@ -699,7 +699,7 @@
   },
   "scripted app-url public url": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route."
     },
     "runLab": {
@@ -723,7 +723,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+          "code": "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
           "message": "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) on the scripted-browser route."
         },
         "automaticAnalysisTrigger": "default",
@@ -740,7 +740,7 @@
   },
   "cu app-url without target": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "app-url computer-use subjects require `execution.target: local` or `e2b-desktop`."
     },
     "runLab": {
@@ -765,7 +765,7 @@
   },
   "cu app-url unknown actor": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
     },
     "runLab": {
@@ -789,7 +789,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -806,7 +806,7 @@
   },
   "cu app-url codex-app-server": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
     },
     "runLab": {
@@ -830,7 +830,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"codex-app-server\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -847,7 +847,7 @@
   },
   "cu app-url public url without policy": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own."
     },
     "runLab": {
@@ -871,7 +871,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
           "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
         },
         "automaticAnalysisTrigger": "default",
@@ -888,7 +888,7 @@
   },
   "scripted on local-tree": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject)."
     },
     "runLab": {
@@ -912,7 +912,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"scripted-browser\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -929,7 +929,7 @@
   },
   "scripted clone on local": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects with scripted-browser actors require `execution.target: e2b-desktop` — the lab provisions the clone in E2B, exposes it with getHost, then drives deterministic browser steps."
     },
     "runLab": {
@@ -953,7 +953,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"scripted-browser\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -970,7 +970,7 @@
   },
   "scripted clone without serve": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects with scripted-browser actors require `subject.serve` (start + url) — the lab serves the app in-sandbox before the scripted browser drives it."
     },
     "runLab": {
@@ -994,7 +994,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+          "code": "HUMANISH_SCRIPTED_SUBJECT_UNSAFE",
           "message": "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config."
         },
         "automaticAnalysisTrigger": "default",
@@ -1011,7 +1011,7 @@
   },
   "scripted clone two repos": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone scripted-browser labs require exactly one repo in subject.repos."
     },
     "runLab": {
@@ -1028,7 +1028,7 @@
   },
   "scripted clone topology": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone scripted-browser labs do not support `subject.topology` yet — this slice provisions one synthetic subject and one deterministic scripted actor roster, not a shared-world run."
     },
     "runLab": {
@@ -1045,7 +1045,7 @@
   },
   "scripted clone keep": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone scripted-browser labs do not support `subject.clone.fanout` or `subject.clone.keep` yet — the provisioned subject is always a single disposable E2B sandbox."
     },
     "runLab": {
@@ -1062,7 +1062,7 @@
   },
   "scripted clone without ref": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
     },
     "runLab": {
@@ -1086,7 +1086,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+          "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
           "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
         },
         "automaticAnalysisTrigger": "default",
@@ -1103,7 +1103,7 @@
   },
   "scripted clone count 3": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice."
     },
     "runLab": {
@@ -1120,7 +1120,7 @@
   },
   "scripted clone lanes": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster."
     },
     "runLab": {
@@ -1137,7 +1137,7 @@
   },
   "scripted clone redacted screenshots": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected."
     },
     "runLab": {
@@ -1154,7 +1154,7 @@
   },
   "scripted clone public targets": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`policies.allowPublicTargets` is not supported on the clone scripted-browser route — the only external host is the harness-minted getHost URL for a provisioned synthetic subject."
     },
     "runLab": {
@@ -1171,7 +1171,7 @@
   },
   "scripted clone without exposure": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone scripted-browser labs require `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data."
     },
     "runLab": {
@@ -1188,7 +1188,7 @@
   },
   "scripted clone without seed": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone scripted-browser labs require `subject.state.seed` and do not allow `subject.state.external` — getHost-exposed subjects must be synthetic seeded data, not external/unpinned state."
     },
     "runLab": {
@@ -1205,7 +1205,7 @@
   },
   "scripted clone loopback bind": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone scripted-browser labs require `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; the readiness probe stays loopback."
     },
     "runLab": {
@@ -1222,7 +1222,7 @@
   },
   "cu clone on local": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "runLab": {
@@ -1246,7 +1246,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
         },
         "automaticAnalysisTrigger": "default",
@@ -1263,7 +1263,7 @@
   },
   "cu clone without serve": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it."
     },
     "runLab": {
@@ -1287,7 +1287,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
         },
         "automaticAnalysisTrigger": "default",
@@ -1304,7 +1304,7 @@
   },
   "cu clone two repos": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "computer-use clone labs serve one repo; declare exactly one repo in subject.repos."
     },
     "runLab": {
@@ -1329,7 +1329,7 @@
   },
   "cu local-tree without target": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject."
     },
     "runLab": {
@@ -1353,7 +1353,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox."
         },
         "automaticAnalysisTrigger": "default",
@@ -1370,7 +1370,7 @@
   },
   "cu local-tree terminal actor": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered computer-use actor for local-tree subjects (one of: local-agent, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-exec\"."
     },
     "runLab": {
@@ -1394,7 +1394,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"codex-exec\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -1411,7 +1411,7 @@
   },
   "terminal actor on clone": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route."
     },
     "runLab": {
@@ -1435,7 +1435,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"codex-exec\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -1452,7 +1452,7 @@
   },
   "codex-app-server on clone": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); the lab clones and serves the app for that participant to drive. Got \"codex-app-server\"."
     },
     "runLab": {
@@ -1476,7 +1476,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"codex-app-server\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -1493,7 +1493,7 @@
   },
   "lanes and count": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
     },
     "runLab": {
@@ -1517,7 +1517,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both."
         },
         "automaticAnalysisTrigger": "default",
@@ -1534,7 +1534,7 @@
   },
   "laneFocus and lanes": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant."
     },
     "runLab": {
@@ -1558,7 +1558,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant."
         },
         "automaticAnalysisTrigger": "default",
@@ -1575,7 +1575,7 @@
   },
   "lane device and raw resolution": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
     },
     "runLab": {
@@ -1599,7 +1599,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
         },
         "automaticAnalysisTrigger": "default",
@@ -1616,7 +1616,7 @@
   },
   "lane target on clone": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism."
     },
     "runLab": {
@@ -1640,7 +1640,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism."
         },
         "automaticAnalysisTrigger": "default",
@@ -1657,7 +1657,7 @@
   },
   "lane target and entry": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
     },
     "runLab": {
@@ -1681,7 +1681,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
         },
         "automaticAnalysisTrigger": "default",
@@ -1698,7 +1698,7 @@
   },
   "partial lane targets": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "When any actors[0].lanes[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
     },
     "runLab": {
@@ -1722,7 +1722,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "When any actors[0].lanes[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
         },
         "automaticAnalysisTrigger": "default",
@@ -1739,7 +1739,7 @@
   },
   "seventeen lanes": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Computer-use fan-out is capped at 16 participants (declared 17); N concurrent paid desktops is real spend, and there is no override above the cap this slice."
     },
     "runLab": {
@@ -1763,7 +1763,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "Computer-use fan-out is capped at 16 participants (declared 17); N concurrent paid desktops is real spend, and there is no override above the cap this slice."
         },
         "automaticAnalysisTrigger": "default",
@@ -1780,7 +1780,7 @@
   },
   "public target fan-out": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "policies.allowPublicTargets cannot be combined with fan-out to more than one participant (N>1): N participants against one declared public target is the SHARED-WORLD topology (layer 7, #164), not `per-lane-worlds`. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target participant."
     },
     "runLab": {
@@ -1804,7 +1804,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "policies.allowPublicTargets cannot be combined with fan-out to more than one participant (N>1): N participants against one declared public target is the SHARED-WORLD topology (layer 7, #164), not `per-lane-worlds`. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target participant."
         },
         "automaticAnalysisTrigger": "default",
@@ -1821,7 +1821,7 @@
   },
   "clone fanout on computer use": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)"
     },
     "runLab": {
@@ -1845,7 +1845,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)"
         },
         "automaticAnalysisTrigger": "default",
@@ -1862,7 +1862,7 @@
   },
   "duplicate lane ids": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes ids must be unique (duplicate \"a\")."
     },
     "runLab": {
@@ -1886,7 +1886,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "actors[0].lanes ids must be unique (duplicate \"a\")."
         },
         "automaticAnalysisTrigger": "default",
@@ -1903,7 +1903,7 @@
   },
   "shared world on local": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
     },
     "runLab": {
@@ -1927,7 +1927,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
         },
         "automaticAnalysisTrigger": "default",
@@ -1944,7 +1944,7 @@
   },
   "shared world without serve": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it."
     },
     "runLab": {
@@ -1971,7 +1971,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "`subject.topology: shared-world` requires `subject.serve` (start + url) — the lab serves ONE shared app in-sandbox that every role drives."
         },
         "automaticAnalysisTrigger": "default",
@@ -1988,7 +1988,7 @@
   },
   "shared world one seat": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
     },
     "runLab": {
@@ -2015,7 +2015,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
         },
         "automaticAnalysisTrigger": "default",
@@ -2032,7 +2032,7 @@
   },
   "shared world without checkpoint": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app."
     },
     "runLab": {
@@ -2059,7 +2059,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app."
         },
         "automaticAnalysisTrigger": "default",
@@ -2076,7 +2076,7 @@
   },
   "shared world cross-origin entry": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].lanes role \"author\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"https://elsewhere.example/\"."
     },
     "runLab": {
@@ -2103,7 +2103,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "actors[0].lanes role \"author\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"https://elsewhere.example/\"."
         },
         "automaticAnalysisTrigger": "default",
@@ -2120,7 +2120,7 @@
   },
   "shared world concurrency 1": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
     "runLab": {
@@ -2147,7 +2147,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
         },
         "automaticAnalysisTrigger": "default",
@@ -2164,7 +2164,7 @@
   },
   "shared world without exposure": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL)."
     },
     "runLab": {
@@ -2191,7 +2191,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL)."
         },
         "automaticAnalysisTrigger": "default",
@@ -2208,7 +2208,7 @@
   },
   "shared world loopback bind": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)"
     },
     "runLab": {
@@ -2235,7 +2235,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)"
         },
         "automaticAnalysisTrigger": "default",
@@ -2252,7 +2252,7 @@
   },
   "shared world clone keep": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.clone.keep` is not supported on the concurrent shared-world route - it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id."
     },
     "runLab": {
@@ -2279,7 +2279,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "`subject.clone.keep` is not supported on the concurrent shared-world route - it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id."
         },
         "automaticAnalysisTrigger": "default",
@@ -2296,7 +2296,7 @@
   },
   "external without public-target policy": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own."
     },
     "runLab": {
@@ -2320,7 +2320,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
           "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
         },
         "automaticAnalysisTrigger": "default",
@@ -2337,7 +2337,7 @@
   },
   "external loopback url": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "the external-public shared-world route requires a non-loopback http(s) `subject.appUrl` — a loopback URL is not a shared public plane (use the getHost provisioned route for a local subject)."
     },
     "runLab": {
@@ -2364,7 +2364,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "the external-public shared-world route requires a non-loopback http(s) `subject.appUrl` — a loopback URL is not a shared public plane (use the getHost provisioned route for a local subject)."
         },
         "automaticAnalysisTrigger": "default",
@@ -2381,7 +2381,7 @@
   },
   "external without ownership": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
     },
     "runLab": {
@@ -2408,7 +2408,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
         },
         "automaticAnalysisTrigger": "default",
@@ -2425,7 +2425,7 @@
   },
   "external with exposure": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.exposure: synthetic` is forbidden on the external-public shared-world route — you cannot attest a real public deployment is synthetic seeded data; use `subject.publicTarget` to attest ownership instead."
     },
     "runLab": {
@@ -2452,7 +2452,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "`subject.exposure: synthetic` is forbidden on the external-public shared-world route — you cannot attest a real public deployment is synthetic seeded data; use `subject.publicTarget` to attest ownership instead."
         },
         "automaticAnalysisTrigger": "default",
@@ -2469,7 +2469,7 @@
   },
   "external seat entry": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
     },
     "runLab": {
@@ -2496,7 +2496,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
         },
         "automaticAnalysisTrigger": "default",
@@ -2513,7 +2513,7 @@
   },
   "external without host": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "the external-public shared-world route requires EXACTLY ONE `host: true` participant (the designated host that creates the shared session; got 0). The other ≥1 participants are followers that join it."
     },
     "runLab": {
@@ -2540,7 +2540,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "the external-public shared-world route requires EXACTLY ONE `host: true` participant (the designated host that creates the shared session; got 0). The other ≥1 participants are followers that join it."
         },
         "automaticAnalysisTrigger": "default",
@@ -2557,7 +2557,7 @@
   },
   "external one seat": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
     },
     "runLab": {
@@ -2584,7 +2584,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
         },
         "automaticAnalysisTrigger": "default",
@@ -2601,7 +2601,7 @@
   },
   "desktop-cli without product name": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)."
     },
     "runLab": {
@@ -2625,7 +2625,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
         },
         "automaticAnalysisTrigger": "default",
@@ -2642,7 +2642,7 @@
   },
   "desktop-cli on local": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "desktop-cli subjects are studied at a hosted desktop — set `execution.target: e2b-desktop` or omit it."
     },
     "runLab": {
@@ -2667,7 +2667,7 @@
   },
   "desktop-cli codex-app-server": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "desktop-cli subjects need a registered computer-use actor: the participant reads the screen and types, which is what makes an interactive surface studiable at all."
     },
     "runLab": {
@@ -2691,7 +2691,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"codex-app-server\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -2708,7 +2708,7 @@
   },
   "desktop-cli blank install": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.product.install` must be a non-empty command string when set."
     },
     "runLab": {
@@ -2733,7 +2733,7 @@
   },
   "terminal on e2b-desktop": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "terminal-product subjects run the agent inside an E2B shell — set `execution.target: e2b-terminal` or omit it (absent means e2b-terminal); `local`/`e2b-desktop` are rejected."
     },
     "runLab": {
@@ -2750,7 +2750,7 @@
   },
   "terminal computer-use actor": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].type must be a registered terminal actor for terminal-product subjects (one of: codex-exec). Got \"openai-computer-use\"."
     },
     "runLab": {
@@ -2773,7 +2773,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"openai-computer-use\" is not a registered terminal actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -2790,7 +2790,7 @@
   },
   "terminal count 2": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1."
     },
     "runLab": {
@@ -2807,7 +2807,7 @@
   },
   "tasks on scripted": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
     "runLab": {
@@ -2831,7 +2831,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+          "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
           "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
         }
       }
@@ -2843,7 +2843,7 @@
   },
   "tasks on second actor": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Multiple actors are not supported yet (only the first actor runs); declare a single actor."
     },
     "runLab": {
@@ -2867,7 +2867,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+          "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
           "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol."
         }
       }
@@ -2879,7 +2879,7 @@
   },
   "analysis on preview": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording."
     },
     "runLab": {
@@ -2897,7 +2897,7 @@
         "cwd": "[cwd]",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_LAB_ANALYSIS_UNSUPPORTED",
+          "code": "HUMANISH_STUDY_ANALYSIS_UNSUPPORTED",
           "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording."
         }
       }
@@ -2908,7 +2908,7 @@
   },
   "local browser long session": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "Local browser sessions currently support at most 20 minutes, within the runtime's 30-minute lifetime."
     }
   },
@@ -2937,7 +2937,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route."
         },
         "automaticAnalysisTrigger": "default",
@@ -2975,7 +2975,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_LAB_OPTION_UNSUPPORTED",
+          "code": "HUMANISH_STUDY_OPTION_UNSUPPORTED",
           "message": "RunLabOptions.inProcess is not supported on the computer-use route: an in-process executor returns no frame, so it needs createProvider."
         },
         "appUrl": "http://127.0.0.1:3000/",
@@ -3003,7 +3003,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
+          "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
           "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
         },
         "automaticAnalysisTrigger": "default",
@@ -3039,7 +3039,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+          "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
           "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
         },
         "automaticAnalysisTrigger": "default",
@@ -3079,7 +3079,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
         },
         "automaticAnalysisTrigger": "default",
@@ -3119,7 +3119,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
           "message": "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route."
         },
         "automaticAnalysisTrigger": "default",
@@ -3175,7 +3175,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "execution.timeoutMs 55m derives a 95m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 40m of provisioning and teardown headroom (this route clones, installs, builds and serves the subject before the actor starts). Lower execution.timeoutMs to at most 20m, or set execution.desktop.sandboxTimeoutMs explicitly."
         },
         "automaticAnalysisTrigger": "default",
@@ -3214,7 +3214,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
+          "code": "HUMANISH_TERMINAL_CAPS_MISSING",
           "message": "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force."
         },
         "automaticAnalysisTrigger": "default",
@@ -3253,7 +3253,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_CAPS_INVALID",
+          "code": "HUMANISH_TERMINAL_CAPS_INVALID",
           "message": "scenario.caps.maxMinutes 56 derives a 67m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is maxMinutes plus 11m: the Node bootstrap (5m), the runtime version check (1m) and the teardown buffer (5m). Lower scenario.caps.maxMinutes to at most 49. No sandbox was created and the runtime key was not used."
         },
         "automaticAnalysisTrigger": "default",
@@ -3270,7 +3270,7 @@
   },
   "terminal runtime version": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`execution.runtime` must contain only an exact Codex `version` (for example 0.153.3); tags, ranges, URLs, and unknown fields are not accepted."
     },
     "runLab": {
@@ -3293,7 +3293,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_FAILED",
+          "code": "HUMANISH_TERMINAL_FAILED",
           "message": "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value."
         },
         "automaticAnalysisTrigger": "default",
@@ -3310,7 +3310,7 @@
   },
   "terminal product without surfaces": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.product.publicSurfaces` must list at least one public surface URL."
     },
     "runLab": {
@@ -3333,7 +3333,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
           "message": "terminal-product subjects require `subject.product` with a name and at least one public surface URL."
         },
         "automaticAnalysisTrigger": "default",
@@ -3376,7 +3376,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
+          "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
           "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
         },
         "automaticAnalysisTrigger": "default",
@@ -3416,7 +3416,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_KEYS_MISSING",
+          "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
           "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
@@ -3456,7 +3456,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_UNPRICED_CAP",
+          "code": "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
           "message": "execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model \"unpriced-model\"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped."
         },
         "automaticAnalysisTrigger": "default",
@@ -3496,7 +3496,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_KEYS_MISSING",
+          "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
           "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
@@ -3536,7 +3536,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_AGENT_MISSING",
+          "code": "HUMANISH_COMPUTER_USE_AGENT_MISSING",
           "message": "actors[0].type: local-agent needs the codex CLI on PATH and signed in. Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead."
         },
         "automaticAnalysisTrigger": "default",
@@ -3576,7 +3576,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING",
           "message": "subject.env declares DATABASE_URL but the environment does not provide it (pass via --env-file; values are never persisted)."
         },
         "automaticAnalysisTrigger": "default",
@@ -3616,7 +3616,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",
+          "code": "HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE",
           "message": "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel."
         },
         "automaticAnalysisTrigger": "default",
@@ -3656,7 +3656,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
+          "code": "HUMANISH_SCRIPTED_KEYS_MISSING",
           "message": "Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
@@ -3696,7 +3696,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
+          "code": "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
           "message": "Subject env values missing for live clone scripted-browser lab: GITHUB_TOKEN."
         },
         "automaticAnalysisTrigger": "default",
@@ -3735,7 +3735,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
+          "code": "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
           "message": "Live terminal-product labs declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
         },
         "automaticAnalysisTrigger": "default",
@@ -3774,7 +3774,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_KEYS_MISSING",
+          "code": "HUMANISH_TERMINAL_KEYS_MISSING",
           "message": "Live terminal-product labs need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
@@ -3813,7 +3813,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+          "code": "HUMANISH_TERMINAL_UNPRICED_CAP",
           "message": "scenario.caps.maxUsd=1 cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
         },
         "automaticAnalysisTrigger": "default",
@@ -3856,7 +3856,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
+          "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
           "message": "Live concurrent shared-world labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
         },
         "automaticAnalysisTrigger": "default",
@@ -3896,7 +3896,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
           "message": "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld."
         },
         "automaticAnalysisTrigger": "default",
@@ -3935,7 +3935,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_SHARED_WORLD_INVALID",
           "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
         },
         "automaticAnalysisTrigger": "default",
@@ -3971,7 +3971,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"codex-exec\" is not a registered scripted-browser actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -4006,7 +4006,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"scripted-browser\" is not a registered terminal actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -4071,7 +4071,7 @@
   },
   "overlap cu: unknown actor and firefox media": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
     "runLab": {
@@ -4095,7 +4095,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+          "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
           "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
@@ -4112,7 +4112,7 @@
   },
   "overlap scripted: real receiving and media": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
     "runLab": {
@@ -4136,7 +4136,7 @@
         "sessions": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+          "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
           "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
         }
       }
@@ -4148,7 +4148,7 @@
   },
   "overlap terminal: real receiving and media": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
     "runLab": {
@@ -4171,7 +4171,7 @@
         "runId": "not-created",
         "warnings": [],
         "error": {
-          "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+          "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
           "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab."
         },
         "automaticAnalysisTrigger": "default",
@@ -4188,7 +4188,7 @@
   },
   "overlap shared world: tasks and one seat": {
     "parser": {
-      "code": "HUMANISH_LAB_INVALID",
+      "code": "HUMANISH_STUDY_INVALID",
       "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
     },
     "runLab": {
@@ -4215,7 +4215,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+          "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
           "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
         },
         "automaticAnalysisTrigger": "default",

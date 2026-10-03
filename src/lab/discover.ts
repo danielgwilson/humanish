@@ -35,7 +35,7 @@ export interface LabResolveFailure {
   cwd: string;
   lab: string;
   error: {
-    code: "HUMANISH_LAB_NOT_FOUND" | "HUMANISH_LAB_INVALID";
+    code: "HUMANISH_STUDY_NOT_FOUND" | "HUMANISH_STUDY_INVALID";
     message: string;
   };
   warnings: string[];
@@ -283,7 +283,7 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
       ok: false,
       cwd: path.resolve(cwd),
       lab,
-      error: { code: "HUMANISH_LAB_INVALID", message: error.message },
+      error: { code: "HUMANISH_STUDY_INVALID", message: error.message },
       warnings: resolved.warnings,
     };
   }
@@ -546,7 +546,7 @@ function invalidLab(
     cwd: args.cwd,
     lab: args.lab,
     error: {
-      code: "HUMANISH_LAB_INVALID",
+      code: "HUMANISH_STUDY_INVALID",
       message,
     },
     warnings: args.warnings,
@@ -559,7 +559,7 @@ function labNotFound(cwd: string, lab: string, warnings: string[]): LabResolveFa
     cwd,
     lab,
     error: {
-      code: "HUMANISH_LAB_NOT_FOUND",
+      code: "HUMANISH_STUDY_NOT_FOUND",
       message: `Lab not found: ${lab}. Look in humanish/labs/ or pass a .yaml path.`,
     },
     warnings,

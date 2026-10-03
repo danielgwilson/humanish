@@ -9,11 +9,17 @@ const DOCS_INDEX = "docs/README.md";
 // A markdown link target: `[text](target)` or `[text](<target> "title")`.
 const MARKDOWN_LINK = /\]\(\s*<?([^()\s<>]+?)>?(?:\s+"[^"]*")?\s*\)/g;
 
+// A link to a file on this repository's main branch. A shipped index links pages npm leaves out
+// this way, so it counts as a link to the repo path.
+const REPO_URL = /^https:\/\/github\.com\/[\w.-]+\/humanish\/(?:blob|tree)\/main\/(.+)$/;
+
 /** The repo paths an index file links to, resolved from the index's folder. */
 function linkedPaths(indexPath: string, text: string): Set<string> {
   const linked = new Set<string>();
   for (const match of text.matchAll(MARKDOWN_LINK)) {
     const target = match[1]!.split("#")[0]!.split("?")[0]!;
+    const repoPath = REPO_URL.exec(target)?.[1];
+    if (repoPath !== undefined) linked.add(posix.normalize(repoPath));
     if (target === "" || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
     linked.add(posix.normalize(posix.join(posix.dirname(indexPath), target)));
   }

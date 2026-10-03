@@ -54,7 +54,7 @@ describe("declared task protocol admission", () => {
       expect(result.ok, JSON.stringify(result)).toBe(supported);
       if (result.ok) expect(result.config.actors[0]!.tasks).toEqual(tasks);
       else {
-        expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(result.error.message).toContain("actors[0].tasks is unsupported");
         expect(result.error.message).not.toMatch(/TASK_ONLY_SENTINEL|HIDDEN_SUCCESS_SENTINEL/);
       }
@@ -84,7 +84,7 @@ describe("declared task protocol admission", () => {
       );
       expect(outcome.route).toBe(routeOf(parsed));
       expect(outcome.result.ok).toBe(false);
-      expect(outcome.result.error).toMatchObject({ code: "HUMANISH_LAB_TASKS_UNSUPPORTED" });
+      expect(outcome.result.error).toMatchObject({ code: "HUMANISH_STUDY_TASKS_UNSUPPORTED" });
       expect(JSON.stringify(outcome.result)).not.toMatch(
         /TASK_ONLY_SENTINEL|HIDDEN_SUCCESS_SENTINEL/,
       );
@@ -105,7 +105,7 @@ describe("declared task protocol admission", () => {
       const config = validConfig(fixtures.find((row) => row.supported)!.config);
       config.actors[0]!.tasks = tasks;
       const result = await runner({ cwd: path.join(cwd, "must-not-exist"), config, dryRun: false });
-      expect(result.error?.code).toBe("HUMANISH_LAB_TASKS_UNSUPPORTED");
+      expect(result.error?.code).toBe("HUMANISH_STUDY_TASKS_UNSUPPORTED");
       await expect(access(path.join(cwd, "must-not-exist"))).rejects.toMatchObject({
         code: "ENOENT",
       });
@@ -125,7 +125,7 @@ describe("declared task protocol admission", () => {
       dryRun: false,
     });
     expect(result.error).toMatchObject({
-      code: "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      code: "HUMANISH_STUDY_TASKS_UNSUPPORTED",
       message: expect.stringContaining("actors[1].tasks"),
     });
     await expect(access(path.join(cwd, "must-not-exist"))).rejects.toMatchObject({

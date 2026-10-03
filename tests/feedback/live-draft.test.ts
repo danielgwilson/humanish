@@ -1,7 +1,7 @@
 // A live run's feedback draft described a different kind of run entirely.
 //
-// Two halves, pinned separately. The CUA routes never built a feedback candidate, so every live
-// browser run fell through to the dry-run template: a draft claiming "no browser behavior was
+// Two halves, pinned separately. The computer-use routes never built a feedback candidate, so every
+// live browser run fell through to the dry-run template: a draft claiming "no browser behavior was
 // exercised" over a run with fifteen screenshots of browser behavior. And the fallback itself was
 // mode-blind, so even after candidates exist, a clean live run must still get a draft describing
 // the run that happened rather than the dry-run letter.

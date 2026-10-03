@@ -1,5 +1,5 @@
-// The sharedWorld block of run.json (humanish.shared-world.v1): the one shared plane, each seat's
-// window, state snapshots and the interleaved timeline of checkpoints and turns.
+// The sharedWorld block of run.json (humanish.shared-world.v1): the one shared plane, each
+// participant's window, state snapshots and the interleaved timeline of checkpoints and turns.
 
 import type { ParticipantIds } from "./participant-records.js";
 
@@ -35,13 +35,13 @@ export interface SharedWorldPlane {
    */
   exposure?: "synthetic";
   /**
-   * External-public plane class only: sha256-16 of the observed origin the seats
+   * External-public plane class only: sha256-16 of the observed origin the participants
    * converged on. It is the counterpart of hostDigest with a weaker, disclosed claim: the harness only
-   * observes that each seat reached this origin and never minted it. It is derived from what the
-   * seats actually reached; the declared appUrl does not feed it. verify proves every laneWindow.routeHostDigest
-   * (that seat's CDP-observed final URL origin) equals it, which shows inter-seat convergence on one observed
-   * origin, not harness control of the plane. A digest, not the raw origin (kept consistent with
-   * hostDigest hygiene). Absent on getHost.
+   * observes that each participant reached this origin and never minted it. It is derived from what
+   * the participants actually reached; the declared appUrl does not feed it. verify proves every
+   * laneWindow.routeHostDigest (that participant's CDP-observed final URL origin) equals it, which
+   * shows cross-participant convergence on one observed origin, not harness control of the plane. A
+   * digest, not the raw origin (kept consistent with hostDigest hygiene). Absent on getHost.
    */
   publicOriginDigest?: string;
   /**
@@ -74,9 +74,9 @@ export interface SharedWorldParticipantWindow {
   endedAt: number;
   /** The actor's terminal session verdict (per-persona). */
   verdict: string;
-  /** sha256-16 of the origin of the getHost seat URL this actor drove. verify confirms it equals
-   *  plane.hostDigest, so the actor drove exactly the harness-minted host.
-   *  A digest, not the raw URL (a getHost URL is not publish-safe; see SharedWorldPlane.hostDigest). */
+  /** sha256-16 of the origin of the getHost participant URL this actor drove. verify confirms it
+   *  equals plane.hostDigest, so the actor drove exactly the harness-minted host. A digest, not the
+   *  raw URL (a getHost URL is not publish-safe; see SharedWorldPlane.hostDigest). */
   routeHostDigest: string;
   /** The shared plane's commit this actor observed (omitted when unresolved). */
   commit?: string;
@@ -143,7 +143,7 @@ export interface SharedWorldCheckpoint {
   deltaFromPrev: boolean;
 }
 
-/** A timeline turn: one role's seat session against the shared plane. Carries the plane
+/** A timeline turn: one role's participant session against the shared plane. Carries the plane
  *  provenance it observed (identical across turns by construction: the single-plane proof). */
 interface SharedWorldTurn {
   kind: "turn";
@@ -160,8 +160,8 @@ interface SharedWorldTurn {
 
 type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
 
-/** Declared seats that were never started after one executed sequential role stopped the run.
- * The executed timeline plus this ordered tail must account for every declared sim/stream. */
+/** Declared participants that were never started after one executed sequential role stopped the
+ * run. The executed timeline plus this ordered tail must account for every declared sim/stream. */
 interface SharedWorldSkippedTail {
   afterRoleId: string;
   roles: Array<{ roleId: string; simId: string; streamId: string }>;
@@ -201,16 +201,17 @@ export interface SharedWorldEvidence {
    * default to provisioned-getHost, byte-stable.
    */
   planeClass?: "provisioned-getHost" | "external-public";
-  /** The declared number of role seats. */
+  /** The declared number of role participants. */
   roleCount: number;
   plane: SharedWorldPlane;
   /** The pinned, verify-enforced attribution ceiling (the set differs per topologyMode/planeClass). */
   attributionLimits: string[];
   /**
    * External-public plane class only (optional-but-strong): sha256-16 of the shared
-   * `/lobby/CODE` path every seat's CDP-observed URL converged on: the concrete "they were in one
-   * shared world" proof, observation-derived and needing no subject change. Digest-only (the raw
-   * 6-char lobby code and full URLs are runtime-only and never land). Absent when seats did not converge.
+   * `/lobby/CODE` path every participant's CDP-observed URL converged on: the concrete "they were
+   * in one shared world" proof, observation-derived and needing no subject change. Digest-only (the
+   * raw 6-char lobby code and full URLs are runtime-only and never land). Absent when participants
+   * did not converge.
    */
   lobbyConvergenceDigest?: string;
   // --- Sequential shape ---
@@ -250,8 +251,8 @@ function overlapStarts(windows: readonly ParticipantWindow[]): number[] {
 
 /**
  * What a shared-world run shows about concurrency, as verify's pass gate and the judge both read
- * it: whether two or more seats were live at once, and, when the plane keeps a state series (the
- * provisioned plane), whether the state changed at or after the first overlap started.
+ * it: whether two or more participants were live at once, and, when the plane keeps a state series
+ * (the provisioned plane), whether the state changed at or after the first overlap started.
  */
 export function concurrencyFacts(
   windows: readonly ParticipantWindow[],

@@ -318,10 +318,10 @@ export async function openDesktopBrowserTarget(
       "  fi",
       "  return 1",
       "}",
-      // Fixed CDP port (not :0/random): each seat has its own desktop sandbox, so a known port
-      // cannot conflict, and it makes the observer's port resolution deterministic. With :0 the
-      // real port lives only in DevToolsActivePort; when the launch-time capture misses on a cold
-      // start the observer falls back to 9222 and, being wrong, every CDP read fails for the
+      // Fixed CDP port (not :0/random): each participant has its own desktop sandbox, so a known
+      // port cannot conflict, and it makes the observer's port resolution deterministic. With :0
+      // the real port lives only in DevToolsActivePort; when the launch-time capture misses on a
+      // cold start the observer falls back to 9222 and, being wrong, every CDP read fails for the
       // whole run (the lobby-code handoff then never sees the host's /lobby URL). 9222 is already
       // the fallback, so making it the actual port aligns launch, capture, and fallback.
       `chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=${CHROME_DEVTOOLS_PORT} ${chromiumFlags})`,

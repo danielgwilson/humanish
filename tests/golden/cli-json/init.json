@@ -1,0 +1,23 @@
+{
+  "exitCode": 0,
+  "shape": {
+    "changes": [
+      {
+        "action": "string",
+        "path": "string",
+        "reason": "string",
+        "target": "string"
+      }
+    ],
+    "cwd": "string",
+    "mode": "string",
+    "nextSteps": [
+      "string"
+    ],
+    "ok": "boolean",
+    "schema": "string",
+    "warnings": [
+      "string"
+    ]
+  }
+}

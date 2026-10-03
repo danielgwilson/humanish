@@ -6,7 +6,7 @@ export const REPO_SLUG_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 export const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 export function invalid(message: string): LabConfigParseFailure {
-  return { ok: false, error: { code: "HUMANISH_LAB_INVALID", message } };
+  return { ok: false, error: { code: "HUMANISH_STUDY_INVALID", message } };
 }
 
 export function str(value: unknown): string | undefined {

@@ -28,8 +28,8 @@
   --panel-deep: #12100d;
   --dz: #181613;
   --dz-ink: #f0ede5;
-  --dz-body: #b2ada2;
-  --dz-label: #948f83;
+  --dz-body: #c6c1b5;
+  --dz-label: #a6a195;
   --dz-line: rgba(240, 237, 229, 0.1);
   --dz-ghost: rgba(240, 237, 229, 0.32);
   --foot: #100f0c;
@@ -77,8 +77,8 @@
     --panel-deep: #0e0d0b;
     --dz: #0f0e0c;
     --dz-ink: #f0ede5;
-    --dz-body: #aca79b;
-    --dz-label: #8f8a7e;
+    --dz-body: #c1bcb0;
+    --dz-label: #a39e92;
     --dz-line: rgba(240, 237, 229, 0.09);
     --dz-ghost: rgba(240, 237, 229, 0.3);
     --foot: #0b0a08;
@@ -119,8 +119,8 @@
   --panel-deep: #0e0d0b;
   --dz: #0f0e0c;
   --dz-ink: #f0ede5;
-  --dz-body: #aca79b;
-  --dz-label: #8f8a7e;
+  --dz-body: #c1bcb0;
+  --dz-label: #a39e92;
   --dz-line: rgba(240, 237, 229, 0.09);
   --dz-ghost: rgba(240, 237, 229, 0.3);
   --foot: #0b0a08;
@@ -803,53 +803,12 @@ h1:where(:not(.humanish-docs h1)) {
   text-underline-offset: 3px;
   white-space: nowrap;
 }
-.hero-tile {
-  position: absolute;
-  right: clamp(14px, 3vw, 54px);
-  bottom: 9%;
-  width: min(340px, 31vw);
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: var(--sh-tile);
-  z-index: 2;
-}
-.tile-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 13px;
-  border-bottom: 1px solid var(--line-soft);
-}
-.tile-bar .lane-id {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-}
-.tile-shot {
-  position: relative;
-  background: var(--mineral);
-}
-.tile-shot img {
-  width: 100%;
-  aspect-ratio: 598/324;
-  object-fit: cover;
-}
-.tile-shot canvas,
 .pmedia canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-}
-.tile-foot {
-  padding: 9px 13px;
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  border-top: 1px solid var(--line-soft);
 }
 .lane-id {
   font-family: var(--mono);
@@ -940,11 +899,6 @@ h1:where(:not(.humanish-docs h1)) {
     );
     mask-image: linear-gradient(180deg, transparent 0, #000 14%, #000 82%, transparent 100%);
   }
-  .hero-tile {
-    right: 16px;
-    bottom: 18px;
-    width: min(272px, 72vw);
-  }
   .hero-observer {
     width: 100%;
     margin-bottom: 18px;
@@ -961,15 +915,6 @@ h1:where(:not(.humanish-docs h1)) {
     row-gap: 2px;
   }
   .ho-bar .lane-id {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
-  .tile-bar {
-    flex-wrap: wrap;
-    row-gap: 2px;
-  }
-  .tile-bar .lane-id {
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
@@ -2094,19 +2039,6 @@ html:not(.js) .stage {
 .origin h2 {
   margin-bottom: 0;
 }
-.origin-body {
-  font-family: var(--serif);
-  font-weight: 300;
-  font-size: clamp(1.15rem, 1.75vw, 1.35rem);
-  line-height: 1.66;
-  letter-spacing: -0.004em;
-  color: var(--dz-body);
-  max-width: 58ch;
-}
-.origin-body b {
-  font-weight: 400;
-  color: var(--dz-ink);
-}
 @media (max-width: 900px) {
   .origin {
     grid-template-columns: 1fr;
@@ -2168,8 +2100,16 @@ html:not(.js) .stage {
 
 /* ---------- footer ---------- */
 .site-foot {
+  /* The footer is dark in both themes, so its colors are set once, here. They stay out of the
+     :root blocks, which the component registry exports. */
+  --foot-ink: #f0ede5;
+  --foot-hover: #fff;
+  --foot-body: #c6c2b8;
+  --foot-muted: #a39e93;
+  --foot-label: #9a958a;
+  --foot-code: #b3aea3;
   background: var(--foot);
-  color: #c6c2b8;
+  color: var(--foot-body);
   padding: 52px var(--gutter) 40px;
 }
 .foot-grid {
@@ -2181,12 +2121,12 @@ html:not(.js) .stage {
 }
 .foot-brand p {
   font-size: 13px;
-  color: #8f8b81;
+  color: var(--foot-muted);
   margin-top: 8px;
   max-width: 30ch;
 }
 .site-foot .wm {
-  color: #f0ede5;
+  color: var(--foot-ink);
 }
 .site-foot .ish .p {
   color: var(--accent-dz);
@@ -2202,16 +2142,16 @@ html:not(.js) .stage {
   align-content: start;
 }
 .foot-block .fl {
-  color: #8f8b81;
+  color: var(--foot-label);
 }
 .foot-block a {
   font-size: 13.5px;
-  color: #c6c2b8;
+  color: var(--foot-body);
   text-decoration: none;
   width: fit-content;
 }
 .foot-block a:hover {
-  color: #fff;
+  color: var(--foot-hover);
 }
 .provenance {
   margin-top: 44px;
@@ -2225,19 +2165,19 @@ html:not(.js) .stage {
 }
 .provenance p {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: 11.5px;
   line-height: 1.7;
-  color: #8f8b81;
+  color: var(--foot-label);
   max-width: 92ch;
 }
 .provenance p code {
   font-size: inherit;
-  color: #98948b;
+  color: var(--foot-code);
 }
 .provenance .lic {
   font-family: var(--mono);
-  font-size: 10.5px;
-  color: #767268;
+  font-size: 11.5px;
+  color: var(--foot-label);
   white-space: nowrap;
 }
 
@@ -2388,9 +2328,9 @@ h1 em {
 
 /* ============================================================
    2026-09-21 homepage refresh (flag value option-1; released to all visitors 2026-09-27).
-   New blocks only; the token system above is unchanged except for the
-   contrast and size floor (two of three synthetic participants who read the
-   2026-09-14 page reported gray dark-band text and very small mono labels).
+   Two of three synthetic participants who read the 2026-09-14 page reported
+   gray dark-band text and very small mono labels. The lighter dark-band text
+   is --dz-body and --dz-label in the token blocks; the size floor is below.
    ============================================================ */
 
 /* ---------- nav: GitHub + version ---------- */
@@ -2428,21 +2368,7 @@ h1 em {
   }
 }
 
-/* ---------- contrast + size floor ---------- */
-:root {
-  --dz-body: #c6c1b5;
-  --dz-label: #a6a195;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --dz-body: #c1bcb0;
-    --dz-label: #a39e92;
-  }
-}
-:root[data-theme="dark"] {
-  --dz-body: #c1bcb0;
-  --dz-label: #a39e92;
-}
+/* ---------- size floor ---------- */
 .fl,
 .chip,
 .c-bar,
@@ -2450,7 +2376,6 @@ h1 em {
 .manifest dt,
 .plab,
 .rail-k,
-.tile-bar .lane-id,
 .brief-facts dt {
   font-size: 11px;
 }
@@ -2462,20 +2387,6 @@ h1 em {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-color: var(--accent-dz-dim);
-}
-.foot-brand p {
-  color: #a39e93;
-}
-.foot-block .fl {
-  color: #9a958a;
-}
-.provenance p,
-.provenance .lic {
-  color: #9a958a;
-  font-size: 11.5px;
-}
-.provenance p code {
-  color: #b3aea3;
 }
 .closer .cmdline {
   font-size: 12.5px;
@@ -2674,101 +2585,6 @@ h1 em {
     font-size: 12px;
   }
 }
-.phone-bezel {
-  width: min(100%, 340px);
-  padding: 10px;
-  border-radius: 30px;
-  background: #14120e;
-  box-shadow: var(--sh-tile);
-}
-.phone-bezel .rp {
-  border-radius: 22px;
-  border: 0;
-}
-.phone-bezel .rp-head,
-.phone-bezel .rp-bar {
-  display: none;
-}
-.phone-bezel .rp-stage img {
-  object-fit: cover;
-}
-.phone-bezel .rp-thought {
-  display: none;
-}
-
-/* participants grid */
-.pg {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-.pg-card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: var(--sh-rail);
-  display: grid;
-  min-width: 0;
-}
-.pg-card header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--line-soft);
-}
-.pg-name {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-.pg-shot {
-  position: relative;
-  background: var(--mineral);
-}
-.pg-shot img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-.pg-shot img.on {
-  opacity: 1;
-}
-.pg-card footer {
-  padding: 9px 12px 11px;
-  display: grid;
-  gap: 5px;
-}
-/* A fixed four lines: the latest reasoning runs 370 to 440 characters per frame, and a
-   min-height alone let the cards grow and shrink every frame (415 to 520 px over one loop). */
-.pg-card footer p {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--body-c);
-  height: 6em;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-}
-.pg-card.done footer p {
-  color: var(--ink);
-}
-@media (max-width: 900px) {
-  .pg {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* ---------- study v3 (option 1) ---------- */
 .study-stage {
@@ -2815,9 +2631,6 @@ h1 em {
 .study-open code {
   font-size: 0.92em;
 }
-.study-h2 {
-  margin-top: 8px;
-}
 .study-axis {
   margin-top: 8px;
   padding-top: 56px;
@@ -2831,13 +2644,6 @@ h1 em {
 }
 .study-axis .repair-results td {
   font-size: 24px;
-}
-.tile-foot {
-  align-items: flex-start;
-}
-.tile-foot .fq {
-  white-space: normal;
-  line-height: 1.45;
 }
 
 /* Phone floor for the smallest mono labels; two persona rounds called them dense. */

@@ -1,9 +1,9 @@
 // Counts identifiers and file names in src/ that still use the retired words. The code says
-// participant; lane, seat, role and sim survive only as contract spellings, which belong in the
-// modules that translate the manifest and the run bundle, and in the Observer that renders them.
-// Lab gives way to study: a study is what a user designs and runs, and a run is one execution of
-// it. What remains spells the lab paths, commands, codes and types that the study rename replaces.
-// vocabulary:check holds each word's count to its cap.
+// participant; `lane`, `seat`, `role` and `sim` survive only as contract spellings, which belong in
+// the modules that translate the manifest and the run bundle, and in the Observer that renders
+// them. Lab gives way to study: a study is what a user designs and runs, and a run is one execution
+// of it. What remains spells the lab paths, commands, codes and types that the study rename
+// replaces. vocabulary:check holds each word's count to its cap.
 import { parseSync } from "oxc-parser";
 
 export const RETIRED_WORDS = ["lane", "seat", "role", "sim", "lab"] as const;
