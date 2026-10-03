@@ -23,8 +23,8 @@ describe("the product sentence", () => {
     const orientation = formatOrientationHuman({
       schema: ORIENTATION_SCHEMA,
       initialized: false,
-      labCount: 0,
-      labIds: [],
+      studyCount: 0,
+      studyIds: [],
       runCount: 0,
       nextCommands: [],
     });

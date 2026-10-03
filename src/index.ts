@@ -37,7 +37,7 @@ export type {
 export type { ActorCapabilities } from "./actors/contract.js";
 export { createOpenAiResponsesProvider } from "./actors/computer-use/openai-provider.js";
 export type { OpenAiResponsesProviderOptions } from "./actors/computer-use/openai-provider.js";
-export { CuaAdmissionLimitError as ComputerUseAdmissionLimitError } from "./actors/computer-use/admission-limit.js";
+export { ComputerUseAdmissionLimitError } from "./actors/computer-use/admission-limit.js";
 export { defaultRedactionHooks } from "./evidence/redaction.js";
 export type { RedactionHooks } from "./evidence/redaction.js";
 export type { E2BDesktopSandbox } from "./substrates/e2b/sdk.js";

@@ -28,7 +28,7 @@ const executorErrors = new WeakSet<object>();
  * began; a lost acknowledgement or partial action is `outcome_uncertain`, never a retry.
  * Import from the same installation as the loop: names and lookalike objects do not qualify.
  */
-export class CuaExecutorError extends Error {
+export class ComputerUseExecutorError extends Error {
   readonly code: CuaExecutorErrorCode;
   readonly disposition: CuaExecutorDisposition;
 
@@ -40,7 +40,7 @@ export class CuaExecutorError extends Error {
       throw new TypeError("Invalid desktop executor error declaration.");
     }
     super(messages[code]);
-    this.name = "CuaExecutorError";
+    this.name = "ComputerUseExecutorError";
     this.code = code;
     this.disposition = disposition;
     // Keep the values used in durable diagnostics finite even for JavaScript callers.
@@ -53,6 +53,6 @@ export class CuaExecutorError extends Error {
 }
 
 /** A forged prototype is not an executor declaration. */
-export function isCuaExecutorError(error: unknown): error is CuaExecutorError {
+export function isComputerUseExecutorError(error: unknown): error is ComputerUseExecutorError {
   return typeof error === "object" && error !== null && executorErrors.has(error);
 }

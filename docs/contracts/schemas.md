@@ -1649,8 +1649,9 @@ The `e2b-terminal` substrate is added to `RunFeedbackCandidate.substrate` so a
 terminal-agent candidate names the substrate it ran on; browser candidates use
 the existing `e2b-desktop` substrate. The routes invoke hooks over fully-assembled,
 redacted evidence (`TerminalProductScoringContext` or
-`BrowserScoringContext`: `bundle`, runtime-only `runDir`, run identifiers,
-actor and route metadata; all exported public types), scrub+redact returned
+`BrowserScoringContext`: `bundle`, runtime-only `runDir`, the run identifiers
+`studyId` and `runId`, actor and route metadata; all exported public types; 0.109.0
+renamed the context's `labId` to `studyId`), scrub+redact returned
 payloads, and drop any malformed score, candidate, or artifact reference with a
 warning so a bad extension never poisons a verifiable bundle. On the terminal
 route the context also carries `transcript`: the full normalized session

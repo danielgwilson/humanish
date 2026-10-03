@@ -1,4 +1,4 @@
-import { CuaProviderError } from "./provider-error.js";
+import { ComputerUseProviderError } from "./provider-error.js";
 import { runActionBatch } from "./loop/actions.js";
 import { advanceBackstop, startBackstop, type BackstopStep } from "./loop/backstop.js";
 import { requestDebrief } from "./loop/debrief.js";
@@ -217,7 +217,7 @@ function applyBackstop(
 
 function refuseAccountBilledCaps(options: CuaLoopOptions): void {
   if (accountBillingConflicts(options.provider, options)) {
-    throw new CuaProviderError("request_rejected", {
+    throw new ComputerUseProviderError("request_rejected", {
       dispatched: false,
       usageComplete: false,
       cleanup: "confirmed",

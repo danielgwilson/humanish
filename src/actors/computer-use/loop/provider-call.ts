@@ -1,5 +1,5 @@
-import { isCuaAdmissionLimitError } from "../admission-limit.js";
-import { CuaProviderError, isCuaProviderError } from "../provider-error.js";
+import { isComputerUseAdmissionLimitError } from "../admission-limit.js";
+import { ComputerUseProviderError, isComputerUseProviderError } from "../provider-error.js";
 import { adapterLimit, providerStalledTwice, usageUnreported, type Stop } from "./ending.js";
 import {
   CuaAbortError,
@@ -60,7 +60,7 @@ export async function requestTurn(
   } catch (error) {
     // Stops are concluded here, before `finally` ends the request scope, so their notices are
     // recorded before any abort listener runs.
-    if (isCuaAdmissionLimitError(error)) return { stop: session.conclude(adapterLimit) };
+    if (isComputerUseAdmissionLimitError(error)) return { stop: session.conclude(adapterLimit) };
     if (error instanceof LostRequestRefused) return { stop: session.conclude(error.stop) };
     // A thrown request may have been billed without returning usage. Admission refusal is
     // the explicit no-dispatch exception above; strict capped routes cannot safely retry.
@@ -113,7 +113,8 @@ async function retryStalledTurn(
       ),
     };
   } catch (retryError) {
-    if (isCuaAdmissionLimitError(retryError)) return { stop: session.conclude(adapterLimit) };
+    if (isComputerUseAdmissionLimitError(retryError))
+      return { stop: session.conclude(adapterLimit) };
     if (retryError instanceof LostRequestRefused)
       return { stop: session.conclude(retryError.stop) };
     if (!(retryError instanceof CuaStallError)) {
@@ -146,7 +147,7 @@ export async function singleDispatch(
   const pending = Promise.resolve()
     .then(() => {
       if (scope.signal.aborted)
-        throw new CuaProviderError("cancelled", {
+        throw new ComputerUseProviderError("cancelled", {
           dispatched: false,
           usageComplete: false,
           cleanup: "confirmed",
@@ -186,11 +187,11 @@ export async function singleDispatch(
   }
   const failure = "error" in outcome ? outcome.error : undefined;
   const requestSettlement = settlementRef.current;
-  const providerError = isCuaProviderError(failure)
+  const providerError = isComputerUseProviderError(failure)
     ? failure
     : requestSettlement &&
         "error" in requestSettlement &&
-        isCuaProviderError(requestSettlement.error)
+        isComputerUseProviderError(requestSettlement.error)
       ? requestSettlement.error
       : undefined;
   const turn =
@@ -217,8 +218,8 @@ export async function singleDispatch(
     );
   if (failure instanceof CuaAbortError || failure instanceof CuaDeadlineError) throw failure;
   if (failure instanceof CuaStallError)
-    throw new CuaProviderError("timeout", receipt, usage, providerError?.failurePhase);
-  throw providerError ?? new CuaProviderError("process_failed", receipt, usage);
+    throw new ComputerUseProviderError("timeout", receipt, usage, providerError?.failurePhase);
+  throw providerError ?? new ComputerUseProviderError("process_failed", receipt, usage);
 }
 
 /**
@@ -238,7 +239,7 @@ function isContinuingTurn(kind: "interaction" | "debrief", turn: CuaTurn): boole
       turn.interruption !== undefined ||
       turn.closingReport !== undefined
     ) {
-      throw new CuaProviderError("invalid_response", {
+      throw new ComputerUseProviderError("invalid_response", {
         dispatched: "unknown",
         usageComplete: false,
         cleanup: "unconfirmed",
@@ -253,7 +254,7 @@ function isContinuingTurn(kind: "interaction" | "debrief", turn: CuaTurn): boole
     typeof r.usageComplete !== "boolean" ||
     r.cleanup !== "confirmed"
   ) {
-    throw new CuaProviderError(
+    throw new ComputerUseProviderError(
       "invalid_response",
       { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" },
       turn.usage,

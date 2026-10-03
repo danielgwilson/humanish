@@ -290,7 +290,7 @@ function driverReason(
     return {
       code: "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
       message:
-        "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider.",
+        "subject.source: local-app has no built-in driver. Supply one through runStudy(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider.",
     };
   return undefined;
 }

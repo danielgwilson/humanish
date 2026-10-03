@@ -2,7 +2,7 @@ import type { Duplex } from "node:stream";
 import { TextDecoder } from "node:util";
 import { BROWSER_CONTROL_LIMITS } from "./protocol.js";
 import {
-  CuaExecutorError,
+  ComputerUseExecutorError,
   type CuaExecutorErrorCode,
 } from "../actors/computer-use/executor-error.js";
 
@@ -15,7 +15,7 @@ export class BrowserControlTransport {
   private ended = false;
   private handedOff = false;
   private sending = false;
-  private pendingWrite: ((error: CuaExecutorError) => void) | undefined;
+  private pendingWrite: ((error: ComputerUseExecutorError) => void) | undefined;
   private frameTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly decoder = new TextDecoder("utf-8", { fatal: true });
   constructor(
@@ -96,7 +96,7 @@ export class BrowserControlTransport {
   /** Relinquish the live byte stream synchronously after a complete frame. */
   handoff(): Duplex {
     if (this.ended || this.handedOff || this.payload !== undefined || this.headerUsed !== 0) {
-      throw new CuaExecutorError("transport_failed", "outcome_uncertain");
+      throw new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
     }
     this.handedOff = true;
     clearTimeout(this.frameTimer);
@@ -116,9 +116,9 @@ export class BrowserControlTransport {
   };
   send(value: unknown, beforeWrite: () => void = () => {}): Promise<void> {
     if (this.ended || this.handedOff)
-      return Promise.reject(new CuaExecutorError("executor_closed", "not_dispatched"));
+      return Promise.reject(new ComputerUseExecutorError("executor_closed", "not_dispatched"));
     if (this.sending)
-      return Promise.reject(new CuaExecutorError("executor_busy", "not_dispatched"));
+      return Promise.reject(new ComputerUseExecutorError("executor_busy", "not_dispatched"));
     let payload: Buffer;
     try {
       const json = JSON.stringify(value);
@@ -126,14 +126,14 @@ export class BrowserControlTransport {
         throw new Error();
       payload = Buffer.from(json);
     } catch {
-      return Promise.reject(new CuaExecutorError("invalid_request", "not_dispatched"));
+      return Promise.reject(new ComputerUseExecutorError("invalid_request", "not_dispatched"));
     }
     const frame = Buffer.allocUnsafe(4 + payload.length);
     frame.writeUInt32BE(payload.length);
     payload.copy(frame, 4);
     this.sending = true;
     return new Promise<void>((resolve, reject) => {
-      const done = (error?: CuaExecutorError): void => {
+      const done = (error?: ComputerUseExecutorError): void => {
         if (!this.pendingWrite) return;
         this.pendingWrite = undefined;
         this.sending = false;
@@ -144,7 +144,7 @@ export class BrowserControlTransport {
       try {
         beforeWrite();
         if (this.ended) {
-          done(new CuaExecutorError("executor_closed", "not_dispatched"));
+          done(new ComputerUseExecutorError("executor_closed", "not_dispatched"));
           return;
         }
         this.stream.write(frame, (error) => {
@@ -176,7 +176,7 @@ export class BrowserControlTransport {
       this.stream.off("close", releaseListeners);
     };
     this.stream.once("close", releaseListeners);
-    this.pendingWrite?.(new CuaExecutorError(code, "outcome_uncertain"));
+    this.pendingWrite?.(new ComputerUseExecutorError(code, "outcome_uncertain"));
     this.stream.destroy();
     // A stream whose close event already happened will not emit it again. `closed`
     // can also precede queued error/close events, so defer removal past native ticks.

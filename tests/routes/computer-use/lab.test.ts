@@ -353,7 +353,7 @@ function browserFeedback(ctx: BrowserScoringContext): RunFeedbackCandidate[] {
       run_id: ctx.runId,
       stream_id: ctx.bundle.streams[0]?.id ?? "stream-001",
       adapter_id: BROWSER_ADAPTER_NAMESPACE,
-      scenario_id: ctx.labId,
+      scenario_id: ctx.studyId,
       persona_id: ctx.bundle.simulations[0]?.personaId ?? "unknown",
       actor: "unknown",
       substrate: "e2b-desktop",

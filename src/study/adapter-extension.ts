@@ -27,7 +27,8 @@ export interface BrowserScoringContext {
    * `deriveArtifacts`. This path is runtime-only and must never be persisted.
    */
   runDir: string;
-  labId: string;
+  /** The study id. */
+  studyId: string;
   runId: string;
   actor: string;
   /** The route that ran the participants. */

@@ -9,8 +9,8 @@ import {
   type FetchLike,
 } from "../../../src/actors/computer-use/openai-provider.js";
 import {
-  CuaPromptRefusedError,
-  isCuaPromptRefusedError,
+  ComputerUsePromptRefusedError,
+  isComputerUsePromptRefusedError,
 } from "../../../src/actors/computer-use/provider-error.js";
 import { actorEnding } from "../../../src/actors/stop-cause.js";
 import { digestAnalysisInput, validateAnalysisArtifact } from "../../../src/analysis/validation.js";
@@ -39,7 +39,7 @@ function refusingProvider(): CuaProvider & { nextTurn: ReturnType<typeof vi.fn> 
       license: "open",
     },
     nextTurn: vi.fn(async () => {
-      throw new CuaPromptRefusedError("OpenAI", "400 invalid_prompt");
+      throw new ComputerUsePromptRefusedError("OpenAI", "400 invalid_prompt");
     }),
   };
 }
@@ -67,7 +67,7 @@ describe("a provider refusing the prompt under its usage policy", () => {
         new AbortController().signal,
       )
       .catch((thrown: unknown) => thrown);
-    expect(isCuaPromptRefusedError(error)).toBe(true);
+    expect(isComputerUsePromptRefusedError(error)).toBe(true);
     expect((error as Error).message).toBe(
       "OpenAI refused the prompt under its usage policy (400 invalid_prompt)",
     );
@@ -101,8 +101,10 @@ describe("a provider refusing the prompt under its usage policy", () => {
   });
 
   it("does not match a lookalike error", () => {
-    expect(isCuaPromptRefusedError(new Error("OpenAI refused the prompt"))).toBe(false);
-    expect(isCuaPromptRefusedError(Object.create(CuaPromptRefusedError.prototype))).toBe(false);
+    expect(isComputerUsePromptRefusedError(new Error("OpenAI refused the prompt"))).toBe(false);
+    expect(
+      isComputerUsePromptRefusedError(Object.create(ComputerUsePromptRefusedError.prototype)),
+    ).toBe(false);
   });
 });
 

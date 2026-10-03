@@ -1,8 +1,8 @@
 import { PNG } from "pngjs";
 import { it } from "vitest";
 
-import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
-import { CuaExecutorError } from "../../../src/actors/computer-use/executor-error.js";
+import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
 import type { CuaProvider, CuaTurn } from "../../../src/actors/computer-use/loop.js";
 import { PARTICIPANT_PROFILE } from "../../../src/actors/codex/restricted-participant-policy.js";
 import {
@@ -132,13 +132,13 @@ it("action and observation failures", async () => {
       ]),
       executor: sequenceExecutor(probe, framed("s0", "s0", "s1"), (action) => {
         if (action.kind === "click")
-          throw new CuaExecutorError("action_rejected", "not_dispatched");
+          throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       }),
     }),
     executorUncertain: (probe) => ({
       provider: scriptedProvider(probe, [turn({ actions: [{ kind: "type", text: "abc" }] })]),
       executor: sequenceExecutor(probe, framed("s0"), () => {
-        throw new CuaExecutorError("transport_failed", "outcome_uncertain");
+        throw new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
       }),
     }),
     executeCrash: (probe) => ({
@@ -161,7 +161,7 @@ it("action and observation failures", async () => {
       executor: sequenceExecutor(probe, [
         { screenshot: FRAME, stateSignature: "s0" },
         () => {
-          throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+          throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
         },
       ]),
     }),
@@ -170,7 +170,7 @@ it("action and observation failures", async () => {
       executor: sequenceExecutor(probe, [
         { stateSignature: "s0", text: "start" },
         () => {
-          throw new CuaExecutorError("session_revoked", "outcome_uncertain");
+          throw new ComputerUseExecutorError("session_revoked", "outcome_uncertain");
         },
       ]),
       options: {
@@ -326,7 +326,7 @@ it("frame guard, abort, admission limit, account billing and spend guards", asyn
     admissionLimit: (probe) => ({
       provider: scriptedProvider(probe, [
         () => {
-          throw new CuaAdmissionLimitError();
+          throw new ComputerUseAdmissionLimitError();
         },
       ]),
       executor: sequenceExecutor(probe, framed("s0")),

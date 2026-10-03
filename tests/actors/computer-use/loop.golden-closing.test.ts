@@ -1,7 +1,7 @@
 import { it } from "vitest";
 
-import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
-import { CuaProviderError } from "../../../src/actors/computer-use/provider-error.js";
+import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import { ComputerUseProviderError } from "../../../src/actors/computer-use/provider-error.js";
 import type {
   CuaLoopOptions,
   CuaProvider,
@@ -107,7 +107,7 @@ it("closing request variants", async () => {
     partialUsage: { debrief: async () => closing({ usage: { input: 20 } }) },
     admissionRefused: {
       debrief: async () => {
-        throw new CuaAdmissionLimitError();
+        throw new ComputerUseAdmissionLimitError();
       },
     },
     thrownError: {
@@ -141,14 +141,14 @@ it("closing request variants", async () => {
     },
     failClosedError: {
       debrief: async () => {
-        throw new CuaProviderError("invalid_response", receipt, { input: 4, output: 2 });
+        throw new ComputerUseProviderError("invalid_response", receipt, { input: 4, output: 2 });
       },
       provider: { requestPolicy: "fail_closed" },
       interaction: { providerRequest: receipt },
     },
     failClosedCleanupUnconfirmed: {
       debrief: async () => {
-        throw new CuaProviderError(
+        throw new ComputerUseProviderError(
           "cleanup_unconfirmed",
           { ...receipt, cleanup: "unconfirmed", usageComplete: false },
           { input: 4 },

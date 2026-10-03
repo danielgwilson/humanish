@@ -1,5 +1,5 @@
 import type { CuaAction, CuaExecutor } from "../actors/computer-use/loop.js";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 
 /** Internal lifecycle contract. Provider IDs are evidence, not permission to acquire a handle. */
 export type DesktopReleaseResult =
@@ -42,7 +42,8 @@ export function ownDesktopAllocation(options: {
   let opened = false;
   let closing: Promise<DesktopReleaseResult> | undefined;
   const assertOpen = (): void => {
-    if (closing !== undefined) throw new CuaExecutorError("executor_closed", "not_dispatched");
+    if (closing !== undefined)
+      throw new ComputerUseExecutorError("executor_closed", "not_dispatched");
   };
   const close: OwnedDesktopAllocation["close"] = (policy = {}) => {
     // Install the promise before invoking release: concurrent/reentrant callers share it.

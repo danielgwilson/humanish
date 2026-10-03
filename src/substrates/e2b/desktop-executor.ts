@@ -3,7 +3,7 @@ import { perceptualSignature } from "../../evidence/frame-signature.js";
 import { commandFailureInfo } from "../command-failure.js";
 
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
-import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../actors/computer-use/executor-error.js";
 import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 
 // The desktop side of the computer-use loop: a CuaExecutor (from src/actors/computer-use/loop.ts)
@@ -191,13 +191,13 @@ export type CuaTypePhase = "desktop-write" | "text-tempfile" | "text-command";
  * password), so the message names the phase and, for xdotool, its exit code only: no text, no
  * temp-file path, no substrate output. The loop records `.name` + `.message` into the actor trace.
  */
-export class CuaTypeError extends Error {
+export class ComputerUseTypeError extends Error {
   readonly phase: CuaTypePhase;
   readonly exitCode?: number;
 
   constructor(phase: CuaTypePhase, exitCode?: number) {
     super(`type failed at ${phase}${exitCode === undefined ? "" : ` (exit ${exitCode})`}`);
-    this.name = "CuaTypeError";
+    this.name = "ComputerUseTypeError";
     this.phase = phase;
     if (exitCode !== undefined) this.exitCode = exitCode;
   }
@@ -235,16 +235,16 @@ async function typeText(desktop: TypingDesktop, text: string): Promise<void> {
     );
     directory = made.stdout?.trim();
   } catch {
-    throw new CuaTypeError("text-tempfile");
+    throw new ComputerUseTypeError("text-tempfile");
   }
   if (directory === undefined || !TYPE_DIRECTORY.test(directory))
-    throw new CuaTypeError("text-tempfile");
+    throw new ComputerUseTypeError("text-tempfile");
   const file = `${directory}/text`;
   try {
     try {
       await files.write(file, text, { requestTimeoutMs: TYPE_COMMAND_TIMEOUT_MS });
     } catch {
-      throw new CuaTypeError("text-tempfile");
+      throw new ComputerUseTypeError("text-tempfile");
     }
     // xdotool waits the delay after every character, so a long text needs a longer budget.
     const timeoutMs = TYPE_COMMAND_TIMEOUT_MS + [...text].length * XDOTOOL_TYPE_DELAY_MS;
@@ -256,11 +256,11 @@ async function typeText(desktop: TypingDesktop, text: string): Promise<void> {
       );
     } catch (error) {
       // The SDK throws on a non-zero exit; only its exit code is kept.
-      throw new CuaTypeError("text-command", commandFailureInfo(error).exitCode);
+      throw new ComputerUseTypeError("text-command", commandFailureInfo(error).exitCode);
     }
     // A structural fake may return a non-zero exit instead of throwing, as the SDK does.
     if (result?.exitCode !== undefined && result.exitCode !== 0)
-      throw new CuaTypeError("text-command", result.exitCode);
+      throw new ComputerUseTypeError("text-command", result.exitCode);
   } finally {
     await commands.run(`rm -rf -- ${shellQuote(directory)}`, quick).catch(() => undefined);
   }
@@ -356,7 +356,7 @@ export function createE2BDesktopExecutor(
         try {
           await desktop.write(action.text);
         } catch {
-          throw new CuaTypeError("desktop-write");
+          throw new ComputerUseTypeError("desktop-write");
         }
         return;
       }
@@ -385,7 +385,7 @@ export function createE2BDesktopExecutor(
         // capturing here would double-capture. Leave the desktop untouched.
         return;
       case "speak":
-        throw new CuaExecutorError("action_rejected", "not_dispatched");
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
     }
   }
 }
@@ -409,7 +409,7 @@ async function withHeldModifiers(
   run: () => Promise<void>,
 ): Promise<void> {
   const commands = desktop.commands;
-  if (!commands) throw new CuaExecutorError("action_rejected", "not_dispatched");
+  if (!commands) throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
   const options = { requestTimeoutMs: HELD_KEYS_TIMEOUT_MS, timeoutMs: HELD_KEYS_TIMEOUT_MS };
   let failed = false;
   let failure: unknown;
@@ -424,7 +424,7 @@ async function withHeldModifiers(
   try {
     await commands.run(`xdotool keyup ${chord}`, options);
   } catch {
-    throw new CuaExecutorError("execution_failed", "outcome_uncertain");
+    throw new ComputerUseExecutorError("execution_failed", "outcome_uncertain");
   }
   if (failed) throw failure;
 }

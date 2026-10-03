@@ -1,4 +1,4 @@
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 
 // Key names for the xdotool-driven desktops: the guest's headed display and the E2B sandbox. Both
 // hand these strings to xdotool, which has a command language, so only names from these tables
@@ -61,7 +61,7 @@ function lookup(table: Readonly<Record<string, string>>, key: string): string | 
 
 function chord(names: string[]): string {
   if (new Set(names).size !== names.length)
-    throw new CuaExecutorError("action_rejected", "not_dispatched");
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
   return names.join("+");
 }
 
@@ -72,7 +72,7 @@ export function xdotoolChord(keys: readonly string[]): string {
       if (/^[a-z0-9]$/i.test(key)) return key.toLowerCase();
       if (/^F(?:[1-9]|1[0-2])$/i.test(key)) return key.toUpperCase();
       const name = lookup(keyNames, key);
-      if (!name) throw new CuaExecutorError("action_rejected", "not_dispatched");
+      if (!name) throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       return name;
     }),
   );
@@ -88,7 +88,7 @@ export function xdotoolHeldModifiers(keys: readonly string[] | undefined): strin
   return chord(
     keys.map((key) => {
       const name = lookup(modifierNames, key);
-      if (!name) throw new CuaExecutorError("action_rejected", "not_dispatched");
+      if (!name) throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       return name;
     }),
   );

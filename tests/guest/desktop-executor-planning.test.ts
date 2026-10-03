@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import type { CuaAction } from "../../src/actors/computer-use/loop.js";
 import { BROWSER_CONTROL_LIMITS } from "../../src/browser-control/protocol.js";
 import {
@@ -75,8 +75,8 @@ describe("planActionInput", () => {
 });
 
 describe("failureEndsSession", () => {
-  const rejected = new CuaExecutorError("action_rejected", "not_dispatched");
-  const failed = new CuaExecutorError("execution_failed", "not_dispatched");
+  const rejected = new ComputerUseExecutorError("action_rejected", "not_dispatched");
+  const failed = new ComputerUseExecutorError("execution_failed", "not_dispatched");
   it.each([
     [
       "a refusal before anything ran",
@@ -115,7 +115,7 @@ describe("failureEndsSession", () => {
 });
 
 describe("failureError", () => {
-  const rejected = new CuaExecutorError("action_rejected", "not_dispatched");
+  const rejected = new ComputerUseExecutorError("action_rejected", "not_dispatched");
   it("keeps the code and makes the outcome uncertain once anything was dispatched", () => {
     expect(failureError(true, rejected, { aborted: true })).toMatchObject({
       code: "action_rejected",

@@ -3,7 +3,7 @@ import type {
   ActorTokenUsage,
   ProviderRequestReceipt,
 } from "../../contract.js";
-import type { CuaProviderError } from "../provider-error.js";
+import type { ComputerUseProviderError } from "../provider-error.js";
 import type { CuaLiveMetadata, CuaProvider, CuaTurn } from "./types.js";
 
 // Token accounting for one loop session: the running usage both spend guards price, the request
@@ -211,7 +211,7 @@ export class UsageLedger {
     kind: "interaction" | "debrief",
     receipt: ProviderRequestReceipt,
     usage: ActorTokenUsage | undefined,
-    error: CuaProviderError | undefined,
+    error: ComputerUseProviderError | undefined,
   ): "interaction" | "debrief" {
     const settledKind = this.requestPending ? "interaction" : kind;
     this.requests.push({

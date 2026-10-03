@@ -6,7 +6,7 @@ import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executo
 import { perceptualSignature } from "../../../src/evidence/frame-signature.js";
 import {
   createE2BDesktopExecutor,
-  CuaTypeError,
+  ComputerUseTypeError,
 } from "../../../src/substrates/e2b/desktop-executor.js";
 
 // A recorded desktop call: the method name and the arguments it received.
@@ -180,8 +180,8 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
     const executor = createE2BDesktopExecutor(desktop);
 
     const error = await executor.execute({ kind: "type", text: "hello" }).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(CuaTypeError);
-    expect((error as CuaTypeError).message).toBe("type failed at desktop-write");
+    expect(error).toBeInstanceOf(ComputerUseTypeError);
+    expect((error as ComputerUseTypeError).message).toBe("type failed at desktop-write");
   });
 
   it("maps keypress to press(keys array)", async () => {

@@ -1,6 +1,6 @@
 import { classifyCuaAction } from "../../affordance.js";
 import { commandFailureInfo, isCommandExitError } from "../../../substrates/command-failure.js";
-import { CuaExecutorError, isCuaExecutorError } from "../executor-error.js";
+import { ComputerUseExecutorError, isComputerUseExecutorError } from "../executor-error.js";
 import {
   CuaAbortError,
   CuaDeadlineError,
@@ -164,7 +164,7 @@ export async function runActionBatch(
     try {
       status = await dispatchAction(session, action, title);
     } catch (error) {
-      const declared = isCuaExecutorError(error)
+      const declared = isComputerUseExecutorError(error)
         ? error.disposition
         : isCommandExitError(error)
           ? "skipped"
@@ -172,7 +172,7 @@ export async function runActionBatch(
       if (declared !== undefined) execution.actions.push({ index, status: declared });
       countAttempt(session, action, title, declared);
       if (
-        isCuaExecutorError(error) &&
+        isComputerUseExecutorError(error) &&
         error.code === "action_rejected" &&
         error.disposition === "not_dispatched"
       ) {
@@ -192,7 +192,7 @@ export async function runActionBatch(
         );
         return { execution, hint: rejectedActionHint(title) };
       }
-      if (isCuaExecutorError(error) || !isCommandExitError(error)) throw error;
+      if (isComputerUseExecutorError(error) || !isCommandExitError(error)) throw error;
       // A skipped action changes nothing on screen, so a persistently-failing run makes no
       // progress and still terminates via the idle/no-progress backstop (gave_up),
       // never a silent actor_error and never an infinite loop.
@@ -271,7 +271,7 @@ async function executeAction(
     else await raceCallBound(`idle action ${title}`, pending, session.remaining(), boundMs, signal);
   } catch (error) {
     if (error instanceof CuaStallError && session.executor.stallRecovery === "fail_closed") {
-      throw new CuaExecutorError("deadline_exceeded", "outcome_uncertain");
+      throw new ComputerUseExecutorError("deadline_exceeded", "outcome_uncertain");
     }
     if (error instanceof CuaDeadlineError || error instanceof CuaAbortError) {
       // The loop's deadline/abort may win before the executor can report whether its

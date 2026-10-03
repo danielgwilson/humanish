@@ -6,7 +6,7 @@ import { PassThrough, Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
 import { runComputerUseLoop, type CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
-import { CuaProviderError } from "../../../src/actors/computer-use/provider-error.js";
+import { ComputerUseProviderError } from "../../../src/actors/computer-use/provider-error.js";
 import { startClaudeSession } from "../../../src/actors/local-agent/claude-session.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
@@ -211,7 +211,7 @@ describe("a Claude Code session that can no longer pair results", () => {
     expect(fake.kills()).toBe(1);
     await expect(
       session.provider.nextTurn(request(), new AbortController().signal),
-    ).rejects.toBeInstanceOf(CuaProviderError);
+    ).rejects.toBeInstanceOf(ComputerUseProviderError);
     await session.close();
   });
 

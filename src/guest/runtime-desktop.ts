@@ -8,7 +8,7 @@ import { createGuestDesktopNativeTools, type GuestDesktopNativeTools } from "./d
 import { createGuestChromiumText, type GuestChromiumText } from "./chromium-text.js";
 import { createGuestBrowserTools } from "./browser-tools.js";
 import { createGuestDesktopExecutor } from "./desktop-executor.js";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import type { CuaExecutor } from "../actors/computer-use/loop.js";
 import type { GuestRuntimeDesktop } from "./runtime.js";
 import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./bootstrap.js";
@@ -316,7 +316,7 @@ function focusGuard(
 ): (actionSignal: AbortSignal) => Promise<void> {
   return async (actionSignal) => {
     if ((await native.activeWindowId(actionSignal)) !== window)
-      throw new CuaExecutorError("action_rejected", "not_dispatched");
+      throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
   };
 }
 

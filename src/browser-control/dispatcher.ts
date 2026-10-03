@@ -1,6 +1,6 @@
 import type { Duplex, Readable } from "node:stream";
 import type { CuaExecutor } from "../actors/computer-use/loop.js";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import {
   BROWSER_CONTROL_LIMITS,
   BROWSER_CONTROL_VERSION,
@@ -165,7 +165,7 @@ async function dispatch(
 ): Promise<void> {
   const common = replyCommon(session.identity, request);
   if (!authorized(session.options) || signal.aborted) {
-    const refusal = new CuaExecutorError("session_revoked", "not_dispatched");
+    const refusal = new ComputerUseExecutorError("session_revoked", "not_dispatched");
     await sendReply(session, request, failure(common, refusal, false));
     return;
   }
@@ -239,7 +239,7 @@ async function execute(
     reply: BrowserControlReply;
   try {
     if (request.action.kind === "speak" && session.options.executor.speechEnabled !== true) {
-      throw new CuaExecutorError("action_rejected", "not_dispatched");
+      throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
     }
     // No await between the owner gate in dispatch and invocation. The physical driver must
     // check this signal again immediately before each actual input after preparation.
@@ -266,7 +266,8 @@ async function finishRecording(
   const { options, transport } = session;
   let reply: BrowserControlReply;
   try {
-    if (!options.finishRecording) throw new CuaExecutorError("action_rejected", "not_dispatched");
+    if (!options.finishRecording)
+      throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
     const recording = await options.finishRecording();
     let metadata: DesktopRecordingMetadata;
     try {

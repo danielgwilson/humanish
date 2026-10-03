@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { BrowserContext, CDPSession, Page } from "playwright-core";
-import { CuaExecutorError, isCuaExecutorError } from "../actors/computer-use/executor-error.js";
+import {
+  ComputerUseExecutorError,
+  isComputerUseExecutorError,
+} from "../actors/computer-use/executor-error.js";
 import type { CuaExecutorErrorCode } from "../actors/computer-use/executor-error.js";
 
 const DEADLINE_MS = 5_000;
@@ -178,9 +181,9 @@ function unwatchTargetEvents(settings: TextPortSettings, handlers: TargetHandler
 function checkScope(settings: TextPortSettings, state: TextPortState, expected: number): void {
   const { context, page } = settings;
   if (state.closed || state.unusable)
-    throw new CuaExecutorError("executor_closed", "not_dispatched");
+    throw new ComputerUseExecutorError("executor_closed", "not_dispatched");
   if (state.generation !== expected)
-    throw new CuaExecutorError("session_revoked", "not_dispatched");
+    throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
   const pages = context.pages();
   if (
     state.dialogSeen ||
@@ -189,7 +192,7 @@ function checkScope(settings: TextPortSettings, state: TextPortState, expected: 
     pages.length !== 1 ||
     pages[0] !== page
   )
-    throw new CuaExecutorError("action_rejected", "not_dispatched");
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
 }
 
 /**
@@ -206,7 +209,7 @@ async function runOperation<T>(
   let dispatched = false;
   let stopped: CuaExecutorErrorCode | undefined;
   const controller = new AbortController();
-  let rejectStop!: (error: CuaExecutorError) => void;
+  let rejectStop!: (error: ComputerUseExecutorError) => void;
   const stop = new Promise<never>((_resolve, reject) => {
     rejectStop = reject;
   });
@@ -216,7 +219,9 @@ async function runOperation<T>(
     if (stopped) return;
     stopped = code;
     controller.abort();
-    rejectStop(new CuaExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched"));
+    rejectStop(
+      new ComputerUseExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched"),
+    );
   };
   const abort = () => interrupt("cancelled");
   const timer = setTimeout(() => interrupt("deadline_exceeded"), DEADLINE_MS);
@@ -225,7 +230,10 @@ async function runOperation<T>(
   const check = () => {
     if (signal.aborted) abort();
     if (stopped)
-      throw new CuaExecutorError(stopped, dispatched ? "outcome_uncertain" : "not_dispatched");
+      throw new ComputerUseExecutorError(
+        stopped,
+        dispatched ? "outcome_uncertain" : "not_dispatched",
+      );
     checkScope(settings, state, expected);
   };
   try {
@@ -244,8 +252,8 @@ async function runOperation<T>(
   } catch (error) {
     controller.abort();
     if (dispatched) state.unusable = true;
-    const code = stopped ?? (isCuaExecutorError(error) ? error.code : "transport_failed");
-    throw new CuaExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched");
+    const code = stopped ?? (isComputerUseExecutorError(error) ? error.code : "transport_failed");
+    throw new ComputerUseExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched");
   } finally {
     clearTimeout(timer);
     signal.removeEventListener("abort", abort);
@@ -269,14 +277,14 @@ function sessionDetacher(state: TextPortState): DetachSession {
           session.detach(),
           new Promise<never>((_resolve, reject) => {
             timer = setTimeout(
-              () => reject(new CuaExecutorError("deadline_exceeded", "not_dispatched")),
+              () => reject(new ComputerUseExecutorError("deadline_exceeded", "not_dispatched")),
               DEADLINE_MS,
             );
           }),
         ]);
       } catch {
         state.unusable = true;
-        throw new CuaExecutorError("transport_failed", "not_dispatched");
+        throw new ComputerUseExecutorError("transport_failed", "not_dispatched");
       } finally {
         clearTimeout(timer);
         state.sessions.delete(session);
@@ -305,7 +313,8 @@ async function probeElement(
   const result = await op.step(() =>
     session.send("Runtime.evaluate", evaluateParams(expression, contextId)),
   );
-  if (!probeAccepted(result)) throw new CuaExecutorError("action_rejected", "not_dispatched");
+  if (!probeAccepted(result))
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
 }
 
 /** One prepared text handle: its session and isolated world, and what it has done. */
@@ -347,7 +356,8 @@ async function acquireIsolatedWorld(
   );
   const tree = await op.step(() => prepared.session!.send("Page.getFrameTree"));
   const frameId = ownedFrameId(tree);
-  if (frameId === undefined) throw new CuaExecutorError("invalid_response", "not_dispatched");
+  if (frameId === undefined)
+    throw new ComputerUseExecutorError("invalid_response", "not_dispatched");
   const world = await op.step(() =>
     prepared.session!.send("Page.createIsolatedWorld", {
       frameId,
@@ -356,7 +366,7 @@ async function acquireIsolatedWorld(
   );
   prepared.contextId = world.executionContextId;
   if (!isExecutionContextId(prepared.contextId))
-    throw new CuaExecutorError("invalid_response", "not_dispatched");
+    throw new ComputerUseExecutorError("invalid_response", "not_dispatched");
   await probeElement(op, prepared.session!, prepared.contextId, PREPARE);
 }
 
@@ -375,8 +385,8 @@ function disposePrepared(
       try {
         if (prepared.session) await detach(prepared.session);
       } catch (error) {
-        throw new CuaExecutorError(
-          isCuaExecutorError(error) ? error.code : "transport_failed",
+        throw new ComputerUseExecutorError(
+          isComputerUseExecutorError(error) ? error.code : "transport_failed",
           prepared.dispatchedText ? "outcome_uncertain" : "not_dispatched",
         );
       } finally {
@@ -401,7 +411,7 @@ function preparedHandle(
   return {
     async paste() {
       if (prepared.used || prepared.disposed)
-        throw new CuaExecutorError("action_rejected", "not_dispatched");
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       prepared.used = true; // A failed attempt cannot be retried through this handle.
       await runOperation(
         settings,
@@ -491,9 +501,10 @@ export function createGuestChromiumText(options: {
       );
     },
     async prepareText(text, signal) {
-      if (!isAdmissibleText(text)) throw new CuaExecutorError("invalid_request", "not_dispatched");
+      if (!isAdmissibleText(text))
+        throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
       checkScope(settings, state, state.generation);
-      if (state.busy) throw new CuaExecutorError("executor_busy", "not_dispatched");
+      if (state.busy) throw new ComputerUseExecutorError("executor_busy", "not_dispatched");
       state.busy = true;
       const expected = state.generation;
       const lifetime = new AbortController();

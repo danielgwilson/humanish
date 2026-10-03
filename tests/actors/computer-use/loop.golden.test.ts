@@ -1,6 +1,6 @@
 import { it } from "vitest";
 
-import { CuaProviderError } from "../../../src/actors/computer-use/provider-error.js";
+import { ComputerUseProviderError } from "../../../src/actors/computer-use/provider-error.js";
 import type { ActorTokenUsage } from "../../../src/actors/contract.js";
 import {
   Probe,
@@ -124,7 +124,7 @@ it("provider error: a single-dispatch provider fails after one settled turn", as
     [
       turn({ actions: [click(1, 2)], usage: { input: 10, output: 2 }, providerRequest: receipt }),
       () => {
-        throw new CuaProviderError(
+        throw new ComputerUseProviderError(
           "timeout",
           { dispatched: false, usageComplete: false, cleanup: "confirmed" },
           { input: 3 },

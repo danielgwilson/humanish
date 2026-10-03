@@ -358,7 +358,7 @@ export async function finishConcurrentRun(
     context: {
       bundle,
       runDir: physicalArtifactRoot,
-      labId: plan.studyId,
+      studyId: plan.studyId,
       runId,
       actor: descriptor.id,
       route: "shared-world",

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import {
-  CuaProviderError,
-  isCuaProviderError,
+  ComputerUseProviderError,
+  isComputerUseProviderError,
   type CuaProviderErrorCode,
 } from "../../../src/actors/computer-use/provider-error.js";
 import type { ProviderRequestReceipt } from "../../../src/actors/contract.js";
@@ -14,24 +14,24 @@ it("keeps nominal errors and immutable safe diagnostics even for JavaScript call
     cleanup: "confirmed",
   };
   const usage = { input: 7 };
-  const error = new CuaProviderError("cancelled", receipt, usage);
+  const error = new ComputerUseProviderError("cancelled", receipt, usage);
   receipt.cleanup = "unconfirmed";
   usage.input = 9;
   expect(error.receipt.cleanup).toBe("confirmed");
   expect(error.usage?.input).toBe(7);
   expect(() => Object.assign(error, { code: "raw-private-message" })).toThrow();
   expect(() => Object.assign(error.receipt, { cleanup: "raw" })).toThrow();
-  expect(isCuaProviderError(error)).toBe(true);
-  expect(isCuaProviderError(Object.create(CuaProviderError.prototype))).toBe(false);
+  expect(isComputerUseProviderError(error)).toBe(true);
+  expect(isComputerUseProviderError(Object.create(ComputerUseProviderError.prototype))).toBe(false);
   for (const create of [
-    () => new CuaProviderError("raw-private-message" as CuaProviderErrorCode, receipt),
+    () => new ComputerUseProviderError("raw-private-message" as CuaProviderErrorCode, receipt),
     () =>
-      new CuaProviderError("busy", {
+      new ComputerUseProviderError("busy", {
         ...receipt,
         cleanup: ["confirmed"],
       } as unknown as ProviderRequestReceipt),
-    () => new CuaProviderError("busy", receipt, { input: 0.5 }),
-    () => new CuaProviderError("busy", receipt, { costUsd: 0 }),
+    () => new ComputerUseProviderError("busy", receipt, { input: 0.5 }),
+    () => new ComputerUseProviderError("busy", receipt, { costUsd: 0 }),
   ])
     expect(create).toThrow("Invalid participant provider error declaration.");
 });
@@ -42,11 +42,11 @@ it("admits only a finite failure phase and reads older receipts without it", () 
     usageComplete: false,
     cleanup: "confirmed",
   };
-  const error = new CuaProviderError("timeout", receipt, undefined, "thread/start");
+  const error = new ComputerUseProviderError("timeout", receipt, undefined, "thread/start");
   expect(error.failurePhase).toBe("thread/start");
   expect(() => Object.assign(error, { failurePhase: "response" })).toThrow();
   expect(
-    () => new CuaProviderError("timeout", receipt, undefined, "private/raw/path" as never),
+    () => new ComputerUseProviderError("timeout", receipt, undefined, "private/raw/path" as never),
   ).toThrow();
   const recorded = {
     ...receipt,

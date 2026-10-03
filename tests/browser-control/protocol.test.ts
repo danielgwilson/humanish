@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import {
   BROWSER_CONTROL_LIMITS,
   decodeBrowserControlObservation,
@@ -67,7 +67,7 @@ describe("browser control closed v1 protocol", () => {
     { kind: "type", text: "a", heldKeys: ["SHIFT"] },
     { kind: "keypress", keys: ["A"], heldKeys: ["SHIFT"] },
   ])("rejects invalid or over-limit action $kind", (action) =>
-    expect(() => validateBrowserControlAction(action)).toThrow(CuaExecutorError),
+    expect(() => validateBrowserControlAction(action)).toThrow(ComputerUseExecutorError),
   );
   it("accepts limits rather than rounding or truncating", () => {
     expect(validateBrowserControlAction({ kind: "type", text: "é".repeat(32768) })).toHaveProperty(
@@ -87,7 +87,7 @@ describe("browser control closed v1 protocol", () => {
     { ...request(), requestId: "wrong" },
     request(2, "EXECUTE", { actionId: "wrong", action: { kind: "screenshot" } }),
   ])("rejects undeclared request shapes", (value) =>
-    expect(() => parseBrowserControlRequest(value)).toThrow(CuaExecutorError),
+    expect(() => parseBrowserControlRequest(value)).toThrow(ComputerUseExecutorError),
   );
   it.each([
     reply(1, "HELLO", { actionId: "action-1" }),
@@ -96,7 +96,7 @@ describe("browser control closed v1 protocol", () => {
     reply(1, "HELLO", { extra: true }),
     reply(1, "HELLO", { ok: false, error: { code: "secret text", disposition: "not_dispatched" } }),
   ])("rejects inconsistent replies", (value) =>
-    expect(() => parseBrowserControlReply(value)).toThrow(CuaExecutorError),
+    expect(() => parseBrowserControlReply(value)).toThrow(ComputerUseExecutorError),
   );
   it("admits only bounded recording metadata on the terminal owner operation", () => {
     const metadata = {
@@ -120,9 +120,9 @@ describe("browser control closed v1 protocol", () => {
           recording: { ...metadata, bytes: DESKTOP_RECORDING_MAX_BYTES + 1 },
         }),
       ),
-    ).toThrow(CuaExecutorError);
+    ).toThrow(ComputerUseExecutorError);
     expect(() => parseBrowserControlReply(reply(2, "HELLO", { recording: metadata }))).toThrow(
-      CuaExecutorError,
+      ComputerUseExecutorError,
     );
   });
   it("round trips actual PNG bytes and bounded runtime browser state", () => {
@@ -163,24 +163,24 @@ describe("browser control closed v1 protocol", () => {
     if (mode === "depth") bytes[24] = 16;
     if (mode === "trailing") bytes = Buffer.concat([bytes, Buffer.from([0])]);
     if (mode === "truncated") bytes = bytes.subarray(0, bytes.length - 5);
-    expect(() => validateBrowserControlPng(bytes)).toThrow(CuaExecutorError);
+    expect(() => validateBrowserControlPng(bytes)).toThrow(ComputerUseExecutorError);
   });
   it("rejects PNG byte and observed text limits, noncanonical base64, and unschematized appState", () => {
     expect(() =>
       validateBrowserControlPng(Buffer.alloc(BROWSER_CONTROL_LIMITS.pngBytes + 1)),
-    ).toThrow(CuaExecutorError);
+    ).toThrow(ComputerUseExecutorError);
     expect(() =>
       encodeBrowserControlObservation({ ...observation(), text: "é".repeat(32769) }),
-    ).toThrow(CuaExecutorError);
+    ).toThrow(ComputerUseExecutorError);
     expect(() => encodeBrowserControlObservation({ ...observation(), appState: {} })).toThrow(
-      CuaExecutorError,
+      ComputerUseExecutorError,
     );
     expect(() =>
       decodeBrowserControlObservation({
         ...encodeBrowserControlObservation(observation()),
         png: "AB==",
       }),
-    ).toThrow(CuaExecutorError);
+    ).toThrow(ComputerUseExecutorError);
   });
   it("rejects malformed, duplicate and over-limit speaker transcripts", () => {
     const utterance = {
@@ -198,7 +198,7 @@ describe("browser control closed v1 protocol", () => {
     ])
       expect(() =>
         encodeBrowserControlObservation({ ...observation(), heardSpeech: heardSpeech as never }),
-      ).toThrow(CuaExecutorError);
+      ).toThrow(ComputerUseExecutorError);
   });
   it("never forwards arbitrary exception prose or forged typed errors", () => {
     const error = new Error("Synthetic private text https://example.test/code");
@@ -206,7 +206,7 @@ describe("browser control closed v1 protocol", () => {
       code: "action_rejected",
       disposition: "outcome_uncertain",
     });
-    const forged = Object.assign(Object.create(CuaExecutorError.prototype), {
+    const forged = Object.assign(Object.create(ComputerUseExecutorError.prototype), {
       code: "cancelled",
       disposition: "not_dispatched",
     });

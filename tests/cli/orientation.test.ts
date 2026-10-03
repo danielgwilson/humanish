@@ -40,7 +40,7 @@ describe("readOrientation", () => {
 
     expect(state.schema).toBe(ORIENTATION_SCHEMA);
     expect(state.initialized).toBe(false);
-    expect(state.labCount).toBe(0);
+    expect(state.studyCount).toBe(0);
     expect(state.runCount).toBe(0);
 
     const commands = state.nextCommands.map((next) => next.command);
@@ -131,8 +131,8 @@ describe("formatOrientationHuman", () => {
     const text = formatOrientationHuman({
       schema: ORIENTATION_SCHEMA,
       initialized: true,
-      labCount: 1,
-      labIds: ["only-lab"],
+      studyCount: 1,
+      studyIds: ["only-lab"],
       runCount: 1,
       latestRunId: "cua-123",
       nextCommands: [{ command: "humanish watch only-lab", why: "run it" }],

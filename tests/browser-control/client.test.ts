@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createBrowserControlClient } from "../../src/browser-control/client.js";
 import { attachBrowserControlDispatcher } from "../../src/browser-control/dispatcher.js";
 import { BrowserControlTransport } from "../../src/browser-control/transport.js";
-import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import { frame, identity, observation, pair, reply, request, setup, tick } from "./fixture.js";
 
 const click = { kind: "click" as const, x: 12.125, y: 15.75 };
@@ -210,7 +210,7 @@ describe("browser control client and dispatcher", () => {
         identity,
         requestTimeoutMs: 50,
       });
-      await expect(client.ready()).rejects.toBeInstanceOf(CuaExecutorError);
+      await expect(client.ready()).rejects.toBeInstanceOf(ComputerUseExecutorError);
       await expect(client.executor.execute(click)).rejects.toMatchObject({
         code: "executor_closed",
         disposition: "not_dispatched",
@@ -321,7 +321,7 @@ describe("browser control client and dispatcher", () => {
     });
     await expect(
       peer.send(reply(sequence, "EXECUTE", { actionId: `action-${sequence}` })),
-    ).rejects.toBeInstanceOf(CuaExecutorError);
+    ).rejects.toBeInstanceOf(ComputerUseExecutorError);
     await expect(client.executor.observe()).rejects.toMatchObject({ code: "executor_closed" });
     peer.close();
   });
@@ -375,7 +375,8 @@ describe("browser control client and dispatcher", () => {
           driverSignal = signal;
           prepared();
           await resume;
-          if (signal?.aborted) throw new CuaExecutorError("session_revoked", "not_dispatched");
+          if (signal?.aborted)
+            throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
           input();
         },
       },
@@ -408,7 +409,7 @@ describe("browser control client and dispatcher", () => {
         execute: async (_action, signal) => {
           prepared();
           await resume;
-          if (signal?.aborted) throw new CuaExecutorError("cancelled", "not_dispatched");
+          if (signal?.aborted) throw new ComputerUseExecutorError("cancelled", "not_dispatched");
           input();
         },
       },
@@ -460,7 +461,7 @@ describe("browser control client and dispatcher", () => {
   it("keeps the channel usable after a genuine pre-dispatch rejection", async () => {
     const execute = vi
       .fn()
-      .mockRejectedValueOnce(new CuaExecutorError("action_rejected", "not_dispatched"))
+      .mockRejectedValueOnce(new ComputerUseExecutorError("action_rejected", "not_dispatched"))
       .mockResolvedValue(undefined);
     const f = setup({ executor: { observe: async () => observation(), execute } });
     await expect(f.client.executor.execute(click)).rejects.toMatchObject({
@@ -476,7 +477,7 @@ describe("browser control client and dispatcher", () => {
     const f = setup({
       executor: {
         observe: async () => {
-          throw new CuaExecutorError("action_rejected", "not_dispatched");
+          throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
         },
         execute: async () => {},
       },

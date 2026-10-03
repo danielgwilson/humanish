@@ -26,7 +26,7 @@ import readline from "node:readline";
 
 import type { ActorCapabilities } from "../contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
-import { CuaProviderError } from "../computer-use/provider-error.js";
+import { ComputerUseProviderError } from "../computer-use/provider-error.js";
 import {
   declaredOutcomeOf,
   parseAgentJson,
@@ -360,7 +360,7 @@ export async function startClaudeSession(
         usageIncomplete = true;
         if (error instanceof ClaudeSessionDesyncError) {
           // The stream no longer pairs results with turns, so no later turn can trust it.
-          throw new CuaProviderError("protocol_error", {
+          throw new ComputerUseProviderError("protocol_error", {
             dispatched: "unknown",
             usageComplete: false,
             cleanup: "unconfirmed",

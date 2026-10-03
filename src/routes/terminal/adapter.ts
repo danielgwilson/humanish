@@ -40,7 +40,7 @@ export async function applyAdapterExtensionSeam(args: {
   ledgers: TerminalLedgers;
   transcript: string;
   product: string;
-  labId: string;
+  studyId: string;
   runId: string;
   sanitize: (text: string) => string;
   warnings: string[];
@@ -55,7 +55,7 @@ export async function applyAdapterExtensionSeam(args: {
     ledgers,
     transcript,
     product,
-    labId,
+    studyId,
     runId,
     sanitize,
     warnings,
@@ -77,7 +77,7 @@ export async function applyAdapterExtensionSeam(args: {
     ledgers,
     transcript,
     product,
-    labId,
+    studyId,
     runId,
   };
   // Best-effort re-scrub of the adapter payload: round-trip the whole JSON through the run's denylist

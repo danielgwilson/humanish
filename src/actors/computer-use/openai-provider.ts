@@ -1,7 +1,10 @@
 import { validClosingReport } from "./loop.js";
 import type { ActorCapabilities, ActorConversation } from "../contract.js";
-import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./admission-limit.js";
-import { CuaPromptRefusedError } from "./provider-error.js";
+import {
+  ComputerUseAdmissionLimitError,
+  isComputerUseAdmissionLimitError,
+} from "./admission-limit.js";
+import { ComputerUsePromptRefusedError } from "./provider-error.js";
 import type { CuaProvider, CuaSpendGate, CuaTurn, CuaTurnRequest } from "./loop.js";
 import { CarriedConversation } from "./openai-context.js";
 import {
@@ -409,7 +412,7 @@ async function postResponse(
     } catch (error) {
       // An explicit local pre-dispatch limit is terminal. Recreate the fixed safe payload
       // rather than propagating caller-added message/context through the transport seam.
-      if (isCuaAdmissionLimitError(error)) throw new CuaAdmissionLimitError();
+      if (isComputerUseAdmissionLimitError(error)) throw new ComputerUseAdmissionLimitError();
       // Dispatch may have reached the provider. Preserve this uncertainty even when a later
       // retry succeeds or is refused locally; only that later refusal is known not to dispatch.
       // Under a spend gate the loop accounts for the attempt instead: it books a resend below
@@ -444,7 +447,7 @@ async function postResponse(
       }
       // A usage-policy flag is terminal for this prompt: typed so the loop names it, never retried.
       if (namedProviderErrorCode(bodyText) === "invalid_prompt") {
-        throw new CuaPromptRefusedError("OpenAI", "400 invalid_prompt");
+        throw new ComputerUsePromptRefusedError("OpenAI", "400 invalid_prompt");
       }
       const detail = requestRejectionDetail(bodyText);
       throw new Error(`OpenAI Responses 400${detail === undefined ? "" : ` ${detail}`}`);
