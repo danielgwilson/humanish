@@ -224,7 +224,7 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
       const read = await readManagedManifest(projectRoot, relativePath);
       if (read.status !== "ok") {
         warnings.push(
-          `${relativeToCwd(resolvedCwd, requestedPath)}: ${read.status === "unsafe" ? read.message : "manifest changed while it was listed; skipped."}`,
+          `${relativeToCwd(resolvedCwd, requestedPath)}: ${read.status === "unsafe" ? read.message : "study file changed while it was listed; skipped."}`,
         );
         continue;
       }

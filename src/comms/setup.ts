@@ -248,7 +248,7 @@ export async function configureCommsStudy(args: {
       return {
         ...base,
         message:
-          "This is already the local receiving copy. Select its original study to configure a separate copy, or edit this manifest directly.",
+          "This is already the local receiving copy. Select its original study to configure a separate copy, or edit this study file directly.",
       };
     // A second file with this name in another study directory would make discovery refuse both.
     const stem = filename.replace(/\.yaml$/, "");
