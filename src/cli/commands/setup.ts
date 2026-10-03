@@ -32,7 +32,7 @@ export function registerInitCommand(parent: Command, io: CliIo): void {
   parent
     .command("init")
     .description("Set up committed humanish/ source files and ignored .humanish/ runtime state.")
-    .summary("Set up humanish/ source and .humanish/ runtime state.")
+    .summary("Set up starter studies and personas in this project.")
     .option("--dry-run", "Print planned changes without writing files.")
     .option("--yes", "Apply safe generated changes without prompting.")
     .option(
@@ -86,7 +86,7 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
   parent
     .command("doctor")
     .description("Explain project readiness and missing humanish setup.")
-    .summary("Explain project readiness and missing setup.")
+    .summary("Check what this project and machine need before a run.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(
       "--lab <lab>",
@@ -231,7 +231,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
   const keys = parent
     .command("keys")
     .description("Manage the humanish user-level key store used by provider-key discovery.")
-    .summary("Manage the user-level provider key store.");
+    .summary("Store and manage your provider keys.");
 
   keys
     .command("set")

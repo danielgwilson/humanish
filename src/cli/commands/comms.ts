@@ -15,7 +15,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
   const comms = parent
     .command("comms")
     .description("Local email capture, real receiving connections, checks and cleanup recovery.")
-    .summary("Off-app comms surfaces.");
+    .summary("Catch the email an app sends, for email-gated flows.");
 
   comms
     .command("providers")
@@ -97,7 +97,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .description(
       "Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.",
     )
-    .summary("Run the adopter-hosted email catch.")
+    .summary("Run the email catch on this host.")
     .option(
       "--port <port>",
       "Port for capture + inbox (default 8025).",
