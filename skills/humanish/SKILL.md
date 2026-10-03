@@ -252,9 +252,11 @@ defaults:
 A study declares its `route` (`preview`, `computer-use`, `shared-world`, `terminal` or
 `scripted`) and composes `subject`, `actor`, `participants`, `caps`, `execution` and
 `policies` for it; a key the route does not read is a parse error that names the route.
-Run `npx humanish study show <study>` to see how a study file parses. A
-`humanish.lab.v2` file from 0.107 still runs with a warning; `npx humanish migrate`
-rewrites it as v3 under `studies/`.
+Run `npx humanish study show <study>` to see how a study file parses. humanish
+no longer runs a `humanish.lab.v2` file from 0.107: it fails with
+`HUMANISH_STUDY_V2_UNSUPPORTED`. `npx humanish migrate` rewrites every v2 file as v3
+under `studies/`, and `--dry-run` lists them first. A v3 file left in a `labs/` folder
+fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`; move it to the matching `studies/` folder.
 
 ### Many actors at once (fan-out, shared worlds, concurrency)
 
@@ -417,8 +419,8 @@ npx humanish observe --run latest --open   # for a person; it serves until Ctrl-
 ```
 
 Do not use `humanish watch --count ...` as a substitute for a scripted-browser
-study. `watch` renders or follows Observer evidence; a live scripted-browser study
-captures desktop and mobile browser evidence against a running app.
+study. `watch` without a study starts a preview run for the Observer; a live scripted-browser
+study captures desktop and mobile browser evidence against a running app.
 
 ## Optional Live E2B Study
 

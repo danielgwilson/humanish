@@ -74,43 +74,43 @@ not.
 
 ## Find the code for each part of the system
 
-| Folder                     | What it holds                                                                                       | Read first                          |
-| -------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `src/cli/`                 | The commander program, with one file per command family in `commands/`                              | `src/cli/program.ts`                |
-| `src/keys/`                | Provider key discovery: env files, the user key store and key-source probes                         | `src/keys/key-resolution.ts`        |
-| `src/run-study.ts`         | `runStudyWith`: plan the study once, then run the plan on its route                                 | `src/run-study.ts`                  |
-| `src/study/`               | Study files: discovery in studies/ and labs/, parsing (`config.ts`, `parse/`), routing and planning | `src/study/plan.ts` for planning    |
-| `src/routes/`              | One folder per route; `routeOf` in `src/study/plan.ts` picks it                                     | `src/study/plan.ts`                 |
-| `src/routes/computer-use/` | Computer-use participants and the desktops composing `src/substrates/` with route code              | `src/routes/computer-use/route.ts`  |
-| `src/routes/scripted/`     | Committed scenario steps replayed on a loopback app or a provisioned clone                          | `src/routes/scripted/route.ts`      |
-| `src/routes/shared-world/` | Several participants on one shared plane, provisioned or external-public                            | `src/routes/shared-world/route.ts`  |
-| `src/routes/terminal/`     | A Codex agent in an E2B shell against a terminal product, with its ledgers                          | `src/routes/terminal/route.ts`      |
-| `src/actors/`              | The actor contract, the registry and each actor's session code                                      | `src/actors/registry.ts`            |
-| `src/subject/`             | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve                          | `src/subject/serve.ts`              |
-| `src/substrates/`          | Provider primitives: E2B in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`               | `src/substrates/desktop-session.ts` |
-| `src/run/`                 | Run lifecycle, bundle types, bundle guards, paths, status, receipts, reclaim                        | `src/run/run.ts`                    |
-| `src/verify/`              | `humanish verify`: evidence checks, share-safety grades, cost and rerun checks                      | `src/verify/verify.ts`              |
-| `src/evidence/`            | Redaction, screenshot checks and desktop recordings                                                 | `src/evidence/redaction.ts`         |
-| `src/analysis/`            | Automatic and on-demand study analysis                                                              | `src/analysis/automatic.ts`         |
-| `src/observer/`            | Observer data, the HTML render and the local server                                                 | `src/observer/render.ts`            |
-| `src/comms/`               | Captured and received email for participant inboxes                                                 | `src/comms/types.ts`                |
-| `src/feedback/`            | Feedback drafts and export bundles                                                                  | `src/feedback/feedback.ts`          |
-| `src/tui/`                 | The CLI side of `humanish tui`                                                                      | `src/tui/launch.ts`                 |
-| `src/browser-control/`     | The host-guest browser control protocol                                                             | `src/browser-control/protocol.ts`   |
-| `src/guest/`               | The guest runtime that the local VM image runs: bootstrap, desktop, input and media                 | `src/guest/runtime.ts`              |
-| `observer/`                | The Observer page, a single-file Vite build                                                         | `observer/README.md`                |
-| `tui/`                     | The Ink terminal app                                                                                | `tui/README.md`                     |
-| `site/`                    | humanish.dev and its user docs in `site/content/docs/`                                              | `site/README.md`                    |
-| `humanish/`                | This repo's own studies, personas, scenarios, fixtures and coverage notes                           | `humanish/studies/first-run.yaml`   |
-| `examples/`                | Library examples shipped in the npm package: a participant and a scorer                             | `examples/README.md`                |
-| `adapters/`                | Adapter fixture sets that `tests/study/adapter-fixtures.test.ts` checks                             | `adapters/fixtures/README.md`       |
-| `bench/`                   | Benchmark apps with planted defects and their dated results                                         | `bench/DEFECTS.md`                  |
-| `fixtures/`                | Synthetic apps and cases that tests and scripts copy                                                | `fixtures/minimal-app/README.md`    |
-| `skills/`                  | The companion agent skill that `npx skills add` installs                                            | `skills/humanish/SKILL.md`          |
-| `runtime/`                 | Desktop and browser image recipes                                                                   | `runtime/browser-guest/README.md`   |
-| `scripts/`                 | Proof, release and check scripts that `package.json` runs                                           | `scripts/check-doc-paths.ts`        |
-| `docs/contracts/`          | Bundle and schema contracts, whose documented fields are API                                        | `docs/contracts/run-bundle.md`      |
-| `tests/`                   | Vitest suites that mirror `src/`, plus six folders outside the mirror                               | `tests/helpers/run-golden.ts`       |
+| Folder                     | What it holds                                                                                                                   | Read first                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `src/cli/`                 | The commander program, with one file per command family in `commands/`                                                          | `src/cli/program.ts`                |
+| `src/keys/`                | Provider key discovery: env files, the user key store and key-source probes                                                     | `src/keys/key-resolution.ts`        |
+| `src/run-study.ts`         | `runStudyWith`: plan the study once, then run the plan on its route                                                             | `src/run-study.ts`                  |
+| `src/study/`               | Study files: discovery in studies/ (refusing a file found only in labs/), parsing (`config.ts`, `parse/`), routing and planning | `src/study/plan.ts` for planning    |
+| `src/routes/`              | One folder per route; `routeOf` in `src/study/plan.ts` picks it                                                                 | `src/study/plan.ts`                 |
+| `src/routes/computer-use/` | Computer-use participants and the desktops composing `src/substrates/` with route code                                          | `src/routes/computer-use/route.ts`  |
+| `src/routes/scripted/`     | Committed scenario steps replayed on a loopback app or a provisioned clone                                                      | `src/routes/scripted/route.ts`      |
+| `src/routes/shared-world/` | Several participants on one shared plane, provisioned or external-public                                                        | `src/routes/shared-world/route.ts`  |
+| `src/routes/terminal/`     | A Codex agent in an E2B shell against a terminal product, with its ledgers                                                      | `src/routes/terminal/route.ts`      |
+| `src/actors/`              | The actor contract, the registry and each actor's session code                                                                  | `src/actors/registry.ts`            |
+| `src/subject/`             | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve                                                      | `src/subject/serve.ts`              |
+| `src/substrates/`          | Provider primitives: E2B in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`                                           | `src/substrates/desktop-session.ts` |
+| `src/run/`                 | Run lifecycle, bundle types, bundle guards, paths, status, receipts, reclaim                                                    | `src/run/run.ts`                    |
+| `src/verify/`              | `humanish verify`: evidence checks, share-safety grades, cost and rerun checks                                                  | `src/verify/verify.ts`              |
+| `src/evidence/`            | Redaction, screenshot checks and desktop recordings                                                                             | `src/evidence/redaction.ts`         |
+| `src/analysis/`            | Automatic and on-demand study analysis                                                                                          | `src/analysis/automatic.ts`         |
+| `src/observer/`            | Observer data, the HTML render and the local server                                                                             | `src/observer/render.ts`            |
+| `src/comms/`               | Captured and received email for participant inboxes                                                                             | `src/comms/types.ts`                |
+| `src/feedback/`            | Feedback drafts and export bundles                                                                                              | `src/feedback/feedback.ts`          |
+| `src/tui/`                 | The CLI side of `humanish tui`                                                                                                  | `src/tui/launch.ts`                 |
+| `src/browser-control/`     | The host-guest browser control protocol                                                                                         | `src/browser-control/protocol.ts`   |
+| `src/guest/`               | The guest runtime that the local VM image runs: bootstrap, desktop, input and media                                             | `src/guest/runtime.ts`              |
+| `observer/`                | The Observer page, a single-file Vite build                                                                                     | `observer/README.md`                |
+| `tui/`                     | The Ink terminal app                                                                                                            | `tui/README.md`                     |
+| `site/`                    | humanish.dev and its user docs in `site/content/docs/`                                                                          | `site/README.md`                    |
+| `humanish/`                | This repo's own studies, personas, scenarios, fixtures and coverage notes                                                       | `humanish/studies/first-run.yaml`   |
+| `examples/`                | Library examples shipped in the npm package: a participant and a scorer                                                         | `examples/README.md`                |
+| `adapters/`                | Adapter fixture sets that `tests/study/adapter-fixtures.test.ts` checks                                                         | `adapters/fixtures/README.md`       |
+| `bench/`                   | Benchmark apps with planted defects and their dated results                                                                     | `bench/DEFECTS.md`                  |
+| `fixtures/`                | Synthetic apps and cases that tests and scripts copy                                                                            | `fixtures/minimal-app/README.md`    |
+| `skills/`                  | The companion agent skill that `npx skills add` installs                                                                        | `skills/humanish/SKILL.md`          |
+| `runtime/`                 | Desktop and browser image recipes                                                                                               | `runtime/browser-guest/README.md`   |
+| `scripts/`                 | Proof, release and check scripts that `package.json` runs                                                                       | `scripts/check-doc-paths.ts`        |
+| `docs/contracts/`          | Bundle and schema contracts, whose documented fields are API                                                                    | `docs/contracts/run-bundle.md`      |
+| `tests/`                   | Vitest suites that mirror `src/`, plus six folders outside the mirror                                                           | `tests/helpers/run-golden.ts`       |
 
 `pnpm docs:check` fails when a folder directly under `src/` or `src/routes/` has no row here, or
 when a row names a folder that is gone; add the row with the folder. Participant desktops stay in
