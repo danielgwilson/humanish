@@ -1,7 +1,7 @@
 // Demo playback from the URL: `observer/index.html?autoplay=8&loop=1&sidebar=closed#...` starts the
 // study transport at 8x once the recording has a time range, restarts it two seconds after the end,
 // and opens with the library sidebar collapsed. Made for embedding a saved run (the homepage hero,
-// a talk, a README link); every control still works, and the visitor can pause or seek at any time.
+// a talk, a readme link); every control still works, and the visitor can pause or seek at any time.
 
 export interface AutoplayIntent {
   /** Playback speed multiplier; `?autoplay` alone means 8x. Clamped to 1..64. */

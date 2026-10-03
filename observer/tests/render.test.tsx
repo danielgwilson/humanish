@@ -60,7 +60,7 @@ afterEach(async () => {
   container.remove();
   document.documentElement.removeAttribute("data-theme");
   localStorage.clear();
-  // The player writes frame addresses into the hash (#441); a leaked address would
+  // The player writes frame addresses into the hash; a leaked address would
   // deep-link the next test's mount straight past the grid.
   window.history.replaceState(null, "", window.location.pathname);
 });
@@ -181,7 +181,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
   });
 });
 
-describe("the share chip (#584)", () => {
+describe("the share chip", () => {
   it("an unverified projection says local_only; a verified artifact shows its recorded grade", async () => {
     await mount(<App data={data} />);
     expect(container.querySelector(".study-viewbar .chip-mute")?.textContent).toBe("Local only");
@@ -314,13 +314,13 @@ describe("observer scaffold rendering the first-run golden", () => {
     expect(container.querySelectorAll(".card")).toHaveLength(4);
   });
 
-  it("renders the honest empty state when no data is inlined", async () => {
+  it("renders the empty state when no data is inlined", async () => {
     await mount(<App data={null} />);
     expect(container.textContent).toContain("opened without run data");
   });
 });
 
-// A live-shaped stream, grafted onto the frozen golden IN THE TEST (the committed
+// A live-shaped stream, grafted onto the frozen golden in the test (the committed
 // goldens stay dry-run; a live-shaped golden lands with the contract-addition PR).
 // Shapes mirror humanish.actor-trace.v1 as produced by the computer-use route.
 function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): ObserverData {
@@ -331,7 +331,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
   if (options.live) {
     stream.status = "running";
     stream.statusLabel = "Running";
-    // The shape the attached watch server injects (withRuntimeStreamUrls, #357).
+    // The shape the attached watch server injects (withRuntimeStreamUrls).
     stream.embed = { kind: "iframe", url: "https://live.example/desktop", title: "Live desktop" };
     if (options.ended) stream.liveEnded = true;
   }
@@ -352,7 +352,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         title: "turn-00-start",
         screenshotRef: { path: "screenshots/lane/turn-00-start.png", redaction: "none" },
       },
-      // Reasoning precedes the actions it motivated, exactly as capture orders a turn (#427).
+      // Reasoning precedes the actions it motivated, exactly as capture orders a turn.
       {
         id: "reasoning-001",
         kind: "reasoning",
@@ -387,7 +387,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
   return clone as unknown as ObserverData;
 }
 
-describe("observer scaffold rendering a live-shaped lane", () => {
+describe("observer scaffold rendering a live-shaped participant", () => {
   it("keeps a notable completion visible even when its reason is empty", async () => {
     const snapshot = liveShapedData();
     snapshot.streams[0]!.actor!.reason = "";
@@ -444,7 +444,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelectorAll(".filmstrip .fs")).toHaveLength(2);
     expect(container.querySelectorAll(".arow")).toHaveLength(6);
     // Scrubber markers: one tick for the frame with a recorded click, and the
-    // end flag because the lane completed on a notable reason (budget cap).
+    // end flag because the participant completed on a notable reason (budget cap).
     expect(container.querySelectorAll(".scrub-tick")).toHaveLength(1);
     expect(container.querySelector(".scrub-flag")).not.toBeNull();
 
@@ -454,7 +454,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(stageImg()).toBe("../screenshots/lane/turn-01.png");
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(1);
 
-    // Report tab carries the recorded reason verbatim and the RAW chip shows in transport.
+    // Report tab carries the recorded reason verbatim and the `RAW` chip shows in transport.
     const reportTab = [...container.querySelectorAll(".itabs button")].find(
       (b) => b.textContent === "Feedback",
     );
@@ -465,7 +465,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelector(".rawchip")).not.toBeNull();
   });
 
-  it("deep links (#441): a frame address opens the player on that exact frame", async () => {
+  it("deep links: a frame address opens the player on that exact frame", async () => {
     const data = liveShapedData();
     const streamId = (data as unknown as { streams: Array<{ id: string }> }).streams[0]!.id;
     window.history.replaceState(null, "", `#/lane/${streamId}/f/2`);
@@ -478,11 +478,11 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelector(".counter")?.textContent).toBe("2 / 2");
   });
 
-  it("deep links (#441): opening a participant writes the address; Escape clears it", async () => {
+  it("deep links: opening a participant writes the address; Escape clears it", async () => {
     await mount(<App data={liveShapedData()} />);
     expect(window.location.hash).toBe("");
     await click(container.querySelector(".open-overlay") as Element);
-    // Paused at frame 0 → the address carries the lane and the 1-based frame.
+    // Paused at frame 0 → the address carries the stream and the 1-based frame.
     expect(window.location.hash).toMatch(/^#\/lane\/.+\/f\/1$/);
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -490,14 +490,14 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(window.location.hash).toBe("");
   });
 
-  it("thought rows (#427): reported thinking in its own register, anchored to the prior frame", async () => {
+  it("thought rows: reported thinking in its own register, anchored to the prior frame", async () => {
     await mount(<App data={liveShapedData()} />);
     await click(container.querySelector(".open-overlay") as Element);
 
     const thoughts = container.querySelectorAll(".arow.thought");
     expect(thoughts).toHaveLength(2);
     // The row shows the summary itself, not the "reasoning turn N" chrome, and is
-    // labeled as the participant's REPORTED thinking (self-narration, not ground truth).
+    // labeled as the participant's reported thinking (self-narration, not ground truth).
     expect(thoughts[0]?.textContent).toContain("The form is empty");
     expect(thoughts[0]?.textContent).not.toContain("reasoning turn");
     expect(thoughts[0]?.getAttribute("title")).toContain("Reported thinking");
@@ -548,7 +548,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(iframe()).not.toBeNull();
   });
 
-  it("a live lane streams before its first frame: the player's live stage, not the stub (#426)", async () => {
+  it("a live participant streams before its first frame: the player's live stage, not the stub", async () => {
     const data = liveShapedData({ live: true });
     (
       data as unknown as { streams: Array<{ actor: { items: unknown[] } }> }
@@ -562,7 +562,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelector(".stub")).toBeNull();
   });
 
-  it("a live lane's grid thumb IS the stream (#331), read-only and capped", async () => {
+  it("a live participant's grid thumb is the stream, read-only and capped", async () => {
     const data = liveShapedData({ live: true });
     await mount(<App data={data} />);
     const frame = container.querySelector(".thumb-live") as HTMLIFrameElement | null;
@@ -570,7 +570,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(frame?.getAttribute("tabindex")).toBe("-1");
   });
 
-  it("live thumbs autoconnect for at most four lanes; deeper live lanes keep the placeholder", async () => {
+  it("live thumbs autoconnect for at most four participants; deeper live participants keep the placeholder", async () => {
     const data = liveShapedData({ live: true });
     const holder = data as unknown as { streams: Array<Record<string, unknown>> };
     const first = holder.streams[0]!;
@@ -584,7 +584,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelectorAll(".card-outcome.active")).toHaveLength(5);
   });
 
-  it("a lane whose sandbox ended falls back to recorded evidence (#357)", async () => {
+  it("a participant whose sandbox ended falls back to recorded evidence", async () => {
     await mount(<App data={liveShapedData({ live: true, ended: true })} />);
     await click(container.querySelector(".open-overlay") as Element);
     expect(container.querySelector(".stage-live")).toBeNull();
@@ -639,7 +639,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
 });
 
 describe("Frame-free review remains useful", () => {
-  it("preparing browser lanes get a live-aware empty player before their first screenshot", async () => {
+  it("preparing browser participants get a live-aware empty player before their first screenshot", async () => {
     const copy = structuredClone(data);
     copy.streams = [{ ...copy.streams[0]!, status: "preparing", statusLabel: "Preparing" }];
     await mount(<App data={copy} />);
