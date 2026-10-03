@@ -1,7 +1,7 @@
-// The LabPlan union: what planLab decides about a lab before anything runs. Each route has its own
+// The StudyPlan union: what planStudy decides about a lab before anything runs. Each route has its own
 // variant, and each supported subject and substrate pairing is its own case, so a combination the
 // routes refuse cannot be written down. Numeric bounds, unique ids, safe URLs and "exactly one
-// host" stay checks in planLab.
+// host" stay checks in planStudy.
 
 import type { AnalysisConfig } from "../analysis/types.js";
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
@@ -18,14 +18,14 @@ import type {
   ProvisionedParticipant,
 } from "./plan-participants.js";
 import type {
-  LabConfig,
-  LabExecutionTerminal,
-  LabRuntimeAuth,
-  LabScenarioCaps,
-  LabSubjectProduct,
-  LabSubjectServe,
-  LabSubjectState,
-  LabSubjectStateCheckpoint,
+  StudyConfig,
+  StudyExecutionTerminal,
+  StudyRuntimeAuth,
+  StudyScenarioCaps,
+  StudySubjectProduct,
+  StudySubjectServe,
+  StudySubjectState,
+  StudySubjectStateCheckpoint,
 } from "./types.js";
 
 export type NonEmpty<T> = readonly [T, ...T[]];
@@ -54,11 +54,11 @@ export type Requirement =
  * fields at run time.
  */
 export type ResidualConfig = Pick<
-  LabConfig,
+  StudyConfig,
   "comms" | "policies" | "personas" | "defaults" | "review"
 > & {
-  readonly execution?: Pick<NonNullable<LabConfig["execution"]>, "desktop" | "target">;
-  readonly subject: Pick<LabConfig["subject"], "clone" | "localTree" | "repos" | "envValues">;
+  readonly execution?: Pick<NonNullable<StudyConfig["execution"]>, "desktop" | "target">;
+  readonly subject: Pick<StudyConfig["subject"], "clone" | "localTree" | "repos" | "envValues">;
 };
 
 export interface PlannedAnalysis {
@@ -108,15 +108,15 @@ export type ProvisionedSubject =
   | {
       readonly kind: "clone";
       readonly repo: string;
-      readonly serve: LabSubjectServe;
+      readonly serve: StudySubjectServe;
       readonly env: readonly string[];
-      readonly state?: LabSubjectState;
+      readonly state?: StudySubjectState;
     }
   | {
       readonly kind: "local-tree";
-      readonly serve: LabSubjectServe;
+      readonly serve: StudySubjectServe;
       readonly env: readonly string[];
-      readonly state?: LabSubjectState;
+      readonly state?: StudySubjectState;
     };
 
 export interface AppUrlSubject {
@@ -144,7 +144,7 @@ export type ComputerUseRunner =
         | ProvisionedSubject
         | {
             readonly kind: "desktop-cli";
-            readonly product: LabSubjectProduct;
+            readonly product: StudySubjectProduct;
             /** As on AppUrlSubject: a library config's declared `subject.serve.url`. */
             readonly serveUrl?: string;
           };
@@ -177,8 +177,8 @@ export interface ComputerUsePlan extends PlanBase {
   readonly rerun?: { readonly sourceRunId: string; readonly participantIds?: readonly string[] };
 }
 
-type CheckpointedState = LabSubjectState & {
-  readonly checkpoint: NonEmpty<LabSubjectStateCheckpoint>;
+type CheckpointedState = StudySubjectState & {
+  readonly checkpoint: NonEmpty<StudySubjectStateCheckpoint>;
 };
 
 export type SharedWorldPlane =
@@ -211,7 +211,7 @@ export type TerminalPlan = PlanBase & {
   readonly route: "terminal";
   /** The registered terminal actor that runs. */
   readonly actor: string;
-  readonly product: LabSubjectProduct & { readonly publicSurfaces: NonEmpty<string> };
+  readonly product: StudySubjectProduct & { readonly publicSurfaces: NonEmpty<string> };
   /** The declared persona and mission; the route supplies its defaults. */
   readonly personaId?: string;
   readonly mission?: string;
@@ -222,17 +222,17 @@ export type TerminalPlan = PlanBase & {
     /** `declared` by the lab's actor, or humanish's participant default. */
     readonly modelSource: "declared" | "humanish_default";
     readonly reasoningEffort?: ReasoningEffort;
-    readonly auth?: LabRuntimeAuth;
+    readonly auth?: StudyRuntimeAuth;
   };
   /** The declared egress routing allowlist; without one the sandbox egress is unrestricted. */
   readonly egressAllow?: readonly string[];
   /** The declared operator stdin posture; the route defaults to "disabled". */
-  readonly stdin?: NonNullable<LabExecutionTerminal["stdin"]>;
+  readonly stdin?: NonNullable<StudyExecutionTerminal["stdin"]>;
 } & (
-    | { readonly dryRun: true; readonly caps?: LabScenarioCaps }
+    | { readonly dryRun: true; readonly caps?: StudyScenarioCaps }
     | {
         readonly dryRun: false;
-        readonly caps: LabScenarioCaps & { readonly maxUsd: number; readonly maxMinutes: number };
+        readonly caps: StudyScenarioCaps & { readonly maxUsd: number; readonly maxMinutes: number };
       }
   );
 
@@ -256,10 +256,15 @@ export interface ScriptedPlan extends PlanBase {
   readonly sessionTimeoutMs?: number;
 }
 
-export type LabPlan = PreviewPlan | ComputerUsePlan | SharedWorldPlan | TerminalPlan | ScriptedPlan;
+export type StudyPlan =
+  | PreviewPlan
+  | ComputerUsePlan
+  | SharedWorldPlan
+  | TerminalPlan
+  | ScriptedPlan;
 
-interface PlannedLab {
-  readonly plan: LabPlan;
+interface PlannedStudy {
+  readonly plan: StudyPlan;
 }
 
 /**
@@ -287,7 +292,7 @@ export type PreviewRefusalCode =
   | "HUMANISH_INVALID_PARTICIPANT_COUNT"
   | "HUMANISH_LIVE_RUN_UNIMPLEMENTED";
 
-/** Why planLab refused: the route's own code and message, as its runner returns them. */
+/** Why planStudy refused: the route's own code and message, as its runner returns them. */
 export type PlanRefusal =
   | RouteRefusal<"preview", PreviewRefusalCode>
   | TerminalRefusal
@@ -296,5 +301,5 @@ export type PlanRefusal =
   | SharedWorldRefusal;
 
 export type PlanResult =
-  | { readonly ok: true; readonly planned: PlannedLab }
+  | { readonly ok: true; readonly planned: PlannedStudy }
   | { readonly ok: false; readonly refusal: PlanRefusal };

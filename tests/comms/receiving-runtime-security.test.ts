@@ -8,8 +8,8 @@ import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import { inspectCommsRecovery } from "../../src/comms/receiving-recovery.js";
 import { prepareReceivingRun } from "../../src/comms/receiving-runtime.js";
 import type { ReceivingSurfaceFile } from "../../src/comms/receiving-types.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 
 // Synthetic canaries and explicit mutations of the sanitized, live-derived wire fixtures.
@@ -34,9 +34,9 @@ function response(wire: Wire): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
-function config(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function config(): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "receiving-security",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
     actors: [{ type: "openai-computer-use", mission: "Read your email." }],

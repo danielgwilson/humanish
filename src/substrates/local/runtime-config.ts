@@ -1,11 +1,11 @@
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import { rosterOf } from "../../study/parse/actors.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;
 const MAX_SESSION_MS = 20 * 60_000;
 
-export function isLocalBrowserLab(config: LabConfig): boolean {
+export function isLocalBrowserLab(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
@@ -14,7 +14,7 @@ export function isLocalBrowserLab(config: LabConfig): boolean {
 }
 
 /** Defaults for the explicitly selected local substrate; hosted configurations are untouched. */
-export function localBrowserDefaults(config: LabConfig): LabConfig {
+export function localBrowserDefaults(config: StudyConfig): StudyConfig {
   if (!isLocalBrowserLab(config)) return config;
   return {
     ...config,
@@ -37,7 +37,7 @@ export function localBrowserDefaults(config: LabConfig): LabConfig {
   };
 }
 
-export function localBrowserUnsupportedReason(config: LabConfig): string | undefined {
+export function localBrowserUnsupportedReason(config: StudyConfig): string | undefined {
   const actor = config.actors[0];
   const desktop = config.execution?.desktop;
   if ((config.execution?.timeoutMs ?? MAX_SESSION_MS) > MAX_SESSION_MS) {

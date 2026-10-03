@@ -9,7 +9,7 @@ import { stringify } from "yaml";
 
 import { saveCommsConnection } from "../../src/comms/connections.js";
 import { configureCommsLab } from "../../src/comms/setup.js";
-import { listLabManifests, resolveLabManifest } from "../../src/study/discover.js";
+import { listStudyManifests, resolveStudyManifest } from "../../src/study/discover.js";
 import { runInit } from "../../src/study/init.js";
 import { otherStudyFiles, studyFileCandidates } from "../../src/study/files.js";
 
@@ -69,8 +69,8 @@ describe("study discovery", () => {
     await write(".humanish/local/studies/first.yaml", "first-shadowed");
     await write(".humanish/local/labs/second.yaml", "second");
 
-    const first = await resolveLabManifest(cwd, "first");
-    const second = await resolveLabManifest(cwd, "second");
+    const first = await resolveStudyManifest(cwd, "first");
+    const second = await resolveStudyManifest(cwd, "second");
     expect(first.ok && [first.config.id, first.origin, first.path]).toEqual([
       "first",
       "committed",
@@ -83,14 +83,14 @@ describe("study discovery", () => {
     await write("humanish/studies/foo.yaml", "foo");
     await write(".humanish/local/labs/foo.yml", "foo-old");
 
-    const resolved = await resolveLabManifest(cwd, "foo");
+    const resolved = await resolveStudyManifest(cwd, "foo");
     expect(resolved.ok).toBe(false);
     expect(!resolved.ok && resolved.error).toEqual({
       code: "HUMANISH_STUDY_AMBIGUOUS",
       message:
         "foo names two files, humanish/studies/foo.yaml and .humanish/local/labs/foo.yml. Delete the one you do not want; if you keep .humanish/local/labs/foo.yml, run humanish migrate to move it. Or pass the path of the one to run.",
     });
-    const explicit = await resolveLabManifest(cwd, ".humanish/local/labs/foo.yml");
+    const explicit = await resolveStudyManifest(cwd, ".humanish/local/labs/foo.yml");
     expect(explicit.ok && explicit.config.id).toBe("foo-old");
   });
 
@@ -99,7 +99,7 @@ describe("study discovery", () => {
     await write("humanish/labs/foo.yaml", "foo-old");
     await write("humanish/labs/bar.yaml", "bar");
 
-    const listed = await listLabManifests(cwd);
+    const listed = await listStudyManifests(cwd);
     expect(listed.studies.map((entry) => [entry.path, entry.error])).toEqual([
       ["humanish/labs/bar.yaml", undefined],
       [
@@ -153,26 +153,26 @@ describe("files 0.109 stops reading", () => {
   ])("warns about %s, naming the fix", async (_name, relativePath, format, warning) => {
     await (format === "v2" ? write(relativePath, "a") : writeV3(relativePath, "a"));
 
-    const resolved = await resolveLabManifest(cwd, "a");
+    const resolved = await resolveStudyManifest(cwd, "a");
     expect(resolved.ok && retired(resolved.warnings)).toEqual([warning]);
   });
 
   it("does not warn about a v3 file in a studies directory", async () => {
     await writeV3(".humanish/studies/a.yaml", "a");
 
-    const resolved = await resolveLabManifest(cwd, "a");
+    const resolved = await resolveStudyManifest(cwd, "a");
     expect(resolved.ok && retired(resolved.warnings)).toEqual([]);
   });
 
   it("study list counts the files in one warning", async () => {
     await writeV3("humanish/studies/clean.yaml", "clean");
     await write("humanish/studies/old.yaml", "old");
-    expect(retired((await listLabManifests(cwd)).warnings)).toEqual([
+    expect(retired((await listStudyManifests(cwd)).warnings)).toEqual([
       "One study file uses humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; humanish study show names the fix for each file.",
     ]);
 
     await writeV3("humanish/labs/moved.yaml", "moved");
-    expect(retired((await listLabManifests(cwd)).warnings)[0]).toMatch(/^2 study files use /);
+    expect(retired((await listStudyManifests(cwd)).warnings)[0]).toMatch(/^2 study files use /);
   });
 });
 

@@ -17,12 +17,12 @@ import type {
   SharedWorldPlane,
   TerminalPlan,
 } from "../../src/study/plan-types.js";
-import type { LabSubjectServe } from "../../src/study/types.js";
+import type { StudySubjectServe } from "../../src/study/types.js";
 
 declare const participant: ComputerUseParticipant;
 declare const provisionedSeat: ProvisionedParticipant;
 declare const externalSeat: ExternalPublicParticipant;
-declare const serve: LabSubjectServe;
+declare const serve: StudySubjectServe;
 declare const appUrl: AppUrlSubject;
 declare const liveTerminal: Extract<TerminalPlan, { dryRun: false }>;
 

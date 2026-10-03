@@ -8,8 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -72,8 +72,8 @@ describe.skipIf(!LIVE)("scripted-browser-lab (live, actuation-gated; $0 by mecha
     "replays the committed scenario with real playwright on both surfaces and persists a verified bundle",
     { timeout: 180_000 },
     async () => {
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "scripted-live-proof",
         title: "Scripted lab live proof",
         subject: { source: "app-url", appUrl },

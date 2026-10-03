@@ -18,8 +18,8 @@ import {
 } from "./providers.js";
 import { createReceivingAdapter } from "./receiving-runtime.js";
 import { RECEIVING_SCOPE_UNSUPPORTED, type ReceivingAdapter } from "./receiving-types.js";
-import { parseLabConfig } from "../study/config.js";
-import { resolveLabManifest } from "../study/discover.js";
+import { parseStudy } from "../study/config.js";
+import { resolveStudyManifest } from "../study/discover.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
@@ -195,7 +195,7 @@ export async function configureCommsLab(args: {
   try {
     const connection = (await readCommsConnections(args.cwd)).connections[args.connection];
     if (!connection) return { ...base, message: "Save the selected connection first." };
-    const source = await resolveLabManifest(args.cwd, args.lab);
+    const source = await resolveStudyManifest(args.cwd, args.lab);
     if (!source.ok) return { ...base, message: "The selected lab could not be read safely." };
     const root = await prepareSelectedOutputDirectory(args.cwd, args.cwd);
     const rel = path
@@ -229,7 +229,7 @@ export async function configureCommsLab(args: {
     }
     const study = parseDocument(studyText);
     study.setIn(["comms", "email", "connection"], args.connection);
-    const validated = parseLabConfig(study.toJS());
+    const validated = parseStudy(study.toJS());
     if (!validated.ok)
       return {
         ...base,

@@ -3,15 +3,15 @@
 
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { digestText } from "../evidence/redaction.js";
-import type { LabPreflightCheck, LabPreflightResult, PreflightContext } from "./preflight.js";
+import type { StudyPreflightCheck, StudyPreflightResult, PreflightContext } from "./preflight.js";
 
 /** The schema of `lab preflight` results: whether a study is ready to run on this machine. */
 export const STUDY_CHECK_SCHEMA = "humanish.study-check.v1";
 
 export function finalize(
   ctx: PreflightContext,
-  args?: { check?: LabPreflightCheck },
-): LabPreflightResult {
+  args?: { check?: StudyPreflightCheck },
+): StudyPreflightResult {
   const checks = args?.check ? [...ctx.checks, args.check] : ctx.checks;
   const analysis = automaticAnalysisBudget(ctx.config.review?.analysis, ctx.route);
   return {
@@ -40,10 +40,10 @@ export function finalize(
 
 export function fail(
   ctx: PreflightContext,
-  code: NonNullable<LabPreflightResult["error"]>["code"],
+  code: NonNullable<StudyPreflightResult["error"]>["code"],
   message: string,
-  checks: LabPreflightCheck[],
-): LabPreflightResult {
+  checks: StudyPreflightCheck[],
+): StudyPreflightResult {
   return {
     ...finalize(ctx),
     ok: false,

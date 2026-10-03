@@ -6,7 +6,7 @@ import {
 } from "../../evidence/browser-hygiene.js";
 import { failureTail } from "../../evidence/redaction.js";
 import { isHttpUrl } from "../../study/parse/subject.js";
-import type { LabDesktopBrowser } from "../../study/types.js";
+import type { StudyDesktopBrowser } from "../../study/types.js";
 import { runDetachedStep } from "../detached.js";
 import { shellQuote } from "../shell.js";
 import type { E2BDesktopSandbox } from "./sdk.js";
@@ -130,7 +130,7 @@ export function parseChromeDevToolsReadiness(stdout: string): ChromeDevToolsRead
 }
 
 export interface DesktopBrowserEvidence {
-  requested: LabDesktopBrowser;
+  requested: StudyDesktopBrowser;
   resolved?: string;
   /** Synthetic media devices the browser was launched with, and how permission is answered. */
   media?: DesktopMediaEvidence;
@@ -270,7 +270,7 @@ export async function openDesktopBrowserTarget(
   desktop: E2BDesktopSandbox,
   targetUrl: string,
   requestTimeoutMs: number,
-  browserPreference: LabDesktopBrowser | undefined,
+  browserPreference: StudyDesktopBrowser | undefined,
   /** Launch-time flags that make mobile fidelity hold across every tab: the user agent and
    *  touch events are browser-wide here, where the CDP holder covers only the launch page. */
   extraChromiumFlags: readonly string[] = [],

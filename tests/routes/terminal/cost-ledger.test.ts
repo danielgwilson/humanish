@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
@@ -91,9 +91,9 @@ function nonceFrom(command: string): string {
   return m?.[1] ?? "unknown-nonce";
 }
 
-function liveConfig(caps: Record<string, number>): LabConfig {
+function liveConfig(caps: Record<string, number>): StudyConfig {
   const raw: Record<string, unknown> = {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "terminal-cost-proof",
     title: "Terminal cost-ledger proof",
     subject: {
@@ -121,7 +121,7 @@ function liveConfig(caps: Record<string, number>): LabConfig {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseLabConfig(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

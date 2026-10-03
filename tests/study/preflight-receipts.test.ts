@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
-import { runLabPreflight } from "../../src/study/preflight.js";
+import { runStudyPreflight } from "../../src/study/preflight.js";
 import { reclaimPreflightSandboxes } from "../../src/run/reclaim.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../../src/run/sandbox-receipts.js";
 import type {
@@ -204,7 +204,7 @@ describe("lab preflight receipts", () => {
       },
     });
 
-    const result = await runLabPreflight({
+    const result = await runStudyPreflight({
       cwd,
       lab: "preview",
       reachability: "public-preview",
@@ -231,14 +231,14 @@ describe("lab preflight receipts", () => {
     const preview = fakeProvider({});
     const clone = fakeProvider({});
 
-    const previewResult = await runLabPreflight({
+    const previewResult = await runStudyPreflight({
       cwd,
       lab: "preview",
       reachability: "public-preview",
       env,
       hooks: { loadDesktopModule: async () => preview.module },
     });
-    const cloneResult = await runLabPreflight({
+    const cloneResult = await runStudyPreflight({
       cwd,
       lab: "clone-probe",
       reachability: "sandbox-loopback",
@@ -260,7 +260,7 @@ describe("lab preflight receipts", () => {
       previewLab(["  desktop:", "    sandboxTimeoutMs: 120000"]),
     );
     const capped = fakeProvider({});
-    await runLabPreflight({
+    await runStudyPreflight({
       cwd,
       lab: "preview",
       reachability: "public-preview",
@@ -287,7 +287,7 @@ describe("lab preflight receipts", () => {
       }),
     );
     const slow = fakeProvider({});
-    await runLabPreflight({
+    await runStudyPreflight({
       cwd,
       lab: "clone-probe",
       reachability: "sandbox-loopback",
@@ -302,7 +302,7 @@ describe("lab preflight receipts", () => {
       cloneLab({ serve: ["    start: python3 -m http.server 3000"], seed: false }),
     );
     const quick = fakeProvider({});
-    await runLabPreflight({
+    await runStudyPreflight({
       cwd,
       lab: "clone-probe",
       reachability: "sandbox-loopback",
@@ -316,7 +316,7 @@ describe("lab preflight receipts", () => {
     await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
     const gone = fakeProvider({ killNotFound: true });
 
-    const result = await runLabPreflight({
+    const result = await runStudyPreflight({
       cwd,
       lab: "preview",
       reachability: "public-preview",
@@ -333,7 +333,7 @@ describe("lab preflight receipts", () => {
     await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
     const odd = fakeProvider({ killAnswer: "ok" });
 
-    const result = await runLabPreflight({
+    const result = await runStudyPreflight({
       cwd,
       lab: "preview",
       reachability: "public-preview",
@@ -350,7 +350,7 @@ describe("lab preflight receipts", () => {
     await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
     const failing = fakeProvider({ killThrows: true });
 
-    const result = await runLabPreflight({
+    const result = await runStudyPreflight({
       cwd,
       lab: "preview",
       reachability: "public-preview",
@@ -507,7 +507,7 @@ describe("lab preflight receipts", () => {
     await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
     const root = fileURLToPath(new URL("../../", import.meta.url));
     const script = `
-      const { runLabPreflight } = await import(${JSON.stringify(path.join(root, "src/study/preflight.ts"))});
+      const { runStudyPreflight } = await import(${JSON.stringify(path.join(root, "src/study/preflight.ts"))});
       const sandbox = {
         sandboxId: "sb-preflight-orphan",
         // Every command hangs on an open handle, as a stuck provider socket would.
@@ -515,7 +515,7 @@ describe("lab preflight receipts", () => {
         files: { write: async () => undefined },
       };
       const module = { Sandbox: { create: async () => sandbox, kill: async () => true } };
-      await runLabPreflight({
+      await runStudyPreflight({
         cwd: process.env.PROBE_CWD,
         lab: "preview",
         reachability: "public-preview",

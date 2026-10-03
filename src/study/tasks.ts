@@ -36,7 +36,7 @@ const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
  * how they will be judged changes what they do. A persona told "you succeed when the URL contains
  * /dashboard" will go find that URL, which measures the instruction rather than the product.
  */
-export interface LabTask {
+export interface StudyTask {
   /** Stable id, used in evidence and in the funnel. Researcher-facing. */
   id: string;
   /** Participant-facing. What they are asked to do. The only half that reaches the prompt. */
@@ -95,7 +95,7 @@ export class TaskTracker {
    *  arrived was never evaluated against anything, however many turns ran. */
   private readonly fieldsSeen = new Set<"url" | "text" | "appState">();
 
-  constructor(private readonly tasks: readonly LabTask[]) {}
+  constructor(private readonly tasks: readonly StudyTask[]) {}
 
   /** Evaluate every still-incomplete task against one observation. Returns newly completed tasks. */
   observe(observation: StopConditionObservation, turn: number): TaskCompletion[] {
@@ -121,7 +121,7 @@ export class TaskTracker {
 
   /** Which observation fields a task's criteria actually read. A task whose rules need `url` was
    *  never measured if no observation ever carried one. */
-  private fieldsRequiredBy(task: LabTask): Array<"url" | "text" | "appState"> {
+  private fieldsRequiredBy(task: StudyTask): Array<"url" | "text" | "appState"> {
     const rules = task.success?.any ?? [];
     const required = new Set<"url" | "text" | "appState">();
     for (const rule of rules) {
@@ -181,7 +181,7 @@ export class TaskTracker {
  * and the study stops being about the product. A test pins this, because it is the kind of leak a
  * later convenience change makes without noticing.
  */
-export function renderTaskPrompt(tasks: readonly LabTask[]): string | undefined {
+export function renderTaskPrompt(tasks: readonly StudyTask[]): string | undefined {
   if (tasks.length === 0) return undefined;
   const lines = tasks.map((task, index) => `${index + 1}. ${task.goal}`);
   return `Work through these in order:\n${lines.join("\n")}`;

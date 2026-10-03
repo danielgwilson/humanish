@@ -14,12 +14,12 @@ import {
   TaskTracker,
   formatTaskFunnel,
   renderTaskPrompt,
-  type LabTask,
+  type StudyTask,
 } from "../../src/study/tasks.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 
-const PROTOCOL: LabTask[] = [
+const PROTOCOL: StudyTask[] = [
   {
     id: "sign-up",
     goal: "Create an account.",
@@ -129,8 +129,8 @@ describe("formatTaskFunnel", () => {
 
 describe("tasks config parsing", () => {
   const lab = (actor: Record<string, unknown>) =>
-    parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    parseStudy({
+      schema: V2_SCHEMA,
       id: "task-lab",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", ...actor }],

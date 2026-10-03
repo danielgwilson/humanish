@@ -1,5 +1,5 @@
 import { registerTransientCommsSecrets } from "../run/transient-comms-secrets.js";
-import type { LabConfig } from "../study/types.js";
+import type { StudyConfig } from "../study/types.js";
 import { readCommsConnections, type CommsConnection } from "./connections.js";
 import { discoverProviderKeys, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { createAgentMailReceiver } from "./agentmail.js";
@@ -56,7 +56,7 @@ export async function resolveReceivingConnection(
 
 /** What receiving reads from a lab: its email declaration and the subject env it guards. */
 export interface ReceivingSource {
-  readonly comms?: LabConfig["comms"];
+  readonly comms?: StudyConfig["comms"];
   readonly subject: {
     readonly env?: readonly string[];
     readonly envValues?: Readonly<Record<string, string>>;
@@ -113,7 +113,7 @@ export async function prepareReceivingRun(args: {
 }
 
 /** The restriction survives restarts and screenshot redaction; it is not a claim of local processing. */
-export function receivingPublication(config: Pick<LabConfig, "comms">, dryRun: boolean) {
+export function receivingPublication(config: Pick<StudyConfig, "comms">, dryRun: boolean) {
   return !dryRun && config.comms?.email?.kind === "real"
     ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } }
     : {};

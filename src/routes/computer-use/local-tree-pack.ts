@@ -2,17 +2,17 @@
 
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "../../subject/local-tree-archive.js";
-import type { LabDeps } from "../../study/study-deps.js";
+import type { StudyDeps } from "../../study/study-deps.js";
 
 /**
  * Pack the working tree for a local-tree run and report what left the host on stderr, by counts
  * and digest only, never paths or file names.
  */
 export async function packRunLocalTree(
-  deps: LabDeps,
-  config: { readonly subject: Pick<LabConfig["subject"], "localTree"> },
+  deps: StudyDeps,
+  config: { readonly subject: Pick<StudyConfig["subject"], "localTree"> },
   cwd: string,
 ): Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }> {
   const packLocalTree = deps.packLocalTree ?? defaultPackLocalTree;
@@ -35,7 +35,7 @@ export async function packRunLocalTree(
 /**
  * Default local-tree packing implementation: createLocalTreeArchive(root, opts) on the host,
  * then a single read of the produced archive file into an ArrayBuffer for upload. The DI seam
- * (LabDeps.packLocalTree) overrides this in deterministic tests so they never require
+ * (StudyDeps.packLocalTree) overrides this in deterministic tests so they never require
  * tar/git.
  */
 export async function defaultPackLocalTree(args: {

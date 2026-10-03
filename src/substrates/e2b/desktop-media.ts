@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { startDesktopMedia } from "../../guest/desktop-media.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./sdk.js";
-import type { LabDesktopMedia } from "../../study/types.js";
+import type { StudyDesktopMedia } from "../../study/types.js";
 import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import { runOrThrow } from "../shell.js";
 import { e2bShell } from "./shell.js";
@@ -10,7 +10,7 @@ import { e2bShell } from "./shell.js";
 /** The same worker and conversation contract, transported by the hosted SDK's stdin/stdout. */
 export async function startE2BDesktopMedia(options: {
   desktop: E2BDesktopSandbox;
-  media: LabDesktopMedia;
+  media: StudyDesktopMedia;
   signal: AbortSignal;
   onTerminal(): void;
   requestTimeoutMs: number;
@@ -117,7 +117,7 @@ const SYNTHETIC_CAMERA_COMMAND = `mkdir -p ${SANDBOX_MEDIA_DIR} && ffmpeg -y -lo
  */
 export async function prepareDesktopMedia(
   desktop: E2BDesktopSandbox,
-  media: LabDesktopMedia,
+  media: StudyDesktopMedia,
   permission: "prompt" | "granted",
   cwd: string,
   requestTimeoutMs: number,

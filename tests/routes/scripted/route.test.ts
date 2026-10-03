@@ -14,8 +14,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
@@ -32,7 +32,7 @@ import {
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { runScriptedBrowserLab, runScriptedPlan } from "../../../src/routes/scripted/route.js";
 import { planScriptedLab } from "../../../src/routes/scripted/plan.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { RunScriptedBrowserLabOptions } from "../../../src/routes/scripted/types.js";
 
 /** A scripted test's typed options and seams, as it spreads them into a runner's options. */
@@ -274,9 +274,9 @@ function scriptedConfig(overrides?: {
   mode?: "dry-run" | "live";
   target?: "local" | undefined;
   ref?: string;
-}): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+}): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "scripted-routing-proof",
     title: "Scripted routing proof",
     subject: { source: "app-url", appUrl: overrides?.appUrl ?? "http://127.0.0.1:5173/" },
@@ -304,9 +304,9 @@ function scriptedConfig(overrides?: {
   return parsed.config;
 }
 
-function provisionedScriptedConfig(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function provisionedScriptedConfig(): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "provisioned-scripted-routing-proof",
     title: "Provisioned scripted routing proof",
     subject: {
@@ -342,15 +342,15 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
   });
 
   it("app-url × e2b-desktop × openai-computer-use still routes to cua, and the other routes are untouched", () => {
-    const cua = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const cua = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use" }],
       execution: { target: "e2b-desktop" },
     });
-    const synthetic = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const synthetic = parseStudy({
+      schema: V2_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
@@ -358,17 +358,17 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     // A clone lab without a computer-use or scripted actor no longer parses; a library caller that
     // skips the parser still reaches the computer-use route's fail-closed actor check.
     const cloneWithCodeActor = {
-      schema: LAB_CONFIG_SCHEMA,
+      schema: V2_SCHEMA,
       id: "m",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
       execution: { target: "e2b-desktop" },
     } as const;
     if (!cua.ok || !synthetic.ok) throw new Error("fixture configs must parse");
-    expect(parseLabConfig(cloneWithCodeActor).ok).toBe(false);
+    expect(parseStudy(cloneWithCodeActor).ok).toBe(false);
     expect(routeOf(cua.config)).toBe("computer-use");
     expect(routeOf(synthetic.config)).toBe("preview");
-    expect(routeOf(cloneWithCodeActor as unknown as LabConfig)).toBe("computer-use");
+    expect(routeOf(cloneWithCodeActor as unknown as StudyConfig)).toBe("computer-use");
   });
 
   it("library-API fallback: app-url with an unregistered actor type still routes to cua's fail-closed gate", async () => {
@@ -376,7 +376,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     const tampered = {
       ...scriptedConfig(),
       actors: [{ type: "not-a-registered-actor" }],
-    } as LabConfig;
+    } as StudyConfig;
     expect(routeOf(tampered)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-fallback-"));
     try {
@@ -964,7 +964,7 @@ describe("runScriptedBrowserLab", () => {
       close: async () => undefined,
     };
   }
-  it.each<[string, LabDeps, RunBundle["review"]["verdict"], boolean]>([
+  it.each<[string, StudyDeps, RunBundle["review"]["verdict"], boolean]>([
     [
       "every surface passes",
       { launchBrowser: async () => surfaceBrowser({ desktop: "pass", mobile: "pass" }) },
@@ -1360,7 +1360,7 @@ describe("runScriptedBrowserLab", () => {
 
   it("rejects a non-scripted actor at the engine even if a config bypasses the parser", async () => {
     await writeCommittedScenario(cwd);
-    const tampered = { ...scriptedConfig(), actors: [{ type: "codex-app-server" }] } as LabConfig;
+    const tampered = { ...scriptedConfig(), actors: [{ type: "codex-app-server" }] } as StudyConfig;
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED");
@@ -1616,7 +1616,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
 
   function cloneHooks(
     module: E2BDesktopModule,
-    runScriptedSession: LabDeps["runScriptedSession"],
+    runScriptedSession: StudyDeps["runScriptedSession"],
   ): ScriptedTestInputs {
     let clock = Date.parse("2026-09-30T00:00:00.000Z");
     return {

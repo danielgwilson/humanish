@@ -1,12 +1,12 @@
 import { formatAutomaticAnalysisBudget } from "../../analysis/automatic-config.js";
 import { resolve } from "node:path";
 import { Command, Option } from "commander";
-import { inspectLabManifest, listLabManifests } from "../../study/discover.js";
-import type { LabInspectResult, LabListResult } from "../../study/discover.js";
+import { inspectStudyManifest, listStudyManifests } from "../../study/discover.js";
+import type { StudyInspectResult, StudyListResult } from "../../study/discover.js";
 import {
-  runLabPreflight,
-  type LabPreflightReachabilityMode,
-  type LabPreflightResult,
+  runStudyPreflight,
+  type StudyPreflightReachabilityMode,
+  type StudyPreflightResult,
 } from "../../study/preflight.js";
 import { addRunOptions, handleRun } from "./run-command.js";
 import { deprecationMessage, warnAndQueue } from "../deprecations.js";
@@ -103,7 +103,7 @@ interface StudyCheckOptions {
   cwd: string;
   envFile?: string;
   json?: boolean;
-  reachability: LabPreflightReachabilityMode;
+  reachability: StudyPreflightReachabilityMode;
   timeoutMs: string;
 }
 
@@ -112,7 +112,7 @@ async function handleStudyList(
   options: { cwd: string; json?: boolean },
   command: Command,
 ): Promise<void> {
-  const result = await listLabManifests(options.cwd);
+  const result = await listStudyManifests(options.cwd);
   writeResult(command, io, result, formatStudyListHuman);
   io.setExitCode(0);
 }
@@ -123,7 +123,7 @@ async function handleStudyShow(
   options: { cwd: string; json?: boolean },
   command: Command,
 ): Promise<void> {
-  const result = await inspectLabManifest(options.cwd, name);
+  const result = await inspectStudyManifest(options.cwd, name);
   writeResult(command, io, result, formatStudyShowHuman);
   io.setExitCode(result.ok ? 0 : 2);
 }
@@ -147,7 +147,7 @@ async function handleStudyCheck(
 
   const timeoutMs = parsePositiveInteger(options.timeoutMs);
   if (timeoutMs === null) {
-    const result: LabPreflightResult = {
+    const result: StudyPreflightResult = {
       schema: "humanish.study-check.v1",
       ok: false,
       cwd: resolve(options.cwd),
@@ -168,7 +168,7 @@ async function handleStudyCheck(
     return;
   }
 
-  const result = await runLabPreflight({
+  const result = await runStudyPreflight({
     cwd: options.cwd,
     lab: name,
     reachability: options.reachability,
@@ -178,7 +178,7 @@ async function handleStudyCheck(
   io.setExitCode(result.ok ? 0 : 2);
 }
 
-function formatStudyListHuman(result: LabListResult): string {
+function formatStudyListHuman(result: StudyListResult): string {
   if (result.studies.length === 0) {
     return (
       [
@@ -201,7 +201,7 @@ function formatStudyListHuman(result: LabListResult): string {
   );
 }
 
-function formatStudyShowHuman(result: LabInspectResult): HumanOutput {
+function formatStudyShowHuman(result: StudyInspectResult): HumanOutput {
   if (!result.ok || !result.config) return humanError(result.error);
 
   const config = result.config;
@@ -226,7 +226,7 @@ function formatStudyShowHuman(result: LabInspectResult): HumanOutput {
   );
 }
 
-function formatStudyCheckHuman(result: LabPreflightResult): HumanOutput {
+function formatStudyCheckHuman(result: StudyPreflightResult): HumanOutput {
   const checkedTargets = result.targets.filter((target) => target.checked);
   const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
   const blockedTargets = result.targets.filter((target) => target.status === "blocked");

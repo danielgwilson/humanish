@@ -1,5 +1,5 @@
 // Pins what each library entry point does today with a config that breaks one admission rule, or
-// needs something it lacks: the parser, runLab, and the route's exported runner. The planLab
+// needs something it lacks: the parser, runLab, and the route's exported runner. The planStudy
 // migration (handoffs plan-design.md) must keep this golden byte-identical except for changes its
 // compatibility contract lists. Every refusal is also checked for side effects: no run directory,
 // no desktop module, no caller executor or provider, and no subprocess.
@@ -9,11 +9,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import type { RunCuaActorLabOptions } from "../../src/routes/computer-use/types.js";
-import { resolveLabDryRun, routeOf, type LabRoute } from "../../src/study/plan.js";
-import type { LabConfig } from "../../src/study/types.js";
+import { resolveStudyDryRun, routeOf, type StudyRoute } from "../../src/study/plan.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
@@ -97,7 +97,7 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
 
 async function runEntry(
   entry: Entry,
-  config: LabConfig,
+  config: StudyConfig,
   options: AdmissionOptions,
 ): Promise<Record<string, Json>> {
   const cwd = await projectDir();
@@ -107,9 +107,9 @@ async function runEntry(
   }
   const calls: Calls = { desktop: 0, executor: 0, provider: 0, subprocess: 0 };
   const { typed, driving } = hooksFor(options, calls);
-  const route: LabRoute | "none" =
+  const route: StudyRoute | "none" =
     options.runner ?? (entry === "runner" ? routeOf(config) : "none");
-  const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+  const dryRun = resolveStudyDryRun(config, options.dryRun, true) ?? true;
   const rerun = options.rerun === undefined ? {} : { rerun: options.rerun };
   subprocess.calls = 0;
   let result: Json;
@@ -206,7 +206,7 @@ function normalize(value: Json, paths: string[]): Json {
 
 async function pin(testCase: AdmissionCase): Promise<void> {
   const options = testCase.options ?? {};
-  const parsed = parseLabConfig(testCase.raw);
+  const parsed = parseStudy(testCase.raw);
   if (testCase.parser === "accepts") {
     expect(parsed.ok, parsed.ok ? "" : parsed.error.message).toBe(true);
   } else {
@@ -218,7 +218,7 @@ async function pin(testCase: AdmissionCase): Promise<void> {
   };
   const config = (
     options.parsed && parsed.ok ? parsed.config : (testCase.typed ?? testCase.raw)
-  ) as LabConfig;
+  ) as StudyConfig;
   for (const entry of testCase.entries ?? (["runLab", "runner"] as const)) {
     const pinned = await runEntry(entry, config, options);
     if (pinned.runs === false) {
@@ -248,7 +248,7 @@ describe("library admission today", () => {
       const raw = lab("scriptedAppUrl", { scenario: { mode: "live", ref: "adm-journey" } });
       for (const entry of ["runLab", "runner"] as const) {
         expect(
-          await runEntry(entry, raw as unknown as LabConfig, { isolateBrowser: true }),
+          await runEntry(entry, raw as unknown as StudyConfig, { isolateBrowser: true }),
         ).toMatchObject({
           runs: false,
           calls: { desktop: 0, executor: 0, provider: 0 },

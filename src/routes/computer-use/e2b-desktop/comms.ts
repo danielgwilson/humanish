@@ -16,7 +16,7 @@ import {
 } from "../../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../../comms/types.js";
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
-import type { LabCommsEmail, LabConfig } from "../../../study/types.js";
+import type { StudyCommsEmail, StudyConfig } from "../../../study/types.js";
 import { writeContainedOutputFile } from "../../../run/contained-output.js";
 import type { Shell } from "../../../substrates/shell.js";
 import type { ReadyParticipantDesktop } from "../participant-desktop.js";
@@ -30,7 +30,7 @@ const INBOX_SURFACE_CADENCE_MS = 2500;
 
 /** A participant's captured-email wiring, decided from config before the sandbox exists. */
 export interface ParticipantComms {
-  readonly email: LabCommsEmail;
+  readonly email: StudyCommsEmail;
   readonly port: number;
   readonly smtpPort: number | undefined;
   /** The loopback URL the persona opens to read captured mail. */
@@ -45,7 +45,7 @@ export interface ParticipantComms {
  * lab declares no fake email, which leaves the participant unchanged.
  */
 export function planParticipantComms(
-  comms: LabConfig["comms"],
+  comms: StudyConfig["comms"],
   serveUrl: string | undefined,
   targetUrl: string,
   inSandboxSubject: boolean,

@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 
 // The single live rung for the computer-use route: a real study config dispatched through runLab to
@@ -49,8 +49,8 @@ describe.skipIf(!LIVE)("cua-actor-lab (live, spend-gated)", () => {
     "dispatches a lab config to a real desktop session and persists a verified bundle",
     { timeout: 360_000 },
     async () => {
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "cua-live-proof",
         title: "CUA lab live proof",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:8000/proof.html" },

@@ -9,7 +9,7 @@ import { type RunScope } from "../../run/run.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
 import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../study/types.js";
+import type { StudyCommsEmail, StudyCommsExternal, StudyConfig } from "../../study/types.js";
 import { buildRunSource, type RunRerunLineage } from "../../run/bundle.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -47,7 +47,7 @@ import {
   type RunCuaActorLabOptions,
   participantSubjectEnv,
 } from "./types.js";
-import { labPersonaIds } from "../../study/persona-resolve.js";
+import { studyPersonaIds } from "../../study/persona-resolve.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
 /** The physical project, bound before any caller hook runs. */
@@ -71,7 +71,7 @@ export async function refuseCuaLab(
   const projectRoot = await bindProject(options.cwd);
   // The committed personas are read before the refusal returns, so a persona-file error wins.
   if (refusal.stage === "after-personas")
-    await compileParticipantPersonas(projectRoot, labPersonaIds(config));
+    await compileParticipantPersonas(projectRoot, studyPersonaIds(config));
   return {
     ...studyResultIdentity("computer-use", config.id),
     ok: false,
@@ -117,7 +117,7 @@ export interface CuaParticipantsSetup {
   /** Filled by runLabParticipants on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
   /** The operator-hosted inbox on the app-url route, when declared. */
-  externalComms: { config: LabCommsExternal; email: LabCommsEmail } | undefined;
+  externalComms: { config: StudyCommsExternal; email: StudyCommsEmail } | undefined;
   /** The subjects of the in-progress bundle, written before any participant starts. */
   inProgress: {
     subjects: CuaSubjectProjection[];
@@ -142,13 +142,13 @@ type PreparedCuaRun =
 /**
  * Everything before the run starts: the physical project, the route, the participant plan and
  * preflight, the key and subject-env scrubber, the live checks that need no sandbox, and the
- * local-tree archive. These read files, env and the network, which planLab does not. Returns the
+ * local-tree archive. These read files, env and the network, which planStudy does not. Returns the
  * refusal, or what startCuaRun reads.
  */
 export async function admitCuaRun(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  config: LabConfig,
+  config: StudyConfig,
 ) {
   const { dryRun } = plan;
   const projectRoot = await bindProject(input.cwd);
@@ -494,7 +494,7 @@ function cuaParticipantDeps(
 /** The caller's createProvider and inProcess executor, with the run's config bound. */
 function callerDriving(
   input: ComputerUseRunInput,
-  config: LabConfig,
+  config: StudyConfig,
 ): Pick<CuaParticipantDeps, "createProvider" | "inProcessExecutor"> {
   const { createProvider, inProcess } = input;
   return {

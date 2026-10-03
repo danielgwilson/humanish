@@ -1,5 +1,5 @@
 import { deriveRunFacts } from "../../../src/cli/telemetry.js";
-import type { LabEvent } from "../../../src/study/run-study-events.js";
+import type { StudyEvent } from "../../../src/study/run-study-events.js";
 import { browserScorer } from "../../../src/study/adapter-scorer-loader.js";
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import { draftFeedback } from "../../../src/feedback/feedback.js";
@@ -32,7 +32,7 @@ import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
 import { runCuaParticipants } from "../../../src/routes/computer-use/participant-execution.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import {
   type DesktopParticipantRun,
   type ParticipantRunOutcome,
@@ -43,8 +43,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -124,7 +124,7 @@ function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
 }
 
 /** The seams, writable so a test can swap one. */
-type TestDeps = { -readonly [K in keyof LabDeps]: LabDeps[K] };
+type TestDeps = { -readonly [K in keyof StudyDeps]: StudyDeps[K] };
 
 /** The keys every fake fan-out run gets. */
 const FANOUT_ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
@@ -277,12 +277,12 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
 /** A 4-participant differentiated roster on a loopback app-url subject. */
 function fanoutConfig(overrides?: {
   concurrency?: number;
-  lanes?: LabConfig["actors"][0]["lanes"];
+  lanes?: StudyConfig["actors"][0]["lanes"];
   template?: string;
   reasoningEffort?: string;
-}): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+}): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "fanout-proof",
     title: "Fan-out proof",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -415,7 +415,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
   });
 
   it("a 4-participant roster yields one bundle, simCount 4, per-participant requested screens, a plan event, contract statuses; verifyRun ok", async () => {
-    const planEvents: LabEvent[] = [];
+    const planEvents: StudyEvent[] = [];
     const outcome = await runLab(fanoutConfig(), {
       cwd,
       dryRun: true,
@@ -604,7 +604,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
 });
 
 /** The computer-use plan a fixture config makes; the bundle reads the lab's identity from it. */
-function planOf(config: LabConfig): ComputerUsePlan {
+function planOf(config: StudyConfig): ComputerUsePlan {
   const planned = planComputerUseLab(config, { dryRun: true });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return planned.plan;
@@ -1999,9 +1999,9 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   });
 
   describe("clone subject across two participants", () => {
-    const cloneFanoutConfig = (): LabConfig => {
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+    const cloneFanoutConfig = (): StudyConfig => {
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "clone-fanout-proof",
         title: "Clone fan-out proof",
         subject: {
@@ -2188,8 +2188,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   it("geometry mismatch ⇒ DEVICE_GEOMETRY (the per-participant device claim is verified in-sandbox)", async () => {
     // Single participant whose desktop reports the wrong dimensions.
     const handle = makeFanoutModule({ geometryOverride: () => [800, 600] });
-    const config = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const config = parseStudy({
+      schema: V2_SCHEMA,
       id: "geometry-proof",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", mission: "Explore." }],
@@ -2300,7 +2300,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
 
   it("re-enforces clone.fanout rejection at the engine even if a config bypasses the parser", async () => {
     const base = fanoutConfig({ concurrency: 2 });
-    const tampered = { ...base, subject: { ...base.subject, clone: { fanout: 2 } } } as LabConfig;
+    const tampered = { ...base, subject: { ...base.subject, clone: { fanout: 2 } } } as StudyConfig;
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
@@ -2400,9 +2400,9 @@ describe("cua fan-out: cost estimate (sum participant token lines + one aggregat
 });
 
 describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome window minimum (no clip)", () => {
-  const cfg = (device?: string, rawResolution?: [number, number]): LabConfig => {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+  const cfg = (device?: string, rawResolution?: [number, number]): StudyConfig => {
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "floor-probe",
       title: "floor probe",
       subject: { source: "app-url", appUrl: "https://example.com/" },

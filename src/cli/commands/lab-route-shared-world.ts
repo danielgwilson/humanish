@@ -1,8 +1,8 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { resolveLabDryRun } from "../../study/plan.js";
+import { resolveStudyDryRun } from "../../study/plan.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -29,7 +29,7 @@ import { studyResultIdentity } from "../../run/study-result.js";
 interface SharedWorldRouteArgs {
   command: Command;
   io: CliIo;
-  config: LabConfig;
+  config: StudyConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }
@@ -41,7 +41,7 @@ interface SharedWorldRouteArgs {
  */
 export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | undefined {
   const wantsMachine = wantsJson(args.command);
-  const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
+  const dryRun = resolveStudyDryRun(args.config, args.options.dryRun, true) ?? true;
   const shouldOpen = resolveRouteShouldOpen({
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,

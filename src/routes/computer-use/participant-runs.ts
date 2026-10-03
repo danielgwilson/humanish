@@ -14,7 +14,7 @@ import {
 } from "../../study/plan-participants.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { resolveParticipant } from "../../run/participant.js";
-import { type LabConfig } from "../../study/types.js";
+import { type StudyConfig } from "../../study/types.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../study/persona.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunRerunLineage } from "../../run/bundle.js";
@@ -42,7 +42,7 @@ import { digestUrl } from "./bundle-parts.js";
 import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-prompt.js";
 import { resolveCuaRerunSelection } from "./rerun-selection.js";
 
-export function defaultSessionTimeoutMs(config: LabConfig): number {
+export function defaultSessionTimeoutMs(config: StudyConfig): number {
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
   if (!provisionedRoute) return DEFAULT_APP_URL_SESSION_TIMEOUT_MS;
@@ -64,7 +64,7 @@ export function defaultSessionTimeoutMs(config: LabConfig): number {
  *  reclamation buffer. Local-tree shares the clone route's provisioning budget: it swaps a
  *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
  *  costs the same wall-clock room either way. */
-export function resolveParticipantSandboxMs(config: LabConfig): number {
+export function resolveParticipantSandboxMs(config: StudyConfig): number {
   if (isLocalBrowserLab(config)) return LOCAL_BROWSER_LIFETIME_MS;
   const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const provisionedRoute =
@@ -128,7 +128,7 @@ interface PlannedParticipants {
 }
 
 /** The same inputs from a config, for callers that have no plan. */
-function plannedParticipantsOf(config: LabConfig, countOverride?: number): PlannedParticipants {
+function plannedParticipantsOf(config: StudyConfig, countOverride?: number): PlannedParticipants {
   const participants = computerUseParticipants(config, countOverride);
   return {
     participants,
@@ -236,7 +236,7 @@ function participantRunsAndPlan(
  * marked $0 (dryRun: true).
  */
 export function resolveCuaParticipantPlan(
-  config: LabConfig,
+  config: StudyConfig,
   opts: {
     countOverride?: number;
     env?: Record<string, string | undefined>;

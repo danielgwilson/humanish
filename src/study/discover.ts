@@ -1,4 +1,4 @@
-import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
+import { studyPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
 import { personaBrief, PersonaConfigError } from "./persona.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
 import { constants } from "node:fs";
@@ -7,8 +7,8 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
-import { parseLabConfig } from "./config.js";
-import { STUDY_SCHEMA, type LabConfig } from "./types.js";
+import { parseStudy } from "./config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "./types.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -22,16 +22,16 @@ import { studyFileCandidates, studyFileStem, STUDY_DIRECTORIES } from "./files.j
 const STUDY_LIST_SCHEMA = "humanish.study-list.v1";
 const STUDY_SHOW_SCHEMA = "humanish.study-show.v1";
 
-type LabOrigin = "committed" | "ignored" | "explicit";
+type StudyOrigin = "committed" | "ignored" | "explicit";
 
-interface ResolvedLabConfig {
-  config: LabConfig;
-  origin: LabOrigin;
+interface ResolvedStudyConfig {
+  config: StudyConfig;
+  origin: StudyOrigin;
   path: string;
   warnings: string[];
 }
 
-export interface LabResolveFailure {
+export interface StudyResolveFailure {
   ok: false;
   cwd: string;
   /** The study the caller asked for, as given. */
@@ -43,12 +43,12 @@ export interface LabResolveFailure {
   warnings: string[];
 }
 
-export type LabResolveResult = ({ ok: true } & ResolvedLabConfig) | LabResolveFailure;
+export type StudyResolveResult = ({ ok: true } & ResolvedStudyConfig) | StudyResolveFailure;
 
-export interface LabListEntry {
+export interface StudyListEntry {
   id: string;
-  source: LabConfig["subject"]["source"];
-  origin: LabOrigin;
+  source: StudyConfig["subject"]["source"];
+  origin: StudyOrigin;
   path: string;
   title?: string;
   /**
@@ -61,15 +61,15 @@ export interface LabListEntry {
   error?: string;
 }
 
-export interface LabListResult {
+export interface StudyListResult {
   schema: typeof STUDY_LIST_SCHEMA;
   ok: true;
   cwd: string;
-  studies: LabListEntry[];
+  studies: StudyListEntry[];
   warnings: string[];
 }
 
-export interface LabInspectResult {
+export interface StudyInspectResult {
   /** Persona context only, before route instructions and runtime grants. */
   personas?: Array<{ id: string; resolved: boolean; brief?: ActorPersonaRef["brief"] }>;
   schema: typeof STUDY_SHOW_SCHEMA;
@@ -77,10 +77,10 @@ export interface LabInspectResult {
   cwd: string;
   /** The study the caller asked for, as given. */
   study: string;
-  config?: LabConfig;
-  origin?: LabOrigin;
+  config?: StudyConfig;
+  origin?: StudyOrigin;
   path?: string;
-  error?: LabResolveFailure["error"];
+  error?: StudyResolveFailure["error"];
   warnings: string[];
 }
 
@@ -101,27 +101,27 @@ type ManagedDirectoryResult =
   | { status: "unsafe"; message: string }
   | { status: "ok"; binding: ManagedDirectoryBinding };
 
-export async function resolveLabManifest(cwd: string, lab: string): Promise<LabResolveResult> {
+export async function resolveStudyManifest(cwd: string, lab: string): Promise<StudyResolveResult> {
   const resolvedCwd = path.resolve(cwd);
   const warnings: string[] = [];
   const projectRoot = await bindProjectRoot(resolvedCwd);
   if (!projectRoot) {
-    return invalidLab(
+    return invalidStudy(
       { cwd: resolvedCwd, lab, warnings },
       "Project root failed containment validation.",
     );
   }
 
-  if (labLooksLikePath(lab)) {
+  if (studyLooksLikePath(lab)) {
     const requestedPath = path.resolve(resolvedCwd, lab);
     const read = await readExplicitManifest(projectRoot, requestedPath);
     if (read.status === "missing") {
-      return labNotFound(resolvedCwd, lab, warnings);
+      return studyNotFound(resolvedCwd, lab, warnings);
     }
     if (read.status === "unsafe") {
-      return invalidLab({ cwd: resolvedCwd, lab, warnings }, read.message);
+      return invalidStudy({ cwd: resolvedCwd, lab, warnings }, read.message);
     }
-    return parseResolvedLab({
+    return parseResolvedStudy({
       cwd: resolvedCwd,
       lab,
       origin: "explicit",
@@ -140,7 +140,7 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
       continue;
     }
     if (read.status === "unsafe") {
-      return invalidLab({ cwd: resolvedCwd, lab, warnings }, read.message);
+      return invalidStudy({ cwd: resolvedCwd, lab, warnings }, read.message);
     }
     if (candidate.directory.family === "studies") {
       for (const other of candidates.filter((entry) => entry.directory.family === "labs")) {
@@ -154,7 +154,7 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
           );
       }
     }
-    return parseResolvedLab({
+    return parseResolvedStudy({
       cwd: resolvedCwd,
       lab,
       origin: candidate.directory.origin,
@@ -164,13 +164,13 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
     });
   }
 
-  return labNotFound(resolvedCwd, lab, warnings);
+  return studyNotFound(resolvedCwd, lab, warnings);
 }
 
-export async function listLabManifests(cwd: string): Promise<LabListResult> {
+export async function listStudyManifests(cwd: string): Promise<StudyListResult> {
   const resolvedCwd = path.resolve(cwd);
   const warnings: string[] = [];
-  const listed = new Map<string, LabListEntry>();
+  const listed = new Map<string, StudyListEntry>();
   const projectRoot = await bindProjectRoot(resolvedCwd);
   if (!projectRoot) {
     return {
@@ -229,7 +229,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
         continue;
       }
 
-      const parsed = parseResolvedLab({
+      const parsed = parseResolvedStudy({
         cwd: resolvedCwd,
         lab: name.replace(/\.(?:ya?ml)$/i, ""),
         origin: entry.origin,
@@ -284,8 +284,8 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
   };
 }
 
-export async function inspectLabManifest(cwd: string, lab: string): Promise<LabInspectResult> {
-  const resolved = await resolveLabManifest(cwd, lab);
+export async function inspectStudyManifest(cwd: string, lab: string): Promise<StudyInspectResult> {
+  const resolved = await resolveStudyManifest(cwd, lab);
   if (!resolved.ok) {
     return {
       schema: STUDY_SHOW_SCHEMA,
@@ -299,7 +299,7 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
 
   let personaResolution;
   try {
-    personaResolution = await resolveCommittedPersonasForCwd(cwd, labPersonaIds(resolved.config));
+    personaResolution = await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config));
   } catch (error) {
     if (!(error instanceof PersonaConfigError)) throw error;
     return {
@@ -313,7 +313,7 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
   }
   return {
     schema: STUDY_SHOW_SCHEMA,
-    personas: labPersonaIds(resolved.config).map((id) => {
+    personas: studyPersonaIds(resolved.config).map((id) => {
       const persona = personaResolution.personas.get(id);
       return { id, resolved: !!persona, ...(persona ? { brief: personaBrief(persona) } : {}) };
     }),
@@ -327,27 +327,27 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
   };
 }
 
-function parseResolvedLab(args: {
+function parseResolvedStudy(args: {
   cwd: string;
   lab: string;
-  origin: LabOrigin;
+  origin: StudyOrigin;
   path: string;
   warnings: string[];
   contents: string;
-}): LabResolveResult {
+}): StudyResolveResult {
   let raw: unknown;
   try {
     raw = parse(args.contents);
   } catch (error: unknown) {
-    return invalidLab(
+    return invalidStudy(
       args,
       error instanceof Error ? error.message : "The study file's YAML could not be parsed.",
     );
   }
 
-  const parsed = parseLabConfig(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) {
-    return invalidLab(args, parsed.error.message);
+    return invalidStudy(args, parsed.error.message);
   }
 
   const warnings = [...args.warnings, ...parsed.warnings];
@@ -584,14 +584,14 @@ async function assertManagedDirectoryBinding(
   }
 }
 
-function invalidLab(
+function invalidStudy(
   args: {
     cwd: string;
     lab: string;
     warnings: string[];
   },
   message: string,
-): LabResolveFailure {
+): StudyResolveFailure {
   return {
     ok: false,
     cwd: args.cwd,
@@ -622,7 +622,7 @@ function ambiguousStudy(
   name: string,
   paths: [studiesPath: string, labsPath: string],
   warnings: string[],
-): LabResolveFailure {
+): StudyResolveFailure {
   const [studiesPath, labsPath] = paths.map((entry) => entry.replace(/\\/g, "/"));
   return {
     ok: false,
@@ -636,7 +636,7 @@ function ambiguousStudy(
   };
 }
 
-function labNotFound(cwd: string, lab: string, warnings: string[]): LabResolveFailure {
+function studyNotFound(cwd: string, lab: string, warnings: string[]): StudyResolveFailure {
   return {
     ok: false,
     cwd,
@@ -649,7 +649,7 @@ function labNotFound(cwd: string, lab: string, warnings: string[]): LabResolveFa
   };
 }
 
-function labLooksLikePath(lab: string): boolean {
+function studyLooksLikePath(lab: string): boolean {
   return (
     lab.endsWith(".yaml") ||
     lab.endsWith(".yml") ||

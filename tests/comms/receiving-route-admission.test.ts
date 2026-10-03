@@ -2,8 +2,8 @@ import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseLabConfig } from "../../src/study/config.js";
-import { type LabConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { type StudyConfig } from "../../src/study/types.js";
 import { runLab } from "../../src/run-lab.js";
 import { routeOf } from "../../src/study/plan.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
@@ -14,16 +14,16 @@ const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
 ) as Array<{
   name: string;
-  config: LabConfig;
+  config: StudyConfig;
   route: string;
 }>;
-function baseline(raw: LabConfig): LabConfig {
-  const result = parseLabConfig(raw);
+function baseline(raw: StudyConfig): StudyConfig {
+  const result = parseStudy(raw);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 /** Direct callers construct typed runtime configs; no parser call may rescue an inert backend. */
-function receiving(config: LabConfig): LabConfig {
+function receiving(config: StudyConfig): StudyConfig {
   return Object.assign(config, { comms: { email: { kind: "real", connection: "mail" } } });
 }
 const unsupported = fixtures.filter((row) => !["computer-use", "shared-world"].includes(row.route));

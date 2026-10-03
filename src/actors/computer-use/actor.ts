@@ -30,7 +30,7 @@ import {
 import { defaultRedactionHooks, type RedactionHooks } from "../../evidence/redaction.js";
 import type { DwellWindow, StopWhen } from "../stop-conditions.js";
 import { estimateActorCostForExecution } from "../../run/pricing.js";
-import type { LabTask } from "../../study/tasks.js";
+import type { StudyTask } from "../../study/tasks.js";
 
 export interface CuaActorSessionOptions {
   /** The composed mission (persona + scenario/participant instruction) handed to the model. */
@@ -83,7 +83,7 @@ export interface CuaActorSessionOptions {
   /** The lab's declared protocol; the loop records a corroborated task funnel on the trace.
    *  Only the `success` criteria are read here; the participant-facing goals are already composed
    *  into `instructions` upstream, and the criteria never reach the prompt. */
-  tasks?: readonly LabTask[];
+  tasks?: readonly StudyTask[];
   /** Fail-closed spend cap (USD) threaded to the loop; absent = uncapped. See CuaLoopOptions.maxUsd. */
   maxUsd?: number;
   /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */

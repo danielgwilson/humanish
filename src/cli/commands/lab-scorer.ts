@@ -1,7 +1,7 @@
 import { loadAdapterScorer, type AdapterScorerModule } from "../../study/adapter-scorer-loader.js";
-import type { LabRoute } from "../../study/plan.js";
+import type { StudyRoute } from "../../study/plan.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import type { RunResult } from "../../run/results.js";
 
 /** A config-declared scorer that resolved + loaded fail-closed, ready to thread into a backend. */
@@ -18,8 +18,8 @@ export interface LoadedAdapterScorer {
  */
 export async function maybeLoadAdapterScorer(args: {
   cwd: string;
-  config: LabConfig;
-  route: LabRoute;
+  config: StudyConfig;
+  route: StudyRoute;
   flag: string | undefined;
 }): Promise<
   { ok: true; scorer?: LoadedAdapterScorer } | { ok: false; error: NonNullable<RunResult["error"]> }

@@ -1,6 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
 import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
 import { showObserver } from "../observer-follow.js";
@@ -11,7 +11,7 @@ import type { RouteRun } from "./lab-route-run.js";
 interface ScriptedRouteArgs {
   command: Command;
   io: CliIo;
-  config: LabConfig;
+  config: StudyConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }

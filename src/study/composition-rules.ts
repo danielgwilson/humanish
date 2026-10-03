@@ -1,6 +1,6 @@
 // Which subject, target and actor compositions a lab may declare. Each rule returns the refusal
 // message for the first thing its composition gets wrong, or null. compositionReason runs them in
-// the parser's order, and only parseLabConfig calls it. planLab does not: each route planner checks
+// the parser's order, and only parseStudy calls it. planStudy does not: each route planner checks
 // a library caller's config itself, under its route's error codes. The planners call the shared
 // checks in lab/validation.ts and desktopCliProductReason below. The other subject rules here have
 // planner counterparts whose conditions and wording differ (clone serve and repo, local-tree
@@ -19,7 +19,7 @@ import {
   registeredTerminalActors,
   isComputerUseComposition,
 } from "./routing.js";
-import type { LabConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 import {
   cloneTargetValidationReason,
   computerUseValidationReason,
@@ -28,7 +28,7 @@ import {
 import { rosterOf } from "./parse/actors.js";
 
 /** The first composition rule a config breaks, in the parser's order, or null. */
-export function compositionReason(config: LabConfig): string | null {
+export function compositionReason(config: StudyConfig): string | null {
   return (
     thisRepoValidationReason(config) ??
     localAppValidationReason(config) ??
@@ -55,7 +55,7 @@ export const THIS_REPO_DRY_RUN_ONLY =
 
 // this-repo subjects run locally and dry-run only: there is no live execution target for the
 // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
-function thisRepoValidationReason(config: LabConfig): string | null {
+function thisRepoValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "this-repo") {
     if (config.execution?.target) {
       return "`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally.";
@@ -74,7 +74,7 @@ function thisRepoValidationReason(config: LabConfig): string | null {
 // enforced in parseSubject). The actual "no inProcess executor supplied" case is inherently an
 // engine-time decision (the parser cannot know whether a library caller will pass one), so
 // it fails closed in runCuaActorLab with HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR.
-function localAppValidationReason(config: LabConfig): string | null {
+function localAppValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "local-app") {
     const type = config.actors[0]?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "local") {
@@ -99,7 +99,7 @@ function localAppValidationReason(config: LabConfig): string | null {
 // app-url routes: the actor type is a real dispatch key (registry-resolved). The actor's run kind
 // picks the substrate: a scripted-browser actor runs locally against the declared loopback
 // app; a computer-use actor drives a hosted desktop browser. Fail closed on mis-configs.
-function appUrlValidationReason(config: LabConfig): string | null {
+function appUrlValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "app-url") {
     const type = config.actors[0]?.type ?? "";
     if (actorResolvesToScriptedBrowser(type)) {
@@ -148,7 +148,7 @@ function appUrlValidationReason(config: LabConfig): string | null {
 }
 
 // Scripted-browser actors on any other subject: only a provisioned clone on e2b-desktop.
-function scriptedBrowserValidationReason(config: LabConfig): string | null {
+function scriptedBrowserValidationReason(config: StudyConfig): string | null {
   if (
     config.subject.source !== "app-url" &&
     actorResolvesToScriptedBrowser(config.actors[0]?.type)
@@ -210,7 +210,7 @@ function scriptedBrowserValidationReason(config: LabConfig): string | null {
 // clone × e2b-desktop disambiguates on the actor's run kind: a computer-use actor means the study
 // clones and serves the subject in-sandbox, then drives it. Scripted-browser actors were checked
 // above.
-function cloneComputerUseValidationReason(config: LabConfig): string | null {
+function cloneComputerUseValidationReason(config: StudyConfig): string | null {
   if (
     config.subject.source === "clone" &&
     config.execution?.target === "e2b-desktop" &&
@@ -238,7 +238,7 @@ function cloneComputerUseValidationReason(config: LabConfig): string | null {
 // mode, so e2b-desktop + a computer-use actor are the only combination this source supports.
 // `subject.serve` is already required at parse time (parseSubject); the repos/clone rejection
 // also already happened there (local-tree never carries git slugs).
-function localTreeValidationReason(config: LabConfig): string | null {
+function localTreeValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "local-tree") {
     if (config.execution?.target !== "e2b-desktop") {
       return "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject.";
@@ -259,13 +259,13 @@ function localTreeValidationReason(config: LabConfig): string | null {
 // Fail-closed on the pairing: a hosted desktop and a computer-use actor, because
 // "watch a person use a terminal" is not something the other substrates can do.
 /** A desktop-cli subject with no product to study. The computer-use planner checks this too. */
-export function desktopCliProductReason(config: LabConfig): string | null {
+export function desktopCliProductReason(config: StudyConfig): string | null {
   return config.subject.source === "desktop-cli" && config.subject.product?.name === undefined
     ? "A desktop-cli subject needs `subject.product.name`: the CLI the participant is asked to use."
     : null;
 }
 
-function desktopCliValidationReason(config: LabConfig): string | null {
+function desktopCliValidationReason(config: StudyConfig): string | null {
   const productReason = desktopCliProductReason(config);
   if (productReason) return productReason;
   if (config.subject.source === "desktop-cli" && config.subject.product !== undefined) {
@@ -288,7 +288,7 @@ function desktopCliValidationReason(config: LabConfig): string | null {
 // parse error): a registered terminal actor only, execution.target e2b-terminal or absent (absent
 // defaults to e2b-terminal, the only target where an in-sandbox agent runs), one participant until
 // fan-out lands.
-function terminalValidationReason(config: LabConfig): string | null {
+function terminalValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "terminal-product") {
     const type = config.actors[0]?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-terminal") {
@@ -315,7 +315,7 @@ function terminalValidationReason(config: LabConfig): string | null {
 // A clone lab is served in-sandbox for a participant to drive, so only a computer-use or a
 // scripted-browser actor can run it. Any other actor would parse and then fail at run start.
 // Terminal actors were already refused above with their own message.
-function cloneActorValidationReason(config: LabConfig): string | null {
+function cloneActorValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "clone") {
     const type = config.actors[0]?.type ?? "";
     if (!actorResolvesToComputerUse(type) && !actorResolvesToScriptedBrowser(type)) {

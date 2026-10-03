@@ -9,13 +9,13 @@ export type {
   LabResult as StudyResult,
   RunLabOptions as RunStudyOptions,
 } from "./run-lab.js";
-export type { LabEvent as StudyEvent } from "./study/run-study-events.js";
+export type { StudyEvent } from "./study/run-study-events.js";
 export type { ProviderContext } from "./study/run-study-homes.js";
 export { routeOf } from "./study/plan.js";
-export type { LabRoute as StudyRoute } from "./study/plan.js";
-export { parseLabConfig as parseStudy } from "./study/config.js";
+export type { StudyRoute } from "./study/plan.js";
+export { parseStudy } from "./study/config.js";
 export { STUDY_SCHEMA } from "./study/types.js";
-export type { LabConfig as StudyConfig } from "./study/types.js";
+export type { StudyConfig } from "./study/types.js";
 
 // Read a run.
 export { verifyRun } from "./verify/verify.js";
@@ -49,7 +49,7 @@ export type { E2BDesktopSandbox } from "./substrates/e2b/sdk.js";
 // Score a run.
 export { browserScorer, terminalScorer } from "./study/adapter-scorer-loader.js";
 export type { AdapterScorerModule, AdapterScoringContext } from "./study/adapter-scorer-loader.js";
-export type { BrowserLabScoringContext as BrowserScoringContext } from "./study/adapter-extension.js";
+export type { BrowserScoringContext } from "./study/adapter-extension.js";
 export type { TerminalProductScoringContext } from "./routes/terminal/types.js";
 export type { RunAdapterArtifact, RunAdapterScore } from "./run/bundle.js";
 

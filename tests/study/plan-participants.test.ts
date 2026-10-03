@@ -10,14 +10,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 import {
   computerUseParticipants,
   sharedWorldParticipants,
   type ComputerUseParticipant,
 } from "../../src/study/plan-participants.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { FALLBACK_PERSONA_ID } from "../../src/routes/computer-use/participant-prompt.js";
 import { loadCuaParticipants } from "../../src/routes/computer-use/participant-runs.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
@@ -38,13 +38,13 @@ async function tempProject(): Promise<string> {
   return dir;
 }
 
-function parsed(raw: Record<string, unknown>): LabConfig {
-  const result = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "plan-participants", ...raw });
+function parsed(raw: Record<string, unknown>): StudyConfig {
+  const result = parseStudy({ schema: V2_SCHEMA, id: "plan-participants", ...raw });
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 
-async function committedLabsOn(route: string): Promise<[string, LabConfig][]> {
+async function committedLabsOn(route: string): Promise<[string, StudyConfig][]> {
   return (await committedLabs(ROOT)).filter(([, config]) => routeOf(config) === route);
 }
 
@@ -54,7 +54,7 @@ const cuApp = {
   execution: { target: "e2b-desktop", timeoutMs: 60_000 },
 };
 
-const cuVariants: [string, LabConfig, number | undefined][] = [
+const cuVariants: [string, StudyConfig, number | undefined][] = [
   [
     "homogeneous count with actor-level fields",
     parsed({
@@ -167,9 +167,9 @@ const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 describe("computerUseParticipants", () => {
   it("matches the participant specs loadCuaParticipants builds, for committed studies and variants", async () => {
-    const configs: [string, LabConfig, number | undefined][] = [
+    const configs: [string, StudyConfig, number | undefined][] = [
       ...(await committedLabsOn("computer-use")).map(
-        ([id, config]) => [id, config, undefined] as [string, LabConfig, undefined],
+        ([id, config]) => [id, config, undefined] as [string, StudyConfig, undefined],
       ),
       ...cuVariants,
     ];
@@ -233,7 +233,7 @@ describe("sharedWorldParticipants", () => {
   it("matches the participants a shared-world dry run records", async () => {
     const configs = [
       ...(await committedLabsOn("shared-world")),
-      ["unnamed seats", unnamedSeats] as [string, LabConfig],
+      ["unnamed seats", unnamedSeats] as [string, StudyConfig],
     ];
     for (const [name, config] of configs) {
       const cwd = await tempProject();

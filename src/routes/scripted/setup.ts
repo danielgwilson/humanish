@@ -17,7 +17,7 @@ import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import { type ScriptedBrowserLabResult, type ScriptedRunInput } from "./types.js";
-import type { LabDeps } from "../../study/study-deps.js";
+import type { StudyDeps } from "../../study/study-deps.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
 // Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
@@ -28,7 +28,7 @@ const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 export interface ScriptedRunSetup {
   cwd: string;
   physicalCwd: string;
-  deps: LabDeps;
+  deps: StudyDeps;
   warnings: string[];
   failed: (
     code: NonNullable<ScriptedBrowserLabResult["error"]>["code"],

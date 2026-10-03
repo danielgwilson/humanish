@@ -1,9 +1,9 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { type InternalRunLabOptions } from "../../run-lab.js";
-import { resolveLabDryRun } from "../../study/plan.js";
+import { resolveStudyDryRun } from "../../study/plan.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { startExposedObserver, validateExposure } from "../../observer/exposure.js";
@@ -38,7 +38,7 @@ import { studyResultIdentity } from "../../run/study-result.js";
 interface ComputerUseRouteArgs {
   command: Command;
   io: CliIo;
-  config: LabConfig;
+  config: StudyConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }
@@ -148,7 +148,7 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     return undefined;
   }
 
-  const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
+  const dryRun = resolveStudyDryRun(args.config, args.options.dryRun, true) ?? true;
   const port = parseObserverPort(args.options.port ?? "0");
   const wantsFollow =
     args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;

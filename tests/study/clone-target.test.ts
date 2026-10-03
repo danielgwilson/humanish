@@ -5,9 +5,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runLab } from "../../src/run-lab.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -15,7 +15,7 @@ const repoRoot = path.resolve(import.meta.dirname, "../..");
 
 function cloneLab(actor: string, target: string | undefined): Record<string, unknown> {
   return {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "clone-target",
     subject: {
       source: "clone",
@@ -31,8 +31,8 @@ function cloneLab(actor: string, target: string | undefined): Record<string, unk
 }
 
 /** A config that never went through the parser, as a library caller can hand one to runLab. */
-function unparsedCloneLab(actor: string, target: string | undefined): LabConfig {
-  return cloneLab(actor, target) as unknown as LabConfig;
+function unparsedCloneLab(actor: string, target: string | undefined): StudyConfig {
+  return cloneLab(actor, target) as unknown as StudyConfig;
 }
 
 /** Counts desktop module loads; a refused lab must never reach one. */
@@ -55,7 +55,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
     { target: "e2b-terminal", got: 'got "e2b-terminal"' },
     { target: undefined, got: "it is absent" },
   ])("rejects a computer-use clone lab with target $target at parse", ({ target, got }) => {
-    const result = parseLabConfig(cloneLab("openai-computer-use", target));
+    const result = parseStudy(cloneLab("openai-computer-use", target));
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
@@ -66,12 +66,12 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
   it("no longer lets an absent target skip the clone serve check", () => {
     const lab = cloneLab("openai-computer-use", undefined);
     const { serve: _serve, ...subject } = lab.subject as Record<string, unknown>;
-    const result = parseLabConfig({ ...lab, subject });
+    const result = parseStudy({ ...lab, subject });
     expect(result.ok).toBe(false);
   });
 
   it("accepts a computer-use clone lab on e2b-desktop", () => {
-    expect(parseLabConfig(cloneLab("openai-computer-use", "e2b-desktop")).ok).toBe(true);
+    expect(parseStudy(cloneLab("openai-computer-use", "e2b-desktop")).ok).toBe(true);
   });
 
   it.each(["local", undefined])(
@@ -132,7 +132,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
       };
       const source = raw.subject?.source;
       if (source !== "clone" && source !== "local-tree") continue;
-      const result = parseLabConfig(raw);
+      const result = parseStudy(raw);
       expect(result.ok ? "ok" : result.error.message, file).toBe("ok");
       checked.push(file);
     }

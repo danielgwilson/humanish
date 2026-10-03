@@ -1,7 +1,7 @@
 import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
 import {
   phaseEvent,
-  type LabEvent,
+  type StudyEvent,
   type SetupTarget,
 } from "../../../src/study/run-study-events.js";
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
@@ -47,7 +47,7 @@ import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
 } from "../../../src/routes/computer-use/self-report.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import {
   judgeOneParticipant,
   participantStatus as participantStatusForCredibility,
@@ -61,8 +61,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
@@ -389,9 +389,9 @@ function browserFeedback(ctx: BrowserLabScoringContext): RunFeedbackCandidate[] 
   ];
 }
 
-function cuaConfig(appUrl = "http://127.0.0.1:3000/"): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function cuaConfig(appUrl = "http://127.0.0.1:3000/"): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "cua-routing-proof",
     title: "CUA routing proof",
     subject: { source: "app-url", appUrl },
@@ -428,9 +428,9 @@ function cloneCuaConfig(extra?: {
   readyTimeoutMs?: number;
   state?: unknown;
   keep?: boolean;
-}): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+}): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "cua-clone-proof",
     title: "CUA clone proof",
     subject: {
@@ -464,8 +464,8 @@ function cloneCuaConfig(extra?: {
 describe("lab routing (app-url → cua)", () => {
   it("routeOf sends app-url to computer-use and leaves the other routes untouched", () => {
     expect(routeOf(cuaConfig())).toBe("computer-use");
-    const synthetic = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const synthetic = parseStudy({
+      schema: V2_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
@@ -476,14 +476,14 @@ describe("lab routing (app-url → cua)", () => {
     // skips the parser still routes to cua.
     for (const type of ["humanish-setup", "codex-app-server"]) {
       const clone = {
-        schema: LAB_CONFIG_SCHEMA,
+        schema: V2_SCHEMA,
         id: "c",
         subject: { source: "clone", repos: ["example-org/example-app"] },
         actors: [{ type }],
         execution: { target: "e2b-desktop" },
       } as const;
-      expect(parseLabConfig(clone).ok).toBe(false);
-      expect(routeOf(clone as unknown as LabConfig)).toBe("computer-use");
+      expect(parseStudy(clone).ok).toBe(false);
+      expect(routeOf(clone as unknown as StudyConfig)).toBe("computer-use");
     }
   });
 
@@ -493,12 +493,12 @@ describe("lab routing (app-url → cua)", () => {
     // sandbox or filesystem work.
     // The parser refuses this config now; runLab is reached by a library caller that skips it.
     const meta = {
-      schema: LAB_CONFIG_SCHEMA,
+      schema: V2_SCHEMA,
       id: "m2",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
       execution: { target: "e2b-desktop" },
-    } as unknown as LabConfig;
+    } as unknown as StudyConfig;
     expect(routeOf(meta)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
     try {
@@ -512,8 +512,8 @@ describe("lab routing (app-url → cua)", () => {
     }
     // A computer-use clone lab without the desktop target no longer parses; it would still have
     // routed to cua and run on a hosted desktop.
-    const untargeted = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const untargeted = parseStudy({
+      schema: V2_SCHEMA,
       id: "s2",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "openai-computer-use" }],
@@ -531,8 +531,8 @@ describe("desktop-cli runtime prerequisites", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  function configFor(install?: string): LabConfig {
-    const parsed = parseLabConfig({
+  function configFor(install?: string): StudyConfig {
+    const parsed = parseStudy({
       ...cuaConfig(),
       subject: {
         source: "desktop-cli",
@@ -652,8 +652,8 @@ describe("runCuaActorLab", () => {
     // The drain's error quotes the run's OpenAI key and the catch's bearer token; the warning must
     // carry neither.
     const token = ["tango", "lima", "catch", "credential"].join("-");
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-external-comms",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
@@ -721,8 +721,8 @@ describe("runCuaActorLab", () => {
     deliveries: () => Promise<Response>;
   }) {
     const catchBaseUrl = options.catchBaseUrl ?? "https://catch.example.test";
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-external-comms",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
@@ -841,8 +841,8 @@ describe("runCuaActorLab", () => {
   it("records a drained operator-hosted catch in the bundle and leaves the verdict alone", async () => {
     const tokenEnv = "CATCH_TOKEN";
     const token = ["synthetic", "catch", "token"].join("-");
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-external-comms-drained",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
@@ -1227,7 +1227,7 @@ describe("runCuaActorLab", () => {
     const prepared: string[] = [];
     const targets: SetupTarget[] = [];
 
-    const deps: LabDeps = {
+    const deps: StudyDeps = {
       desktopModule: async () => module,
       // Wrap the real session: real provider (scripted transport), real executor, the run's
       // desktop and writeScreenshot: only the network is faked.
@@ -1342,8 +1342,8 @@ describe("runCuaActorLab", () => {
   });
 
   it("continues the E2B study with a warning when optional recording cannot start", async () => {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-recording-startup-failure",
       title: "Recording startup failure",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1474,8 +1474,8 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-mobile-fidelity",
       title: "Mobile fidelity",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1653,8 +1653,8 @@ describe("runCuaActorLab", () => {
   }
   async function runLaterTabLane(sandbox: ReturnType<typeof makeFakeSandbox>) {
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-mobile-fidelity-drift",
       title: "Mobile fidelity drift",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1728,8 +1728,8 @@ describe("runCuaActorLab", () => {
   it("a lab's dwell window reaches the session the participant runs: actor default, participant override", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-dwell-plumbing",
       title: "Dwell plumbing",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1819,8 +1819,8 @@ describe("runCuaActorLab", () => {
     policies: Record<string, unknown>,
   ) {
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-camera",
       title: "Participant camera",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -1968,8 +1968,8 @@ describe("runCuaActorLab", () => {
       return realCreate(...args);
     };
     module.Sandbox.create = failingOnce as unknown as typeof module.Sandbox.create;
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-create-retry",
       title: "Sandbox create retry",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -2024,8 +2024,8 @@ describe("runCuaActorLab", () => {
       throw new Error("401 Unauthorized: invalid API key");
     };
     module.Sandbox.create = alwaysUnauthorized as unknown as typeof module.Sandbox.create;
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-create-no-retry",
       title: "Sandbox create, no retry",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -2076,8 +2076,8 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-mobile-fidelity-desktop-lane",
       title: "Mobile fidelity, desktop lane",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -2143,8 +2143,8 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-mobile-fidelity-firefox",
       title: "Mobile fidelity on Firefox",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -2842,7 +2842,7 @@ describe("runCuaActorLab", () => {
 
   it("policies.redactScreenshots: true persists blurred screenshots and drops the raw warning", async () => {
     const config = cuaConfig();
-    const redactedConfig: LabConfig = {
+    const redactedConfig: StudyConfig = {
       ...config,
       policies: { ...config.policies, redactScreenshots: true },
     };
@@ -2886,7 +2886,7 @@ describe("runCuaActorLab", () => {
 
   it("policies.allowPublicTargets lets the engine drive a declared public app-url target", async () => {
     const config = cuaConfig();
-    const publicConfig: LabConfig = {
+    const publicConfig: StudyConfig = {
       ...config,
       subject: { source: "app-url", appUrl: "https://preview-xyz.vercel.app/" },
       policies: { allowPublicTargets: true },
@@ -2934,7 +2934,7 @@ describe("runCuaActorLab", () => {
   it("comms:email:fake: injects the catch env, deploys the catch, and drains captured mail into a digest-only evidence artifact", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...base,
       comms: {
         email: {
@@ -3036,7 +3036,7 @@ describe("runCuaActorLab", () => {
     // because the persona was never handed the address to sign up with or the URL to read.
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...base,
       comms: {
         email: {
@@ -3106,7 +3106,7 @@ describe("runCuaActorLab", () => {
     // it would refresh forever and burn the session on a promise the harness cannot keep.
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...base,
       comms: {
         email: {
@@ -3159,7 +3159,7 @@ describe("runCuaActorLab", () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
     // comms declared but no recipients → the app's send is captured but matches no provisioned inbox.
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...base,
       comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } },
     };
@@ -3226,7 +3226,7 @@ describe("runCuaActorLab", () => {
     const base = cloneCuaConfig();
     // The recipient's `lane` must match the N=1 participant id (`lane-01`) for the inbox
     // instruction to be injected.
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...base,
       comms: {
         email: {
@@ -3315,7 +3315,7 @@ describe("runCuaActorLab", () => {
   it("comms:email:fake: writes an empty inbox up front so /inbox never 404s before mail arrives", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...base,
       comms: {
         email: {
@@ -3371,7 +3371,7 @@ describe("runCuaActorLab", () => {
 
   it("honors subject.clone.keep on failure: leaves the sandbox up for debugging instead of killing it", async () => {
     const config = cloneCuaConfig();
-    const keepConfig: LabConfig = {
+    const keepConfig: StudyConfig = {
       ...config,
       subject: { ...config.subject, clone: { ...config.subject.clone, keep: true } },
     };
@@ -3499,7 +3499,7 @@ describe("runCuaActorLab", () => {
 
   it("device preset drives the E2B desktop resolution + tells the model it's mobile (sim-parity)", async () => {
     const config = cuaConfig();
-    const mobileConfig: LabConfig = {
+    const mobileConfig: StudyConfig = {
       ...config,
       execution: { ...config.execution, target: "e2b-desktop", desktop: { device: "mobile" } },
     };
@@ -3544,7 +3544,7 @@ describe("runCuaActorLab", () => {
   it("device resolution order: raw resolution overrides the preset; default is desktop 1440x950", async () => {
     const def = makeFakeSandbox();
     const defMod = makeFakeModule(def);
-    const defConfig: LabConfig = { ...cuaConfig(), execution: { target: "e2b-desktop" } };
+    const defConfig: StudyConfig = { ...cuaConfig(), execution: { target: "e2b-desktop" } };
     const r1 = await runLab(
       defConfig,
       {
@@ -3565,7 +3565,7 @@ describe("runCuaActorLab", () => {
 
     const ov = makeFakeSandbox();
     const ovMod = makeFakeModule(ov);
-    const ovConfig: LabConfig = {
+    const ovConfig: StudyConfig = {
       ...cuaConfig(),
       execution: { target: "e2b-desktop", desktop: { device: "mobile", resolution: [1024, 768] } },
     };
@@ -3640,7 +3640,7 @@ describe("runCuaActorLab", () => {
   it("launches the requested desktop browser and records browser provenance", async () => {
     const targetUrl =
       "http://127.0.0.1:3000/api/bootstrap?scenario=chrome-proof&redirect=%2Fdashboard";
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...cuaConfig(targetUrl),
       execution: {
         target: "e2b-desktop",
@@ -3686,7 +3686,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("attributes explicit Firefox geometry to Firefox even when stale Chrome CDP is present", async () => {
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...cuaConfig(),
       execution: {
         target: "e2b-desktop",
@@ -3860,7 +3860,7 @@ describe("runCuaActorLab", () => {
     const config = cuaConfig();
     const actor = config.actors[0]!;
     const { laneFocus: _laneFocus, ...actorWithoutLaneFocus } = actor;
-    const tampered: LabConfig = {
+    const tampered: StudyConfig = {
       ...config,
       actors: [{ ...actorWithoutLaneFocus, lanes: [{ id: "../escape" }] }],
     };
@@ -4327,7 +4327,7 @@ describe("runCuaActorLab", () => {
     const { module } = makeFakeModule(sandbox);
     const phaseEvents: SubjectPhaseEvent[] = [];
     const phaseCtxs: Array<{ id: string; index: number; count: number }> = [];
-    const emitted: LabEvent[] = [];
+    const emitted: StudyEvent[] = [];
 
     const outcome = await runLab(
       config,
@@ -4768,7 +4768,7 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
     const tokenEnv = { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" };
-    const tokenDeps: LabDeps = {
+    const tokenDeps: StudyDeps = {
       desktopModule: async () => module,
       runSession: async (options) =>
         runCuaActorSession({
@@ -4791,7 +4791,7 @@ describe("runCuaActorLab", () => {
 
     // Explicit policies.redactRepos: false wins over the token default.
     const explicit = cloneCuaConfig({ env: ["GITHUB_TOKEN"] });
-    const explicitConfig: LabConfig = { ...explicit, policies: { redactRepos: false } };
+    const explicitConfig: StudyConfig = { ...explicit, policies: { redactRepos: false } };
     const sandbox2 = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module: module2 } = makeFakeModule(sandbox2);
     const unredacted = await runLab(
@@ -4806,7 +4806,7 @@ describe("runCuaActorLab", () => {
   it("re-enforces the clone-route structure at the engine (tampered config without serve)", async () => {
     const config = cloneCuaConfig();
     const { serve: _serve, ...subjectWithoutServe } = config.subject;
-    const tampered: LabConfig = { ...config, subject: subjectWithoutServe };
+    const tampered: StudyConfig = { ...config, subject: subjectWithoutServe };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
@@ -4863,9 +4863,9 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
     await rm(cwd, { recursive: true, force: true });
   });
 
-  function templatedConfig(template?: string): LabConfig {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+  function templatedConfig(template?: string): StudyConfig {
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-template-proof",
       title: "CUA template proof",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -4887,10 +4887,10 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
     return parsed.config;
   }
 
-  async function runWith(config: LabConfig) {
+  async function runWith(config: StudyConfig) {
     const sandbox = makeFakeSandbox();
     const { module, created, templates } = makeFakeModule(sandbox);
-    const deps: LabDeps = {
+    const deps: StudyDeps = {
       desktopModule: async () => module,
       runSession: async (options) =>
         runCuaActorSession({
@@ -4943,9 +4943,9 @@ describe("Chrome DevTools readiness after launch", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  function chromeConfig(device: "mobile" | "desktop"): LabConfig {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+  function chromeConfig(device: "mobile" | "desktop"): StudyConfig {
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-devtools-readiness",
       title: "DevTools readiness",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -4972,7 +4972,7 @@ describe("Chrome DevTools readiness after launch", () => {
   }
 
   /** Runs one participant whose launch command printed `markers` after the usual identity lines. */
-  async function runWithLaunch(config: LabConfig, markers: string) {
+  async function runWithLaunch(config: StudyConfig, markers: string) {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) =>
         command.includes("browser_preference='chrome'")
@@ -5478,8 +5478,8 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
 
   it("re-enforces the state declaration at the engine for configs that bypass the parser", async () => {
     const base = cloneCuaConfig();
-    const tamper = (state: unknown): LabConfig =>
-      ({ ...base, subject: { ...base.subject, state } }) as LabConfig;
+    const tamper = (state: unknown): StudyConfig =>
+      ({ ...base, subject: { ...base.subject, state } }) as StudyConfig;
 
     // Bad step name (interpolates into in-sandbox paths: must fail closed).
     const badName = await runCuaActorLab({
@@ -5517,7 +5517,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const appUrlTampered = {
       ...appUrlBase,
       subject: { ...appUrlBase.subject, state: { seed: [{ name: "a", command: "true" }] } },
-    } as LabConfig;
+    } as StudyConfig;
     const onAppUrl = await runCuaActorLab({ cwd, config: appUrlTampered, dryRun: true });
     expect(onAppUrl.ok).toBe(false);
     expect(onAppUrl.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
@@ -5541,9 +5541,9 @@ describe("buildSingleParticipantBundle", () => {
       count?: number;
       caps?: { maxUsd?: number };
       localTree?: { keep?: boolean; exclude?: string[]; maxArchiveBytes?: number };
-    }): LabConfig {
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+    }): StudyConfig {
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "cua-local-tree-proof",
         title: "CUA local-tree proof",
         subject: {
@@ -6269,9 +6269,9 @@ function makeStateProvider(): CuaProvider {
   };
 }
 
-function localAppConfig(appUrl = "http://localhost:5173/"): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function localAppConfig(appUrl = "http://localhost:5173/"): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "downstream-local-app-state",
     title: "State-driven local app",
     subject: { source: "local-app", appUrl },
@@ -7119,9 +7119,9 @@ describe("runCuaActorLab cost estimates", () => {
       usage: { input_tokens: 0, output_tokens: 0 },
     },
   ];
-  function configWithModel(model?: string, caps?: { maxUsd?: number }): LabConfig {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+  function configWithModel(model?: string, caps?: { maxUsd?: number }): StudyConfig {
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "cua-cost-proof",
       title: "CUA cost proof",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -7421,8 +7421,8 @@ describe("adopter-hosted comms on the app-url route", () => {
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     try {
       const port = (server.address() as { port: number }).port;
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "older-external-catch",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
         comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
@@ -7500,8 +7500,8 @@ describe("adopter-hosted comms on the app-url route", () => {
       });
       expect(posted.ok).toBe(true);
 
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "cua-external-comms",
         title: "CUA adopter-hosted comms",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

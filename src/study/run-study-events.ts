@@ -1,13 +1,13 @@
 // What a run reports through RunLabOptions.onEvent, and how a callback failure becomes a run
-// warning. normalizeRunLabOptions (run-study-options.ts) builds the emitter and hands it to the
+// warning. normalizeRunStudyOptions (run-study-options.ts) builds the emitter and hands it to the
 // route hook bags it maps; the event values are built here.
 
 import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
 import type { CuaParticipantPlan } from "../routes/computer-use/types.js";
 import type { SubjectPhaseEvent } from "../subject/steps.js";
 import type { InternalRunLabOptions } from "../run-lab.js";
-import type { LabRoute } from "./plan.js";
-import type { LabConfig } from "./types.js";
+import type { StudyRoute } from "./plan.js";
+import type { StudyConfig } from "./types.js";
 
 /** One participant, as the options' callbacks see it. */
 export interface ParticipantRef {
@@ -27,10 +27,10 @@ export type SetupTarget =
  * the lab plan but do not emit it. `subject-phase` comes from computer use (participant target)
  * and shared world (subject target).
  */
-export type LabEvent =
+export type StudyEvent =
   | {
       type: "plan";
-      route: LabRoute;
+      route: StudyRoute;
       participants: readonly {
         id: string;
         persona: string;
@@ -57,7 +57,7 @@ export type LabEvent =
  * sanitized its own.
  */
 export function knownSecretValues(
-  config: LabConfig,
+  config: StudyConfig,
   options: InternalRunLabOptions,
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
 ): string[] {
@@ -76,13 +76,13 @@ export function knownSecretValues(
  * The emitter the route hook bags call, or undefined without onEvent. It calls onEvent and never
  * waits for it: a throw or a rejected promise becomes a run warning, scrubbed of `secretValues`.
  */
-export function labEventEmitter(
-  onEvent: ((event: LabEvent) => void | Promise<void>) | undefined,
+export function studyEventEmitter(
+  onEvent: ((event: StudyEvent) => void | Promise<void>) | undefined,
   warnings: string[],
   secretValues: () => string[],
-): ((event: LabEvent) => void) | undefined {
+): ((event: StudyEvent) => void) | undefined {
   if (onEvent === undefined) return undefined;
-  return (event: LabEvent): void => {
+  return (event: StudyEvent): void => {
     // Read before the callback runs: the callback can redefine anything on the event.
     const type = event.type;
     // Total: a thrown value can refuse to become a string, and nothing may escape from here.
@@ -107,7 +107,7 @@ export function labEventEmitter(
 }
 
 /** The computer-use participant plan as a `plan` event: ids, personas, devices and digests. */
-export function planEvent(plan: CuaParticipantPlan): LabEvent {
+export function planEvent(plan: CuaParticipantPlan): StudyEvent {
   return {
     type: "plan",
     route: "computer-use",
@@ -120,7 +120,7 @@ export function planEvent(plan: CuaParticipantPlan): LabEvent {
   };
 }
 
-export function phaseEvent(event: SubjectPhaseEvent, target: SetupTarget): LabEvent {
+export function phaseEvent(event: SubjectPhaseEvent, target: SetupTarget): StudyEvent {
   return {
     type: "subject-phase",
     target,

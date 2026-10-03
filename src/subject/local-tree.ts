@@ -1,5 +1,5 @@
 import { failureTail, toErrorMessage } from "../evidence/redaction.js";
-import type { LabSubjectServe, LabSubjectState } from "../study/types.js";
+import type { StudySubjectServe, StudySubjectState } from "../study/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
 import { detachedTimersOf, runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
 import type { Shell } from "../substrates/shell.js";
@@ -29,9 +29,9 @@ export async function provisionLocalTreeSubject(
   args: {
     /** The once-per-run packed archive bytes (shared byte-identically across every participant). */
     archiveBuffer: ArrayBuffer;
-    serve: LabSubjectServe;
+    serve: StudySubjectServe;
     /** Declared subject state (seed steps; external declaration is provenance-only). */
-    state?: LabSubjectState;
+    state?: StudySubjectState;
     requestTimeoutMs: number;
     /** Literal scrubber for known provisioned values, applied to log tails pre-truncation. */
     scrub: (text: string) => string;

@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { labSetupChecks } from "../../src/study/doctor.js";
+import { studySetupChecks } from "../../src/study/doctor.js";
 import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,8 +7,8 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { doctor } from "../../src/cli/doctor.js";
 import type { DetectLocalAgentsOptions } from "../../src/actors/local-agent/cli.js";
-import { runLabPreflight } from "../../src/study/preflight.js";
-import { resolveLabManifest } from "../../src/study/discover.js";
+import { runStudyPreflight } from "../../src/study/preflight.js";
+import { resolveStudyManifest } from "../../src/study/discover.js";
 import { runLab } from "../../src/run-lab.js";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
@@ -79,7 +79,7 @@ describe("selected lab setup without paid dispatch", () => {
       await project(manifest, async (cwd) => {
         for (const ready of [true, false]) {
           compatible = ready;
-          const result = await labSetupChecks({
+          const result = await studySetupChecks({
             cwd,
             lab: "preview",
             env: keyless,
@@ -108,7 +108,7 @@ describe("selected lab setup without paid dispatch", () => {
         .replace("https://preview.example.test/", "http://localhost:3000/")
         .replace("target: e2b-desktop", "target: local") + "\nreview:\n  analysis: false\n";
     await project(manifest, async (cwd) => {
-      const result = await labSetupChecks({
+      const result = await studySetupChecks({
         cwd,
         lab: "preview",
         env: keyless,
@@ -136,7 +136,7 @@ describe("selected lab setup without paid dispatch", () => {
       "\nreview:\n  analysis:\n    provider: codex\n";
     const install = `npm install -g @openai/codex@${defaultCodexCliVersion()}`;
     await project(manifest, async (cwd) => {
-      const result = await labSetupChecks({
+      const result = await studySetupChecks({
         cwd,
         lab: "preview",
         env: keyless,
@@ -168,7 +168,7 @@ describe("selected lab setup without paid dispatch", () => {
     });
     try {
       await project(manifest, async (cwd) => {
-        const result = await labSetupChecks({
+        const result = await studySetupChecks({
           cwd,
           lab: "preview",
           env: keyless,
@@ -194,7 +194,7 @@ describe("selected lab setup without paid dispatch", () => {
         .replace("target: e2b-desktop", "target: local") +
       "\nreview:\n  analysis:\n    provider: codex\n";
     await project(manifest, async (cwd) => {
-      const result = await labSetupChecks({
+      const result = await studySetupChecks({
         cwd,
         lab: "preview",
         env: keyless,
@@ -245,7 +245,7 @@ describe("selected lab setup without paid dispatch", () => {
     "gives %s its own recovery on both Codex rows",
     async (errorCode, refusedExecutable, says, omits) => {
       await project(localCodexLab, async (cwd) => {
-        const result = await labSetupChecks({
+        const result = await studySetupChecks({
           cwd,
           lab: "preview",
           env: keyless,
@@ -278,7 +278,7 @@ describe("selected lab setup without paid dispatch", () => {
       .mockResolvedValue({ ready: false, errorCode: "codex_unavailable" });
     try {
       await project(localCodexLab, async (cwd) => {
-        const result = await labSetupChecks({
+        const result = await studySetupChecks({
           cwd,
           lab: "preview",
           env: { ...keyless, PATH: bin },
@@ -315,7 +315,7 @@ describe("selected lab setup without paid dispatch", () => {
             CODEX_HOME: "/synthetic/account",
             OPENAI_API_KEY: "synthetic-unused-key",
           };
-          const result = await labSetupChecks({
+          const result = await studySetupChecks({
             cwd,
             lab: "preview",
             env,
@@ -338,7 +338,7 @@ describe("selected lab setup without paid dispatch", () => {
       lab("local-agent") + "\nreview:\n  analysis:\n    provider: codex\n",
       async (cwd) => {
         for (const ready of [true, false]) {
-          const result = await labSetupChecks({
+          const result = await studySetupChecks({
             cwd,
             lab: "preview",
             env: keyless,
@@ -378,7 +378,7 @@ describe("selected lab setup without paid dispatch", () => {
     await project(
       lab("local-agent") + "\nreview:\n  analysis:\n    provider: codex\n",
       async (cwd) => {
-        const result = await labSetupChecks({
+        const result = await studySetupChecks({
           cwd,
           lab: "preview",
           env: keyless,
@@ -534,7 +534,7 @@ describe("selected lab setup without paid dispatch", () => {
 
   it("separates successful metadata parsing from unverified setup", async () => {
     await project(lab(), async (cwd) => {
-      const result = await runLabPreflight({ cwd, lab: "preview", env: keyless });
+      const result = await runStudyPreflight({ cwd, lab: "preview", env: keyless });
       expect(result.ok).toBe(true);
       expect(result.checks.find((check) => check.name === "reachability")?.message).toContain(
         "Credentials, local login, dependencies and target reachability were not checked",
@@ -545,7 +545,7 @@ describe("selected lab setup without paid dispatch", () => {
 
   it("refuses stale or unknown local login before touching the desktop provider", async () => {
     await project(lab("local-agent"), async (cwd) => {
-      const resolved = await resolveLabManifest(cwd, "preview");
+      const resolved = await resolveStudyManifest(cwd, "preview");
       if (!resolved.ok) throw new Error(resolved.error.message);
       const bin = path.join(cwd, "bin");
       await mkdir(bin);
@@ -605,7 +605,7 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
       actor,
     );
     return project(stringify(raw), (cwd) =>
-      labSetupChecks({
+      studySetupChecks({
         cwd,
         lab: "humanish/labs/preview.yaml",
         env: keyless,
@@ -653,7 +653,7 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
 describe("doctor reads a live run's needs from the lab's plan", () => {
   const check = (raw: Record<string, unknown>, env: NodeJS.ProcessEnv = keyless) =>
     project(stringify(raw), (cwd) =>
-      labSetupChecks({
+      studySetupChecks({
         cwd,
         lab: "humanish/labs/preview.yaml",
         env,

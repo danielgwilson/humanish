@@ -12,10 +12,10 @@ import {
 } from "../../comms/sandbox-catch.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type {
-  LabCommsEmail,
-  LabConfig,
-  LabSubjectServe,
-  LabSubjectStateCheckpoint,
+  StudyCommsEmail,
+  StudyConfig,
+  StudySubjectServe,
+  StudySubjectStateCheckpoint,
 } from "../../study/types.js";
 import { liveObserverResult } from "../../observer/live.js";
 import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
@@ -49,7 +49,7 @@ import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
 import type { ConcurrentBundleArgs } from "./types.js";
-import type { LabDeps } from "../../study/study-deps.js";
+import type { StudyDeps } from "../../study/study-deps.js";
 import {
   buildSubjectProvenance,
   hostOriginDigest,
@@ -77,7 +77,7 @@ import { addressedRecipients } from "../../study/parse/comms.js";
 
 /** What the provisioned plane needs besides the shared plane context. */
 export interface ProvisionedPlaneSetup {
-  serve: LabSubjectServe;
+  serve: StudySubjectServe;
   localTreeRoute: boolean;
   localTreeArchive: LocalTreeArchive | undefined;
   localTreeArchiveBuffer: ArrayBuffer | undefined;
@@ -85,9 +85,9 @@ export interface ProvisionedPlaneSetup {
   publicRepo: string;
   subjectEnvNames: string[];
   hasGithubToken: boolean;
-  checkpoints: LabSubjectStateCheckpoint[];
+  checkpoints: StudySubjectStateCheckpoint[];
   /** The in-sandbox email catch, when a comms lab declared one. */
-  commsEmail: LabCommsEmail | undefined;
+  commsEmail: StudyCommsEmail | undefined;
   commsPort: number | undefined;
   /** The catch's base URL, injected into the subject's env at create. */
   commsEnv: Record<string, string>;
@@ -611,8 +611,8 @@ export async function runProvisionedPlane(
  */
 export async function packSubjectTree(
   cwd: string,
-  config: { readonly subject: Pick<LabConfig["subject"], "localTree"> },
-  deps: LabDeps,
+  config: { readonly subject: Pick<StudyConfig["subject"], "localTree"> },
+  deps: StudyDeps,
   scrubKnownValues: (text: string) => string,
 ): Promise<
   { ok: true; archive: LocalTreeArchive; buffer: ArrayBuffer } | { ok: false; message: string }

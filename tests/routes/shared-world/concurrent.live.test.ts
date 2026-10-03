@@ -7,7 +7,7 @@ import { parse } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
-import { parseLabConfig } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -58,7 +58,7 @@ describe.skipIf(!LIVE)(
             "utf8",
           ),
         );
-        const parsed = parseLabConfig(raw);
+        const parsed = parseStudy(raw);
         if (!parsed.ok) throw new Error(parsed.error.message);
 
         const outcome = await runLab(parsed.config, { cwd, dryRun: false });

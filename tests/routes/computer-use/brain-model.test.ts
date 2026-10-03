@@ -22,18 +22,18 @@ import { createRestrictedCodexParticipant } from "../../../src/actors/codex/rest
 import { startClaudeSession } from "../../../src/actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../../src/actors/local-agent/cli.js";
 import type { Brain, ComputerUsePlan } from "../../../src/study/plan-types.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { RunCuaActorLabOptions } from "../../../src/routes/computer-use/types.js";
 
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 
-type SessionRunner = NonNullable<LabDeps["runSession"]>;
+type SessionRunner = NonNullable<StudyDeps["runSession"]>;
 
 vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/actors/codex/restricted-participant.js")>()),
@@ -139,9 +139,9 @@ function labConfig(args: {
   actor: Record<string, unknown>;
   model: string | undefined;
   maxUsd?: number;
-}): LabConfig {
+}): StudyConfig {
   return {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "brain-model",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
     actors: [
@@ -159,7 +159,7 @@ function labConfig(args: {
     },
     scenario: { mode: "live" },
     review: { analysis: false },
-  } as LabConfig;
+  } as StudyConfig;
 }
 
 const OPENAI_ACTOR = { type: "openai-computer-use" };
@@ -167,7 +167,7 @@ const CODEX_ACTOR = { type: "local-agent", localAgent: "codex" };
 const CLAUDE_ACTOR = { type: "local-agent", localAgent: "claude" };
 
 /** The lab on the local target, whose desktop the test supplies as the local study's. */
-function onLocalDesktop(config: LabConfig): LabConfig {
+function onLocalDesktop(config: StudyConfig): StudyConfig {
   return { ...config, execution: { ...config.execution, target: "local" } };
 }
 
@@ -175,7 +175,7 @@ const fakeLocalVm = () => ({ desktop: () => fakeDesktop(), analysisRefusal: () =
 
 /** Runs one live participant and returns what its session and the live flush received. */
 async function run(
-  config: LabConfig,
+  config: StudyConfig,
   {
     env = { OPENAI_API_KEY: "synthetic-openai-key" },
   }: {
@@ -354,7 +354,7 @@ describe("computer-use participant model, local-agent brain", () => {
 describe("computer-use participant model, the plan's brain, over the config", () => {
   /** Plans `config`, swaps in `brain`, and runs that plan with the same config, env and runner. */
   async function runWithBrain(
-    declared: LabConfig,
+    declared: StudyConfig,
     brain: Brain,
     { env, runSession }: { env: Record<string, string | undefined>; runSession: SessionRunner },
   ) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TaskTracker } from "../../src/study/tasks.js";
-import type { LabTask } from "../../src/study/tasks.js";
+import type { StudyTask } from "../../src/study/tasks.js";
 
 // A three-participant study declared `reach-prices` with `urlIncludes: pricing`, and every
 // participant opened on a URL containing that literal substring. The funnel reported
@@ -12,13 +12,13 @@ import type { LabTask } from "../../src/study/tasks.js";
 // identically hands the harness's own gap to the reader as a finding about the participant, which
 // is exactly what docs/principles/three-roles.md exists to prevent.
 
-const urlTask: LabTask = {
+const urlTask: StudyTask = {
   id: "reach-prices",
   goal: "Find where this product publishes what it charges.",
   success: { any: [{ id: "on-a-pricing-surface", urlIncludes: "pricing" }] },
 };
 
-const textTask: LabTask = {
+const textTask: StudyTask = {
   id: "sees-total",
   goal: "Get to a page showing the total.",
   success: { any: [{ id: "total-visible", textIncludes: "Total" }] },

@@ -2,14 +2,14 @@
 // safe-mode run library to check what serve hands out.
 import path from "node:path";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runLab } from "../../src/run-lab.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 
-export function shareSafetyDryRunConfig(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+export function shareSafetyDryRunConfig(): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "unscanned-artifact",
     title: "Unscanned adapter artifact",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },

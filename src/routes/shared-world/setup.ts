@@ -4,7 +4,11 @@
 import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabConfig, LabSubjectServe, LabSubjectStateCheckpoint } from "../../study/types.js";
+import type {
+  StudyConfig,
+  StudySubjectServe,
+  StudySubjectStateCheckpoint,
+} from "../../study/types.js";
 import { buildRunSource, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
@@ -34,7 +38,7 @@ import type {
   PlaneSelection,
   SharedWorldRunInput,
 } from "./types.js";
-import type { LabDeps } from "../../study/study-deps.js";
+import type { StudyDeps } from "../../study/study-deps.js";
 import type { SharedWorldPlan } from "../../study/plan-types.js";
 import { planeStateOf } from "./plan.js";
 import path from "node:path";
@@ -54,19 +58,19 @@ interface AdmittedLab {
   input: SharedWorldRunInput;
   /** Read for the subject's serve URL, which each participant's subject names. Participants, their
    *  count and their host and entry come from the plan's participants. */
-  config: LabConfig;
+  config: StudyConfig;
   requestedCwd: string;
-  deps: LabDeps;
+  deps: StudyDeps;
   env: Record<string, string | undefined>;
   descriptor: CuaActorDescriptor;
   planeClass: ConcurrentSharedWorldPlaneClass;
   runBudget: PlaneContext["runBudget"];
   runSession: PlaneContext["runSession"];
-  serve: LabSubjectServe | undefined;
+  serve: StudySubjectServe | undefined;
   localTreeRoute: boolean;
   subjectRepo: string;
   subjectEnvNames: string[];
-  checkpoints: LabSubjectStateCheckpoint[];
+  checkpoints: StudySubjectStateCheckpoint[];
   openaiApiKey: string;
   e2bApiKey: string;
   knownSecretValues: string[];

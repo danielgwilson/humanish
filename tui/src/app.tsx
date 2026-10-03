@@ -4,8 +4,8 @@ import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
 import { PALETTE } from "./palette.js";
 
-import type { LabListEntry } from "../../src/study/discover.js";
-import type { LabSummary } from "../../src/study/summary.js";
+import type { StudyListEntry } from "../../src/study/discover.js";
+import type { StudySummary } from "../../src/study/summary.js";
 import type { RunDetail } from "../../src/run/detail.js";
 import type { RunIndexEntry, RunIndexResult } from "../../src/run/run-index.js";
 import { labRows, type LabRow } from "../../src/run/projection.js";
@@ -112,7 +112,7 @@ export function App({
   const [liveTick, setTick] = useState(0);
   const tick = frozenTick ?? liveTick;
   /** Which side the Start toggle is on. Per lab, so switching labs does not carry `live` across. */
-  const [summary, setSummary] = useState<LabSummary | null | undefined>(undefined);
+  const [summary, setSummary] = useState<StudySummary | null | undefined>(undefined);
   /** Detail for live runs only, so the studies list can name who is in them. */
   const [liveDetails, setLiveDetails] = useState<Map<string, RunDetail>>(new Map());
   /** Whether this is a humanish project. Cheap and synchronous: two existence checks. */
@@ -777,7 +777,7 @@ function keyHints(
   }
 }
 
-function project(index: RunIndexResult, labs: readonly LabListEntry[]): ProjectData {
+function project(index: RunIndexResult, labs: readonly StudyListEntry[]): ProjectData {
   const { rows, unattributed } = labRows(
     labs.map((lab) => ({
       id: lab.id,
@@ -947,7 +947,7 @@ function renderScreen(args: {
   launchError: { labKey: string; text: string } | undefined;
   launchNote: { labKey: string; text: string } | undefined;
   detail: RunDetail | null | undefined;
-  summary: LabSummary | null | undefined;
+  summary: StudySummary | null | undefined;
   liveDetails: Map<string, RunDetail>;
   tick: number;
   initialized: boolean;

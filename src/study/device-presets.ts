@@ -1,4 +1,4 @@
-import type { LabConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 
 // Device/screen presets: a per-persona dimension, with literal values copied from mature
 // in-house ui-sim geometry tables rather than guessed. Where two independent reference sims
@@ -101,7 +101,7 @@ export function floorRenderResolution(resolution: readonly [number, number]): [n
  * `preset` keeps the declared device identity (a mobile preset stays 414/isMobile for the prompt).
  */
 export function resolveParticipantDevice(
-  config: LabConfig,
+  config: StudyConfig,
   /** The device the participant's roster entry names, if any. */
   device: string | undefined,
 ): {

@@ -9,12 +9,8 @@ import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
-import {
-  LAB_CONFIG_SCHEMA,
-  type LabConfig,
-  type LabRuntimeAuth,
-} from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig, type StudyRuntimeAuth } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import { type TerminalCostProbe } from "../../../src/routes/terminal/types.js";
@@ -270,11 +266,11 @@ function nonceFrom(command: string): string {
 
 function liveConfig(overrides?: {
   caps?: Record<string, number> | null;
-  runtimeAuth?: LabRuntimeAuth;
+  runtimeAuth?: StudyRuntimeAuth;
   egressAllow?: string[];
-}): LabConfig {
+}): StudyConfig {
   const raw: Record<string, unknown> = {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "terminal-live-proof",
     title: "Terminal live proof",
     subject: {
@@ -310,7 +306,7 @@ function liveConfig(overrides?: {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseLabConfig(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -2799,7 +2795,7 @@ describe("terminal run lifetime", () => {
       status: await readFile(path.join(runDir, "status.json"), "utf8"),
     });
     const before = await snapshot();
-    const config: LabConfig = { ...liveConfig(), review: { analysis: { maxCostUsd: 1 } } };
+    const config: StudyConfig = { ...liveConfig(), review: { analysis: { maxCostUsd: 1 } } };
     const analysis = automaticAnalysisBoundary();
     const skipped = { state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
 

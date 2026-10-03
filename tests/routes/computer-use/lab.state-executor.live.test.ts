@@ -16,8 +16,8 @@ import type {
   CuaTurn,
   CuaExecutor,
 } from "../../../src/actors/computer-use/loop.js";
-import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -142,8 +142,8 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (live rung, no E2B, 
     { timeout: 60_000 },
     async () => {
       const app = makeLocalApp();
-      const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
+      const parsed = parseStudy({
+        schema: V2_SCHEMA,
         id: "downstream-local-app-state",
         title: "State-driven local app (live rung)",
         subject: { source: "local-app", appUrl },

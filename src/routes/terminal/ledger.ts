@@ -1,6 +1,6 @@
 import { describeTokenUsage } from "./token-usage.js";
 import type { ActorTokenUsage } from "../../actors/contract.js";
-import type { LabScenarioCaps } from "../../study/types.js";
+import type { StudyScenarioCaps } from "../../study/types.js";
 import { round6 } from "../../run/pricing.js";
 import { COST_CATEGORIES, type CostCategory } from "../../run/terminal-contract.js";
 import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
@@ -174,7 +174,7 @@ export function buildNoSpendProof(
  */
 export function evaluateCapsAgainstLedger(
   ledger: TerminalCostLedger,
-  caps: LabScenarioCaps,
+  caps: StudyScenarioCaps,
 ): { ok: true } | { ok: false; message: string } {
   if (caps.maxUsd !== undefined && ledger.knownTotalUsd > caps.maxUsd) {
     const overLines = COST_CATEGORIES.filter(

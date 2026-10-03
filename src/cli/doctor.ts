@@ -14,7 +14,11 @@ import {
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
-import { labSetupChecks, studiesByRequiredKey, type LabSetupCheckArgs } from "../study/doctor.js";
+import {
+  studySetupChecks,
+  studiesByRequiredKey,
+  type StudySetupCheckArgs,
+} from "../study/doctor.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
@@ -99,7 +103,7 @@ export type DoctorCheckDraft = Omit<DoctorResult["checks"][number], "status"> & 
   status?: "note";
 };
 type DoctorCheck = DoctorCheckDraft;
-type LabSetup = Awaited<ReturnType<typeof labSetupChecks>>;
+type LabSetup = Awaited<ReturnType<typeof studySetupChecks>>;
 
 export async function doctor(
   cwdInput: string,
@@ -110,7 +114,7 @@ export async function doctor(
     /** Where the key probe looks for vendor stores; tests point it at a temp home. */
     keyDeps?: KeyResolutionDeps;
     /** The hosted Codex participant's operator handshake; tests replace it. */
-    codexParticipantReadiness?: LabSetupCheckArgs["codexParticipantReadiness"];
+    codexParticipantReadiness?: StudySetupCheckArgs["codexParticipantReadiness"];
   } = {},
 ): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
@@ -142,7 +146,7 @@ export async function doctor(
   const keyPresent = (name: string) =>
     probes.some((probe) => probe.name === name && probe.source !== null);
   const setup = options.lab
-    ? await labSetupChecks({
+    ? await studySetupChecks({
         cwd,
         lab: options.lab,
         env,
@@ -332,8 +336,8 @@ async function probeDoctorKeys(
   const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
   let receivingKey: string | null = null;
   if (lab) {
-    const { resolveLabManifest } = await import("../study/discover.js");
-    const resolved = await resolveLabManifest(cwd, lab);
+    const { resolveStudyManifest } = await import("../study/discover.js");
+    const resolved = await resolveStudyManifest(cwd, lab);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
       const { receivingRequiredKey } = await import("../comms/setup.js");
       receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);

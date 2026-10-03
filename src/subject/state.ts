@@ -1,6 +1,6 @@
 import { digestText } from "../evidence/redaction.js";
 import { failureTail } from "../evidence/redaction.js";
-import type { LabStateStepWhen, LabSubjectState } from "../study/types.js";
+import type { StudyStateStepWhen, StudySubjectState } from "../study/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
 import { runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
 import type { Shell } from "../substrates/shell.js";
@@ -27,9 +27,9 @@ export function commandDigestOf(command: string): string {
  */
 export async function runStateSteps(
   shell: Shell,
-  when: LabStateStepWhen,
+  when: StudyStateStepWhen,
   args: {
-    state?: LabSubjectState;
+    state?: StudySubjectState;
     requestTimeoutMs: number;
     /** Literal scrubber for known provisioned values, applied to log tails pre-truncation. */
     scrub: (text: string) => string;

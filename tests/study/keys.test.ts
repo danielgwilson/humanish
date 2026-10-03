@@ -3,11 +3,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 
 const base = {
-  schema: LAB_CONFIG_SCHEMA,
+  schema: V2_SCHEMA,
   id: "keys",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
   actors: [{ type: "openai-computer-use", mission: "Explore the app." }],
@@ -15,7 +15,7 @@ const base = {
 };
 
 function message(config: Record<string, unknown>): string {
-  const result = parseLabConfig(config);
+  const result = parseStudy(config);
   if (result.ok) throw new Error("expected the lab to be rejected");
   expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   return result.error.message;
@@ -66,7 +66,7 @@ describe("unknown lab fields", () => {
   it("parses every committed study", async () => {
     const dir = "humanish/studies";
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml"))) {
-      const result = parseLabConfig(parse(await readFile(path.join(dir, file), "utf8")));
+      const result = parseStudy(parse(await readFile(path.join(dir, file), "utf8")));
       expect(result.ok ? "ok" : result.error.message, file).toBe("ok");
     }
   });

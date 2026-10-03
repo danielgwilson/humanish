@@ -1,4 +1,4 @@
-import type { LabEvent } from "../../study/run-study-events.js";
+import type { StudyEvent } from "../../study/run-study-events.js";
 import { type AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type {
   ActorCompletionReason,
@@ -10,8 +10,8 @@ import type { CostCategory } from "../../run/terminal-contract.js";
 import type { RunScope } from "../../run/run.js";
 import type { buildRuntimeAuth } from "./credentials.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
-import type { LabDeps } from "../../study/study-deps.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyDeps } from "../../study/study-deps.js";
+import type { StudyConfig } from "../../study/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import {
   type RunAdapterScore,
@@ -100,7 +100,7 @@ export interface TerminalProductScoringContext {
 /**
  * Known spend lines for the terminal cost ledger. Core has no product, media or payment spend
  * signal, so it fills only the provider line from trace tokenUsage when present. A test injects
- * known lines through `LabDeps.costProbe`; absent signals keep the null-discipline default.
+ * known lines through `StudyDeps.costProbe`; absent signals keep the null-discipline default.
  */
 export type TerminalCostProbe = (context: {
   tokenCostUsd?: number;
@@ -135,10 +135,10 @@ export interface TerminalScorer {
 export interface RunTerminalProductLabOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
-  /** Reports the analysis window to onEvent; built by normalizeRunLabOptions. */
-  emit?: (event: LabEvent) => void;
+  /** Reports the analysis window to onEvent; built by normalizeRunStudyOptions. */
+  emit?: (event: StudyEvent) => void;
   cwd: string;
-  config: LabConfig;
+  config: StudyConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
   dryRun: boolean;
   open?: boolean;
@@ -152,7 +152,7 @@ export interface RunTerminalProductLabOptions {
   env?: Readonly<Record<string, string | undefined>>;
   scorer?: TerminalScorer;
   /** Test seams: the E2B module, the Observer renderer, the clock and the cost probe. */
-  deps?: LabDeps;
+  deps?: StudyDeps;
   /**
    * Present only when the scorer was config-declared and loaded by the CLI. Its presence
    * is the "declared" marker: a config-declared terminal scorer returning status:"fail" flips

@@ -13,7 +13,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../../run/paths.js";
 import { validateScriptedSessionResult } from "./session-result.js";
-import type { LabDeps } from "../../study/study-deps.js";
+import type { StudyDeps } from "../../study/study-deps.js";
 
 /** One session per surface, in parallel. */
 export function runScriptedSessions(
@@ -31,7 +31,7 @@ export function runScriptedSessions(
   >,
   run: {
     surfaces: ScriptedPlan["surfaces"];
-    deps: LabDeps;
+    deps: StudyDeps;
     browserCommand: string | undefined;
     runPaths: PreparedRunArtifactPaths;
   },

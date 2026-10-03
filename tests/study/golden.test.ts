@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runLab } from "../../src/run-lab.js";
-import { resolveLabManifest } from "../../src/study/discover.js";
+import { resolveStudyManifest } from "../../src/study/discover.js";
 
 // Rung 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
 // bundles captured by scripts/capture-lab-goldens.mjs. We pin the same run-id as the golden so
@@ -83,7 +83,7 @@ const GOLDENS = [{ id: "first-run", runId: "golden-first-run" }] as const;
 describe("lab golden equivalence (rung 2: faithfulness)", () => {
   for (const golden of GOLDENS) {
     it(`${golden.id} v2 config reproduces the pre-refactor golden bundle`, async () => {
-      const resolved = await resolveLabManifest(project, golden.id);
+      const resolved = await resolveStudyManifest(project, golden.id);
       expect(resolved.ok).toBe(true);
       if (!resolved.ok) return;
 

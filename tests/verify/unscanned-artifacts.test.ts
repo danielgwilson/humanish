@@ -6,7 +6,7 @@ import { PNG } from "pngjs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { runLab } from "../../src/run-lab.js";
-import type { BrowserLabScoringContext } from "../../src/study/adapter-extension.js";
+import type { BrowserScoringContext } from "../../src/study/adapter-extension.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 import type { RunAdapterArtifact } from "../../src/run/bundle.js";
 import { verifyRun } from "../../src/verify/verify.js";
@@ -40,7 +40,7 @@ async function runWithAdapterFile(cwd: string, file: AdapterFile): Promise<strin
   const outcome = await runLab(shareSafetyDryRunConfig(), {
     cwd,
     scorer: {
-      deriveArtifacts: async (ctx: BrowserLabScoringContext) => {
+      deriveArtifacts: async (ctx: BrowserScoringContext) => {
         await mkdir(path.join(ctx.runDir, path.dirname(file.path)), { recursive: true });
         await writeFile(path.join(ctx.runDir, file.path), file.bytes);
         return [

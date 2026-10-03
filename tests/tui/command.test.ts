@@ -207,7 +207,7 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
       CODEX_API_KEY: "",
       HUMANISH_STRICT_KEYS: "1",
     };
-    const summary = vi.spyOn(summaries, "readLabSummary").mockResolvedValue(null);
+    const summary = vi.spyOn(summaries, "readStudySummary").mockResolvedValue(null);
     const start = vi.spyOn(launch, "launchRun").mockResolvedValue({
       ok: false,
       error: { code: "HUMANISH_LAUNCH_FAILED", message: "fixture: no child launched" },

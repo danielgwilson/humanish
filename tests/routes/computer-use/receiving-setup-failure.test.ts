@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseLabConfig } from "../../../src/study/config.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
@@ -19,9 +19,9 @@ vi.mock("../../../src/comms/receiving-runtime.js", async (importOriginal) => ({
   },
 }));
 
-function realEmailCloneConfig(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function realEmailCloneConfig(): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "receiving-setup-failure",
     subject: {
       source: "clone",

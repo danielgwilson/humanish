@@ -5,8 +5,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -30,9 +30,9 @@ const LIVE =
   (Boolean(process.env.CODEX_API_KEY) || Boolean(process.env.OPENAI_API_KEY)) &&
   Boolean(process.env.E2B_API_KEY);
 
-function liveConfig(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+function liveConfig(): StudyConfig {
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "terminal-product-live-proof",
     title: "Terminal-product live proof",
     subject: {

@@ -9,19 +9,19 @@ import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { InternalRunLabOptions } from "../run-lab.js";
-import type { LabDeps } from "./study-deps.js";
+import type { StudyDeps } from "./study-deps.js";
 import { THIS_REPO_DRY_RUN_ONLY } from "./composition-rules.js";
 import { planBase } from "./plan-base.js";
-import type { LabPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
-import { routeOf, type LabRoute } from "./routing.js";
-import type { LabConfig } from "./types.js";
+import type { StudyPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
+import { routeOf, type StudyRoute } from "./routing.js";
+import type { StudyConfig } from "./types.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
 
-export { routeOf, type LabRoute } from "./routing.js";
+export { routeOf, type StudyRoute } from "./routing.js";
 
 /** Resolve dry-run: explicit override wins, else the scenario mode, else the given fallback. */
-export function resolveLabDryRun(
-  config: LabConfig,
+export function resolveStudyDryRun(
+  config: StudyConfig,
   override: boolean | undefined,
   fallback: boolean | undefined,
 ): boolean | undefined {
@@ -42,7 +42,7 @@ export function resolveLabDryRun(
  * analysis, then tasks. Each would otherwise be silently ignored by a synthetic run.
  */
 function planPreview(
-  config: LabConfig,
+  config: StudyConfig,
   options: InternalRunLabOptions,
   input: { readonly dryRun: boolean },
 ): RoutePlanResult {
@@ -77,7 +77,7 @@ function planPreview(
 }
 
 type RoutePlanResult =
-  | { readonly ok: true; readonly plan: LabPlan }
+  | { readonly ok: true; readonly plan: StudyPlan }
   | { readonly ok: false; readonly refusal: PlanRefusal };
 
 /**
@@ -85,13 +85,13 @@ type RoutePlanResult =
  * makes every refusal that route makes, in the route's order and with its codes and messages; the
  * route's exported runner calls the same planner.
  */
-export function planLab(
-  config: LabConfig,
+export function planStudy(
+  config: StudyConfig,
   options: InternalRunLabOptions,
-  deps: LabDeps = {},
+  deps: StudyDeps = {},
 ): PlanResult {
   const lab = localBrowserDefaults(config);
-  const input = { dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true };
+  const input = { dryRun: resolveStudyDryRun(lab, options.dryRun, true) ?? true };
   const result = planRoute(routeOf(config), lab, options, input, deps);
   if (!result.ok) return result;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
@@ -101,11 +101,11 @@ export function planLab(
 }
 
 function planRoute(
-  route: LabRoute,
-  lab: LabConfig,
+  route: StudyRoute,
+  lab: StudyConfig,
   options: InternalRunLabOptions,
   input: { readonly dryRun: boolean },
-  deps: LabDeps,
+  deps: StudyDeps,
 ): RoutePlanResult {
   switch (route) {
     case "preview":

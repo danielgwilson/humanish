@@ -11,7 +11,7 @@ import type {
   Requirement,
   ResidualConfig,
 } from "./plan-types.js";
-import type { LabConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 
 export type Base = Omit<
   ComputerUsePlan,
@@ -29,7 +29,7 @@ function deepFreeze<T>(value: T, frozen = new WeakSet<object>()): T {
   return value;
 }
 
-function residualOf(config: LabConfig): Readonly<ResidualConfig> {
+function residualOf(config: StudyConfig): Readonly<ResidualConfig> {
   const { comms, policies, personas, defaults, review } = config;
   return deepFreeze(
     structuredClone({
@@ -64,7 +64,7 @@ export function isNonEmpty<T>(values: readonly T[]): values is NonEmpty<T> {
   return values.length > 0;
 }
 
-export function capsOf(config: LabConfig): ComputerUsePlan["caps"] {
+export function capsOf(config: StudyConfig): ComputerUsePlan["caps"] {
   const caps = config.execution?.caps;
   return {
     ...(caps?.maxUsd === undefined ? {} : { maxUsd: caps.maxUsd }),
@@ -72,7 +72,7 @@ export function capsOf(config: LabConfig): ComputerUsePlan["caps"] {
   };
 }
 
-export function provisionedSubject(config: LabConfig): ProvisionedSubject | undefined {
+export function provisionedSubject(config: StudyConfig): ProvisionedSubject | undefined {
   const { serve, state } = config.subject;
   const env = config.subject.env ?? [];
   if (serve === undefined) return undefined;
@@ -86,7 +86,7 @@ export function provisionedSubject(config: LabConfig): ProvisionedSubject | unde
 
 /** Keys, env and local tools a live run checks right before it acquires anything. */
 export function desktopRequirements(
-  config: LabConfig,
+  config: StudyConfig,
   args: { e2b: boolean; brain: Brain; localVm: boolean; externalCatch: boolean },
 ): Requirement[] {
   const requirements: Requirement[] = [];
@@ -106,7 +106,7 @@ export function desktopRequirements(
   return requirements;
 }
 
-export function brainOf(config: LabConfig, callerProvider: boolean): Brain {
+export function brainOf(config: StudyConfig, callerProvider: boolean): Brain {
   const actor = config.actors[0];
   if (callerProvider) return callerBrainOf(config);
   const declared = declaredModelOf(config);
@@ -116,11 +116,11 @@ export function brainOf(config: LabConfig, callerProvider: boolean): Brain {
 }
 
 /** The brain of a run whose provider the library caller supplies. */
-export function callerBrainOf(config: LabConfig): Extract<Brain, { kind: "caller" }> {
+export function callerBrainOf(config: StudyConfig): Extract<Brain, { kind: "caller" }> {
   return { kind: "caller", ...declaredModelOf(config) };
 }
 
-function declaredModelOf(config: LabConfig): { declaredModel?: string } {
+function declaredModelOf(config: StudyConfig): { declaredModel?: string } {
   const model = config.actors[0]?.model;
   return model === undefined ? {} : { declaredModel: model };
 }
@@ -132,7 +132,7 @@ export function pricedModel(brain: Brain): string {
 
 /** The fields every plan shares, from a config whose analysis already resolved. */
 export function planBase(
-  config: LabConfig,
+  config: StudyConfig,
   input: {
     readonly dryRun: boolean;
     readonly analysis?: {

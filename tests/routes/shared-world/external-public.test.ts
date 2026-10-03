@@ -36,16 +36,16 @@ import {
 import { planSharedWorldLab } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import {
   externalPublicSharedWorldValidationReason,
   concurrentSharedWorldValidationReason,
 } from "../../../src/study/validation.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { runLab } from "../../../src/run-lab.js";
 import { routeOf } from "../../../src/study/plan.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -346,7 +346,7 @@ function externalPublicConfig(overrides?: {
   if (overrides?.hostCount === 0) delete lanes[0]!.host;
   if (overrides?.hostCount === 2) lanes[1]!.host = true;
   return {
-    schema: LAB_CONFIG_SCHEMA,
+    schema: V2_SCHEMA,
     id: "lobby-trivia-3player-test",
     title: "the example multiplayer app 3-player external-public",
     subject: {
@@ -374,14 +374,14 @@ function externalPublicConfig(overrides?: {
   };
 }
 
-function parseExternal(overrides?: Parameters<typeof externalPublicConfig>[0]): LabConfig {
-  const parsed = parseLabConfig(externalPublicConfig(overrides));
+function parseExternal(overrides?: Parameters<typeof externalPublicConfig>[0]): StudyConfig {
+  const parsed = parseStudy(externalPublicConfig(overrides));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
 
 /** The seams, writable so a test can swap one. */
-type TestDeps = { -readonly [K in keyof LabDeps]: LabDeps[K] };
+type TestDeps = { -readonly [K in keyof StudyDeps]: StudyDeps[K] };
 
 function makeExternalSeams(
   runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>,
@@ -531,14 +531,14 @@ describe("external-public config validation + routing", () => {
   });
 
   it("rejects a missing publicTarget.authorized", () => {
-    const parsed = parseLabConfig(externalPublicConfig({ omitPublicTarget: true }));
+    const parsed = parseStudy(externalPublicConfig({ omitPublicTarget: true }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("subject.publicTarget");
   });
 
   it("rejects a loopback appUrl (not a public plane)", () => {
-    const parsed = parseLabConfig(externalPublicConfig({ appUrl: "http://127.0.0.1:3000/" }));
+    const parsed = parseStudy(externalPublicConfig({ appUrl: "http://127.0.0.1:3000/" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("not a loopback URL");
@@ -554,17 +554,17 @@ describe("external-public config validation + routing", () => {
     ] as const) {
       const base = externalPublicConfig() as Record<string, unknown>;
       const subject = { ...(base.subject as Record<string, unknown>), ...subjectPatch };
-      const parsed = parseLabConfig({ ...base, subject });
+      const parsed = parseStudy({ ...base, subject });
       expect(parsed.ok, `${field} must be rejected`).toBe(false);
       if (!parsed.ok) expect(parsed.error.message).toContain(needle);
     }
   });
 
   it("rejects zero hosts or more than one", () => {
-    const zero = parseLabConfig(externalPublicConfig({ hostCount: 0 }));
+    const zero = parseStudy(externalPublicConfig({ hostCount: 0 }));
     expect(zero.ok).toBe(false);
     if (!zero.ok) expect(zero.error.message).toContain("exactly one `host: true` participant");
-    const two = parseLabConfig(externalPublicConfig({ hostCount: 2 }));
+    const two = parseStudy(externalPublicConfig({ hostCount: 2 }));
     expect(two.ok).toBe(false);
     if (!two.ok) expect(two.error.message).toContain("exactly one `host: true` participant");
   });
@@ -574,7 +574,7 @@ describe("external-public config validation + routing", () => {
     const base = externalPublicConfig({ concurrency: 1 }) as Record<string, unknown>;
     const actor = (base.actors as Array<Record<string, unknown>>)[0]!;
     actor.lanes = [(actor.lanes as unknown[])[0]];
-    const parsed = parseLabConfig(base);
+    const parsed = parseStudy(base);
     expect(parsed.ok).toBe(false);
   });
 });
@@ -583,9 +583,9 @@ describe("external-public config validation + routing", () => {
 // 7. Gate-intact regression: the provisioned-getHost path is unchanged.
 // ---------------------------------------------------------------------------
 describe("getHost synthetic gate stays intact", () => {
-  function provisionedConfig(): LabConfig {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+  function provisionedConfig(): StudyConfig {
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "provisioned-gethost",
       subject: {
         source: "clone",
@@ -625,7 +625,7 @@ describe("getHost synthetic gate stays intact", () => {
     expect(concurrentSharedWorldValidationReason(config)).toBeNull();
     // Drop exposure:synthetic -> the getHost gate still fails closed.
     const { exposure: _dropped, ...subjectWithoutExposure } = config.subject;
-    const withoutExposure = { ...config, subject: subjectWithoutExposure } as LabConfig;
+    const withoutExposure = { ...config, subject: subjectWithoutExposure } as StudyConfig;
     expect(concurrentSharedWorldValidationReason(withoutExposure)).toContain("exposure: synthetic");
   });
 });
@@ -940,7 +940,7 @@ describe("runSharedWorldPlan", () => {
 
   it("refuses subject.env on an external-public config a library caller builds", async () => {
     const parsed = parseExternal();
-    const config: LabConfig = { ...parsed, subject: { ...parsed.subject, env: ["SUBJECT_KEY"] } };
+    const config: StudyConfig = { ...parsed, subject: { ...parsed.subject, env: ["SUBJECT_KEY"] } };
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
@@ -1278,7 +1278,7 @@ describe("lobby-trivia-3player committed lab", () => {
         "utf8",
       ),
     ) as Record<string, unknown>;
-    const parsed = parseLabConfig(raw);
+    const parsed = parseStudy(raw);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.warnings ?? []).toEqual([]);
@@ -1593,7 +1593,7 @@ describe("external-public participant wiring", () => {
     try {
       const { port } = server.address() as AddressInfo;
       const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseLabConfig({
+      const parsed = parseStudy({
         ...input,
         comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
       });
@@ -1630,7 +1630,7 @@ describe("external-public comms catch token", () => {
     });
     try {
       const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseLabConfig({
+      const parsed = parseStudy({
         ...input,
         comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
       });
@@ -1676,7 +1676,7 @@ describe("external-public comms catch token", () => {
     });
     try {
       const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseLabConfig({
+      const parsed = parseStudy({
         ...input,
         comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
       });

@@ -2,18 +2,16 @@ import { normalizeExtraExcludeEntry } from "../../subject/local-tree-archive.js"
 import { ENV_NAME_PATTERN, invalid, posInt, str, strList } from "./values.js";
 import { parseEnvValues, parseState, subjectStateInvalidReason } from "./subject-state.js";
 import type {
-  LabConfigParseFailure,
-  LabSubject,
-  LabSubjectClone,
-  LabSubjectLocalTree,
-  LabSubjectProduct,
-  LabSubjectServe,
+  StudyParseFailure,
+  StudySubject,
+  StudySubjectClone,
+  StudySubjectLocalTree,
+  StudySubjectProduct,
+  StudySubjectServe,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
-export function parseSubject(
-  raw: unknown,
-): { ok: true; value: LabSubject } | LabConfigParseFailure {
+export function parseSubject(raw: unknown): { ok: true; value: StudySubject } | StudyParseFailure {
   if (!isRecord(raw)) {
     return invalid("Lab `subject` is required and must be an object.");
   }
@@ -31,7 +29,7 @@ export function parseSubject(
       "`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, desktop-cli, local-tree.",
     );
   }
-  const subject: LabSubject = { source };
+  const subject: StudySubject = { source };
 
   // topology is enum-validated everywhere; its semantics (shared-world requires clone × e2b-desktop
   // × a ≥2 roster) are enforced in the shared-world cross-validation below, and a set-but-unconsumed
@@ -78,9 +76,9 @@ export function parseSubject(
 
 /** The first field set on a source it cannot act on, in the order parseSubject has always checked. */
 function misplacedFieldFailure(
-  source: LabSubject["source"],
+  source: StudySubject["source"],
   raw: Record<string, unknown>,
-): LabConfigParseFailure | undefined {
+): StudyParseFailure | undefined {
   // `product` is terminal-product-only; reject it elsewhere. A field that cannot act on this
   // route is a parse error and is never silently dropped.
   if (source !== "terminal-product" && source !== "desktop-cli" && raw.product !== undefined) {
@@ -155,8 +153,8 @@ function misplacedFieldFailure(
 
 function parseCloneSubject(
   raw: Record<string, unknown>,
-  subject: LabSubject,
-): { ok: true; value: LabSubject } | LabConfigParseFailure {
+  subject: StudySubject,
+): { ok: true; value: StudySubject } | StudyParseFailure {
   const repos = strList(raw.repos);
   if (!repos || repos.length === 0) {
     return invalid("`subject.repos` must list at least one owner/repo slug when source is clone.");
@@ -175,11 +173,11 @@ function parseCloneSubject(
 
 function parseLocalTreeSubject(
   raw: Record<string, unknown>,
-  subject: LabSubject,
-): { ok: true; value: LabSubject } | LabConfigParseFailure {
+  subject: StudySubject,
+): { ok: true; value: StudySubject } | StudyParseFailure {
   // A local-tree subject exists to be packed and served; there is no other way to boot it, so
   // serve is required here. Clone subjects get the same requirement from each route's checks in
-  // parseLabConfig.
+  // parseStudy.
   if (raw.serve === undefined) {
     return invalid(
       "`subject.serve` is required when source is local-tree: a local-tree subject exists to be packed and served, so declare install/build/start/url exactly like the clone route.",
@@ -205,8 +203,8 @@ function parseLocalTreeSubject(
  */
 function parseServedApp(
   raw: Record<string, unknown>,
-  subject: LabSubject,
-): LabConfigParseFailure | undefined {
+  subject: StudySubject,
+): StudyParseFailure | undefined {
   const serveResult = parseServe(raw.serve);
   if (!serveResult.ok) {
     return serveResult;
@@ -249,8 +247,8 @@ function parseServedApp(
 function parseAppSubject(
   raw: Record<string, unknown>,
   source: "app-url" | "local-app",
-  subject: LabSubject,
-): { ok: true; value: LabSubject } | LabConfigParseFailure {
+  subject: StudySubject,
+): { ok: true; value: StudySubject } | StudyParseFailure {
   const appUrl = str(raw.appUrl);
   if (!appUrl) {
     return invalid(`\`subject.appUrl\` is required when source is ${source}.`);
@@ -283,8 +281,8 @@ function parseAppSubject(
 
 function parseProductSubject(
   raw: Record<string, unknown>,
-  subject: LabSubject,
-): { ok: true; value: LabSubject } | LabConfigParseFailure {
+  subject: StudySubject,
+): { ok: true; value: StudySubject } | StudyParseFailure {
   const productResult = parseProduct(raw.product);
   if (!productResult.ok) {
     return productResult;
@@ -301,7 +299,7 @@ export const PUBLIC_TARGET_OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_./-]*$/;
  *  harness cannot verify ownership: this is author-trust, and the evidence class says so. */
 function parsePublicTarget(
   raw: unknown,
-): { ok: true; value: { owner: string; authorized: boolean } } | LabConfigParseFailure {
+): { ok: true; value: { owner: string; authorized: boolean } } | StudyParseFailure {
   if (!isRecord(raw)) {
     return invalid(
       "`subject.publicTarget` must be an object, `{ owner, authorized: true }`, declaring that you own or operate the public deployment.",
@@ -325,9 +323,7 @@ function parsePublicTarget(
 // token shape is the same strict constraint as a lab id.
 const PRODUCT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
-function parseProduct(
-  raw: unknown,
-): { ok: true; value: LabSubjectProduct } | LabConfigParseFailure {
+function parseProduct(raw: unknown): { ok: true; value: StudySubjectProduct } | StudyParseFailure {
   if (!isRecord(raw)) {
     return invalid(
       "`subject.product` is required on terminal-product subjects and must be an object ({ name, publicSurfaces }).",
@@ -418,7 +414,7 @@ export function isHttpUrl(value: string): boolean {
 
 function parseServe(
   raw: unknown,
-): { ok: true; value: LabSubjectServe | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudySubjectServe | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -439,7 +435,7 @@ function parseServe(
       "`subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost), because the app runs inside the sandbox.",
     );
   }
-  const serve: LabSubjectServe = { start, url };
+  const serve: StudySubjectServe = { start, url };
   const install = str(raw.install);
   if (install) serve.install = install;
   const build = str(raw.build);
@@ -453,11 +449,11 @@ function parseServe(
   return { ok: true, value: serve };
 }
 
-function parseClone(raw: unknown): LabSubjectClone | undefined {
+function parseClone(raw: unknown): StudySubjectClone | undefined {
   if (!isRecord(raw)) {
     return undefined;
   }
-  const clone: LabSubjectClone = {};
+  const clone: StudySubjectClone = {};
   const depth = posInt(raw.depth);
   if (depth !== undefined) clone.depth = depth;
   const fanout = posInt(raw.fanout);
@@ -475,7 +471,7 @@ function parseClone(raw: unknown): LabSubjectClone | undefined {
  */
 function parseLocalTree(
   raw: unknown,
-): { ok: true; value: LabSubjectLocalTree | undefined } | LabConfigParseFailure {
+): { ok: true; value: StudySubjectLocalTree | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -484,7 +480,7 @@ function parseLocalTree(
       "`subject.localTree` must be an object ({ keep?, exclude?, maxArchiveBytes? }).",
     );
   }
-  const localTree: LabSubjectLocalTree = {};
+  const localTree: StudySubjectLocalTree = {};
   if (raw.keep !== undefined) {
     if (typeof raw.keep !== "boolean") {
       return invalid(

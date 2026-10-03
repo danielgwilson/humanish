@@ -9,7 +9,7 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 // Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
-import { resolveLabDryRun } from "./plan.js";
+import { resolveStudyDryRun } from "./plan.js";
 import { routeOf } from "./plan.js";
 import { localCodexParticipantCheck, planCliRun } from "./doctor.js";
 import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
@@ -18,23 +18,23 @@ import {
   DEFAULT_OPENAI_CU_MODEL,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
 } from "../actors/computer-use/openai-provider.js";
-import { inspectLabManifest } from "./discover.js";
+import { inspectStudyManifest } from "./discover.js";
 import { isComputerUseComposition } from "./routing.js";
-import type { LabActor, LabConfig } from "./types.js";
+import type { StudyActor, StudyConfig } from "./types.js";
 import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
 import { rosterOf } from "./parse/actors.js";
 
 export const STUDY_SUMMARY_SCHEMA = "humanish.study-summary.v1";
 
-export interface LabCaps {
+export interface StudyCaps {
   /** Per-participant blast-radius budget. */
   laneUsd?: number;
   /** Shared study budget across every participant. */
   studyUsd?: number;
 }
 
-export interface LabSummary {
+export interface StudySummary {
   runtime?: Pick<LocalRuntimeStatus, "ok" | "installed" | "message">;
   participantReadiness?: { ok: boolean; message: string };
   communications?: string;
@@ -63,7 +63,7 @@ export interface LabSummary {
    * default. A study variable you cannot see is one nobody chose.
    */
   reasoningEffort?: string;
-  caps: LabCaps;
+  caps: StudyCaps;
   /**
    * Whether the configured route's required keys resolve. Dry runs require none. This checks key
    * presence, not local CLI authentication or provider validity. Undefined when not checked.
@@ -83,7 +83,7 @@ export interface LabSummary {
  * reported as the resolved value, exactly as `model` reports its default rather than hiding it.
  */
 function reasoningEffortOf(config: Record<string, unknown>): string {
-  const actors = config.actors as Pick<LabActor, "reasoningEffort" | "lanes">[] | undefined;
+  const actors = config.actors as Pick<StudyActor, "reasoningEffort" | "lanes">[] | undefined;
   const actor = actors?.[0];
   const fallback = actor?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
   const roster = rosterOf(actor) ?? [];
@@ -106,7 +106,7 @@ function subjectOf(config: Record<string, unknown>): string | undefined {
 
 /** How many participants, and who; collapsed when they are all the same persona. */
 function participantsOf(config: Record<string, unknown>): string | undefined {
-  const actors = config.actors as Pick<LabActor, "count" | "persona" | "lanes">[] | undefined;
+  const actors = config.actors as Pick<StudyActor, "count" | "persona" | "lanes">[] | undefined;
   const actor = actors?.[0];
   if (actor === undefined) return undefined;
   const rosterPersonas = (rosterOf(actor) ?? [])
@@ -123,7 +123,7 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
 }
 
 /** The computer-use caps; `execution.caps` is inert on other routes, so none is drawn there. */
-function capsOf(config: LabConfig): LabCaps {
+function capsOf(config: StudyConfig): StudyCaps {
   if (!isComputerUseComposition(config)) return {};
   const caps = config.execution?.caps;
   return {
@@ -132,7 +132,7 @@ function capsOf(config: LabConfig): LabCaps {
   };
 }
 
-export interface ReadLabSummaryOptions {
+export interface ReadStudySummaryOptions {
   /** Skip the key probe (it touches vendor stores); the screen then shows no keys line. */
   checkKeys?: boolean;
   env?: NodeJS.ProcessEnv;
@@ -144,12 +144,12 @@ export interface ReadLabSummaryOptions {
  * Describe one lab. Returns null when the manifest cannot be resolved: the caller already knows
  * the lab exists from the listing, so this failing means the file changed underneath them.
  */
-export async function readLabSummary(
+export async function readStudySummary(
   cwd: string,
   lab: string,
-  options: ReadLabSummaryOptions = {},
-): Promise<LabSummary | null> {
-  const inspected = await inspectLabManifest(cwd, lab).catch(() => null);
+  options: ReadStudySummaryOptions = {},
+): Promise<StudySummary | null> {
+  const inspected = await inspectStudyManifest(cwd, lab).catch(() => null);
   if (inspected === null || !inspected.ok || inspected.config === undefined) return null;
   const config = inspected.config as unknown as Record<string, unknown>;
   const actors = config.actors as { model?: string }[] | undefined;
@@ -157,7 +157,7 @@ export async function readLabSummary(
 
   let keysReady: boolean | undefined;
   let missingKeys: string[] | undefined;
-  const dryRun = resolveLabDryRun(inspected.config, undefined, true) === true;
+  const dryRun = resolveStudyDryRun(inspected.config, undefined, true) === true;
   // A live key check reads the plan's requirements. A lab the planner refuses has none to check,
   // so the summary reports the refusal in place of its keys.
   const planned =

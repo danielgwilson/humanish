@@ -8,9 +8,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import { lab } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];
@@ -123,9 +123,9 @@ const pairs: [string, string][] = [
 ];
 
 function caseOf(names: readonly string[]): {
-  config: LabConfig;
+  config: StudyConfig;
   env: Record<string, string>;
-  deps: LabDeps;
+  deps: StudyDeps;
 } {
   const config = lab("sharedProvisioned");
   // The later rule first, so the earlier rule's change is the one that stands where they overlap.
@@ -137,11 +137,11 @@ function caseOf(names: readonly string[]): {
   const env = selected.some((rule) => rule.keys)
     ? { OPENAI_API_KEY: "sk-test-openai", E2B_API_KEY: "e2b-test-key" }
     : {};
-  const deps: LabDeps = {
+  const deps: StudyDeps = {
     desktopModule: never,
     ...(selected.some((rule) => rule.runSession) ? { runSession: never } : {}),
   };
-  return { config: config as unknown as LabConfig, env, deps };
+  return { config: config as unknown as StudyConfig, env, deps };
 }
 
 const cases: [string, readonly string[]][] = [

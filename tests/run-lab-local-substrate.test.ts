@@ -15,11 +15,11 @@ vi.mock("../src/routes/computer-use/local-vm.js", () => ({
 }));
 
 import { runLab } from "../src/run-lab.js";
-import type { LabConfig } from "../src/study/types.js";
+import type { StudyConfig } from "../src/study/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../src/run/bundle.js";
 import type { CuaExecutor, CuaProvider } from "../src/actors/computer-use/loop.js";
 
-const config: LabConfig = {
+const config: StudyConfig = {
   schema: "humanish.lab.v2",
   id: "local-scored",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:4173/" },

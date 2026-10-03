@@ -4,7 +4,7 @@
 // lines to print, so the planner alone decides what a run needs. A route keeps its own error
 // codes, messages and check order. The terminal runtime key (`key-one-of`) stays with
 // buildRuntimeAuth at run time, which also picks its placement.
-import type { LabPlan, Requirement } from "./plan-types.js";
+import type { StudyPlan, Requirement } from "./plan-types.js";
 
 /** Provider keys in the order the routes name them in a refusal. */
 const KEY_ORDER = ["OPENAI_API_KEY", "E2B_API_KEY"] as const;
@@ -61,7 +61,7 @@ export function requiredSubjectEnv(requirements: readonly Requirement[]): string
  * key-source line for these only. Discovery still fills every key it finds: other readers, such as
  * a declared scorer's host code, are not in the plan.
  */
-export function keyNamesOf(plan: LabPlan): ReadonlySet<string> {
+export function keyNamesOf(plan: StudyPlan): ReadonlySet<string> {
   const names = new Set<string>();
   for (const requirement of plan.requirements) {
     if (requirement.kind === "key") names.add(requirement.name);

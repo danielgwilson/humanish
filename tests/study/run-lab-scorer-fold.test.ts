@@ -4,12 +4,12 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
-import type { LabConfig } from "../../src/study/types.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
 import { lab } from "../admission/fixtures.js";
-import type { LabDeps } from "../../src/study/study-deps.js";
+import type { StudyDeps } from "../../src/study/study-deps.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 
 type Score = () => RunAdapterScore;
@@ -43,18 +43,18 @@ const provenance: RunScorerProvenance = {
   exports: ["score"],
 };
 
-function parsed(base: "cuAppUrl" | "sharedProvisioned"): LabConfig {
-  const result = parseLabConfig(lab(base));
+function parsed(base: "cuAppUrl" | "sharedProvisioned"): StudyConfig {
+  const result = parseStudy(lab(base));
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 
 interface Route {
-  config: () => LabConfig;
+  config: () => StudyConfig;
   /** The run's options: dry run, or the fake live terminal. */
   base: () => Partial<InternalRunLabOptions>;
   /** The route's test seams, where it has them outside a bag. */
-  deps?: () => LabDeps;
+  deps?: () => StudyDeps;
 }
 
 const routes: Record<string, Route> = {

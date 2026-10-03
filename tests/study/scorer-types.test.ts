@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { BrowserLabScoringContext } from "../../src/study/adapter-extension.js";
+import type { BrowserScoringContext } from "../../src/study/adapter-extension.js";
 import {
   browserScorer,
   terminalScorer,
@@ -24,8 +24,8 @@ const score = (summary: string): RunAdapterScore => ({
 /** Inline scorers, scorers typed for one context through its helper, and union scorers compile. */
 function accepted(): RunLabOptions[] {
   const browser = {
-    score: (ctx: BrowserLabScoringContext) => score(`${ctx.route} ${ctx.participantCount}`),
-    deriveFeedback: (_ctx: BrowserLabScoringContext): RunFeedbackCandidate[] => [],
+    score: (ctx: BrowserScoringContext) => score(`${ctx.route} ${ctx.participantCount}`),
+    deriveFeedback: (_ctx: BrowserScoringContext): RunFeedbackCandidate[] => [],
   };
   const terminal = {
     score: (ctx: TerminalProductScoringContext) => score(ctx.transcript),
@@ -56,9 +56,9 @@ function accepted(): RunLabOptions[] {
 
 /** A scorer typed for one context, passed bare or mixed with the other, is refused. */
 function refused(): unknown[] {
-  const browser = { score: (ctx: BrowserLabScoringContext) => score(ctx.route) };
+  const browser = { score: (ctx: BrowserScoringContext) => score(ctx.route) };
   const mixed = {
-    score: (ctx: BrowserLabScoringContext) => score(ctx.route),
+    score: (ctx: BrowserScoringContext) => score(ctx.route),
     deriveFeedback: (ctx: TerminalProductScoringContext): RunFeedbackCandidate[] =>
       ctx.transcript ? [] : [],
   };

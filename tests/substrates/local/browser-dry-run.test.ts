@@ -14,10 +14,10 @@ vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => (
   checkRestrictedCodexAnalysisReadiness: calls.account,
 }));
 
-import type { LabConfig } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
 import { runLab } from "../../../src/run-lab.js";
 import type { AdapterScoringContext } from "../../../src/study/adapter-scorer-loader.js";
-import type { LabEvent } from "../../../src/study/run-study-events.js";
+import type { StudyEvent } from "../../../src/study/run-study-events.js";
 import type { RunAdapterScore, RunBundle } from "../../../src/run/bundle.js";
 
 describe("local browser dry-run", () => {
@@ -31,7 +31,7 @@ describe("local browser dry-run", () => {
 
   it("uses the local route contract without preparing a runtime or checking account quota", async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-dry-"));
-    const config: LabConfig = {
+    const config: StudyConfig = {
       schema: "humanish.lab.v2",
       id: "local-browser",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
@@ -48,7 +48,7 @@ describe("local browser dry-run", () => {
 
   it("keeps a caller's scorer through the local study", async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-scored-"));
-    const config: LabConfig = {
+    const config: StudyConfig = {
       schema: "humanish.lab.v2",
       id: "local-scored",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
@@ -63,7 +63,7 @@ describe("local browser dry-run", () => {
       score: 100,
       summary: `Scored ${"participantCount" in ctx ? ctx.participantCount : 0} participant.`,
     }));
-    const onEvent = vi.fn((_event: LabEvent) => {});
+    const onEvent = vi.fn((_event: StudyEvent) => {});
 
     const outcome = await runLab(config, {
       cwd,

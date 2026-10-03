@@ -214,7 +214,7 @@ the cleanup proof, the interventions ledger and a minimal fail-closed cap.
 ## Test seams
 
 The route reads `env` and `scorer` from its options (`src/routes/terminal/types.ts`), and a test
-passes its seams (`desktopModule`, `renderObserver`, `now`, `costProbe`) as `LabDeps`
+passes its seams (`desktopModule`, `renderObserver`, `now`, `costProbe`) as `StudyDeps`
 (`src/study/study-deps.ts`).
 
 ## The product-adapter extension seam

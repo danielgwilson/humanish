@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { stringify } from "yaml";
 import { describe, expect, it } from "vitest";
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
-import { readLabSummary } from "../../src/study/summary.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
+import { readStudySummary } from "../../src/study/summary.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
 
 const base = {
-  schema: LAB_CONFIG_SCHEMA,
+  schema: V2_SCHEMA,
   id: "key-check",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
   actors: [{ type: "openai-computer-use", mission: "Use the app." }],
@@ -21,7 +21,7 @@ async function summary(config: unknown, env: NodeJS.ProcessEnv) {
   try {
     await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
     await writeFile(path.join(cwd, "humanish/labs/key-check.yaml"), stringify(config));
-    const result = await readLabSummary(cwd, "key-check", {
+    const result = await readStudySummary(cwd, "key-check", {
       checkKeys: true,
       env: { HUMANISH_STRICT_KEYS: "1", ...env },
     });
@@ -194,7 +194,7 @@ describe("lab summary participants", () => {
         JSON.stringify({ teamApiKey: "synthetic-credential-e2b-store" }),
       );
       const read = (homeDir: string) =>
-        readLabSummary(cwd, "key-check", {
+        readStudySummary(cwd, "key-check", {
           checkKeys: true,
           env: { OPENAI_API_KEY: "synthetic-credential-model" },
           keyDeps: { homeDir, execText: async () => null },

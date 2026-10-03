@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { runRoute, type RouteRun } from "../../src/cli/commands/lab-route-run.js";
-import type { LabConfig } from "../../src/study/types.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import { prepareLab, type LabOutcome } from "../../src/run-lab.js";
 
 // runRoute calls afterRun once runLab has returned or thrown, before presentation. The run
@@ -12,7 +12,7 @@ vi.mock("../../src/run-lab.js", async (importOriginal) => ({
   prepareLab: vi.fn(),
 }));
 
-const config = {} as LabConfig;
+const config = {} as StudyConfig;
 // prepareLab is mocked, so the route's runLab options are never read.
 const options = {} as RouteRun["options"];
 const outcome = { route: "preview" } as unknown as LabOutcome;

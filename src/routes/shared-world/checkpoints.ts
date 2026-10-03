@@ -2,7 +2,7 @@ import { commandDigestOf } from "../../subject/state.js";
 import { SUBJECT_DIR } from "../../subject/steps.js";
 import type { Shell } from "../../substrates/shell.js";
 import { runDetachedStep, type DetachedTimers } from "../../substrates/detached.js";
-import { type LabSubjectState, type LabSubjectStateCheckpoint } from "../../study/types.js";
+import { type StudySubjectState, type StudySubjectStateCheckpoint } from "../../study/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type SharedWorldCheckpoint } from "../../run/shared-world-evidence.js";
 
@@ -25,7 +25,7 @@ export async function runCheckpointSnapshot(args: {
   shell: Shell;
   snapshotIndex: number;
   name: string;
-  checkpoints: LabSubjectStateCheckpoint[];
+  checkpoints: StudySubjectStateCheckpoint[];
   prevDigest: string | undefined;
   scrub: (text: string) => string;
   requestTimeoutMs: number;
@@ -54,7 +54,7 @@ export async function runCheckpointSnapshot(args: {
 }
 
 /** sha256-16 over the ordered seed-step command digests: the seeded-state recipe identity. */
-export function seedRecipeDigest(state: LabSubjectState | undefined): string {
+export function seedRecipeDigest(state: StudySubjectState | undefined): string {
   const seed = state?.seed ?? [];
   return commandDigestOf(
     seed.map((step) => `${step.name}:${commandDigestOf(step.command)}`).join("\n"),

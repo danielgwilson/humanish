@@ -6,7 +6,7 @@
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
 import { scrubSecretValues } from "../evidence/secret-scrub.js";
 import { addressedRecipients } from "../study/parse/comms.js";
-import type { LabCommsEmail, LabCommsExternal } from "../study/types.js";
+import type { StudyCommsEmail, StudyCommsExternal } from "../study/types.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { FakeInbox } from "./fake-inbox.js";
@@ -41,7 +41,7 @@ export function catchTokenRefusal(token: string | undefined): string | undefined
 
 /** The catch token the run sends: the value of `authTokenEnv`, when the lab names one. */
 export function catchTokenOf(
-  external: LabCommsExternal,
+  external: StudyCommsExternal,
   env: Record<string, string | undefined>,
 ): string | undefined {
   return external.authTokenEnv === undefined ? undefined : env[external.authTokenEnv];
@@ -54,8 +54,8 @@ export function catchTokenOf(
  * throws: the run continues without comms evidence.
  */
 export async function collectExternalCommsEvidence(args: {
-  external: LabCommsExternal;
-  email: LabCommsEmail;
+  external: StudyCommsExternal;
+  email: StudyCommsEmail;
   env: Record<string, string | undefined>;
   runPaths: PreparedRunArtifactPaths;
   /** The run's known secret values. The route may add to it until the drain runs. */

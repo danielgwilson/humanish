@@ -21,9 +21,13 @@ import type {
   ActorTraceItem,
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabDeps } from "../../study/study-deps.js";
-import type { LabEvent, ParticipantRef } from "../../study/run-study-events.js";
-import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../study/run-study-homes.js";
+import type { StudyDeps } from "../../study/study-deps.js";
+import type { StudyEvent, ParticipantRef } from "../../study/run-study-events.js";
+import type {
+  InProcessDriver,
+  ProviderFactory,
+  RunStudyHomes,
+} from "../../study/run-study-homes.js";
 import { type BrowserScorer } from "../../study/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
@@ -35,7 +39,7 @@ import type {
   ComputerUseRunner,
   ResidualConfig,
 } from "../../study/plan-types.js";
-import { type LabCommsEmail, type LabConfig } from "../../study/types.js";
+import { type StudyCommsEmail, type StudyConfig } from "../../study/types.js";
 import { type ObserverResult } from "../../observer/render.js";
 import {
   type BundleRun,
@@ -108,7 +112,7 @@ export interface RunCuaActorLabOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   cwd: string;
-  config: LabConfig;
+  config: StudyConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
   dryRun: boolean;
   open?: boolean;
@@ -124,20 +128,20 @@ export interface RunCuaActorLabOptions {
   /** Keys and subject env for the run. Defaults to process.env. */
   env?: Readonly<Record<string, string | undefined>>;
   /** E2B only. Runs on each participant's desktop after it exists and before provisioning. */
-  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
+  prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
   /** runLab's local VM study, for an app-url lab on the local target. */
   localVm?: LocalVmInput;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
-  onStream?: NonNullable<RunLabHomes["onStream"]>;
+  onStream?: NonNullable<RunStudyHomes["onStream"]>;
   /** The caller's brain for each participant, in place of the lab's own. */
   createProvider?: ProviderFactory;
   /** Drives an app-url or local-app subject in this process, with no desktop. Needs createProvider. */
   inProcess?: InProcessDriver;
-  /** Reports the plan and subject phases to onEvent; built by normalizeRunLabOptions. */
-  emit?: (event: LabEvent) => void;
+  /** Reports the plan and subject phases to onEvent; built by normalizeRunStudyOptions. */
+  emit?: (event: StudyEvent) => void;
   /** Test seams. */
-  deps?: LabDeps;
+  deps?: StudyDeps;
   /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
   /** Present only when the scorer was config-declared and loaded by the CLI;
@@ -464,18 +468,18 @@ export interface E2BDesktopDeps {
   /** Adopter-hosted comms plane: present on the app-url route when comms.email.external is
    *  declared. Carries the parsed comms block (recipients drive the per-participant inbox instruction)
    *  and the inbox URL the persona opens. The drain runs once at run level, not per participant. */
-  externalComms?: { email: LabCommsEmail; inboxUrl: string };
+  externalComms?: { email: StudyCommsEmail; inboxUrl: string };
   /** Injected clock (ms). It measures the host-side E2B desktop create->teardown span so the
    *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
   now: () => number;
   /** Loads the E2B SDK for the participant's desktop. Defaults to loadE2BDesktopModule. */
   desktopModule?: () => Promise<E2BDesktopModule>;
   /** The caller's prepareDesktop, called with the participant as its target. */
-  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
+  prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
   /** Clock and sleep for detached provisioning steps. */
   detachedTimers?: DetachedTimers;
   /** Receives each live stream's ready and ended: the Observer's tracker, then the caller's onStream. */
-  onStream: NonNullable<RunLabHomes["onStream"]>;
+  onStream: NonNullable<RunStudyHomes["onStream"]>;
   /** Reports a subject phase to the phase sink (stderr by default) and to onEvent. */
   reportSubjectPhase: (event: SubjectPhaseEvent, participant: ParticipantRef) => void;
   /**

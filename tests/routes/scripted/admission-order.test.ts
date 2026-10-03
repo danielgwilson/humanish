@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/study/types.js";
+import type { StudyConfig } from "../../../src/study/types.js";
 import { runScriptedBrowserLab } from "../../../src/routes/scripted/route.js";
 import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
 
@@ -59,10 +59,10 @@ const rules: [string, Mutate][] = [
   ],
 ];
 
-function configWith(mutations: Mutate[]): LabConfig {
+function configWith(mutations: Mutate[]): StudyConfig {
   const config = lab("scriptedAppUrl");
   for (const mutate of mutations) mutate(config);
-  return config as unknown as LabConfig;
+  return config as unknown as StudyConfig;
 }
 
 // A loopback URL applies only to an app-url subject and serve only to a clone, so those two rules
@@ -72,11 +72,11 @@ const pairs = rules.slice(0, -1).map((rule, index) => {
   return [rule, next] as const;
 });
 
-const cases: [string, LabConfig][] = [
-  ...rules.map(([name, mutate]) => [name, configWith([mutate])] as [string, LabConfig]),
+const cases: [string, StudyConfig][] = [
+  ...rules.map(([name, mutate]) => [name, configWith([mutate])] as [string, StudyConfig]),
   ...pairs.map(
     ([[name, mutate], [next, nextMutate]]) =>
-      [`${name} and ${next}`, configWith([nextMutate, mutate])] as [string, LabConfig],
+      [`${name} and ${next}`, configWith([nextMutate, mutate])] as [string, StudyConfig],
   ),
 ];
 

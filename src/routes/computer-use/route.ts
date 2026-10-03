@@ -31,7 +31,7 @@ import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
 import { withLateScorer } from "../../study/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import { callerDrivingOf, planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
 import { runLabParticipants } from "./live-phase.js";
@@ -106,7 +106,7 @@ export async function computerUseLabRefusal(
 export async function admitComputerUsePlan(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  config: LabConfig,
+  config: StudyConfig,
 ): Promise<AdmittedPlan<"computer-use">> {
   const admission = await admitCuaRun(plan, input, config);
   if (!admission.ok)
@@ -139,7 +139,7 @@ function cuaOutcome(result: CuaActorLabResult) {
 export async function runComputerUsePlan(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  config: LabConfig,
+  config: StudyConfig,
 ): Promise<CuaActorLabResult> {
   const admission = await admitCuaRun(plan, input, config);
   if (!admission.ok) return completeCuaAnalysis(plan, input, admission.result, undefined);

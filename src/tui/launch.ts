@@ -17,7 +17,7 @@ import { open } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { resolveLabManifest } from "../study/discover.js";
+import { resolveStudyManifest } from "../study/discover.js";
 import { prepareManagedHumanishOutputDirectory } from "../run/contained-output.js";
 
 /**
@@ -97,7 +97,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
   const cwd = path.resolve(options.cwd);
   let selectedLab = options.lab;
   if (options.manifestPath !== undefined) {
-    const resolved = await resolveLabManifest(cwd, options.manifestPath);
+    const resolved = await resolveStudyManifest(cwd, options.manifestPath);
     if (!resolved.ok)
       return {
         ok: false,

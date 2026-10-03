@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { defaultCodexCliVersion } from "../../src/actors/codex/codex-admission.js";
-import { labSetupChecks, type LabSetupCheckArgs } from "../../src/study/doctor.js";
+import { studySetupChecks, type StudySetupCheckArgs } from "../../src/study/doctor.js";
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -39,14 +39,14 @@ const hostedLab = (actor: Record<string, unknown> = {}) =>
 
 async function participantRow(
   manifest: string,
-  readiness: NonNullable<LabSetupCheckArgs["codexParticipantReadiness"]>,
+  readiness: NonNullable<StudySetupCheckArgs["codexParticipantReadiness"]>,
   agents: DetectedLocalAgent[] = [codex("authenticated")],
 ) {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-doctor-hosted-"));
   directories.push(cwd);
   await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
   await writeFile(path.join(cwd, "humanish/labs/hosted.yaml"), manifest);
-  const result = await labSetupChecks({
+  const result = await studySetupChecks({
     cwd,
     lab: "humanish/labs/hosted.yaml",
     env: { HUMANISH_STRICT_KEYS: "1", PATH: "" },
@@ -59,7 +59,7 @@ async function participantRow(
 
 describe("doctor's hosted Codex participant check", () => {
   it("runs the operator handshake with the lab's model and effort, and reports what it admitted", async () => {
-    const readiness = vi.fn<NonNullable<LabSetupCheckArgs["codexParticipantReadiness"]>>(
+    const readiness = vi.fn<NonNullable<StudySetupCheckArgs["codexParticipantReadiness"]>>(
       async () => ({
         ready: true,
         errorCode: null,
@@ -132,7 +132,7 @@ describe("doctor's hosted Codex participant check", () => {
   });
 
   it("keeps the sign-in row for a signed-out Codex and skips the handshake", async () => {
-    const readiness = vi.fn<NonNullable<LabSetupCheckArgs["codexParticipantReadiness"]>>();
+    const readiness = vi.fn<NonNullable<StudySetupCheckArgs["codexParticipantReadiness"]>>();
     const row = await participantRow(hostedLab(), readiness, [codex("unauthenticated")]);
     expect(readiness).not.toHaveBeenCalled();
     expect(row).toMatchObject({ ok: false });

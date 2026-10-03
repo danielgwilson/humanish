@@ -11,7 +11,7 @@ import {
 import { digestText, redactText } from "../evidence/redaction.js";
 import { realpath } from "node:fs/promises";
 import { rosterOf } from "./parse/actors.js";
-import type { LabActor } from "./types.js";
+import type { StudyActor } from "./types.js";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal route enforces. */
 const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -105,8 +105,8 @@ export async function resolveCommittedPersonas(
  * Every persona id a lab config could put on a browser participant: the roster when one is
  * declared, otherwise the actor-level persona that every fan-out participant inherits.
  */
-export function labPersonaIds(config: {
-  actors?: readonly Pick<LabActor, "persona" | "lanes">[];
+export function studyPersonaIds(config: {
+  actors?: readonly Pick<StudyActor, "persona" | "lanes">[];
 }): string[] {
   const ids: string[] = [];
   for (const actor of config.actors ?? []) {

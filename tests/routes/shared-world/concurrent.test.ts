@@ -1,6 +1,6 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
-import { phaseEvent, type LabEvent } from "../../../src/study/run-study-events.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
+import { phaseEvent, type StudyEvent } from "../../../src/study/run-study-events.js";
 import type { BrowserScorer } from "../../../src/study/adapter-extension.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
@@ -31,8 +31,8 @@ import {
   concurrentSharedWorldValidationReason,
   sharedWorldValidationReason,
 } from "../../../src/study/validation.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { prepareLab, runLab } from "../../../src/run-lab.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -372,7 +372,7 @@ function makeRunSession(
   };
 }
 
-function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): LabConfig {
+function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): StudyConfig {
   const lanes = Array.from({ length: roleCount }, (_unused, i) => ({
     id: `persona-${String(i + 1).padStart(2, "0")}`,
     actorType: i === 0 ? "initiator" : "collaborator",
@@ -381,8 +381,8 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): La
     persona: `persona-${i + 1}`,
     entry: `/seat-${i + 1}`,
   }));
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "concurrent-shared-world-proof",
     title: "Concurrent shared-world proof",
     subject: {
@@ -418,7 +418,7 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): La
 }
 
 /** The seams, writable so a test can swap one. */
-type TestDeps = { -readonly [K in keyof LabDeps]: LabDeps[K] };
+type TestDeps = { -readonly [K in keyof StudyDeps]: StudyDeps[K] };
 
 /** Keys and the subject env value every fake run gets. */
 const testEnv = (): Record<string, string> => ({
@@ -563,7 +563,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       path: "humanish/labs/shared-lab.yaml",
       origin: "committed" as const,
     };
-    // runLab takes the provenance the CLI resolved, and planLab puts it on the plan.
+    // runLab takes the provenance the CLI resolved, and planStudy puts it on the plan.
     const outcome = await runLab(concurrentConfig(), { cwd, dryRun: true, lab });
     if (outcome.route !== "shared-world") throw new Error(`routed to ${outcome.route}`);
     const { result } = outcome;
@@ -974,13 +974,13 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       E2B_API_KEY: "test-e2b-key",
       DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak",
     };
-    const deps: LabDeps = {
+    const deps: StudyDeps = {
       desktopModule: async () => module,
       runSession: makeRunSession(state, makeRendezvous(3)),
       detachedTimers: { now: () => 0, sleep: async () => {} },
       proberCadenceMs: 100_000,
     };
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...concurrentConfig(3, 3),
       comms: {
         email: {
@@ -1062,7 +1062,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       E2B_API_KEY: "k",
       DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak",
     };
-    const deps: LabDeps = {
+    const deps: StudyDeps = {
       desktopModule: async () => module,
       runSession: async (options) => {
         seenInstructions.push(options.instructions);
@@ -1071,7 +1071,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       detachedTimers: { now: () => 0, sleep: async () => {} },
       proberCadenceMs: 100_000,
     };
-    const config: LabConfig = {
+    const config: StudyConfig = {
       ...concurrentConfig(3, 3),
       // The recipient's `lane` matches the first persona's participant id, so only it is told to
       // check the inbox.
@@ -1123,7 +1123,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const seenInstructions: string[] = [];
     const baseRun = makeRunSession(state, makeRendezvous(2));
     const env = { OPENAI_API_KEY: "k", E2B_API_KEY: "k", DATABASE_URL: "opaque-pw-7f3a9c2e" };
-    const deps: LabDeps = {
+    const deps: StudyDeps = {
       desktopModule: async () => module,
       runSession: async (options) => {
         seenInstructions.push(options.instructions);
@@ -1138,7 +1138,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // The second participant has no id, and email has no recipients: the parser fills one per
     // participant.
     const labWith = (email: Record<string, unknown>) =>
-      parseLabConfig({
+      parseStudy({
         ...declared,
         actors: [{ ...declared.actors[0], lanes: [named, unnamedSeat] }],
         comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, ...email } },
@@ -1172,7 +1172,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   it("subjectPhaseSink (injected DI seam): the one shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr, and emits each as a subject event", async () => {
     const state = { worldVersion: 0 };
     const { env, phaseEvents, deps } = baseSeams(state, makeRendezvous(3));
-    const emitted: LabEvent[] = [];
+    const emitted: StudyEvent[] = [];
     const result = await runConcurrentSharedWorld({
       cwd,
       config: concurrentConfig(3, 3),
@@ -1522,7 +1522,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   // live at once and, on this provisioned plane, a state change after they overlapped. Every
   // participant passes in each case below; only the world differs.
   type WorldCase = "overlap" | "no overlap" | "overlap without a state change";
-  function worldSeams(world: WorldCase): { env: Record<string, string>; deps: LabDeps } {
+  function worldSeams(world: WorldCase): { env: Record<string, string>; deps: StudyDeps } {
     const { env, deps } = baseSeams(
       { worldVersion: 0 },
       makeRendezvous(3),
@@ -1759,7 +1759,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   });
 
   it("runs a direct library config that omits concurrency, as the parser would fill it", async () => {
-    // Library callers can skip parseLabConfig, so the route must default concurrency to the
+    // Library callers can skip parseStudy, so the route must default concurrency to the
     // participant count itself instead of treating the omission as the removed value 1.
     const state = { worldVersion: 0 };
     const { env, deps } = baseSeams(state, makeRendezvous(3));
@@ -1870,14 +1870,14 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
   };
   const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
 
-  function localTreeConcurrentConfig(roleCount = 3, concurrency = 3): LabConfig {
+  function localTreeConcurrentConfig(roleCount = 3, concurrency = 3): StudyConfig {
     const lanes = Array.from({ length: roleCount }, (_unused, i) => ({
       id: `persona-${String(i + 1).padStart(2, "0")}`,
       persona: `persona-${i + 1}`,
       entry: `/seat-${i + 1}`,
     }));
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
+    const parsed = parseStudy({
+      schema: V2_SCHEMA,
       id: "concurrent-shared-world-local-tree-proof",
       title: "Concurrent shared-world local-tree proof",
       subject: {
@@ -2065,7 +2065,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const valid = localTreeConcurrentConfig();
     const subjectWithoutServe: Record<string, unknown> = { ...valid.subject };
     delete subjectWithoutServe.serve;
-    const broken = { ...valid, subject: subjectWithoutServe } as unknown as LabConfig;
+    const broken = { ...valid, subject: subjectWithoutServe } as unknown as StudyConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
@@ -2078,7 +2078,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const lanes = actor.lanes!.map((lane, index) =>
       index === 0 ? { ...lane, id: "..\\escape" } : lane,
     );
-    const broken: LabConfig = { ...valid, actors: [{ ...actor, lanes }] };
+    const broken: StudyConfig = { ...valid, actors: [{ ...actor, lanes }] };
     let desktopLoads = 0;
     const result = await runConcurrentSharedWorld({
       cwd,
@@ -2099,7 +2099,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
 
   it("engine re-enforcement refuses a positive scenario.caps.maxTotalUsd before loading a desktop", async () => {
     const valid = concurrentConfig(3, 3);
-    const broken: LabConfig = {
+    const broken: StudyConfig = {
       ...valid,
       scenario: { ...valid.scenario, caps: { maxTotalUsd: 5 } },
     };
@@ -2123,7 +2123,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
 
   it("engine re-enforcement: a local-tree config declaring subject.localTree.keep on the concurrent route fails closed (would orphan the N actor sandboxes)", async () => {
     const valid = localTreeConcurrentConfig();
-    const broken: LabConfig = {
+    const broken: StudyConfig = {
       ...valid,
       subject: { ...valid.subject, localTree: { keep: true } },
     };
@@ -2138,7 +2138,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const broken = {
       ...valid,
       execution: { ...valid.execution, target: "local" },
-    } as unknown as LabConfig;
+    } as unknown as StudyConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
@@ -2403,14 +2403,14 @@ describe("concurrent physical geometry guard", () => {
 });
 
 describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
-  function loadLiveLab(): LabConfig {
+  function loadLiveLab(): StudyConfig {
     const raw = parse(
       readFileSync(
         path.join(process.cwd(), "humanish/studies/shared-world-concurrent-live.yaml"),
         "utf8",
       ),
     );
-    const parsed = parseLabConfig(raw);
+    const parsed = parseStudy(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
   }
@@ -2941,7 +2941,7 @@ describe("concurrent shared-world project binding", () => {
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const recordPhase = deps.subjectPhaseSink!;
     let retargeted = false;
-    const retargetOnFirstPhase: LabDeps = {
+    const retargetOnFirstPhase: StudyDeps = {
       ...deps,
       subjectPhaseSink: (event, participant) => {
         if (!retargeted) {

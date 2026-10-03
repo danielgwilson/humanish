@@ -1,4 +1,4 @@
-// The typed homes on RunLabOptions. runLab calls normalizeRunLabOptions first: it refuses an option
+// The typed homes on RunLabOptions. runLab calls normalizeRunStudyOptions first: it refuses an option
 // the route cannot honor and otherwise passes the typed options to the route, with env copied and
 // onEvent turned into the emitter. The package's runLab refuses the removed bags
 // (removedOptionRefusal).
@@ -7,9 +7,9 @@ import path from "node:path";
 
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import type { InternalRunLabOptions, LabOutcome, RunLabOptions } from "../run-lab.js";
-import { resolveLabDryRun, type LabRoute } from "./plan.js";
-import type { LabConfig } from "./types.js";
-import { knownSecretValues, labEventEmitter, type LabEvent } from "./run-study-events.js";
+import { resolveStudyDryRun, type StudyRoute } from "./plan.js";
+import type { StudyConfig } from "./types.js";
+import { knownSecretValues, studyEventEmitter, type StudyEvent } from "./run-study-events.js";
 import { rosterOf } from "./parse/actors.js";
 import { studyResultIdentity } from "../run/study-result.js";
 
@@ -26,10 +26,10 @@ type Normalized = {
   /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
   warnings: string[];
   /** Calls onEvent and never waits for it, or undefined without onEvent. The routes report through it. */
-  emit: ((event: LabEvent) => void) | undefined;
+  emit: ((event: StudyEvent) => void) | undefined;
 };
 
-const unsupported = (option: string, route: LabRoute, reason: string): Refusal => ({
+const unsupported = (option: string, route: StudyRoute, reason: string): Refusal => ({
   ok: false,
   code: "HUMANISH_STUDY_OPTION_UNSUPPORTED",
   message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
@@ -68,8 +68,8 @@ export function removedOptionRefusal(options: RunLabOptions): Refusal | undefine
 
 /** Why the route cannot honor an option it was given, or undefined when it can. */
 function unsupportedOption(
-  config: LabConfig,
-  route: LabRoute,
+  config: StudyConfig,
+  route: StudyRoute,
   options: InternalRunLabOptions,
 ): Refusal | undefined {
   const { scorer, createProvider, inProcess, prepareDesktop } = options;
@@ -122,9 +122,9 @@ function unsupportedOption(
  * Refuse what the route cannot honor, copy env, and build the emitter onEvent receives through.
  * Nothing here touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
  */
-export function normalizeRunLabOptions(
-  config: LabConfig,
-  route: LabRoute,
+export function normalizeRunStudyOptions(
+  config: StudyConfig,
+  route: StudyRoute,
   options: InternalRunLabOptions,
 ): Normalized | Refusal {
   const refused = unsupportedOption(config, route, options);
@@ -135,7 +135,7 @@ export function normalizeRunLabOptions(
   // The route gets this copy, so it is the env a warning is scrubbed against, whatever the caller
   // does to its own object afterwards.
   const forwardedEnv = env === undefined ? undefined : { ...env };
-  const emit = labEventEmitter(onEvent, warnings, () =>
+  const emit = studyEventEmitter(onEvent, warnings, () =>
     knownSecretValues(config, options, forwardedEnv),
   );
 
@@ -148,15 +148,15 @@ export function normalizeRunLabOptions(
 
 /** A refusal in the route's own result envelope, before any run exists. */
 export function optionRefusalOutcome(
-  config: LabConfig,
-  route: LabRoute,
+  config: StudyConfig,
+  route: StudyRoute,
   options: RunLabOptions,
   refusal: Refusal,
 ): LabOutcome {
   const cwd = path.resolve(options.cwd);
   const error = { code: refusal.code, message: refusal.message };
   const actor = config.actors[0]?.type ?? "";
-  const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+  const dryRun = resolveStudyDryRun(config, options.dryRun, true) ?? true;
   const runId = options.runId ?? "not-created";
   const common = { ok: false, cwd, actor, dryRun, runId, warnings: [], error };
   switch (route) {

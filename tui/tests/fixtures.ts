@@ -5,14 +5,14 @@
 // a golden built from one would commit that to a public repo. These names are invented, the numbers
 // are round, and the clock is frozen, so a golden that changes means the UI changed.
 
-import type { LabListEntry } from "../../src/study/discover.js";
+import type { StudyListEntry } from "../../src/study/discover.js";
 import type { RunIndexEntry } from "../../src/run/run-index.js";
 
 export const NOW = Date.parse("2026-08-19T12:00:00.000Z");
 
 const at = (minutesAgo: number): string => new Date(NOW - minutesAgo * 60_000).toISOString();
 
-export const LABS: LabListEntry[] = [
+export const LABS: StudyListEntry[] = [
   {
     id: "signup-flow",
     source: "app-url",

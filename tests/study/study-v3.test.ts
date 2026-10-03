@@ -9,12 +9,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { DEFAULT_LOCAL_BROWSER_STARTER, starterFilesFor } from "../../src/study/init-templates.js";
-import { planLab } from "../../src/study/plan.js";
+import { planStudy } from "../../src/study/plan.js";
 import type { PlanResult } from "../../src/study/plan-types.js";
-import { routeOf, type LabRoute } from "../../src/study/routing.js";
-import { LAB_CONFIG_SCHEMA, STUDY_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { routeOf, type StudyRoute } from "../../src/study/routing.js";
+import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -26,8 +26,8 @@ function record(value: unknown): Raw | undefined {
     : undefined;
 }
 
-function parsed(raw: unknown): { config: LabConfig; warnings: string[] } {
-  const result = parseLabConfig(raw);
+function parsed(raw: unknown): { config: StudyConfig; warnings: string[] } {
+  const result = parseStudy(raw);
   if (!result.ok) throw new Error(result.error.message);
   return { config: result.config, warnings: result.warnings };
 }
@@ -45,7 +45,7 @@ const INERT_EVERYWHERE: readonly [section: string, key: string][] = [
  * The v3 twin of a v2 file, and the v2 paths it leaves out because the route does not read them.
  * This is the mapping `humanish migrate` will apply.
  */
-function twin(v2: Raw, route: LabRoute): { study: Raw; dropped: string[] } {
+function twin(v2: Raw, route: StudyRoute): { study: Raw; dropped: string[] } {
   const source = structuredClone(v2);
   const dropped: string[] = [];
   const drop = (section: Raw | undefined, key: string, label: string) => {
@@ -120,10 +120,10 @@ function withoutPaths(v2: Raw, paths: readonly string[]): Raw {
   return copy;
 }
 
-function plans(config: LabConfig): Record<"dry" | "live", PlanResult> {
+function plans(config: StudyConfig): Record<"dry" | "live", PlanResult> {
   return {
-    dry: planLab(config, { cwd: ROOT, dryRun: true }),
-    live: planLab(config, { cwd: ROOT, dryRun: false }),
+    dry: planStudy(config, { cwd: ROOT, dryRun: true }),
+    live: planStudy(config, { cwd: ROOT, dryRun: false }),
   };
 }
 
@@ -134,10 +134,10 @@ function expectTwin(name: string, v2: Raw): string[] {
   const source = parsed(v2);
   const route = routeOf(source.config);
   const { study, dropped } = twin(v2, route);
-  const result = parseLabConfig(study);
+  const result = parseStudy(study);
   if (!result.ok) throw new Error(`${name}: ${result.error.message}`);
   const projected = parsed(withoutPaths(v2, dropped));
-  expect({ ...result.config, schema: LAB_CONFIG_SCHEMA }, name).toEqual(projected.config);
+  expect({ ...result.config, schema: V2_SCHEMA }, name).toEqual(projected.config);
   expect(result.config.schema, name).toBe(STUDY_SCHEMA);
   expect(plans(result.config), name).toEqual(plans(projected.config));
   expect(result.warnings, name).toEqual(source.warnings.filter((w) => !forwardDeclared(w)));

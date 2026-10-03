@@ -6,9 +6,9 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
-import { parseLabConfig } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runLab } from "../../src/run-lab.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { RUN_STATUS_FILE } from "../../src/run/status.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -37,8 +37,8 @@ const ROOT = path.resolve(import.meta.dirname, "../..");
 const RUN_ID = "run-status-before-sandbox";
 const env = { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" };
 
-function parsed(input: unknown): LabConfig {
-  const result = parseLabConfig(input);
+function parsed(input: unknown): StudyConfig {
+  const result = parseStudy(input);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
@@ -79,7 +79,7 @@ describe("a live route records its status before acquiring a sandbox", () => {
     const seen: boolean[] = [];
     await runLab(
       parsed({
-        schema: LAB_CONFIG_SCHEMA,
+        schema: V2_SCHEMA,
         id: "status-first-cua",
         subject: clone,
         actors: [{ type: "openai-computer-use" }],
@@ -121,7 +121,7 @@ describe("a live route records its status before acquiring a sandbox", () => {
     const seen: boolean[] = [];
     await runLab(
       parsed({
-        schema: LAB_CONFIG_SCHEMA,
+        schema: V2_SCHEMA,
         id: "status-first-scripted",
         subject: {
           ...clone,

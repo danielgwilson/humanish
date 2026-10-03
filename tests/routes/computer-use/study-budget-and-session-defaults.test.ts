@@ -20,7 +20,7 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {
@@ -192,14 +192,14 @@ describe("caps parsing and session defaults", () => {
   };
 
   it("parses execution.caps.maxTotalUsd and refuses a negative one", () => {
-    const good = parseLabConfig({
+    const good = parseStudy({
       ...baseLab,
       execution: { target: "e2b-desktop", caps: { maxTotalUsd: 25 } },
     });
     expect(good.ok).toBe(true);
     if (good.ok) expect(good.config.execution?.caps?.maxTotalUsd).toBe(25);
 
-    const bad = parseLabConfig({
+    const bad = parseStudy({
       ...baseLab,
       execution: { target: "e2b-desktop", caps: { maxTotalUsd: -1 } },
     });
@@ -207,14 +207,14 @@ describe("caps parsing and session defaults", () => {
   });
 
   it("defaults an app-url session to 30 minutes", () => {
-    const parsed = parseLabConfig(baseLab);
+    const parsed = parseStudy(baseLab);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(30 * 60_000);
   });
 
   it("derives a provisioned-route default that fits the one-hour sandbox cap", () => {
-    const parsed = parseLabConfig({
+    const parsed = parseStudy({
       ...baseLab,
       subject: {
         source: "clone",
@@ -229,7 +229,7 @@ describe("caps parsing and session defaults", () => {
   });
 
   it("subtracts declared state seeding from the derived default", () => {
-    const parsed = parseLabConfig({
+    const parsed = parseStudy({
       ...baseLab,
       subject: {
         source: "clone",

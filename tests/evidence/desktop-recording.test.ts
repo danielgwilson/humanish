@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import { parseLabConfig } from "../../src/study/config.js";
-import { type LabConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { type StudyConfig } from "../../src/study/types.js";
 import { collectDesktopRecording } from "../../src/evidence/desktop-recording-artifact.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { exportRun } from "../../src/feedback/export.js";
@@ -109,7 +109,7 @@ describe("optional recording evidence", () => {
 });
 
 it("keeps capture optional and rejects declarations that no runtime will consume", () => {
-  const config: LabConfig = {
+  const config: StudyConfig = {
     schema: "humanish.lab.v2",
     id: "record-browser",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
@@ -117,11 +117,11 @@ it("keeps capture optional and rejects declarations that no runtime will consume
     execution: { target: "e2b-desktop", desktop: { recording: { audio: true } } },
     scenario: { mode: "live" },
   };
-  expect(parseLabConfig(config).ok).toBe(true);
+  expect(parseStudy(config).ok).toBe(true);
   config.actors[0]!.type = "scripted-browser";
   config.execution!.target = "local";
   config.scenario!.ref = "scripted-first-run";
-  expect(parseLabConfig(config).ok).toBe(false);
+  expect(parseStudy(config).ok).toBe(false);
   delete config.execution!.desktop!.recording;
-  expect(parseLabConfig(config).ok).toBe(true);
+  expect(parseStudy(config).ok).toBe(true);
 });

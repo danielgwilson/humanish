@@ -4,7 +4,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
-import type { LabDeps } from "../../../src/study/study-deps.js";
+import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type {
   CuaExecutor,
   CuaProvider,
@@ -22,8 +22,8 @@ import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js
 import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2b-desktop/desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
-import { parseLabConfig } from "../../../src/study/config.js";
+import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -60,8 +60,8 @@ const specFields = {
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-ready-desktop-"));
   temporary.push(cwd);
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  const parsed = parseStudy({
+    schema: V2_SCHEMA,
     id: "ready-desktop",
     title: "Ready desktop",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
@@ -163,7 +163,7 @@ async function fixture() {
 }
 
 /** The route's seams: the fixture's desktop module, which a local run must never load. */
-const seamsOf = (f: Awaited<ReturnType<typeof fixture>>): LabDeps => ({
+const seamsOf = (f: Awaited<ReturnType<typeof fixture>>): StudyDeps => ({
   desktopModule: f.loadDesktopModule,
 });
 
@@ -182,7 +182,7 @@ describe("ready desktop participant contract", () => {
     "selects the desktop image for speech=$speech, override=$template",
     async ({ speech, template, expected }) => {
       const f = await fixture();
-      const parsed = parseLabConfig({
+      const parsed = parseStudy({
         ...f.config,
         actors: [
           {
@@ -231,7 +231,7 @@ describe("ready desktop participant contract", () => {
       `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.153.0\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(executable, 0o700);
-    const parsed = parseLabConfig({
+    const parsed = parseStudy({
       ...f.config,
       actors: [
         {
@@ -266,7 +266,7 @@ describe("ready desktop participant contract", () => {
       `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.157.1\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(executable, 0o700);
-    const parsed = parseLabConfig({
+    const parsed = parseStudy({
       ...f.config,
       actors: [
         {
@@ -448,7 +448,7 @@ describe("ready desktop participant contract", () => {
       ...f.config,
       execution: { ...f.config.execution, target: "local" as const },
     };
-    expect(parseLabConfig(config).ok).toBe(true);
+    expect(parseStudy(config).ok).toBe(true);
     const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, deps: seamsOf(f) });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");
@@ -464,7 +464,7 @@ describe("ready desktop participant contract", () => {
       ...f.config,
       subject: { ...f.config.subject, source: "this-repo" },
       execution: { ...f.config.execution, target: "local" as const },
-    } as unknown as LabConfig;
+    } as unknown as StudyConfig;
     const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: true, deps: seamsOf(f) });
     expect(result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");
     expect(result.ok, JSON.stringify(result.error)).toBe(true);
@@ -555,7 +555,7 @@ describe("ready desktop participant contract", () => {
       ) => ({ state: "skipped" as const, reason: deps?.refusal?.() ?? null }),
     );
     // Without a review block the plan runs its default analysis.
-    const config: LabConfig = localFeedbackLab(f);
+    const config: StudyConfig = localFeedbackLab(f);
     delete config.review;
     const result = await runCuaActorLab({
       ...runOf(f),

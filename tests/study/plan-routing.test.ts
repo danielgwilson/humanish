@@ -16,7 +16,7 @@ import {
   isScriptedBrowserComposition,
   isTerminalProductComposition,
 } from "../../src/study/routing.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -52,7 +52,7 @@ const predicates = {
 };
 
 /** "route predicate-names-that-hold", one line per config. */
-function describeRouting(config: LabConfig): string {
+function describeRouting(config: StudyConfig): string {
   const held = Object.entries(predicates)
     .filter(([, predicate]) => predicate(config))
     .map(([name]) => name);
@@ -68,13 +68,13 @@ describe("lab routing", () => {
           for (const topology of [undefined, "shared-world"])
             for (const allowPublicTargets of [undefined, true]) {
               const config = {
-                schema: LAB_CONFIG_SCHEMA,
+                schema: V2_SCHEMA,
                 id: "grid",
                 subject: { source, ...(topology === undefined ? {} : { topology }) },
                 actors: [{ type }],
                 ...(target === undefined ? {} : { execution: { target } }),
                 ...(allowPublicTargets === undefined ? {} : { policies: { allowPublicTargets } }),
-              } as unknown as LabConfig;
+              } as unknown as StudyConfig;
               const key = [
                 source,
                 target ?? "-",

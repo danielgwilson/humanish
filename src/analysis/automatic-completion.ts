@@ -1,18 +1,18 @@
 import { physicalCwdOf, validatePreparedRunRootIdentity } from "../run/paths.js";
 import { FinishedRun } from "../run/run.js";
 import type { AnalysisConfig } from "./types.js";
-import type { LabDeps } from "../study/study-deps.js";
-import type { LabEvent } from "../study/run-study-events.js";
+import type { StudyDeps } from "../study/study-deps.js";
+import type { StudyEvent } from "../study/run-study-events.js";
 import { runAutomaticAnalysis, type AutomaticAnalysisDeps } from "./automatic.js";
 import type { AutomaticAnalysisOutcome } from "./job.js";
 
 /** What a route's input gives its analysis: the test's runner and deps, the signal and onEvent. */
 export interface AnalysisInput {
-  readonly deps?: Pick<LabDeps, "analysis">;
+  readonly deps?: Pick<StudyDeps, "analysis">;
   /** Cancels the analysis only. */
   readonly analysisSignal?: AbortSignal;
   /** Receives analysis-started and analysis-finished. */
-  readonly emit?: (event: LabEvent) => void;
+  readonly emit?: (event: StudyEvent) => void;
 }
 
 export interface AutomaticAnalysisResult {

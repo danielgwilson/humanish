@@ -19,10 +19,10 @@ import type { OwnedDesktopAllocation } from "../substrates/desktop-session.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
 import type { Shell } from "../substrates/shell.js";
 import { redactText } from "../evidence/redaction.js";
-import type { LabRoute } from "./plan.js";
-import type { LabPreflightResult, LabPreflightTarget, PreflightContext } from "./preflight.js";
+import type { StudyRoute } from "./plan.js";
+import type { StudyPreflightResult, StudyPreflightTarget, PreflightContext } from "./preflight.js";
 import { digest, fail, finalize } from "./preflight-result.js";
-import type { LabConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 import { rosterOf } from "./parse/actors.js";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
@@ -31,7 +31,7 @@ const PREFLIGHT_LEASE_BUFFER_MS = 5 * 60_000;
 
 export async function runPublicPreviewPreflight(
   ctx: PreflightContext,
-): Promise<LabPreflightResult> {
+): Promise<StudyPreflightResult> {
   const routeError = publicPreviewRouteError(ctx.config, ctx.route);
   if (routeError) {
     return fail(ctx, "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
@@ -128,7 +128,7 @@ export async function runPublicPreviewPreflight(
 
 export async function runSandboxLoopbackPreflight(
   ctx: PreflightContext,
-): Promise<LabPreflightResult> {
+): Promise<StudyPreflightResult> {
   const routeError = sandboxLoopbackRouteError(ctx.config, ctx.route);
   if (routeError) {
     return fail(ctx, "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
@@ -217,7 +217,7 @@ async function withPreflightSandbox(
   ctx: PreflightContext,
   args: { e2bApiKey: string; leaseMs: number },
   callback: (shell: Shell) => Promise<void>,
-): Promise<{ ok: true } | { ok: false; result: LabPreflightResult }> {
+): Promise<{ ok: true } | { ok: false; result: StudyPreflightResult }> {
   let allocation: OwnedDesktopAllocation | undefined;
   let failureMessage: string | undefined;
   // The lease is sized to the probe's work, never longer than a declared sandbox timeout (the run
@@ -343,7 +343,7 @@ async function settlePreflightJournal(
   });
 }
 
-function markTargetReachability(target: LabPreflightTarget, reachable: boolean): void {
+function markTargetReachability(target: StudyPreflightTarget, reachable: boolean): void {
   target.checked = true;
   target.reachable = reachable;
   target.status = reachable ? "passed" : "failed";
@@ -355,7 +355,7 @@ function markTargetReachability(target: LabPreflightTarget, reachable: boolean):
   target.message = "target did not answer from preflight substrate within the timeout";
 }
 
-function blockTarget(target: LabPreflightTarget, message: string): void {
+function blockTarget(target: StudyPreflightTarget, message: string): void {
   target.checked = false;
   target.reachable = false;
   target.status = "blocked";
@@ -363,7 +363,7 @@ function blockTarget(target: LabPreflightTarget, message: string): void {
   target.message = message;
 }
 
-function targetUrlFor(config: LabConfig, target: LabPreflightTarget): string {
+function targetUrlFor(config: StudyConfig, target: StudyPreflightTarget): string {
   if (target.kind === "subject.appUrl" && config.subject.appUrl) {
     return config.subject.appUrl;
   }
@@ -379,7 +379,7 @@ function targetUrlFor(config: LabConfig, target: LabPreflightTarget): string {
   throw new Error(`Internal preflight target lookup failed for ${target.label}.`);
 }
 
-function publicPreviewRouteError(config: LabConfig, route: LabRoute): string | null {
+function publicPreviewRouteError(config: StudyConfig, route: StudyRoute): string | null {
   if (
     route !== "computer-use" ||
     config.subject.source !== "app-url" ||
@@ -393,7 +393,7 @@ function publicPreviewRouteError(config: LabConfig, route: LabRoute): string | n
   return null;
 }
 
-function sandboxLoopbackRouteError(config: LabConfig, route: LabRoute): string | null {
+function sandboxLoopbackRouteError(config: StudyConfig, route: StudyRoute): string | null {
   if (
     route !== "computer-use" ||
     config.subject.source !== "clone" ||

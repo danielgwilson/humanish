@@ -19,9 +19,9 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { BrowserLabScoringContext } from "./adapter-extension.js";
+import type { BrowserScoringContext } from "./adapter-extension.js";
 import type { TerminalProductScoringContext } from "../routes/terminal/types.js";
-import type { LabRoute } from "./plan.js";
+import type { StudyRoute } from "./plan.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type {
   RunAdapterArtifact,
@@ -36,7 +36,7 @@ import {
 
 /** The read-model context a loaded scorer sees: the terminal or browser scoring context. The module
  *  narrows it at runtime (`"product" in ctx` ⇒ terminal; `"route" in ctx` ⇒ browser). */
-export type AdapterScoringContext = TerminalProductScoringContext | BrowserLabScoringContext;
+export type AdapterScoringContext = TerminalProductScoringContext | BrowserScoringContext;
 
 /**
  * The adopter-facing scorer module contract. Export any subset of these from a `.mjs` (or a
@@ -44,7 +44,7 @@ export type AdapterScoringContext = TerminalProductScoringContext | BrowserLabSc
  * loader wires only these three; an exported `executor`/`env`/`provisionSubject`/`costProbe` is never
  * picked up (the whitelist is the scope guard). A module exporting none of them is a hard load error.
  *
- * `C` is the context `score` and `deriveFeedback` read: `BrowserLabScoringContext` for a scorer
+ * `C` is the context `score` and `deriveFeedback` read: `BrowserScoringContext` for a scorer
  * written for computer use and shared world, `TerminalProductScoringContext` for one written for
  * terminal runs, or the default union for one that narrows at runtime.
  */
@@ -53,7 +53,7 @@ export interface AdapterScorerModule<C extends AdapterScoringContext = AdapterSc
   deriveFeedback?: (ctx: C) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
   /** Browser-route only; inert on the terminal route, whose TerminalScorer has no artifacts seam. */
   deriveArtifacts?: (
-    ctx: BrowserLabScoringContext,
+    ctx: BrowserScoringContext,
   ) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
   // NOTE: costProbe is deliberately not loadable via config/flag; see the trust model above.
 }
@@ -64,7 +64,7 @@ export interface AdapterScorerModule<C extends AdapterScoringContext = AdapterSc
  * for. The call states the kind, so the module itself needs no cast.
  */
 export function browserScorer(
-  scorer: AdapterScorerModule<BrowserLabScoringContext>,
+  scorer: AdapterScorerModule<BrowserScoringContext>,
 ): AdapterScorerModule {
   return scorer as AdapterScorerModule;
 }
@@ -83,8 +83,8 @@ export function terminalScorer(
  */
 export function browserRouteScorer(
   scorer: AdapterScorerModule,
-): AdapterScorerModule<BrowserLabScoringContext> {
-  return scorer as AdapterScorerModule<BrowserLabScoringContext>;
+): AdapterScorerModule<BrowserScoringContext> {
+  return scorer as AdapterScorerModule<BrowserScoringContext>;
 }
 
 /** The scorer as a terminal run calls it, with the terminal context (see browserRouteScorer). */
@@ -107,7 +107,7 @@ export type AdapterScorerLoadResult =
 
 /** The routes that can run the loaded scorer. A declared scorer on any other route
  *  (scripted or preview) aborts at load: a gate that cannot run must never green-pass. */
-const SCORER_CAPABLE_ROUTES: ReadonlySet<LabRoute> = new Set<LabRoute>([
+const SCORER_CAPABLE_ROUTES: ReadonlySet<StudyRoute> = new Set<StudyRoute>([
   "terminal",
   "computer-use",
   "shared-world",
@@ -125,7 +125,7 @@ const SCORER_EXTENSIONS: ReadonlySet<string> = new Set([".mjs", ".js", ".cjs"]);
 export async function loadAdapterScorer(args: {
   cwd: string;
   ref: string;
-  route: LabRoute;
+  route: StudyRoute;
   source: "manifest" | "cli-flag";
 }): Promise<AdapterScorerLoadResult> {
   const { route, source } = args;

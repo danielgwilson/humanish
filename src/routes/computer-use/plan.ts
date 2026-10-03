@@ -28,7 +28,7 @@ import type {
   RouteRefusal,
 } from "../../study/plan-types.js";
 import { MAX_COMPUTER_USE_PARTICIPANTS } from "../../study/routing.js";
-import type { LabConfig, LabSubjectServe, LabSubjectState } from "../../study/types.js";
+import type { StudyConfig, StudySubjectServe, StudySubjectState } from "../../study/types.js";
 import {
   cloneTargetValidationReason,
   computerUseValidationReason,
@@ -91,13 +91,13 @@ interface DeclaredSubjectRoute {
   localAppSubject: boolean;
   /** A caller-supplied executor drives the subject in-process; no desktop is created. */
   inProcessRoute: boolean;
-  serve: LabSubjectServe | undefined;
+  serve: StudySubjectServe | undefined;
   appUrl: string;
   subjectRepo: string | undefined;
   subjectEnvNames: string[];
 }
 
-function declaredSubjectRoute(config: LabConfig, driving: CallerDriving): DeclaredSubjectRoute {
+function declaredSubjectRoute(config: StudyConfig, driving: CallerDriving): DeclaredSubjectRoute {
   const cloneRoute = config.subject.source === "clone";
   const localTreeRoute = config.subject.source === "local-tree";
   const provisionedRoute = cloneRoute || localTreeRoute;
@@ -134,13 +134,13 @@ export function callerDrivingOf(options: {
 }
 
 /** The state a planned run's provisioned subject declares. Other subjects declare none. */
-export function cuaDeclaredState(plan: ComputerUsePlan): LabSubjectState | undefined {
+export function cuaDeclaredState(plan: ComputerUsePlan): StudySubjectState | undefined {
   const { subject } = plan.runner;
   return subject.kind === "clone" || subject.kind === "local-tree" ? subject.state : undefined;
 }
 
 /** The URL a refused lab's result names, from its declaration: a provisioned subject's serve URL. */
-export function declaredAppUrl(config: LabConfig): string {
+export function declaredAppUrl(config: StudyConfig): string {
   const { subject } = config;
   const provisioned = subject.source === "clone" || subject.source === "local-tree";
   return (provisioned ? subject.serve?.url : subject.appUrl) ?? "";
@@ -165,7 +165,7 @@ const invalid = (message: string): Rejection => ({
  * that hand it a config directly. The groups run in this order, and each returns its first reason.
  */
 function cuaLabRejection(
-  config: LabConfig,
+  config: StudyConfig,
   hasRunSession: boolean,
   driving: CallerDriving,
   subjectRoute: DeclaredSubjectRoute,
@@ -181,7 +181,7 @@ function cuaLabRejection(
 
 /** A declaration this route cannot honor, for any subject or with the caller's own driver. */
 function unsupportedDeclarationReason(
-  config: LabConfig,
+  config: StudyConfig,
   hasRunSession: boolean,
   driving: CallerDriving,
   { inProcessRoute }: DeclaredSubjectRoute,
@@ -212,7 +212,10 @@ function unsupportedDeclarationReason(
 }
 
 /** The subject's own shape: the clone target and repo, the local tree, and declared state. */
-function subjectStructureReason(config: LabConfig, subjectRoute: DeclaredSubjectRoute): Rejection {
+function subjectStructureReason(
+  config: StudyConfig,
+  subjectRoute: DeclaredSubjectRoute,
+): Rejection {
   const { cloneRoute, localTreeRoute, provisionedRoute, serve, subjectRepo } = subjectRoute;
   const cloneTargetReason = cloneTargetValidationReason(config);
   if (cloneTargetReason) return invalid(cloneTargetReason);
@@ -225,7 +228,7 @@ function subjectStructureReason(config: LabConfig, subjectRoute: DeclaredSubject
         ? "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
         : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`,
     );
-  // A library caller that skips parseLabConfig gets the same fail-closed shape the parser
+  // A library caller that skips parseStudy gets the same fail-closed shape the parser
   // enforces, naming which requirement is missing.
   if (localTreeRoute && (!serve || config.execution?.target !== "e2b-desktop"))
     return invalid(
@@ -247,7 +250,7 @@ function subjectStructureReason(config: LabConfig, subjectRoute: DeclaredSubject
  * desktop-cli study has no entry target at all (the subject is a program on the machine, not an
  * address), so the boundary is vacuous there rather than violated by an empty string.
  */
-function entryTargetReason(config: LabConfig, subjectRoute: DeclaredSubjectRoute): Rejection {
+function entryTargetReason(config: StudyConfig, subjectRoute: DeclaredSubjectRoute): Rejection {
   const { desktopCliRoute, provisionedRoute, localAppSubject, appUrl } = subjectRoute;
   if (desktopCliRoute) return undefined;
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
@@ -293,7 +296,7 @@ function driverReason(
 }
 
 /** The participant roster, then the sandbox deadline its session budget derives. */
-function rosterShapeReason(config: LabConfig): Rejection {
+function rosterShapeReason(config: StudyConfig): Rejection {
   // `lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap, unique ids,
   // allowPublicTargets with more than one participant, clone.fanout.
   const fanoutReason = computerUseValidationReason(config);
@@ -328,7 +331,7 @@ function rerunPlan({
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
 export function planComputerUseLab(
-  config: LabConfig,
+  config: StudyConfig,
   input: {
     readonly dryRun: boolean;
     /** Whether deps.runSession is set: a caller's session runner cannot enforce maxOutputTokens. */

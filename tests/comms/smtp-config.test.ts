@@ -2,12 +2,12 @@
 // apps that send mail over SMTP rather than a provider's HTTP API.
 import { describe, expect, it } from "vitest";
 
-import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
-import { parseLabConfig } from "../../src/study/config.js";
+import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 
 function cloneLab(email: unknown) {
-  return parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  return parseStudy({
+    schema: V2_SCHEMA,
     id: "smtp-lab",
     subject: {
       source: "clone",

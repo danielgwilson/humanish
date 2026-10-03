@@ -1,14 +1,14 @@
-// The preview route: a lab whose subject is this repo runs the synthetic dry run. planLab decides
+// The preview route: a lab whose subject is this repo runs the synthetic dry run. planStudy decides
 // the sim count and refuses what a synthetic run would ignore; runPreviewPlan does the rest.
 
 import type { AdmittedPlan, RunLabOptions } from "../run-lab.js";
-import type { LabPlan, PlanRefusal } from "../study/plan-types.js";
+import type { StudyPlan, PlanRefusal } from "../study/plan-types.js";
 import type { RunResult } from "../run/results.js";
 import { studyResultIdentity, type StudyResultIdentity } from "../run/study-result.js";
 import { runDryRun } from "../run/dry-run.js";
 import path from "node:path";
 
-type PreviewPlan = Extract<LabPlan, { readonly route: "preview" }>;
+type PreviewPlan = Extract<StudyPlan, { readonly route: "preview" }>;
 
 /**
  * The preview route's result when a study runs: the synthetic run's result, named as a study

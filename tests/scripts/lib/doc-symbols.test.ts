@@ -38,7 +38,7 @@ describe("doc symbol check", () => {
     const doc = [
       "`routeOf` (`src/study/plan.ts`), `FinishedRun.renderObserver` in `src/run/run.ts`,",
       "`LabOutcome.backend` in `src/index.ts`, `humanish.pricing.v1` in `src/run/pricing.ts`,",
-      "`LabConfig` in `src/study/types.ts`, `deriveFeedback` (`src/routes/terminal/types.ts`),",
+      "`StudyConfig` in `src/study/types.ts`, `deriveFeedback` (`src/routes/terminal/types.ts`),",
       "`producesScreenshots` (`src/study/routing.ts`),",
       "and `routeOf` (`src/study/missing-file.ts`).",
     ].join("\n");

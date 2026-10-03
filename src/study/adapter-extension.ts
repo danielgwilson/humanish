@@ -22,7 +22,7 @@ type BrowserScorerRoute = "computer-use" | "shared-world";
  * evidence/rubrics stay in the adopter's repo; core provides the assembled bundle
  * plus stable run identifiers and never learns product nouns.
  */
-export interface BrowserLabScoringContext {
+export interface BrowserScoringContext {
   bundle: RunBundle;
   /**
    * Absolute path to the ignored run directory. Adapter hooks may write their
@@ -51,7 +51,7 @@ export interface BrowserLabScoringContext {
 }
 
 /** The context a route passes to applyBrowserScorer; the deprecated fields derive from it. */
-type BrowserScoringFacts = Omit<BrowserLabScoringContext, "backend" | "laneCount">;
+type BrowserScoringFacts = Omit<BrowserScoringContext, "backend" | "laneCount">;
 
 const OLDER_BACKEND: Record<BrowserScorerRoute, BrowserAdapterBackend> = {
   "computer-use": "cua",
@@ -59,7 +59,7 @@ const OLDER_BACKEND: Record<BrowserScorerRoute, BrowserAdapterBackend> = {
 };
 
 /** The scorer's context: the facts, plus the older `backend` and `laneCount` (deprecated-fields.ts). */
-function scorerContext(facts: BrowserScoringFacts): BrowserLabScoringContext {
+function scorerContext(facts: BrowserScoringFacts): BrowserScoringContext {
   return withDeprecatedFields(
     { ...facts },
     { name: "BrowserLabScoringContext", code: "HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED" },
@@ -67,7 +67,7 @@ function scorerContext(facts: BrowserScoringFacts): BrowserLabScoringContext {
       backend: { replacement: "route", read: () => OLDER_BACKEND[facts.route] },
       laneCount: { replacement: "participantCount", read: () => facts.participantCount },
     },
-  ) as BrowserLabScoringContext;
+  ) as BrowserScoringContext;
 }
 
 /** The scorer functions a computer-use or shared-world run calls: `RunLabOptions.scorer`. */
@@ -78,14 +78,14 @@ export interface BrowserScorer {
    * namespaced `bundle.adapterScore`; product-specific component detail belongs
    * in `data`, not in core enums or review text.
    */
-  score?: (ctx: BrowserLabScoringContext) => RunAdapterScore | Promise<RunAdapterScore>;
+  score?: (ctx: BrowserScoringContext) => RunAdapterScore | Promise<RunAdapterScore>;
   /**
    * Companion seam for public-safe, adapter-namespaced feedback candidates.
    * Malformed candidates are dropped before bundle persistence so core remains
    * verifiable even when an adapter misbehaves.
    */
   deriveFeedback?: (
-    ctx: BrowserLabScoringContext,
+    ctx: BrowserScoringContext,
   ) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
   /**
    * Optional product/state proof artifact references. The adapter writes files
@@ -94,7 +94,7 @@ export interface BrowserScorer {
    * missing or nonlocal.
    */
   deriveArtifacts?: (
-    ctx: BrowserLabScoringContext,
+    ctx: BrowserScoringContext,
   ) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
 }
 

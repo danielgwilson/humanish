@@ -1,5 +1,5 @@
 import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "./runtime-auth.js";
-import type { LabRuntimeAuth } from "../../study/types.js";
+import type { StudyRuntimeAuth } from "../../study/types.js";
 import { TERMINAL_PRODUCT_LAB_PROVIDER_METADATA } from "./types.js";
 
 /**
@@ -10,13 +10,13 @@ import { TERMINAL_PRODUCT_LAB_PROVIDER_METADATA } from "./types.js";
  */
 export function buildRuntimeAuth(args: {
   /** Undefined retains the historical openai-env default. */
-  runtimeAuth: LabRuntimeAuth | undefined;
+  runtimeAuth: StudyRuntimeAuth | undefined;
   /** The operator environment the key value is read from (process.env or a test fake). */
   env: Record<string, string | undefined>;
 }):
   | {
       ok: true;
-      mode: LabRuntimeAuth;
+      mode: StudyRuntimeAuth;
       envs: Record<string, string>;
       keyName: string;
       keyValue: string;

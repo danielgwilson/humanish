@@ -1,15 +1,15 @@
 // The concurrent shared-world route's schema constants, attribution limits, options and result
 // types, and the per-participant result the planes collect.
 
-import type { LabDeps } from "../../study/study-deps.js";
-import type { LabEvent } from "../../study/run-study-events.js";
-import type { RunLabHomes } from "../../study/run-study-homes.js";
+import type { StudyDeps } from "../../study/study-deps.js";
+import type { StudyEvent } from "../../study/run-study-events.js";
+import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import type { SharedWorldJudgment } from "../../run/judge.js";
 import type { BrowserScorer } from "../../study/adapter-extension.js";
 import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../study/types.js";
+import type { StudyCommsEmail, StudyCommsExternal, StudyConfig } from "../../study/types.js";
 import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
@@ -54,7 +54,7 @@ export interface RunConcurrentSharedWorldLabOptions {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   cwd: string;
-  config: LabConfig;
+  config: StudyConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
   dryRun: boolean;
   open?: boolean;
@@ -67,13 +67,13 @@ export interface RunConcurrentSharedWorldLabOptions {
    * subject sandbox, then each participant's desktop. The external-public plane has participants
    * only.
    */
-  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
+  prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
-  onStream?: NonNullable<RunLabHomes["onStream"]>;
-  /** Reports subject phases to onEvent; built by normalizeRunLabOptions. */
-  emit?: (event: LabEvent) => void;
+  onStream?: NonNullable<RunStudyHomes["onStream"]>;
+  /** Reports subject phases to onEvent; built by normalizeRunStudyOptions. */
+  emit?: (event: StudyEvent) => void;
   /** Test seams. */
-  deps?: LabDeps;
+  deps?: StudyDeps;
   /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
   scorer?: BrowserScorer;
   /** Present only when the scorer was config-declared and loaded by the CLI;
@@ -197,10 +197,10 @@ export interface PlaneContext {
   input: SharedWorldRunInput;
   /** Read for the subject's serve URL, which each participant's subject names. Participants, their
    *  count and their host and entry come from the plan's participants. */
-  config: LabConfig;
+  config: StudyConfig;
   descriptor: CuaActorDescriptor;
   /** The run's test seams; empty outside tests. */
-  deps: LabDeps;
+  deps: StudyDeps;
   env: Record<string, string | undefined>;
   concurrency: number;
   runBudget: CuaRunBudget | undefined;
@@ -242,8 +242,8 @@ export interface LiveParticipants {
 
 /** An adopter-hosted comms catch and the inbox its personas open. */
 export interface ExternalCommsWiring {
-  external: LabCommsExternal;
-  email: LabCommsEmail;
+  external: StudyCommsExternal;
+  email: StudyCommsEmail;
   inboxUrl: string;
 }
 

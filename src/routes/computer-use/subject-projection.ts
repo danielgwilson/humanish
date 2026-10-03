@@ -4,7 +4,7 @@
 
 import { commandDigestOf } from "../../subject/state.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
-import type { LabSubjectState } from "../../study/types.js";
+import type { StudySubjectState } from "../../study/types.js";
 import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
@@ -60,7 +60,7 @@ export function projectParticipantSubjects(args: {
  * contract bundles and failed live provisioning); no declaration → "undeclared".
  */
 export function resolveSubjectState(args: {
-  declared: LabSubjectState | undefined;
+  declared: StudySubjectState | undefined;
   dryRun: boolean;
   executed: RunSubjectStateStepRecord[];
 }): RunSubjectProvenance["state"] {

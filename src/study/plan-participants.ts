@@ -5,8 +5,8 @@ import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
 import { isSharedWorldComposition, participantIdAt } from "./routing.js";
-import type { LabTask } from "./tasks.js";
-import type { LabParticipantEntry, LabConfig } from "./types.js";
+import type { StudyTask } from "./tasks.js";
+import type { StudyParticipantEntry, StudyConfig } from "./types.js";
 import { focusOf, rosterOf } from "./parse/actors.js";
 
 /** Who one participant is. Every route with participants carries this record. */
@@ -45,7 +45,7 @@ interface DesktopParticipant extends Participant {
 
 /** Only independent computer-use participants consume a task protocol and their own target. */
 export interface ComputerUseParticipant extends DesktopParticipant {
-  readonly tasks?: readonly LabTask[];
+  readonly tasks?: readonly StudyTask[];
   /** app-url fan-out only: this participant's own entry URL; absent means the subject URL. */
   readonly targetUrl?: string;
 }
@@ -79,8 +79,8 @@ export type SharedWorldRoster =
 export type SharedWorldParticipant = ProvisionedParticipant | ExternalPublicParticipant;
 
 function desktopParticipant(
-  config: LabConfig,
-  entry: LabParticipantEntry | undefined,
+  config: StudyConfig,
+  entry: StudyParticipantEntry | undefined,
   index: number,
   kind: "lane" | "seat",
   focus: string | undefined,
@@ -121,7 +121,7 @@ function desktopParticipant(
  * override (`--count`) applies only when no roster is declared.
  */
 export function computerUseParticipants(
-  config: LabConfig,
+  config: StudyConfig,
   countOverride?: number,
 ): ComputerUseParticipant[] {
   const actor = config.actors[0];
@@ -139,9 +139,9 @@ export function computerUseParticipants(
 }
 
 /** The participants of a shared-world lab, one per roster entry, typed by the plane they share. */
-export function sharedWorldParticipants(config: LabConfig): SharedWorldRoster {
+export function sharedWorldParticipants(config: StudyConfig): SharedWorldRoster {
   const roster = rosterOf(config.actors[0]) ?? [];
-  const participantAt = (entry: LabParticipantEntry, index: number): DesktopParticipant =>
+  const participantAt = (entry: StudyParticipantEntry, index: number): DesktopParticipant =>
     desktopParticipant(config, entry, index, "seat", entry.instruction);
   if (config.subject.source === "app-url") {
     return {
@@ -162,7 +162,7 @@ export function sharedWorldParticipants(config: LabConfig): SharedWorldRoster {
 }
 
 /** The ids of the participants a computer-use or shared-world lab runs, in roster order. */
-export function declaredParticipantIds(config: LabConfig): string[] {
+export function declaredParticipantIds(config: StudyConfig): string[] {
   const actor = config.actors[0];
   const roster = rosterOf(actor);
   const kind = isSharedWorldComposition(config) ? "seat" : "lane";
@@ -174,7 +174,7 @@ export function declaredParticipantIds(config: LabConfig): string[] {
 }
 
 /** The entry URLs roster entries declare in place of the subject URL (computer use, app-url). */
-export function declaredTargets(config: LabConfig): string[] {
+export function declaredTargets(config: StudyConfig): string[] {
   return (rosterOf(config.actors[0]) ?? [])
     .map((entry) => entry.target)
     .filter((target): target is string => target !== undefined);

@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import { composeParticipantInstructions } from "../../src/routes/computer-use/participant-prompt.js";
 import { DEVICE_PRESETS } from "../../src/study/device-presets.js";
 import {
-  labPersonaIds,
+  studyPersonaIds,
   personaTitleFromId,
   resolveCommittedPersona,
   resolveCommittedPersonasForCwd,
@@ -87,11 +87,11 @@ describe("composeParticipantInstructions applies committed personas", () => {
 
 describe("committed persona resolution", () => {
   it("resolves ids the study config actually declares, per participant and per actor", () => {
-    expect(labPersonaIds({ actors: [{ persona: "synthetic-new-user" }] })).toEqual([
+    expect(studyPersonaIds({ actors: [{ persona: "synthetic-new-user" }] })).toEqual([
       "synthetic-new-user",
     ]);
     expect(
-      labPersonaIds({
+      studyPersonaIds({
         actors: [
           {
             persona: "synthetic-new-user",
@@ -100,7 +100,7 @@ describe("committed persona resolution", () => {
         ],
       }),
     ).toEqual(["synthetic-new-user", "skeptical-power-user"]);
-    expect(labPersonaIds({ actors: [{ lanes: [{}] }] })).toEqual([]);
+    expect(studyPersonaIds({ actors: [{ lanes: [{}] }] })).toEqual([]);
   });
 
   it("reads committed persona files from the project root", async () => {

@@ -12,7 +12,7 @@ import {
   type DesktopReleaseResult,
   type OwnedDesktopAllocation,
 } from "../desktop-session.js";
-import type { LabConfig } from "../../study/types.js";
+import type { StudyConfig } from "../../study/types.js";
 import {
   E2B_DEBUG_KILL_DETAIL,
   E2BDesktopStartupError,
@@ -240,7 +240,7 @@ export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";
 
 /** The desktop template a lab asks for; undefined selects the SDK default. */
 export function e2bDesktopTemplate(config: {
-  readonly execution?: Pick<NonNullable<LabConfig["execution"]>, "target" | "desktop">;
+  readonly execution?: Pick<NonNullable<StudyConfig["execution"]>, "target" | "desktop">;
 }): string | undefined {
   if (config.execution?.target === "local") return undefined;
   return (
