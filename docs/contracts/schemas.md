@@ -1143,8 +1143,8 @@ every route at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
 finished | interrupted, mode, study?, lab?, pid, startedAt, updatedAt, completedAt?,
 signal?, outcome? }`. `lab` repeats `study` until 0.109.
-`outcome` carries the bundle's `verdict`, `participants` and `estimatedCostUsd`
-when the run finishes, then the result's `ok` and `execution: { succeeded,
+`outcome` carries the bundle's `verdict`, `participants`, `estimatedCostUsd` and
+`estimatedCostComplete` when the run finishes, then the result's `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` once the Observer has rendered. The
 verdict is what the participants experienced; `execution` is whether the run
 worked as an execution (`kind` is `harness`, `provider-cleanup`,
@@ -1164,6 +1164,11 @@ the participant (or `subject`), the release warning and the
 `humanish reclaim --run <id>` command. A local VM writes no receipt, so its
 entry names the container and the `docker rm --force --volumes <container>`
 command that removes it (through `limactl shell` on a Mac).
+`estimatedCostUsd` is the participants-and-desktops estimate and excludes
+analysis. `estimatedCostComplete` is the bundle's `cost.fullyEstimated`, written
+with it at publish: false means some participant or desktop usage has no price
+and the estimate is a lower bound. A record without it, as every record before
+0.109, says nothing about completeness, and readers treat it as unknown.
 
 `interrupted` with `signal` (`SIGINT`, `SIGTERM` or `SIGHUP`) is written by
 the CLI's run command when that signal stops a live run outside post-run
@@ -1201,7 +1206,8 @@ them is a claim about what a participant did.
 cheapest-source-first: the `status.json` record, else the bundle, else the run
 directory alone. `{ runId, derivedFrom: status | bundle | directory, liveness,
 mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?,
-participants?, estimatedCostUsd?, durationMs? }`. The point is cost: walking
+participants?, estimatedCostUsd?, estimatedCostComplete?, analysisCost?,
+durationMs? }`. The point is cost: walking
 every run tree and parsing every bundle measured 167ms on a 25-run project,
 against 16ms cold and 2.8ms warm here, which is what makes a surface that
 refreshes on a cadence affordable. `derivedFrom` is reported so a surprising row
@@ -1209,6 +1215,14 @@ can be traced to the file it came from. A run with receipts and no outcome is
 `interrupted` (the shape a dropped connection leaves), and so is an
 in-progress bundle reached without a status record: there is no freshness to
 judge, and nothing in it says the run finished.
+
+`estimatedCostUsd` is the participants-and-desktops figure from the status
+record or bundle and excludes analysis. `estimatedCostComplete` says whether that
+figure is whole, and is absent when the record does not say. `analysisCost`
+covers the analysis: `{ requests, estimatedUsd, complete, providers }` for every
+analysis attempt the run sent, read by the same reader as `humanish stats`, and
+absent when the run sent none. Analysis is written after the status record, so
+`analysisCost` is cached on a fingerprint of the run's analysis directories.
 
 `humanish.run-detail.v1` is the watching projection, for one run. Who is in it
 and what they are thinking: `{ runId, participants: [{ id, label, personaId?,

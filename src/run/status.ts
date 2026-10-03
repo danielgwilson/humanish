@@ -53,6 +53,11 @@ interface RunStatusOutcome {
   };
   /** The run-level estimate, `null` when declared absent (never coerced to 0). */
   estimatedCostUsd?: number | null;
+  /**
+   * `cost.fullyEstimated`: false when some participant or desktop usage has no price, so the
+   * estimate is a lower bound. Absent means unknown, as in every record written before 0.109.
+   */
+  estimatedCostComplete?: boolean;
   durationMs?: number;
 }
 
@@ -74,6 +79,9 @@ export function runStatusOutcome(bundle: RunBundle): RunStatusOutcome {
     ...(bundle.cost?.estimatedTotalUsd === undefined
       ? {}
       : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
+    ...(typeof bundle.cost?.fullyEstimated === "boolean"
+      ? { estimatedCostComplete: bundle.cost.fullyEstimated }
+      : {}),
   };
 }
 

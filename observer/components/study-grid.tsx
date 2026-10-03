@@ -6,42 +6,19 @@ import { participantLabels } from "@/lib/participant-label";
 import { ParticipantCard } from "./participant-card";
 import { gridMoment, type GridRecording } from "@/lib/grid-recording";
 import { usePinReorder } from "@/lib/use-pin-reorder";
-import type { AnalysisArtifact } from "../../src/analysis/types";
-
-/** The analysis fields the cost line reads: who ran it, and what it was billed. */
-type AnalysisSpend = Pick<AnalysisArtifact, "provider" | "usage">;
-
-/** An estimate, saying so when some of the spend has no price and is not in it. */
-const estimateText = (value: number, complete: boolean) =>
-  `est. ~$${value.toFixed(2)}${complete ? "" : " plus unpriced usage"}`;
+// The one runtime import from the CLI tree: run-cost.ts has only type imports, so the artifact
+// stays self-contained (observer/tests/contract-lock.test.ts holds both rules).
+import { runCost, runCostParts, type RunAnalysisCost } from "../../src/run/run-cost.js";
 
 /**
- * What the run cost: participants and desktops from the run's cost summary, then the post-run
- * analysis, which bills separately and is not in that summary, then the total of the two.
+ * What the run cost, from the same function every surface that shows one run's cost uses:
+ * participants and desktops, then the run's analyses and the total when it sent any.
  */
-function costParts(data: ObserverData, analysis?: AnalysisSpend | null): string[] {
-  const parts: string[] = [];
-  if (data.cost && typeof data.cost.estimatedTotalUsd === "number") {
-    parts.push(
-      `Participants + desktops: ${estimateText(data.cost.estimatedTotalUsd, data.cost.fullyEstimated !== false)} (rates as of ${data.cost.ratesAsOf}${data.cost.placeholder ? ", placeholder" : ""})`,
-    );
-  } else if (data.cost) parts.push("Participants + desktops: cost not estimated");
-  // An analysis that sent no request cost nothing, so it adds no line.
-  if (!data.cost || !analysis || !analysis.usage.dispatched) return parts;
-  const analysisUsd = analysis.provider === "openai" ? analysis.usage.estimatedCostUsd : null;
-  const analysisComplete = analysisUsd !== null && analysis.usage.usageComplete;
-  if (analysis.provider === "codex") parts.push("Analysis: Codex account, dollar cost unknown");
-  else if (analysisUsd === null) parts.push("Analysis: cost not estimated (OpenAI API key)");
-  else parts.push(`Analysis: ${estimateText(analysisUsd, analysisComplete)} (OpenAI API key)`);
-  const runUsd =
-    typeof data.cost.estimatedTotalUsd === "number" ? data.cost.estimatedTotalUsd : null;
-  if (runUsd === null && analysisUsd === null) return parts;
-  const complete = runUsd !== null && data.cost.fullyEstimated !== false && analysisComplete;
-  parts.push(`Total: ${estimateText((runUsd ?? 0) + (analysisUsd ?? 0), complete)}`);
-  return parts;
+function costParts(data: ObserverData, spend: RunAnalysisCost | undefined): string[] {
+  return runCostParts(runCost(data.cost, spend));
 }
 
-export function buildTally(data: ObserverData, analysis?: AnalysisSpend | null): string {
+export function buildTally(data: ObserverData, spend?: RunAnalysisCost): string {
   const parts = [
     data.run.participantsLine ??
       `${data.summary.streams} participant${data.summary.streams === 1 ? "" : "s"}`,
@@ -49,7 +26,7 @@ export function buildTally(data: ObserverData, analysis?: AnalysisSpend | null):
   if (data.run.tasksLine) parts.push(data.run.tasksLine);
   if (data.summary.blocked > 0) parts.push(`${data.summary.blocked} need attention`);
   if (data.run.mode === "dry-run") parts.push("dry run");
-  parts.push(...costParts(data, analysis));
+  parts.push(...costParts(data, spend));
   return parts.join(" · ");
 }
 
@@ -57,21 +34,21 @@ export function buildTally(data: ObserverData, analysis?: AnalysisSpend | null):
 export function gridSummary(
   data: ObserverData,
   reviewOutcomes: { streamId: string; label: string }[] | undefined,
-  analysis?: AnalysisSpend | null,
+  spend?: RunAnalysisCost,
 ): string {
-  if (!reviewOutcomes) return buildTally(data, analysis);
+  if (!reviewOutcomes) return buildTally(data, spend);
   const labels = [...new Set(reviewOutcomes.map((outcome) => outcome.label))];
   const outcomes = labels.map(
     (label) =>
       `${reviewOutcomes.filter((outcome) => outcome.label === label).length}/${data.streams.length} ${label}`,
   );
-  return [`Analyzed outcomes: ${outcomes.join(" · ")}`, ...costParts(data, analysis)].join(" · ");
+  return [`Analyzed outcomes: ${outcomes.join(" · ")}`, ...costParts(data, spend)].join(" · ");
 }
 
 const PAGE_SIZE = 36;
 export function StudyGrid({
   data,
-  analysis,
+  analysisSpend,
   streams,
   onOpen,
   density = "comfortable",
@@ -91,8 +68,8 @@ export function StudyGrid({
 }: {
   tools?: ReactNode;
   reviewOutcomes?: { streamId: string; label: string }[] | undefined;
-  /** The loaded post-run analysis, whose spend the cost line adds. */
-  analysis?: AnalysisSpend | null;
+  /** What the run's analysis requests cost, from the companion analysis record. */
+  analysisSpend?: RunAnalysisCost | undefined;
   data: ObserverData;
   streams: ObserverStream[];
   onOpen: (id: string) => void;
@@ -163,7 +140,7 @@ export function StudyGrid({
     <section aria-label="Study grid">
       <h2 className="sr-only">Study participants</h2>
       <div className="grid-summary">
-        <p className="countline">{gridSummary(data, reviewOutcomes, analysis)}</p>
+        <p className="countline">{gridSummary(data, reviewOutcomes, analysisSpend)}</p>
         {tools}
       </div>
       {streams.length === 0 ? (

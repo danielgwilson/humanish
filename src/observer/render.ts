@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 import { runNotFoundMessage } from "../run/run-not-found.js";
+import { readAnalysisAccounting } from "../run/costs.js";
+import { analysisCostOf } from "../run/run-cost.js";
 import { accessSync, constants } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -196,7 +198,11 @@ export async function renderObserver(
   }
 
   const observerPath = path.join(preparedRunPaths.physicalRunRoot, "observer", "index.html");
-  const analysis = projectShareCheckedAnalysis(await loadAnalysis(preparedRunPaths));
+  const spend = analysisCostOf(await readAnalysisAccounting(preparedRunPaths));
+  const analysis = {
+    ...projectShareCheckedAnalysis(await loadAnalysis(preparedRunPaths)),
+    ...(spend === null ? {} : { spend }),
+  };
   const observerData = buildObserverData(loaded.bundle);
   observerData.publicSafety.share = {
     status: verified.shareSafety.status,

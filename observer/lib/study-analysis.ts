@@ -133,7 +133,30 @@ const correction = (v: unknown): v is AnalysisCorrection =>
 export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedAnalysis {
   const selected = parseSelectedAnalysis(value, data);
   const automatic = parseAutomaticAnalysis(object(value) ? value.automatic : undefined);
-  return automatic ? { ...selected, automatic } : selected;
+  const spend = parseSpend(object(value) ? value.spend : undefined);
+  return {
+    ...selected,
+    ...(automatic ? { automatic } : {}),
+    ...(spend ? { spend } : {}),
+  };
+}
+
+/** The run's analysis spend, kept only when every field has the shape the CLI writes. */
+function parseSpend(value: unknown): LoadedAnalysis["spend"] {
+  if (
+    !object(value) ||
+    !(Number.isInteger(value.requests) && (value.requests as number) > 0) ||
+    !(value.estimatedUsd === null || (number(value.estimatedUsd) && value.estimatedUsd >= 0)) ||
+    typeof value.complete !== "boolean" ||
+    !list(value.providers, (provider) => provider === "openai" || provider === "codex", 2)
+  )
+    return undefined;
+  return {
+    requests: value.requests as number,
+    estimatedUsd: value.estimatedUsd as number | null,
+    complete: value.complete,
+    providers: value.providers as Array<"openai" | "codex">,
+  };
 }
 
 function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalysis {

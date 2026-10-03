@@ -4,6 +4,7 @@ import React from "react";
 import type { RunDetail, RunParticipant } from "../../../src/run/detail.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import { formatDuration, normalizeThought } from "../../../src/run/projection.js";
+import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";
@@ -250,17 +251,22 @@ function InterruptedFacts({
 
 /**
  * `null` is a declared absent cost, `undefined` was never recorded, and neither is 0. An
- * interrupted run that spent money before dying must still say so.
+ * interrupted run that spent money before dying must still say so. A run's own figure comes with
+ * its analyses, as every surface that shows one run's cost reads it (src/run/run-cost.ts).
  */
 function costLine(run: RunIndexEntry, participant: RunParticipant | undefined): string {
   // Not `??` between the two sources: `??` treats null as nullish, so a declared absent cost would
   // fall through to the participant's and then to "not recorded": collapsing the exact distinction
   // this function exists to keep. Only a genuinely missing field falls through.
-  const value =
-    run.estimatedCostUsd === undefined ? participant?.estimatedCostUsd : run.estimatedCostUsd;
-  if (value === undefined) return "cost not recorded";
-  if (value === null) return "cost declared absent";
-  return `~$${value.toFixed(2)} ${run.estimatedCostUsd === undefined ? "participant model" : "run"} estimate · excludes analysis`;
+  if (run.estimatedCostUsd === undefined) {
+    const value = participant?.estimatedCostUsd;
+    if (value === undefined) return "cost not recorded";
+    if (value === null) return "cost declared absent";
+    return `~$${value.toFixed(2)} participant model estimate`;
+  }
+  if (run.estimatedCostUsd === null && run.analysisCost === undefined)
+    return "cost declared absent";
+  return `run ${runCostLabel(indexedRunCost(run))}`;
 }
 
 function clockTime(ms: number): string {

@@ -26,8 +26,23 @@ said `lab` and `labs`. Its fields keep their meanings: `totals.estimatedSpendUsd
 `days[].estimatedSpendUsd`, each study's `medianCostUsd`,
 `costSamples` and `unpricedRuns` describe participant/desktop run estimates.
 They do not suddenly include a separate analysis request. The bundle's
-`cost.estimatedTotalUsd` and the cached run-index estimate also remain unchanged.
-Observer and terminal run summaries label this narrower scope.
+`cost.estimatedTotalUsd`, `status.json`'s `outcome.estimatedCostUsd` and the run
+index's `estimatedCostUsd` stay participants and desktops only.
+
+## One run's cost
+
+A run's analysis spend has one reader, `readAnalysisAccounting` in
+`src/run/costs.ts`. Stats calls it for `costs.analysisEstimatedUsd`, and the
+surfaces that show one run's cost read it too: the run index's `analysisCost`,
+and the `spend` field of the Observer's companion `observer/study-analysis.json`.
+It counts every distinct attempt the way stats does, so a run analyzed twice
+shows two analyses. `src/run/run-cost.ts` adds that spend to the run's
+participants-and-desktops figure, and the Observer's cost line, the Observer
+library row's `costLabel` and the terminal UI all format the result through it.
+The total is a lower bound, shown as `est. ~$X plus unpriced usage`, while any
+part has an unpriced or incomplete figure. A Codex-account analysis has no
+dollar price and reads "dollar cost unknown". An analysis that sent no request
+adds nothing.
 
 The new `costs` object appears on totals, each study and each day. `costsByRun`
 contains the same accounting per selected run with stable warning codes.

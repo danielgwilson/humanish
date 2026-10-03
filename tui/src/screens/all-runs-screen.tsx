@@ -4,6 +4,7 @@ import React from "react";
 import type { RunDetail } from "../../../src/run/detail.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import { formatDuration, listWindow, normalizeThought } from "../../../src/run/projection.js";
+import { indexedRunCost } from "../../../src/run/run-cost.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { gutter, spinnerFrame } from "../frame.js";
 import { PALETTE } from "../palette.js";
@@ -183,11 +184,15 @@ function RunRow({
 function spendLine(runs: readonly RunIndexEntry[], details: Map<string, RunDetail>): string {
   let total = 0;
   let priced = 0;
+  let analyses = 0;
   for (const run of runs) {
+    // A run's own figure comes with its analyses, as every surface that shows one run's cost
+    // reads it (src/run/run-cost.ts); a run with no figure yet falls back to its participant.
     const value =
       run.estimatedCostUsd === undefined
         ? details.get(run.runId)?.participants[0]?.estimatedCostUsd
-        : run.estimatedCostUsd;
+        : indexedRunCost(run).total?.usd;
+    analyses += run.analysisCost?.requests ?? 0;
     if (typeof value === "number") {
       total += value;
       priced += 1;
@@ -196,7 +201,9 @@ function spendLine(runs: readonly RunIndexEntry[], details: Map<string, RunDetai
   if (priced === 0) return "no spend recorded yet; a live run prices itself as it goes";
   const unpriced = runs.length - priced;
   const tail = unpriced === 0 ? "" : ` · ${unpriced} not priced yet`;
-  return `run spend ~$${total.toFixed(2)} across ${priced} of ${runs.length}${tail} · excludes analysis`;
+  const included =
+    analyses === 0 ? "" : ` · with ${analyses === 1 ? "1 analysis" : `${analyses} analyses`}`;
+  return `run spend ~$${total.toFixed(2)} across ${priced} of ${runs.length}${tail}${included}`;
 }
 
 function clockOf(ms: number): string {

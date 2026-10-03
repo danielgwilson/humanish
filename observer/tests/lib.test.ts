@@ -12,7 +12,6 @@ import { buildPlayerModel, frameHoldMs, parseClickCoord } from "../lib/player-mo
 import { formatHash, parseHash } from "../lib/route";
 import { NOTABLE_COMPLETION } from "../lib/signal";
 import { buildTally, gridSummary } from "../components/study-grid";
-import type { AnalysisArtifact } from "../../src/analysis/types";
 
 describe("runArtifactHref containment", () => {
   it("prefixes run-root-relative paths for the observer/ vantage point", () => {
@@ -422,31 +421,22 @@ describe("buildTally cost line", () => {
     ratesAsOf: "2026-09-05",
     placeholder: false,
   };
-  const apiAnalysis = (usage: Partial<AnalysisArtifact["usage"]>) => ({
-    provider: "openai" as const,
-    usage: {
-      inputTokens: 18_829,
-      outputTokens: 5_873,
-      estimatedCostUsd: 0.529005,
-      cachedInputTokens: 0,
-      cacheWriteInputTokens: 18_826,
-      usageComplete: true,
-      dispatched: true,
-      ratesAsOf: "2026-09-03",
-      estimatedAdmissionUsd: 2.167113,
-      ...usage,
-    },
-  });
+  const apiAnalysis = {
+    requests: 1,
+    estimatedUsd: 0.529005,
+    complete: true,
+    providers: ["openai" as const],
+  };
 
-  it("adds the post-run analysis as its own part and in the total", () => {
+  it("adds the run's analyses as their own part and in the total", () => {
     const data = { ...base, cost: runCost } as unknown as ObserverData;
-    const tally = buildTally(data, apiAnalysis({}));
+    const tally = buildTally(data, apiAnalysis);
     expect(tally).toContain("Analysis: est. ~$0.53 (OpenAI API key)");
     // The participant's account usage has no price, so the total stays a lower bound.
     expect(tally).toContain("Total: est. ~$0.55 plus unpriced usage");
     const priced = buildTally(
       { ...base, cost: { ...runCost, fullyEstimated: true } } as unknown as ObserverData,
-      apiAnalysis({}),
+      apiAnalysis,
     );
     expect(priced).toContain("Total: est. ~$0.55");
     expect(priced).not.toContain("unpriced");
@@ -460,21 +450,23 @@ describe("buildTally cost line", () => {
         { streamId: "a", label: "passed" },
         { streamId: "b", label: "stuck" },
       ],
-      apiAnalysis({}),
+      { ...apiAnalysis, requests: 2, estimatedUsd: 1.043096 },
     );
     expect(line).toContain("Analyzed outcomes: 1/2 passed · 1/2 stuck");
-    expect(line).toContain("Analysis: est. ~$0.53 (OpenAI API key)");
-    expect(line).toContain("Total: est. ~$0.55 plus unpriced usage");
+    expect(line).toContain("2 analyses: est. ~$1.04 (OpenAI API key)");
+    expect(line).toContain("Total: est. ~$1.06 plus unpriced usage");
   });
 
-  it("adds nothing for an analysis that sent no request, and no dollar figure for a Codex one", () => {
-    const data = { ...base, cost: { ...runCost, fullyEstimated: true } } as unknown as ObserverData;
-    const unsent = buildTally(data, apiAnalysis({ dispatched: false, estimatedCostUsd: 0 }));
-    expect(unsent).not.toContain("Analysis");
-    expect(unsent).not.toContain("Total");
-    const codex = buildTally(data, {
-      ...apiAnalysis({ estimatedCostUsd: null }),
-      provider: "codex",
+  it("adds nothing without analysis requests, and no dollar figure for a Codex one", () => {
+    const priced = { ...runCost, fullyEstimated: true };
+    const none = buildTally({ ...base, cost: priced } as unknown as ObserverData);
+    expect(none).not.toContain("Analysis");
+    expect(none).not.toContain("Total");
+    const codex = buildTally({ ...base, cost: priced } as unknown as ObserverData, {
+      requests: 1,
+      estimatedUsd: null,
+      complete: false,
+      providers: ["codex"],
     });
     expect(codex).toContain("Analysis: Codex account, dollar cost unknown");
     expect(codex).toContain("Total: est. ~$0.02 plus unpriced usage");
