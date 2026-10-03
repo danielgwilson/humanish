@@ -63,8 +63,8 @@ describe("unknown lab fields", () => {
     );
   });
 
-  it("parses every committed lab", async () => {
-    const dir = "humanish/labs";
+  it("parses every committed study", async () => {
+    const dir = "humanish/studies";
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml"))) {
       const result = parseLabConfig(parse(await readFile(path.join(dir, file), "utf8")));
       expect(result.ok ? "ok" : result.error.message, file).toBe("ok");

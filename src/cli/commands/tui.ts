@@ -172,7 +172,7 @@ async function handleTui(
 function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | undefined {
   // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands it
   // runs, so the TTY check below passes for an agent too, and an agent in the surface can start a
-  // run it did not mean to start (humanish/labs/handed-a-human-surface.yaml records one). A TTY
+  // run it did not mean to start (humanish/studies/handed-a-human-surface.yaml records one). A TTY
   // says a terminal exists, not that anyone is reading it. `--force` is the escape for the person
   // who really is at this keyboard, and capturing frames from inside an agent session is exactly
   // that case.

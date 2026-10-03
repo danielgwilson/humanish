@@ -1423,7 +1423,10 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       path.join(cwd, "package.json"),
       JSON.stringify({ name: "fixture-app" }, null, 2),
     );
-    const lab = await readFile(path.join(ROOT, "humanish", "labs", "scripted-demo.yaml"), "utf8");
+    const lab = await readFile(
+      path.join(ROOT, "humanish", "studies", "scripted-demo.yaml"),
+      "utf8",
+    );
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "labs", "scripted-demo.yaml"), lab, "utf8");
     await writeCommittedScenario(cwd);

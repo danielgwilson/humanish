@@ -8,7 +8,7 @@ import path from "node:path";
 import { parse } from "yaml";
 
 import { parseLabConfig } from "./config.js";
-import { type LabConfig } from "./types.js";
+import { STUDY_SCHEMA, type LabConfig } from "./types.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -182,6 +182,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
     };
   }
 
+  let legacyFiles = 0;
   // Each stem's files by directory family, to mark the stems that name a file in both.
   const stems = new Map<string, { studies?: string; legacy?: string; keys: string[] }>();
 
@@ -240,6 +241,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
         warnings.push(`${relativeToCwd(resolvedCwd, requestedPath)}: ${parsed.error.message}`);
         continue;
       }
+      if (legacyStudyWarning(parsed.path, parsed.config.schema) !== undefined) legacyFiles += 1;
 
       const key = `${parsed.config.id}:${entry.origin}:${relativeToCwd(resolvedCwd, requestedPath)}`;
       stem.keys.push(key);
@@ -257,6 +259,11 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
     }
   }
 
+  if (legacyFiles > 0) {
+    warnings.push(
+      `${legacyFiles === 1 ? "One study file uses" : `${legacyFiles} study files use`} humanish.lab.v2 or a labs/ directory, which 0.109 stops reading. humanish migrate converts and moves the v2 files; lab inspect names the fix for each file.`,
+    );
+  }
   for (const [name, stem] of stems) {
     if (stem.studies === undefined || stem.legacy === undefined) continue;
     const error = `${name} names two files, ${stem.studies} and ${stem.legacy}; running it by name fails until you delete one (humanish migrate moves a kept labs/ file).`;
@@ -344,6 +351,8 @@ function parseResolvedLab(args: {
   }
 
   const warnings = [...args.warnings, ...parsed.warnings];
+  const legacy = legacyStudyWarning(relativeToCwd(args.cwd, args.path), parsed.config.schema);
+  if (legacy !== undefined) warnings.push(legacy);
   if (args.path.endsWith(".yml")) {
     warnings.push(
       "Prefer .yaml for humanish-authored lab source; .yml is accepted for compatibility only.",
@@ -357,6 +366,28 @@ function parseResolvedLab(args: {
     path: relativeToCwd(args.cwd, args.path),
     warnings,
   };
+}
+
+/**
+ * What 0.109 stops reading in this file: the humanish.lab.v2 format, a labs/ directory, or both, and
+ * what to run about it. Undefined for a v3 file outside the labs/ directories.
+ */
+function legacyStudyWarning(relativePath: string, schema: string): string | undefined {
+  const retiredDirectory = STUDY_DIRECTORIES.find(
+    (directory) =>
+      directory.family === "labs" && path.dirname(relativePath) === directory.relativeDir,
+  );
+  // A file discovery parsed has one of two schemas, so not v3 is v2.
+  const v2 = schema !== STUDY_SCHEMA;
+  if (retiredDirectory !== undefined) {
+    const studies = retiredDirectory.relativeDir.replace(/labs$/, "studies");
+    return v2
+      ? `${relativePath} is a humanish.lab.v2 file in ${retiredDirectory.relativeDir}/, and 0.109 reads neither. Run humanish migrate to convert it and move it to ${studies}/.`
+      : `${relativePath} is in ${retiredDirectory.relativeDir}/, which 0.109 stops reading. Move it to ${studies}/.`;
+  }
+  return v2
+    ? `${relativePath} is a humanish.lab.v2 file, which 0.109 stops reading. Run humanish migrate ${relativePath} to convert it.`
+    : undefined;
 }
 
 async function bindProjectRoot(cwd: string): Promise<PreparedSelectedOutputDirectory | null> {

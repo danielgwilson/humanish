@@ -16,8 +16,8 @@ the steps below update both.
    local VM golden, `tests/golden/routes/computer-use-local-vm-live.json`, records the persona id.
    Rerun it with `-u` to rewrite the golden, then check with `git diff tests/golden/` that only
    the persona id changed.
-4. Run `mkdir -p .humanish/local/labs`, then copy `humanish/labs/dwell-window-todomvc.yaml` to
-   `.humanish/local/labs/walkthrough.yaml`. Change its `id` to `walkthrough` and delete its
+4. Run `mkdir -p .humanish/local/studies`, then copy `humanish/studies/dwell-window-todomvc.yaml`
+   to `.humanish/local/studies/walkthrough.yaml`. Change its `id` to `walkthrough` and delete its
    `persona:` line.
 5. Run `pnpm humanish run walkthrough --dry-run --no-open`. It prints the run id on its `run:`
    line. Check `persona.id` in `.humanish/runs/<runId>/run.json`.

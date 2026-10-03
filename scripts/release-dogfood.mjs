@@ -54,7 +54,7 @@ if (!tarball) fail("npm pack produced no tarball.");
 // install whatever npm is serving: the last release, the one artifact we already know about. A
 // pre-release gate has to meet the candidate, so this pre-installs it. The discovery half is not
 // lost, it just lives in the committed fixture, which anyone can run for free as a dry run.
-const fixture = await readFile(path.join(cwd, "humanish", "labs", "first-contact.yaml"), "utf8");
+const fixture = await readFile(path.join(cwd, "humanish", "studies", "first-contact.yaml"), "utf8");
 const productBlock = "  product:\n    name: humanish\n";
 if (!fixture.includes(productBlock)) {
   fail(

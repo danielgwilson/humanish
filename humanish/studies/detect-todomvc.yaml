@@ -1,0 +1,46 @@
+schema: humanish.study.v3
+id: detect-todomvc
+title: "Detection benchmark on a third-party app: TodoMVC javascript-es6"
+description: >-
+  The Taskly arms measured recall against defects planted in an app written for the benchmark: 15 of
+  15, an upper bound because the benchmark controlled the app (bench/RESULTS-2026-09-01.md). This
+  lab removes that control. The subject is TodoMVC's javascript-es6 example, a widely used reference
+  implementation, served from its committed dist/ so no build step changes what the persona sees.
+  Nothing is planted, so there is no answer key and no recall number. The lab measures what a
+  persona reports about third-party software during ordinary use, and whether those reports hold up
+  when a person checks each one against the same build. A report that holds is an observation about
+  the app; one that does not is a false report, and both belong in the writeup. Committed as a dry
+  run. A live run needs OPENAI_API_KEY and E2B_API_KEY.
+route: computer-use
+mode: dry-run
+subject:
+  source: clone
+  repos:
+    - tastejs/todomvc
+  clone:
+    depth: 1
+  serve:
+    # dist/ is committed, so nothing is installed or built: the persona sees exactly what the
+    # repository ships, and no toolchain of ours sits between them.
+    start: python3 -m http.server 3000 --directory examples/javascript-es6/dist
+    url: http://127.0.0.1:3000/
+actor:
+  type: openai-computer-use
+  maxOutputTokens: 8192
+  persona: synthetic-new-user
+  mission: >-
+    You are trying this to-do app for the first time. Use it the way you would actually use a list
+    app. Add a few items, including one long enough to describe something properly. Mark something
+    complete. Try the filters to see just what is left and just what is finished. Rename one of your
+    items. Tidy up when you are done. Report what worked, and describe anything that behaved
+    differently from what you expected, in plain terms, saying what you did and what you saw.
+caps:
+  maxUsd: 3
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+policies:
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false

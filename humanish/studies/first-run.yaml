@@ -1,0 +1,15 @@
+schema: humanish.study.v3
+id: first-run
+title: First-run synthetic Observer
+description: >-
+  Writes a preview run: a synthetic run bundle and Observer for four participants. Needs no browser,
+  model or keys, and costs nothing. Run it with humanish run first-run.
+route: preview
+mode: dry-run
+subject:
+  source: this-repo
+actor:
+  type: synthetic-persona
+participants: 4
+defaults:
+  open: true

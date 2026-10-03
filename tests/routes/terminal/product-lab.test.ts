@@ -588,7 +588,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       JSON.stringify({ name: "fixture-app" }, null, 2),
     );
     const lab = await readFile(
-      path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"),
+      path.join(ROOT, "humanish", "studies", "terminal-product-demo.yaml"),
       "utf8",
     );
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
@@ -600,7 +600,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
 
   it("keeps the committed demo accurate about the shipped live route and its dry-run fixture scope", async () => {
     const lab = await readFile(
-      path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"),
+      path.join(ROOT, "humanish", "studies", "terminal-product-demo.yaml"),
       "utf8",
     );
     expect(lab).toMatch(

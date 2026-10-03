@@ -1,0 +1,54 @@
+schema: humanish.study.v3
+id: persona-contrast-demo
+title: Does the persona change the participant? Two contrasting personas, one app, one mission
+description: >-
+  A control, not a product study. Two participants clone and drive the same public app with the same
+  mission and differ only in persona. If their traces come back the same, the persona block is
+  decoration, and a finding attributed to persona behavior in this harness has no support; that is worth
+  knowing before tuning persona prompts further. Other harnesses have measured rule-file and
+  persona-instruction effects as largely independent of content, with random rules tying curated ones, so
+  a persona axis that only looks like it works is a known failure. The cheapest check is to swap in a
+  persona that does not fit the mission and see whether anything moves. Compare, per participant: action
+  count and mix, time to the end, completion reason, how early it stopped, whether it reported friction,
+  and the affordance classes it used. A persona axis that works shows up as a difference, and one run
+  proves nothing about scale or repeatability. See docs/principles/actor-fidelity.md. Committed as a dry
+  run, which builds a dry-run bundle at no cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and a
+  gitignored .humanish/labs/ copy with mode: live.
+route: computer-use
+mode: dry-run # committed fixture stays contract-only
+subject:
+  source: clone
+  repos:
+    - drawdb-io/drawdb # public OSS subject with kept receipts (the README hero study)
+  clone:
+    depth: 1
+  serve:
+    # Plain npm — the harness provides the Node runtime. The stock desktop template ships
+    # python3 + curl and no Node, so humanish probes for one and bootstraps it before this
+    # step runs (#371). This lab used to carry a hand-written NodeSource pipeline here; it
+    # does not need to, and neither does yours.
+    install: npm install --no-audit --no-fund
+    build: npm run build
+    start: npx vite preview --host 127.0.0.1 --port 3000
+    url: http://127.0.0.1:3000/
+actor:
+  type: openai-computer-use
+  maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
+  # ONE mission for both participants: the persona is the only declared difference, so any
+  # behavioral delta is attributable to it (and any absence of delta is the finding).
+  mission: >-
+    Create a small database diagram with at least two related tables, then stop.
+participants:
+  - id: impatient-expert
+    persona: skeptical-power-user # patience:low, technical_confidence:high, keyboard_first
+    instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
+  - id: patient-newcomer
+    persona: synthetic-new-user # patience:medium, technical_confidence:medium
+    instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
+caps:
+  maxUsd: 15 # fail-closed per-participant spend abort; the run-level worst case is 2x this. Observed cache-priced participants land under $1.50
+execution:
+  target: e2b-desktop # both participants live at once (the default: concurrency = participant count)
+  timeoutMs: 1200000 # PER-PARTICIPANT session budget; contrast effects GROW with horizon (#383) — a short cap suppresses the axis under study
+defaults:
+  open: false
