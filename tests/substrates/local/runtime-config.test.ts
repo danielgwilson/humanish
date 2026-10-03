@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseLabConfig } from "../../../src/lab/config.js";
-import { planCliRun } from "../../../src/lab/doctor.js";
-import { requiredKeys } from "../../../src/lab/requirements.js";
-import type { LabConfig } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
+import { planCliRun } from "../../../src/study/doctor.js";
+import { requiredKeys } from "../../../src/study/requirements.js";
+import type { LabConfig } from "../../../src/study/types.js";
 
 const base = {
   schema: "humanish.lab.v2",

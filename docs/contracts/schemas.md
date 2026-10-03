@@ -58,8 +58,8 @@ workflow without leaking private upstream truth into core.
 
 ## Study File
 
-Schema: `humanish.study.v3`. `src/lab/parse/study-v3.ts` rewrites a v3 document into the
-normalized config in `src/lab/types.ts`, which `src/lab/config.ts` parses. A `humanish.lab.v2`
+Schema: `humanish.study.v3`. `src/study/parse/study-v3.ts` rewrites a v3 document into the
+normalized config in `src/study/types.ts`, which `src/study/config.ts` parses. A `humanish.lab.v2`
 file still parses in 0.108 with one warning that names `humanish migrate`; 0.109 removes it.
 
 A study declares its route and composes code primitives; it is not a hardcoded kind. The

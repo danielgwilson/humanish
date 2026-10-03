@@ -2,7 +2,7 @@
 // deadline when they set a sandbox's server-side timeout. A dead host process can never orphan a
 // sandbox past that timeout, so every route derives it from these values.
 
-import { readPositiveInt } from "../../lab/parse/values.js";
+import { readPositiveInt } from "../../study/parse/values.js";
 
 /**
  * E2B refuses a sandbox lifetime over one hour ("400: Timeout cannot be greater than 1 hours").

@@ -12,11 +12,11 @@ import {
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { promptSecret } from "../secret-prompt.js";
-import { runInit } from "../../lab/init.js";
-import { listLabManifests } from "../../lab/discover.js";
+import { runInit } from "../../study/init.js";
+import { listLabManifests } from "../../study/discover.js";
 import { reclaimRunSandboxes } from "../../run/reclaim.js";
 import { RunIndexCache, readRunIndex } from "../../run/run-index.js";
-import { readLabSummary } from "../../lab/summary.js";
+import { readLabSummary } from "../../study/summary.js";
 import { readProjectState } from "../../tui/project.js";
 import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "../../tui/actions.js";
 import { readRunDetail } from "../../run/detail.js";

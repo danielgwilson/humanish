@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/lab/types.js";
-import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
+import type { LabConfig } from "../../../src/study/types.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 
 const dirs: string[] = [];

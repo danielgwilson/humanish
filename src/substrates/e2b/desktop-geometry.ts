@@ -1,6 +1,6 @@
 // Screen and browser-window geometry on a hosted E2B desktop, measured in the sandbox rather than
 // taken from the request.
-import { type DevicePreset } from "../../lab/device-presets.js";
+import { type DevicePreset } from "../../study/device-presets.js";
 import { failureTail, redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry } from "../../run/streams.js";
 import {

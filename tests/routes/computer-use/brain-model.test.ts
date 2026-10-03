@@ -21,13 +21,13 @@ import {
 import { createRestrictedCodexParticipant } from "../../../src/actors/codex/restricted-participant.js";
 import { startClaudeSession } from "../../../src/actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../../src/actors/local-agent/cli.js";
-import type { Brain, ComputerUsePlan } from "../../../src/lab/plan-types.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import type { Brain, ComputerUsePlan } from "../../../src/study/plan-types.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
 import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import type { RunCuaActorLabOptions } from "../../../src/routes/computer-use/types.js";
 
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";

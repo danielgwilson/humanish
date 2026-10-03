@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { runInit } from "../../src/lab/init.js";
+import { runInit } from "../../src/study/init.js";
 import { doctor } from "../../src/cli/doctor.js";
 
 const execFileAsync = promisify(execFile);

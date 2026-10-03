@@ -1,7 +1,7 @@
 // Valid raw manifests, one per route shape. Admission cases mutate a deep copy of one of these, so
 // every case differs from a runnable lab by the one rule it exercises.
 
-import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
+import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
 
 export type RawLab = Record<string, unknown>;
 

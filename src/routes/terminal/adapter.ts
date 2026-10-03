@@ -12,7 +12,7 @@ import {
   frozenBundleView,
   isAdapterFeedbackCandidate,
   type ScorerOutcome,
-} from "../../lab/adapter-extension.js";
+} from "../../study/adapter-extension.js";
 import type { TerminalLedgers, TerminalScorer, TerminalProductScoringContext } from "./types.js";
 
 /**

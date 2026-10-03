@@ -12,13 +12,13 @@ import {
 } from "../../../src/actors/computer-use/actor.js";
 import type { CuaExecutor, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
-import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
+import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { runComputerUsePlan } from "../../../src/routes/computer-use/route.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { provisionParticipantSubject } from "../../../src/routes/computer-use/e2b-desktop/prepare.js";
 import {

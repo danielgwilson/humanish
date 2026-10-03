@@ -14,10 +14,10 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
-import { routeOf } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { digestText } from "../../../src/evidence/redaction.js";
 import { verifyRun } from "../../../src/verify/verify.js";
@@ -32,7 +32,7 @@ import {
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { runScriptedBrowserLab, runScriptedPlan } from "../../../src/routes/scripted/route.js";
 import { planScriptedLab } from "../../../src/routes/scripted/plan.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import type { RunScriptedBrowserLabOptions } from "../../../src/routes/scripted/types.js";
 
 /** A scripted test's typed options and seams, as it spreads them into a runner's options. */

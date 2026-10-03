@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { resolveLabManifest } from "../../src/lab/discover.js";
+import { resolveLabManifest } from "../../src/study/discover.js";
 import { runLab } from "../../src/run-lab.js";
 import { renderObserver } from "../../src/observer/render.js";
 import { runDryRun } from "../../src/run/dry-run.js";

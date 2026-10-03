@@ -1,4 +1,4 @@
-// One case per cross-field parser rule (src/lab/config.ts:175-576 and the validation.ts reasons it
+// One case per cross-field parser rule (src/study/config.ts:175-576 and the validation.ts reasons it
 // calls). Each raw manifest breaks exactly that rule. The library suite also hands the raw
 // manifest to runLab and to the route's exported runner, the way a caller that skips the parser
 // can, and pins what each entry point does with it today.

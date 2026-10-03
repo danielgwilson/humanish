@@ -10,17 +10,23 @@ import {
   type CuaActorDescriptor,
 } from "../../actors/registry.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import { brainOf, capsOf, desktopRequirements, isNonEmpty, planBase } from "../../lab/plan-base.js";
-import { sharedWorldParticipants } from "../../lab/plan-participants.js";
+import {
+  brainOf,
+  capsOf,
+  desktopRequirements,
+  isNonEmpty,
+  planBase,
+} from "../../study/plan-base.js";
+import { sharedWorldParticipants } from "../../study/plan-participants.js";
 import type {
   RoutePlanResult,
   RouteRefusal,
   SharedWorldPlan,
   SharedWorldPlane,
-} from "../../lab/plan-types.js";
-import { PUBLIC_TARGET_OWNER_PATTERN } from "../../lab/parse/subject.js";
-import { REPO_SLUG_PATTERN } from "../../lab/parse/values.js";
-import type { LabConfig, LabSubjectState } from "../../lab/types.js";
+} from "../../study/plan-types.js";
+import { PUBLIC_TARGET_OWNER_PATTERN } from "../../study/parse/subject.js";
+import { REPO_SLUG_PATTERN } from "../../study/parse/values.js";
+import type { LabConfig, LabSubjectState } from "../../study/types.js";
 import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
@@ -29,7 +35,7 @@ import {
   receivingEmailValidationReason,
   scenarioCapsValidationReason,
   taskProtocolValidationReason,
-} from "../../lab/validation.js";
+} from "../../study/validation.js";
 import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
 import type { ConcurrentSharedWorldLabErrorCode } from "./types.js";
 

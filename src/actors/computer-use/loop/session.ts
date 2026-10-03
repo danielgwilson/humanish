@@ -1,6 +1,6 @@
 import type { ActorStopCause, ActorTraceItem, ParticipantDeclaredOutcome } from "../../contract.js";
 import type { AffordanceObservation } from "../../affordance.js";
-import { TaskTracker } from "../../../lab/tasks.js";
+import { TaskTracker } from "../../../study/tasks.js";
 import type { DebriefTrigger, Stop } from "./ending.js";
 import { TraceRecorder } from "./trace.js";
 import type { CuaExecutor, CuaLoopOptions, CuaProvider, CuaSafetyCheck } from "./types.js";

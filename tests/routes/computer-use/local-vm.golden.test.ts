@@ -8,7 +8,7 @@ import type { CuaAction, CuaExecutor } from "../../../src/actors/computer-use/lo
 import type { FetchLike } from "../../../src/actors/computer-use/openai-provider.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import { runLab } from "../../../src/run-lab.js";
-import type { LabConfig } from "../../../src/lab/types.js";
+import type { LabConfig } from "../../../src/study/types.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import type { LocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";

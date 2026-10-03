@@ -9,11 +9,11 @@ import {
 describe("site repository links", () => {
   it("reads repo: links with their line and fragment", () => {
     const page = [
-      "See [the parser](repo:src/lab/).",
+      "See [the parser](repo:src/study/).",
       "The [contract](repo:docs/contracts/schemas.md#library-options) and [a site page](/docs/cli).",
     ].join("\n");
     expect(findRepoLinks(page)).toEqual([
-      { line: 1, path: "src/lab/", fragment: undefined },
+      { line: 1, path: "src/study/", fragment: undefined },
       { line: 2, path: "docs/contracts/schemas.md", fragment: "library-options" },
     ]);
   });

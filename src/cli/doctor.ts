@@ -14,7 +14,7 @@ import {
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
-import { labSetupChecks, studiesByRequiredKey, type LabSetupCheckArgs } from "../lab/doctor.js";
+import { labSetupChecks, studiesByRequiredKey, type LabSetupCheckArgs } from "../study/doctor.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
@@ -332,7 +332,7 @@ async function probeDoctorKeys(
   const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
   let receivingKey: string | null = null;
   if (lab) {
-    const { resolveLabManifest } = await import("../lab/discover.js");
+    const { resolveLabManifest } = await import("../study/discover.js");
     const resolved = await resolveLabManifest(cwd, lab);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
       const { receivingRequiredKey } = await import("../comms/setup.js");

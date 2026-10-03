@@ -26,8 +26,8 @@ function screenshot(): string {
 const CHILD = `
   const root = process.env.REPO_ROOT;
   const { runLab } = await import(root + "/src/run-lab.ts");
-  const { parseLabConfig } = await import(root + "/src/lab/config.ts");
-  const { LAB_CONFIG_SCHEMA } = await import(root + "/src/lab/types.ts");
+  const { parseLabConfig } = await import(root + "/src/study/config.ts");
+  const { LAB_CONFIG_SCHEMA } = await import(root + "/src/study/types.ts");
   const frame = Buffer.from(process.env.PROBE_PNG, "base64");
   const noop = async () => undefined;
   const sandbox = {

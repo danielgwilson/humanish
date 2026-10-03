@@ -1,5 +1,5 @@
-import type { LabConfig } from "../../lab/types.js";
-import { rosterOf } from "../../lab/parse/actors.js";
+import type { LabConfig } from "../../study/types.js";
+import { rosterOf } from "../../study/parse/actors.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;

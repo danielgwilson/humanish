@@ -12,7 +12,7 @@ import type { ActorConversation, ActorTokenUsage, ActorTraceItem } from "../../a
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { startClaudeSession } from "../../actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
-import { pricedModel } from "../../lab/plan-base.js";
+import { pricedModel } from "../../study/plan-base.js";
 import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
 import { redactText } from "../../evidence/redaction.js";
 import {

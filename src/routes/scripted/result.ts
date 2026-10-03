@@ -1,7 +1,7 @@
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserPersonaJourney } from "../../actors/scripted-browser/types.js";
-import type { ScriptedPlan } from "../../lab/plan-types.js";
+import type { ScriptedPlan } from "../../study/plan-types.js";
 import type { RunBundle, RunSubjectProvenance } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import {

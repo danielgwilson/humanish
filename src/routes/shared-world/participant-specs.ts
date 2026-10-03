@@ -2,10 +2,10 @@
 // and sandbox time budgets, and records a follower that never received the host's lobby code.
 
 import { defaultSubjectPhaseSink } from "../../subject/steps.js";
-import { pricedModel } from "../../lab/plan-base.js";
-import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
-import type { SharedWorldPlan } from "../../lab/plan-types.js";
-import type { Participant, SharedWorldParticipant } from "../../lab/plan-participants.js";
+import { pricedModel } from "../../study/plan-base.js";
+import { scrubPersonaBrief, type ResolvedPersona } from "../../study/persona.js";
+import type { SharedWorldPlan } from "../../study/plan-types.js";
+import type { Participant, SharedWorldParticipant } from "../../study/plan-participants.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
@@ -17,8 +17,8 @@ import type {
   ParticipantRunOutcome,
 } from "../computer-use/types.js";
 import type { LiveParticipants, PlaneContext, SharedWorldRunInput } from "./types.js";
-import { resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
+import { resolveCommittedPersonasForCwd } from "../../study/persona-resolve.js";
+import { participantAssignment } from "../../study/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
 import {
   MAX_SANDBOX_MS,

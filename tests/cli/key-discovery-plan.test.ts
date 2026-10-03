@@ -15,7 +15,7 @@ import {
   type KeyResolutionDeps,
   type ResolvedKeyFill,
 } from "../../src/keys/key-resolution.js";
-import { runInit } from "../../src/lab/init.js";
+import { runInit } from "../../src/study/init.js";
 import { lab } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 

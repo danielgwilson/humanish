@@ -1,7 +1,7 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
-import { phaseEvent, type LabEvent } from "../../../src/lab/run-lab-events.js";
-import type { BrowserScorer } from "../../../src/lab/adapter-extension.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
+import { phaseEvent, type LabEvent } from "../../../src/study/run-study-events.js";
+import type { BrowserScorer } from "../../../src/study/adapter-extension.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
@@ -30,12 +30,12 @@ import type {
 import {
   concurrentSharedWorldValidationReason,
   sharedWorldValidationReason,
-} from "../../../src/lab/validation.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
-import { isSharedWorldComposition } from "../../../src/lab/routing.js";
+} from "../../../src/study/validation.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
+import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { prepareLab, runLab } from "../../../src/run-lab.js";
-import { routeOf } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/study/plan.js";
 import { sharedWorldRouteRun } from "../../../src/cli/commands/lab-route-shared-world.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import {

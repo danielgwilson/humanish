@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { LabConfig } from "../../../src/lab/types.js";
+import type { LabConfig } from "../../../src/study/types.js";
 import { runScriptedBrowserLab } from "../../../src/routes/scripted/route.js";
 import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
 

@@ -7,7 +7,7 @@ import {
   userKeyStorePath,
 } from "../../keys/key-resolution.js";
 import { promptSecret } from "../secret-prompt.js";
-import { runInit } from "../../lab/init.js";
+import { runInit } from "../../study/init.js";
 import {
   buildPayload,
   disabledByEnvironment,
@@ -15,7 +15,7 @@ import {
   telemetryStatePath,
   writeTelemetryState,
 } from "../telemetry.js";
-import type { InitChange, InitResult } from "../../lab/init.js";
+import type { InitChange, InitResult } from "../../study/init.js";
 import { doctor } from "../doctor.js";
 import type { DoctorResult } from "../doctor.js";
 import { oldStudyOption, studyOptionValue } from "../deprecations.js";

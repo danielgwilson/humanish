@@ -17,38 +17,38 @@ const issues = (doc: string, overrides?: Record<string, string>) =>
 describe("doc symbol check", () => {
   it("reads the three explicit forms and nothing looser", () => {
     const doc = [
-      "`routeOf` (`src/lab/plan.ts`) picks a route, and `runLab()` in `src/run-lab.ts` runs it.",
+      "`routeOf` (`src/study/plan.ts`) picks a route, and `runLab()` in `src/run-lab.ts` runs it.",
       "`verifyRun` from `src/run/verify.ts`, `startRun` at `src/run/run.ts`, and",
       "(`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) and `resolveLabManifest`",
-      "   (`src/lab/discover.ts`).",
-      "Not read: `routeOf` and `src/lab/plan.ts`; `LabConfig`, see `src/lab/types.ts`;",
+      "   (`src/study/discover.ts`).",
+      "Not read: `routeOf` and `src/study/plan.ts`; `LabConfig`, see `src/study/types.ts`;",
       "`routeOf` (`docs/architecture/example.md`) and `--json` in `src/cli.ts`.",
     ].join("\n");
     expect(findSymbolReferences(doc)).toEqual([
-      { line: 1, name: "routeOf", path: "src/lab/plan.ts" },
+      { line: 1, name: "routeOf", path: "src/study/plan.ts" },
       { line: 1, name: "runLab", path: "src/run-lab.ts" },
       { line: 2, name: "verifyRun", path: "src/run/verify.ts" },
       { line: 2, name: "startRun", path: "src/run/run.ts" },
       { line: 3, name: "reclaimPreflightSandboxes", path: "src/run/reclaim.ts" },
-      { line: 3, name: "resolveLabManifest", path: "src/lab/discover.ts" },
+      { line: 3, name: "resolveLabManifest", path: "src/study/discover.ts" },
     ]);
   });
 
   it("resolves declarations, members, re-exports and schema ids in the current files", () => {
     const doc = [
-      "`routeOf` (`src/lab/plan.ts`), `FinishedRun.renderObserver` in `src/run/run.ts`,",
+      "`routeOf` (`src/study/plan.ts`), `FinishedRun.renderObserver` in `src/run/run.ts`,",
       "`LabOutcome.backend` in `src/index.ts`, `humanish.pricing.v1` in `src/run/pricing.ts`,",
-      "`LabConfig` in `src/lab/types.ts`, `deriveFeedback` (`src/routes/terminal/types.ts`),",
-      "`producesScreenshots` (`src/lab/routing.ts`),",
-      "and `routeOf` (`src/lab/missing-file.ts`).",
+      "`LabConfig` in `src/study/types.ts`, `deriveFeedback` (`src/routes/terminal/types.ts`),",
+      "`producesScreenshots` (`src/study/routing.ts`),",
+      "and `routeOf` (`src/study/missing-file.ts`).",
     ].join("\n");
     expect(issues(doc)).toEqual([]);
   });
 
   it("fails when an existing file renames the symbol", () => {
-    const plan = real("src/lab/plan.ts").replace(/\brouteOf\b/g, "routeFor");
-    expect(issues("`routeOf` (`src/lab/plan.ts`)", { "src/lab/plan.ts": plan })).toEqual([
-      "1 routeOf src/lab/plan.ts",
+    const plan = real("src/study/plan.ts").replace(/\brouteOf\b/g, "routeFor");
+    expect(issues("`routeOf` (`src/study/plan.ts`)", { "src/study/plan.ts": plan })).toEqual([
+      "1 routeOf src/study/plan.ts",
     ]);
   });
 
@@ -82,13 +82,13 @@ describe("doc symbol check", () => {
   });
 
   it("fails when an existing file stops reading a field a doc says it checks", () => {
-    const routing = real("src/lab/routing.ts").replace(
+    const routing = real("src/study/routing.ts").replace(
       /capabilities\.producesScreenshots/g,
       "capabilities.screenshots",
     );
     expect(
-      issues("`producesScreenshots` (`src/lab/routing.ts`)", { "src/lab/routing.ts": routing }),
-    ).toEqual(["1 producesScreenshots src/lab/routing.ts"]);
+      issues("`producesScreenshots` (`src/study/routing.ts`)", { "src/study/routing.ts": routing }),
+    ).toEqual(["1 producesScreenshots src/study/routing.ts"]);
   });
 
   it("fails when the doc names a file that only imports the symbol", () => {

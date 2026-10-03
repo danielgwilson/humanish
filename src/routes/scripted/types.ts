@@ -1,13 +1,13 @@
 // The scripted-browser lab's schema constant, options and result types.
 
 import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
-import type { LabEvent } from "../../lab/run-lab-events.js";
+import type { LabEvent } from "../../study/run-study-events.js";
 import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
-import type { RunLabHomes } from "../../lab/run-lab-homes.js";
+import type { LabDeps } from "../../study/study-deps.js";
+import type { RunLabHomes } from "../../study/run-study-homes.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
 /** What a scripted run takes besides its plan. The plan carries the config, dry run and lab. */

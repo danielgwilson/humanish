@@ -1,8 +1,8 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { resolveLabDryRun } from "../../lab/plan.js";
+import { resolveLabDryRun } from "../../study/plan.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -23,7 +23,7 @@ import {
 import { formatConcurrentSharedWorldLabHuman } from "./lab-format.js";
 import { resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
 import type { RouteRun } from "./lab-route-run.js";
-import { rosterOf } from "../../lab/parse/actors.js";
+import { rosterOf } from "../../study/parse/actors.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
 interface SharedWorldRouteArgs {

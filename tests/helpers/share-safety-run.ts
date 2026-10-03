@@ -2,9 +2,9 @@
 // safe-mode run library to check what serve hands out.
 import path from "node:path";
 
-import { parseLabConfig } from "../../src/lab/config.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import { runLab } from "../../src/run-lab.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/study/types.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 
 export function shareSafetyDryRunConfig(): LabConfig {

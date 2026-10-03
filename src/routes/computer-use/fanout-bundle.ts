@@ -20,7 +20,7 @@ import {
   tallyParticipantOutcomes,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
-import type { TaskFunnel } from "../../lab/tasks.js";
+import type { TaskFunnel } from "../../study/tasks.js";
 import { participantFeedbackCandidates, providerResourcesForOutcome } from "./bundle-parts.js";
 import { participantFactsOf } from "./participant-facts.js";
 import { participantPassed, participantStatus } from "../../run/judge.js";

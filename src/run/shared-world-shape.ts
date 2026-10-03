@@ -6,7 +6,7 @@ import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 // digest cannot pin "same recipe" across bundles, so verify treats it as a hollow claim.
 export const COMMAND_DIGEST_PATTERN = /^[0-9a-f]{16}$/;
 
-// Env var name shape (mirrors ENV_NAME_PATTERN in src/lab/parse/values.ts). externalEnvNames
+// Env var name shape (mirrors ENV_NAME_PATTERN in src/study/parse/values.ts). externalEnvNames
 // must hold names only: a value sneaking into the list trips this check (a free secret tripwire).
 export const SUBJECT_ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 

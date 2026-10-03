@@ -5,15 +5,15 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resolveCommittedPersona } from "../../../src/lab/persona-resolve.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import { resolveCommittedPersona } from "../../../src/study/persona-resolve.js";
+import { parseLabConfig } from "../../../src/study/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 
 // The dry run takes no hook between resolving the project and starting the run, so the alias is
 // retargeted from inside the persona lookup, the last step before the run starts.
-vi.mock("../../../src/lab/persona-resolve.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../src/lab/persona-resolve.js")>();
+vi.mock("../../../src/study/persona-resolve.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../src/study/persona-resolve.js")>();
   return { ...actual, resolveCommittedPersona: vi.fn(actual.resolveCommittedPersona) };
 });
 
@@ -45,8 +45,8 @@ describe("terminal dry-run project binding", () => {
   });
 
   it("pins a symlink cwd before the alias can be retargeted", async () => {
-    const actual = await vi.importActual<typeof import("../../../src/lab/persona-resolve.js")>(
-      "../../../src/lab/persona-resolve.js",
+    const actual = await vi.importActual<typeof import("../../../src/study/persona-resolve.js")>(
+      "../../../src/study/persona-resolve.js",
     );
     const physicalA = path.join(root, "project-a");
     const physicalB = path.join(root, "project-b");

@@ -1,15 +1,15 @@
 // The concurrent shared-world route's schema constants, attribution limits, options and result
 // types, and the per-participant result the planes collect.
 
-import type { LabDeps } from "../../lab/lab-deps.js";
-import type { LabEvent } from "../../lab/run-lab-events.js";
-import type { RunLabHomes } from "../../lab/run-lab-homes.js";
+import type { LabDeps } from "../../study/study-deps.js";
+import type { LabEvent } from "../../study/run-study-events.js";
+import type { RunLabHomes } from "../../study/run-study-homes.js";
 import type { SharedWorldJudgment } from "../../run/judge.js";
-import type { BrowserScorer } from "../../lab/adapter-extension.js";
+import type { BrowserScorer } from "../../study/adapter-extension.js";
 import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
+import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../study/types.js";
 import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
@@ -31,7 +31,7 @@ import type {
   ParticipantRunOutcome,
 } from "../computer-use/types.js";
 import type { ProvisionedPlaneSetup } from "./provisioned.js";
-import type { SharedWorldPlan } from "../../lab/plan-types.js";
+import type { SharedWorldPlan } from "../../study/plan-types.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
 export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {

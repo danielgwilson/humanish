@@ -13,7 +13,7 @@
 // terminal gets prose and an offer to set things up; an agent gets the same facts as stable text,
 // or as JSON with `--json`. Neither is a special case of the other bolted on afterwards.
 
-import { listLabManifests } from "../lab/discover.js";
+import { listLabManifests } from "../study/discover.js";
 import { listRuns } from "../run/stored-runs.js";
 import { supportsLocalBrowser } from "./first-run-path.js";
 import { PRODUCT_SENTENCE } from "./product-sentence.js";

@@ -1,8 +1,8 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
-import { resolveLabManifest } from "../../src/lab/discover.js";
-import type { LabConfig } from "../../src/lab/types.js";
+import { resolveLabManifest } from "../../src/study/discover.js";
+import type { LabConfig } from "../../src/study/types.js";
 
 // The studies committed under humanish/studies, each resolved by its file path. Discovery also
 // lists a developer's local studies, and resolving a study by id picks a local file whenever no

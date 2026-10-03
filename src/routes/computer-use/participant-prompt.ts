@@ -5,14 +5,14 @@
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { recipientInboxUrl } from "../../comms/capture-surface.js";
 import { digestText } from "../../evidence/redaction.js";
-import type { DevicePreset } from "../../lab/device-presets.js";
+import type { DevicePreset } from "../../study/device-presets.js";
 import {
   personaBrief,
   personaToDirectives,
   renderPersonaPromptSection,
   type ResolvedPersona,
-} from "../../lab/persona.js";
-import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
+} from "../../study/persona.js";
+import { renderTaskPrompt, type LabTask } from "../../study/tasks.js";
 import type { DesktopParticipantRun } from "./types.js";
 
 export const DEFAULT_MISSION =
@@ -65,7 +65,7 @@ export function composeParticipantInstructions(args: {
     : `You are a desktop user (${name}, ${preset.width}x${preset.height}).`;
   // The protocol as the participant reads it: numbered goals, nothing else. The success criteria
   // are the researcher's instrument and must never reach this prompt: a persona told how it will
-  // be measured optimizes for the measurement instead of using the product (src/lab/tasks.ts).
+  // be measured optimizes for the measurement instead of using the product (src/study/tasks.ts).
   const taskLines = renderTaskPrompt(args.tasks ?? []);
   // A resolved persona contributes its compiled directives (friction tolerance, skill bias,
   // accessibility behavior, constraints) through the same persona.ts compiler the terminal route

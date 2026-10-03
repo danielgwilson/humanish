@@ -9,8 +9,12 @@ import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
-import { LAB_CONFIG_SCHEMA, type LabConfig, type LabRuntimeAuth } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import {
+  LAB_CONFIG_SCHEMA,
+  type LabConfig,
+  type LabRuntimeAuth,
+} from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import { type TerminalCostProbe } from "../../../src/routes/terminal/types.js";

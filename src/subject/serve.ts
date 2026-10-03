@@ -1,6 +1,6 @@
 // The serve pipeline the clone and local-tree subjects share once their source is in place.
 import { failureTail } from "../evidence/redaction.js";
-import type { LabStateStepWhen, LabSubjectServe, LabSubjectState } from "../lab/types.js";
+import type { LabStateStepWhen, LabSubjectServe, LabSubjectState } from "../study/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
 import { NODE_BOOTSTRAP_COMMAND, NODE_BOOTSTRAP_TIMEOUT_MS } from "./node-bootstrap.js";
 import { corepackCommandFor, needsNodeRuntime } from "./runtime.js";

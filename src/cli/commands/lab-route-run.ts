@@ -2,7 +2,7 @@
 // the outcome. runRoute plans the lab once and runs it between the two.
 
 import { type InternalRunLabOptions, type LabOutcome, prepareLab } from "../../run-lab.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import type { LoadedAdapterScorer } from "./lab-scorer.js";
 
 export interface RouteRun {

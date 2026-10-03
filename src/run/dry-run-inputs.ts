@@ -1,5 +1,5 @@
 import { parse as parseYaml } from "yaml";
-import { parseResolvedPersona, type ResolvedPersona } from "../lab/persona.js";
+import { parseResolvedPersona, type ResolvedPersona } from "../study/persona.js";
 import { digestText } from "../evidence/redaction.js";
 import type { PreparedSelectedOutputDirectory } from "./contained-output.js";
 import type { RunBundle } from "./bundle.js";

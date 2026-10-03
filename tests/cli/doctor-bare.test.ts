@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { DetectLocalAgentsOptions } from "../../src/actors/local-agent/cli.js";
 import { doctor, type DoctorResult } from "../../src/cli/doctor.js";
-import { runInit } from "../../src/lab/init.js";
+import { runInit } from "../../src/study/init.js";
 
 const keyless = { HUMANISH_STRICT_KEYS: "1", PATH: "" };
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };

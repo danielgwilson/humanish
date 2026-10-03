@@ -1,5 +1,5 @@
 import type { ActorPersonaRef } from "../actors/contract.js";
-import type { Participant } from "../lab/plan-participants.js";
+import type { Participant } from "../study/plan-participants.js";
 import type { RunParticipantAssignment } from "./streams.js";
 
 /**

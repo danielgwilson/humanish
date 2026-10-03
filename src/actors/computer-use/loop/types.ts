@@ -14,7 +14,7 @@ import type {
 } from "../../contract.js";
 import type { RedactionHooks } from "../../../evidence/redaction.js";
 import type { DwellWindow, StopWhen } from "../../stop-conditions.js";
-import type { LabTask } from "../../../lab/tasks.js";
+import type { LabTask } from "../../../study/tasks.js";
 import type { ReasoningEffort } from "../../reasoning-effort.js";
 
 // The ports of the computer-use loop: the model behind CuaProvider, the desktop behind

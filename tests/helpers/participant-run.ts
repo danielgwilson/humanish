@@ -1,6 +1,6 @@
 import type { ActorPersonaRef } from "../../src/actors/contract.js";
-import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
-import type { ComputerUseParticipant } from "../../src/lab/plan-participants.js";
+import { DEVICE_PRESETS } from "../../src/study/device-presets.js";
+import type { ComputerUseParticipant } from "../../src/study/plan-participants.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 
 /**

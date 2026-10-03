@@ -8,8 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 

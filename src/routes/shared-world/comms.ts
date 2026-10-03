@@ -9,7 +9,7 @@ import {
 } from "../../comms/external-evidence.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { prepareReceivingRun, type ReceivingSource } from "../../comms/receiving-runtime.js";
-import type { SharedWorldPlan } from "../../lab/plan-types.js";
+import type { SharedWorldPlan } from "../../study/plan-types.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
@@ -20,7 +20,7 @@ import {
 } from "../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../comms/types.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import type { LabCommsEmail, LabConfig } from "../../lab/types.js";
+import type { LabCommsEmail, LabConfig } from "../../study/types.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import type { Shell } from "../../substrates/shell.js";
 import type {
@@ -28,7 +28,7 @@ import type {
   ExternalCommsWiring,
   PlaneContext,
 } from "./types.js";
-import { addressedRecipients } from "../../lab/parse/comms.js";
+import { addressedRecipients } from "../../study/parse/comms.js";
 
 /** The in-sandbox email catch a provisioned plane deploys, when the lab declares one. */
 export interface SubjectComms {

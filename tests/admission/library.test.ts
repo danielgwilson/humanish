@@ -9,11 +9,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { parseLabConfig } from "../../src/lab/config.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import type { RunCuaActorLabOptions } from "../../src/routes/computer-use/types.js";
-import { resolveLabDryRun, routeOf, type LabRoute } from "../../src/lab/plan.js";
-import type { LabConfig } from "../../src/lab/types.js";
+import { resolveLabDryRun, routeOf, type LabRoute } from "../../src/study/plan.js";
+import type { LabConfig } from "../../src/study/types.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";

@@ -33,13 +33,13 @@ release.
 
 ## Families
 
-| Family                 | Codes | Emitted by                                                               | Appears in                                                              |
-| ---------------------- | ----- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `HUMANISH_*`           | 137   | every CLI command and route result                                       | JSON `error.code`, library `error.code`, human `code:` line             |
-| `ANALYSIS_*`           | 86    | `humanish analyze` and the analysis service (`src/analysis/`)            | JSON `error.code` of analysis results                                   |
-| `AUTOMATIC_ANALYSIS_*` | 21    | the post-run analysis job                                                | `automaticAnalysis.reason` on a run result and the job record           |
-| `analysis_*` lowercase | 29    | analysis execution                                                       | `error` fields in analysis artifacts and execution receipts             |
-| `codex_*` lowercase    | 13    | the Codex CLI readiness check (`src/actors/codex/`, `src/lab/doctor.ts`) | doctor rows and analysis readiness, such as `codex_unsupported_version` |
+| Family                 | Codes | Emitted by                                                                 | Appears in                                                              |
+| ---------------------- | ----- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `HUMANISH_*`           | 137   | every CLI command and route result                                         | JSON `error.code`, library `error.code`, human `code:` line             |
+| `ANALYSIS_*`           | 86    | `humanish analyze` and the analysis service (`src/analysis/`)              | JSON `error.code` of analysis results                                   |
+| `AUTOMATIC_ANALYSIS_*` | 21    | the post-run analysis job                                                  | `automaticAnalysis.reason` on a run result and the job record           |
+| `analysis_*` lowercase | 29    | analysis execution                                                         | `error` fields in analysis artifacts and execution receipts             |
+| `codex_*` lowercase    | 13    | the Codex CLI readiness check (`src/actors/codex/`, `src/study/doctor.ts`) | doctor rows and analysis readiness, such as `codex_unsupported_version` |
 
 Counts are the distinct quoted codes in `src/` on 2026-10-03.
 

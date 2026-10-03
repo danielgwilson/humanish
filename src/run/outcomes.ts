@@ -6,7 +6,7 @@ import {
   type CuaGoalSource,
 } from "../actors/goal-source.js";
 import { actorEnding } from "../actors/stop-cause.js";
-import type { TaskFunnel } from "../lab/tasks.js";
+import type { TaskFunnel } from "../study/tasks.js";
 import type { ParticipantOutcomes, ReviewSummary, RunTaskFunnel } from "./bundle.js";
 import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 

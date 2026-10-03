@@ -1,0 +1,211 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { stringify } from "yaml";
+import { describe, expect, it } from "vitest";
+import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
+import { readLabSummary } from "../../src/study/summary.js";
+import { lab as admissionLab } from "../admission/fixtures.js";
+
+const base = {
+  schema: LAB_CONFIG_SCHEMA,
+  id: "key-check",
+  subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+  actors: [{ type: "openai-computer-use", mission: "Use the app." }],
+  execution: { target: "e2b-desktop" },
+  scenario: { mode: "live" },
+};
+
+async function summary(config: unknown, env: NodeJS.ProcessEnv) {
+  const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keys-"));
+  try {
+    await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish/labs/key-check.yaml"), stringify(config));
+    const result = await readLabSummary(cwd, "key-check", {
+      checkKeys: true,
+      env: { HUMANISH_STRICT_KEYS: "1", ...env },
+    });
+    expect(result).not.toBeNull();
+    expect(JSON.stringify(result)).not.toContain("synthetic-credential");
+    return result!;
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+describe("TUI key summary follows the configured route", () => {
+  it("allows a keyless dry-run", async () => {
+    expect(await summary({ ...base, scenario: { mode: "dry-run" } }, {})).toMatchObject({
+      keysReady: true,
+    });
+  });
+
+  it("requires desktop plus model for API computer use", async () => {
+    expect(await summary(base, { E2B_API_KEY: "synthetic-credential-desktop" })).toMatchObject({
+      keysReady: false,
+      missingKeys: ["OPENAI_API_KEY"],
+    });
+    expect(
+      await summary(base, {
+        E2B_API_KEY: "synthetic-credential-desktop",
+        OPENAI_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+  });
+
+  it("does not block local-agent participants on the optional analysis key", async () => {
+    const result = await summary(
+      { ...base, actors: [{ type: "local-agent", localAgent: "codex", mission: "Use the app." }] },
+      { E2B_API_KEY: "synthetic-credential-desktop" },
+    );
+    expect(result.keysReady).toBe(true);
+    expect(result.missingKeys).toBeUndefined();
+  });
+
+  it("accepts terminal CODEX_API_KEY without requiring a second model key", async () => {
+    const config = {
+      ...base,
+      subject: {
+        source: "terminal-product",
+        product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
+      },
+      actors: [{ type: "codex-exec", mission: "Use the CLI." }],
+      execution: {
+        target: "e2b-terminal",
+        runtimeAuth: "openai-env",
+        terminal: { transport: "exec-stream", stdin: "disabled" },
+      },
+      // A live terminal run without a cap does not plan.
+      scenario: { mode: "live", caps: { maxUsd: 0, maxMinutes: 5 } },
+    };
+    expect(
+      await summary(config, {
+        E2B_API_KEY: "synthetic-credential-desktop",
+        CODEX_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+    expect(await summary(config, { E2B_API_KEY: "synthetic-credential-desktop" })).toMatchObject({
+      keysReady: false,
+      missingKeys: ["OPENAI_API_KEY"],
+    });
+  });
+
+  it("names a clone subject's missing env after the provider keys", async () => {
+    const clone = admissionLab("cuClone", {
+      id: "key-check",
+      scenario: { mode: "live" },
+      subject: { env: ["SYNTHETIC_SUBJECT_TOKEN"] },
+    });
+    expect(await summary(clone, {})).toMatchObject({
+      keysReady: false,
+      missingKeys: ["E2B_API_KEY", "OPENAI_API_KEY", "SYNTHETIC_SUBJECT_TOKEN"],
+    });
+    expect(
+      await summary(clone, {
+        E2B_API_KEY: "synthetic-credential-desktop",
+        OPENAI_API_KEY: "synthetic-credential-model",
+        SYNTHETIC_SUBJECT_TOKEN: "synthetic-credential-subject",
+      }),
+    ).toMatchObject({ keysReady: true });
+  });
+
+  it("checks a lab whose inline persona names its own YAML anchor", async () => {
+    const persona: Record<string, unknown> = { id: "synthetic-persona" };
+    persona.self = persona;
+    expect(await summary({ ...base, personas: [persona] }, {})).toMatchObject({
+      keysReady: false,
+      missingKeys: ["E2B_API_KEY", "OPENAI_API_KEY"],
+    });
+  });
+
+  it("reports the planner's refusal in place of the keys for a lab that will not plan", async () => {
+    // A 55-minute session derives a sandbox deadline past the 60-minute limit.
+    const result = await summary(
+      { ...base, execution: { ...base.execution, timeoutMs: 3_300_000 } },
+      {},
+    );
+    expect(result.keysReady).toBeUndefined();
+    expect(result.missingKeys).toBeUndefined();
+    expect(result.planRefusal).toContain("may not live longer than 60m");
+  });
+
+  it("requires no provider keys for a local scripted browser", async () => {
+    expect(
+      await summary(
+        {
+          ...base,
+          actors: [{ type: "scripted-browser", mission: "Use the app." }],
+          execution: { target: "local" },
+          scenario: { mode: "live", ref: "humanish/scenarios/entry.yaml" },
+        },
+        {},
+      ),
+    ).toMatchObject({ keysReady: true });
+  });
+});
+
+describe("TUI caps summary", () => {
+  it("shows a computer-use lab's execution.caps", async () => {
+    const capped = {
+      ...base,
+      execution: { ...base.execution, caps: { maxUsd: 2, maxTotalUsd: 5 } },
+    };
+    expect((await summary(capped, {})).caps).toEqual({ laneUsd: 2, studyUsd: 5 });
+  });
+
+  it("draws no cap for a computer-use lab that declares none", async () => {
+    expect((await summary(base, {})).caps).toEqual({});
+  });
+});
+
+describe("lab summary participants", () => {
+  const roster = (personas: (string | undefined)[]) => ({
+    ...base,
+    scenario: { mode: "dry-run" },
+    actors: [
+      {
+        type: "openai-computer-use",
+        mission: "Use the app.",
+        lanes: personas.map((persona, index) => ({
+          id: `entry-0${index + 1}`,
+          ...(persona === undefined ? {} : { persona }),
+        })),
+      },
+    ],
+  });
+
+  it("names a roster's personas and counts every roster entry", async () => {
+    expect((await summary(roster(["p-one", "p-two", undefined]), {})).participants).toBe(
+      "p-one · p-two",
+    );
+    expect((await summary(roster(["p-one", "p-one", undefined]), {})).participants).toBe(
+      "3 × p-one",
+    );
+  });
+  it("probes the vendor stores through keyDeps, not the machine's own home", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keydeps-"));
+    try {
+      await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
+      await writeFile(path.join(cwd, "humanish/labs/key-check.yaml"), stringify(base));
+      const withLogin = path.join(cwd, "home-with-e2b");
+      await mkdir(path.join(withLogin, ".e2b"), { recursive: true });
+      await writeFile(
+        path.join(withLogin, ".e2b", "config.json"),
+        JSON.stringify({ teamApiKey: "synthetic-credential-e2b-store" }),
+      );
+      const read = (homeDir: string) =>
+        readLabSummary(cwd, "key-check", {
+          checkKeys: true,
+          env: { OPENAI_API_KEY: "synthetic-credential-model" },
+          keyDeps: { homeDir, execText: async () => null },
+        });
+      expect(await read(withLogin)).toMatchObject({ keysReady: true });
+      expect(await read(path.join(cwd, "empty-home"))).toMatchObject({
+        keysReady: false,
+        missingKeys: ["E2B_API_KEY"],
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+});

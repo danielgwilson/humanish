@@ -1,6 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
 import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
 import { showObserver } from "../observer-follow.js";

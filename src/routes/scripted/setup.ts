@@ -3,7 +3,7 @@
 // (the evidence URL policy, the scrubber for clone values, the persona and the session budget).
 
 import { realpath } from "node:fs/promises";
-import { missingKeys, missingSubjectEnv } from "../../lab/requirements.js";
+import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
 import path from "node:path";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { resolveBrowserCommand } from "../../actors/scripted-browser/browser-command.js";
@@ -12,12 +12,12 @@ import type {
   ScriptedBrowserEvidenceUrlPolicy,
 } from "../../actors/scripted-browser/types.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
-import type { ScriptedPlan } from "../../lab/plan-types.js";
+import type { ScriptedPlan } from "../../study/plan-types.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import { type ScriptedBrowserLabResult, type ScriptedRunInput } from "./types.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
+import type { LabDeps } from "../../study/study-deps.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
 // Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and

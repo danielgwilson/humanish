@@ -12,7 +12,7 @@ import {
   type DesktopReleaseResult,
   type OwnedDesktopAllocation,
 } from "../desktop-session.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import {
   E2B_DEBUG_KILL_DETAIL,
   E2BDesktopStartupError,

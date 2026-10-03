@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LabConfig } from "../../../src/lab/types.js";
+import type { LabConfig } from "../../../src/study/types.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { participantRun } from "../../helpers/participant-run.js";

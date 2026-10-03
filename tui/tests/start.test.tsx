@@ -8,7 +8,7 @@ import { App } from "../src/app.js";
 import type { LaunchRunOptions } from "../../src/tui/launch.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import { KEY, renderToText } from "../src/testing/render-to-text.js";
-import { readLabSummary } from "../../src/lab/summary.js";
+import { readLabSummary } from "../../src/study/summary.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
 // Starting a run is the only thing this surface does that spends money, so the interaction is

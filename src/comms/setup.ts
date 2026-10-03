@@ -18,8 +18,8 @@ import {
 } from "./providers.js";
 import { createReceivingAdapter } from "./receiving-runtime.js";
 import { RECEIVING_SCOPE_UNSUPPORTED, type ReceivingAdapter } from "./receiving-types.js";
-import { parseLabConfig } from "../lab/config.js";
-import { resolveLabManifest } from "../lab/discover.js";
+import { parseLabConfig } from "../study/config.js";
+import { resolveLabManifest } from "../study/discover.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,

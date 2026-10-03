@@ -2,7 +2,7 @@
 // its events, projected from the actor's run result (or from the declaration on a dry run or while
 // running).
 
-import { participantAssignment } from "../../lab/participant-assignment.js";
+import { participantAssignment } from "../../study/participant-assignment.js";
 import type { RunEvent, RunSimulation } from "../../run/bundle.js";
 import {
   participantEvent,

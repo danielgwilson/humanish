@@ -4,7 +4,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
-import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { LabDeps } from "../../../src/study/study-deps.js";
 import type {
   CuaExecutor,
   CuaProvider,
@@ -22,8 +22,8 @@ import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js
 import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2b-desktop/desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/study/types.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,

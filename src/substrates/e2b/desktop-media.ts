@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { startDesktopMedia } from "../../guest/desktop-media.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./sdk.js";
-import type { LabDesktopMedia } from "../../lab/types.js";
+import type { LabDesktopMedia } from "../../study/types.js";
 import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import { runOrThrow } from "../shell.js";
 import { e2bShell } from "./shell.js";

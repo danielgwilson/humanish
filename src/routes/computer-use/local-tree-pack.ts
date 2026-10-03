@@ -2,9 +2,9 @@
 
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "../../subject/local-tree-archive.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
+import type { LabDeps } from "../../study/study-deps.js";
 
 /**
  * Pack the working tree for a local-tree run and report what left the host on stderr, by counts

@@ -17,14 +17,14 @@ import {
   YAMLSeq,
   type Document,
 } from "yaml";
-import { parseLabConfig } from "../lab/config.js";
-import { focusOf } from "../lab/parse/actors.js";
-import { posInt } from "../lab/parse/values.js";
-import { planLab } from "../lab/plan.js";
-import type { StudyRoute } from "../lab/parse/study-v3.js";
-import { routeOf } from "../lab/routing.js";
-import { LAB_CONFIG_SCHEMA, STUDY_SCHEMA, type LabConfig } from "../lab/types.js";
-import { inertFieldPaths } from "../lab/warnings.js";
+import { parseLabConfig } from "./config.js";
+import { focusOf } from "./parse/actors.js";
+import { posInt } from "./parse/values.js";
+import { planLab } from "./plan.js";
+import type { StudyRoute } from "./parse/study-v3.js";
+import { routeOf } from "./routing.js";
+import { LAB_CONFIG_SCHEMA, STUDY_SCHEMA, type LabConfig } from "./types.js";
+import { inertFieldPaths } from "./warnings.js";
 import {
   deleteNodeFieldPath,
   deletePlainFieldPath,

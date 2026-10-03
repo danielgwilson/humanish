@@ -5,8 +5,8 @@
 
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
 import { scrubSecretValues } from "../evidence/secret-scrub.js";
-import { addressedRecipients } from "../lab/parse/comms.js";
-import type { LabCommsEmail, LabCommsExternal } from "../lab/types.js";
+import { addressedRecipients } from "../study/parse/comms.js";
+import type { LabCommsEmail, LabCommsExternal } from "../study/types.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { FakeInbox } from "./fake-inbox.js";

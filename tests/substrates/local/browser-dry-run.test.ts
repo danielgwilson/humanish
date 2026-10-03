@@ -14,10 +14,10 @@ vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => (
   checkRestrictedCodexAnalysisReadiness: calls.account,
 }));
 
-import type { LabConfig } from "../../../src/lab/types.js";
+import type { LabConfig } from "../../../src/study/types.js";
 import { runLab } from "../../../src/run-lab.js";
-import type { AdapterScoringContext } from "../../../src/lab/adapter-scorer-loader.js";
-import type { LabEvent } from "../../../src/lab/run-lab-events.js";
+import type { AdapterScoringContext } from "../../../src/study/adapter-scorer-loader.js";
+import type { LabEvent } from "../../../src/study/run-study-events.js";
 import type { RunAdapterScore, RunBundle } from "../../../src/run/bundle.js";
 
 describe("local browser dry-run", () => {

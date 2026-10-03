@@ -25,8 +25,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { parseLabConfig } from "../../src/lab/config.js";
-import { planLab } from "../../src/lab/plan.js";
+import { parseLabConfig } from "../../src/study/config.js";
+import { planLab } from "../../src/study/plan.js";
 import { migrateStudies } from "../../src/study/migrate.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 

@@ -12,18 +12,18 @@ import {
   scriptedInput,
   sharedWorldInput,
   terminalInput,
-} from "./lab/route-inputs.js";
-import { planLab, resolveLabDryRun, routeOf, type LabRoute } from "./lab/plan.js";
-import type { LabPlan, PlanRefusal } from "./lab/plan-types.js";
-import type { LabDeps } from "./lab/lab-deps.js";
-import type { LabEvent } from "./lab/run-lab-events.js";
+} from "./study/route-inputs.js";
+import { planLab, resolveLabDryRun, routeOf, type LabRoute } from "./study/plan.js";
+import type { LabPlan, PlanRefusal } from "./study/plan-types.js";
+import type { LabDeps } from "./study/study-deps.js";
+import type { LabEvent } from "./study/run-study-events.js";
 import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
   removedOptionRefusal,
-} from "./lab/run-lab-options.js";
-import type { RunLabDriving, RunLabHomes } from "./lab/run-lab-homes.js";
-import { type LabConfig } from "./lab/types.js";
+} from "./study/run-study-options.js";
+import type { RunLabDriving, RunLabHomes } from "./study/run-study-homes.js";
+import { type LabConfig } from "./study/types.js";
 import type { ObserverResult } from "./observer/render.js";
 import { admitComputerUsePlan, computerUseLabRefusal } from "./routes/computer-use/route.js";
 import { type CuaActorLabResult } from "./routes/computer-use/types.js";

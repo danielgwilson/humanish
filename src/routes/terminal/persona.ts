@@ -9,9 +9,9 @@ import {
   personaToDirectives,
   renderPersonaPromptSection,
   type ResolvedPersona,
-} from "../../lab/persona.js";
-import { resolveCommittedPersona } from "../../lab/persona-resolve.js";
-import type { TerminalPlan } from "../../lab/plan-types.js";
+} from "../../study/persona.js";
+import { resolveCommittedPersona } from "../../study/persona-resolve.js";
+import type { TerminalPlan } from "../../study/plan-types.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 
 /** A terminal run's persona, resolved against the project's committed persona files. */

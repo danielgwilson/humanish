@@ -6,14 +6,14 @@ import {
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
 } from "../../actors/scripted-browser/actor.js";
-import type { ScriptedPlan } from "../../lab/plan-types.js";
+import type { ScriptedPlan } from "../../study/plan-types.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../../run/paths.js";
 import { validateScriptedSessionResult } from "./session-result.js";
-import type { LabDeps } from "../../lab/lab-deps.js";
+import type { LabDeps } from "../../study/study-deps.js";
 
 /** One session per surface, in parallel. */
 export function runScriptedSessions(

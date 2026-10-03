@@ -1,7 +1,7 @@
-import { loadAdapterScorer, type AdapterScorerModule } from "../../lab/adapter-scorer-loader.js";
-import type { LabRoute } from "../../lab/plan.js";
+import { loadAdapterScorer, type AdapterScorerModule } from "../../study/adapter-scorer-loader.js";
+import type { LabRoute } from "../../study/plan.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import type { RunResult } from "../../run/results.js";
 
 /** A config-declared scorer that resolved + loaded fail-closed, ready to thread into a backend. */

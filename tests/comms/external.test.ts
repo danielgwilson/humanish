@@ -20,8 +20,8 @@ import {
 } from "../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
-import { parseLabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../src/study/types.js";
+import { parseLabConfig } from "../../src/study/config.js";
 import { freePort } from "../helpers/free-port.js";
 
 const TOKEN = "test-token-not-a-secret";

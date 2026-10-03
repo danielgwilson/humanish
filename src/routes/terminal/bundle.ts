@@ -1,7 +1,7 @@
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
-import type { LabScenarioCaps, LabRuntimeAuth } from "../../lab/types.js";
+import type { LabScenarioCaps, LabRuntimeAuth } from "../../study/types.js";
 import { redactText } from "../../evidence/redaction.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
+import { participantAssignment } from "../../study/participant-assignment.js";
 import {
   REVIEW_SCHEMA,
   type ReviewSummary,

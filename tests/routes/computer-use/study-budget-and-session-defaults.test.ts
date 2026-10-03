@@ -20,7 +20,7 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
-import { parseLabConfig } from "../../../src/lab/config.js";
+import { parseLabConfig } from "../../../src/study/config.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {

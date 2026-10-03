@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../study/types.js";
 import type { PreviewStudyResult } from "../../routes/preview.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 import {
