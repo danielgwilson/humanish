@@ -495,15 +495,16 @@ Core-owned fields:
 - `artifacts`
 - `review`
 - `feedbackCandidates`
-- `lab` (optional, additive): which study file produced the run,
+- `study` (optional, additive): which study file produced the run,
   `{ id, path?, origin? }`, where `origin` is `committed` (`humanish/studies/`, or
   `humanish/labs/` for a v2 file),
   `ignored` (a local overlay), or `explicit` (a path the operator passed).
-  Absent on bundles written before this contract and on library callers who
-  hand a `StudyConfig` directly. Such a run has no study, and nothing guesses
-  one. Readers wanting attribution for an older bundle may fall back to
-  `inferLegacyLabId`, which reads only the historical
-  `persona.source = "lab:<id>"` convention and nothing else.
+  `lab` holds the same value until 0.109 removes it, so a 0.107 reader keeps working.
+  Both are absent on bundles written before this contract and on library callers who
+  hand a `StudyConfig` directly; such a run has no study. Readers go through
+  `studyProvenanceOf` (`src/run/study-provenance.ts`): a valid `study`, else a valid `lab`,
+  else `inferLegacyStudyId`, which reads the `persona.source` or `scenario.source`
+  convention `study:<id>`, or `lab:<id>` from runs written before 0.108, and nothing else.
 - `subject` (optional, additive): structured subject provenance,
   `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
 dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
@@ -1140,8 +1141,8 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 `humanish.run-status.v1` is `status.json`, written inside each run directory by
 every route at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
-finished | interrupted, mode, lab?, pid, startedAt, updatedAt, completedAt?,
-signal?, outcome? }`.
+finished | interrupted, mode, study?, lab?, pid, startedAt, updatedAt, completedAt?,
+signal?, outcome? }`. `lab` repeats `study` until 0.109.
 `outcome` carries the bundle's `verdict`, `participants` and `estimatedCostUsd`
 when the run finishes, then the result's `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` once the Observer has rendered. The
@@ -1199,7 +1200,7 @@ them is a claim about what a participant did.
 `humanish.run-index.v1` is the listing projection. One entry per run, read
 cheapest-source-first: the `status.json` record, else the bundle, else the run
 directory alone. `{ runId, derivedFrom: status | bundle | directory, liveness,
-mode?, pid?, lab?, startedAt?, updatedAt?, completedAt?, verdict?,
+mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?,
 participants?, estimatedCostUsd?, durationMs? }`. The point is cost: walking
 every run tree and parsing every bundle measured 167ms on a 25-run project,
 against 16ms cold and 2.8ms warm here, which is what makes a surface that

@@ -179,7 +179,7 @@ The Unreleased section holds the full notes for the next version until it is tag
     keep `humanish.run-result.v1`.
 
 - Human-mode errors print on stderr in one shape: `<command> failed: <message>`, `code: <CODE>`,
-  and `next: humanish lab list` for `HUMANISH_STUDY_NOT_FOUND`. `keys` and the `comms` connection
+  and `next: humanish study list` for `HUMANISH_STUDY_NOT_FOUND`. `keys` and the `comms` connection
   commands, whose results carry no code, print the first line only. Before, most commands printed
   `CODE: message` on stdout. A script that greps stdout for `HUMANISH_` codes has to read stderr or
   switch to `--json`. `--json` output and exit codes do not change; tests/golden/cli-errors/ pins

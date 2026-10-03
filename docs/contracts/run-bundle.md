@@ -20,12 +20,16 @@ runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
 createdAt: "<ISO timestamp>"
-lab: # optional, additive: which study file produced this run
+cwd: "[target-cwd]"
+artifactRoot: ".humanish/runs/<run-id>"
+study: # optional, additive: which study file produced this run
   id: "<study id>"
   path: "humanish/studies/<study id>.yaml"
   origin: "committed|ignored|explicit"
-cwd: "[target-cwd]"
-artifactRoot: ".humanish/runs/<run-id>"
+lab: # the same value as study, written until 0.109
+  id: "<study id>"
+  path: "humanish/studies/<study id>.yaml"
+  origin: "committed|ignored|explicit"
 source:
   packageName: "<public package name or null>"
   humanishSource: "present|missing"
