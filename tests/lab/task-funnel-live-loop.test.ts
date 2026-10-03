@@ -242,7 +242,7 @@ describe("the live loop corroborates the protocol", () => {
 });
 
 describe("the participant never sees the researcher's criteria (composer)", () => {
-  it("renders numbered goals into the lane prompt and nothing from `success`", () => {
+  it("renders numbered goals into the participant prompt and nothing from `success`", () => {
     const composed = composeParticipantInstructions({
       mission: "You heard about this document tool and want to try it.",
       tasks: PROTOCOL,

@@ -5,8 +5,8 @@ import {
   withOneRetryOnTransientE2BError,
 } from "../../../src/substrates/e2b/sandbox.js";
 
-// The three shapes measured on 2026-09-04 (five of six lanes created within 100 s), plus the
-// transport resets the SDK surfaces the same way.
+// The three shapes measured on 2026-09-04 (five of six participant desktops created within 100 s),
+// plus the transport resets the SDK surfaces the same way.
 const TRANSIENT = [
   "12: [unimplemented] HTTP 404",
   "Cannot read properties of undefined (reading 'envdVersion')",

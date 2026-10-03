@@ -208,8 +208,8 @@ describe("declared camera capabilities must reach an implemented route", () => {
       throw new Error("must not dispatch participant");
     });
     try {
-      // The config is valid for a hosted CUA lane, and all shared-backend structural
-      // checks pass. Rejection must come from the actual backend's media support.
+      // The config is valid for a hosted computer-use participant, and all shared-backend
+      // structural checks pass. Rejection must come from the actual backend's media support.
       expect(config.subject.topology).toBeUndefined();
       expect(desktopMediaValidationReason(config)).toBeUndefined();
       expect(concurrentSharedWorldValidationReason(config)).toBeNull();

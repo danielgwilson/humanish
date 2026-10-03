@@ -573,7 +573,7 @@ describe("runScriptedBrowserSession (completion semantics through the real step 
 });
 
 describe("scripted-browser registry entry", () => {
-  it("is registered with the scripted-browser lane and the session runner", () => {
+  it("is registered with the scripted-browser run kind and the session runner", () => {
     const descriptor = getActor("scripted-browser");
     expect(descriptor.id).toBe("scripted-browser");
     expect(descriptor.capabilities).toEqual(SCRIPTED_BROWSER_CAPABILITIES);
@@ -582,7 +582,7 @@ describe("scripted-browser registry entry", () => {
     expect(typeof descriptor.runSession).toBe("function");
   });
 
-  it("the lane guard does not claim non-scripted actors", () => {
+  it("the run-kind guard does not claim non-scripted actors", () => {
     expect(isScriptedBrowserActorDescriptor(getActor("openai-computer-use"))).toBe(false);
     expect(isScriptedBrowserActorDescriptor(getActor("codex-app-server"))).toBe(false);
   });

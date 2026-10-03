@@ -18,7 +18,7 @@ import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.j
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 import { participantRun } from "../helpers/participant-run.js";
 
-describe("real inbox wiring through the actual CUA lane", () => {
+describe("real inbox wiring through the actual computer-use route", () => {
   it.each([false, true])(
     "accepts the runner's 60s request default and tears down after attachment fails (finalization failure=%s)",
     async (failFinalization) => {

@@ -1955,7 +1955,7 @@ describe("run writes the same bundle watch does", () => {
 });
 
 describe("CUA ending output", () => {
-  it("shows distinct lane causes without calling the first lane the whole session", () => {
+  it("shows distinct participant causes without calling the first participant the whole session", () => {
     const output = formatCuaLabHuman({
       schema: "humanish.study-result.v1",
       route: "computer-use",

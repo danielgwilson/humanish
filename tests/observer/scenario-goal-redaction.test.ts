@@ -1,20 +1,22 @@
 // Verify must not fail a bundle its own writer produced.
 //
-// Lane records are digest-only by design, but `scenario.goal` keeps one lane's composed
-// instructions verbatim, and `observer-data.json` carries a copy. An adopter whose authored lane
-// text has to name a runtime world URL (an inbox on a route where the harness does not inject one)
-// put an `*.e2b.app` address in it. That landed raw in both artifacts, the sensitive-text scanner
-// matched it, and verify failed a bundle humanish itself wrote, with every lane passing.
+// Participant records are digest-only by design, but `scenario.goal` keeps one participant's
+// composed instructions verbatim, and `observer-data.json` carries a copy. An adopter whose
+// authored participant text has to name a runtime world URL (an inbox on a route where the harness
+// does not inject one) put an `*.e2b.app` address in it. That landed raw in both artifacts, the
+// sensitive-text scanner matched it, and verify failed a bundle humanish itself wrote, with every
+// participant passing.
 //
 // The only adopter-side workaround was writing the URL scheme-less to dodge the scanner, which
-// nobody should do. So the writer redacts, exactly as the terminal lane already did.
+// nobody should do. So the writer redacts, exactly as the terminal route already did.
 import { describe, expect, it } from "vitest";
 
 import { buildObserverData } from "../../src/observer/data.js";
 import { containsSensitive, redactText } from "../../src/evidence/redaction.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 
-// A composed lane prompt of the shape the report describes: authored text naming a runtime inbox.
+// A composed participant prompt of the shape the report describes: authored text naming a runtime
+// inbox.
 const LANE_PROMPT = [
   "Persona: skeptical-power-user.",
   "",

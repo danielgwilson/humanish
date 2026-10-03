@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { TaskTracker } from "../../src/lab/tasks.js";
 import type { LabTask } from "../../src/lab/tasks.js";
 
-// A three-lane study declared `reach-prices` with `urlIncludes: pricing`, and every lane
-// opened on a URL containing that literal substring. The funnel reported `completed: 0, sessions:
-// 3`, and the summary rendered "reach-prices 0/3", which reads as "no participant could find the
-// pricing page". What actually happened is that the observer never supplied a url, so the criterion
-// was never evaluated against anything.
+// A three-participant study declared `reach-prices` with `urlIncludes: pricing`, and every
+// participant opened on a URL containing that literal substring. The funnel reported
+// `completed: 0, sessions: 3`, and the summary rendered "reach-prices 0/3", which reads as "no
+// participant could find the pricing page". What actually happened is that the observer never
+// supplied a url, so the criterion was never evaluated against anything.
 //
 // 0-because-they-failed and 0-because-we-never-looked are different facts. Reporting them
 // identically hands the harness's own gap to the reader as a finding about the participant, which
@@ -54,8 +54,8 @@ describe("task funnel distinguishes unmeasured from failed", () => {
 
   it("a criterion true at turn 0 is unmeasured until an observation carries its input", () => {
     const tracker = new TaskTracker([urlTask]);
-    // Every lane opened on https://vercel.com/pricing. Had the url reached the tracker, this task
-    // would have completed on turn 0 without a single action.
+    // Every participant opened on https://vercel.com/pricing. Had the url reached the tracker, this
+    // task would have completed on turn 0 without a single action.
     const funnel = tracker.funnel();
     expect(funnel.unmeasured).toBe(1);
 

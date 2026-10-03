@@ -292,7 +292,7 @@ describe("study-participant marking", () => {
 // or an outcome. The vocabulary existed; nothing populated it. These pin the derivation that
 // reads the facts off the result document every command already writes.
 describe("what a study reports about itself", () => {
-  it("reads mode, starter lab, outcome, and brain off a single-lane computer-use result", () => {
+  it("reads mode, starter lab, outcome, and brain off a single-participant computer-use result", () => {
     expect(
       deriveRunFacts({
         schema: "humanish.study-result.v1",
@@ -311,7 +311,7 @@ describe("what a study reports about itself", () => {
     ).toEqual({ mode: "live", lab: "try-live", outcome: "passed", brain: "provider-key" });
   });
 
-  it("rolls a fan-out up to all/some/none passed, never per-lane detail", () => {
+  it("rolls a fan-out up to all/some/none passed, never per-participant detail", () => {
     const base = { labId: "cua-browser", actor: "openai-computer-use", dryRun: false, ok: true };
     expect(deriveRunFacts({ ...base, laneSummary: { total: 3, passed: 3 } }).outcome).toBe(
       "all_passed",
@@ -427,7 +427,7 @@ describe("finite CUA diagnostics", () => {
     }
   });
 
-  it("reads only the finite summary, never a first-lane cause or raw failure text", () => {
+  it("reads only the finite summary, never a first-participant cause or raw failure text", () => {
     expect(
       deriveRunFacts({
         schema: "humanish.study-result.v1",

@@ -1,9 +1,9 @@
-// The viewing room reports participants, not lanes (docs/principles/three-roles.md).
+// The viewing room reports participants, not harness records (docs/principles/three-roles.md).
 //
-// "2 of 3 lanes passed" is a fact about the harness. "2/3 reached the goal, 1 gave up" is the study
-// result, and it is what the person watching through the glass came for. The denominator travels
-// with it, because a stakeholder forms conclusions from vivid moments and a viewing room that shows
-// a number without its count is a machine for manufacturing certainty from n=1.
+// `2 of 3 lanes passed` is a fact about the harness. "2/3 reached the goal, 1 gave up" is
+// the study result, and it is what the person watching through the glass came for. The denominator
+// travels with it, because a stakeholder forms conclusions from vivid moments and a viewing room
+// that shows a number without its count is a machine for manufacturing certainty from n=1.
 import { describe, expect, it } from "vitest";
 
 import liveBundle from "../golden/labs/live.json" with { type: "json" };
