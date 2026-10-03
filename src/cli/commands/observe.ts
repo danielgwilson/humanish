@@ -553,7 +553,7 @@ function formatServeHuman(result: ServeResult): HumanOutput {
   if (result.oauth) {
     const rules = [...result.oauth.allowEmails, ...result.oauth.allowDomains];
     lines.push(
-      `edge auth: ${result.oauth.provider} oauth${rules.length > 0 ? ` (allow: ${rules.join(", ")})` : " (no allow rule — any Google account)"}`,
+      `edge auth: ${result.oauth.provider} oauth${rules.length > 0 ? ` (allow: ${rules.join(", ")})` : " (no allow rule: any Google account can sign in)"}`,
     );
   }
   if (result.entryRunId) {

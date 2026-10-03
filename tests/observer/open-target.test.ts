@@ -24,7 +24,7 @@ describe("desktop opener", () => {
 
   it("gives a reason instead of an opener on Linux without a display or xdg-open", () => {
     expect(desktopOpener(TARGET, linux({}))).toEqual({
-      reason: "no display is available (DISPLAY and WAYLAND_DISPLAY are unset)",
+      reason: "no display is available (`DISPLAY` and `WAYLAND_DISPLAY` are unset)",
     });
     expect(desktopOpener(TARGET, linux({ DISPLAY: ":0" }, false))).toEqual({
       reason: "xdg-open is not installed",
@@ -36,7 +36,7 @@ describe("desktop opener", () => {
     const result = openTarget(TARGET, { platform: "linux", env: {}, onPath });
     expect(result).toEqual({
       opened: false,
-      warning: `Could not open observer automatically: no display is available (DISPLAY and WAYLAND_DISPLAY are unset). Open ${TARGET} in a browser.`,
+      warning: `Could not open observer automatically: no display is available (\`DISPLAY\` and \`WAYLAND_DISPLAY\` are unset). Open ${TARGET} in a browser.`,
     });
     expect(onPath).not.toHaveBeenCalled();
   });

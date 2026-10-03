@@ -261,7 +261,7 @@ export async function discoverProviderKeys(args: {
       announce(`humanish keys: ${fill_.name} from ${fill_.source}`);
   for (const name of ignored)
     announce(
-      `humanish keys: ignored non-provider name ${name} — implicit discovery fills provider keys only; pass the file via --env-file to load everything in it`,
+      `humanish keys: ignored ${name}, which is not a provider key. Discovery loads provider keys only; pass the file with --env-file to load every name in it.`,
     );
   return fills;
 }

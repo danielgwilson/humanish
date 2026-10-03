@@ -92,7 +92,7 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
           error.code === "ENOENT"
             ? new ServeTunnelError(
                 "HUMANISH_SERVE_TUNNEL_NOT_FOUND",
-                "ngrok binary not found on PATH. Install ngrok, or run your own tunnel and pass --public-url <origin>.",
+                "ngrok binary not found on `PATH`. Install ngrok, or run your own tunnel and pass --public-url <origin>.",
               )
             : new ServeTunnelError(
                 "HUMANISH_SERVE_TUNNEL_START_FAILED",
