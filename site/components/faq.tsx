@@ -35,7 +35,7 @@ const ITEMS = [
         browser; <code>npx humanish watch</code> opens it.
       </>
     ),
-    link: { href: "/docs/lab-manifests", label: "Lab manifests" },
+    link: { href: "/docs/study-files", label: "Study files" },
   },
   {
     q: "Where does the evidence go, and who sees it?",

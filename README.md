@@ -368,9 +368,9 @@ Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
 
 ## Find more guides
 
-- [Lab manifests](https://humanish.dev/docs/lab-manifests): source directories, route selection,
+- [Study files](https://humanish.dev/docs/study-files): source directories, route selection,
   ignored private labs and
-  [scripted browser scenarios](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios).
+  [scripted browser scenarios](https://humanish.dev/docs/study-files#scripted-browser-scenarios).
 - [Computer use](https://humanish.dev/docs/computer-use): subjects, screenshots, devices, mobile
   emulation, stop rules, dwell windows and reruns of failed participants. The
   [cost model](https://humanish.dev/docs/budgets-and-privacy#how-cost-estimates-work) explains

@@ -403,7 +403,7 @@ still runs by default when `OPENAI_API_KEY` is set, with a $3 cap; keep
 `review.analysis: false` to skip it. Copy the shape of
 [`humanish/studies/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/studies/scripted-demo.yaml)
 or the example in the
-[lab manifest reference](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios):
+[study file reference](https://humanish.dev/docs/study-files#scripted-browser-scenarios):
 set `subject.appUrl` to the loopback URL, `scenario` to the scenario id,
 and `mode: live`. Without `mode: live` the study is a dry run that opens
 no browser.

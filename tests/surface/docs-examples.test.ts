@@ -113,7 +113,7 @@ describe("website documentation examples", () => {
     }
     const scenario = parse(
       pages
-        .find(({ name }) => name === "lab-manifests")!
+        .find(({ name }) => name === "study-files")!
         .text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!,
     );
     const parsed = parseBrowserPersonaJourneyFromScenario({

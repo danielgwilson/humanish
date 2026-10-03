@@ -47,7 +47,7 @@ only needs `humanish`.
 - Paired Save-button study: https://humanish.dev/docs/save-button-study
 - TodoMVC keyboard repair: https://humanish.dev/docs/todomvc-edit-study
 - Budgets and privacy: https://humanish.dev/docs/budgets-and-privacy
-- Lab manifests: https://humanish.dev/docs/lab-manifests
+- Study files: https://humanish.dev/docs/study-files
 - Computer-use controls: https://humanish.dev/docs/computer-use
 - Local coding agents: https://humanish.dev/docs/local-agents
 - Observer, TUI, and JSON alternatives: https://humanish.dev/docs/review-surfaces
