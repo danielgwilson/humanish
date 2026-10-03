@@ -43,6 +43,10 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
   covers, pinned replay, theme toggle, copy buttons, scroll reveals.
 - `lib/`: theme plumbing shared by the canvas islands (`theme.ts`), the cover engine
   (`covers.ts`), the homepage's run facts (`site-data.ts`) and the replay tours (`tour/`).
+  `pnpm site:tour --project <dir> --run <runId> --slug try-live`, from the repo root, rebuilds a
+  tour and its published bundle under `public/runs/<slug>/` from a kept run, with JPEG captures,
+  redacted sandbox ids and a refreshed `public/runs/ASSETS.sha256.json`. Review every frame and
+  run `pnpm public-surface:scan` before committing.
 - `components.json`: shadcn CLI config (Base UI-era CLI, Tailwind v4 CSS-first). The
   `@humanish` namespace points at this site's own registry.
 - `registry.json` + `registry/css/` + `public/r/`: the @humanish component registry. They hold

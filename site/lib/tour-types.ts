@@ -1,4 +1,4 @@
-/** Shape of lib/tour/<slug>.json, extracted from a run bundle by a script that is not in this repository. */
+/** Shape of lib/tour/<slug>.json, built from a kept run bundle by scripts/site-tour.ts. */
 interface TourAction {
   id: string;
   title: string;
@@ -45,12 +45,24 @@ interface TourVerify {
   reasons: Array<{ code: string; message: string }> | null;
   checks: Array<{ name: string; ok: boolean; detail: string }>;
 }
+/** What the study band prints about the run, read from the bundle, its analysis and verify. */
+export interface TourFacts {
+  date: string;
+  subject: string;
+  participants: string;
+  verifyChecks: string;
+  status: string;
+  wallClock: string;
+  cost: string;
+  frameSize: { w: number; h: number };
+}
 export interface TourData {
   runId: string;
   lanes: TourLane[];
   findings?: TourFinding[];
   analysisSummary?: string;
   verify?: TourVerify;
+  facts?: TourFacts;
 }
 
 export function elapsed(from: string | null | undefined, to: string | null | undefined): string {

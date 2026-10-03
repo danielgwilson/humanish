@@ -7,18 +7,22 @@ import tryLiveJson from "@/lib/tour/try-live.json";
 const tryLive = tryLiveJson as unknown as TourData;
 
 /**
- * The study band, refreshed: the TodoMVC repair stays as shipped; the 2026-08-07
- * Excalidraw replay is replaced by two runs from 2026-09-16 rendered from their own
- * traces (the drawDB starter run in the replay player, the maintainer's lobby game as a
- * three-participant grid; the game is the maintainer's own and is not named in this repo), and
- * the persona-axis result joins the repair as a second two-column study. Every number is read from a kept bundle or a linked receipt.
+ * The study band: the drawDB starter run in the replay player, then the persona-axis result and
+ * the TodoMVC repair as two-column studies. The run's frames and facts come from
+ * lib/tour/try-live.json, which `pnpm site:tour` builds from the kept bundle; every number here is
+ * read from it or from a linked receipt.
  */
 export default function StudyV3() {
   const lane = tryLive.lanes[0]!;
+  const facts = tryLive.facts;
+  if (!facts)
+    throw new Error("lib/tour/try-live.json has no facts; rebuild it with pnpm site:tour");
   return (
     <section id="study" className="band band-mineral">
       <div className="study-block">
-        <p className="repair-kicker rev">Example 1 of 3 · drawDB · 2026-09-16 · one participant</p>
+        <p className="repair-kicker rev">
+          Example 1 of 3 · drawDB · {facts.date} · one participant
+        </p>
         <h2 className="rev" style={{ "--d": ".05s" } as React.CSSProperties}>
           Watch one study, <em>start to finish</em>
         </h2>
@@ -39,33 +43,33 @@ export default function StudyV3() {
           </div>
           <div>
             <dt>Date</dt>
-            <dd>2026-09-16</dd>
+            <dd>{facts.date}</dd>
           </div>
           <div>
             <dt>Subject</dt>
-            <dd>drawdb-io/drawdb · commit-pinned</dd>
+            <dd>{facts.subject}</dd>
           </div>
           <div>
             <dt>Participant</dt>
-            <dd>1/1 reached the goal</dd>
+            <dd>{facts.participants}</dd>
           </div>
           <div>
             <dt>Verify</dt>
-            <dd>16/16 checks</dd>
+            <dd>{facts.verifyChecks}</dd>
           </div>
           <div>
             <dt>Status</dt>
             <dd>
-              <span className="chip chip-dot chip-mute">local_only</span>
+              <span className="chip chip-dot chip-mute">{facts.status}</span>
             </dd>
           </div>
           <div>
             <dt>Wall-clock</dt>
-            <dd>4m 25s incl. analysis</dd>
+            <dd>{facts.wallClock}</dd>
           </div>
           <div>
             <dt>Est. cost</dt>
-            <dd>~$0.02 desktop · model unpriced (local agent)</dd>
+            <dd>{facts.cost}</dd>
           </div>
         </dl>
 
@@ -73,7 +77,7 @@ export default function StudyV3() {
           <ReplayPlayer
             slug="try-live"
             lane={lane}
-            frameSize={{ w: 1440, h: 950 }}
+            frameSize={facts.frameSize}
             label={`Participant 01 · drawDB · ${lane.counts?.screenshots ?? 8} captures · ${lane.counts?.actions ?? 14} actions`}
           />
           <p className="study-open">
@@ -84,7 +88,7 @@ export default function StudyV3() {
             >
               Open this run in Observer ↗
             </a>
-            <span>The full replay, the three findings, and a link to every frame.</span>
+            <span>The full replay, its findings, and a link to every frame.</span>
           </p>
         </div>
       </div>

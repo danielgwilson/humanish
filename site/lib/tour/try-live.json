@@ -1,39 +1,30 @@
 {
-  "runId": "cua-2026-09-16T16-20-26-762Z-c44a6d1d",
+  "runId": "cua-2026-10-03T10-43-07-890Z-833df699",
   "lanes": [
     {
       "lane": "computer-use",
       "laneId": null,
-      "provider": "local-agent-codex-app-server",
+      "provider": "codex-participant",
       "persona": "synthetic-new-user",
       "status": "passed",
       "completionReason": "goal_satisfied",
-      "reason": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
-      "durationMs": 52704,
+      "reason": "REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
+      "durationMs": 38661,
       "counts": {
         "turns": 8,
         "actions": 14,
         "materialActions": 14,
         "screenshots": 8,
-        "reasonings": 8,
-        "messages": 1,
+        "reasonings": 0,
+        "messages": 8,
         "idleTurns": 0,
         "noProgressTurns": 0
-      },
-      "affordanceUse": {
-        "schema": "humanish.affordance-use.v1",
-        "counts": {
-          "pointer": 10,
-          "keyboard": 4
-        },
-        "total": 14,
-        "shortcutTotal": 0
       },
       "frames": [
         {
           "id": "screenshot-001",
           "title": "turn-00-start",
-          "at": "2026-09-16T16:21:38.675Z",
+          "at": "2026-10-03T10:44:04.142Z",
           "file": "screenshots/turn-00-start.jpg",
           "actionsBefore": [],
           "reasoningBefore": []
@@ -41,233 +32,240 @@
         {
           "id": "screenshot-004",
           "title": "turn-01",
-          "at": "2026-09-16T16:21:43.724Z",
+          "at": "2026-10-03T10:44:09.747Z",
           "file": "screenshots/turn-01.jpg",
           "actionsBefore": [
             {
               "id": "ui_action-003",
-              "title": "click (373, 570)",
+              "title": "click (373, 644)",
               "coord": {
                 "x": 373,
-                "y": 570
+                "y": 644
               },
-              "at": "2026-09-16T16:21:43.178Z",
+              "at": "2026-10-03T10:44:09.002Z",
               "text": null
             }
           ],
           "reasoningBefore": [
             {
-              "id": "reasoning-002",
-              "text": "The landing page offers a clear way to enter the diagram editor.",
-              "at": "2026-09-16T16:21:42.841Z"
+              "id": "message-002",
+              "text": "I’ll try the editor and make a simple customers-and-orders diagram.",
+              "at": "2026-10-03T10:44:08.678Z",
+              "message": true
             }
           ]
         },
         {
           "id": "screenshot-008",
           "title": "turn-02",
-          "at": "2026-09-16T16:21:50.864Z",
+          "at": "2026-10-03T10:44:14.377Z",
           "file": "screenshots/turn-02.jpg",
           "actionsBefore": [
             {
               "id": "ui_action-006",
-              "title": "click (491, 583)",
+              "title": "click (490, 656)",
               "coord": {
-                "x": 491,
-                "y": 583
+                "x": 490,
+                "y": 656
               },
-              "at": "2026-09-16T16:21:49.855Z",
+              "at": "2026-10-03T10:44:13.209Z",
               "text": null
             },
             {
               "id": "ui_action-007",
-              "title": "click (997, 685)",
+              "title": "click (1002, 758)",
               "coord": {
-                "x": 997,
-                "y": 685
+                "x": 1002,
+                "y": 758
               },
-              "at": "2026-09-16T16:21:50.183Z",
+              "at": "2026-10-03T10:44:13.551Z",
               "text": null
             }
           ],
           "reasoningBefore": [
             {
-              "id": "reasoning-005",
-              "text": "I only need a simple diagram, so Generic seems appropriate. I hesitated because a database choice is required before adding tables.",
-              "at": "2026-09-16T16:21:49.526Z"
+              "id": "message-005",
+              "text": "I wasn’t expecting to choose a database just to draw tables. Generic sounds suitable for this example.",
+              "at": "2026-10-03T10:44:12.880Z",
+              "message": true
             }
           ]
         },
         {
           "id": "screenshot-011",
           "title": "turn-03",
-          "at": "2026-09-16T16:21:55.399Z",
+          "at": "2026-10-03T10:44:18.264Z",
           "file": "screenshots/turn-03.jpg",
           "actionsBefore": [
             {
               "id": "ui_action-010",
-              "title": "click (309, 151)",
+              "title": "click (316, 295)",
               "coord": {
-                "x": 309,
-                "y": 151
+                "x": 316,
+                "y": 295
               },
-              "at": "2026-09-16T16:21:54.840Z",
+              "at": "2026-10-03T10:44:17.564Z",
               "text": null
             }
           ],
           "reasoningBefore": [
             {
-              "id": "reasoning-009",
-              "text": "The Add table button is clearly labeled; I will create the first table.",
-              "at": "2026-09-16T16:21:54.507Z"
+              "id": "message-009",
+              "text": "The Add table button is easy to find. I’ll start there.",
+              "at": "2026-10-03T10:44:17.244Z",
+              "message": true
             }
           ]
         },
         {
           "id": "screenshot-014",
           "title": "turn-04",
-          "at": "2026-09-16T16:22:00.693Z",
+          "at": "2026-10-03T10:44:22.566Z",
           "file": "screenshots/turn-04.jpg",
           "actionsBefore": [
             {
               "id": "ui_action-013",
-              "title": "click (342, 193)",
+              "title": "click (347, 335)",
               "coord": {
-                "x": 342,
-                "y": 193
+                "x": 347,
+                "y": 335
               },
-              "at": "2026-09-16T16:22:00.146Z",
+              "at": "2026-10-03T10:44:21.854Z",
               "text": null
             }
           ],
           "reasoningBefore": [
             {
-              "id": "reasoning-012",
-              "text": "The table has an unexpected generated name. I will expand its sidebar entry to look for naming controls.",
-              "at": "2026-09-16T16:21:59.818Z"
+              "id": "message-012",
+              "text": "The generated name is long, and I don’t immediately see a rename control. I’ll expand the table in the sidebar.",
+              "at": "2026-10-03T10:44:21.526Z",
+              "message": true
             }
           ]
         },
         {
           "id": "screenshot-020",
           "title": "turn-05",
-          "at": "2026-09-16T16:22:10.880Z",
+          "at": "2026-10-03T10:44:27.755Z",
           "file": "screenshots/turn-05.jpg",
           "actionsBefore": [
             {
               "id": "ui_action-016",
-              "title": "click (206, 238)",
+              "title": "click (209, 382)",
               "coord": {
-                "x": 206,
-                "y": 238
+                "x": 209,
+                "y": 382
               },
-              "at": "2026-09-16T16:22:09.257Z",
+              "at": "2026-10-03T10:44:26.046Z",
               "text": null
             },
             {
               "id": "ui_action-017",
               "title": "keypress CTRL+A",
               "coord": null,
-              "at": "2026-09-16T16:22:09.357Z",
+              "at": "2026-10-03T10:44:26.152Z",
               "text": null
             },
             {
               "id": "ui_action-018",
               "title": "type [9 chars]",
               "coord": null,
-              "at": "2026-09-16T16:22:09.787Z",
+              "at": "2026-10-03T10:44:26.811Z",
               "text": null
             },
             {
               "id": "ui_action-019",
-              "title": "click (308, 150)",
+              "title": "click (312, 294)",
               "coord": {
-                "x": 308,
-                "y": 150
+                "x": 312,
+                "y": 294
               },
-              "at": "2026-09-16T16:22:10.153Z",
+              "at": "2026-10-03T10:44:27.144Z",
               "text": null
             }
           ],
           "reasoningBefore": [
             {
-              "id": "reasoning-015",
-              "text": "The expanded entry exposes a Name field. I will name this table customers and add the second table.",
-              "at": "2026-09-16T16:22:08.933Z"
+              "id": "message-015",
+              "text": "There’s the Name field. I’ll name this table customers and add the second one.",
+              "at": "2026-10-03T10:44:25.728Z",
+              "message": true
             }
           ]
         },
         {
           "id": "screenshot-023",
           "title": "turn-06",
-          "at": "2026-09-16T16:22:15.799Z",
+          "at": "2026-10-03T10:44:32.116Z",
           "file": "screenshots/turn-06.jpg",
           "actionsBefore": [
             {
               "id": "ui_action-022",
-              "title": "click (341, 391)",
+              "title": "click (348, 534)",
               "coord": {
-                "x": 341,
-                "y": 391
+                "x": 348,
+                "y": 534
               },
-              "at": "2026-09-16T16:22:15.230Z",
+              "at": "2026-10-03T10:44:31.576Z",
               "text": null
             }
           ],
           "reasoningBefore": [
             {
-              "id": "reasoning-021",
-              "text": "Two tables are listed, though they appear to overlap on the canvas. I will expand the second table to rename it.",
-              "at": "2026-09-16T16:22:14.908Z"
+              "id": "message-021",
+              "text": "Customers is named correctly. The second table overlaps it, but I can still edit it from the sidebar.",
+              "at": "2026-10-03T10:44:31.247Z",
+              "message": true
             }
           ]
         },
         {
           "id": "screenshot-029",
           "title": "turn-07",
-          "at": "2026-09-16T16:22:24.988Z",
+          "at": "2026-10-03T10:44:38.430Z",
           "file": "screenshots/turn-07.jpg",
           "actionsBefore": [
             {
               "id": "ui_action-025",
-              "title": "click (208, 290)",
+              "title": "click (206, 433)",
               "coord": {
-                "x": 208,
-                "y": 290
+                "x": 206,
+                "y": 433
               },
-              "at": "2026-09-16T16:22:23.715Z",
+              "at": "2026-10-03T10:44:36.883Z",
               "text": null
             },
             {
               "id": "ui_action-026",
               "title": "keypress CTRL+A",
               "coord": null,
-              "at": "2026-09-16T16:22:23.821Z",
+              "at": "2026-10-03T10:44:36.985Z",
               "text": null
             },
             {
               "id": "ui_action-027",
               "title": "type [6 chars]",
               "coord": null,
-              "at": "2026-09-16T16:22:24.129Z",
+              "at": "2026-10-03T10:44:37.609Z",
               "text": null
             },
             {
               "id": "ui_action-028",
-              "title": "click (585, 377)",
+              "title": "click (750, 488)",
               "coord": {
-                "x": 585,
-                "y": 377
+                "x": 750,
+                "y": 488
               },
-              "at": "2026-09-16T16:22:24.458Z",
+              "at": "2026-10-03T10:44:37.937Z",
               "text": null
             }
           ],
           "reasoningBefore": [
             {
-              "id": "reasoning-024",
-              "text": "I will name the second table orders, a meaningful companion to customers.",
-              "at": "2026-09-16T16:22:23.390Z"
+              "id": "message-024",
+              "text": "I’ll call the second table orders.",
+              "at": "2026-10-03T10:44:36.557Z",
+              "message": true
             }
           ]
         }
@@ -275,14 +273,9 @@
       "trailingActions": [],
       "trailingReasoning": [
         {
-          "id": "reasoning-030",
-          "text": "The sidebar confirms two tables named customers and orders, and the app shows they were saved. The task is complete.",
-          "at": "2026-09-16T16:22:30.740Z"
-        },
-        {
-          "id": "message-031",
-          "text": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
-          "at": "2026-09-16T16:22:30.740Z",
+          "id": "message-030",
+          "text": "REACHED THE GOAL.\nI added two tables named customers and orders and verified both in the sidebar.\nI hesitated at the unexpected database choice and selected Generic.\nRenaming wasn’t immediately obvious; expanding the sidebar table revealed the Name field.\nThe second table appeared overlapping the first, though sidebar editing still worked.",
+          "at": "2026-10-03T10:44:41.964Z",
           "message": true
         }
       ]
@@ -290,114 +283,127 @@
   ],
   "findings": [
     {
-      "title": "Reported overlap confusion with only one canvas card distinguishable",
-      "summary": "After the second addition, the sidebar showed two tables while only the second table's canvas card was distinguishable. The participant reported apparent overlap as confusing, including in the final feedback. Both tables were successfully named, but no canvas-separation recovery was observed.",
+      "title": "The second table partially obscured the first on the canvas",
+      "summary": "After the second table was added, its card overlapped customers and partly covered its title and contents. The overlap remained at the endpoint. Naming succeeded through the sidebar, so this was a canvas-readability issue rather than a blocked assignment.",
       "impact": "friction",
       "evidence": []
     },
     {
-      "title": "Reported naming-control search resolved through sidebar expansion",
-      "summary": "The participant reported an unexpected generated name and expanded the table entry to find naming controls. That exposed the Name field, and the same path was successfully reused for the second table. This was a bounded first-use discovery step, not a failed rename.",
+      "title": "The participant initially did not see how to rename a table",
+      "summary": "The participant reported that renaming was not immediately apparent after creation. Expanding the sidebar row exposed the Name field, and both intended names were subsequently visible. This supports a recovered first-use discoverability concern, not a broken rename control.",
       "impact": "friction",
       "evidence": []
     },
     {
-      "title": "Reported hesitation at the initial database choice",
-      "summary": "The participant reported hesitation because database selection came before table creation, then proceeded using Generic. The assignment supplied no database preference, which may have contributed to uncertainty. The dialog already provided explanatory text for Generic, and no incorrect choice or retry was observed.",
+      "title": "Database selection prompted reported hesitation in a drawing-only assignment",
+      "summary": "The participant did not expect to choose a database merely to draw tables and reported hesitation. They selected Generic and reached the editor. Because the assignment specified no database type and the chooser explained Generic, this is a bounded expectation mismatch that may partly reflect the task setup, not evidence of an incorrect prerequisite.",
       "impact": "friction",
       "evidence": []
     }
   ],
-  "analysisSummary": "The supplied synthetic participant completed the assigned task: the ending shows two tables named customers and orders, followed by the requested account of actions, confusion, and hesitation. Reported friction concerned apparent canvas overlap, finding the naming control, and choosing a database. Naming and database selection were resolved sufficiently to finish; separation of the canvas cards was not observed. These observations do not establish a task blocker or a diagnosed layout defect.",
+  "analysisSummary": "The final view supports completion of the synthetic participant’s assignment: two tables named customers and orders are visible in the sidebar, followed by the requested closing feedback. The participant reported hesitation at database selection and finding the rename control, then progressed through both. The second table visibly overlapped the first and remained that way at the endpoint, although sidebar editing supported successful naming. No task-preventing dead end is shown.",
   "verify": {
     "status": "local_only",
     "reasons": [
       {
         "code": "RAW_SCREENSHOTS",
-        "message": "Full-fidelity screenshots are present on stream-001. This is valid local evidence, but not share-ready as-is."
+        "message": "Full-fidelity screenshots, or frames with no redaction claim, are present on stream-001. This is valid local evidence, but not share-ready as-is."
       }
     ],
     "checks": [
       {
         "name": "run.json exists",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "run schema",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "run bundle shape",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "redaction passed",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "review artifacts exist",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "public-safety scan",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "local evidence artifacts exist",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "terminal-product evidence",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "codex app-server evidence",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "actor engagement",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "actor verdict consistency",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "subject state provenance",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "shared-world evidence",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "cleanup receipt",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "rerun lineage",
         "ok": true,
-        "detail": null
+        "detail": ""
       },
       {
         "name": "cost estimate labeling",
         "ok": true,
-        "detail": null
+        "detail": ""
       }
     ]
+  },
+  "facts": {
+    "date": "2026-10-03",
+    "subject": "drawdb-io/drawdb · commit-pinned",
+    "participants": "1/1 reached the goal",
+    "verifyChecks": "16/16 checks",
+    "status": "local_only",
+    "wallClock": "3m 0s incl. analysis",
+    "cost": "~$0.50 est. plus unpriced usage, with analysis",
+    "frameSize": {
+      "w": 1440,
+      "h": 950
+    }
   }
 }

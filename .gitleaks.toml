@@ -43,3 +43,15 @@ regexes = [
   '''^\s*"signingKeySha256": "664b632018bd84f9b249be7bd26937c560edb2f2bfc0cbc01ec5a7b4e06aad56",?\s*$''',
 ]
 paths = ['''^runtime/runtime-assets/inputs\.json$''']
+
+[[rules.allowlists]]
+description = """
+  A minified DOM size read in a published site run's Observer page. The Observer bundle compiles
+  React's layout code to forms like `clientWidth,i=n.offsetWidth;`, where the rule's "client"
+  keyword makes `i=n.offsetWidth` read as a secret. The secret must be exactly a one- or
+  two-letter assignment from an element's offset, client or scroll width or height, and only in
+  site/public/runs/<run>/observer/index.html; any other value in that file still fails.
+  """
+condition = "AND"
+regexes = ['''^[A-Za-z_$]{1,2}=[A-Za-z_$]{1,2}\.(offset|client|scroll)(Width|Height)$''']
+paths = ['''^site/public/runs/[^/]+/observer/index\.html$''']
