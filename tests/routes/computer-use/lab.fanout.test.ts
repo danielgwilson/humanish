@@ -65,9 +65,9 @@ import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a distinct sandbox per create()
-// (unique sandboxId), records create options (per-lane metadata) and kill calls
+// (unique sandboxId), records create options (per-participant metadata) and kill calls
 // (by id), tracks peak concurrent live sandboxes, and answers xdpyinfo with the
-// requested geometry (so the per-lane geometry assertion passes). It has no
+// requested geometry (so the per-participant geometry assertion passes). It has no
 // `list` method: enumerate-and-kill is physically impossible.
 // ---------------------------------------------------------------------------
 
@@ -152,7 +152,7 @@ interface FanoutModuleOptions {
   geometryOverride?: (laneIndex: number, requested: [number, number]) => [number, number];
   /** Every kill by id throws, as when the provider cannot be reached at teardown. */
   killFails?: boolean;
-  /** Answers a sandbox command for one lane; undefined falls through to the default reply. */
+  /** Answers one participant's sandbox command; undefined falls through to the default reply. */
   commandHandler?: (laneIndex: number, command: string) => { stdout: string } | undefined;
   /** Chrome launches and reports measured geometry (measured-chrome-desktop.ts). */
   measuredChrome?: boolean;
@@ -161,7 +161,8 @@ interface FanoutModuleOptions {
 interface FanoutModuleHandle {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
-  /** Parallel to `created`: the custom template each lane's create() got (undefined == default). */
+  /** Parallel to `created`: the custom template each participant's create() got (undefined ==
+   *  default). */
   templates: (string | undefined)[];
   opened: string[];
   killed: string[];
@@ -273,7 +274,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
   return { module, created, templates, opened, killed, createdIds, maxLive: () => maxLive };
 }
 
-/** A 4-lane differentiated roster on a loopback app-url subject. */
+/** A 4-participant differentiated roster on a loopback app-url subject. */
 function fanoutConfig(overrides?: {
   concurrency?: number;
   lanes?: LabConfig["actors"][0]["lanes"];
@@ -349,8 +350,8 @@ describe("computer-use participants come from the plan", () => {
     if (!planned.ok) throw new Error(planned.refusal.message);
     const [first, second] = planned.plan.runner.participants;
     if (first === undefined || second === undefined) throw new Error("expected four participants");
-    // The config declares four lanes, the first as mobile-newcomer on a mobile device; the plan
-    // keeps two and renames, re-personas and re-devices the first.
+    // The config declares four participants, the first as mobile-newcomer on a mobile device; the
+    // plan keeps two and renames, re-personas and re-devices the first.
     const plan: ComputerUsePlan = {
       ...planned.plan,
       runner: {
@@ -413,7 +414,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
     );
   });
 
-  it("a 4-lane roster yields one bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
+  it("a 4-participant roster yields one bundle, simCount 4, per-participant requested screens, a plan event, contract statuses; verifyRun ok", async () => {
     const planEvents: LabEvent[] = [];
     const outcome = await runLab(fanoutConfig(), {
       cwd,
@@ -486,12 +487,13 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("resolveCuaParticipantPlan is pure: concurrency defaults to all lanes, env override only lowers (and is recorded)", () => {
+  it("resolveCuaParticipantPlan is pure: concurrency defaults to all participants, env override only lowers (and is recorded)", () => {
     const config = fanoutConfig({
       concurrency: undefined as unknown as number,
       lanes: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }],
     });
-    // No declared concurrency on a 5-lane roster → every participant runs at once: 5 lanes, 1 wave.
+    // No declared concurrency on a 5-participant roster → every participant runs at once: 5
+    // participants, 1 wave.
     const planDefault = resolveCuaParticipantPlan({
       ...config,
       execution: { target: "e2b-desktop" },
@@ -573,7 +575,8 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
     };
 
     const bundle = buildCuaFanoutBundle({
-      // No lane produced an outcome: the judge fails a live fan-out that proved no lane.
+      // No participant produced an outcome: the judge fails a live fan-out that proved no
+      // participant.
       verdict: judgeParticipants({
         dryRun: false,
         inProgress: false,
@@ -679,14 +682,14 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
     });
   }
 
-  it("records the resolved browser when every lane resolved the same one", () => {
+  it("records the resolved browser when every participant resolved the same one", () => {
     expect(twoLaneInputs(["google-chrome", "google-chrome"]).desktopBrowser).toEqual({
       requested: "chrome",
       resolved: "google-chrome",
     });
   });
 
-  it("records only the request when lanes resolved different browsers", () => {
+  it("records only the request when participants resolved different browsers", () => {
     expect(twoLaneInputs(["google-chrome", "chromium"]).desktopBrowser).toEqual({
       requested: "chrome",
     });
@@ -713,8 +716,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         active.count += 1;
         active.max = Math.max(active.max, active.count);
         try {
-          await delay(20); // hold so concurrent lanes genuinely overlap
-          // Fresh fetch per lane (each lane its own session transport).
+          await delay(20); // hold so concurrent participants genuinely overlap
+          // Fresh fetch per participant (each participant its own session transport).
           return await runCuaActorSession({
             ...options,
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
@@ -727,13 +730,13 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     };
   }
 
-  // Characterization: the complete run directory of a four-lane fan-out, pinned so a refactor of
-  // bundle assembly or artifact writing shows up as a diff. Regenerate with -u.
+  // Characterization: the complete run directory of a four-participant fan-out, pinned so a
+  // refactor of bundle assembly or artifact writing shows up as a diff. Regenerate with -u.
   it("live run directory matches its golden", async () => {
     const handle = makeFanoutModule({ measuredChrome: true });
-    // One lane at a time. Overlapping lanes reach sandbox creation and append their receipts in
-    // whatever order the scheduler gives them, which changed the snapshot once under full-suite
-    // load. The concurrency behavior has its own tests in this file.
+    // One participant at a time. Overlapping participants reach sandbox creation and append their
+    // receipts in whatever order the scheduler gives them, which changed the snapshot once under
+    // full-suite load. The concurrency behavior has its own tests in this file.
     const stderr = captureStderr();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 1 }),
@@ -804,9 +807,10 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   });
 
   it("carries each participant's declared reasoning effort into the provider options", async () => {
-    // The link a unit test cannot see and a live run costs money to check: lab YAML -> lane spec ->
-    // the options the provider is actually built from. A declared effort that stops short of this
-    // call is indistinguishable from no effort at all, which is the defect being closed.
+    // The link a unit test cannot see and a live run costs money to check: study YAML ->
+    // participant spec -> the options the provider is actually built from. A declared effort that
+    // stops short of this call is indistinguishable from no effort at all, which is the defect
+    // being closed.
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       concurrency: 2,
@@ -837,7 +841,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     );
 
     expect(result.route).toBe("computer-use");
-    // Both lanes share a persona and a mission; the effort is the only thing that may differ.
+    // Both participants share a persona and a mission; the effort is the only thing that may
+    // differ.
     expect([...seen].sort()).toEqual(["high", "medium"]);
   });
 
@@ -984,7 +989,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     }
   });
 
-  it("execution.desktop.template: every fan-out lane's Sandbox.create gets the template; bundle records it", async () => {
+  it("execution.desktop.template: every fan-out participant's Sandbox.create gets the template; bundle records it", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2, template: "acme-desktop-with-runtimes" }),
@@ -994,7 +999,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(outcome.route).toBe("computer-use");
     if (outcome.route !== "computer-use") return;
     expect(outcome.result.ok).toBe(true);
-    // All four per-lane desktops launched on the custom template (subject + every lane is uniform).
+    // All four per-participant desktops launched on the custom template (subject + every
+    // participant is uniform).
     expect(handle.created).toHaveLength(4);
     expect(handle.templates).toEqual([
       "acme-desktop-with-runtimes",
@@ -1008,7 +1014,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(bundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
   });
 
-  it("byte-stable default: no template → every fan-out lane's create gets no template arg, bundle omits desktopTemplate", async () => {
+  it("byte-stable default: no template → every fan-out participant's create gets no template arg, bundle omits desktopTemplate", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2 }),
@@ -1061,7 +1067,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(reclaimed.sort()).toEqual([...handle.createdIds].sort());
   });
 
-  it("runs the real orchestration at N=4, concurrency 2: 4 per-lane sandboxes, bounded concurrency, teardown kills only each lane's own id, verifyRun ok", async () => {
+  it("runs the real orchestration at N=4, concurrency 2: 4 per-participant sandboxes, bounded concurrency, teardown kills only each participant's own id, verifyRun ok", async () => {
     const handle = makeFanoutModule();
     const active = { count: 0, max: 0 };
     const outcome = await runLab(
@@ -1087,7 +1093,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       waves: 2,
     });
 
-    // Four sandboxes created, each with per-lane metadata.
+    // Four sandboxes created, each with per-participant metadata.
     expect(handle.created).toHaveLength(4);
     expect(handle.created.map((c) => c.metadata?.participantId)).toEqual([
       "mobile-newcomer",
@@ -1097,8 +1103,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     ]);
     expect(handle.created.map((c) => c.metadata?.participantIndex)).toEqual(["0", "1", "2", "3"]);
     expect(handle.created.every((c) => c.metadata?.participantCount === "4")).toBe(true);
-    // Per-lane device geometry drove each sandbox's resolution (sub-500 mobile widths floored to the
-    // 500px Chrome window minimum so the window fits its X screen: no clip).
+    // Per-participant device geometry drove each sandbox's resolution (sub-500 mobile widths
+    // floored to the 500px Chrome window minimum so the window fits its X screen: no clip).
     expect(handle.created.map((c) => c.resolution)).toEqual([
       [500, 896],
       [500, 740],
@@ -1108,7 +1114,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     // The model's key never enters any sandbox.
     expect(handle.created.every((c) => c.envs === undefined)).toBe(true);
 
-    // Bounded concurrency: never more than 2 lanes in flight at once (and genuinely parallel).
+    // Bounded concurrency: never more than 2 participants in flight at once (and genuinely
+    // parallel).
     expect(active.max).toBe(2);
     expect(handle.maxLive()).toBeLessThanOrEqual(2);
 
@@ -1126,7 +1133,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
-    // Per-lane evidence on disk: one screenshots/<laneId>/ dir + one actors/<streamId>.json each.
+    // Per-participant evidence on disk: one screenshots/<laneId>/ dir + one actors/<streamId>.json
+    // each.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams).toHaveLength(4);
@@ -1136,7 +1144,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     }
     const traceFiles = await readdir(path.join(runDir, "actors"));
     expect(traceFiles).toHaveLength(4);
-    // Per-lane provider-neutral actor seam filled per stream.
+    // Per-participant provider-neutral actor seam filled per stream.
     expect(
       bundle.streams.every((s: { actor?: { lane: string } }) => s.actor?.lane === "computer-use"),
     ).toBe(true);
@@ -1167,7 +1175,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(handle.maxLive()).toBeLessThanOrEqual(2);
   });
 
-  describe("a rerun of failed fan-out lanes", () => {
+  describe("a rerun of failed fan-out participants", () => {
     // The source run and its rerun are made once, in their own project, by the first test that
     // needs them, and each verify is its own test. As one test, two route runs and four verifies
     // hit the 20 s default at load 66-78. The per-test cwd above is removed after each test.
@@ -1254,7 +1262,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     // This test builds the shared proof: two route runs that cannot be split. Measured at 2.3 s
     // alone and 8.9-13.0 s at load 46-66 (48 and 64 busy loops on 16 cores), so 60 s holds
     // there and still fails a hang.
-    it("reruns failed fan-out lanes as a new linked run without mutating the source verdict", async () => {
+    it("reruns failed fan-out participants as a new linked run without mutating the source verdict", async () => {
       const proof = await rerunProof();
       expect(proof.sourceOk).toBe(false);
       expect(proof.sourceLanes?.passed).toBe(3);
@@ -1381,7 +1389,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(ghost.result.error?.message).toContain("ghost-lane");
   });
 
-  it("opens each lane's explicit target and records per-lane routes in the bundle", async () => {
+  it("opens each participant's explicit target and records per-participant routes in the bundle", async () => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       concurrency: 2,
@@ -1453,7 +1461,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(verified.ok).toBe(true);
   });
 
-  it("preserves adapter lane metadata and explicit target on the single-lane bundle path", async () => {
+  it("preserves adapter participant metadata and explicit target on the single-participant bundle path", async () => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       lanes: [
@@ -1492,7 +1500,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   });
 
   it.each([1, 2])(
-    "keeps a recorded admission refusal in the %i-lane review and feedback without changing outcomes",
+    "keeps a recorded admission refusal in the %i-participant review and feedback without changing outcomes",
     async (count) => {
       const handle = makeFanoutModule();
       const config = fanoutConfig({
@@ -1588,7 +1596,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   );
 
   // One judgment decides the bundle's verdict and the result's ok, and status.json repeats the
-  // bundle's verdict. Each lane's session runs the real loop with a scripted provider.
+  // bundle's verdict. Each participant's session runs the real loop with a scripted provider.
   type Ending = "pass" | "hollow" | "blocker" | "error";
   const scriptedEnding = (ending: Ending): CuaProvider => {
     let turn = 0;
@@ -1628,7 +1636,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     [["pass", "blocker"], "fail", false],
     [["pass", "error"], "fail", false],
   ])(
-    "agrees across bundle, result and status for lanes ending %j",
+    "agrees across bundle, result and status for participants ending %j",
     async (endings, verdict, ok) => {
       const handle = makeFanoutModule();
       const config = fanoutConfig({
@@ -1717,7 +1725,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     ["pass", "fail", "fail"],
     ["blocker", "pass", "blocked"],
     ["blocker", "fail", "blocked"],
-  ])("folds a %s lane and a %s score into %s", async (ending, scoreStatus, verdict) => {
+  ])("folds a %s participant and a %s score into %s", async (ending, scoreStatus, verdict) => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       concurrency: 1,
@@ -1759,7 +1767,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     );
   });
 
-  it("fails a live lane whose session threw an error with an empty message", async () => {
+  it("fails a live participant whose session threw an error with an empty message", async () => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       concurrency: 1,
@@ -1792,9 +1800,9 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(status.outcome?.ok).toBe(outcome.result.ok);
   });
 
-  // A lane whose session passed but whose provider cleanup is unconfirmed is a passed participant
-  // and an execution failure: the fan-out's verdict is pass, and its ok is false.
-  it("passes a fan-out whose lane could not confirm its provider's cleanup, and fails the run", async () => {
+  // A participant whose session passed but whose provider cleanup is unconfirmed is a passed
+  // participant and an execution failure: the fan-out's verdict is pass, and its ok is false.
+  it("passes a fan-out whose participant could not confirm its provider's cleanup, and fails the run", async () => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       concurrency: 1,
@@ -1883,7 +1891,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     );
   });
 
-  it("projects each recorded interruption through real lane orchestration and summarizes divergent causes", async () => {
+  it("projects each recorded interruption through real participant orchestration and summarizes divergent causes", async () => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       lanes: [
@@ -2060,14 +2068,14 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     });
   });
 
-  it("pipeline gate: lane-1 provisioning failure ⇒ the remaining lanes never start a sandbox", async () => {
+  it("pipeline gate: lane-1 provisioning failure ⇒ the remaining participants never start a sandbox", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
         env: FANOUT_ENV,
-        // Fail provisioning for lane 0 (the gate owner) through prepareDesktop's target.
+        // Fail provisioning for participant 0 (the gate owner) through prepareDesktop's target.
         prepareDesktop: async (_desktop, target) => {
           if (target.kind === "participant" && target.participant.index === 0)
             throw new Error("lane-0 world failed to provision");
@@ -2079,12 +2087,12 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    // Only lane 0's sandbox was ever created; the gate kept lanes 2-4 from starting.
+    // Only participant 0's sandbox was ever created; the gate kept participants 2-4 from starting.
     expect(handle.created).toHaveLength(1);
     expect(handle.created[0]?.metadata?.participantId).toBe("mobile-newcomer");
-    // Lane 0's sandbox was still torn down by id.
+    // Participant 0's sandbox was still torn down by id.
     expect(handle.killed).toEqual(["fake-sandbox-01"]);
-    // The other lanes are reported blocked.
+    // The other participants are reported blocked.
     expect(result.laneSummary?.skipped).toBe(3);
     expect(result.lanes?.slice(1).every((lane) => lane.status === "blocked")).toBe(true);
     expect(result.lanes?.[1]?.skippedReason).toContain("pipeline gate");
@@ -2094,7 +2102,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     );
   });
 
-  it("fail-fast on a harness error: in-flight lanes finish, queued lanes are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
+  it("fail-fast on a harness error: in-flight participants finish, queued participants are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2 }),
@@ -2105,7 +2113,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
-          // Lane "small-skimmer" (index 1) hits a harness error; lane 0 finishes in flight.
+          // Participant "small-skimmer" (index 1) hits a harness error; participant 0 finishes in
+          // flight.
           if (options.persona.id === "impatient-skimmer") {
             await delay(5);
             throw new Error("provider exploded mid-session");
@@ -2124,7 +2133,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(result.ok).toBe(false);
     expect(result.laneSummary?.harnessErrors).toBe(1);
     expect(result.laneSummary?.skipped).toBeGreaterThanOrEqual(1);
-    // Only the in-flight lanes (0 and 1) ever created a sandbox; queued lanes were skipped.
+    // Only the in-flight participants (0 and 1) ever created a sandbox; queued participants were
+    // skipped.
     expect(handle.created.length).toBeLessThanOrEqual(2);
     // Every created sandbox was torn down by id (no leak, no enumerate).
     expect([...handle.killed].sort()).toEqual([...handle.createdIds].sort());
@@ -2135,7 +2145,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(bundle.events.some((e: { type: string }) => e.type === "cua-lab.fanout.fail-fast")).toBe(
       true,
     );
-    // Completed evidence intact: lane 0 reached a terminal session with an actor trace.
+    // Completed evidence intact: participant 0 reached a terminal session with an actor trace.
     const laneZero = bundle.streams.find((s: { id: string }) => s.id === "stream-001");
     expect(laneZero?.actor?.lane).toBe("computer-use");
     // The bundle is still a verifiable record (the failure is the evidence).
@@ -2143,7 +2153,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(verified.ok).toBe(true);
   });
 
-  it("a hollow lane (zero actions/messages) ⇒ run ok=false and verifyRun fails the engagement check", async () => {
+  it("a hollow participant (zero actions/messages) ⇒ run ok=false and verifyRun fails the engagement check", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(
       fanoutConfig({ concurrency: 2 }),
@@ -2167,7 +2177,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
     expect(result.ok).toBe(false);
     expect(result.laneSummary?.hollow).toBe(1);
-    // No fail-fast: a mission/hollow verdict never trips it; all lanes still ran.
+    // No fail-fast: a mission/hollow verdict never trips it; all participants still ran.
     expect(handle.created).toHaveLength(4);
 
     const verified = await verifyRun(cwd, result.runId);
@@ -2175,8 +2185,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(false);
   });
 
-  it("geometry mismatch ⇒ DEVICE_GEOMETRY (the per-lane device claim is verified in-sandbox)", async () => {
-    // Single lane whose desktop reports the wrong dimensions.
+  it("geometry mismatch ⇒ DEVICE_GEOMETRY (the per-participant device claim is verified in-sandbox)", async () => {
+    // Single participant whose desktop reports the wrong dimensions.
     const handle = makeFanoutModule({ geometryOverride: () => [800, 600] });
     const config = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -2197,7 +2207,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(handle.killed).toEqual(handle.createdIds);
   });
 
-  it("per-lane secret scrub holds: a provisioned/actor key value never reaches any artifact", async () => {
+  it("per-participant secret scrub holds: a provisioned/actor key value never reaches any artifact", async () => {
     const handle = makeFanoutModule();
     const secret = "test-openai-key";
     const outcome = await runLab(
@@ -2209,7 +2219,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
-          // One lane's harness error echoes the actor key value: it must be scrubbed everywhere.
+          // One participant's harness error echoes the actor key value: it must be scrubbed
+          // everywhere.
           if (options.persona.id === "comparison-shopper") {
             throw new Error(`request failed using ${secret} while connecting`);
           }
@@ -2235,7 +2246,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       const text = await readFile(path.join(runDir, "actors", traceFile), "utf8");
       expect(text, traceFile).not.toContain(secret);
     }
-    // The lane error is still diagnosable but scrubbed.
+    // The participant error is still diagnosable but scrubbed.
     expect(JSON.stringify(result.lanes)).not.toContain(secret);
   });
 });
@@ -2249,7 +2260,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("rejects multi-lane fan-out on the in-process route (inProcess): single lane only", async () => {
+  it("rejects multi-participant fan-out on the in-process route (inProcess): single participant only", async () => {
     const handle = makeFanoutModule();
     const result = await runCuaActorLab({
       cwd,
@@ -2296,7 +2307,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
   });
 });
 
-describe("cua fan-out: cost estimate (sum lane token lines + one aggregate desktop line)", () => {
+describe("cua fan-out: cost estimate (sum participant token lines + one aggregate desktop line)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-cost-"));
@@ -2320,7 +2331,7 @@ describe("cua fan-out: cost estimate (sum lane token lines + one aggregate deskt
     },
   ];
 
-  it("emits model and observed-desktop lines per lane, summing without double-counting", async () => {
+  it("emits model and observed-desktop lines per participant, summing without double-counting", async () => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       concurrency: 2,
@@ -2363,7 +2374,7 @@ describe("cua fan-out: cost estimate (sum lane token lines + one aggregate deskt
     const desktopLines = cost.breakdown.filter(
       (l: { kind: string }) => l.kind === "desktop-minutes",
     );
-    // Each owned desktop retains its lane and resource basis.
+    // Each owned desktop retains its participant and resource basis.
     expect(modelLines).toHaveLength(2);
     expect(new Set(modelLines.map((l: { laneId?: string }) => l.laneId))).toEqual(
       new Set(["role-a", "role-b"]),
@@ -2373,7 +2384,7 @@ describe("cua fan-out: cost estimate (sum lane token lines + one aggregate deskt
       new Set(["role-a", "role-b"]),
     );
 
-    // Token usage summed across both lanes (2 * {input:1000, output:200}).
+    // Token usage summed across both participants (2 * {input:1000, output:200}).
     expect(cost.tokenUsage).toEqual({ input: 2000, output: 400, total: 2400 });
 
     // The total is exactly the sum of the known lines: the invariant verify also asserts.
@@ -2423,7 +2434,7 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
     expect(MIN_DESKTOP_RENDER_WIDTH).toBe(500);
   });
 
-  it("mobile lane renders at the 500px floor but keeps the 414 device identity", () => {
+  it("mobile participant renders at the 500px floor but keeps the 414 device identity", () => {
     const d = resolveParticipantDevice(cfg("mobile"), "mobile");
     expect(d.resolution).toEqual([500, 896]); // rendered screen the window fits (no clip)
     expect(d.preset.width).toBe(414); // declared device identity (prompt + metadata) is unfloored
@@ -2475,10 +2486,10 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
 });
 
 // The participant runner is total: every exit path records an outcome. Before the guard, one
-// lane's late throw (e.g. its post-teardown trace write hitting ENOSPC) rejected the whole
+// participant's late throw (e.g. its post-teardown trace write hitting ENOSPC) rejected the whole
 // mapWithConcurrency while sibling workers kept launching sandboxes nobody would record: spent
-// money, vanished evidence. These drive runCuaParticipants directly with an injected lane runner so the
-// throw path (not the already-guarded in-session error path) is what is under test.
+// money, vanished evidence. These drive runCuaParticipants directly with an injected participant
+// runner so the throw path (not the already-guarded in-session error path) is what is under test.
 describe("runCuaParticipants total-runner guard", () => {
   const spec = (id: string, index: number): DesktopParticipantRun =>
     participantRun({
@@ -2505,7 +2516,7 @@ describe("runCuaParticipants total-runner guard", () => {
   });
   const deps = {} as unknown as Parameters<typeof runCuaParticipants>[1];
 
-  it("a throwing lane records a harness_error outcome; siblings and the aggregate stay intact", async () => {
+  it("a throwing participant records a harness_error outcome; siblings and the aggregate stay intact", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
     const { outcomes, failFastReason } = await runCuaParticipants(
       specs,
@@ -2522,7 +2533,7 @@ describe("runCuaParticipants total-runner guard", () => {
       },
     );
 
-    // Every lane appears exactly once with a terminal status: nothing vanished.
+    // Every participant appears exactly once with a terminal status: nothing vanished.
     expect(outcomes.map((o) => o.spec.planned.id)).toEqual(["lane-01", "lane-02", "lane-03"]);
     expect(outcomes[0]!.harnessError).toBe(false);
     expect(outcomes[1]!.harnessError).toBe(true);
@@ -2530,13 +2541,13 @@ describe("runCuaParticipants total-runner guard", () => {
       "participant runner threw outside the session guard",
     );
     expect(outcomes[1]!.sessionError).toContain("ENOSPC");
-    // fail-fast tripped by the harness error, so the queued lane is blocked with a pinned reason
-    // rather than silently launching after the run already failed.
+    // fail-fast tripped by the harness error, so the queued participant is blocked with a pinned
+    // reason rather than silently launching after the run already failed.
     expect(outcomes[2]!.skippedReason).toContain("fail-fast");
     expect(failFastReason).toContain("lane-02");
   });
 
-  it("lane 0 throwing before it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
+  it("participant 0 throwing before it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
     const { outcomes } = await runCuaParticipants(specs, deps, 3, async (s) => {
       if (s.planned.index === 0) throw new Error("world provisioning exploded before signal");

@@ -60,7 +60,7 @@ describe("local study bindings", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("keeps the caller's hooks next to its own desktop lane", async () => {
+  it("keeps the caller's hooks next to its own desktop participant", async () => {
     const score = vi.fn();
     const deriveArtifacts = vi.fn();
     const scorerProvenance: RunScorerProvenance = {
@@ -140,7 +140,8 @@ describe("local study bindings", () => {
     await desktop.prepare();
     await desktop.finalize({ failed: false });
     expect(study.localVm.analysisRefusal()).toBe("AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED");
-    // No receipt names a local VM, so the lane carries the command that removes its container.
+    // No receipt names a local VM, so the participant carries the command that removes its
+    // container.
     expect(desktop.snapshot().sandboxRelease).toEqual({
       state: "unconfirmed",
       warning: "Local desktop cleanup is unconfirmed.",
