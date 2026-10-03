@@ -26,6 +26,15 @@ it`), the summary line names each removed directory, and `--json` lists them in
 
 ### Fixes
 
+- Library refusals and warnings name `RunStudyOptions`, the type 0.109.0 exports, where they named
+  `RunLabOptions`, which 0.109.0 removed. This covers the in-process refusals, such as
+  `RunStudyOptions.inProcess needs RunStudyOptions.createProvider`, the route option refusal
+  `RunStudyOptions.<option> is not supported on the <route> route`, and the run warning
+  `RunStudyOptions.onEvent failed on <event>`. A script that matches the old text needs the new
+  one. The refusals for options removed in earlier releases name the option alone: "`rerun.laneIds`
+  was removed in 0.107.0. Use `rerun.participantIds`." and "`cuaHooks` was removed." with the
+  field's replacement.
+
 - `humanish export --format bundle` no longer copies sandbox ids into the redacted workspace. The
   copy omitted `sandbox-receipts.ndjson` but kept each `providerResources[].id` in `run.json`. Every
   JSON and NDJSON file it copies now reads `[redacted-sandbox-id]` at `sandboxId`,

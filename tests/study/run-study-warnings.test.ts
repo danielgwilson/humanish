@@ -13,7 +13,7 @@ import type { RunScorerProvenance } from "../../src/run/bundle.js";
 import { prepareStudy } from "../../src/run-study.js";
 import { lab } from "../admission/fixtures.js";
 
-const WARNING = "RunLabOptions.onEvent failed on plan: observer down";
+const WARNING = "RunStudyOptions.onEvent failed on plan: observer down";
 
 const scorer: AdapterScorerModule = {
   score: () => ({

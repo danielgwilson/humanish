@@ -160,7 +160,7 @@ describe("an option the route cannot honor is refused before anything runs", () 
     }
     expect(result).toMatchObject({ ok: false, code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" });
     if (result.ok) return;
-    expect(result.message).toContain(`RunLabOptions.${refusedOption}`);
+    expect(result.message).toContain(`RunStudyOptions.${refusedOption}`);
     expect(result.message).toContain(`the ${routeOf(labConfig)} route`);
   });
 });
@@ -229,7 +229,7 @@ describe("runStudy returns an option refusal in the route's own envelope and wri
       ok: false,
       error: { code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID" },
     });
-    expect(outcome.result.error?.message).toContain("RunLabOptions.inProcess");
+    expect(outcome.result.error?.message).toContain("RunStudyOptions.inProcess");
     expect(desktopLoads).toBe(0);
     expect(await readdir(cwd)).toEqual([]);
   });
@@ -427,11 +427,11 @@ describe("onEvent is passive", () => {
     await new Promise((resolve) => setImmediate(resolve));
     expect(result.warnings).toHaveLength(2);
     expect(result.warnings[0]).toMatch(
-      /^RunLabOptions\.onEvent failed on plan: plan handler failed/,
+      /^RunStudyOptions\.onEvent failed on plan: plan handler failed/,
     );
     expect(result.warnings[0]).not.toContain(secret);
     expect(result.warnings[1]).toBe(
-      "RunLabOptions.onEvent failed on analysis-started: analysis handler failed",
+      "RunStudyOptions.onEvent failed on analysis-started: analysis handler failed",
     );
   });
 });
@@ -458,7 +458,7 @@ describe("a computer-use dry run through runStudy", () => {
     expect(outcome.result.ok).toBe(true);
     expect(events.map((event) => event.type)).toEqual(["plan"]);
     expect(outcome.result.warnings).toContain(
-      "RunLabOptions.onEvent failed on plan: observer down",
+      "RunStudyOptions.onEvent failed on plan: observer down",
     );
   });
 });
@@ -484,7 +484,7 @@ describe("an onEvent warning carries no known secret", () => {
 });
 
 describe("an onEvent failure never escapes", () => {
-  const fallback = "RunLabOptions.onEvent failed on plan: the thrown value has no message";
+  const fallback = "RunStudyOptions.onEvent failed on plan: the thrown value has no message";
 
   it("a thrown value with no string form becomes a warning", () => {
     const result = normalize(config("cuAppUrl"), {
@@ -519,7 +519,7 @@ describe("an in-process run has no desktop to prepare", () => {
   it("refuses prepareDesktop beside inProcess", () => {
     const result = normalize(config("cuAppUrl"), { inProcess, createProvider, prepareDesktop });
     expect(result).toMatchObject({ ok: false, code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" });
-    if (!result.ok) expect(result.message).toContain("RunLabOptions.prepareDesktop");
+    if (!result.ok) expect(result.message).toContain("RunStudyOptions.prepareDesktop");
   });
 });
 
@@ -541,7 +541,7 @@ describe("an onEvent callback that rewrites its event", () => {
     });
     if (!result.ok) throw new Error(result.message);
     expect(() => result.emit!(emptyPlan())).not.toThrow();
-    expect(result.warnings).toEqual(["RunLabOptions.onEvent failed on plan: handler failed"]);
+    expect(result.warnings).toEqual(["RunStudyOptions.onEvent failed on plan: handler failed"]);
   });
 
   it("cannot make the asynchronous report reject", async () => {
@@ -559,7 +559,7 @@ describe("an onEvent callback that rewrites its event", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(unhandled).not.toHaveBeenCalled();
       expect(result.warnings).toEqual([
-        "RunLabOptions.onEvent failed on plan: the thrown value has no message",
+        "RunStudyOptions.onEvent failed on plan: the thrown value has no message",
       ]);
     } finally {
       process.off("unhandledRejection", unhandled);
