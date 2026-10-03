@@ -129,6 +129,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   (`humanish.study.v3`), `humanish study` commands, `--study`, `observe --all` and the
   `humanish/studies/` paths. `docs/contracts/schemas.md` documents the v3 study file, the
   participants and caps each route accepts, and the v2-to-v3 key map.
+
+- A study that cannot be found reports "Study not found: <name>. Look in humanish/studies/ or
+  humanish/labs/, or pass a .yaml path." where it said "Lab not found". Discovery's other refusals,
+  such as an unsafe or changed study file, say study file where they said lab manifest.
 - The `--json` results that list, show, check and count studies say study where they said lab.
   - `study list`: `humanish.lab-list.v1` is `humanish.study-list.v1`, and `labs` is `studies`.
   - `study show`: `humanish.lab-inspect.v1` is `humanish.study-show.v1`, and `lab` is `study`.

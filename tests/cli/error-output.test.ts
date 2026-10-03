@@ -115,7 +115,7 @@ describe("failing commands in --json mode", () => {
   it("names the next command for an error whose message does not", async () => {
     const human = await runCli(["run", "nope-lab", "--cwd", cwd]);
     expect(human.stderr).toBe(
-      "humanish run failed: Lab not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.\ncode: HUMANISH_STUDY_NOT_FOUND\nnext: humanish study list\n",
+      "humanish run failed: Study not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.\ncode: HUMANISH_STUDY_NOT_FOUND\nnext: humanish study list\n",
     );
     expect(human.stdout).toBe("");
   });

@@ -137,7 +137,7 @@ describe("lab manifest resolution", () => {
       expect(resolved.ok).toBe(false);
       expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_STUDY_INVALID");
       expect(!resolved.ok && resolved.error.message).toMatch(
-        /managed lab|single-link|containment/i,
+        /study directory|study file|single-link|containment/i,
       );
       expect(listed.studies.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:fallback"]);
       expect(listed.warnings.join("\n")).toContain("humanish/labs/priority.yaml");
