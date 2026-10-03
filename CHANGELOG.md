@@ -83,6 +83,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   - `humanish run` with no study, `observe`, and a refusal a command makes before it picks a route
     keep `humanish.run-result.v1`.
 
+- Human-mode errors print on stderr in one shape: `<command> failed: <message>`, `code: <CODE>`,
+  and `next: <command>` when the message does not name one, as in `next: humanish lab list` for
+  `HUMANISH_STUDY_NOT_FOUND`. Before, most commands printed `CODE: message` on stdout. A script
+  that greps stdout for `HUMANISH_` codes has to read stderr or switch to `--json`. `--json`
+  output and exit codes do not change; tests/golden/cli-errors/ pins 12 failing commands' JSON
+  byte for byte. A failed run still prints its run id, route and participants on stdout.
+  docs/contracts/errors.md lists the code families and where each appears.
 - Error codes name the study or the route where they said lab. Only the prefix changes.
   - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
   - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.

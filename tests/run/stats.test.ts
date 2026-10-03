@@ -158,6 +158,7 @@ describe("humanish stats", () => {
 
   it("reads as a short report, with the unpriced count next to the sum", async () => {
     const result = await computeStats(cwd, { nowMs: NOW });
+    if (!result.ok) throw new Error(result.error.message);
     const text = formatStatsHuman(result);
     expect(text).toContain("live runs: 4 (1 still running)\ndry runs: 1\n");
     expect(text).toContain("known estimated spend: $0.33");
@@ -168,7 +169,7 @@ describe("humanish stats", () => {
       "- try-live: 4 runs, 4 live; 2 of 3 passed; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced runs, 0 unpriced analyses",
     );
     expect(text).not.toContain("(s)");
-    expect(text.trimEnd().split("\n").at(-1)).toBe(result.ok ? result.note : "");
+    expect(text.trimEnd().split("\n").at(-1)).toBe(result.note);
   });
 
   it("an empty project is an empty report, not an error", async () => {

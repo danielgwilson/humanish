@@ -204,17 +204,70 @@ export function parseParticipantIds(value: string | undefined): string[] {
 // post-write guard (invocationEnvelopeAlreadyWritten above) through the same
 // funnel every real command uses, without duplicating its stdout-vs-formatHuman
 // branching. Not re-exported from src/index.ts; this stays an internal seam.
+/** An error as a result carries it. */
+export interface CliError {
+  code: string;
+  message: string;
+}
+
+/**
+ * What a human formatter prints: text for stdout, or stdout lines plus an error that writeResult
+ * prints on stderr through formatCliError. --json output never goes through it.
+ */
+export type HumanOutput = string | { stdout?: string; error?: CliError | undefined };
+
+/** The command that fixes an error, by code, when its message does not already name one. */
+const NEXT_COMMAND: Readonly<Record<string, string>> = {
+  HUMANISH_STUDY_NOT_FOUND: "humanish lab list",
+  HUMANISH_LIVE_RUN_UNIMPLEMENTED: "humanish lab list",
+};
+
+/** `<command> failed: <message>`, then `code: <CODE>`, then `next: <command>` when one is known. */
+export function formatCliError(command: string, error: CliError): string {
+  const next = NEXT_COMMAND[error.code];
+  return (
+    [
+      `${command} failed: ${error.message}`,
+      `code: ${error.code}`,
+      ...(next === undefined ? [] : [`next: ${next}`]),
+    ].join("\n") + "\n"
+  );
+}
+
+/** A failed result's human output: its error on stderr and nothing on stdout. */
+export function humanError(error: CliError | undefined): HumanOutput {
+  return { error: error ?? { code: "HUMANISH_UNKNOWN_ERROR", message: "the command failed" } };
+}
+
+/** "humanish lab inspect": the command's path as a person types it. */
+function commandLabel(command: Command): string {
+  const names: string[] = [];
+  for (let current: Command | null = command; current !== null; current = current.parent)
+    names.unshift(current.name());
+  return names.join(" ");
+}
+
+/** Prints a human formatter's output: text to stdout, an error to stderr through formatCliError. */
+export function writeHuman(command: Command, io: CliIo, human: HumanOutput): void {
+  if (typeof human === "string") {
+    io.writeOut(human);
+    return;
+  }
+  if (human.stdout) io.writeOut(human.stdout);
+  if (human.error) io.writeErr(formatCliError(commandLabel(command), human.error));
+}
+
 export function writeResult<T>(
   command: Command,
   io: CliIo,
   result: T,
-  formatHuman: (result: T) => string,
+  formatHuman: (result: T) => HumanOutput,
 ): void {
   const output = automaticAnalysisEnvelope(result);
   if (wantsJson(command)) {
     io.writeOut(`${JSON.stringify(output, null, 2)}\n`);
   } else {
-    io.writeOut(formatHuman(output));
+    writeHuman(command, io, formatHuman(output));
     if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {
       const analysis = (output as AutomaticAnalysisResult).automaticAnalysis;
       if (analysis) io.writeOut(`analysis: ${analysisOutcomeText(analysis)}\n`);
@@ -246,10 +299,8 @@ export function runFactsFor(command: Command): TelemetryProperties {
 }
 
 /** A run result, or the preview route's study result: they differ only in `schema`. */
-export function formatRunHuman(result: Omit<RunResult, "schema">): string {
-  if (!result.ok) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+export function formatRunHuman(result: Omit<RunResult, "schema">): HumanOutput {
+  if (!result.ok) return humanError(result.error);
 
   return (
     [
@@ -263,10 +314,8 @@ export function formatRunHuman(result: Omit<RunResult, "schema">): string {
   );
 }
 
-function formatEnvFileHuman(result: EnvFileLoadResult): string {
-  if (!result.ok) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+function formatEnvFileHuman(result: EnvFileLoadResult): HumanOutput {
+  if (!result.ok) return humanError(result.error);
 
   return (
     [

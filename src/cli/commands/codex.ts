@@ -12,6 +12,8 @@ import {
   parseObserverPort,
   parseTimeoutMs,
   writeResult,
+  type HumanOutput,
+  humanError,
 } from "../io.js";
 
 interface CodexAppServerUiCliResult {
@@ -172,10 +174,8 @@ export function registerCodexCommands(parent: Command, io: CliIo): void {
     );
 }
 
-function formatCodexAppServerUiHuman(result: CodexAppServerUiCliResult): string {
-  if (!result.ok) {
-    return `${result.error?.code}: ${result.error?.message}\n`;
-  }
+function formatCodexAppServerUiHuman(result: CodexAppServerUiCliResult): HumanOutput {
+  if (!result.ok) return humanError(result.error);
 
   return (
     [

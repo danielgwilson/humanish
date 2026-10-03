@@ -28,6 +28,7 @@ import {
   markInvocationEnvelopeWritten,
   wantsJson,
   writeResult,
+  formatCliError,
 } from "../io.js";
 
 export function registerInitCommand(parent: Command, io: CliIo): void {
@@ -390,9 +391,8 @@ function formatInitHuman(result: InitResult): string {
     lines.push("", "warnings:", ...result.warnings.map((warning) => `- ${warning}`));
   }
 
-  if (result.error) {
-    lines.push("", `${result.error.code}: ${result.error.message}`);
-  }
+  // init writes a refused plan to stderr, so the error goes there in the shared shape.
+  if (result.error) lines.push("", formatCliError("humanish init", result.error).trimEnd());
 
   if (result.mode === "needs-confirmation") {
     lines.push("", "Run with --dry-run --json to inspect or --yes to apply.");

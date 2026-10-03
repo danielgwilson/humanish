@@ -18,6 +18,7 @@ import {
   RUN_OPTION_DESCRIPTION,
   wantsJson,
   writeResult,
+  type HumanOutput,
 } from "../io.js";
 import {
   exitCodeForSignal,
@@ -529,15 +530,10 @@ function hiddenRunLines(groups: readonly HiddenRunGroup[]): string[] {
   return lines;
 }
 
-function formatServeHuman(result: ServeResult): string {
+function formatServeHuman(result: ServeResult): HumanOutput {
   if (!result.ok) {
-    return (
-      [
-        "humanish observe --all failed",
-        ...(result.error ? [`error: ${result.error.code} ${result.error.message}`] : []),
-        ...result.warnings.map((warning) => `warning: ${warning}`),
-      ].join("\n") + "\n"
-    );
+    const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
+    return { ...(warnings ? { stdout: warnings } : {}), error: result.error };
   }
 
   const modeSuffix = result.safe ? " (share_ready only)" : "";

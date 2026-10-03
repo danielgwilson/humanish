@@ -1596,7 +1596,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         command: new Command(),
         io: {
           writeOut: (text) => printed.push(text),
-          writeErr: () => undefined,
+          // The failure's error line goes to stderr; the overlap verdict is in it or in stdout.
+          writeErr: (text) => printed.push(text),
           setExitCode: (code) => {
             exitCode = code;
           },

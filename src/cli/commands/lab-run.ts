@@ -27,6 +27,7 @@ import {
   type LabCommandOptions,
   noteRunFacts,
   writeResult,
+  type HumanOutput,
 } from "../io.js";
 import { watchExposeRequested } from "../observer-follow.js";
 import { beginRunSignalPhase } from "./run-signals.js";
@@ -243,11 +244,7 @@ function writeUnsupportedRerunFlagsResult(
   args.io.setExitCode(2);
 }
 
-function formatLabResolveFailureHuman(result: LabResolveFailure): string {
-  return (
-    [
-      `${result.error.code}: ${result.error.message}`,
-      ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
+function formatLabResolveFailureHuman(result: LabResolveFailure): HumanOutput {
+  const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
+  return { ...(warnings ? { stdout: warnings } : {}), error: result.error };
 }

@@ -390,8 +390,15 @@ function unpricedTail(runs: number, analyses: number): string {
   return `; ${plural(runs, "unpriced run")}, ${plural(analyses, "unpriced analysis", "unpriced analyses")}`;
 }
 
-export function formatStatsHuman(result: StatsResult | StatsFailure): string {
-  if (!result.ok) return `${result.error.code}: ${result.error.message}\n`;
+/** Human output; a failure is an error the CLI prints on stderr (HumanOutput in src/cli/io.ts). */
+export function formatStatsHuman(result: StatsResult): string;
+export function formatStatsHuman(
+  result: StatsResult | StatsFailure,
+): string | { error: StatsFailure["error"] };
+export function formatStatsHuman(
+  result: StatsResult | StatsFailure,
+): string | { error: StatsFailure["error"] } {
+  if (!result.ok) return { error: result.error };
   const t = result.totals;
   const scope = [
     result.lab === undefined ? undefined : `lab ${result.lab}`,
