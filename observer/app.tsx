@@ -755,6 +755,7 @@ export function App({
           }
           data={data}
           reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined}
+          analysis={analysis.analysis}
           streams={visible}
           onOpen={(id) =>
             openParticipant(
