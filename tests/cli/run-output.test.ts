@@ -46,7 +46,7 @@ describe("a run's review in human mode", () => {
     const { exitCode, output } = await runCli(["review", "--cwd", cwd]);
     expect(exitCode).toBe(0);
     expect(output).toMatch(
-      /^humanish review dryrun-\S+: preview only; no product behavior was tested\n/,
+      /^humanish review dryrun-\S+: no verdict; no product behavior was tested\n/,
     );
     expect(output).toContain("\ngaps:\n- No browser was launched.\n");
     expect(output).toMatch(/\nreview: \.humanish\/runs\/dryrun-\S+\/review\.json\n$/);

@@ -100,7 +100,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   const steps: FirstRunStep[] = [
     {
       command: `${HUMANISH} run first-run`,
-      why: "an evidence preview: no browser or model runs, no keys, no spend",
+      why: "a dry run: no browser or model runs, no keys, no spend",
     },
   ];
 
@@ -190,7 +190,7 @@ export function agentsSection(): string {
     "```bash",
     "humanish doctor --lab try-live  # requirements for the selected participant and analysis",
     "humanish lab list --json   # the labs in this project",
-    "humanish run first-run     # evidence preview only: no browser, model, keys, or spend",
+    "humanish run first-run     # dry run: no browser, model, keys, or spend",
     "humanish doctor --lab local-browser  # local Docker/Firecracker + Codex-account readiness",
     "humanish run local-browser # your loopback app; no E2B or model API key",
     "humanish run try-live      # demo app study: E2B plus the selected participant's authentication",

@@ -646,7 +646,7 @@ export interface LabScenario {
   ref?: string;
   /** Or inline the scenario body. Forward-declared: no route reads it yet, so a set value warns. */
   inline?: Record<string, unknown>;
-  /** dry-run = contract evidence (no provider spend); live = real run. Consumed. */
+  /** dry-run = a synthetic bundle with no provider spend; live = real run. Consumed. */
   mode?: LabScenarioMode;
   /** Spend/job/time caps. Consumed (recorded in the bundle) on the terminal-product route;
    *  inert (warned) elsewhere. */

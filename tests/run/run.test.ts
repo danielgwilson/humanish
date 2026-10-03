@@ -157,7 +157,7 @@ describe("dry-run bundles", () => {
       const observer = await renderObserver(cwd, "latest");
       expect(observer.ok).toBe(true);
       expect(observer.warnings.join("\n")).toContain(
-        "dry-run participants do not claim product behavior proof",
+        "This is a dry run: its participants are synthetic",
       );
       expect(observer.warnings.join("\n")).not.toContain("verified local evidence artifacts");
 

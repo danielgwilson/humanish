@@ -92,6 +92,16 @@ describe("observer data: participants", () => {
     },
   );
 
+  it.each([
+    ["dry-run", "Dry run"],
+    ["live", "No verdict"],
+  ] as const)("labels a contract_proof_only participant on a %s run %s", (mode, label) => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    bundle.mode = mode;
+    bundle.streams[0]!.status = "contract_proof_only";
+    expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe(label);
+  });
+
   it("does not override a different completion reason", () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     bundle.streams[0]!.status = "passed";

@@ -23,7 +23,7 @@ export type { RunOptions };
 /** The flags a run takes, whichever command starts it. */
 export function addRunOptions(command: Command): Command {
   return command
-    .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
+    .option("--dry-run", "Do a dry run: a synthetic run with no browser, keys or provider spend.")
     .option("--open", "Open the Observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without an attached watch server.")
