@@ -8,109 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.109.0: Lab names removed, v2 study files refused (2026-10-03)
 
-- Every surface that shows one run's cost adds that run's analyses, counted as `humanish stats`
-  counts them, and says when the figure is a lower bound: the Observer's cost line, the library
-  row and the terminal UI's run rows, with "2 analyses" for a run analyzed twice. The run index
-  gains `analysisCost` and `estimatedCostComplete`, and `status.json`'s outcome gains
-  `estimatedCostComplete`; `estimatedCostUsd` stays participants and desktops only.
+humanish 0.109.0 removes what 0.108.0 deprecated. A `humanish.lab.v2` file, or any study file in a
+`labs/` directory, is refused with the command that fixes it: `humanish migrate` converts and moves
+v2 files, and a v3 file in `labs/` moves to the matching `studies/` directory. The `lab` commands,
+`--lab`, `serve` and `watch --run` are unknown to the CLI. The library drops its 0.107 names:
+`runLab`, `parseLabConfig`, the `Lab*` types and the `Cua*` names. Run records and telemetry name
+the study as `study` only, a study's result has `studyId` only, and bare `--json`, scorer contexts
+and computer-use `error.name` use study and `ComputerUse` names. The release notes list each removal
+and what to change.
 
-### Removed
-
-- The `humanish lab` commands, deprecated in 0.108.0: `lab list`, `lab inspect`, `lab preflight` and
-  `lab run`. Use `humanish study list`, `study show <study>`, `study check <study>` and
-  `humanish run <study>`. `humanish lab` now fails with "error: unknown command 'lab'" and exit 1.
-- `--lab` on `doctor`, `stats`, `watch`, `comms check` and `comms configure`, deprecated in
-  0.108.0. Use `--study`. `--lab` now fails with "error: unknown option '--lab'" and exit 1.
-- `humanish serve`, deprecated in 0.108.0. Use `humanish observe --all`. `serve` now fails with
-  "error: unknown command 'serve'. Did you mean 'observe'?" and exit 1.
-- `humanish watch --run <id>`, deprecated in 0.108.0. Use `humanish observe --run <id>` to show a
-  saved run. `watch` without a study still starts a fresh preview run.
-- The telemetry property `lab`, deprecated in 0.108.0. Events name the starter study as `study`
-  only; 0.108.0 sent both with the same value. A dashboard that still filters on `lab` reads it
-  from 0.108 and older clients only.
-- `lab` in run.json and status.json, deprecated in 0.108.0. A run records its study as `study`.
-  humanish still reads `lab` from runs saved by 0.108 and earlier, so `runs`, `stats` and the TUI
-  keep their study. A script that reads `run.json`'s `lab` gets nothing on a 0.109 run; read
-  `study`.
-
-- The library's 0.107 names, deprecated in 0.108.0: `runLab`, `parseLabConfig`,
-  `LAB_CONFIG_SCHEMA`, `LabConfig`, `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`,
-  `RunLabOptions`, `BrowserLabScoringContext`, the nine `Cua*` loop types and
-  `CuaAdmissionLimitError`. Import `runStudy`, `parseStudy`, `StudyConfig`, `StudyEvent`,
-  `StudyOutcome`, `StudyResult`, `StudyRoute`, `RunStudyOptions`, `BrowserScoringContext`, the
-  `ComputerUse*` types and `ComputerUseAdmissionLimitError`, which are the same values and types.
-  `STUDY_SCHEMA` is the v3 schema id; `LAB_CONFIG_SCHEMA` named the v2 one.
-- `labId` on a study's result, deprecated in 0.108.0. Read `studyId`, which holds the same value.
-- `simId` on the events `onStream` receives, deprecated in 0.108.0. Read `recordId`.
-- `BrowserScoringContext.backend` and `laneCount`, and the `onObservedUrl`, `onMessage` and
-  `onScreenshot` options of `runComputerUseLoop`. The 0.107.0 notes listed them for removal in
-  0.108.0, and 0.108.0 still shipped them with the same warnings. Read `route` and
-  `participantCount`, and wrap the executor's `observe` (for `url` and `screenshot`) or the
-  provider's `nextTurn` (for `reasoning` and `message`). `runComputerUseLoop` throws a `TypeError`
-  naming the replacement when a JavaScript caller still passes one of the three options.
-- humanish no longer runs `humanish.lab.v2` study files or reads the three `labs/` directories,
-  which 0.108.0 warned about. In a project that did not migrate, `humanish run old-study` exits 2
-  and prints:
-
-  ```text
-  humanish run failed: humanish/labs/old-study.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old-study.yaml to convert it and move it to humanish/studies/.
-  code: HUMANISH_STUDY_V2_UNSUPPORTED
-  ```
-
-  Run `humanish migrate` once to convert and move every v2 file; `humanish migrate --dry-run`
-  lists them first.
-  - `watch`, `study show` and `study check` print the same message and code line after their own
-    `humanish <command> failed:`. `doctor --study` shows the message on its `study` row.
-    `comms configure`, `comms check` and the TUI's launch print the message without a code line.
-    The same refusal covers a v2 file in any directory and one named by path. `parseStudy` and
-    `runStudy` refuse a v2 document or config with `HUMANISH_STUDY_V2_UNSUPPORTED`.
-    `humanish migrate` still reads v2 files.
-  - A v3 file found by name only in a `labs/` directory is refused with
-    `HUMANISH_STUDY_RETIRED_DIRECTORY` and "Move it to humanish/studies/.". A path to a v3 file
-    runs wherever the file is.
-  - `study list` lists the `studies/` directories only. It prints one warning per v2 or `labs/`
-    file that names its fix, in place of one warning with a count, and `study list --json` lists
-    those files in `retired` with their code.
-  - Bare `humanish` suggests `humanish migrate --dry-run` first for v2 files, and
-    `humanish study list` for v3 files in a `labs/` directory, which migrate skips. The TUI's home
-    screen says the same, and a study known only from its runs shows its file's refusal in place
-    of "no manifest here".
-  - For a v2 file outside the project, the message names `humanish migrate` with `--cwd` set to
-    the file's directory, since migrate refuses a path outside its `--cwd`.
-  - `HUMANISH_STUDY_AMBIGUOUS` is gone: a name in a `studies/` directory runs even when a `labs/`
-    file uses it too, and `study list --json` entries no longer carry `error`.
-  - "Study not found" names `humanish/studies/` only.
-  - `comms configure` no longer converts a v2 source.
-
-### Changed
-
-- Bare `humanish --json` reports `studyCount` and `studyIds` in place of `labCount` and `labIds`,
-  with the same values. A script that reads the old keys gets `undefined`.
-- A scorer's context names the study with `studyId` in place of `labId`, on both
-  `BrowserScoringContext` and `TerminalProductScoringContext`. A scorer that reads `ctx.labId`
-  gets `undefined`; read `ctx.studyId`, which holds the same value.
-- The computer-use errors report the names they are exported and declared under: `error.name` is
-  `ComputerUseAdmissionLimitError`, `ComputerUseExecutorError`, `ComputerUseProviderError`,
-  `ComputerUsePromptRefusedError` and `ComputerUseTypeError`, where it was `CuaAdmissionLimitError`,
-  `CuaExecutorError`, `CuaProviderError`, `CuaPromptRefusedError` and `CuaTypeError`. Code that
-  matches on `error.name` needs the new values; `instanceof ComputerUseAdmissionLimitError` is
-  unchanged. Run bundles written earlier keep the old names in their evidence.
-- `humanish doctor --json` and `humanish study check --json` name their checks for the study:
-  check `lab` is `study`, `lab route` is `study route`, and `lab manifest` is `study file`. A
-  script that matches a check by name needs the new value. Messages, run events and Observer text
-  that said "lab" for a study file say "study", and a run is "a computer-use run" where it was "a
-  computer-use lab run". Run bundles written earlier keep their text.
-
-### Fixes
-
-- The Observer's cost line left out the analysis after a run, which bills the OpenAI key
-  separately: on a try-live run it showed about $0.02 for participants and desktops while the
-  analysis cost about $0.53, and it showed no cost once analyzed outcomes replaced the tally. The
-  line now adds the analysis spend as its own part and a total that includes it, with or without
-  analyzed outcomes. The try-live starter study's description says the analysis bills
-  OPENAI_API_KEY, is refused above $3, and is turned off with `review.analysis: false`.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.109.0)
 
 ## 0.108.0: Studies, one runner and one viewer, errors on stderr (2026-10-03)
 
