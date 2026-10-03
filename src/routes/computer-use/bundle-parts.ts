@@ -24,7 +24,7 @@ export function describeSubjectState(
     case "seeded":
       return `seeded (${state.seed?.length ?? 0} step(s): ${(state.seed ?? []).map((record) => record.name).join(", ")})`;
     case "unpinned":
-      return `UNPINNED (external: ${(state.externalEnvNames ?? []).join(", ")})`;
+      return `unpinned (external: ${(state.externalEnvNames ?? []).join(", ")})`;
     case "declared-not-run":
       return `declared, not run (${dryRun ? "dry run" : "provisioning did not complete"})`;
     case "undeclared":

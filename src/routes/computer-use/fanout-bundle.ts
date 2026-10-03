@@ -315,7 +315,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       status: "passed",
       notes: ranLive
         ? anyRaw
-          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some participants captured FULL-FIDELITY (raw) screenshots, retained for local use and NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+          ? "Typed text is recorded as its length only, and reasoning and messages pass through text redaction. Some participants captured unblurred screenshots, kept for local use and not redacted for publishing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share."
           : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
         : "Dry-run fan-out bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },

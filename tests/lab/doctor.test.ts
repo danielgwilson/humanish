@@ -551,7 +551,7 @@ describe("selected lab setup without paid dispatch", () => {
       await mkdir(bin);
       const command = path.join(bin, "codex");
       for (const [status, message] of [
-        ["Not logged in", "reports not signed in"],
+        ["Not logged in", "reports it is not signed in"],
         ["unknown private-account-marker", "could not be checked"],
       ]) {
         await writeFile(

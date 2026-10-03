@@ -2014,7 +2014,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       (entry: { event: string }) => entry.event === "terminal-lab.runtime.bootstrapped",
     );
     expect(bootstrapEvent).toBeDefined();
-    expect(String(bootstrapEvent?.message)).not.toMatch(/FAILED/);
+    expect(String(bootstrapEvent?.message)).not.toMatch(/failed after/);
   });
 
   it("fails the route closed via a structured error (not a raw throw) when the runtime bootstrap command throws a CommandExitError", async () => {
@@ -2068,7 +2068,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       (entry: { event: string }) => entry.event === "terminal-lab.runtime.bootstrapped",
     );
     expect(bootstrapEvent).toBeDefined();
-    expect(String(bootstrapEvent?.message)).toMatch(/FAILED/);
+    expect(String(bootstrapEvent?.message)).toMatch(/failed after/);
     expect(ledgers.cleanup.killed).toBe(true);
     await expectFailureGolden("terminal/runtime-bootstrap-throws", runDir, {
       result,

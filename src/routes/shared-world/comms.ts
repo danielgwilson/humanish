@@ -95,7 +95,7 @@ export async function prepareExternalComms(
     externalComms === undefined
   ) {
     warnings.push(
-      "comms.email is declared but this is the external-public plane (the shared plane is an operator-owned public deployment the harness does not provision) — the in-sandbox email catch cannot be deployed and no comms evidence is collected. Declare `comms.email.external` to host the catch yourself (#328).",
+      "comms.email is declared, but this study drives a public deployment that humanish does not provision, so the email catch cannot run in a sandbox and no email evidence is collected. Run the catch yourself with `humanish comms catch` and declare `comms.email.external`.",
     );
   }
   if (!externalComms || !externalCommsEmail) return { ok: true, wiring: undefined };
@@ -159,12 +159,12 @@ export async function drainSubjectComms(
       return "comms/thread.json";
     } else if (collected.captured > 0) {
       warnings.push(
-        `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
+        `The email catch captured ${collected.captured} email send(s), but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
       );
     } else {
       // Zero captures is the silent-broken shape: the app never posted to the catch.
       warnings.push(
-        `Comms catch captured ZERO email sends — the app never delivered mail through the catch. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`,
+        `The email catch captured no email sends: the app never delivered mail through it. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`,
       );
     }
   } catch (error) {

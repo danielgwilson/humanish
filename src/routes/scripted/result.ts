@@ -178,7 +178,7 @@ export async function finishScriptedRun(
   // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
   if (sessionResults.some((result) => result.trace.redaction.screenshots === "raw")) {
     warnings.push(
-      "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. policies.redactScreenshots is not yet supported on the scripted route.",
+      "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. policies.redactScreenshots is not supported on the scripted route yet.",
     );
   }
 

@@ -113,7 +113,7 @@
       ]
     },
     "warnings": [
-      "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
+      "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
@@ -147,7 +147,7 @@
     "redaction": {
       "status": "passed",
       "screenshots": "raw",
-      "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+      "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
     },
     "startedAt": "[ts]",
     "completedAt": "[ts]",
@@ -271,7 +271,7 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+        "notes": "Typed text is recorded as its length only, and reasoning and messages pass through text redaction. Screenshots are unblurred and kept for local use; they are not redacted for publishing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share."
       },
       "lifecycle": [
         {
@@ -529,7 +529,7 @@
           "redaction": {
             "status": "passed",
             "screenshots": "raw",
-            "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+            "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
           },
           "startedAt": "[ts]",
           "completedAt": "[ts]",
@@ -696,7 +696,7 @@
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+      "notes": "Typed text is recorded as its length only, and reasoning and messages pass through text redaction. Screenshots are unblurred and kept for local use; they are not redacted for publishing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share."
     },
     "artifacts": {
       "run": "run.json",

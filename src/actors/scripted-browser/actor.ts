@@ -555,7 +555,7 @@ async function projectScriptedActorTrace(args: {
     const assertions = step.assertions ?? [];
     assertionCount += assertions.length;
     const assertionLines = assertions.map(
-      (assertion) => `${assertion.id}: ${assertion.status} — ${assertion.reason}`,
+      (assertion) => `${assertion.id}: ${assertion.status} (${assertion.reason})`,
     );
     return {
       id: step.id,

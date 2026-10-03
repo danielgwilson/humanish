@@ -34,7 +34,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "3 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:19.000Z",
@@ -180,7 +180,7 @@
     "result": {
       "status": "incomplete",
       "completionReason": "budget_reached",
-      "reason": "estimated spend $0.21 crossed execution.caps.maxUsd=$0.1 with no material progress; aborted fail-closed before the next model turn",
+      "reason": "Stopped before the next model turn: estimated spend $0.21 passed execution.caps.maxUsd=$0.1 with no material progress",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "continuing-synthetic",
@@ -198,7 +198,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:06.000Z",
@@ -206,7 +206,7 @@
         "status": "incomplete",
         "completionReason": "budget_reached",
         "stopCause": "spend_limit",
-        "reason": "estimated spend $0.21 crossed execution.caps.maxUsd=$0.1 with no material progress; aborted fail-closed before the next model turn",
+        "reason": "Stopped before the next model turn: estimated spend $0.21 passed execution.caps.maxUsd=$0.1 with no material progress",
         "ids": {},
         "counts": {
           "turns": 1,
@@ -288,7 +288,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:08.000Z",
@@ -421,7 +421,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:13.000Z",

@@ -111,7 +111,7 @@
         {
           "at": "[ts]",
           "event": "concurrent-shared-world.run.created",
-          "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
+          "message": "Created a concurrent shared-world run with one shared app and 3 participants at once (actor openai-computer-use)."
         }
       ],
       "knownGaps": [
@@ -233,12 +233,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Concurrent shared-world dry run: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
+    "summary": "Concurrent shared-world dry run: 3 persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.",
     "gaps": [
       "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Concurrent shared-world dry run: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 participant(s) (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Concurrent shared-world dry run: 3 persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.\n- plane: Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the lab's declaration, and the data is not claimed to be synthetic.\n- concurrency: Concurrency: 3 participant(s) (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -284,7 +284,7 @@
       {
         "at": "[ts]",
         "event": "concurrent-shared-world.run.created",
-        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
+        "message": "Created a concurrent shared-world run with one shared app and 3 participants at once (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -349,7 +349,7 @@
           "focus": "Create a lobby, then wait; once 3 players are in, start and play."
         },
         "kind": "browser",
-        "label": "Concurrent persona host — lobby-trivia-3player-test",
+        "label": "Concurrent persona host · lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -372,7 +372,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona host (party-host) drive the SHARED plane concurrently with the other personas.",
+          "intent": "Watch persona host (party-host) use the shared app at the same time as the other personas.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -401,7 +401,7 @@
           "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona player-2 — lobby-trivia-3player-test",
+        "label": "Concurrent persona player-2 · lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -424,7 +424,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-2 (competitive-friend) drive the SHARED plane concurrently with the other personas.",
+          "intent": "Watch persona player-2 (competitive-friend) use the shared app at the same time as the other personas.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -453,7 +453,7 @@
           "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona player-3 — lobby-trivia-3player-test",
+        "label": "Concurrent persona player-3 · lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -476,7 +476,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-3 (casual-friend) drive the SHARED plane concurrently with the other personas.",
+          "intent": "Watch persona player-3 (casual-friend) use the shared app at the same time as the other personas.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -504,14 +504,14 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.run.created",
-        "message": "Created CONCURRENT shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+        "message": "Created a concurrent shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) on one shared app, at most 3 at once)."
       },
       {
         "id": "event-001-plane",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.plane.provenance",
-        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
+        "message": "Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the lab's declaration, and the data is not claimed to be synthetic.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -564,7 +564,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Concurrent shared-world dry run: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
+      "summary": "Concurrent shared-world dry run: 3 persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.",
       "gaps": [
         "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
       ]

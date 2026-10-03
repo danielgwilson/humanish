@@ -479,7 +479,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     const subjectEvent = bundle.events.find(
       (e: { type: string }) => e.type === "terminal-lab.subject.declared",
     );
-    expect(subjectEvent.message).toContain("UNPINNED");
+    expect(subjectEvent.message).toContain("unpinned");
     expect(subjectEvent.message).toContain("widgetsmith-cli");
     // Deny-by-default credential posture + runtime-auth names-only declaration recorded.
     const credEvent = bundle.events.find(

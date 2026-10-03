@@ -286,7 +286,7 @@ export async function recordParticipantTrace(
   );
   if (session.trace.redaction.screenshots === "raw") {
     warnings.push(
-      "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
+      "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
     );
   }
 }
@@ -300,7 +300,7 @@ export function judgeParticipantSession(
   const noEngagement = session !== undefined && hollowCompletion(sessionEnding(session));
   if (noEngagement) {
     warnings.push(
-      "Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.",
+      "The participant returned goal_satisfied with no actions and no messages, so it likely saw a blank or loading screen and stopped. This does not count as a pass. Check the screenshot, and raise execution.timeoutMs or confirm the app had rendered before the first turn.",
     );
   }
 
@@ -309,7 +309,7 @@ export function judgeParticipantSession(
   const reportedFriction = resolveSelfReportedFriction(session) !== undefined;
   if (selfReportedBlocker) {
     warnings.push(
-      `Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`,
+      `The participant returned goal_satisfied, but its final message describes a blocker or asks for missing instructions, so this does not count as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`,
     );
   }
   return { noEngagement, selfReportedBlocker, reportedFriction };

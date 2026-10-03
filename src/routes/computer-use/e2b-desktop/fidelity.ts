@@ -129,7 +129,7 @@ export function participantBrowserStateObserver(args: {
       onUnavailable: (reason) => {
         warnings.push(
           `Browser-state observer unavailable for participant ${spec.planned.id} (${redactText(deps.scrubKnownValues(reason))}); ` +
-            "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session.",
+            "urlIncludes, urlPathEquals and textIncludes stop conditions and task criteria are not measured in this session.",
         );
       },
       drift:
@@ -141,7 +141,7 @@ export function participantBrowserStateObserver(args: {
               expectTouch: fidelity.applied?.requested.touch === true,
               onDrift: (reason) => {
                 warnings.push(
-                  `Mobile emulation drift for participant ${spec.planned.id}: ${reason} (#623).`,
+                  `Mobile emulation drift for participant ${spec.planned.id}: ${reason}.`,
                 );
               },
               onCovered: (coveredTargetId, read) => {

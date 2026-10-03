@@ -177,7 +177,7 @@ export function terminalLabResult(args: {
               TerminalProductLabResult["error"]
             >["code"],
             message: !cleanupProven
-              ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.${sessionError !== undefined ? ` Session failure: ${sessionError}` : ""}`
+              ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove its sandbox was removed does not pass.${sessionError !== undefined ? ` Session failure: ${sessionError}` : ""}`
               : (declaredScorerFailure ??
                 capFailure ??
                 sessionError ??

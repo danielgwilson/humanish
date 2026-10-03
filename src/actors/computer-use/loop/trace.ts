@@ -119,12 +119,12 @@ export function loopResult(
     ? "no screenshots captured"
     : session.redactScreenshots
       ? `${counts.screenshots} screenshot(s) redacted to blurred thumbnails via RedactionHooks`
-      : `${counts.screenshots} full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle`;
+      : `${counts.screenshots} unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share`;
   // Self-describing artifact: when any observation carried structured app state,
   // the trace says how the loop handled it: it fed progress and task checks and was not written to
   // the trace. The appState itself never appears in this bundle.
   const notes = session.observedAppState
-    ? `${screenshotNote}. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice.`
+    ? `${screenshotNote}. App state was read each turn to detect progress (an in-process executor) and was not written to the trace: it is used only while the run is live and is never stored as evidence.`
     : screenshotNote;
   const tokenUsage = usage.tokenUsage();
 

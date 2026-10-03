@@ -112,7 +112,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
     redaction: {
       status: "passed",
       notes: ranLive
-        ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+        ? "Scripted step URLs are reduced to loopback origin and path (query and hash removed), and step text passes text redaction. Screenshots are unblurred and kept for local use in the gitignored .humanish/ folder; they are not redacted for publishing, and policies.redactScreenshots is not supported on this route yet."
         : "Dry-run bundle: no browser ran and no screenshots were captured. The scenario is digest-pinned; live step text passes text redaction when a session runs.",
     },
     artifacts: bundleArtifacts(),
@@ -143,7 +143,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       // this subject on app-url routes; clone routes carry structured subject provenance below.
       message: args.subject
         ? `Provisioned synthetic subject: clone of ${args.subject.repo}${args.subject.commit ? `@${args.subject.commit}` : ""}, served + getHost-exposed in-sandbox; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted); state provenance: ${args.subject.state.provenance}; evidence host digest: ${args.hostDigest ?? "dry-run"}.`
-        : `Subject app declared at ${args.appUrl}; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest ${args.scenarioSourceDigest}.`,
+        : `Subject app declared at ${args.appUrl}; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest ${args.scenarioSourceDigest}.`,
     },
     {
       id: "event-002-spend",
@@ -164,7 +164,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
           at: result.capture.capturedAt,
           level: result.status === "passed" ? "info" : "warn",
           type: `scripted-lab.session.${result.completionReason}`,
-          message: `${result.capture.surface.id}: ${result.status} — ${result.reason}`,
+          message: `${result.capture.surface.id}: ${result.status} (${result.reason})`,
         }),
       );
     }

@@ -1711,7 +1711,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(bundle.review.gaps.some((gap) => gap.includes("APP_USER_ID is not set"))).toBe(true);
     expect(
       bundle.events.some(
-        (event) => event.level === "warn" && event.message.includes("NOT counted as a pass"),
+        (event) => event.level === "warn" && event.message.includes("does not count as a pass"),
       ),
     ).toBe(true);
   });

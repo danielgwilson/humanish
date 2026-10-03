@@ -147,7 +147,7 @@ async function settleLiveLedgers(
   });
   const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null, trace.tokenUsage);
   const proofVerdict = !noSpendProof.satisfied
-    ? `No-spend proof NOT satisfied for maxUsd=${maxUsd ?? "null"}.`
+    ? `No-spend proof not satisfied for maxUsd=${maxUsd ?? "null"}.`
     : noSpendLineMeasured(noSpendProof)
       ? noSpendNotEstablished(maxUsd ?? 0)
       : `No-spend proof satisfied on the measured lines for maxUsd=${maxUsd ?? "null"}.`;

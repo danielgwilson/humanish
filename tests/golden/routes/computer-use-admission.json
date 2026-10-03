@@ -280,7 +280,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+      "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -372,7 +372,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
-      "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+      "message": "RunLabOptions.inProcess needs RunLabOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -914,7 +914,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+      "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1006,7 +1006,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
-      "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+      "message": "RunLabOptions.inProcess needs RunLabOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
