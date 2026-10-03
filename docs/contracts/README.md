@@ -5,7 +5,7 @@ the types, parsers and validators in `src/` are the source of truth when a page 
 disagree.
 
 - [schemas.md](schemas.md): every `humanish.*` schema id, the study manifest, the library options
-  (`RunLabOptions`) and the exports removed in 0.107.0.
+  (`RunStudyOptions`) and the exports removed in 0.107.0.
 - [core.md](core.md): the records a run writes under `.humanish/runs/<id>/` and how each route
   starts a run.
 - [run-bundle.md](run-bundle.md): `humanish.run-bundle.v1`, the evidence contract that `verify`

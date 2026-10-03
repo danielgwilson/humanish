@@ -1,8 +1,8 @@
 // @ts-check
-import { LAB_CONFIG_SCHEMA, parseLabConfig, runLab, stableProgressKey, verifyRun } from "humanish";
+import { STUDY_SCHEMA, parseStudy, runStudy, stableProgressKey, verifyRun } from "humanish";
 import { startLocalApp } from "./app.mjs";
 
-/** @param {string} appUrl @returns {import("humanish").CuaExecutor} */
+/** @param {string} appUrl @returns {import("humanish").ComputerUseExecutor} */
 function createAppContractExecutor(appUrl) {
   return {
     async observe() {
@@ -29,7 +29,7 @@ function createAppContractExecutor(appUrl) {
 }
 
 // A deterministic rule, not an AI participant: no model SDK, requests or credentials.
-/** @type {import("humanish").CuaProvider} */
+/** @type {import("humanish").ComputerUseProvider} */
 const provider = {
   id: "local-app-deterministic-example",
   version: "1.0.0",
@@ -59,20 +59,21 @@ const provider = {
 
 const app = await startLocalApp();
 try {
-  // parseLabConfig accepts a decoded OBJECT, not a YAML string.
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
+  // parseStudy accepts a decoded object, not a YAML string.
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "participant-example",
     title: "Deterministic local-app integration example",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "local-app", appUrl: app.appUrl },
-    // This registry id selects the CUA loop. createProvider supplies the actual provider.
-    actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Greet the app." }],
-    scenario: { mode: "live" },
+    // This registry id selects the computer-use loop. createProvider supplies the actual provider.
+    actor: { type: "openai-computer-use", persona: "pixel-pat", mission: "Greet the app." },
     review: { analysis: false }, // Keep this deterministic example free of provider requests.
     execution: { timeoutMs: 15_000 },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  const outcome = await runLab(parsed.config, {
+  const outcome = await runStudy(parsed.config, {
     cwd: process.cwd(),
     dryRun: false,
     // An in-process executor returns app state, not a screenshot, so it needs a provider that

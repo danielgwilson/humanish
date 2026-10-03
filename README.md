@@ -400,16 +400,16 @@ for the supported library seam.
 
 `import ... from "humanish"` covers four things:
 
-- run a lab: `runLab`, `RunLabOptions`, `LabOutcome`, `LabResult`, `LabEvent`, `routeOf`,
-  `parseLabConfig`, `LAB_CONFIG_SCHEMA`;
+- run a lab: `runStudy`, `RunStudyOptions`, `StudyOutcome`, `StudyResult`, `StudyEvent`, `routeOf`,
+  `parseStudy`, `STUDY_SCHEMA`;
 - read a run: `verifyRun`, `renderObserver`, `RunBundle`, `ActorTrace`;
-- bring a participant: `CuaProvider`, `CuaExecutor`, `ProviderContext`,
+- bring a participant: `ComputerUseProvider`, `ComputerUseExecutor`, `ProviderContext`,
   `createOpenAiResponsesProvider`, `runComputerUseLoop`, `defaultRedactionHooks`;
 - score a run: `AdapterScorerModule` and its scoring contexts.
 
 Everything else runs through the `humanish` command. The
 [library page](https://humanish.dev/docs/library) has an example for each, and
-[the options contract](docs/contracts/schemas.md#library-options-runlaboptions) lists which routes
+[the options contract](docs/contracts/schemas.md#library-options) lists which routes
 take which option.
 
 ## Check what telemetry sends

@@ -19,7 +19,7 @@ reference under `docs/` by what it is for. To make a first change, start with
   [architecture/browser-control.md](architecture/browser-control.md),
   [architecture/guest-desktop.md](architecture/guest-desktop.md): hosted desktops, the browser
   control protocol and the guest runtime.
-- [architecture/state-driven-executor.md](architecture/state-driven-executor.md): the `CuaExecutor`
+- [architecture/state-driven-executor.md](architecture/state-driven-executor.md): the `ComputerUseExecutor`
   library path.
 - [architecture/task-protocol-support.md](architecture/task-protocol-support.md): which routes
   accept `actor.tasks`.

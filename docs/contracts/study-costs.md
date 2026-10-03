@@ -21,8 +21,9 @@ filters exclude such unattributable directories; they remain named in
 
 ## Additive JSON contract
 
-The envelope remains `humanish.stats.v1`. Existing fields keep their meanings:
-`totals.estimatedSpendUsd`, `days[].estimatedSpendUsd`, study `medianCostUsd`,
+The envelope is `humanish.stats.v2`, which says `study` and `studies` where `humanish.stats.v1`
+said `lab` and `labs`. Its fields keep their meanings: `totals.estimatedSpendUsd`,
+`days[].estimatedSpendUsd`, each study's `medianCostUsd`,
 `costSamples` and `unpricedRuns` describe participant/desktop run estimates.
 They do not suddenly include a separate analysis request. The bundle's
 `cost.estimatedTotalUsd` and the cached run-index estimate also remain unchanged.

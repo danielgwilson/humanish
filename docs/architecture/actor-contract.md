@@ -23,7 +23,7 @@ command-scoped runtime auth, evidence, caps, and by-id cleanup.
 The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and the
 `in-process-sdk` protocol were removed. No study route dispatched either descriptor, and a
 study that names one now fails to parse. A signed-in Claude Code drives computer-use studies
-through `local-agent`, which plugs into the provider-neutral `CuaProvider` port
+through `local-agent`, which plugs into the provider-neutral `ComputerUseProvider` port
 (`src/actors/computer-use/loop/types.ts`, re-exported from `loop.ts`).
 
 ## Context
@@ -348,8 +348,8 @@ this paragraph is the record of that decision.
 
 ## Optional closing report
 
-`CuaProvider.debrief` is an optional read-only request after a structured
-`stopWhen` or dwell stop. It returns a `CuaTurn` with `closingReport` containing
+`ComputerUseProvider.debrief` is an optional read-only request after a structured
+`stopWhen` or dwell stop. It returns a `ComputerUseTurn` with `closingReport` containing
 `summary` and `frictionReports`; an empty friction list is valid. The loop rejects
 actions, pending safety checks, and invalid report shapes. It redacts accepted
 reports, records them in `ActorTrace.debrief`, and projects one readable message
@@ -370,14 +370,14 @@ records both report recovery and control failures in the separate legacy parser.
 
 ## The state-driven executor seam
 
-The `CuaExecutor` / `CuaProvider` ports are the concrete realization of the "plural harnesses /
+The `ComputerUseExecutor` / `ComputerUseProvider` ports are the concrete realization of the "plural harnesses /
 transport-agnostic" intent above: the computer-use loop does not require a screen or a vision
 model. A library caller can drive an **already-running local app** through its in-process JS
-contract (`window.app.getState()` etc.) with a custom `CuaExecutor` (screenshot optional,
-`appState` as the progress signal) paired with a **non-vision** `CuaProvider` (`requiresFrame`
+contract (`window.app.getState()` etc.) with a custom `ComputerUseExecutor` (screenshot optional,
+`appState` as the progress signal) paired with a **non-vision** `ComputerUseProvider` (`requiresFrame`
 falsey), keeping the whole study composition with no E2B desktop and no clone. See
 [`state-driven-executor.md`](./state-driven-executor.md) for the port, both entry points
-(`runComputerUseLoop` and `runLab` + `inProcess`/`createProvider`), the `subject.source:
+(`runComputerUseLoop` and `runStudy` + `inProcess`/`createProvider`), the `subject.source:
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
 appState-is-runtime-only stance.
 
@@ -387,9 +387,9 @@ The terminal-product route has a product-adapter extension seam: a product adopt
 attaches product-specific scoring + feedback as a thin in-repo extension without forking
 core. The seam is exported contract types (`RunBundle`, `RunFeedbackCandidate`,
 `RunAdapterScore`, `ActorTrace`, `AdapterScorerModule` and the terminal-route
-`TerminalProductScoringContext`) plus a registrable scorer module, `RunLabOptions.scorer`,
+`TerminalProductScoringContext`) plus a registrable scorer module, `RunStudyOptions.scorer`,
 with optional `score` and `deriveFeedback`. The older `terminalHooks` and `cuaHooks` bags were
-removed from `RunLabOptions`. The adapter records its product nouns only
+removed from `RunStudyOptions`. The adapter records its product nouns only
 under an adapter-namespaced block (`RunFeedbackCandidate.adapter` /
 `RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
 is hardcoded into a core enum. Default (no hook) behavior is unchanged. See

@@ -28,7 +28,7 @@ release.
   checks there, since they are its result. Before 0.108.0, human mode printed the code and message
   on stdout.
 
-- Library: the result objects `runLab` and the analysis entry points return carry the same
+- Library: the result objects `runStudy` and the analysis entry points return carry the same
   `error.code`.
 
 ## Families

@@ -7,7 +7,7 @@ evidence of a computer-use, shared-world or terminal run and stores the result a
 
 [run.mjs](run.mjs) attaches the same module to a dry run of one computer-use study in two ways:
 
-- from a library caller, as `runLab(config, { scorer: { score } })`;
+- from a library caller, as `runStudy(config, { scorer: { score } })`;
 - from the CLI, as `humanish run study.yaml --dry-run --scorer scorer.mjs`.
 
 A dry run needs no keys, desktop or running app. Each run's bundle carries the score, and

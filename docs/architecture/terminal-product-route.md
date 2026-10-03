@@ -229,7 +229,7 @@ the adopter's repo:
   `AdapterScorerModule` and `TerminalProductScoringContext`. The ledger, cost and
   no-spend shapes are reached through that context's fields, as
   `TerminalProductScoringContext["ledgers"]`.
-- **A registrable scorer / feedback module**, `RunLabOptions.scorer` (an
+- **A registrable scorer / feedback module**, `RunStudyOptions.scorer` (an
   `AdapterScorerModule`): `score?(ctx) => RunAdapterScore | Promise<…>` and
   `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`, where this route's
   `ctx` is a `TerminalProductScoringContext`. The older `terminalHooks.score` and
