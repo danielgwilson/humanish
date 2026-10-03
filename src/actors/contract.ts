@@ -390,6 +390,38 @@ export interface ActorRuntimeProvenance {
   usageGranularity: "runtime_turn";
 }
 
+/**
+ * How a provider carried the conversation between its requests. `threaded`: the provider's server
+ * kept it (OpenAI previous_response_id). `explicit_context`: the server kept none (a
+ * zero-data-retention org, or zeroDataRetention set), so each request carried it from the client
+ * within a token budget, with the oldest turns summarized as text once it passed the budget.
+ */
+export interface ActorConversation {
+  /** The mode of the session's last request. */
+  mode: "threaded" | "explicit_context";
+  /** Why the session used explicit_context: configured, or the org rejected server-side state. */
+  explicitReason?: "configured" | "zdr_rejection";
+  /** When a threaded session switched to explicit_context (ISO-8601), and on which request. */
+  switchedAt?: string;
+  switchedAtRequest?: number;
+  /**
+   * Earlier turns the latest explicit_context request no longer carried whole, to stay within the
+   * budget: written as lines of a text note, or only counted once the note reached its cap. Their
+   * screenshots were dropped. 0 when no explicit_context request summarized any.
+   */
+  summarizedTurns: number;
+  /**
+   * Per participant request, in order: its mode and, in explicit_context, what it carried and its
+   * estimated input. `tokenUsage.turns` has each request's billed input.
+   */
+  requests: Array<{
+    mode: "threaded" | "explicit_context";
+    carriedExchanges?: number;
+    carriedScreenshots?: number;
+    estimatedInputTokens?: number;
+  }>;
+}
+
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
   provider: string;
@@ -397,6 +429,8 @@ export interface ActorTrace {
   executionProfile?: ActorExecutionProfile;
   providerRequests?: ActorProviderRequest[];
   historyTurnsOmitted?: number;
+  /** How the provider carried the conversation; present for the OpenAI computer-use provider. */
+  conversation?: ActorConversation;
   runtime?: ActorRuntimeProvenance;
   protocol: ActorProtocol;
   lane: ActorRunKind;

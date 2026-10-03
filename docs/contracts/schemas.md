@@ -922,6 +922,26 @@ Core-owned fields:
   “provider reply cut off by the output limit; asking again” notice. A second
   cut-off reply to the same request ends the session with
   `stopCause: provider_output_limit`.
+- optional `conversation`: how the first-party OpenAI computer-use provider
+  carried the conversation between requests. `mode` is `threaded` (the server
+  kept it through `previous_response_id`) or `explicit_context` (the server kept
+  none). `explicitReason` says why: `configured` (`zeroDataRetention`) or
+  `zdr_rejection` (the organization rejected server-side state; `switchedAt` and
+  `switchedAtRequest` say when). In `explicit_context` each request carries the
+  conversation from the client, with `store: false` and the reasoning returned
+  in encrypted form. It carries the opening message, every exchange of a reply
+  with the outputs that answered it, and the latest reply. Past an estimated
+  64,000 input tokens the opening screenshot is dropped first, then the oldest
+  exchanges become lines of a note, sent as an assistant message, that keeps
+  their reasoning summaries, messages and actions as text. The two newest
+  exchanges are always carried whole, even when they alone pass the budget. `summarizedTurns` counts the earlier exchanges the latest
+  `explicit_context` request no longer carried whole: lines of the note, or
+  only counted once the note reached its cap.
+  `requests[]` has one entry per participant request: its `mode` and, in
+  `explicit_context`, `carriedExchanges`, `carriedScreenshots` and
+  `estimatedInputTokens`. Billed input per request is in `tokenUsage.turns`. A
+  participant that ran in `explicit_context` gets a run warning. Absent on other
+  providers and on earlier bundles
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which kind of route this
   actor took (see Affordance Use below)
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived
