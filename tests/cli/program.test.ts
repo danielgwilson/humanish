@@ -1758,9 +1758,10 @@ describe("study provenance survives the whole CLI path", () => {
       expect(runId).toBeDefined();
 
       const bundle = JSON.parse(await readFile(path.join(runsDir, runId!, "run.json"), "utf8")) as {
-        lab?: { id: string; path?: string; origin?: string };
+        study?: { id: string; path?: string; origin?: string };
       };
-      expect(bundle.lab).toEqual({
+      expect(bundle).not.toHaveProperty("lab");
+      expect(bundle.study).toEqual({
         id: "provenance-demo",
         path: path.join("humanish", "studies", "provenance-demo.yaml"),
         origin: "committed",
@@ -1772,12 +1773,13 @@ describe("study provenance survives the whole CLI path", () => {
         schema: string;
         state: string;
         mode: string;
-        lab?: { id: string };
+        study?: { id: string };
       };
       expect(status.schema).toBe("humanish.run-status.v1");
       expect(status.state).toBe("finished");
       expect(status.mode).toBe("dry-run");
-      expect(status.lab?.id).toBe("provenance-demo");
+      expect(status.study?.id).toBe("provenance-demo");
+      expect(status).not.toHaveProperty("lab");
     } finally {
       await rm(cwd, { force: true, recursive: true });
     }

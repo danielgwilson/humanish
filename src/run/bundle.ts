@@ -362,7 +362,7 @@ export interface RunBundle {
    * `lab` and the source convention of older bundles, through studyProvenanceOf.
    */
   study?: RunStudyProvenance;
-  /** `study`'s value, written beside it until 0.109. */
+  /** `study`'s value, as runs saved by 0.108 and earlier wrote it. humanish no longer writes it. */
   lab?: RunStudyProvenance;
   /**
    * Optional, additive run-level cost estimate (humanish.run-cost-summary.v1): the sum of every

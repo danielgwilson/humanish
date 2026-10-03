@@ -27,6 +27,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   "error: unknown command 'serve'. Did you mean 'observe'?" and exit 1.
 - `humanish watch --run <id>`, deprecated in 0.108.0. Use `humanish observe --run <id>` to show a
   saved run. `watch` without a study still starts a fresh preview run.
+- The telemetry property `lab`, deprecated in 0.108.0. Events name the starter study as `study`
+  only; 0.108.0 sent both with the same value. A dashboard that still filters on `lab` reads it
+  from 0.108 and older clients only.
+- `lab` in run.json and status.json, deprecated in 0.108.0. A run records its study as `study`.
+  humanish still reads `lab` from runs saved by 0.108 and earlier, so `runs`, `stats` and the TUI
+  keep their study. A script that reads `run.json`'s `lab` gets nothing on a 0.109 run; read
+  `study`.
 
 - The library's 0.107 names, deprecated in 0.108.0: `runLab`, `parseLabConfig`,
   `LAB_CONFIG_SCHEMA`, `LabConfig`, `LabEvent`, `LabOutcome`, `LabResult`, `LabRoute`,

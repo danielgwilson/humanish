@@ -557,7 +557,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.error?.message).toContain("custom runSession");
     expect(created).toHaveLength(0);
   });
-  it("saves the study's provenance as study and lab in the bundle head, after artifactRoot", async () => {
+  it("saves the study's provenance as study in the bundle head, after artifactRoot", async () => {
     const lab = {
       id: "shared-lab",
       path: "humanish/labs/shared-lab.yaml",
@@ -572,8 +572,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
     expect(bundle.study).toEqual(lab);
-    expect(bundle.lab).toEqual(lab);
-    expect(Object.keys(bundle).slice(0, 10)).toEqual([
+    expect(bundle).not.toHaveProperty("lab");
+    expect(Object.keys(bundle).slice(0, 9)).toEqual([
       "schema",
       "runId",
       "mode",
@@ -582,7 +582,6 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       "cwd",
       "artifactRoot",
       "study",
-      "lab",
       "source",
     ]);
   });

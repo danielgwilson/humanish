@@ -245,12 +245,7 @@ export function buildPayload(args: {
   };
   const given = args.properties ?? {};
   if (given.command !== undefined) properties.command = given.command;
-  if (given.study !== undefined) {
-    properties.study = given.study;
-    // Removed in 0.109.0: `lab`, the property's 0.107 name, carries the same value until then, so
-    // a dashboard that filters on `lab` keeps reading 0.108 events while older clients send `lab`.
-    properties.lab = given.study;
-  }
+  if (given.study !== undefined) properties.study = given.study;
   if (given.mode !== undefined) properties.mode = given.mode;
   if (given.outcome !== undefined) properties.outcome = given.outcome;
   if (given.durationBucket !== undefined) properties.duration = given.durationBucket;
