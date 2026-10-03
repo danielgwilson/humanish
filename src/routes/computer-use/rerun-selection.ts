@@ -5,6 +5,7 @@ import { type RunRerunLineage } from "../../run/bundle.js";
 import { loadRunBundle } from "../../run/locate.js";
 import { type RunStream } from "../../run/streams.js";
 import type { CuaParticipantPlan, DesktopParticipantRun } from "./types.js";
+import { plural } from "../../run/text.js";
 
 export async function resolveCuaRerunSelection(args: {
   cwd: string;
@@ -68,7 +69,7 @@ export async function resolveCuaRerunSelection(args: {
   if (missingPrior.length > 0) {
     return {
       ok: false,
-      message: `selected participant id(s) were not present in source run ${bundle.runId}: ${missingPrior.join(", ")}`,
+      message: `${plural(missingPrior.length, "selected participant id")} ${missingPrior.length === 1 ? "was" : "were"} not present in source run ${bundle.runId}: ${missingPrior.join(", ")}`,
     };
   }
 
@@ -77,7 +78,7 @@ export async function resolveCuaRerunSelection(args: {
   if (missingCurrent.length > 0) {
     return {
       ok: false,
-      message: `selected participant id(s) are not present in the current study file ${args.labId}: ${missingCurrent.join(", ")}`,
+      message: `${plural(missingCurrent.length, "selected participant id")} ${missingCurrent.length === 1 ? "is" : "are"} not present in the current study file ${args.labId}: ${missingCurrent.join(", ")}`,
     };
   }
 

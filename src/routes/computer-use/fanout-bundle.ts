@@ -28,6 +28,7 @@ import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summar
 import { formatParticipantPlanEntry } from "./participant-runs.js";
 import type { CuaFanoutBundleArgs, ParticipantRunOutcome } from "./types.js";
 import { fanoutParticipantRecords } from "./fanout-records.js";
+import { plural } from "../../run/text.js";
 
 /** The run's first two events: its creation and the fan-out plan. */
 function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
@@ -45,7 +46,7 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
     at: args.run.createdAt,
     level: "info",
     type: "cua-lab.fanout.plan",
-    message: `Fan-out plan: ${args.participantPlan.laneCount} participant(s) (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${args.participantPlan.waves} wave(s); session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Participants: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
+    message: `Fan-out plan: ${plural(args.participantPlan.laneCount, "participant")} (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${plural(args.participantPlan.waves, "wave")}; session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Participants: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
   });
   return events;
 }
@@ -107,7 +108,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
           ? `Live computer-use fan-out is running (${specs.length} participants, one world each); terminal participant evidence has not been written yet.`
           : args.dryRun
             ? `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out: ${specs.length} participants composed for ${args.descriptor.id} against ${args.appUrl}, one world each; no desktops launched, $0 spend.`
-            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${specs.length} participant(s) reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${runTasks ? `; tasks: ${formatRunTaskFunnel(runTasks)}` : ""}.`,
+            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${plural(specs.length, "participant")} reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${runTasks ? `; tasks: ${formatRunTaskFunnel(runTasks)}` : ""}.`,
       gaps:
         args.inProgress === true
           ? ["Live fan-out session is still running."]
@@ -231,7 +232,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       at: args.run.createdAt,
       level: "info",
       type: "cua-lab.fanout.rerun",
-      message: `Rerun selected ${args.rerun.selectedLaneIds.length} participant(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((prior) => `${prior.laneId} was ${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
+      message: `Rerun selected ${plural(args.rerun.selectedLaneIds.length, "participant")} from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((prior) => `${prior.laneId} was ${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
     });
   }
 

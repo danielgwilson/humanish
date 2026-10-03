@@ -269,7 +269,7 @@
   "recipient names unknown lane": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "comms.email.recipients name participant(s) that do not exist: \"nobody\". This study's participant ids are: lane-01. A recipient's `lane` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant."
+      "message": "comms.email.recipients name 1 participant that does not exist: \"nobody\". This study's participant ids are: lane-01. A recipient's `lane` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant."
     },
     "runLab": {
       "runs": true,

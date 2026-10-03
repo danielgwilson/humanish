@@ -135,7 +135,7 @@
     ],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_FAILED",
-      "message": "Concurrent shared-world run did not run coherently: 2/3 actor(s) reached a terminal, engaged passed session."
+      "message": "Concurrent shared-world run did not run coherently: 2/3 actors reached a terminal, engaged passed session."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -525,12 +525,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor session(s) passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta(s) under load.",
+    "summary": "Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor sessions passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta under load.",
     "gaps": [
       "persona-02: failed (actor_error)"
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: fail\n- summary: Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor session(s) passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta(s) under load.\n- plane: Shared app: clone of example-org/collab-app@abc123def4567890abc1, served at a public sandbox URL humanish created; seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- persona-02: failed (actor_error)\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: fail\n- summary: Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor sessions passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta under load.\n- plane: Shared app: clone of example-org/collab-app@abc123def4567890abc1, served at a public sandbox URL humanish created; seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshots, 1 delta. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- persona-02: failed (actor_error)\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -1051,7 +1051,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.run.created",
-        "message": "Created a concurrent shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) on one shared app, at most 3 at once)."
+        "message": "Created a concurrent shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 personas on one shared app, at most 3 at once)."
       },
       {
         "id": "event-001-plane",
@@ -1121,7 +1121,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshots, 1 delta. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "redaction": {
@@ -1138,7 +1138,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor session(s) passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta(s) under load.",
+      "summary": "Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor sessions passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta under load.",
       "gaps": [
         "persona-02: failed (actor_error)"
       ]

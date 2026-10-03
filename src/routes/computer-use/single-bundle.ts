@@ -43,6 +43,7 @@ import {
   participantStream,
 } from "../../run/participant-records.js";
 import type { CuaSubjectProvenanceArg } from "./types.js";
+import { plural } from "../../run/text.js";
 
 type SingleParticipantBundleArgs = Parameters<typeof buildSingleParticipantBundle>[0];
 
@@ -495,7 +496,7 @@ export function buildSingleParticipantBundle(args: {
           : traceScreenshotMode === "blurred"
             ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
             : args.screenshots.length > 0
-              ? `Session ended before a trace was recorded; ${args.screenshots.length} already-written frame(s) follow the capture policy (${screenshotMode}). Typed text is recorded as length only and reasoning/messages pass through text redaction.`
+              ? `Session ended before a trace was recorded; ${plural(args.screenshots.length, "already-written frame")} ${args.screenshots.length === 1 ? "follows" : "follow"} the capture policy (${screenshotMode}). Typed text is recorded as length only and reasoning/messages pass through text redaction.`
               : "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },
     artifacts: bundleArtifacts(),

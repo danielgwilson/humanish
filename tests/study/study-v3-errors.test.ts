@@ -253,7 +253,7 @@ describe("route, mode and the keys a route does not read", () => {
       "`execution.caps` moved to a top-level `caps:` block.",
     );
     expect(refusal({ ...study, personas: [{ id: "x" }] })).toMatch(
-      /^Unknown study field\(s\): personas\. Known fields: schema, id, title, description, route, mode, /,
+      /^Unknown study field: personas\. Known fields: schema, id, title, description, route, mode, /,
     );
     expect(refusal({ ...study, scenario: { ref: "x" } })).toBe(
       "`scenario` is a scenario id or a path to one, as a string.",

@@ -31,6 +31,7 @@ import { costAndReceiptFindings } from "./costs.js";
 import { rerunLineageFindings } from "./rerun.js";
 import { sharedWorldEvidenceFindings } from "./shared-world.js";
 import { subjectStateFindings, undeclaredSubjectStateWarnings } from "./subject.js";
+import { plural } from "../run/text.js";
 
 export const VERIFY_SCHEMA = "humanish.verify-result.v1";
 
@@ -540,7 +541,7 @@ function buildShareSafety(args: {
     const more = paths.length - MAX_LISTED_UNSCANNED;
     reasons.push({
       code: "UNSCANNED_ARTIFACT",
-      message: `The public-safety scan cannot read ${paths.length} file(s) as text, and they are not stream screenshots under screenshots/ or registered recordings: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
+      message: `The public-safety scan cannot read ${plural(paths.length, "file")} as text that ${paths.length === 1 ? "is not a stream screenshot under screenshots/ or a registered recording" : "are not stream screenshots under screenshots/ or registered recordings"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
     });
   }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle, args.redactedShapeFrames);

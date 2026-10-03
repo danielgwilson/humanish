@@ -233,12 +233,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Concurrent shared-world dry run: 3 persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.",
+    "summary": "Concurrent shared-world dry run: 3 personas declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.",
     "gaps": [
       "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Concurrent shared-world dry run: 3 persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.\n- plane: Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the study's declaration, and the data is not claimed to be synthetic.\n- concurrency: Concurrency: 3 participant(s) (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Concurrent shared-world dry run: 3 personas declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.\n- plane: Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the study's declaration, and the data is not claimed to be synthetic.\n- concurrency: Concurrency: 3 participants (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -504,7 +504,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.run.created",
-        "message": "Created a concurrent shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) on one shared app, at most 3 at once)."
+        "message": "Created a concurrent shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 personas on one shared app, at most 3 at once)."
       },
       {
         "id": "event-001-plane",
@@ -547,7 +547,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 participant(s) (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption."
+        "message": "Concurrency: 3 participants (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption."
       }
     ],
     "redaction": {
@@ -564,7 +564,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Concurrent shared-world dry run: 3 persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.",
+      "summary": "Concurrent shared-world dry run: 3 personas declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.",
       "gaps": [
         "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
       ]

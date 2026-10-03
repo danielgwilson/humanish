@@ -23,6 +23,7 @@ import type { ReadyParticipantDesktop } from "../participant-desktop.js";
 import { inboxRecipientFor, participantHasInboxRecipient } from "../participant-desktop.js";
 import { participantServeUrl, type E2BDesktopDeps, type DesktopParticipantRun } from "../types.js";
 import { addressedRecipients } from "../../../study/parse/comms.js";
+import { plural } from "../../../run/text.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
  *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
@@ -274,7 +275,7 @@ export async function drainCommsEvidence(args: {
       // operator to declare comms.email.recipients[].address to match
       // the address the app actually sends to (e.g. the one the persona surface will sign up with).
       warnings.push(
-        `The email catch captured ${collected.captured} email send(s), but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
+        `The email catch captured ${plural(collected.captured, "email send")}, but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
       );
     } else {
       // Zero captures is the silent-broken shape: the app never posted to the catch at

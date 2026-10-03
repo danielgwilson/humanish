@@ -24,7 +24,7 @@ function message(config: Record<string, unknown>): string {
 describe("unknown lab fields", () => {
   it("rejects a top-level typo and suggests the field", () => {
     expect(message({ ...base, executon: { concurrency: 2 } })).toContain(
-      "Unknown study field(s): executon (did you mean `execution`?)",
+      "Unknown study field: executon (did you mean `execution`?)",
     );
   });
 

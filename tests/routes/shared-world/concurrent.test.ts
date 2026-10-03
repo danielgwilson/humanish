@@ -1640,14 +1640,14 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain(
-      "2/3 actor(s) reached a terminal, engaged passed session",
+      "2/3 actors reached a terminal, engaged passed session",
     );
 
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.summary).toContain("2/3 actor session(s) passed credibility checks");
+    expect(bundle.review.summary).toContain("2/3 actor sessions passed credibility checks");
     expect(bundle.review.summary).toContain("mission endpoint: 2/3 ended goal_satisfied");
     expect(bundle.review.summary).toContain(
       "completion reasons: actor_error 1/3, goal_satisfied 2/3",

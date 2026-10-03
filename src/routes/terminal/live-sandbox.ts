@@ -50,6 +50,7 @@ import {
 } from "./types.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";
 import type { StudyDeps } from "../../study/study-deps.js";
+import { plural } from "../../run/text.js";
 
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
@@ -182,7 +183,7 @@ export class LiveTerminalSandbox {
       "terminal-lab.egress.policy",
       egressAllow === undefined
         ? "Egress is unrestricted (no execution.egressAllow declared)."
-        : `Egress routing allowlist: ${egressAllow.length} declared host(s): ${egressAllow.join(", ")}; deny-all fallback. Domain routing is not strict destination isolation on shared infrastructure.`,
+        : `Egress routing allowlist: ${plural(egressAllow.length, "declared host")}: ${egressAllow.join(", ")}; deny-all fallback. Domain routing is not strict destination isolation on shared infrastructure.`,
     );
 
     recordLifecycle(

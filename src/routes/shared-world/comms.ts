@@ -29,6 +29,7 @@ import type {
   PlaneContext,
 } from "./types.js";
 import { addressedRecipients } from "../../study/parse/comms.js";
+import { plural } from "../../run/text.js";
 
 /** The in-sandbox email catch a provisioned plane deploys, when the lab declares one. */
 export interface SubjectComms {
@@ -159,7 +160,7 @@ export async function drainSubjectComms(
       return "comms/thread.json";
     } else if (collected.captured > 0) {
       warnings.push(
-        `The email catch captured ${collected.captured} email send(s), but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
+        `The email catch captured ${plural(collected.captured, "email send")}, but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
       );
     } else {
       // Zero captures is the silent-broken shape: the app never posted to the catch.

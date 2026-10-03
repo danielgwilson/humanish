@@ -6,6 +6,7 @@ import { CuaAbortError, CuaStallError, raceCallBound } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaObservation } from "./types.js";
+import { plural } from "../../../run/text.js";
 
 // Observing the desktop: bounded observe calls, speech the participant heard, persisted frames,
 // the task funnel, the declared dwell window, and the checkpoint that runs before the first turn
@@ -301,7 +302,7 @@ export class DesktopObserver {
         // same class as a matched stopWhen, and the verdict resolver reads it that way.
         dwell.then === "stop" ? "matched" : "ok",
         "dwell window complete",
-        `${frames} frame(s) over ${heldMs}ms; no model turn was requested during the window`,
+        `${plural(frames, "frame")} over ${heldMs}ms; no model turn was requested during the window`,
       ),
     );
     return { next: dwell.then, heldMs };

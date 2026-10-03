@@ -3,7 +3,7 @@
     "result": {
       "status": "incomplete",
       "completionReason": "budget_reached",
-      "reason": "reached the 100ms time budget after productive activity (1 material action(s), 1 turn(s))",
+      "reason": "reached the 100ms time budget after productive activity (1 material action, 1 turn)",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -20,7 +20,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.000Z",
         "completedAt": "1970-01-01T00:00:01.000Z",
@@ -28,7 +28,7 @@
         "status": "incomplete",
         "completionReason": "budget_reached",
         "stopCause": "time_limit",
-        "reason": "reached the 100ms time budget after productive activity (1 material action(s), 1 turn(s))",
+        "reason": "reached the 100ms time budget after productive activity (1 material action, 1 turn)",
         "ids": {
           "model": "golden-1"
         },
@@ -135,7 +135,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.000Z",
         "completedAt": "1970-01-01T00:00:01.000Z",
@@ -246,7 +246,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "1 unblurred screenshot kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.000Z",
         "completedAt": "1970-01-01T00:00:00.000Z",
@@ -308,7 +308,7 @@
     "result": {
       "status": "incomplete",
       "completionReason": "budget_reached",
-      "reason": "reached the 30ms time budget with 1 material action attempt(s), 1 turn(s); the latest action outcome is uncertain",
+      "reason": "reached the 30ms time budget with 1 material action attempt, 1 turn; the latest action outcome is uncertain",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -325,7 +325,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+          "notes": "1 unblurred screenshot kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.000Z",
         "completedAt": "1970-01-01T00:00:00.000Z",
@@ -333,7 +333,7 @@
         "status": "incomplete",
         "completionReason": "budget_reached",
         "stopCause": "time_limit",
-        "reason": "reached the 30ms time budget with 1 material action attempt(s), 1 turn(s); the latest action outcome is uncertain",
+        "reason": "reached the 30ms time budget with 1 material action attempt, 1 turn; the latest action outcome is uncertain",
         "ids": {
           "model": "golden-1"
         },
