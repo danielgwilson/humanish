@@ -155,7 +155,7 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.run.created",
-    message: `Created CONCURRENT shared-world run for ${plan.labId} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${plan.concurrency} concurrent).`,
+    message: `Created a concurrent shared-world run for ${plan.labId} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) on one shared app, at most ${plan.concurrency} at once).`,
   });
   // Human-readable plane label, byte-stable for the clone route. local-tree has no repo slug: it
   // labels the packed archive instead (archiveSha256 + dirty/clean when the packed root was a git
@@ -182,10 +182,10 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
       level: "info",
       type: "concurrent-shared-world.plane.provenance",
       message: external
-        ? `Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner ${externalPlaneOwner}, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.`
+        ? `Shared app: a public deployment the operator declares they own (${externalPlaneOwner}, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the lab's declaration, and the data is not claimed to be synthetic.`
         : dryRun
-          ? `Shared plane declared: ${dryRunPlaneLabel}, served + getHost-exposed in-sandbox (dry run; nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
-          : `Shared plane: ${livePlaneLabel}, served + exposed at the harness-minted getHost URL; seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
+          ? `Shared app declared: ${dryRunPlaneLabel}, to be served in the sandbox at a public sandbox URL (dry run: nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; synthetic subject, as the study declares; env names: ${args.subject.envNames?.join(", ") || "none"} (values never stored).`
+          : `Shared app: ${livePlaneLabel}, served at a public sandbox URL humanish created; seed recipe ${args.seedDigest}; synthetic subject, as the study declares; env names: ${args.subject.envNames?.join(", ") || "none"} (values never stored).`,
     }),
   );
   return events;
@@ -357,7 +357,7 @@ function concurrencyReview(
     ? "stateSeries omitted (no authoritative shared-state proof on the external-public plane)"
     : `stateSeries ${(stateSeries ?? []).length} snapshot(s), ${deltas} delta(s)`;
   const convergenceLabel = external
-    ? `; lobby convergence ${args.lobbyConvergenceDigest ? "PROVEN (all participants reached one /lobby/CODE)" : "not observed"}`
+    ? `; lobby convergence ${args.lobbyConvergenceDigest ? "shown (all participants reached one /lobby/CODE)" : "not observed"}`
     : "";
   // The count that matters is how many participants were live at once, which can be fewer than exist:
   // a 6-participant run capped at 3 must never read as 6-wide concurrency.
@@ -368,7 +368,7 @@ function concurrencyReview(
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.concurrency",
-    message: `Concurrency: ${windows.length} participant(s)${dryRun ? " (dry run; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This dry run proves nothing about live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
+    message: `Concurrency: ${windows.length} participant(s)${dryRun ? " (dry run; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "shown" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This dry run proves nothing about live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
   });
 
   // The judge's verdict (judgeSharedWorld): every participant produced a terminal, engaged, passed
@@ -385,13 +385,13 @@ function concurrencyReview(
     // report "state delta(s) under load" (live). It reports lobby convergence instead.
     summary: dryRun
       ? external
-        ? `Concurrent shared-world dry run: ${actorSpecs.length} persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.`
-        : `Concurrent shared-world dry run: ${actorSpecs.length} persona(s) declared against ONE getHost-exposed plane (${descriptor.id}); no sandboxes launched, $0 spend.`
+        ? `Concurrent shared-world dry run: ${actorSpecs.length} persona(s) declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.`
+        : `Concurrent shared-world dry run: ${actorSpecs.length} persona(s) declared against one app served at a public sandbox URL (${descriptor.id}); no sandboxes launched, $0 spent.`
       : inProgress
-        ? `In-progress concurrent shared-world Observer snapshot: ${actorSpecs.length} persona(s) running against ONE shared plane; final verification is pending.`
+        ? `In-progress concurrent shared-world Observer snapshot: ${actorSpecs.length} persona(s) running against one shared app; final verification is pending.`
         : external
-          ? `Concurrent shared-world (ONE external-public plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} participants converged on one lobby` : "lobby convergence not observed"}.`
-          : `Concurrent shared-world (ONE plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
+          ? `Concurrent shared-world (one public deployment, ${actorSpecs.length} personas at once): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} participants converged on one lobby` : "lobby convergence not observed"}.`
+          : `Concurrent shared-world (one shared app, ${actorSpecs.length} personas at once): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
     gaps: dryRun
       ? [
           "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.",
@@ -477,7 +477,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
       {
         at: createdAt,
         event: "concurrent-shared-world.run.created",
-        message: `Created concurrent shared-world run with ONE shared plane and ${actorSpecs.length} simultaneous participants (actor ${descriptor.id}).`,
+        message: `Created a concurrent shared-world run with one shared app and ${actorSpecs.length} participants at once (actor ${descriptor.id}).`,
       },
     ],
     simulations,
@@ -487,7 +487,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
       status: "passed",
       notes: ranLive
         ? anyRaw
-          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some personas captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle. stateSeries persists digest-only."
+          ? "Typed text is recorded as its length only, and reasoning and messages pass through text redaction. Some personas captured unblurred screenshots, kept for local use and not redacted for publishing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share. stateSeries stores digests only."
           : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle. stateSeries persists digest-only."
         : inProgress
           ? "In-progress live Observer snapshot: runtime stream auth URLs are process-local only and are not persisted. Final typed text, traces, and screenshots are pending. stateSeries persists digest-only."

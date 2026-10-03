@@ -102,7 +102,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
     "caps the committed %s lab through execution.caps.maxUsd with bounded output",
     async (id) => {
       const raw: unknown = parse(
-        await readFile(path.join(repoRoot, "humanish", "labs", `${id}.yaml`), "utf8"),
+        await readFile(path.join(repoRoot, "humanish", "studies", `${id}.yaml`), "utf8"),
       );
       const result = parseLabConfig(raw);
       expect(result.ok ? "ok" : result.error.message).toBe("ok");
@@ -114,7 +114,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
   );
 
   it("finds no committed computer-use lab with a positive scenario.caps dollar field", async () => {
-    const dir = path.join(repoRoot, "humanish", "labs");
+    const dir = path.join(repoRoot, "humanish", "studies");
     const refused: string[] = [];
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml"))) {
       const result = parseLabConfig(parse(await readFile(path.join(dir, file), "utf8")));

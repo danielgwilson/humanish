@@ -213,6 +213,7 @@ export function advanceBackstop(
     consecutiveNoProgress >= noProgressRecoverySteps &&
     consecutiveNoProgress < limits.noProgressSteps
   ) {
+    // prose-check: model prompt (the participant model reads this hint, not a person)
     hints.push(
       `No visible progress for ${consecutiveNoProgress} step(s). ` +
         "If your task calls for waiting for another participant or a pending transition, you may continue waiting. " +
@@ -220,6 +221,7 @@ export function advanceBackstop(
     );
   }
   if (consecutiveIdle >= idleRecoverySteps && consecutiveIdle < limits.idleSteps) {
+    // prose-check: model prompt (the participant model reads this hint, not a person)
     hints.push(
       `You are only waiting or taking screenshots for ${consecutiveIdle} step(s). ` +
         "If your task calls for waiting, you may continue within the remaining session time. " +

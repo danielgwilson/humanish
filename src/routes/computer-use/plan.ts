@@ -222,7 +222,7 @@ function subjectStructureReason(config: LabConfig, subjectRoute: DeclaredSubject
   )
     return invalid(
       !serve
-        ? "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+        ? "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
         : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`,
     );
   // A library caller that skips parseLabConfig gets the same fail-closed shape the parser
@@ -280,7 +280,7 @@ function driverReason(
     return {
       code: "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
       message:
-        "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
+        "RunLabOptions.inProcess needs RunLabOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session.",
     };
   // There is no built-in in-process driver for a local app.
   if (localAppSubject && !inProcessRoute)

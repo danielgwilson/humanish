@@ -166,7 +166,9 @@ describe("automatic analysis admission and producer boundary", () => {
     },
   );
   it("first-contact and the release gate preserve their explicit zero-spend product scope", async () => {
-    const raw = parseYaml(await readFile(path.resolve("humanish/labs/first-contact.yaml"), "utf8"));
+    const raw = parseYaml(
+      await readFile(path.resolve("humanish/studies/first-contact.yaml"), "utf8"),
+    );
     expect(raw.review.analysis).toBe(false);
     expect(raw.execution.runtimeAuth).toBe("openai-egress");
     expect(parseLabConfig(raw).ok).toBe(true);
@@ -175,7 +177,9 @@ describe("automatic analysis admission and producer boundary", () => {
     );
   });
   it("the advertised zero-model-spend scripted demo explicitly disables analysis", async () => {
-    const raw = parseYaml(await readFile(path.resolve("humanish/labs/scripted-demo.yaml"), "utf8"));
+    const raw = parseYaml(
+      await readFile(path.resolve("humanish/studies/scripted-demo.yaml"), "utf8"),
+    );
     expect(raw.review.analysis).toBe(false);
     expect(parseLabConfig(raw).ok).toBe(true);
   });

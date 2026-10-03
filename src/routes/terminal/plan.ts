@@ -143,7 +143,7 @@ export function planTerminalLab(
   if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0)
     return refuse(
       "HUMANISH_TERMINAL_CAPS_MISSING",
-      "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
+      "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set scenario.caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force.",
       descriptor.id,
     );
   // maxUsd is checked against the cost ledger after the session, and only known lines can trip it.

@@ -227,6 +227,7 @@ export function promptFor(request: CuaTurnRequest, screenshotPath: string): stri
     '{"reasoning":string,"done":boolean,"message":string|null,"outcome":"reached"|"not_reached"|"blocked"|null,' +
     '"actions":[{"kind":"click|double_click|type|keypress|scroll|wait|done",' +
     '"x":int|null,"y":int|null,"text":string|null,"keys":[string]|null,"ms":int|null}]}';
+  // prose-check: model prompt (the participant model reads this, not a person)
   return [
     request.instructions,
     "",

@@ -1718,7 +1718,6 @@ describe("runCuaActorLab", () => {
     );
     expect(driftWarnings).toHaveLength(1);
     expect(driftWarnings[0]).toContain("reports a 500 px viewport where 414 px was requested");
-    expect(driftWarnings[0]).toContain("#623");
     expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toBeUndefined();
   });
 
@@ -2812,11 +2811,7 @@ describe("runCuaActorLab", () => {
           (i: { screenshotRef?: { redaction: string } }) => i.screenshotRef?.redaction === "none",
         ),
     ).toBe(true);
-    expect(
-      outcome.result.warnings.some(
-        (w) => w.toLowerCase().includes("full-fidelity") || w.toLowerCase().includes("raw"),
-      ),
-    ).toBe(true);
+    expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("unblurred"))).toBe(true);
 
     // Claims match mechanism: a raw run must never be labeled "redacted" anywhere.
     expect(bundle.streams[0].embed.title).toBe("Desktop (raw)");
@@ -2825,7 +2820,7 @@ describe("runCuaActorLab", () => {
       .map((a: { label: string }) => a.label);
     expect(screenshotLabels.length).toBeGreaterThan(0);
     expect(screenshotLabels.every((label: string) => label.endsWith("(raw)"))).toBe(true);
-    expect(bundle.redaction.notes).toContain("FULL-FIDELITY (raw)");
+    expect(bundle.redaction.notes).toContain("Screenshots are unblurred");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
     expect(reviewMd).toMatch(/\d+ raw screenshot\(s\)/);
     for (const text of [JSON.stringify(bundle), reviewMd]) {
@@ -2834,7 +2829,7 @@ describe("runCuaActorLab", () => {
     }
     // The raw warning must not promise a commit-blocking scan downstream users do not have
     // (the binary-asset scan is humanish's own CI, not part of the package).
-    const rawWarning = outcome.result.warnings.find((w) => w.includes("full-fidelity"));
+    const rawWarning = outcome.result.warnings.find((w) => w.includes("unblurred"));
     expect(rawWarning).toContain(".humanish");
     expect(rawWarning).toContain("review");
     expect(rawWarning).not.toContain("binary-asset scan");
@@ -3212,7 +3207,7 @@ describe("runCuaActorLab", () => {
     // Captured-but-unevidenced mail surfaces as a warning (not lost silently); no artifact registered.
     expect(
       outcome.result.warnings.some(
-        (w) => w.includes("captured") && w.includes("no comms evidence"),
+        (w) => w.includes("captured") && w.includes("no email evidence"),
       ),
     ).toBe(true);
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
@@ -3428,7 +3423,7 @@ describe("runCuaActorLab", () => {
     expect(result.session?.completionReason).toBe("goal_satisfied");
     expect(result.ok).toBe(false);
     expect(result.error?.message.toLowerCase()).toContain("no actions");
-    expect(result.warnings.some((w) => w.includes("ZERO actions"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("no actions and no messages"))).toBe(true);
 
     // The independent verifier reaches the same judgment from the persisted bundle alone:
     // a hollow bundle must not verify ok even though the producer wrote redaction: passed.
@@ -5454,7 +5449,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const provenance = bundle.events.find(
       (event: { type: string }) => event.type === "cua-lab.subject.provenance",
     );
-    expect(provenance?.message).toContain("state: UNPINNED (external: DATABASE_URL)");
+    expect(provenance?.message).toContain("state: unpinned (external: DATABASE_URL)");
     for (const file of ["run.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain("postgres-external-value");
@@ -5774,12 +5769,12 @@ describe("buildSingleParticipantBundle", () => {
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       const result = outcome.result;
 
-      const capWarning = result.warnings.find((w) => w.includes("PER-PARTICIPANT cap"));
+      const capWarning = result.warnings.find((w) => w.includes("caps each participant"));
       expect(capWarning).toBeDefined();
       // 2 participants × $3 → the true ~$6 ceiling is surfaced, not the per-participant $3, and the
       // warning points at the shared study budget as the fix, since it exists now.
       expect(capWarning).toContain("2 × $3");
-      expect(capWarning).toContain("~$6");
+      expect(capWarning).toContain("about $6");
       expect(capWarning).toContain("maxTotalUsd");
     });
 
@@ -6346,7 +6341,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     expect(bundle.streams[0].actor.lane).toBe("computer-use");
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("n/a");
     expect(bundle.streams[0].actor.counts.screenshots).toBe(0);
-    expect(bundle.streams[0].actor.redaction.notes).toContain("App state was observed");
+    expect(bundle.streams[0].actor.redaction.notes).toContain("App state was read");
     // No screenshots dir contents on disk.
     const shotFiles = await readdir(path.join(runDir, "screenshots")).catch(() => [] as string[]);
     expect(shotFiles).toHaveLength(0);
@@ -6355,8 +6350,8 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     const subjectEvent = bundle.events.find(
       (e: { type: string }) => e.type === "cua-lab.subject.declared",
     );
-    expect(subjectEvent.message).toContain("UNPINNED");
-    expect(subjectEvent.message).toContain("NO E2B");
+    expect(subjectEvent.message).toContain("unpinned");
+    expect(subjectEvent.message).toContain("no E2B desktop");
     expect(bundle.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
 
     // appState never persists anywhere in the bundle (runtime-only).

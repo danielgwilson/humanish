@@ -244,7 +244,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
           // on the local VM, reaches the host's loopback from the VM's browser.
           message:
             args.entryKind === "local-app"
-              ? `Subject app declared at ${publicAppUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
+              ? `Subject app declared at ${publicAppUrl}: a running local dev server driven in this process, with no clone and no E2B desktop. Provenance: provided by the caller and unpinned, because a running dev server has no commit to pin.`
               : runnerSubstrate(args) === "local-desktop"
                 ? `Subject app declared at ${publicAppUrl} (the host's loopback, opened from a browser on a local VM).`
                 : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
@@ -491,7 +491,7 @@ export function buildSingleParticipantBundle(args: {
       status: "passed",
       notes:
         traceScreenshotMode === "raw"
-          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+          ? "Typed text is recorded as its length only, and reasoning and messages pass through text redaction. Screenshots are unblurred and kept for local use; they are not redacted for publishing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share."
           : traceScreenshotMode === "blurred"
             ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
             : args.screenshots.length > 0

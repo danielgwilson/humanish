@@ -38,7 +38,7 @@ export async function localAgentRefusal(args: {
       kind: "signin-required",
       message:
         chosen.authStatus === "unauthenticated"
-          ? `${chosen.label} reports not signed in — run \`${chosen.id === "codex" ? "codex login" : "claude auth login"}\`, then retry.`
+          ? `${chosen.label} reports it is not signed in; run \`${chosen.id === "codex" ? "codex login" : "claude auth login"}\`, then retry.`
           : `${chosen.label} authentication status could not be checked. Run \`${chosen.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed. No desktop was launched.`,
     };
   }

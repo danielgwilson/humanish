@@ -183,7 +183,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -398,7 +398,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

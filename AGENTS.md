@@ -64,7 +64,7 @@ the file to read first. Keep these layout rules:
   PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis,
   and no em dashes (`—`, or two hyphens between spaces): use a colon, a comma or two sentences.
   `prose:check` counts violations in comments and test names under `src/`, `tests/`, `scripts/`,
-  `tui/` and `observer/`.
+  `tui/`, `observer/` and the source files under `site/`.
 - Messages a person reads (errors, warnings, command output) say what happened, why, and what to
   do next, in plain words. `prose:check` also counts em dashes, issue references, all-caps
   emphasis, `a later slice`, harness rationale words (`fail closed`, `by construction`, `hollow`,

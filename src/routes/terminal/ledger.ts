@@ -36,22 +36,22 @@ export function buildCostLedger(args: {
             usd: null,
             source: "unpriced-token-usage",
             note:
-              `Provider spend UNPRICED: the run consumed ${describeTokenUsage(args.tokenUsage)}, ` +
+              `Provider spend unpriced: the run consumed ${describeTokenUsage(args.tokenUsage)}, ` +
               "but the terminal participant records the model as `codex` and humanish has no rate " +
-              "for it, so no dollar figure is claimed. Tokens are a MEASURED fact here; the " +
-              "price is the unknown. Recorded null (never guessed to 0).",
+              "for it, so no dollar figure is given. The token count is measured; the price is " +
+              "not known. Recorded as null, never guessed as 0.",
           }
         : {
             usd: null,
             source: "unmeasured",
-            note: "Provider spend NOT MEASURED: the actor trace carried no tokenUsage.costUsd this run. Recorded null (not guessed to 0).",
+            note: "Provider spend not measured: the actor trace carried no tokenUsage.costUsd in this run, so it is recorded as null and not guessed as 0.",
           };
 
   const unmeasured = (category: CostCategory): CostLine => ({
     usd: null,
     count: null,
     source: "unmeasured",
-    note: `${category} spend NOT MEASURED: core has no ${category}-spend signal for this run; an adapter may supply one through costProbe. Recorded null (never guessed to 0).`,
+    note: `${category} spend not measured: humanish has no ${category} spend signal for this run, and an adapter may supply one through costProbe. Recorded as null, never guessed as 0.`,
   });
 
   const lines: Record<CostCategory, CostLine> = {
@@ -146,10 +146,10 @@ export function buildNoSpendProof(
   const cap = maxUsd ?? 0;
   const satisfied = knownNonZeroLines.length === 0 && ledger.knownTotalUsd <= cap;
   const verdict = !satisfied
-    ? `No-spend proof NOT satisfied for maxUsd=${cap}: known spend total ${ledger.knownTotalUsd} USD${knownNonZeroLines.length > 0 ? ` (non-zero: ${knownNonZeroLines.join(", ")})` : ""}.`
+    ? `No-spend proof not satisfied for maxUsd=${cap}: known spend total ${ledger.knownTotalUsd} USD${knownNonZeroLines.length > 0 ? ` (non-zero: ${knownNonZeroLines.join(", ")})` : ""}.`
     : noSpendLineMeasured({ knownZeroLines, knownNonZeroLines })
       ? noSpendNotEstablished(cap)
-      : `No-spend proof SATISFIED for maxUsd=${cap} on the measured lines (known total ${ledger.knownTotalUsd} USD).`;
+      : `No-spend proof satisfied for maxUsd=${cap} on the measured lines (known total ${ledger.knownTotalUsd} USD).`;
   const statement = [verdict, describeMeasuredSpend(ledger, tokenUsage)]
     .filter((part) => part.length > 0)
     .join(" ");
@@ -182,7 +182,7 @@ export function evaluateCapsAgainstLedger(
     );
     return {
       ok: false,
-      message: `Observed KNOWN spend ${ledger.knownTotalUsd} USD exceeds scenario.caps.maxUsd=${caps.maxUsd}${overLines.length > 0 ? ` (non-zero lines: ${overLines.join(", ")})` : ""}. The run fails closed: the cap is a fail-closed mechanism, not an advisory.`,
+      message: `Stopped: measured spend ${ledger.knownTotalUsd} USD passed scenario.caps.maxUsd=${caps.maxUsd}${overLines.length > 0 ? ` (non-zero lines: ${overLines.join(", ")})` : ""}. The cap stops the run; it is not a warning.`,
     };
   }
   if (caps.maxJobs !== undefined) {
@@ -194,7 +194,7 @@ export function evaluateCapsAgainstLedger(
     if (knownJobs > caps.maxJobs) {
       return {
         ok: false,
-        message: `Observed KNOWN billable-job count ${knownJobs} exceeds scenario.caps.maxJobs=${caps.maxJobs}. The run fails closed.`,
+        message: `Stopped: ${knownJobs} measured billable jobs passed scenario.caps.maxJobs=${caps.maxJobs}.`,
       };
     }
   }

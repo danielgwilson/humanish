@@ -60,7 +60,7 @@ export async function resolveCuaRerunSelection(args: {
   if (selectedIds.length === 0) {
     return {
       ok: false,
-      message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow participants to rerun.`,
+      message: `source run ${bundle.runId} has no participant to rerun: none failed, was blocked, timed out or ended without engaging.`,
     };
   }
 

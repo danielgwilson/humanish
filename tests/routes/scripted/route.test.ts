@@ -569,7 +569,7 @@ describe("runScriptedBrowserLab", () => {
     const subjectEvent = bundle.events.find(
       (event: { type: string }) => event.type === "scripted-lab.subject.declared",
     );
-    expect(subjectEvent?.message).toContain("UNPINNED");
+    expect(subjectEvent?.message).toContain("unpinned");
     expect(subjectEvent?.message).toContain("scenario digest");
     const spendEvent = bundle.events.find(
       (event: { type: string }) => event.type === "scripted-lab.spend",
@@ -704,7 +704,7 @@ describe("runScriptedBrowserLab", () => {
         expect(verified.ok).toBe(true);
         expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
         expect(verified.warnings.join("\n")).toContain("are unblurred");
-        expect(result.warnings.join("\n")).toContain("full-fidelity");
+        expect(result.warnings.join("\n")).toContain("unblurred");
 
         // Public safety: no absolute machine paths or secret-shaped text in any text artifact.
         for (const file of [
@@ -1303,7 +1303,7 @@ describe("runScriptedBrowserLab", () => {
       });
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
-      expect(result.error?.message).toContain("inside the target cwd");
+      expect(result.error?.message).toContain("inside the project directory");
       await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
     });
 
@@ -1423,7 +1423,10 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       path.join(cwd, "package.json"),
       JSON.stringify({ name: "fixture-app" }, null, 2),
     );
-    const lab = await readFile(path.join(ROOT, "humanish", "labs", "scripted-demo.yaml"), "utf8");
+    const lab = await readFile(
+      path.join(ROOT, "humanish", "studies", "scripted-demo.yaml"),
+      "utf8",
+    );
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "labs", "scripted-demo.yaml"), lab, "utf8");
     await writeCommittedScenario(cwd);

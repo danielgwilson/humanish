@@ -2,7 +2,7 @@
   "result": {
     "status": "incomplete",
     "completionReason": "budget_reached",
-    "reason": "estimated spend $0.45 crossed execution.caps.maxUsd=$0.35 after productive activity (2 material action(s), 3 turn(s)); aborted fail-closed before the next model turn",
+    "reason": "Stopped before the next model turn: estimated spend $0.45 passed execution.caps.maxUsd=$0.35 after productive activity (2 material action(s), 3 turn(s))",
     "trace": {
       "schema": "humanish.actor-trace.v1",
       "provider": "golden-cua",
@@ -19,7 +19,7 @@
       "redaction": {
         "status": "passed",
         "screenshots": "raw",
-        "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        "notes": "3 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
       },
       "startedAt": "1970-01-01T00:00:01.000Z",
       "completedAt": "1970-01-01T00:00:18.000Z",
@@ -27,7 +27,7 @@
       "status": "incomplete",
       "completionReason": "budget_reached",
       "stopCause": "spend_limit",
-      "reason": "estimated spend $0.45 crossed execution.caps.maxUsd=$0.35 after productive activity (2 material action(s), 3 turn(s)); aborted fail-closed before the next model turn",
+      "reason": "Stopped before the next model turn: estimated spend $0.45 passed execution.caps.maxUsd=$0.35 after productive activity (2 material action(s), 3 turn(s))",
       "ids": {
         "model": "golden-1"
       },

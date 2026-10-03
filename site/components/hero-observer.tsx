@@ -9,7 +9,7 @@ const STAGE_W = 1600;
 const STAGE_H = 900;
 
 /**
- * HeroObserver — the real Observer artifact of a saved run, in a frame, replaying itself.
+ * HeroObserver: the real Observer artifact of a saved run, in a frame, replaying itself.
  * The bundle under /runs/<slug>/observer/ is the same file humanish writes into a repo;
  * the URL parameters press play, loop, and collapse the library. In the hero the frame
  * is a picture: a click-catcher covers it and a click expands the same iframe into a

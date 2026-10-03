@@ -14,7 +14,7 @@ const plain = (s: string | undefined | null) =>
     .trim();
 
 /**
- * ReplayPlayer — the Observer's participant view rebuilt as a page component from a
+ * ReplayPlayer: the Observer's participant view rebuilt as a page component from a
  * real actor trace: the capture, the clicks pinned where they landed on that capture,
  * the participant's reasoning before acting, and the action list. Plays while on
  * screen; pauses when scrolled away; steps by hand under reduced motion.

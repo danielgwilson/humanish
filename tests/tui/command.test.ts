@@ -387,7 +387,7 @@ describe("the Node floor is stated once and read by everyone", () => {
   });
 });
 
-describe("an agent session, even with a real terminal (labs/handed-a-human-surface.yaml)", () => {
+describe("an agent session, even with a real terminal (studies/handed-a-human-surface.yaml)", () => {
   // Measured, not assumed. `codex exec` allocates a PTY for the commands it runs, so the TTY check
   // passed and the TUI opened: the study watched the agent navigate the labs list, open a lab, and
   // in its own words, "accidentally trigger a zero-cost dry run while navigating". A TTY says a

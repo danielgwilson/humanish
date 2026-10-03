@@ -81,7 +81,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish export`: Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.
 - `humanish runs`: List this project's runs and which one is latest.
 - `humanish stats`: Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.
-- `humanish lab`: List, inspect and check the studies in humanish/labs/.
+- `humanish lab`: List, inspect and check studies in humanish/studies/.
 - `humanish lab list`: List committed and ignored humanish lab manifests.
 - `humanish lab inspect`: Inspect a humanish lab manifest without running it.
 - `humanish lab preflight`: Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.

@@ -67,10 +67,13 @@ async function tree(): Promise<Record<string, string>> {
 }
 
 async function copyCommittedLabs(): Promise<string[]> {
-  await cp(path.join(ROOT, "humanish", "labs"), path.join(cwd, "humanish", "labs"), {
-    recursive: true,
-  });
-  return (await readdir(path.join(cwd, "humanish", "labs"))).sort();
+  // The 21 v2 files this repo committed before its studies moved to humanish/studies.
+  const fixtures = path.join(ROOT, "tests", "fixtures", "labs-v2");
+  const names = (await readdir(fixtures)).filter((name) => name.endsWith(".yaml")).sort();
+  await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+  for (const name of names)
+    await cp(path.join(fixtures, name), path.join(cwd, "humanish", "labs", name));
+  return names;
 }
 
 const plain = (value: unknown) => JSON.parse(JSON.stringify(value)) as unknown;
@@ -682,7 +685,7 @@ describe("every committed lab", () => {
     expect(result.ok).toBe(true);
     for (const name of names) {
       const before = parseLabConfig(
-        parse(await readFile(path.join(ROOT, "humanish/labs", name), "utf8")),
+        parse(await readFile(path.join(ROOT, "tests/fixtures/labs-v2", name), "utf8")),
       );
       const after = parseLabConfig(
         parse(await readFile(path.join(cwd, "humanish/studies", name), "utf8")),

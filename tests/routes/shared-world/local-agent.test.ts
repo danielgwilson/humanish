@@ -158,7 +158,7 @@ describe("shared world with a local-agent brain", () => {
     await chmod(path.join(dir, "codex"), 0o755);
     const error = await refusedWith(dir);
     expect(error?.code).toBe("HUMANISH_SHARED_WORLD_AGENT_SIGNIN_REQUIRED");
-    expect(error?.message).toContain("reports not signed in");
+    expect(error?.message).toContain("reports it is not signed in");
   });
 
   it("refuses a Codex release below the floor as ACTOR_UNSUPPORTED", async () => {

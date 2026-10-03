@@ -16,7 +16,7 @@ import { verifyRun } from "../../../src/verify/verify.js";
 // OPENAI_API_KEY + E2B_API_KEY.
 //
 // It drives the real committed synthetic fixture (no placeholders): the study
-// `humanish/labs/shared-world-concurrent-live.yaml` clones this public repo, serves the synthetic
+// `humanish/studies/shared-world-concurrent-live.yaml` clones this public repo, serves the synthetic
 // shared task board `humanish/fixtures/shared-world-app` on 0.0.0.0, seeds it, and probes it (a
 // read-only aggregate). 3 concurrent personas each add a task to the shared board; the prober
 // observes the task count grow under load. The fixture must be on the cloned commit's default
@@ -54,7 +54,7 @@ describe.skipIf(!LIVE)(
         // (dry-run default) committed lab to a live run via the explicit dryRun override.
         const raw = parse(
           readFileSync(
-            path.join(REPO_ROOT, "humanish/labs/shared-world-concurrent-live.yaml"),
+            path.join(REPO_ROOT, "humanish/studies/shared-world-concurrent-live.yaml"),
             "utf8",
           ),
         );

@@ -130,7 +130,7 @@ export function planScriptedLab(
   if (!scenarioRef?.trim())
     return refuse(
       "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.",
+      "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.",
       { actor, appUrl: evidenceAppUrlOf(subject) },
     );
 

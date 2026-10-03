@@ -303,7 +303,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
     // The no-spend proof reflects the distinction: product is a known-zero line it vouches for, the
     // other three are unmeasured and explicitly not claimed zero.
-    expect(ledgers.noSpendProof.statement).toMatch(/SATISFIED for maxUsd=0 on the measured lines/);
+    expect(ledgers.noSpendProof.statement).toMatch(/satisfied for maxUsd=0 on the measured lines/);
     expect(ledgers.noSpendProof.statement).toMatch(/Measured: product 0 USD\./);
     expect(ledgers.noSpendProof.statement).toMatch(/Not measured[^:]*: media, payment, provider\./);
     const review = JSON.parse(await readFile(path.join(runDir, "review.json"), "utf8"));
@@ -364,7 +364,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
     expect(bundle.review.verdict).toBe("pass");
     expect(
-      bundle.review.gaps.some((gap: string) => gap.includes("exceeds scenario.caps.maxUsd=1")),
+      bundle.review.gaps.some((gap: string) => gap.includes("passed scenario.caps.maxUsd=1")),
     ).toBe(true);
     expect(status.outcome.ok).toBe(false);
     expect(

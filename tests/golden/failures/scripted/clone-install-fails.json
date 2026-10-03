@@ -117,7 +117,7 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+        "notes": "Scripted step URLs are reduced to loopback origin and path (query and hash removed), and step text passes text redaction. Screenshots are unblurred and kept for local use in the gitignored .humanish/ folder; they are not redacted for publishing, and policies.redactScreenshots is not supported on this route yet."
       },
       "lifecycle": [
         {
@@ -289,7 +289,7 @@
         "id": "scripted-desktop-stream",
         "simId": "scripted-desktop",
         "kind": "browser",
-        "label": "Desktop browser surface — provisioned-scripted-routing-proof",
+        "label": "Desktop browser surface · provisioned-scripted-routing-proof",
         "status": "failed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -359,7 +359,7 @@
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+      "notes": "Scripted step URLs are reduced to loopback origin and path (query and hash removed), and step text passes text redaction. Screenshots are unblurred and kept for local use in the gitignored .humanish/ folder; they are not redacted for publishing, and policies.redactScreenshots is not supported on this route yet."
     },
     "artifacts": {
       "run": "run.json",

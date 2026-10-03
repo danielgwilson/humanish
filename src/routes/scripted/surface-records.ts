@@ -70,7 +70,7 @@ export function scriptedSurfaceRecords(
 
   const stream = participantStream(ids, {
     kind: "browser",
-    label: `${surface.label} — ${context.labId}`,
+    label: `${surface.label} · ${context.labId}`,
     status,
     transport: "snapshot",
     updatedAt: result?.capture.capturedAt ?? context.createdAt,

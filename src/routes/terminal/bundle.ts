@@ -98,7 +98,7 @@ export function buildTerminalProductBundle(args: {
       // Provenance is recorded or its absence declared. The agent drives public surfaces
       // and nothing is cloned, so the subject provenance is explicitly unpinned; evidence binds to the
       // composed-prompt digest. Public surfaces are recorded (they are public by declaration).
-      message: `Subject product declared: ${args.productName}; public surfaces: ${args.publicSurfaces.join(", ")}. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest ${args.persona.promptDigest}.`,
+      message: `Subject product declared: ${args.productName}; public surfaces: ${args.publicSurfaces.join(", ")}. humanish did not provision or clone the product, so its provenance is unpinned: a study of public pages has no commit to pin. The evidence is tied to the prompt digest ${args.persona.promptDigest}.`,
     }),
     participantEvent(TERMINAL_IDS, {
       id: "event-002-credentials",
@@ -114,7 +114,7 @@ export function buildTerminalProductBundle(args: {
       at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.caps.declared",
-      message: `Spend/job/time caps: ${capsText}. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.`,
+      message: `Spend, job and time caps: ${capsText}. A live run uses the runtime key only while a cap is in force, and derives its no-spend proof from the recorded cost ledger. This dry run spends $0: it makes no model request.`,
     }),
     participantEvent(TERMINAL_IDS, {
       id: "event-004-contract",
@@ -280,7 +280,7 @@ export function buildLiveTerminalProductBundle(args: {
     simulation,
     stream,
     events: lifecycleEvents,
-    redactionNotes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence.`} Subject provenance is UNPINNED (public-surface study).`,
+    redactionNotes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and had known values (including the runtime key) scrubbed, then shape patterns redacted, before anything was stored. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was passed only to the codex command, never to sandbox-wide environment variables or metadata; only its name appears in evidence.`} Subject provenance is unpinned (a study of public pages).`,
     review,
     ...(args.cost === undefined ? {} : { cost: args.cost }),
   });
@@ -330,7 +330,7 @@ function terminalParticipant(
   const stream = participantStream(TERMINAL_IDS, {
     assignment: participantAssignment({ mission: args.mission }),
     kind: "terminal",
-    label: `Terminal agent — ${args.labId}`,
+    label: `Terminal agent · ${args.labId}`,
     status: session.status,
     transport: "snapshot",
     updatedAt: session.updatedAt,

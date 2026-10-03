@@ -1687,8 +1687,8 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor", () => {
     // (b) redaction resolves to n/a.
     expect(result.trace.redaction.screenshots).toBe("n/a");
     // (c) redaction.notes self-describes the appState stance, so the claim matches the mechanism.
-    expect(result.trace.redaction.notes).toContain("App state was observed");
-    expect(result.trace.redaction.notes).toContain("NOT written to the trace");
+    expect(result.trace.redaction.notes).toContain("App state was read");
+    expect(result.trace.redaction.notes).toContain("not written to the trace");
     // appState is runtime-only: it must never appear in the serialized trace.
     expect(JSON.stringify(result.trace)).not.toContain('"route"');
     expect(JSON.stringify(result.trace)).not.toContain("appstate-marker");
@@ -1928,7 +1928,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
     expect(result.trace.stopCause).toBe("spend_limit");
-    expect(result.reason).toContain("crossed execution.caps.maxUsd=$0.35");
+    expect(result.reason).toContain("passed execution.caps.maxUsd=$0.35");
     expect(result.reason).toContain("after productive activity");
     expect(result.trace.counts.materialActions).toBeGreaterThan(0);
     // The cap fires before the next provider.nextTurn: exactly 3 turns were requested, no 4th.
@@ -1967,7 +1967,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.trace.counts.materialActions).toBe(0);
     expect(execute).not.toHaveBeenCalled();
     expect(result.trace.stopCause).toBe("spend_limit");
-    expect(result.reason).toContain("crossed execution.caps.maxUsd=$0");
+    expect(result.reason).toContain("passed execution.caps.maxUsd=$0");
     expect(result.reason).toContain("no material progress");
     // Tripped on turn 1, before a second provider turn was ever requested.
     expect(provider.seen).toHaveLength(1);

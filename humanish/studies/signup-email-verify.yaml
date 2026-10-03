@@ -1,0 +1,142 @@
+schema: humanish.study.v3
+id: signup-email-verify
+title: Can a persona complete an email-gated signup end to end?
+description: >-
+  A persona creates an account, the app emails a verification link, and the persona opens its
+  inbox, clicks the link and reaches the signed-in product. Every step is real (a public
+  open-source app, its own signup form, mail over SMTP) except that the mail is caught in the
+  sandbox and never leaves the machine. The subject is documenso, an open-source document-signing
+  app, chosen because its signup depends on the emailed link: registration returns no session and
+  sign-in refuses an unverified account, so reaching the product shows the persona read the mail.
+  It sends through nodemailer over SMTP, which the in-sandbox catch accepts. A persona that stops
+  before the dashboard has produced the finding: where it got stuck and what it did next. Committed
+  as a dry run, which builds a dry-run bundle at no cost. A live run needs OPENAI_API_KEY,
+  E2B_API_KEY and a gitignored .humanish/labs/ copy with mode: live.
+route: computer-use
+mode: dry-run # committed fixture stays contract-only; live needs keys + a gitignored copy
+subject:
+  source: clone
+  repos:
+    - documenso/documenso
+  clone:
+    depth: 1
+  serve:
+    # Node itself is provided by the harness (#371). Postgres is not part of any template, so it
+    # is installed and started here. `service`/systemd is a no-op in a container — the cluster has
+    # to be started with pg_ctlcluster, which is the mistake this lab made first and paid a sandbox
+    # to discover: apt succeeded, the server never came up, and createdb failed on a missing socket.
+    #
+    # `npm install`, not `npm ci`: documenso's committed lockfile is out of sync with its own
+    # package.json upstream, and `npm ci` refuses to run at all in that state.
+    #
+    # The trust rule is PREPENDED, not appended: pg_hba matches the first rule that applies, and the
+    # default file already has a scram rule for 127.0.0.1 above where an appended line would land.
+    # Appending it looked right and cost another sandbox to disprove.
+    install: >-
+      sudo -n apt-get update -qq && sudo -n apt-get install -y -qq postgresql && PGVER=$(ls
+      /etc/postgresql | head -1) && sudo -n sed -i '1i host all all 127.0.0.1/32 trust'
+      /etc/postgresql/$PGVER/main/pg_hba.conf && sudo -n pg_ctlcluster $PGVER main start && sudo -n
+      -u postgres createdb documenso && npm install --no-audit --no-fund
+    installTimeoutMs: 900000
+    # `npm run dev` on purpose: the production build runs lingui extract plus a full-monorepo
+    # tsc and rollup, which is minutes of work this study does not need.
+    # Migrate AND generate: documenso imports zod schemas that prisma generate emits, and `npm run
+    # dev` fails at request time without them — the server starts, then every route 500s on a
+    # missing module. translate:compile is what `npm run dev` would do first anyway.
+    build: >-
+      npm run prisma:migrate-deploy && npm run prisma:generate && npm run translate:compile
+    buildTimeoutMs: 600000
+    start: npm run dev
+    url: http://localhost:3000/
+    readyTimeoutMs: 300000
+  # Non-secret configuration, committed so this lab is reproducible by anyone (#395). None of
+  # these are credentials — they are how the app is told to behave.
+  envValues:
+    NEXT_PUBLIC_WEBAPP_URL: http://localhost:3000
+    NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://localhost:3000
+    NEXT_PUBLIC_UPLOAD_TRANSPORT: database
+    # No password in the connection string: Postgres is set to trust local connections above, so
+    # there is no credential to commit. The parser refuses secret-shaped values here by design.
+    NEXT_PRIVATE_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/documenso
+    NEXT_PRIVATE_DIRECT_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/documenso
+    NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
+    NEXT_PRIVATE_SMTP_FROM_NAME: Documenso
+    NEXT_PRIVATE_SMTP_FROM_ADDRESS: noreply@example.test
+    NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS: "true"
+    # A local-only signing key and rate-limit bypass: this instance exists for the length of
+    # one sandbox and is reachable only from inside it.
+    NEXTAUTH_SECRET: humanish-local-study-only
+    NEXT_PRIVATE_ENCRYPTION_KEY: humanish-local-study-only-encryption
+    NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: humanish-local-study-only-secondary
+    DANGEROUS_BYPASS_RATE_LIMITS: "true"
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+comms:
+  email:
+    # documenso sends through nodemailer; the catch opens a loopback SMTP listener and the app
+    # is pointed at it. Nothing leaves the sandbox.
+    smtp:
+      port: 2525
+      hostEnv: NEXT_PRIVATE_SMTP_HOST
+      portEnv: NEXT_PRIVATE_SMTP_PORT
+      userEnv: NEXT_PRIVATE_SMTP_USERNAME
+      passwordEnv: NEXT_PRIVATE_SMTP_PASSWORD
+    # No recipients block: the participant gets a deterministic address automatically, and its prompt
+    # carries the address, the inbox URL, and the wait steering.
+actor:
+  type: openai-computer-use
+  maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
+  mission: >-
+    Create an account using the email address in your instructions, complete the email
+    verification, sign in, and stop once you can see the signed-in dashboard.
+  # The researcher's protocol (#414): each task has a participant-facing goal and a
+  # researcher-facing success criterion. Only the goals reach the persona's prompt — telling a
+  # participant how they will be measured changes what they do. Completion is corroborated from
+  # observed URLs (all three confirmed in the kept receipts), never from the actor saying so.
+  # The funnel over these tasks is the study result: where participants stop is the finding.
+  tasks:
+    - id: reach-signup
+      goal: Find where to create an account and open the signup form.
+      success:
+        any:
+          - id: on-signup
+            urlIncludes: /signup
+    - id: read-verification-mail
+      goal: When the app tells you it has emailed you, open your inbox and read that email.
+      success:
+        any:
+          - id: inbox-open
+            urlIncludes: "127.0.0.1:8025"
+    - id: reach-dashboard
+      goal: Finish signing in, and stop once you can see your account's documents area.
+      success:
+        any:
+          - id: signed-in
+            urlIncludes: /documents
+participants:
+  # Two participants, same task, different people. Each gets its own world and its own
+  # deterministic inbox address, so neither can see the other's mail. The comparison is the
+  # point: one result tells you the flow can be completed, two tell you something about who
+  # completes it and how differently.
+  - id: newcomer
+    persona: synthetic-new-user
+    instruction: >-
+      Sign up as a new user. If a step is confusing or you get stuck, say exactly what blocked you
+      and what you tried — that is worth more than pushing through.
+  - id: power-user
+    persona: skeptical-power-user
+    instruction: >-
+      Sign up. If a step is confusing or you get stuck, say exactly what blocked you and what you
+      tried — that is worth more than pushing through.
+caps:
+  # The STUDY budget is the number a researcher reasons with — decided once, up front, like a
+  # recruiting decision. Observed two-participant runs land near $1.50 total, so $25 is deep
+  # headroom, and the per-participant cap stays as the single-runaway backstop.
+  maxTotalUsd: 25
+  maxUsd: 15 # PER-PARTICIPANT backstop; the shared maxTotalUsd above caps the run as a whole.
+execution:
+  target: e2b-desktop
+  # 18 minutes. The sandbox deadline is this plus provisioning and teardown headroom, and a sandbox
+  # may not live past an hour — humanish refuses a lab that asks for more, at plan time.
+  timeoutMs: 1080000
+defaults:
+  open: false

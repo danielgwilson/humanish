@@ -48,7 +48,8 @@ const plain = (value: unknown) => JSON.parse(JSON.stringify(value)) as unknown;
 
 describe("every committed lab", () => {
   it("converts to a v3 study that parses, takes the same route and plans the same", async () => {
-    const dir = path.join(ROOT, "humanish", "labs");
+    // The 21 v2 files this repo committed before its studies moved to humanish/studies.
+    const dir = path.join(ROOT, "tests", "fixtures", "labs-v2");
     const names = (await readdir(dir)).filter((name) => name.endsWith(".yaml")).sort();
     expect(names).toHaveLength(21);
     const dropped: Record<string, string[]> = {};
@@ -352,7 +353,7 @@ describe("comments the conversion could lose", () => {
 
   it("keeps a comment between subject.topology's key and its value on route", async () => {
     const text = await readFile(
-      path.join(ROOT, "humanish", "labs", "shared-world-concurrent-demo.yaml"),
+      path.join(ROOT, "tests", "fixtures", "labs-v2", "shared-world-concurrent-demo.yaml"),
       "utf8",
     );
     const source = text.replace(
@@ -466,7 +467,7 @@ describe("what the conversion refuses", () => {
 
   it("refuses a terminal count it could only drop by changing what the file says", async () => {
     const terminal = await readFile(
-      path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"),
+      path.join(ROOT, "tests", "fixtures", "labs-v2", "terminal-product-demo.yaml"),
       "utf8",
     );
     const counted = terminal.replace(/^( {2}- type: \S+.*)$/m, "$1\n    count: 1");

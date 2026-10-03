@@ -274,7 +274,7 @@ export async function drainCommsEvidence(args: {
       // operator to declare comms.email.recipients[].address to match
       // the address the app actually sends to (e.g. the one the persona surface will sign up with).
       warnings.push(
-        `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
+        `The email catch captured ${collected.captured} email send(s), but none matched a declared recipient inbox, so no email evidence was written. Set comms.email.recipients[].address to the address the app sends to.`,
       );
     } else {
       // Zero captures is the silent-broken shape: the app never posted to the catch at
@@ -284,7 +284,7 @@ export async function drainCommsEvidence(args: {
         ? `Verify the app reads ${comms.email.smtp.hostEnv}/${comms.email.smtp.portEnv} for its SMTP host and port`
         : `Verify the app reads ${comms.email.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws)`;
       warnings.push(
-        `Comms catch captured ZERO email sends — the app never delivered mail through the catch. ${transportHint} and that the flow reached an email step.`,
+        `The email catch captured no email sends: the app never delivered mail through it. ${transportHint} and that the flow reached an email step.`,
       );
     }
   } catch (error) {

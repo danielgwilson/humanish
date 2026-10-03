@@ -1,0 +1,43 @@
+schema: humanish.study.v3
+id: terminal-product-demo
+title: Terminal-product study with a mock CLI (dry run)
+description: >-
+  An autonomous terminal agent (codex-exec) finds and uses a CLI from its public pages only,
+  inside an E2B shell, capped at no spend. This fixture stays a dry run for CI and produces a
+  verified dry-run bundle. It does not exercise the live terminal-product route or its
+  command-scoped credential boundary, and its fictional mock CLI is not evidence of a live or
+  adopter run.
+route: terminal
+mode: dry-run # neutral CI fixture; the shipped live route remains explicitly gated
+subject:
+  source: terminal-product
+  product:
+    name: widgetsmith-cli # FICTIONAL mock CLI — neutral name for the public CI fixture
+    publicSurfaces:
+      - https://example.com/widgetsmith
+      - https://example.com/widgetsmith/llms.txt
+      - https://example.com/widgetsmith/skill.md
+actor:
+  type: codex-exec # REAL dispatch key: resolves to the registered terminal actor
+  persona: autonomous-creative-agent # composed into the agent prompt + bundle provenance
+  mission: >- # public-safe author text; recorded plaintext, composed prompt bound by digest
+    You are an autonomous agent. Discover widgetsmith-cli from its public surfaces and
+    determine whether it can help with a durable real task. Stay within the declared no-spend
+    caps. Leave feedback if the workflow is confusing.
+caps:
+  maxUsd: 0 # no-spend by default
+  maxJobs: 0 # no billable product jobs
+  maxMinutes: 10
+execution:
+  target: e2b-terminal # optional; absent defaults to e2b-terminal on this route
+  runtimeAuth: openai-env # dry-run records the name; live injects the key command-scoped only
+  terminal:
+    transport: exec-stream # captured non-interactive exec output (NOT an interactive PTY)
+    stdin: disabled # autonomous + comparable to an unassisted baseline
+policies:
+  # deny-by-default credential boundary: live execution passes only the runtime LLM key to the
+  # agent command; everything else is excluded by construction.
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
