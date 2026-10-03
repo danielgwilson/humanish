@@ -10,7 +10,7 @@ describe("bundleHead", () => {
   const source = { capturedAt: "2026-10-01T00:00:00.000Z" } as never;
   const createdAt = "2026-10-01T00:00:00.000Z";
 
-  it("starts every bundle with the same fields in the saved order, artifactRoot before study and lab", () => {
+  it("starts every bundle with the same fields in the saved order, artifactRoot before study", () => {
     const head = bundleHead(
       { runId: "run-1", mode: "live", createdAt, lab: { id: "lab-1" } as never },
       { participants: 2, source },
@@ -24,12 +24,11 @@ describe("bundleHead", () => {
       "cwd",
       "artifactRoot",
       "study",
-      "lab",
       "source",
     ]);
-    // Until 0.109, lab holds study's value.
+    // 0.109 writes study only; 0.108 also wrote lab with the same value.
     expect(head.study).toEqual({ id: "lab-1" });
-    expect(head.lab).toEqual({ id: "lab-1" });
+    expect(head).not.toHaveProperty("lab");
     expect(head).toMatchObject({
       schema: RUN_BUNDLE_SCHEMA,
       simCount: 2,

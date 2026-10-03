@@ -1100,7 +1100,7 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.lab.id).toBe("planned-lab");
+    expect(bundle.study.id).toBe("planned-lab");
   });
 
   it("dry-run produces a verified contract bundle with no sandbox and no spend", async () => {
@@ -3998,10 +3998,11 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
     ) as {
-      lab?: { id: string; path?: string; origin?: string };
+      study?: { id: string; path?: string; origin?: string };
       review: { verdict: string };
     };
-    expect(bundle.lab).toEqual({
+    expect(bundle).not.toHaveProperty("lab");
+    expect(bundle.study).toEqual({
       id: "cua-demo",
       path: "humanish/labs/cua-demo.yaml",
       origin: "committed",
@@ -4013,13 +4014,13 @@ describe("runCuaActorLab", () => {
     ) as {
       schema: string;
       state: string;
-      lab?: { id: string };
+      study?: { id: string };
       outcome?: { verdict?: string };
       completedAt?: string;
     };
     expect(status.schema).toBe("humanish.run-status.v1");
     expect(status.state).toBe("finished");
-    expect(status.lab?.id).toBe("cua-demo");
+    expect(status.study?.id).toBe("cua-demo");
     expect(status.outcome?.verdict).toBe(bundle.review.verdict);
     expect(typeof status.completedAt).toBe("string");
   });

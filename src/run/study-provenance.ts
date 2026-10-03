@@ -56,12 +56,12 @@ export function studyProvenanceOf(record: {
   return id === undefined ? undefined : { id };
 }
 
-/** `study` and `lab` with the same value, as run.json and status.json write them until 0.109. */
-export function studyFields(study: RunStudyProvenance | undefined): {
-  study?: RunStudyProvenance;
-  lab?: RunStudyProvenance;
-} {
-  return study === undefined ? {} : { study, lab: study };
+/**
+ * `study`, as run.json and status.json write it. 0.108 wrote `lab` beside it with the same value;
+ * 0.109 stopped, and studyProvenanceOf still reads `lab` from those runs.
+ */
+export function studyFields(study: RunStudyProvenance | undefined): { study?: RunStudyProvenance } {
+  return study === undefined ? {} : { study };
 }
 
 /**

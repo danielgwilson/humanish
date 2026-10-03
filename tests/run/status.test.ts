@@ -83,7 +83,7 @@ describe("run status: identity + liveness on disk", () => {
     }
   }
 
-  it("writes a running record with study identity, as study and lab, before startRun returns", async () => {
+  it("writes a running record with study identity, as study only, before startRun returns", async () => {
     await runScope(async (scope) => {
       await startLive(scope, "run-a", lab);
 
@@ -92,7 +92,7 @@ describe("run status: identity + liveness on disk", () => {
       expect(record.state).toBe("running");
       expect(record.mode).toBe("live");
       expect(record.study).toEqual(lab);
-      expect(record.lab).toEqual(lab);
+      expect(record).not.toHaveProperty("lab");
       expect(record.pid).toBe(process.pid);
       expect(record.updatedAt).toBe(record.startedAt);
       expect(isRunStatusRecord(record)).toBe(true);
@@ -103,17 +103,19 @@ describe("run status: identity + liveness on disk", () => {
     });
   });
 
-  it("hands the run's lab to every bundle head built from the run", async () => {
+  it("hands the run's study to every bundle head built from the run", async () => {
     const source = {} as never;
     await runScope(async (scope) => {
       const run = await startLive(scope, "run-lab-head", lab);
       const head = bundleHead(run, { participants: 1, source });
-      expect(head).toMatchObject({ runId: "run-lab-head", mode: "live", lab });
+      expect(head).toMatchObject({ runId: "run-lab-head", mode: "live", study: lab });
+      expect(head).not.toHaveProperty("lab");
       expect(head.createdAt).toBe(run.createdAt);
     });
     await runScope(async (scope) => {
       const run = await startLive(scope, "run-no-lab");
-      expect("lab" in bundleHead(run, { participants: 1, source })).toBe(false);
+      const head = bundleHead(run, { participants: 1, source });
+      expect("study" in head || "lab" in head).toBe(false);
     });
   });
 

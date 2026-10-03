@@ -49,7 +49,6 @@ describe("what telemetry can possibly contain", () => {
         "ci",
         "command",
         "duration",
-        "lab",
         "study",
         "mode",
         "node",
@@ -62,9 +61,9 @@ describe("what telemetry can possibly contain", () => {
     );
     // No exact duration: a millisecond timing is a fingerprint.
     expect(JSON.stringify(payload)).not.toMatch(/\d{4,}/);
-    // Until 0.109, the study goes out as `study` and as `lab`, its 0.107 name, with one value.
+    // 0.109 sends the study as `study` only; 0.108 also sent `lab`, its 0.107 name.
     expect(payload.properties.study).toBe("try-live");
-    expect(payload.properties.lab).toBe("try-live");
+    expect(payload.properties).not.toHaveProperty("lab");
   });
 
   it("asks the receiver not to derive a location, on every event", () => {
