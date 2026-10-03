@@ -42,11 +42,6 @@ The Unreleased section holds the full notes for the next version until it is tag
   `docs/history/roadmap/` from the npm package. These are contributor and maintainer pages; read
   them on GitHub. The package now ships `docs/README.md`, the index of the docs it ships, and a
   shipped doc that linked one of the removed pages links it on GitHub.
-
-### Deprecated
-
-- `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
-  minor removes it.
 - `--sims` on `run`, `lab run` and `watch`, and `--lanes` on `lab run`, deprecated in 0.107.0. Use
   `--count` and `--participants`. Commander now reports an unknown option.
 - `watch --follow`, hidden and deprecated since 2026-06-01. Human output follows without it.
@@ -55,6 +50,8 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Deprecated
 
+- `labId` on a study's result. It holds the same value as `studyId`, which replaces it. The next
+  minor removes it.
 - `humanish lab run` is a hidden alias of `humanish run` and is removed in the next minor. It takes
   the same flags and prints "warning: humanish lab run is deprecated and is removed in the next
   minor. Use humanish run <lab>." on stderr. `humanish lab --help` no longer lists it.
@@ -64,7 +61,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `humanish watch --run <id>` is hidden and is removed in the next minor. It prints "warning:
   humanish watch --run is deprecated and is removed in the next minor. Use humanish observe --run
   <id>." on stderr and still shows the saved run.
-
 - `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
   carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
   `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
@@ -91,13 +87,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   16 failing commands' JSON byte for byte. A failed run still prints its run id, route and
   participants on stdout, and a failed `verify` its failing checks. docs/contracts/errors.md lists
   the code families and where each appears.
-- Error codes name the study or the route where they said lab. Only the prefix changes.
+- Error codes name the study or the route where they said lab, and the participant where they said
+  sim. For the lab codes only the prefix changes.
   - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
   - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
   - `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is `HUMANISH_SHARED_WORLD_*`.
   - `HUMANISH_TERMINAL_LAB_*` is `HUMANISH_TERMINAL_*`, and `HUMANISH_SCRIPTED_LAB_*` is
     `HUMANISH_SCRIPTED_*`.
   - `HUMANISH_LAUNCH_INVALID_LAB` is `HUMANISH_LAUNCH_INVALID_STUDY`.
+  - `HUMANISH_INVALID_SIM_COUNT` is `HUMANISH_INVALID_PARTICIPANT_COUNT`, the code for a `--count`
+    that is not a positive integer.
 
   A script or library caller that matches a code by its old name needs the new one. Runs saved
   before the change keep the codes they were written with, and nothing reads a code back from a

@@ -57,5 +57,6 @@ grades, not errors; [run-bundle.md](run-bundle.md) lists them.
 
 0.108.0 renamed the codes that said lab: `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`,
 `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`, `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is
-`HUMANISH_SHARED_WORLD_*`, and the terminal and scripted families drop `_LAB`. A run saved
-before a rename keeps the codes it was written with.
+`HUMANISH_SHARED_WORLD_*`, and the terminal and scripted families drop `_LAB`. It also renamed
+`HUMANISH_INVALID_SIM_COUNT` to `HUMANISH_INVALID_PARTICIPANT_COUNT`. A run saved before a rename
+keeps the codes it was written with.

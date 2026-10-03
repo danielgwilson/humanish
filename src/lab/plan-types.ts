@@ -284,7 +284,7 @@ export type PreviewRefusalCode =
   | "HUMANISH_STUDY_ANALYSIS_INVALID"
   | "HUMANISH_STUDY_ANALYSIS_UNSUPPORTED"
   | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
-  | "HUMANISH_INVALID_SIM_COUNT"
+  | "HUMANISH_INVALID_PARTICIPANT_COUNT"
   | "HUMANISH_LIVE_RUN_UNIMPLEMENTED";
 
 /** Why planLab refused: the route's own code and message, as its runner returns them. */

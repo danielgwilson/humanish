@@ -3,10 +3,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 // The study rename gave every error code a route or study prefix. A code that still says lab, such
-// as `HUMANISH_CUA_LAB_UNPRICED_CAP`, fails here, wherever it appears in shipped code.
+// as `HUMANISH_CUA_LAB_UNPRICED_CAP`, or sim, `HUMANISH_INVALID_SIM_COUNT`, fails here, wherever it
+// appears in shipped code.
 
 const RETIRED_CODE =
-  /HUMANISH_(?:CUA_|TERMINAL_|CONCURRENT_SHARED_WORLD_|SCRIPTED_)?LAB_[A-Z0-9_]+|HUMANISH_LAUNCH_INVALID_LAB\b/g;
+  /HUMANISH_(?:CUA_|TERMINAL_|CONCURRENT_SHARED_WORLD_|SCRIPTED_)?LAB_[A-Z0-9_]+|HUMANISH_LAUNCH_INVALID_LAB\b|HUMANISH_INVALID_SIM_COUNT\b/g;
 
 const SHIPPED_ROOTS = ["src", "tui/src", "observer"];
 
@@ -38,10 +39,11 @@ describe("error codes", () => {
       "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED",
       "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING",
       "HUMANISH_LAUNCH_INVALID_LAB",
+      "HUMANISH_INVALID_SIM_COUNT",
     ];
     expect(codes.join(" ").match(RETIRED_CODE)).toEqual(codes);
     expect(
-      "HUMANISH_STUDY_INVALID HUMANISH_COMPUTER_USE_UNPRICED_CAP HUMANISH_LAUNCH_INVALID_STUDY".match(
+      "HUMANISH_STUDY_INVALID HUMANISH_COMPUTER_USE_UNPRICED_CAP HUMANISH_LAUNCH_INVALID_STUDY HUMANISH_INVALID_PARTICIPANT_COUNT".match(
         RETIRED_CODE,
       ),
     ).toBeNull();
