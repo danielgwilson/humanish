@@ -46,6 +46,7 @@ function options(
       }),
       listLabs: async () => ({
         schema: "humanish.study-list.v1",
+        retired: [],
         ok: true,
         cwd: "/projects/example-app",
         studies: [],

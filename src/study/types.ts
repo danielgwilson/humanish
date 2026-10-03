@@ -854,7 +854,7 @@ interface StudyParseSuccess {
 
 export interface StudyParseFailure {
   ok: false;
-  error: { code: "HUMANISH_STUDY_INVALID"; message: string };
+  error: { code: "HUMANISH_STUDY_INVALID" | "HUMANISH_STUDY_V2_UNSUPPORTED"; message: string };
 }
 
 export type StudyParseResult = StudyParseSuccess | StudyParseFailure;

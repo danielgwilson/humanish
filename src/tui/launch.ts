@@ -98,14 +98,21 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
   let selectedLab = options.lab;
   if (options.manifestPath !== undefined) {
     const resolved = await resolveStudyManifest(cwd, options.manifestPath);
-    if (!resolved.ok)
+    if (!resolved.ok) {
+      // A file humanish no longer reads gets discovery's message, which names the fix.
+      const named =
+        resolved.error.code === "HUMANISH_STUDY_V2_UNSUPPORTED" ||
+        resolved.error.code === "HUMANISH_STUDY_RETIRED_DIRECTORY";
       return {
         ok: false,
         error: {
           code: "HUMANISH_LAUNCH_INVALID_STUDY",
-          message: "The selected study path could not be read safely. Refresh the study list.",
+          message: named
+            ? resolved.error.message
+            : "The selected study path could not be read safely. Refresh the study list.",
         },
       };
+    }
     selectedLab = path.relative(cwd, path.resolve(cwd, resolved.path)).replace(/\\/g, "/");
   }
   const now = options.now ?? (() => new Date());

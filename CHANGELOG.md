@@ -50,6 +50,39 @@ The Unreleased section holds the full notes for the next version until it is tag
   `participantCount`, and wrap the executor's `observe` (for `url` and `screenshot`) or the
   provider's `nextTurn` (for `reasoning` and `message`). `runComputerUseLoop` throws a `TypeError`
   naming the replacement when a JavaScript caller still passes one of the three options.
+- humanish no longer runs `humanish.lab.v2` study files or reads the three `labs/` directories,
+  which 0.108.0 warned about. In a project that did not migrate, `humanish run old-study` exits 2
+  and prints:
+
+  ```text
+  humanish run failed: humanish/labs/old-study.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old-study.yaml to convert it and move it to humanish/studies/.
+  code: HUMANISH_STUDY_V2_UNSUPPORTED
+  ```
+
+  Run `humanish migrate` once to convert and move every v2 file; `humanish migrate --dry-run`
+  lists them first.
+  - `watch`, `study show` and `study check` print the same message and code line after their own
+    `humanish <command> failed:`. `doctor --study` shows the message on its `study` row.
+    `comms configure`, `comms check` and the TUI's launch print the message without a code line.
+    The same refusal covers a v2 file in any directory and one named by path. `parseStudy` and
+    `runStudy` refuse a v2 document or config with `HUMANISH_STUDY_V2_UNSUPPORTED`.
+    `humanish migrate` still reads v2 files.
+  - A v3 file found by name only in a `labs/` directory is refused with
+    `HUMANISH_STUDY_RETIRED_DIRECTORY` and "Move it to humanish/studies/.". A path to a v3 file
+    runs wherever the file is.
+  - `study list` lists the `studies/` directories only. It prints one warning per v2 or `labs/`
+    file that names its fix, in place of one warning with a count, and `study list --json` lists
+    those files in `retired` with their code.
+  - Bare `humanish` suggests `humanish migrate --dry-run` first for v2 files, and
+    `humanish study list` for v3 files in a `labs/` directory, which migrate skips. The TUI's home
+    screen says the same, and a study known only from its runs shows its file's refusal in place
+    of "no manifest here".
+  - For a v2 file outside the project, the message names `humanish migrate` with `--cwd` set to
+    the file's directory, since migrate refuses a path outside its `--cwd`.
+  - `HUMANISH_STUDY_AMBIGUOUS` is gone: a name in a `studies/` directory runs even when a `labs/`
+    file uses it too, and `study list --json` entries no longer carry `error`.
+  - "Study not found" names `humanish/studies/` only.
+  - `comms configure` no longer converts a v2 source.
 
 ### Changed
 

@@ -127,9 +127,10 @@ export function RunScreen({
         </Box>
       )}
 
+      {/* Wrapped: a refusal here names its fix at the end, which truncation would cut. */}
       {actionNote === undefined ? null : (
         <Box marginTop={1}>
-          <Text dimColor wrap="truncate-end">
+          <Text dimColor wrap="wrap">
             {actionNote}
           </Text>
         </Box>

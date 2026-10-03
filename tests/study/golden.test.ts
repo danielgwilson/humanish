@@ -6,7 +6,9 @@ import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runStudyWith } from "../../src/run-study.js";
-import { resolveStudyManifest } from "../../src/study/discover.js";
+import { parse } from "yaml";
+
+import { parseStudyDocument } from "../../src/study/config.js";
 
 // Rung 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
 // bundles captured by scripts/capture-lab-goldens.mjs. We pin the same run-id as the golden so
@@ -32,7 +34,8 @@ beforeEach(async () => {
   project = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-golden-"));
   await cp(path.join(ROOT, "humanish"), path.join(project, "humanish"), { recursive: true });
   // The golden is a v2 run: the pre-refactor first-run file at its pre-0.108 path, with its v3
-  // twin removed so the name resolves to one file.
+  // twin removed. Discovery refuses a v2 file, so the test parses it the way migrate does and
+  // gives the engine the provenance the CLI records for a committed study file.
   await rm(path.join(project, "humanish", "studies", "first-run.yaml"));
   await mkdir(path.join(project, "humanish", "labs"), { recursive: true });
   await cp(
@@ -83,7 +86,8 @@ const GOLDENS = [{ id: "first-run", runId: "golden-first-run" }] as const;
 describe("lab golden equivalence (rung 2: faithfulness)", () => {
   for (const golden of GOLDENS) {
     it(`${golden.id} v2 config reproduces the pre-refactor golden bundle`, async () => {
-      const resolved = await resolveStudyManifest(project, golden.id);
+      const file = path.join("humanish", "labs", `${golden.id}.yaml`);
+      const resolved = parseStudyDocument(parse(await readFile(path.join(project, file), "utf8")));
       expect(resolved.ok).toBe(true);
       if (!resolved.ok) return;
 
@@ -94,7 +98,7 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
         // The golden is captured through the real CLI, which resolves the manifest and stamps the
         // run's study provenance. Faithfulness means invoking the same way, so this test
         // supplies exactly what the resolution step supplies.
-        lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin },
+        lab: { id: resolved.config.id, path: file, origin: "committed" },
       });
       expect(outcome.result.ok ?? true).not.toBe(false);
 

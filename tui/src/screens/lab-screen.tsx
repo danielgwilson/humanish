@@ -61,6 +61,8 @@ export interface LabScreenProps {
   confirming: "live" | undefined;
   launchError: string | undefined;
   launchNote: string | undefined;
+  /** Why humanish no longer reads this study's file, for a study known only from its runs. */
+  retired?: string;
 }
 
 /**
@@ -188,7 +190,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       {row.declared ? null : (
         <Box marginTop={1}>
           <Text color={PALETTE.warn}>
-            no manifest here: renamed, deleted, or run from elsewhere
+            {props.retired ?? "no manifest here: renamed, deleted, or run from elsewhere"}
           </Text>
         </Box>
       )}

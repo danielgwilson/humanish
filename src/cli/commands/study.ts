@@ -165,7 +165,7 @@ function formatStudyListHuman(result: StudyListResult): string {
       "humanish studies",
       ...result.studies.map(
         (lab) =>
-          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}${lab.error ? `\n  error: ${lab.error}` : ""}`,
+          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`,
       ),
       ...result.warnings.map((warning) => `warning: ${warning}`),
     ].join("\n") + "\n"

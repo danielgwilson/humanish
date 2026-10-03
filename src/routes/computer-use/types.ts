@@ -248,6 +248,7 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_STUDY_ANALYSIS_INVALID"
   | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
   | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
+  | "HUMANISH_STUDY_V2_UNSUPPORTED"
   | "HUMANISH_COMPUTER_USE_FAILED"
   | "HUMANISH_COMPUTER_USE_KEYS_MISSING"
   // A local-agent participant's CLI is not on `PATH`. Refused at preflight (before any sandbox).

@@ -4,7 +4,8 @@ import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
 import { PALETTE } from "./palette.js";
 
-import type { StudyListEntry } from "../../src/study/discover.js";
+import type { StudyListEntry, StudyListResult } from "../../src/study/discover.js";
+import { studyFileStem } from "../../src/study/files.js";
 import type { StudySummary } from "../../src/study/summary.js";
 import type { RunDetail } from "../../src/run/detail.js";
 import type { RunIndexEntry, RunIndexResult } from "../../src/run/run-index.js";
@@ -26,6 +27,11 @@ interface ProjectData {
   runsByLab: Map<string, RunIndexEntry[]>;
   runsById: Map<string, RunIndexEntry>;
   unreadable: string[];
+  /**
+   * Study files humanish no longer reads. The home screen says how to fix them, and a study whose
+   * runs outlived its file says why it cannot run.
+   */
+  retired: StudyListResult["retired"];
 }
 
 export interface AppProps {
@@ -117,6 +123,8 @@ export function App({
   const [liveDetails, setLiveDetails] = useState<Map<string, RunDetail>>(new Map());
   /** Whether this is a humanish project. Cheap and synchronous: two existence checks. */
   const projectState = useMemo(() => options.capabilities.readProjectState(options.cwd), [options]);
+  // Study files humanish no longer reads make this a project, even one with only .humanish/labs/.
+  const initialized = projectState.initialized || (data?.retired.length ?? 0) > 0;
   const clock = now ?? Date.now();
 
   // Identity of the selected row, kept current so a refresh that reorders the list can put the
@@ -141,7 +149,7 @@ export function App({
         ]);
         if (cancelled) return;
         setError(undefined);
-        setData(project(index, labs.studies));
+        setData(project(index, labs.studies, labs.retired));
       } catch (cause) {
         if (cancelled) return;
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -240,7 +248,7 @@ export function App({
           // up in a map that does not contain it and reports the run it just started as "no longer
           // on disk": on every single start.
           const labs = await options.capabilities.listLabs(options.cwd);
-          setData(project(index, labs.studies));
+          setData(project(index, labs.studies, labs.retired));
           setLaunchNote(undefined);
           // Only follow the run if the operator is still where they launched from. This resolves up
           // to LAUNCH_RECORD_TIMEOUT_MS later, by which time they may have gone somewhere else, and
@@ -340,7 +348,12 @@ export function App({
       }
       const row = matching[0];
       if (row === undefined || !row.declared) {
-        setActionNote("cannot run this again: its study has no manifest here any more");
+        const retired = data === undefined ? undefined : retiredFileOf(data, labId);
+        setActionNote(
+          retired === undefined
+            ? "cannot run this again: its study has no manifest here any more"
+            : `cannot run this again: ${retired.message}`,
+        );
         return;
       }
       setActionNote(`starting ${row.name}…`);
@@ -439,7 +452,7 @@ export function App({
         if (key.return || key.rightArrow) {
           // The empty-project screen has exactly one action, so Enter means it. Armed, because it
           // writes into the operator's directory and touches package.json.
-          if (screen.name === "labs" && projectState.initialized === false) {
+          if (screen.name === "labs" && !initialized) {
             if (initArmedAt === undefined) {
               setInitArmedAt(Date.now());
               return;
@@ -488,7 +501,7 @@ export function App({
         showHelp,
         showConnections,
         initArmedAt,
-        projectState,
+        initialized,
         options,
       ],
     ),
@@ -647,7 +660,7 @@ export function App({
       summary,
       liveDetails,
       tick,
-      initialized: projectState.initialized,
+      initialized,
       actionNote,
       initArmed: initArmedAt !== undefined,
     });
@@ -671,7 +684,7 @@ export function App({
     summary,
     liveDetails,
     tick,
-    projectState,
+    initialized,
     actionNote,
   ]);
 
@@ -685,7 +698,7 @@ export function App({
           ? "↑↓ move  ⏎ select  esc back  q quit"
           : showHelp
             ? "any key returns   q quit"
-            : keyHints(screen, data, selected, confirming, projectState.initialized) +
+            : keyHints(screen, data, selected, confirming, initialized) +
               (options.capabilities.comms ? "   c connections" : "")
       }
     >
@@ -777,7 +790,33 @@ function keyHints(
   }
 }
 
-function project(index: RunIndexResult, labs: readonly StudyListEntry[]): ProjectData {
+/**
+ * The file humanish no longer reads that this study's runs came from. A run records its study file's
+ * project-relative path, and the declared id need not match the file name, so a recorded path is
+ * matched exactly. Runs that recorded no path fall back to the file name.
+ */
+function retiredFileOf(
+  data: ProjectData,
+  labId: string | undefined,
+): StudyListResult["retired"][number] | undefined {
+  if (labId === undefined) return undefined;
+  const slashed = (value: string): string => value.replace(/\\/g, "/");
+  const recorded = new Set(
+    (data.runsByLab.get(labId) ?? []).flatMap((run) =>
+      run.study?.path === undefined ? [] : [slashed(run.study.path)],
+    ),
+  );
+  if (recorded.size > 0) return data.retired.find((file) => recorded.has(slashed(file.path)));
+  return data.retired.find(
+    (file) => studyFileStem(slashed(file.path).split("/").pop() ?? "") === labId,
+  );
+}
+
+function project(
+  index: RunIndexResult,
+  labs: readonly StudyListEntry[],
+  retired: StudyListResult["retired"],
+): ProjectData {
   const { rows, unattributed } = studyRows(
     labs.map((lab) => ({
       id: lab.id,
@@ -798,7 +837,7 @@ function project(index: RunIndexResult, labs: readonly StudyListEntry[]): Projec
     if (bucket === undefined) runsByLab.set(labId, [run]);
     else bucket.push(run);
   }
-  return { rows, unattributed, runsByLab, runsById, unreadable: index.unreadable };
+  return { rows, unattributed, runsByLab, runsById, unreadable: index.unreadable, retired };
 }
 
 /**
@@ -977,6 +1016,7 @@ function renderScreen(args: {
         unattributed={data.unattributed.length}
         tick={tick}
         initialized={initialized}
+        retired={data.retired}
         peerSelected={selected === data.rows.length}
         liveTotal={liveRunsOf(data).length}
         {...(args.initArmed === true ? { initArmed: true } : {})}
@@ -999,6 +1039,7 @@ function renderScreen(args: {
     const row = data.rows.find((candidate) => candidate.key === screen.labKey);
     if (row === undefined)
       return <Text color={PALETTE.warn}>that study is no longer in this project</Text>;
+    const retired = row.declared ? undefined : retiredFileOf(data, row.labId)?.message;
     return (
       <LabScreen
         row={row}
@@ -1013,6 +1054,7 @@ function renderScreen(args: {
         now={now}
         tick={tick}
         canStart={row.declared}
+        {...(retired === undefined ? {} : { retired })}
         confirming={confirming}
         launchError={launchError?.labKey === row.key ? launchError.text : undefined}
         launchNote={launchNote?.labKey === row.key ? launchNote.text : undefined}

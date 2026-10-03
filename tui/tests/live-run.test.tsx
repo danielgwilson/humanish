@@ -67,6 +67,7 @@ function options(
     }),
     listLabs: async () => ({
       schema: "humanish.study-list.v1",
+      retired: [],
       ok: true,
       cwd: "/projects/acme-app",
       studies: LABS,
@@ -243,6 +244,7 @@ describe("the interrupted card", () => {
       }),
       listLabs: async () => ({
         schema: "humanish.study-list.v1",
+        retired: [],
         ok: true,
         cwd: "/projects/acme-app",
         studies: LABS,

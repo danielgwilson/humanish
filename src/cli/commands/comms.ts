@@ -199,9 +199,16 @@ async function handleCommsCheck(
   if (study) {
     const resolved = await resolveStudyManifest(options.cwd, study);
     if (!resolved.ok || resolved.config.comms?.email?.kind !== "real") {
+      // A file humanish no longer reads gets discovery's message, which names the fix.
+      const named =
+        !resolved.ok &&
+        (resolved.error.code === "HUMANISH_STUDY_V2_UNSUPPORTED" ||
+          resolved.error.code === "HUMANISH_STUDY_RETIRED_DIRECTORY");
       const result = {
         ok: false,
-        message: "This study does not select a real email connection.",
+        message: named
+          ? resolved.error.message
+          : "This study does not select a real email connection.",
       };
       writeResult(command, io, result, messageOutput);
       io.setExitCode(2);

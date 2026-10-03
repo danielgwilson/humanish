@@ -1,6 +1,7 @@
-// Where study files live. Discovery reads the three studies/ directories first, then the three labs/
-// directories they replace. A name may live in one family or the other, never both, so every writer
-// checks a name against all six directories before it writes.
+// Where study files live. Discovery reads the three studies/ directories, and looks in the three
+// labs/ directories they replace only to refuse a file there with its fix. migrate reads all six.
+// Every writer checks a name against all six before it writes, so a new file never shadows another
+// study or takes the name migrate needs to move a labs/ file.
 
 import path from "node:path";
 
@@ -51,8 +52,8 @@ export function studyFileStem(name: string): string | undefined {
 /**
  * The files that already use `stem` in any of the six directories, other than `except`, which is
  * the file the writer is about to replace. `exists` reads through the writer's own contained
- * filesystem checks. A writer skips or refuses when the result is not empty, so no write creates
- * the collision discovery reports.
+ * filesystem checks. A writer skips or refuses when the result is not empty, so no write leaves
+ * two files for one study name.
  */
 export async function otherStudyFiles(
   stem: string,

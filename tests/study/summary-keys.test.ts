@@ -1,7 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { stringify } from "yaml";
 import { describe, expect, it } from "vitest";
 import { V2_SCHEMA } from "../../src/study/types.js";
 import { readStudySummary } from "../../src/study/summary.js";
@@ -17,13 +16,13 @@ const base = {
   scenario: { mode: "live" },
 };
 
-async function summary(config: unknown, env: NodeJS.ProcessEnv, options: { v2?: boolean } = {}) {
+async function summary(config: unknown, env: NodeJS.ProcessEnv) {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keys-"));
   try {
     await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish/studies/key-check.yaml"),
-      options.v2 ? stringify(config) : studyFileText(config as Record<string, unknown>, cwd),
+      studyFileText(config as Record<string, unknown>, cwd),
     );
     const result = await readStudySummary(cwd, "key-check", {
       checkKeys: true,
@@ -111,17 +110,6 @@ describe("TUI key summary follows the configured route", () => {
         SYNTHETIC_SUBJECT_TOKEN: "synthetic-credential-subject",
       }),
     ).toMatchObject({ keysReady: true });
-  });
-
-  it("checks a lab whose inline persona names its own YAML anchor", async () => {
-    const persona: Record<string, unknown> = { id: "synthetic-persona" };
-    persona.self = persona;
-    // Only a humanish.lab.v2 file can carry this: v3 rejects the top-level personas list, which no
-    // route reads.
-    expect(await summary({ ...base, personas: [persona] }, {}, { v2: true })).toMatchObject({
-      keysReady: false,
-      missingKeys: ["E2B_API_KEY", "OPENAI_API_KEY"],
-    });
   });
 
   it("reports the planner's refusal in place of the keys for a lab that will not plan", async () => {

@@ -43,20 +43,13 @@ const lab = (actor = "openai-computer-use", mode = "live") =>
     "  allowPublicTargets: true",
   ].join("\n");
 
-async function project<T>(
-  manifest: string,
-  run: (cwd: string) => Promise<T>,
-  options: { v2?: boolean } = {},
-): Promise<T> {
+async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): Promise<T> {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-doctor-lab-"));
   try {
     await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
     await writeFile(path.join(cwd, "package.json"), "{}");
     await writeFile(path.join(cwd, ".gitignore"), ".humanish/\n");
-    await writeFile(
-      path.join(cwd, "humanish/studies/preview.yaml"),
-      options.v2 ? manifest : studyFileText(manifest, cwd),
-    );
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), studyFileText(manifest, cwd));
     return await run(cwd);
   } finally {
     await rm(cwd, { recursive: true, force: true });
@@ -659,18 +652,15 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
 });
 
 describe("doctor reads a live run's needs from the lab's plan", () => {
-  const check = (raw: Record<string, unknown>, env: NodeJS.ProcessEnv = keyless, v2 = false) =>
-    project(
-      stringify(raw),
-      (cwd) =>
-        studySetupChecks({
-          cwd,
-          lab: "humanish/studies/preview.yaml",
-          env,
-          agents: [],
-          keyPresent: () => false,
-        }),
-      { v2 },
+  const check = (raw: Record<string, unknown>, env: NodeJS.ProcessEnv = keyless) =>
+    project(stringify(raw), (cwd) =>
+      studySetupChecks({
+        cwd,
+        lab: "humanish/studies/preview.yaml",
+        env,
+        agents: [],
+        keyPresent: () => false,
+      }),
     );
 
   it("reports each subject env name the plan requires, present or missing", async () => {
@@ -688,23 +678,6 @@ describe("doctor reads a live run's needs from the lab's plan", () => {
       name: "subject env SYNTHETIC_SUBJECT_TOKEN",
       ok: true,
       message: "present; value not shown",
-    });
-  });
-
-  it("plans a lab whose inline persona names its own YAML anchor", async () => {
-    const persona: Record<string, unknown> = { id: "synthetic-persona" };
-    persona.self = persona;
-    const raw = admissionLab("cuAppUrl", {
-      scenario: { mode: "live" },
-      review: { analysis: false },
-      personas: [persona],
-    });
-    expect(stringify(raw)).toContain("*");
-    // Only a humanish.lab.v2 file can carry this: v3 rejects the top-level personas list, which no
-    // route reads.
-    expect(await check(raw, keyless, true)).toMatchObject({
-      desktop: true,
-      keys: ["E2B_API_KEY", "OPENAI_API_KEY"],
     });
   });
 
