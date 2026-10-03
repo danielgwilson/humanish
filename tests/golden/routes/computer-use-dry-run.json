@@ -148,7 +148,7 @@
         }
       ],
       "knownGaps": [
-        "Live desktop session not yet run (dry-run contract only)."
+        "Live desktop session not yet run (dry run only)."
       ]
     },
     "summary": {
@@ -229,12 +229,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+    "summary": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
     "gaps": [
-      "Live desktop session not yet run (dry-run contract only)."
+      "Live desktop session not yet run (dry run only)."
     ]
   },
-  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: dry-run\n- run gate: dry run\n- summary: Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.\n\n## Gaps\n- Live desktop session not yet run (dry-run contract only).\n",
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: dry-run\n- run gate: dry run\n- summary: Dry run: the evidence shape was written without launching a desktop or spending provider tokens.\n\n## Gaps\n- Live desktop session not yet run (dry run only).\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -293,8 +293,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract participant for the computer-use actor (openai-computer-use) against http://127.0.0.1:3000/.",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Computer-use actor (openai-computer-use) against http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-001"
         ],
@@ -331,7 +331,7 @@
         "ui": {
           "route": "http://127.0.0.1:3000/",
           "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
-          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -374,7 +374,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Dry-run bundle ready; switch scenario.mode to live for a real desktop session.",
         "simId": "sim-001",
         "streamId": "stream-001"
       }
@@ -393,9 +393,9 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+      "summary": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
       "gaps": [
-        "Live desktop session not yet run (dry-run contract only)."
+        "Live desktop session not yet run (dry run only)."
       ]
     },
     "feedbackCandidates": [],

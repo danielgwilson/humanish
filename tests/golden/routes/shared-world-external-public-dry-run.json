@@ -105,7 +105,7 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Dry-run concurrent shared-world contract bundle: no sandboxes launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. stateSeries persists digest-only."
+        "notes": "Concurrent shared-world dry-run bundle: no sandboxes launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. stateSeries persists digest-only."
       },
       "lifecycle": [
         {
@@ -115,7 +115,7 @@
         }
       ],
       "knownGaps": [
-        "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
+        "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
       ]
     },
     "summary": {
@@ -233,12 +233,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
+    "summary": "Concurrent shared-world dry run: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
     "gaps": [
-      "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
+      "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Concurrent shared-world dry run: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 participant(s) (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -297,8 +297,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract persona host (party-host) for openai-computer-use against the shared plane at [external-public-plane].",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Persona host (party-host) for openai-computer-use against the shared plane at [external-public-plane]; no session ran.",
         "streamIds": [
           "stream-001"
         ],
@@ -314,8 +314,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract persona player-2 (competitive-friend) for openai-computer-use against the shared plane at [external-public-plane].",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Persona player-2 (competitive-friend) for openai-computer-use against the shared plane at [external-public-plane]; no session ran.",
         "streamIds": [
           "stream-002"
         ],
@@ -331,8 +331,8 @@
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
-        "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract persona player-3 (casual-friend) for openai-computer-use against the shared plane at [external-public-plane].",
+        "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
+        "summary": "Persona player-3 (casual-friend) for openai-computer-use against the shared plane at [external-public-plane]; no session ran.",
         "streamIds": [
           "stream-003"
         ],
@@ -373,7 +373,7 @@
         "ui": {
           "route": "[external-public-plane]",
           "intent": "Watch persona host (party-host) drive the SHARED plane concurrently with the other personas.",
-          "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -425,7 +425,7 @@
         "ui": {
           "route": "[external-public-plane]",
           "intent": "Watch persona player-2 (competitive-friend) drive the SHARED plane concurrently with the other personas.",
-          "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -477,7 +477,7 @@
         "ui": {
           "route": "[external-public-plane]",
           "intent": "Watch persona player-3 (casual-friend) drive the SHARED plane concurrently with the other personas.",
-          "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+          "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
           {
@@ -520,7 +520,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona host: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona host: dry-run actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -529,7 +529,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona player-2: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona player-2: dry-run actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -538,7 +538,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona player-3: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona player-3: dry-run actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -547,12 +547,12 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption."
+        "message": "Concurrency: 3 participant(s) (dry run; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This dry run proves nothing about live concurrency, scale, or adoption."
       }
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Dry-run concurrent shared-world contract bundle: no sandboxes launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. stateSeries persists digest-only."
+      "notes": "Concurrent shared-world dry-run bundle: no sandboxes launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. stateSeries persists digest-only."
     },
     "artifacts": {
       "run": "run.json",
@@ -564,9 +564,9 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
+      "summary": "Concurrent shared-world dry run: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
       "gaps": [
-        "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
+        "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
       ]
     },
     "feedbackCandidates": [],

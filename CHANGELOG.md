@@ -165,6 +165,16 @@ The Unreleased section holds the full notes for the next version until it is tag
     dry run" in place of "an evidence preview".
   - `contract_proof_only` stays the value of `streams[].status` and `review.verdict` in `run.json`.
     CONTEXT.md maps it to dry run. "preview" now names only the route.
+- Dry-run bundles on every route stop calling the run a contract. Review summaries, gaps, events,
+  redaction notes and participant summaries say dry run, for example "Dry-run bundle ready; switch
+  scenario.mode to live for a real desktop session." in place of "Dry-run contract bundle ready;
+  ...", and "it checks the evidence shape only" in place of "it proves contract shape only".
+  - A participant that has no session and no error reads "...; no session ran." in place of
+    "Contract participant ...". A live participant can end that way too, so the line does not say
+    dry run.
+  - The first-run dry run's sample streams say "recorded" in place of "contract captured".
+  - Event types such as `cua-lab.contract.ready`, event ids, the `contract-only` state marker and
+    `contract_proof_only` keep their spelling.
 - `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
   passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
   as what verify found, such as "redaction did not pass (status: pending)" or "review.md is
