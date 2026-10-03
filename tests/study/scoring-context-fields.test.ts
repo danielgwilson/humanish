@@ -43,7 +43,7 @@ async function readThroughScorer(
     context: {
       bundle: current,
       runDir: "/ignored/runDir",
-      labId: "lab",
+      studyId: "study",
       runId: "run",
       actor: "openai-computer-use",
       route,

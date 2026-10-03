@@ -61,7 +61,7 @@ admission. There is no generic CDP, command, file, navigation-management, or
 runtime-management method. Initial target navigation remains an adapter-owned
 operation.
 
-Replies acknowledge completion or contain a finite `CuaExecutorError` code and
+Replies acknowledge completion or contain a finite `ComputerUseExecutorError` code and
 `not_dispatched` / `outcome_uncertain` disposition. They never include raw
 exception prose, typed text, page URLs, or browser errors in their error fields.
 A generic driver exception after invocation is uncertain; only a genuine typed

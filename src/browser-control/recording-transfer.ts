@@ -1,6 +1,6 @@
 import { Transform, type Duplex, type Readable, type Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import { DESKTOP_RECORDING_MAX_BYTES } from "../evidence/desktop-recording-types.js";
 
 const BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS = 120_000;
@@ -25,7 +25,7 @@ function exactBytes(expected: number): Transform {
 
 function validLength(bytes: number): void {
   if (!Number.isSafeInteger(bytes) || bytes < 1 || bytes > DESKTOP_RECORDING_MAX_BYTES) {
-    throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   }
 }
 
@@ -40,7 +40,7 @@ export async function receiveBrowserControlRecording(
       signal: AbortSignal.timeout(BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS),
     });
   } catch {
-    throw new CuaExecutorError("transport_failed", "outcome_uncertain");
+    throw new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
   }
 }
 
@@ -61,6 +61,6 @@ export async function sendBrowserControlRecording(
     destination.destroy();
   } catch {
     destination.destroy();
-    throw new CuaExecutorError("transport_failed", "outcome_uncertain");
+    throw new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
   }
 }

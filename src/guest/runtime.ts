@@ -7,7 +7,7 @@ import {
   GUEST_BOOTSTRAP_LIMITS,
   guestReadyTimeoutMs,
 } from "./bootstrap.js";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import type { GuestMediaConfig } from "./media-config.js";
 import type {
   DesktopRecordingConfig,
@@ -111,7 +111,7 @@ export async function runGuestRuntime(
       terminal,
     );
     const identity = await reader.identity;
-    if (authority.aborted) throw new CuaExecutorError("session_revoked", "not_dispatched");
+    if (authority.aborted) throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
     clearTimeout(timer);
     timer = setTimeout(() => {
       void close();
@@ -127,13 +127,14 @@ export async function runGuestRuntime(
     desktop = await Promise.race([
       preparing,
       new Promise<never>((_, reject) => {
-        const stop = (): void => reject(new CuaExecutorError("session_revoked", "not_dispatched"));
+        const stop = (): void =>
+          reject(new ComputerUseExecutorError("session_revoked", "not_dispatched"));
         authority.addEventListener("abort", stop, { once: true });
         void preparing!.finally(() => authority.removeEventListener("abort", stop)).catch(() => {});
         if (authority.aborted) stop();
       }),
     ]);
-    if (authority.aborted) throw new CuaExecutorError("session_revoked", "not_dispatched");
+    if (authority.aborted) throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
     reader.handoff();
     dispatcher = attachBrowserControlDispatcher({
       transport: options.transport,
@@ -149,7 +150,7 @@ export async function runGuestRuntime(
     });
     options.transport.resume();
     if (authority.aborted || options.transport.destroyed)
-      throw new CuaExecutorError("session_revoked", "not_dispatched");
+      throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
     options.marker("R");
     clearTimeout(timer);
     return { close, closed };

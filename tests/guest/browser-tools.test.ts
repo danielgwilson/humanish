@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createGuestBrowserTools } from "../../src/guest/browser-tools.js";
 import { createGuestDesktopExecutor } from "../../src/guest/desktop-executor.js";
 import type { GuestDesktopNativeTools } from "../../src/guest/desktop-native.js";
-import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
 
 const navigation = ["key", "--clearmodifiers", "ctrl+l"];
 function fixture() {
@@ -193,7 +193,7 @@ describe("owned browser text routing", () => {
     "a content %s failure never selects native input",
     async (phase) => {
       const f = fixture();
-      const failure = new CuaExecutorError(
+      const failure = new ComputerUseExecutorError(
         "deadline_exceeded",
         phase === "prepare" ? "not_dispatched" : "outcome_uncertain",
       );
@@ -215,7 +215,7 @@ describe("owned browser text routing", () => {
     await f.tools.input(navigation, f.authority.signal);
     const transaction = await f.tools.prepareText("text", f.authority.signal);
     f.content.assertReady.mockRejectedValueOnce(
-      new CuaExecutorError("action_rejected", "not_dispatched"),
+      new ComputerUseExecutorError("action_rejected", "not_dispatched"),
     );
     await expect(transaction.paste()).rejects.toMatchObject({ disposition: "not_dispatched" });
     expect(f.native.input).toHaveBeenCalledOnce();

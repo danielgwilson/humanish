@@ -587,7 +587,7 @@ describe("browser routes flip and stamp provenance", () => {
   const ctxFor = (bundle: RunBundle): Parameters<typeof applyBrowserScorer>[0]["context"] => ({
     bundle,
     runDir: "/ignored/runDir",
-    labId: "lab",
+    studyId: "study",
     runId: "run",
     actor: "openai-computer-use",
     route: "computer-use",

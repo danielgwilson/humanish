@@ -24,10 +24,10 @@ export interface OrientationState {
   schema: typeof ORIENTATION_SCHEMA;
   /** Whether this project has a committed `humanish/` source plane. */
   initialized: boolean;
-  /** Committed + gitignored lab manifests discovered in this project. */
-  labCount: number;
-  /** Ids of a few labs worth naming in a suggestion. */
-  labIds: string[];
+  /** Committed and gitignored study files found in this project. */
+  studyCount: number;
+  /** Ids of a few studies worth naming in a suggestion. */
+  studyIds: string[];
   /** Runs already on disk, and the most recent one if there is one. */
   runCount: number;
   latestRunId?: string;
@@ -48,29 +48,29 @@ export async function readOrientation(
   cwd: string,
   host: { platform: NodeJS.Platform; arch: string } = process,
 ): Promise<OrientationState> {
-  const [labs, runs] = await Promise.all([
+  const [found, runs] = await Promise.all([
     listStudyManifests(cwd).catch(() => undefined),
     listRuns(cwd).catch(() => undefined),
   ]);
 
-  const labIds = (labs?.studies ?? [])
-    .map((lab) => lab.id)
+  const studyIds = (found?.studies ?? [])
+    .map((study) => study.id)
     .filter((id): id is string => typeof id === "string");
   const runIds = (runs?.runs ?? [])
     .map((run) => run.runId)
     .filter((id): id is string => typeof id === "string");
   const latest = typeof runs?.latest === "string" ? runs.latest : runIds[0];
   const initialized =
-    (labs?.studies ?? []).some((lab) => lab.origin === "committed") || labIds.length > 0;
+    (found?.studies ?? []).some((study) => study.origin === "committed") || studyIds.length > 0;
 
   return {
     schema: ORIENTATION_SCHEMA,
     initialized,
-    labCount: labIds.length,
-    labIds: labIds.slice(0, 3),
+    studyCount: studyIds.length,
+    studyIds: studyIds.slice(0, 3),
     runCount: runIds.length,
     ...(latest === undefined ? {} : { latestRunId: latest }),
-    nextCommands: nextCommandsFor({ initialized, labIds, hasRun: runIds.length > 0, host }),
+    nextCommands: nextCommandsFor({ initialized, studyIds, hasRun: runIds.length > 0, host }),
   };
 }
 
@@ -80,7 +80,7 @@ export async function readOrientation(
  */
 function nextCommandsFor(args: {
   initialized: boolean;
-  labIds: string[];
+  studyIds: string[];
   hasRun: boolean;
   host: { platform: NodeJS.Platform; arch: string };
 }): OrientationCommand[] {
@@ -98,13 +98,13 @@ function nextCommandsFor(args: {
     ];
   }
 
-  // The starter live lab this host can run. The other starter labs are templates whose subject
+  // The starter live study this host can run. The other starter studies are templates whose subject
   // still names your-org/your-app, so they are never suggested.
   const liveLab = (
     supportsLocalBrowser(args.host.platform, args.host.arch)
       ? ["local-browser", "try-live"]
       : ["try-live"]
-  ).find((id) => args.labIds.includes(id));
+  ).find((id) => args.studyIds.includes(id));
   if (!args.hasRun) {
     return [
       dryRun,
@@ -138,7 +138,7 @@ export function formatOrientationHuman(state: OrientationState): string {
   if (!state.initialized) {
     lines.push("This project is not set up yet.");
   } else {
-    const labs = state.labCount === 1 ? "1 study" : `${state.labCount} studies`;
+    const studies = state.studyCount === 1 ? "1 study" : `${state.studyCount} studies`;
     const runs =
       state.runCount === 0
         ? "no runs yet"
@@ -146,7 +146,7 @@ export function formatOrientationHuman(state: OrientationState): string {
           ? "1 run"
           : `${state.runCount} runs`;
     lines.push(
-      `This project has ${labs} and ${runs}${state.latestRunId ? ` (latest: ${state.latestRunId})` : ""}.`,
+      `This project has ${studies} and ${runs}${state.latestRunId ? ` (latest: ${state.latestRunId})` : ""}.`,
     );
   }
 

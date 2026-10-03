@@ -1,5 +1,5 @@
 import { evaluateStopWhen, type StopConditionObservation } from "../../stop-conditions.js";
-import { CuaExecutorError, isCuaExecutorError } from "../executor-error.js";
+import { ComputerUseExecutorError, isComputerUseExecutorError } from "../executor-error.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../speech.js";
 import { dwellCompleted, missingFrame, stopWhenMatched, type Stop } from "./ending.js";
 import { CuaAbortError, CuaStallError, raceCallBound } from "./race.js";
@@ -136,7 +136,7 @@ export class DesktopObserver {
       this.noteAppState(final);
       this.observeTasks(final, turnNumber);
     } catch (error) {
-      if (isCuaExecutorError(error)) throw error;
+      if (isComputerUseExecutorError(error)) throw error;
     }
   }
 
@@ -159,7 +159,7 @@ export class DesktopObserver {
       if (executor.stallRecovery === "fail_closed") {
         // The outer bound says nothing about whether the still-pending request completed.
         // The owning session will close it; this loop must not send a replacement request.
-        throw new CuaExecutorError("deadline_exceeded", "outcome_uncertain");
+        throw new ComputerUseExecutorError("deadline_exceeded", "outcome_uncertain");
       }
       session.trace.record("notice", () =>
         notice(
@@ -193,7 +193,7 @@ export class DesktopObserver {
       );
     }
     if (this.pendingHeardSpeech.length > CUA_SPEECH_LIMITS.utterances) {
-      throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+      throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
     }
     return this.pendingHeardSpeech.length === 0
       ? observation

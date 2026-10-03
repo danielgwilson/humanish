@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import { CUA_SPEECH_LIMITS } from "../../src/actors/computer-use/speech.js";
 import {
   classifyWorkerMessage,
@@ -120,7 +120,7 @@ describe("desktop media checks", () => {
   it("maps speak failures by whether the command was written", () => {
     expect(dispositionAfterWrite(true)).toBe("outcome_uncertain");
     expect(dispositionAfterWrite(false)).toBe("not_dispatched");
-    const own = new CuaExecutorError("deadline_exceeded", "outcome_uncertain");
+    const own = new ComputerUseExecutorError("deadline_exceeded", "outcome_uncertain");
     expect(speakFailure(own, false)).toBe(own);
     expect(speakFailure(new Error("pipe"), true)).toMatchObject({
       code: "execution_failed",

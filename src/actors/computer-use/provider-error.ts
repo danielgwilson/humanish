@@ -30,7 +30,7 @@ const codes = Object.freeze([
 export type CuaProviderErrorCode = (typeof codes)[number];
 const errors = new WeakSet<object>();
 /** Safe local classification. Never attach provider prose, stderr, paths or a raw cause. */
-export class CuaProviderError extends Error {
+export class ComputerUseProviderError extends Error {
   readonly code: CuaProviderErrorCode;
   readonly receipt: ProviderRequestReceipt;
   readonly usage?: ActorTokenUsage;
@@ -66,7 +66,7 @@ export class CuaProviderError extends Error {
       throw new TypeError("Invalid participant provider error declaration.");
     }
     super(`Participant provider: ${code}`);
-    this.name = "CuaProviderError";
+    this.name = "ComputerUseProviderError";
     this.code = code;
     this.receipt = Object.freeze({
       dispatched: receipt.dispatched,
@@ -80,7 +80,7 @@ export class CuaProviderError extends Error {
     errors.add(this);
   }
 }
-export const isCuaProviderError = (value: unknown): value is CuaProviderError =>
+export const isComputerUseProviderError = (value: unknown): value is ComputerUseProviderError =>
   typeof value === "object" && value !== null && errors.has(value);
 
 const refusals = new WeakSet<object>();
@@ -90,14 +90,16 @@ const refusals = new WeakSet<object>();
  * the same prompt again is not a recovery path. `providerCode` is the provider's identifier only;
  * the provider's message can echo the prompt and is never attached.
  */
-export class CuaPromptRefusedError extends Error {
+export class ComputerUsePromptRefusedError extends Error {
   readonly providerCode: string;
   constructor(provider: string, providerCode: string) {
     super(`${provider} refused the prompt under its usage policy (${providerCode})`);
-    this.name = "CuaPromptRefusedError";
+    this.name = "ComputerUsePromptRefusedError";
     this.providerCode = providerCode;
     refusals.add(this);
   }
 }
-export const isCuaPromptRefusedError = (value: unknown): value is CuaPromptRefusedError =>
+export const isComputerUsePromptRefusedError = (
+  value: unknown,
+): value is ComputerUsePromptRefusedError =>
   typeof value === "object" && value !== null && refusals.has(value);

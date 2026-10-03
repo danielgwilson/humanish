@@ -7,8 +7,8 @@ import {
 import { defaultCodexCliVersion, untestedOperatorReleaseWarning } from "./codex-admission.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
 import {
-  CuaProviderError,
-  isCuaProviderError,
+  ComputerUseProviderError,
+  isComputerUseProviderError,
   type CuaProviderErrorCode,
 } from "../computer-use/provider-error.js";
 import { validateBrowserControlPng, validateHeardSpeech } from "../../browser-control/protocol.js";
@@ -84,7 +84,7 @@ const toolDescription = (speechEnabled: boolean): string =>
 const participantInstructions = (prompt: string, speechEnabled: boolean): string =>
   `${prompt}\n\nYou are the study participant throughout this conversation, including its closing account. Use only the supplied screenshots and humanish_ui tool to interact. The tool returns a JSON string: parse it, inspect acknowledgments${speechEnabled ? " and heardSpeech captured from the actual participant speaker sink" : ""}, and display imageUrl with Code Mode image(). Do not print the image data URL as text. Keep your persona and earlier observations throughout the session.${speechEnabled ? " A speak action plays into the participant microphone; use it only after the visible UI shows that you joined the call and the microphone is unmuted." : ""} Speak publicly about your experience, never reveal private reasoning. Completed inputs do not prove application outcomes; verify on the next screenshot. When the task ends, return only the required final JSON with outcome, summary and frictionReports. Report observed confusion and recovered mistakes as well as blockers. Do not invent observations.`;
 
-type ParticipantEvent = { turn: CuaTurn } | { error: CuaProviderError };
+type ParticipantEvent = { turn: CuaTurn } | { error: ComputerUseProviderError };
 /** Turns and failures from the native run, handed in order to the next provider request. */
 class ParticipantEvents {
   private readonly queued: ParticipantEvent[] = [];
@@ -230,19 +230,24 @@ function finalTurn(
   stopped: { stopped: boolean; failedCleanup: boolean },
 ): CuaTurn {
   if (stopped.stopped)
-    throw new CuaProviderError(
+    throw new ComputerUseProviderError(
       stopped.failedCleanup ? "cleanup_unconfirmed" : "cancelled",
       receipt,
       usage,
       result.failurePhase,
     );
   if (result.status !== "completed" || result.errorCode !== null)
-    throw new CuaProviderError(codeOf(result.errorCode), receipt, usage, result.failurePhase);
+    throw new ComputerUseProviderError(
+      codeOf(result.errorCode),
+      receipt,
+      usage,
+      result.failurePhase,
+    );
   let turn: CuaTurn;
   try {
     turn = parseParticipantFinal(result.output);
   } catch {
-    throw new CuaProviderError("invalid_response", receipt, usage, "response");
+    throw new ComputerUseProviderError("invalid_response", receipt, usage, "response");
   }
   return {
     ...turn,
@@ -528,9 +533,9 @@ function launchNativeRun(
     } catch (error) {
       revokeParticipant(state);
       state.events.emit({
-        error: isCuaProviderError(error)
+        error: isComputerUseProviderError(error)
           ? error
-          : new CuaProviderError(
+          : new ComputerUseProviderError(
               "process_failed",
               { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" },
               usage,
@@ -553,7 +558,7 @@ async function runParticipantTurn(
   if (state.events.waiting) return state.events.next();
   if (signal.aborted) {
     revokeParticipant(state);
-    throw new CuaProviderError("cancelled", noDispatch());
+    throw new ComputerUseProviderError("cancelled", noDispatch());
   }
   const conversation = {
     instructions: state.instructions,
@@ -562,7 +567,7 @@ async function runParticipantTurn(
     lastActionCount: state.lastActionCount,
   };
   if (rejectsParticipantRequest(req, conversation))
-    throw new CuaProviderError("request_rejected", noDispatch());
+    throw new ComputerUseProviderError("request_rejected", noDispatch());
   const onAbort = (): void => {
     revokeParticipant(state);
   };
@@ -576,7 +581,7 @@ async function runParticipantTurn(
       state.continuation = undefined;
       reply.resolve(toolReply(req, imageUrl, settings.speechEnabled, debrief));
     } else if (!state.active) launchNativeRun(settings, state, req, imageUrl);
-    else throw new CuaProviderError("busy", noDispatch());
+    else throw new ComputerUseProviderError("busy", noDispatch());
     return await state.events.next();
   } finally {
     // The shared loop aborts each request's signal after it yields. The native
@@ -628,7 +633,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
 } {
   const timeoutMs = options.requestTimeoutMs ?? L.requestMs;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > L.requestMs)
-    throw new CuaProviderError("request_rejected", noDispatch());
+    throw new ComputerUseProviderError("request_rejected", noDispatch());
   const operator = options.authMode === "operator";
   const speechEnabled = options.speechEnabled === true;
   const settings: ParticipantSettings = {
@@ -663,8 +668,8 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     closing: Promise<ParticipantProviderCloseResult> | undefined;
   const start = (req: CuaTurnRequest, signal: AbortSignal, debrief: boolean): Promise<CuaTurn> => {
     if (state.closed && !state.events.waiting)
-      return Promise.reject(new CuaProviderError("request_rejected", noDispatch()));
-    if (pending) return Promise.reject(new CuaProviderError("busy", noDispatch()));
+      return Promise.reject(new ComputerUseProviderError("request_rejected", noDispatch()));
+    if (pending) return Promise.reject(new ComputerUseProviderError("busy", noDispatch()));
     const task = runParticipantTurn(settings, state, req, signal, debrief);
     pending = task;
     void task

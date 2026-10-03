@@ -1,5 +1,8 @@
 import { BROWSER_CONTROL_LIMITS } from "../browser-control/protocol.js";
-import { CuaExecutorError, isCuaExecutorError } from "../actors/computer-use/executor-error.js";
+import {
+  ComputerUseExecutorError,
+  isComputerUseExecutorError,
+} from "../actors/computer-use/executor-error.js";
 import type { GuestDesktopTools } from "./desktop-executor.js";
 import type { GuestDesktopNativeTools } from "./desktop-native.js";
 
@@ -21,7 +24,7 @@ export function createGuestBrowserTools(
       const inputGeneration = ++generation;
       await native.input(args, signal);
       if (signal.aborted || inputGeneration !== generation)
-        throw new CuaExecutorError("session_revoked", "outcome_uncertain");
+        throw new ComputerUseExecutorError("session_revoked", "outcome_uncertain");
       // Positive navigation intent, not an inference from document.hasFocus().
       addressBarArmed =
         args.length === 3 &&
@@ -39,14 +42,14 @@ export function createGuestBrowserTools(
         !/^[\x20-\x7e]+$/.test(text) ||
         Buffer.byteLength(text) > BROWSER_CONTROL_LIMITS.textBytes
       ) {
-        throw new CuaExecutorError("action_rejected", "not_dispatched");
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       }
       const preparedGeneration = generation;
       let used = false;
       function check(): void {
-        if (signal.aborted) throw new CuaExecutorError("session_revoked", "not_dispatched");
+        if (signal.aborted) throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
         if (used || preparedGeneration !== generation)
-          throw new CuaExecutorError("action_rejected", "not_dispatched");
+          throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       }
       check();
       await content.assertReady(signal);
@@ -61,15 +64,16 @@ export function createGuestBrowserTools(
           // native typing; the previous page may have changed its own focus.
           try {
             await native.input(["key", "--clearmodifiers", "ctrl+l"], signal);
-            if (signal.aborted) throw new CuaExecutorError("session_revoked", "outcome_uncertain");
+            if (signal.aborted)
+              throw new ComputerUseExecutorError("session_revoked", "outcome_uncertain");
             await content.assertReady(signal);
             if (signal.aborted || preparedGeneration !== generation)
-              throw new CuaExecutorError("session_revoked", "outcome_uncertain");
+              throw new ComputerUseExecutorError("session_revoked", "outcome_uncertain");
             await native.typeAscii(text, signal);
           } catch (error) {
             // Ctrl+L itself is input. No content fallback after that dispatch.
-            throw new CuaExecutorError(
-              isCuaExecutorError(error) ? error.code : "execution_failed",
+            throw new ComputerUseExecutorError(
+              isComputerUseExecutorError(error) ? error.code : "execution_failed",
               "outcome_uncertain",
             );
           }

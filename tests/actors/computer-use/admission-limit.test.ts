@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import {
   runComputerUseLoop,
   type CuaProvider,
@@ -44,7 +44,7 @@ const closingResponse = JSON.parse(
 );
 
 // All refusals are local events, not provider-response fixtures. No transport dispatch occurs.
-function admission(error: unknown = new CuaAdmissionLimitError()) {
+function admission(error: unknown = new ComputerUseAdmissionLimitError()) {
   const transport = vi.fn(async (): Promise<never> => {
     throw new Error("transport must not run");
   });
@@ -95,26 +95,28 @@ async function run(
 
 describe("explicit adapter admission limits", () => {
   it("preserves only the fixed typed payload without retrying a pre-dispatch refusal", async () => {
-    const error = new CuaAdmissionLimitError();
+    const error = new ComputerUseAdmissionLimitError();
     error.message = "synthetic-private-payload";
     const s = admission(error);
-    await expect(s.provider.nextTurn(request, neverAbort)).rejects.toThrow(CuaAdmissionLimitError);
+    await expect(s.provider.nextTurn(request, neverAbort)).rejects.toThrow(
+      ComputerUseAdmissionLimitError,
+    );
     expect(s.fetchFn).toHaveBeenCalledTimes(1);
     expect(s.delayFn).not.toHaveBeenCalled();
     expect(s.transport).not.toHaveBeenCalled();
     // The adapter recreates the safe instance rather than forwarding caller-added text.
     const s2 = admission(error);
     await expect(s2.provider.nextTurn(request, neverAbort)).rejects.toThrow(
-      new CuaAdmissionLimitError().message,
+      new ComputerUseAdmissionLimitError().message,
     );
   });
 
   it.each([
     Object.assign(new Error("synthetic-private admission limit"), {
-      name: "CuaAdmissionLimitError",
+      name: "ComputerUseAdmissionLimitError",
     }),
-    { name: "CuaAdmissionLimitError", message: "synthetic-private admission limit" },
-    Object.assign(Object.create(CuaAdmissionLimitError.prototype), {
+    { name: "ComputerUseAdmissionLimitError", message: "synthetic-private admission limit" },
+    Object.assign(Object.create(ComputerUseAdmissionLimitError.prototype), {
       message: "synthetic-private admission limit",
     }),
   ])(
@@ -137,7 +139,7 @@ describe("explicit adapter admission limits", () => {
         const s = admission();
         const nextTurn = vi.fn<CuaProvider["nextTurn"]>(async (req, signal) => {
           if (nextTurn.mock.calls.length <= precedingActions) return actionTurn;
-          if (route === "custom-provider") throw new CuaAdmissionLimitError();
+          if (route === "custom-provider") throw new ComputerUseAdmissionLimitError();
           return s.provider.nextTurn(req, signal);
         });
         const debrief = vi.fn<CuaProvider["nextTurn"]>();
@@ -209,7 +211,7 @@ describe("explicit adapter admission limits", () => {
     const nextTurn = vi
       .fn<CuaProvider["nextTurn"]>()
       .mockImplementationOnce(async () => new Promise<CuaTurn>(() => {}))
-      .mockRejectedValueOnce(new CuaAdmissionLimitError());
+      .mockRejectedValueOnce(new ComputerUseAdmissionLimitError());
     const { result, execute } = await run(
       { id: "synthetic", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES, nextTurn },
       { turnTimeoutMs: 5 },
@@ -229,7 +231,8 @@ describe("explicit adapter admission limits", () => {
         .fn<CuaProvider["nextTurn"]>()
         .mockResolvedValueOnce(actionTurn)
         .mockImplementationOnce(async () => new Promise<CuaTurn>(() => {}));
-      if (ending === "refused") nextTurn.mockRejectedValueOnce(new CuaAdmissionLimitError());
+      if (ending === "refused")
+        nextTurn.mockRejectedValueOnce(new ComputerUseAdmissionLimitError());
       else
         nextTurn.mockResolvedValueOnce({
           actions: [],
@@ -277,7 +280,7 @@ describe("explicit adapter admission limits", () => {
         fetchFn: async () => {
           requests++;
           if (requests === 2) throw new Error("synthetic ambiguous transport failure");
-          if (requests === 3 && ending === "refused") throw new CuaAdmissionLimitError();
+          if (requests === 3 && ending === "refused") throw new ComputerUseAdmissionLimitError();
           const raw = requests === 1 ? pendingResponse : closingResponse;
           return {
             ok: true,
@@ -311,7 +314,7 @@ describe("explicit adapter admission limits", () => {
       { id: "synthetic", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES, nextTurn },
       {
         execute: async () => {
-          throw new CuaAdmissionLimitError();
+          throw new ComputerUseAdmissionLimitError();
         },
       },
     );

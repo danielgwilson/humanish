@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import type { CuaExecutor, CuaObservation } from "../actors/computer-use/loop.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 
 const WORKER_LINE_BYTES = 8_192;
 const READY_TIMEOUT_MS = 35_000;
@@ -185,15 +185,15 @@ export function dispositionAfterWrite(written: boolean): "outcome_uncertain" | "
 }
 
 /** A failed speak keeps its own executor error; anything else is an execution failure. */
-export function speakFailure(error: unknown, written: boolean): CuaExecutorError {
-  return error instanceof CuaExecutorError
+export function speakFailure(error: unknown, written: boolean): ComputerUseExecutorError {
+  return error instanceof ComputerUseExecutorError
     ? error
-    : new CuaExecutorError("execution_failed", dispositionAfterWrite(written));
+    : new ComputerUseExecutorError("execution_failed", dispositionAfterWrite(written));
 }
 
 interface PendingCommand {
   resolve(): void;
-  reject(error: CuaExecutorError): void;
+  reject(error: ComputerUseExecutorError): void;
   timer: NodeJS.Timeout;
 }
 
@@ -224,7 +224,7 @@ interface SpeechChannel {
   close(): Promise<void>;
 }
 
-function rejectPending(state: MediaWorkerState, error: CuaExecutorError): void {
+function rejectPending(state: MediaWorkerState, error: ComputerUseExecutorError): void {
   for (const command of state.pending.values()) {
     clearTimeout(command.timer);
     command.reject(error);
@@ -240,7 +240,7 @@ function terminateMedia(
 ): void {
   if (state.closed || state.expectedExit) return;
   state.closed = true;
-  const error = new CuaExecutorError("execution_failed", "outcome_uncertain");
+  const error = new ComputerUseExecutorError("execution_failed", "outcome_uncertain");
   readiness.reject(error);
   rejectPending(state, error);
   try {
@@ -278,7 +278,7 @@ function applyWorkerMessage(
       state.pending.delete(message.id);
       clearTimeout(command.timer);
       if (message.ok) command.resolve();
-      else command.reject(new CuaExecutorError("execution_failed", "outcome_uncertain"));
+      else command.reject(new ComputerUseExecutorError("execution_failed", "outcome_uncertain"));
       return;
     }
     case "terminal":
@@ -326,7 +326,7 @@ async function closeDesktopMedia(
   state.expectedExit = true;
   state.closed = true;
   detach();
-  rejectPending(state, new CuaExecutorError("session_revoked", "outcome_uncertain"));
+  rejectPending(state, new ComputerUseExecutorError("session_revoked", "outcome_uncertain"));
   state.closing = Promise.resolve().then(() => transport.close());
   return state.closing;
 }
@@ -338,7 +338,7 @@ async function awaitWorkerReady(
   readyTimer: NodeJS.Timeout,
 ): Promise<void> {
   const readinessAbort = (): void => {
-    readiness.reject(new CuaExecutorError("session_revoked", "not_dispatched"));
+    readiness.reject(new ComputerUseExecutorError("session_revoked", "not_dispatched"));
   };
   signal.addEventListener("abort", readinessAbort, { once: true });
   try {
@@ -357,9 +357,9 @@ async function observeWithHeardSpeech(
   state: MediaWorkerState,
   executor: CuaExecutor,
 ): Promise<CuaObservation> {
-  if (state.closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
+  if (state.closed) throw new ComputerUseExecutorError("execution_failed", "not_dispatched");
   const observation = await executor.observe();
-  if (state.closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
+  if (state.closed) throw new ComputerUseExecutorError("execution_failed", "not_dispatched");
   const items = state.heard.splice(0, HEARD_PER_OBSERVATION);
   return items.length ? { ...observation, heardSpeech: items } : observation;
 }
@@ -372,7 +372,7 @@ async function executeWithSpeech(
   action: Parameters<CuaExecutor["execute"]>[0],
   signal?: AbortSignal,
 ): Promise<void> {
-  if (state.closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
+  if (state.closed) throw new ComputerUseExecutorError("execution_failed", "not_dispatched");
   const candidate = action as { kind?: unknown; text?: unknown };
   if (candidate.kind !== "speak") return executor.execute(action, signal);
   if (
@@ -382,7 +382,7 @@ async function executeWithSpeech(
     channel.ownerSignal.aborted ||
     signal?.aborted
   ) {
-    throw new CuaExecutorError("action_rejected", "not_dispatched");
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
   }
   const id = `speak-${state.nextCommand++}`;
   const combined = signal ? AbortSignal.any([channel.ownerSignal, signal]) : channel.ownerSignal;
@@ -390,7 +390,7 @@ async function executeWithSpeech(
   const operation = new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => {
       state.pending.delete(id);
-      reject(new CuaExecutorError("deadline_exceeded", dispositionAfterWrite(written)));
+      reject(new ComputerUseExecutorError("deadline_exceeded", dispositionAfterWrite(written)));
       void channel.close().catch(() => {});
     }, SPEAK_TIMEOUT_MS);
     state.pending.set(id, { resolve, reject, timer });
@@ -401,7 +401,7 @@ async function executeWithSpeech(
     if (!command) return;
     state.pending.delete(id);
     clearTimeout(command.timer);
-    command.reject(new CuaExecutorError("session_revoked", dispositionAfterWrite(written)));
+    command.reject(new ComputerUseExecutorError("session_revoked", dispositionAfterWrite(written)));
     void channel.close().catch(() => {});
   };
   combined.addEventListener("abort", cancelled, { once: true });
@@ -429,7 +429,7 @@ function wrapMediaExecutor(
   executor: CuaExecutor,
   channel: SpeechChannel,
 ): CuaExecutor {
-  if (state.wrapped) throw new CuaExecutorError("invalid_request", "not_dispatched");
+  if (state.wrapped) throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   state.wrapped = true;
   const wrapped = {
     ...executor,
@@ -446,7 +446,7 @@ export async function startDesktopMedia(
   options: GuestDesktopMediaOptions,
 ): Promise<GuestDesktopMedia> {
   if (!isSupportedMediaDeclaration(options.media))
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
+    throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   options.signal.throwIfAborted();
   const env = desktopMediaEnv(options.env, options.media);
   const transport =
@@ -491,7 +491,7 @@ export async function startDesktopMedia(
     throw error;
   }
   const readyTimer = setTimeout(
-    () => readiness.reject(new CuaExecutorError("deadline_exceeded", "not_dispatched")),
+    () => readiness.reject(new ComputerUseExecutorError("deadline_exceeded", "not_dispatched")),
     READY_TIMEOUT_MS,
   );
   const abort = (): void => {

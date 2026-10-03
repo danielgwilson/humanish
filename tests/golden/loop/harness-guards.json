@@ -398,7 +398,7 @@
         "usageComplete": false,
         "cleanup": "confirmed"
       },
-      "name": "CuaProviderError",
+      "name": "ComputerUseProviderError",
       "message": "Participant provider: request_rejected"
     },
     "log": []

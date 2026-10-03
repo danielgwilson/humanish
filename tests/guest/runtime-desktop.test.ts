@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import {
   createGuestRuntimeDesktop,
   GUEST_RUNTIME_PATHS,
@@ -478,7 +478,7 @@ describe("guest runtime desktop failures", () => {
       arrange();
       const { pending, onTerminal } = start(options);
       const error = await pending.catch((caught: unknown) => caught);
-      expect(error).toBeInstanceOf(CuaExecutorError);
+      expect(error).toBeInstanceOf(ComputerUseExecutorError);
       expect(error).toMatchObject({
         code: "execution_failed",
         disposition: "not_dispatched",

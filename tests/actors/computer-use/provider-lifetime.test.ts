@@ -7,7 +7,7 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import type { ActorTokenUsage } from "../../../src/actors/contract.js";
-import { CuaProviderError } from "../../../src/actors/computer-use/provider-error.js";
+import { ComputerUseProviderError } from "../../../src/actors/computer-use/provider-error.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { PARTICIPANT_PROFILE } from "../../../src/actors/codex/restricted-participant-policy.js";
 
@@ -64,7 +64,7 @@ afterEach(() => vi.useRealTimers());
 describe("single-dispatch participant request lifetime", () => {
   it("preserves a setup timeout phase in the recording and human-readable outcome", async () => {
     const s = setup(async () => {
-      throw new CuaProviderError(
+      throw new ComputerUseProviderError(
         "timeout",
         { dispatched: false, usageComplete: false, cleanup: "confirmed" },
         undefined,
@@ -168,7 +168,11 @@ describe("single-dispatch participant request lifetime", () => {
         new Promise((_resolve, reject) =>
           signal.addEventListener("abort", () =>
             reject(
-              new CuaProviderError("cancelled", { ...receipt, usageComplete: false }, { input: 7 }),
+              new ComputerUseProviderError(
+                "cancelled",
+                { ...receipt, usageComplete: false },
+                { input: 7 },
+              ),
             ),
           ),
         ),
@@ -225,7 +229,7 @@ describe("single-dispatch participant request lifetime", () => {
   it("keeps complete failed closing usage distinct from an invalid closing report", async () => {
     const s = setup(async () => turn({ done: false, actions: [{ kind: "click", x: 1, y: 1 }] }));
     s.provider.debrief = async () => {
-      throw new CuaProviderError("invalid_response", receipt, { input: 4, output: 2 });
+      throw new ComputerUseProviderError("invalid_response", receipt, { input: 4, output: 2 });
     };
     const r = await runComputerUseLoop({
       ...s.options,
@@ -245,7 +249,7 @@ describe("single-dispatch participant request lifetime", () => {
   it("closing cleanup failure preserves corroborated outcome but records unknown cleanup and known tokens", async () => {
     const s = setup(async () => turn({ done: false, actions: [{ kind: "click", x: 1, y: 1 }] }));
     s.provider.debrief = async () => {
-      throw new CuaProviderError(
+      throw new ComputerUseProviderError(
         "cleanup_unconfirmed",
         { ...receipt, cleanup: "unconfirmed", usageComplete: false },
         { input: 4 },

@@ -1,6 +1,6 @@
 import { PNG } from "pngjs";
 import { describe, expect, it, vi } from "vitest";
-import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import type { CuaAction } from "../../src/actors/computer-use/loop.js";
 import { BROWSER_CONTROL_LIMITS } from "../../src/browser-control/protocol.js";
 import { perceptualSignature } from "../../src/evidence/frame-signature.js";
@@ -509,13 +509,13 @@ describe("guest executor text the split keeps", () => {
   it.each([
     [
       "a paste that proves nothing was sent",
-      { paste: new CuaExecutorError("execution_failed", "not_dispatched") },
+      { paste: new ComputerUseExecutorError("execution_failed", "not_dispatched") },
       { code: "execution_failed", disposition: "not_dispatched" },
       true,
     ],
     [
       "a paste refused as action_rejected",
-      { paste: new CuaExecutorError("action_rejected", "not_dispatched") },
+      { paste: new ComputerUseExecutorError("action_rejected", "not_dispatched") },
       { code: "action_rejected", disposition: "not_dispatched" },
       false,
     ],
@@ -527,7 +527,7 @@ describe("guest executor text the split keeps", () => {
     ],
     [
       "a preparation refused as action_rejected",
-      { prepare: new CuaExecutorError("action_rejected", "not_dispatched") },
+      { prepare: new ComputerUseExecutorError("action_rejected", "not_dispatched") },
       { code: "action_rejected", disposition: "not_dispatched" },
       false,
     ],
@@ -552,7 +552,7 @@ describe("guest executor text the split keeps", () => {
     [
       "a close failure after a paste that proved nothing was sent",
       {
-        paste: new CuaExecutorError("action_rejected", "not_dispatched"),
+        paste: new ComputerUseExecutorError("action_rejected", "not_dispatched"),
         close: new Error("private close failure"),
       },
       { code: "execution_failed", disposition: "not_dispatched" },
@@ -640,7 +640,7 @@ describe("guest executor sessions the split keeps", () => {
   it("reads the signal on a failure only where the decision needs it", async () => {
     // A dispatched failure is outcome_uncertain without reading the signal, so a signal that
     // throws on read after the input changes nothing.
-    const failure = new CuaExecutorError("execution_failed", "not_dispatched");
+    const failure = new ComputerUseExecutorError("execution_failed", "not_dispatched");
     const dispatchedSignal = new AbortController().signal;
     let armed = false;
     Object.defineProperty(dispatchedSignal, "aborted", {

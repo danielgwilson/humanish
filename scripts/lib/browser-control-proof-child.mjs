@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import net from "node:net";
 import { chromium } from "playwright-core";
 import { attachBrowserControlDispatcher } from "../../dist/browser-control/dispatcher.js";
-import { CuaExecutorError } from "../../dist/actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../dist/actors/computer-use/executor-error.js";
 
 const [socketPath, profilePath, targetUrl, identityJson, mode, executablePath] =
   process.argv.slice(2);
@@ -45,7 +45,7 @@ await page.goto(targetUrl, { timeout: 30000 });
 
 function assertAuthorized(signal) {
   if (authority.signal.aborted || signal?.aborted) {
-    throw new CuaExecutorError(
+    throw new ComputerUseExecutorError(
       "session_revoked",
       dispatched ? "outcome_uncertain" : "not_dispatched",
     );
@@ -73,7 +73,7 @@ async function snapshot() {
 // The dispatcher sends only a safe failure code, so the fixture keeps the cause on stderr, which the
 // proof retains and prints when a case fails.
 function recordFailure(operation, error) {
-  if (error instanceof CuaExecutorError) return;
+  if (error instanceof ComputerUseExecutorError) return;
   const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
   process.stderr.write(`fixture ${operation} failed: ${detail}\n`);
 }

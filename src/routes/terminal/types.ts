@@ -91,8 +91,8 @@ export interface TerminalProductScoringContext {
   transcript: string;
   /** The studied product name (public-safe). */
   product: string;
-  /** The lab id (the run's scenario scope). */
-  labId: string;
+  /** The study id (the run's scenario scope). */
+  studyId: string;
   /** The run id (for building namespaced idempotency keys + evidence pointers). */
   runId: string;
 }

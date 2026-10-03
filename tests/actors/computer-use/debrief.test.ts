@@ -11,7 +11,7 @@ import {
   resolveSelfReportedFriction,
 } from "../../../src/routes/computer-use/self-report.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
-import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 
 const report = "The Save button did nothing. I used Enter and finished the task.";
 const closing = (overrides: Partial<CuaTurn> = {}): CuaTurn => ({
@@ -99,7 +99,7 @@ function setup(overrides: Partial<LoopRunOptions> = {}) {
 describe("read-only participant debrief", () => {
   it("keeps observed success and known usage when admission refuses the closing request before dispatch", async () => {
     const s = setup();
-    const error = new CuaAdmissionLimitError();
+    const error = new ComputerUseAdmissionLimitError();
     error.message = "synthetic-private-payload";
     s.debrief.mockRejectedValue(error);
     const result = await s.run();

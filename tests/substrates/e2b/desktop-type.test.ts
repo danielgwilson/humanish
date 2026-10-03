@@ -9,7 +9,7 @@ import path from "node:path";
 
 import {
   createE2BDesktopExecutor,
-  CuaTypeError,
+  ComputerUseTypeError,
   type E2BDesktopLike,
 } from "../../../src/substrates/e2b/desktop-executor.js";
 
@@ -92,9 +92,9 @@ async function typeWith(desktop: E2BDesktopLike, text = SECRET): Promise<unknown
 
 /** Assert a failure names the phase and exit code only: no text, no path, no substrate output. */
 function expectPhaseOnly(error: unknown, phase: string, exitCode?: number): void {
-  expect(error).toBeInstanceOf(CuaTypeError);
-  expect((error as CuaTypeError).phase).toBe(phase);
-  expect((error as CuaTypeError).message).toBe(
+  expect(error).toBeInstanceOf(ComputerUseTypeError);
+  expect((error as ComputerUseTypeError).phase).toBe(phase);
+  expect((error as ComputerUseTypeError).message).toBe(
     `type failed at ${phase}${exitCode === undefined ? "" : ` (exit ${exitCode})`}`,
   );
   expect((error as Error).cause).toBeUndefined();

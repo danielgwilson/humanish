@@ -6,7 +6,7 @@ import {
   createOpenAiResponsesProvider,
   type FetchLike,
 } from "../../../src/actors/computer-use/openai-provider.js";
-import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 
 // See the adjacent provenance note. Both positive response shapes are excerpts
 // of a captured live run; negative cases deliberately mutate that real response.
@@ -66,7 +66,7 @@ describe("captured OpenAI closing-report contract", () => {
     }));
     const admission = vi.fn(async () => {
       if (transport.mock.calls.length > 0) {
-        const error = new CuaAdmissionLimitError();
+        const error = new ComputerUseAdmissionLimitError();
         error.message = "synthetic-private-payload";
         throw error;
       }
@@ -81,7 +81,7 @@ describe("captured OpenAI closing-report contract", () => {
     });
     await provider.nextTurn(request, signal);
     await expect(provider.debrief!(request, signal)).rejects.toThrow(
-      new CuaAdmissionLimitError().message,
+      new ComputerUseAdmissionLimitError().message,
     );
     expect(admission).toHaveBeenCalledTimes(2);
     expect(transport).toHaveBeenCalledTimes(1);

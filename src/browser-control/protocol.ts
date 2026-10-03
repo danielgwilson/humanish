@@ -3,8 +3,8 @@ import { z } from "zod";
 import type { CuaAction, CuaObservation } from "../actors/computer-use/loop.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
 import {
-  CuaExecutorError,
-  isCuaExecutorError,
+  ComputerUseExecutorError,
+  isComputerUseExecutorError,
   type CuaExecutorErrorCode,
 } from "../actors/computer-use/executor-error.js";
 import { desktopRecordingMetadataSchema } from "../evidence/desktop-recording-types.js";
@@ -237,7 +237,7 @@ export type BrowserControlRequest = z.infer<typeof requestSchema>;
 export type BrowserControlReply = z.infer<typeof replySchema>;
 export function validateBrowserControlIdentity(value: unknown): BrowserControlIdentity {
   const parsed = identitySchema.safeParse(value);
-  if (!parsed.success) throw new CuaExecutorError("invalid_request", "not_dispatched");
+  if (!parsed.success) throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   return parsed.data;
 }
 export function sameBrowserControlIdentity(
@@ -252,18 +252,18 @@ export function sameBrowserControlIdentity(
 }
 export function parseBrowserControlRequest(value: unknown): BrowserControlRequest {
   const parsed = requestSchema.safeParse(value);
-  if (!parsed.success) throw new CuaExecutorError("invalid_request", "not_dispatched");
+  if (!parsed.success) throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   const request = parsed.data;
   if (
     request.requestId !== `request-${request.seq}` ||
     (request.operation === "EXECUTE" && request.actionId !== `action-${request.seq}`)
   )
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
+    throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   return request;
 }
 export function parseBrowserControlReply(value: unknown): BrowserControlReply {
   const parsed = replySchema.safeParse(value);
-  if (!parsed.success) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+  if (!parsed.success) throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   const reply = parsed.data;
   if (
     (reply.operation === "EXECUTE") !== (reply.actionId !== undefined) ||
@@ -271,24 +271,24 @@ export function parseBrowserControlReply(value: unknown): BrowserControlReply {
       ((reply.operation === "OBSERVE") !== (reply.observation !== undefined) ||
         (reply.operation === "FINISH_RECORDING") !== (reply.recording !== undefined)))
   )
-    throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   return reply;
 }
 export function validateBrowserControlAction(value: unknown): CuaAction {
   const parsed = wireActionSchema.safeParse(value);
-  if (!parsed.success) throw new CuaExecutorError("invalid_request", "not_dispatched");
+  if (!parsed.success) throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   return parsed.data;
 }
 export function validateHeardSpeech(value: unknown): HeardSpeech[] {
   const parsed = heardSpeechListSchema.safeParse(value);
-  if (!parsed.success) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+  if (!parsed.success) throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   return parsed.data;
 }
 
 /** Check dimensions before allocating decoder output; v1 accepts browser-style 8-bit, noninterlaced PNG. */
 export function validateBrowserControlPng(bytes: Buffer): void {
   const fail = (): never => {
-    throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   };
   if (
     bytes.length < 45 ||
@@ -344,7 +344,7 @@ export function encodeBrowserControlObservation(observation: CuaObservation): Wi
     observation.appState !== undefined ||
     !Buffer.isBuffer(observation.screenshot)
   )
-    throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   validateBrowserControlPng(observation.screenshot);
   const parsed = observationSchema.safeParse({
     png: observation.screenshot.toString("base64"),
@@ -355,16 +355,16 @@ export function encodeBrowserControlObservation(observation: CuaObservation): Wi
     ...(observation.scrollY !== undefined ? { scrollY: observation.scrollY } : {}),
     ...(observation.heardSpeech !== undefined ? { heardSpeech: observation.heardSpeech } : {}),
   });
-  if (!parsed.success) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+  if (!parsed.success) throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   return parsed.data;
 }
 export function decodeBrowserControlObservation(value: unknown): CuaObservation {
   const parsed = observationSchema.safeParse(value);
-  if (!parsed.success) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+  if (!parsed.success) throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   const { png, ...state } = parsed.data;
   const screenshot = Buffer.from(png, "base64");
   if (screenshot.toString("base64") !== png)
-    throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   validateBrowserControlPng(screenshot);
   return {
     screenshot,
@@ -380,7 +380,8 @@ export function safeBrowserControlFailure(
   error: unknown,
   dispatched: boolean,
 ): { code: CuaExecutorErrorCode; disposition: "not_dispatched" | "outcome_uncertain" } {
-  if (isCuaExecutorError(error)) return { code: error.code, disposition: error.disposition };
+  if (isComputerUseExecutorError(error))
+    return { code: error.code, disposition: error.disposition };
   return {
     code: "action_rejected",
     disposition: dispatched ? "outcome_uncertain" : "not_dispatched",

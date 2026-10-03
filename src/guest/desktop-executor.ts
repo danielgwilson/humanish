@@ -6,7 +6,10 @@ import {
   validateBrowserControlAction,
   validateBrowserControlPng,
 } from "../browser-control/protocol.js";
-import { CuaExecutorError, isCuaExecutorError } from "../actors/computer-use/executor-error.js";
+import {
+  ComputerUseExecutorError,
+  isComputerUseExecutorError,
+} from "../actors/computer-use/executor-error.js";
 import { xdotoolChord, xdotoolHeldModifiers } from "./desktop-keys.js";
 
 /** Internal guest port. Implementations recheck signal synchronously before native dispatch. */
@@ -67,7 +70,7 @@ interface ActionProgress {
 export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions): CuaExecutor {
   const { width, height, tools, authoritySignal } = options;
   if (!isValidFrameSize(width, height))
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
+    throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   const context: GuestExecutorContext = {
     width,
     height,
@@ -105,7 +108,7 @@ function terminate(state: GuestExecutorState, context: GuestExecutorContext): vo
 
 function assertOpen(state: GuestExecutorState, signal: AbortSignal, dispatched = false): void {
   if (state.terminal || signal.aborted)
-    throw new CuaExecutorError(
+    throw new ComputerUseExecutorError(
       "session_revoked",
       dispatched ? "outcome_uncertain" : "not_dispatched",
     );
@@ -113,7 +116,7 @@ function assertOpen(state: GuestExecutorState, signal: AbortSignal, dispatched =
 
 function begin(state: GuestExecutorState, signal: AbortSignal): void {
   assertOpen(state, signal);
-  if (state.busy) throw new CuaExecutorError("executor_busy", "not_dispatched");
+  if (state.busy) throw new ComputerUseExecutorError("executor_busy", "not_dispatched");
   state.busy = true;
 }
 
@@ -129,14 +132,14 @@ async function observeFrame(
     assertOpen(state, authoritySignal);
     validateBrowserControlPng(screenshot);
     if (screenshot.readUInt32BE(16) !== width || screenshot.readUInt32BE(20) !== height) {
-      throw new CuaExecutorError("invalid_response", "not_dispatched");
+      throw new ComputerUseExecutorError("invalid_response", "not_dispatched");
     }
     return { screenshot, stateSignature: perceptualSignature(screenshot) };
   } catch (error) {
     terminate(state, context);
-    throw isCuaExecutorError(error)
+    throw isComputerUseExecutorError(error)
       ? error
-      : new CuaExecutorError("execution_failed", "not_dispatched");
+      : new ComputerUseExecutorError("execution_failed", "not_dispatched");
   } finally {
     state.busy = false;
   }
@@ -174,7 +177,7 @@ async function executeAction(
       } catch (error) {
         // This transaction has no earlier input. Its private bridge can
         // prove that no insertion or native input was sent.
-        if (isCuaExecutorError(error) && error.disposition === "not_dispatched")
+        if (isComputerUseExecutorError(error) && error.disposition === "not_dispatched")
           progress.dispatched = false;
         throw error;
       }
@@ -210,7 +213,7 @@ async function executeAction(
     } catch {
       terminate(state, context);
       // oxlint-disable-next-line no-unsafe-finally -- a text channel that fails to close makes the action outcome unknowable
-      throw new CuaExecutorError(
+      throw new ComputerUseExecutorError(
         "execution_failed",
         progress.dispatched ? "outcome_uncertain" : "not_dispatched",
       );
@@ -233,13 +236,13 @@ export function failureEndsSession(
   return (
     (progress.preparing &&
       !(
-        isCuaExecutorError(error) &&
+        isComputerUseExecutorError(error) &&
         error.code === "action_rejected" &&
         error.disposition === "not_dispatched"
       )) ||
     progress.dispatched ||
     signal.aborted ||
-    !isCuaExecutorError(error)
+    !isComputerUseExecutorError(error)
   );
 }
 
@@ -252,16 +255,16 @@ export function failureError(
   dispatched: boolean,
   error: unknown,
   signal: Pick<AbortSignal, "aborted">,
-): CuaExecutorError {
+): ComputerUseExecutorError {
   if (dispatched)
-    return new CuaExecutorError(
-      isCuaExecutorError(error) ? error.code : "execution_failed",
+    return new ComputerUseExecutorError(
+      isComputerUseExecutorError(error) ? error.code : "execution_failed",
       "outcome_uncertain",
     );
-  if (signal.aborted) return new CuaExecutorError("session_revoked", "not_dispatched");
-  return isCuaExecutorError(error)
+  if (signal.aborted) return new ComputerUseExecutorError("session_revoked", "not_dispatched");
+  return isComputerUseExecutorError(error)
     ? error
-    : new CuaExecutorError("execution_failed", "not_dispatched");
+    : new ComputerUseExecutorError("execution_failed", "not_dispatched");
 }
 
 /**
@@ -281,7 +284,7 @@ function framePoint(frame: Frame, x: number, y: number): string[] {
   const { width, height } = frame;
   // Reject out-of-frame input instead of clicking a clamped, unintended target.
   if (x < 0 || y < 0 || x >= width || y >= height)
-    throw new CuaExecutorError("action_rejected", "not_dispatched");
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
   return [String(Math.min(width - 1, Math.round(x))), String(Math.min(height - 1, Math.round(y)))];
 }
 
@@ -309,12 +312,13 @@ function actionCommands(frame: Frame, action: CuaAction): string[][] {
         action.text.includes("\0") ||
         Buffer.from(action.text, "utf8").toString("utf8") !== action.text
       )
-        throw new CuaExecutorError("action_rejected", "not_dispatched");
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       return [];
     }
     case "drag": {
       const points = action.path.map((p) => framePoint(frame, p.x, p.y));
-      if (points.length < 2) throw new CuaExecutorError("action_rejected", "not_dispatched");
+      if (points.length < 2)
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       return [
         ["mousemove", ...points[0]!],
         ["mousedown", "1"],
@@ -328,7 +332,7 @@ function actionCommands(frame: Frame, action: CuaAction): string[][] {
       const horizontal = Math.ceil(Math.abs(action.dx) / 120),
         vertical = Math.ceil(Math.abs(action.dy) / 120);
       if (horizontal + vertical > 100)
-        throw new CuaExecutorError("action_rejected", "not_dispatched");
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       return horizontal + vertical === 0
         ? []
         : [
@@ -341,6 +345,6 @@ function actionCommands(frame: Frame, action: CuaAction): string[][] {
     case "screenshot":
       return [];
     case "speak":
-      throw new CuaExecutorError("action_rejected", "not_dispatched");
+      throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
   }
 }

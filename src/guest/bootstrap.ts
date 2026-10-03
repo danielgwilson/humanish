@@ -8,7 +8,7 @@ import {
   sameBrowserControlIdentity,
   type BrowserControlIdentity,
 } from "../browser-control/protocol.js";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import { createBrowserControlClient } from "../browser-control/client.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "./media-config.js";
 
@@ -24,7 +24,8 @@ export const GUEST_BOOTSTRAP_LIMITS = Object.freeze({
   connectMs: 3000,
   port: 5251,
 });
-const refused = (): CuaExecutorError => new CuaExecutorError("protocol_mismatch", "not_dispatched");
+const refused = (): ComputerUseExecutorError =>
+  new ComputerUseExecutorError("protocol_mismatch", "not_dispatched");
 /** Same entry authority as the local desktop's opaque app-port forward. */
 export function validateGuestInitialUrl(value: string): string {
   try {
@@ -155,7 +156,7 @@ export class GuestBootstrapReader {
   media: GuestMediaConfig | undefined;
   recording: DesktopRecordingConfig | undefined;
   private resolve!: (identity: BrowserControlIdentity) => void;
-  private reject!: (error: CuaExecutorError) => void;
+  private reject!: (error: ComputerUseExecutorError) => void;
   private readonly header = Buffer.alloc(4);
   private headerUsed = 0;
   private body: Buffer | undefined;
@@ -271,7 +272,7 @@ export class GuestBootstrapReader {
     if (this.terminal) return;
     this.terminal = true;
     this.release();
-    this.reject(new CuaExecutorError(code, "not_dispatched"));
+    this.reject(new ComputerUseExecutorError(code, "not_dispatched"));
     this.stream.destroy();
     this.onFailure();
   }
@@ -309,10 +310,10 @@ export async function connectGuestBootstrap(
     let bytes = Buffer.alloc(0),
       done = false;
     const timer = setTimeout(
-      () => finish(new CuaExecutorError("deadline_exceeded", "not_dispatched")),
+      () => finish(new ComputerUseExecutorError("deadline_exceeded", "not_dispatched")),
       GUEST_BOOTSTRAP_LIMITS.connectMs,
     );
-    const finish = (error?: CuaExecutorError): void => {
+    const finish = (error?: ComputerUseExecutorError): void => {
       if (done) return;
       done = true;
       clearTimeout(timer);
@@ -334,9 +335,10 @@ export async function connectGuestBootstrap(
     };
     const end = (): void => {
       if (done) stream.destroy();
-      finish(new CuaExecutorError("transport_failed", "not_dispatched"));
+      finish(new ComputerUseExecutorError("transport_failed", "not_dispatched"));
     };
-    const abort = (): void => finish(new CuaExecutorError("session_revoked", "not_dispatched"));
+    const abort = (): void =>
+      finish(new ComputerUseExecutorError("session_revoked", "not_dispatched"));
     const data = (chunk: Buffer): void => {
       if (!Buffer.isBuffer(chunk) || bytes.length + chunk.length > 64 + 1028) {
         finish(refused());

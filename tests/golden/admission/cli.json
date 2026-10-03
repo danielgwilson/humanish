@@ -190,7 +190,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
-        "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
+        "message": "subject.source: local-app has no built-in driver. Supply one through runStudy(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {

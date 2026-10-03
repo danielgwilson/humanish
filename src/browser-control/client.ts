@@ -1,7 +1,7 @@
 import type { Duplex, Writable } from "node:stream";
 import type { CuaAction, CuaExecutor, CuaObservation } from "../actors/computer-use/loop.js";
 import {
-  CuaExecutorError,
+  ComputerUseExecutorError,
   type CuaExecutorErrorCode,
 } from "../actors/computer-use/executor-error.js";
 import {
@@ -43,7 +43,7 @@ interface PendingExchange {
   destination?: Writable;
   raw?: Promise<void>;
   resolve: (reply: BrowserControlReply) => void;
-  reject: (error: CuaExecutorError) => void;
+  reject: (error: ComputerUseExecutorError) => void;
   dispose: () => void;
 }
 
@@ -73,7 +73,7 @@ export function createBrowserControlClient(
     timeoutMs < 1 ||
     timeoutMs > BROWSER_CONTROL_LIMITS.maxRequestTimeoutMs
   )
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
+    throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   const state: ClientState = {
     identity,
     timeoutMs,
@@ -119,7 +119,10 @@ function closeClient(state: ClientState, code: CuaExecutorErrorCode): void {
   if (operation) {
     operation.dispose();
     operation.reject(
-      new CuaExecutorError(code, operation.written ? "outcome_uncertain" : "not_dispatched"),
+      new ComputerUseExecutorError(
+        code,
+        operation.written ? "outcome_uncertain" : "not_dispatched",
+      ),
     );
   }
 }
@@ -141,7 +144,7 @@ function finishExchange(session: ClientSession): void {
       disposition !== "not_dispatched"
     )
       session.transport.close(code);
-    operation.reject(new CuaExecutorError(code, disposition));
+    operation.reject(new ComputerUseExecutorError(code, disposition));
   }
 }
 
@@ -205,11 +208,12 @@ function exchange(
 ): Promise<BrowserControlReply> {
   const { transport } = session;
   if (session.closed)
-    return Promise.reject(new CuaExecutorError("executor_closed", "not_dispatched"));
-  if (signal?.aborted) return Promise.reject(new CuaExecutorError("cancelled", "not_dispatched"));
+    return Promise.reject(new ComputerUseExecutorError("executor_closed", "not_dispatched"));
+  if (signal?.aborted)
+    return Promise.reject(new ComputerUseExecutorError("cancelled", "not_dispatched"));
   if (session.seq >= Number.MAX_SAFE_INTEGER) {
     transport.close("protocol_mismatch");
-    return Promise.reject(new CuaExecutorError("protocol_mismatch", "not_dispatched"));
+    return Promise.reject(new ComputerUseExecutorError("protocol_mismatch", "not_dispatched"));
   }
   session.seq += 1;
   const seq = session.seq;
@@ -260,8 +264,8 @@ function exchange(
 
 /** Runs one public operation at a time on an open client. */
 async function withOperation<T>(session: ClientSession, work: () => Promise<T>): Promise<T> {
-  if (session.closed) throw new CuaExecutorError("executor_closed", "not_dispatched");
-  if (session.busy) throw new CuaExecutorError("executor_busy", "not_dispatched");
+  if (session.closed) throw new ComputerUseExecutorError("executor_closed", "not_dispatched");
+  if (session.busy) throw new ComputerUseExecutorError("executor_busy", "not_dispatched");
   session.busy = true;
   try {
     return await work();
@@ -285,7 +289,7 @@ async function observe(session: ClientSession): Promise<CuaObservation> {
     return decodeBrowserControlObservation(reply.observation);
   } catch {
     session.transport.close("invalid_response");
-    throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   }
 }
 
@@ -296,13 +300,14 @@ async function execute(
 ): Promise<void> {
   const validAction = validateBrowserControlAction(action);
   if (validAction.kind === "speak" && !session.speechEnabled) {
-    throw new CuaExecutorError("action_rejected", "not_dispatched");
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
   }
-  if (signal?.aborted) throw new CuaExecutorError("cancelled", "not_dispatched");
+  if (signal?.aborted) throw new ComputerUseExecutorError("cancelled", "not_dispatched");
   try {
     await hello(session, signal);
   } catch (error) {
-    if (error instanceof CuaExecutorError) throw new CuaExecutorError(error.code, "not_dispatched");
+    if (error instanceof ComputerUseExecutorError)
+      throw new ComputerUseExecutorError(error.code, "not_dispatched");
     throw error;
   }
   await exchange(session, "EXECUTE", validAction, signal);
@@ -313,12 +318,12 @@ async function finishRecording(
   destination: Writable,
 ): Promise<DesktopRecordingMetadata> {
   if (!destination || destination.destroyed)
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
+    throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   try {
     await hello(session);
     const reply = await exchange(session, "FINISH_RECORDING", undefined, undefined, destination);
     if (!reply.ok || !reply.recording)
-      throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+      throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
     return reply.recording;
   } catch (error) {
     destination.destroy();

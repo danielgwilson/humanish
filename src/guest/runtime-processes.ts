@@ -1,13 +1,13 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 
 /** A short-lived helper that has not exited by then is killed. Persistent children have no bound. */
 const HELPER_TIMEOUT_MS = 2000;
 /** Helpers report success through exit status, so stderr past this budget is a failure. */
 const STDERR_LIMIT_BYTES = 16_384;
 
-export const setupFailed = (): CuaExecutorError =>
-  new CuaExecutorError("execution_failed", "not_dispatched");
+export const setupFailed = (): ComputerUseExecutorError =>
+  new ComputerUseExecutorError("execution_failed", "not_dispatched");
 
 interface GuestChildRecord {
   child: ChildProcess;

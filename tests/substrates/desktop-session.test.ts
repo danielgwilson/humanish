@@ -40,12 +40,12 @@ describe("owned desktop session", () => {
     await expect(session.executor.observe()).rejects.toThrow("closed");
     await expect(session.executor.execute({ kind: "wait", ms: 1 })).rejects.toThrow("closed");
     await expect(session.executor.observe()).rejects.toMatchObject({
-      name: "CuaExecutorError",
+      name: "ComputerUseExecutorError",
       code: "executor_closed",
       disposition: "not_dispatched",
     });
     await expect(session.executor.execute({ kind: "click", x: 1, y: 1 })).rejects.toMatchObject({
-      name: "CuaExecutorError",
+      name: "ComputerUseExecutorError",
       code: "executor_closed",
       disposition: "not_dispatched",
     });

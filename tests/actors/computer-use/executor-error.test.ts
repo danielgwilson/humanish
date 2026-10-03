@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  CuaExecutorError,
-  isCuaExecutorError,
+  ComputerUseExecutorError,
+  isComputerUseExecutorError,
   isCuaExecutorErrorCode,
   type CuaExecutorErrorCode,
   type CuaExecutorDisposition,
@@ -56,8 +56,8 @@ afterEach(() => vi.useRealTimers());
 
 describe("bounded executor error declarations", () => {
   it("accepts only finite codes and dispositions, with no arbitrary error payload", () => {
-    const error = new CuaExecutorError("transport_failed", "outcome_uncertain");
-    expect(isCuaExecutorError(error)).toBe(true);
+    const error = new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
+    expect(isComputerUseExecutorError(error)).toBe(true);
     expect(error).toMatchObject({ code: "transport_failed", disposition: "outcome_uncertain" });
     expect(error.cause).toBeUndefined();
     expect(isCuaExecutorErrorCode("transport_failed")).toBe(true);
@@ -65,10 +65,11 @@ describe("bounded executor error declarations", () => {
     expect(isCuaExecutorErrorCode("toString")).toBe(false);
     expect(isCuaExecutorErrorCode({})).toBe(false);
     expect(
-      () => new CuaExecutorError("raw backend text" as CuaExecutorErrorCode, "not_dispatched"),
+      () =>
+        new ComputerUseExecutorError("raw backend text" as CuaExecutorErrorCode, "not_dispatched"),
     ).toThrow("Invalid desktop executor error declaration.");
     expect(
-      () => new CuaExecutorError("transport_failed", "completed" as CuaExecutorDisposition),
+      () => new ComputerUseExecutorError("transport_failed", "completed" as CuaExecutorDisposition),
     ).toThrow("Invalid desktop executor error declaration.");
     expect(() => Object.assign(error, { code: "raw backend text" })).toThrow();
     expect(() => Object.assign(error, { disposition: "completed" })).toThrow();
@@ -77,14 +78,16 @@ describe("bounded executor error declarations", () => {
 
   it("rejects lookalikes and a forged prototype", () => {
     expect(
-      isCuaExecutorError({
-        name: "CuaExecutorError",
+      isComputerUseExecutorError({
+        name: "ComputerUseExecutorError",
         code: "transport_failed",
         disposition: "not_dispatched",
       }),
     ).toBe(false);
-    expect(isCuaExecutorError(Object.create(CuaExecutorError.prototype))).toBe(false);
-    expect(isCuaExecutorError(new Error("Desktop executor transport failed."))).toBe(false);
+    expect(isComputerUseExecutorError(Object.create(ComputerUseExecutorError.prototype))).toBe(
+      false,
+    );
+    expect(isComputerUseExecutorError(new Error("Desktop executor transport failed."))).toBe(false);
   });
 });
 
@@ -93,7 +96,7 @@ describe("executor failure attribution", () => {
     const actor = provider();
     const executor = {
       observe: vi.fn(async () => {
-        throw new CuaExecutorError("executor_closed", "not_dispatched");
+        throw new ComputerUseExecutorError("executor_closed", "not_dispatched");
       }),
       execute: vi.fn(async () => {}),
     };
@@ -119,7 +122,7 @@ describe("executor failure attribution", () => {
     "does not recover or mark a failed $kind as completed",
     async (action) => {
       const actor = provider([action]);
-      const error = new CuaExecutorError("transport_failed", "outcome_uncertain");
+      const error = new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
       // Even a backend that mutates ordinary Error metadata cannot turn this into a recoverable
       // CommandExitError, or inject that metadata into the durable diagnostic.
       Object.assign(error, {
@@ -173,7 +176,8 @@ describe("executor failure attribution", () => {
       };
       let frame = 0;
       const execute = vi.fn(async (action: CuaAction) => {
-        if (action === rejected) throw new CuaExecutorError("action_rejected", "not_dispatched");
+        if (action === rejected)
+          throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       });
       const result = await run(
         { observe: async () => ({ stateSignature: `frame-${++frame}` }), execute },
@@ -207,7 +211,7 @@ describe("executor failure attribution", () => {
       {
         observe: async () => ({ stateSignature: "fixture" }),
         execute: async () => {
-          throw new CuaExecutorError("action_rejected", "not_dispatched");
+          throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
         },
       },
       { provider: provider([{ kind: "click", x: 1, y: 2 }]), noProgressSteps: 2 },
@@ -228,7 +232,7 @@ describe("executor failure attribution", () => {
     async (code, disposition) => {
       const actor = provider([{ kind: "type", text: "private" }]);
       const execute = vi.fn(async () => {
-        throw new CuaExecutorError(code, disposition);
+        throw new ComputerUseExecutorError(code, disposition);
       });
       const result = await run(
         { observe: async () => ({ stateSignature: "fixture" }), execute },
@@ -245,7 +249,7 @@ describe("executor failure attribution", () => {
     const observe = vi
       .fn()
       .mockResolvedValueOnce({ stateSignature: "fixture" })
-      .mockRejectedValue(new CuaExecutorError("invalid_response", "outcome_uncertain"));
+      .mockRejectedValue(new ComputerUseExecutorError("invalid_response", "outcome_uncertain"));
     const result = await run(
       { observe, execute: async () => {} },
       {
@@ -262,7 +266,7 @@ describe("executor failure attribution", () => {
     const observe = vi
       .fn()
       .mockResolvedValueOnce({ stateSignature: "fixture" })
-      .mockRejectedValue(new CuaExecutorError("session_revoked", "not_dispatched"));
+      .mockRejectedValue(new ComputerUseExecutorError("session_revoked", "not_dispatched"));
     const result = await run(
       { observe, execute: async () => {} },
       {
@@ -299,7 +303,7 @@ describe("executor failure attribution", () => {
     const observe = vi
       .fn()
       .mockResolvedValueOnce({ stateSignature: "fixture" })
-      .mockRejectedValue(new CuaExecutorError("transport_failed", "outcome_uncertain"));
+      .mockRejectedValue(new ComputerUseExecutorError("transport_failed", "outcome_uncertain"));
     const result = await run(
       { observe, execute: async () => {} },
       {
@@ -320,7 +324,7 @@ describe("executor failure attribution", () => {
 
   it("does not reclassify ordinary executor errors or name-only lookalikes", async () => {
     const error = Object.assign(new Error("ordinary actuator failure"), {
-      name: "CuaExecutorError",
+      name: "ComputerUseExecutorError",
       code: "transport_failed",
     });
     const result = await run({
@@ -341,7 +345,9 @@ describe("executor failure attribution", () => {
           signal?.addEventListener(
             "abort",
             () =>
-              queueMicrotask(() => reject(new CuaExecutorError("cancelled", "outcome_uncertain"))),
+              queueMicrotask(() =>
+                reject(new ComputerUseExecutorError("cancelled", "outcome_uncertain")),
+              ),
             { once: true },
           );
         }),
@@ -405,7 +411,7 @@ describe("executor failure attribution", () => {
               "abort",
               () =>
                 queueMicrotask(() =>
-                  reject(new CuaExecutorError("cancelled", "outcome_uncertain")),
+                  reject(new ComputerUseExecutorError("cancelled", "outcome_uncertain")),
                 ),
               { once: true },
             );

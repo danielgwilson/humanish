@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { mkdtemp, open, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import { BROWSER_CONTROL_LIMITS } from "../browser-control/protocol.js";
 import type { GuestDesktopTools } from "./desktop-executor.js";
 
@@ -12,7 +12,7 @@ export interface GuestDesktopNativeTools extends Pick<GuestDesktopTools, "input"
   typeAscii(text: string, signal: AbortSignal): Promise<void>;
 }
 
-class UnconfirmedHelperExit extends CuaExecutorError {
+class UnconfirmedHelperExit extends ComputerUseExecutorError {
   constructor() {
     super("execution_failed", "outcome_uncertain");
   }
@@ -31,7 +31,7 @@ export function createGuestDesktopNativeTools(options: {
     !options.temporaryDirectory.startsWith("/") ||
     !options.xauthority.startsWith("/")
   ) {
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
+    throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   }
   const environment = {
     PATH: "/usr/bin:/bin",
@@ -50,7 +50,7 @@ export function createGuestDesktopNativeTools(options: {
     signal: AbortSignal,
     text?: string,
   ): Promise<Buffer> {
-    if (signal.aborted) throw new CuaExecutorError("session_revoked", "not_dispatched");
+    if (signal.aborted) throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
     return await new Promise<Buffer>((resolve, reject) => {
       const child = spawn(`/usr/bin/${binary}`, [...args], {
         cwd: options.temporaryDirectory,
@@ -100,7 +100,8 @@ export function createGuestDesktopNativeTools(options: {
         clearTimeout(deadline);
         clearTimeout(killDeadline);
         signal.removeEventListener("abort", abort);
-        if (failed || code !== 0) reject(new CuaExecutorError(failureCode, "outcome_uncertain"));
+        if (failed || code !== 0)
+          reject(new ComputerUseExecutorError(failureCode, "outcome_uncertain"));
         else resolve(Buffer.concat(stdout));
       });
       child.stdin.end(text);
@@ -114,7 +115,7 @@ export function createGuestDesktopNativeTools(options: {
     async activeWindowId(signal) {
       const value = (await helper("xdotool", ["getactivewindow"], signal)).toString("utf8");
       if (!/^[1-9][0-9]{0,9}\n?$/.test(value) || Number(value.trim()) > 0xffffffff)
-        throw new CuaExecutorError("action_rejected", "not_dispatched");
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       return value.trim();
     },
     async typeAscii(text, signal) {
@@ -122,7 +123,7 @@ export function createGuestDesktopNativeTools(options: {
         !/^[\x20-\x7e]+$/.test(text) ||
         Buffer.byteLength(text) > BROWSER_CONTROL_LIMITS.textBytes
       ) {
-        throw new CuaExecutorError("action_rejected", "not_dispatched");
+        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
       }
       await helper(
         "xdotool",
@@ -132,7 +133,7 @@ export function createGuestDesktopNativeTools(options: {
       );
     },
     async capture(signal) {
-      if (signal.aborted) throw new CuaExecutorError("session_revoked", "not_dispatched");
+      if (signal.aborted) throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
       const directory = await mkdtemp(join(options.temporaryDirectory, "capture-"));
       const path = join(directory, "frame.png");
       let reclaim = true;
@@ -147,7 +148,7 @@ export function createGuestDesktopNativeTools(options: {
             stat.size <= 0 ||
             stat.size > BROWSER_CONTROL_LIMITS.pngBytes
           ) {
-            throw new CuaExecutorError("invalid_response", "not_dispatched");
+            throw new ComputerUseExecutorError("invalid_response", "not_dispatched");
           }
           const buffer = Buffer.alloc(stat.size + 1);
           let offset = 0;
@@ -157,7 +158,7 @@ export function createGuestDesktopNativeTools(options: {
             offset += bytesRead;
           }
           if (offset !== stat.size)
-            throw new CuaExecutorError("invalid_response", "not_dispatched");
+            throw new ComputerUseExecutorError("invalid_response", "not_dispatched");
           return buffer.subarray(0, offset);
         } finally {
           await file.close();

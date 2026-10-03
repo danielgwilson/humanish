@@ -4,8 +4,8 @@ import type {
   ParticipantDeclaredOutcome,
 } from "../../contract.js";
 import type { StopConditionMatch } from "../../stop-conditions.js";
-import { isCuaExecutorError } from "../executor-error.js";
-import { isCuaPromptRefusedError, isCuaProviderError } from "../provider-error.js";
+import { isComputerUseExecutorError } from "../executor-error.js";
+import { isComputerUsePromptRefusedError, isComputerUseProviderError } from "../provider-error.js";
 import { CuaAbortError, CuaDeadlineError } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice, type Evidence } from "./trace.js";
@@ -335,7 +335,7 @@ export function stopForError(session: LoopSession, error: unknown): Stop {
     lastActionTitle === undefined ? undefined : `last action: ${redact(lastActionTitle)}`;
   const screenshot =
     session.lastScreenshotRef === undefined ? {} : { screenshotRef: session.lastScreenshotRef };
-  if (isCuaPromptRefusedError(error)) {
+  if (isComputerUsePromptRefusedError(error)) {
     // The provider's policy decision about the prompt, not a harness fault; never resent.
     const reason = `${error.message}; the prompt was not sent again`;
     return {
@@ -349,7 +349,7 @@ export function stopForError(session: LoopSession, error: unknown): Stop {
       ),
     };
   }
-  if (isCuaProviderError(error)) {
+  if (isComputerUseProviderError(error)) {
     const reason = `participant provider error: ${error.code}${error.failurePhase ? ` during ${error.failurePhase}` : ""}; cleanup: ${error.receipt.cleanup}`;
     return {
       completionReason: "harness_error",
@@ -357,7 +357,7 @@ export function stopForError(session: LoopSession, error: unknown): Stop {
       evidence: noticeEvidence("error", "participant provider error", reason),
     };
   }
-  if (isCuaExecutorError(error)) {
+  if (isComputerUseExecutorError(error)) {
     const detail = (): string =>
       [
         `phase: ${redact(session.phase)}`,

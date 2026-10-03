@@ -14,7 +14,7 @@ export function score(ctx) {
     // A dry run has no participant behavior to judge, so this rubric withholds a pass.
     status: dryRun ? "partial" : "pass",
     score: dryRun ? 50 : 100,
-    summary: `${participants} participant stream(s) in ${ctx.labId}${dryRun ? " (dry run)" : ""}.`,
+    summary: `${participants} participant stream(s) in ${ctx.studyId}${dryRun ? " (dry run)" : ""}.`,
     data: { participants, runId: ctx.runId },
   };
 }

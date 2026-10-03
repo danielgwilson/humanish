@@ -1,7 +1,7 @@
 import { deriveRunFacts } from "../../../src/cli/telemetry.js";
 import type { StudyEvent } from "../../../src/study/run-study-events.js";
 import { browserScorer } from "../../../src/study/adapter-scorer-loader.js";
-import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import { draftFeedback } from "../../../src/feedback/feedback.js";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -1529,7 +1529,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
                 id: "synthetic-admission",
                 capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
                 nextTurn: async () => {
-                  if (dispatched === 4) throw new CuaAdmissionLimitError();
+                  if (dispatched === 4) throw new ComputerUseAdmissionLimitError();
                   dispatched += 1;
                   return {
                     actions: [{ kind: "click", x: 10 + dispatched, y: 20 }],

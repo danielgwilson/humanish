@@ -252,7 +252,7 @@ export async function finishLiveTerminalSession(
     ledgers,
     transcript: normalizedTranscript,
     product: product.name,
-    labId: plan.studyId,
+    studyId: plan.studyId,
     runId,
     sanitize,
     warnings,

@@ -1,5 +1,5 @@
 import type { ActorTrace, ParticipantClosingReport } from "../../contract.js";
-import { isCuaAdmissionLimitError } from "../admission-limit.js";
+import { isComputerUseAdmissionLimitError } from "../admission-limit.js";
 import type { DebriefTrigger } from "./ending.js";
 import { singleDispatch } from "./provider-call.js";
 import { CuaDeadlineError, raceSessionDeadline, requestScope } from "./race.js";
@@ -174,7 +174,7 @@ async function debriefExchange(
     return acceptDebriefTurn(session, turn, record);
   } catch (error) {
     // A failed optional report cannot rewrite the already observed structured completion.
-    if (isCuaAdmissionLimitError(error)) {
+    if (isComputerUseAdmissionLimitError(error)) {
       return record(
         "skipped",
         "the adapter reported a local admission limit before provider dispatch; no closing request was sent",

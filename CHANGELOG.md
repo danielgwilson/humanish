@@ -46,6 +46,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Bare `humanish --json` reports `studyCount` and `studyIds` in place of `labCount` and `labIds`,
+  with the same values. A script that reads the old keys gets `undefined`.
+- A scorer's context names the study with `studyId` in place of `labId`, on both
+  `BrowserScoringContext` and `TerminalProductScoringContext`. A scorer that reads `ctx.labId`
+  gets `undefined`; read `ctx.studyId`, which holds the same value.
+- The computer-use errors report the names they are exported and declared under: `error.name` is
+  `ComputerUseAdmissionLimitError`, `ComputerUseExecutorError`, `ComputerUseProviderError`,
+  `ComputerUsePromptRefusedError` and `ComputerUseTypeError`, where it was `CuaAdmissionLimitError`,
+  `CuaExecutorError`, `CuaProviderError`, `CuaPromptRefusedError` and `CuaTypeError`. Code that
+  matches on `error.name` needs the new values; `instanceof ComputerUseAdmissionLimitError` is
+  unchanged. Run bundles written earlier keep the old names in their evidence.
 - `humanish doctor --json` and `humanish study check --json` name their checks for the study:
   check `lab` is `study`, `lab route` is `study route`, and `lab manifest` is `study file`. A
   script that matches a check by name needs the new value. Messages, run events and Observer text

@@ -79,7 +79,7 @@ function exampleAdapterFeedback(ctx: TerminalProductScoringContext): RunFeedback
       run_id: ctx.runId,
       stream_id: ctx.bundle.streams[0]?.id ?? "stream-001",
       adapter_id: ADAPTER_NAMESPACE,
-      scenario_id: `terminal-${ctx.labId}`,
+      scenario_id: `terminal-${ctx.studyId}`,
       persona_id: ctx.trace.persona.id,
       actor: "codex-exec",
       substrate: "e2b-terminal", // slice-4 substrate enum addition.

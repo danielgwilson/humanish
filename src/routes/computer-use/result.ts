@@ -362,7 +362,7 @@ export async function finishCuaRun(
     context: {
       bundle,
       runDir: run.paths.physicalRunRoot,
-      labId: plan.studyId,
+      studyId: plan.studyId,
       runId,
       actor: descriptor.id,
       route: "computer-use",
