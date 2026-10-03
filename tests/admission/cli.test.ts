@@ -8,10 +8,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { CommanderError } from "commander";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { stringify } from "yaml";
+import { parse, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const subprocess = vi.hoisted(() => ({ calls: 0 }));
 
@@ -97,13 +98,40 @@ async function projectDir(): Promise<string> {
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "admission-fixture" }\n');
   await writeFile(path.join(dir, "scorer.mjs"), SCORER);
-  await mkdir(path.join(dir, "humanish", "labs"), { recursive: true });
+  await mkdir(path.join(dir, "humanish", "studies"), { recursive: true });
   await mkdir(path.join(dir, "humanish", "scenarios"), { recursive: true });
   await writeFile(path.join(dir, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
   for (const [id, raw] of Object.entries(labs)) {
-    await writeFile(path.join(dir, "humanish", "labs", `${id}.yaml`), stringify({ ...raw, id }));
+    await writeFile(path.join(dir, "humanish", "studies", `${id}.yaml`), studyText(id, raw, dir));
   }
   return dir;
+}
+
+/**
+ * Each fixture as a v3 file. The two the parser refuses cannot convert, so they are the valid
+ * clone study with the one change that makes it refuse. The terminal fixtures' execution.timeoutMs
+ * is a key that route never reads.
+ */
+function studyText(id: string, raw: RawLab, dir: string): string {
+  const refused: Record<string, (study: Record<string, Record<string, unknown>>) => void> = {
+    "adm-clone-codex-app-server": (study) => {
+      study.actor!.type = "codex-app-server";
+    },
+    "adm-clone-no-serve": (study) => {
+      delete study.subject!.serve;
+    },
+  };
+  const change = refused[id];
+  if (change === undefined) {
+    const terminal = (raw.actors as { type?: string }[])[0]?.type === "codex-exec";
+    return studyFileText({ ...raw, id }, dir, terminal ? ["execution.timeoutMs"] : []);
+  }
+  const study = parse(studyFileText({ ...lab("cuClone"), id }, dir)) as Record<
+    string,
+    Record<string, unknown>
+  >;
+  change(study);
+  return stringify(study);
 }
 
 /** Runs the CLI. `log` also receives its stderr, so a test can order it among other writes. */

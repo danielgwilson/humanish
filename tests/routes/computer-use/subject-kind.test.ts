@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 
@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 function cloneLab(extra: Record<string, unknown>): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "subject-kind-clone",
     subject: {

@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
@@ -18,7 +18,7 @@ const fixtures = JSON.parse(
   route: string;
 }>;
 function baseline(raw: StudyConfig): StudyConfig {
-  const result = parseStudy(raw);
+  const result = parseStudyDocument(raw);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }

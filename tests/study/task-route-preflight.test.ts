@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
@@ -28,7 +28,7 @@ const tasks = [
   },
 ];
 function validConfig(raw: StudyConfig): StudyConfig {
-  const parsed = parseStudy(raw);
+  const parsed = parseStudyDocument(raw);
   expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -50,7 +50,7 @@ describe("declared task protocol admission", () => {
       expect(routeOf(validConfig(config))).toBe(route);
       const declared = structuredClone(config);
       declared.actors[0]!.tasks = tasks;
-      const result = parseStudy(declared);
+      const result = parseStudyDocument(declared);
       expect(result.ok, JSON.stringify(result)).toBe(supported);
       if (result.ok) expect(result.config.actors[0]!.tasks).toEqual(tasks);
       else {
@@ -116,7 +116,7 @@ describe("declared task protocol admission", () => {
   it("rejects ignored later-actor tasks at parse and direct CUA admission", async () => {
     const config = validConfig(fixtures.find((row) => row.supported)!.config);
     config.actors.push({ type: "openai-computer-use", tasks });
-    const parsed = parseStudy(config);
+    const parsed = parseStudyDocument(config);
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error.message).toContain("Multiple actors are not supported");
     const result = await runCuaActorStudy({

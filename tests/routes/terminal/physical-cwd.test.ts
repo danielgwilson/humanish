@@ -6,7 +6,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolveCommittedPersona } from "../../../src/study/persona-resolve.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 
@@ -18,7 +18,7 @@ vi.mock("../../../src/study/persona-resolve.js", async (importOriginal) => {
 });
 
 function dryConfig(): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "terminal-physical-cwd",
     title: "Terminal physical cwd",

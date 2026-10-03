@@ -7,7 +7,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 
 // The live rung for the clone subject provider: a config-only study that clones a small public
@@ -40,7 +40,7 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (live, spend-gated)", () => 
     "clones, serves, probes, and drives a real repo from config alone",
     { timeout: 420_000 },
     async () => {
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "cua-clone-live-proof",
         title: "CUA clone subject live proof",

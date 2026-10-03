@@ -5,6 +5,7 @@ import { stringify } from "yaml";
 import { describe, expect, it } from "vitest";
 import { V2_SCHEMA } from "../../src/study/types.js";
 import { readStudySummary } from "../../src/study/summary.js";
+import { studyFileText } from "../helpers/study-file.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
 
 const base = {
@@ -16,11 +17,14 @@ const base = {
   scenario: { mode: "live" },
 };
 
-async function summary(config: unknown, env: NodeJS.ProcessEnv) {
+async function summary(config: unknown, env: NodeJS.ProcessEnv, options: { v2?: boolean } = {}) {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keys-"));
   try {
-    await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
-    await writeFile(path.join(cwd, "humanish/labs/key-check.yaml"), stringify(config));
+    await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
+    await writeFile(
+      path.join(cwd, "humanish/studies/key-check.yaml"),
+      options.v2 ? stringify(config) : studyFileText(config as Record<string, unknown>, cwd),
+    );
     const result = await readStudySummary(cwd, "key-check", {
       checkKeys: true,
       env: { HUMANISH_STRICT_KEYS: "1", ...env },
@@ -112,7 +116,9 @@ describe("TUI key summary follows the configured route", () => {
   it("checks a lab whose inline persona names its own YAML anchor", async () => {
     const persona: Record<string, unknown> = { id: "synthetic-persona" };
     persona.self = persona;
-    expect(await summary({ ...base, personas: [persona] }, {})).toMatchObject({
+    // Only a humanish.lab.v2 file can carry this: v3 rejects the top-level personas list, which no
+    // route reads.
+    expect(await summary({ ...base, personas: [persona] }, {}, { v2: true })).toMatchObject({
       keysReady: false,
       missingKeys: ["E2B_API_KEY", "OPENAI_API_KEY"],
     });
@@ -134,7 +140,7 @@ describe("TUI key summary follows the configured route", () => {
       await summary(
         {
           ...base,
-          actors: [{ type: "scripted-browser", mission: "Use the app." }],
+          actors: [{ type: "scripted-browser" }],
           execution: { target: "local" },
           scenario: { mode: "live", ref: "humanish/scenarios/entry.yaml" },
         },
@@ -185,8 +191,8 @@ describe("lab summary participants", () => {
   it("probes the vendor stores through keyDeps, not the machine's own home", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keydeps-"));
     try {
-      await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
-      await writeFile(path.join(cwd, "humanish/labs/key-check.yaml"), stringify(base));
+      await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
+      await writeFile(path.join(cwd, "humanish/studies/key-check.yaml"), studyFileText(base, cwd));
       const withLogin = path.join(cwd, "home-with-e2b");
       await mkdir(path.join(withLogin, ".e2b"), { recursive: true });
       await writeFile(

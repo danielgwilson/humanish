@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../../../src/run/sandbox-receipts.js";
@@ -43,7 +43,7 @@ const labInput = {
 };
 
 function labConfig(): StudyConfig {
-  const parsed = parseStudy(labInput);
+  const parsed = parseStudyDocument(labInput);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -105,8 +105,8 @@ async function killRouteAfterReceipt(
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const script = `
     const { runTerminalProductStudy } = await import(${JSON.stringify(path.join(root, "src/routes/terminal/route.ts"))});
-    const { parseStudy } = await import(${JSON.stringify(path.join(root, "src/study/config.ts"))});
-    const parsed = parseStudy(JSON.parse(process.env.BOUNDARY_LAB));
+    const { parseStudyDocument } = await import(${JSON.stringify(path.join(root, "src/study/config.ts"))});
+    const parsed = parseStudyDocument(JSON.parse(process.env.BOUNDARY_LAB));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const module = {
       Sandbox: {

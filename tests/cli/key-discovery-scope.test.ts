@@ -2,9 +2,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { stringify } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
 import { lab } from "../admission/fixtures.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 // Provider-key discovery spawns `gh auth token` and reads the e2b login, the project overlay and
 // the user key store. Only a live run reads keys, so each command that can start one must still
@@ -25,14 +25,18 @@ async function project(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-key-discovery-"));
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "key-discovery-fixture" }\n');
-  await mkdir(path.join(dir, "humanish", "labs"), { recursive: true });
+  await mkdir(path.join(dir, "humanish", "studies"), { recursive: true });
   const labs = {
     "kd-live": lab("cuAppUrl", { scenario: { mode: "live" }, execution: { caps: { maxUsd: 1 } } }),
     "kd-dry": lab("cuAppUrl"),
     "kd-terminal-live": lab("terminal", { scenario: { mode: "live" } }),
   };
   for (const [id, raw] of Object.entries(labs))
-    await writeFile(path.join(dir, "humanish", "labs", `${id}.yaml`), stringify({ ...raw, id }));
+    await writeFile(
+      path.join(dir, "humanish", "studies", `${id}.yaml`),
+      // The terminal fixture's execution.timeoutMs is a key that route never reads.
+      studyFileText({ ...raw, id }, dir, id === "kd-terminal-live" ? ["execution.timeoutMs"] : []),
+    );
   return dir;
 }
 

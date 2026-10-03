@@ -7,7 +7,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -51,7 +51,7 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (live, spend-gated)", () => {
     "fans out two per-participant worlds (mobile + desktop) to two distinct desktops, both reclaimed by id",
     { timeout: 600_000 },
     async () => {
-      const parsed = parseStudy({
+      const parsed = parseStudyDocument({
         schema: V2_SCHEMA,
         id: "cua-fanout-live-proof",
         title: "CUA fan-out live proof",

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import { collectDesktopRecording } from "../../src/evidence/desktop-recording-artifact.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
@@ -117,11 +117,11 @@ it("keeps capture optional and rejects declarations that no runtime will consume
     execution: { target: "e2b-desktop", desktop: { recording: { audio: true } } },
     scenario: { mode: "live" },
   };
-  expect(parseStudy(config).ok).toBe(true);
+  expect(parseStudyDocument(config).ok).toBe(true);
   config.actors[0]!.type = "scripted-browser";
   config.execution!.target = "local";
   config.scenario!.ref = "scripted-first-run";
-  expect(parseStudy(config).ok).toBe(false);
+  expect(parseStudyDocument(config).ok).toBe(false);
   delete config.execution!.desktop!.recording;
-  expect(parseStudy(config).ok).toBe(true);
+  expect(parseStudyDocument(config).ok).toBe(true);
 });

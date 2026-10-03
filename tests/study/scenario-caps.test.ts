@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
@@ -42,7 +42,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
   it.each(["maxUsd", "maxTotalUsd"])(
     "refuses a positive %s at parse and names the execution.caps field",
     (key) => {
-      const result = parseStudy(computerUseLab({ [key]: 3, maxJobs: 0, maxMinutes: 12 }));
+      const result = parseStudyDocument(computerUseLab({ [key]: 3, maxJobs: 0, maxMinutes: 12 }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
@@ -51,7 +51,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
   );
 
   it("parses zeros with the inert-field warning", () => {
-    const result = parseStudy(computerUseLab({ maxUsd: 0, maxTotalUsd: 0 }));
+    const result = parseStudyDocument(computerUseLab({ maxUsd: 0, maxTotalUsd: 0 }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.warnings.join(" ")).toContain(
@@ -60,7 +60,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
   });
 
   it("leaves a terminal lab's positive scenario.caps.maxUsd alone", () => {
-    const result = parseStudy(terminalLab({ maxUsd: 1.5, maxJobs: 0, maxMinutes: 10 }));
+    const result = parseStudyDocument(terminalLab({ maxUsd: 1.5, maxJobs: 0, maxMinutes: 10 }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.scenario?.caps?.maxUsd).toBe(1.5);
@@ -104,7 +104,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
       const raw: unknown = parse(
         await readFile(path.join(repoRoot, "humanish", "studies", `${id}.yaml`), "utf8"),
       );
-      const result = parseStudy(raw);
+      const result = parseStudyDocument(raw);
       expect(result.ok ? "ok" : result.error.message).toBe("ok");
       if (!result.ok) return;
       expect(result.config.execution?.caps?.maxUsd).toBe(3);
@@ -117,7 +117,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
     const dir = path.join(repoRoot, "humanish", "studies");
     const refused: string[] = [];
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml"))) {
-      const result = parseStudy(parse(await readFile(path.join(dir, file), "utf8")));
+      const result = parseStudyDocument(parse(await readFile(path.join(dir, file), "utf8")));
       if (!result.ok && result.error.message.includes("scenario.caps.")) refused.push(file);
     }
     expect(refused).toEqual([]);

@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { afterAll, expect, it } from "vitest";
-import { stringify } from "yaml";
 import { lab } from "../admission/fixtures.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 // `lab run --rerun-failed-from <run> --participants <ids>` is the example in `lab run --help`.
 // The CLI must pass the selection as rerun.participantIds: runStudyWith refuses the removed
@@ -22,11 +22,11 @@ it("passes the selected participants to the rerun check without a warning", asyn
   const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-rerun-participants-"));
   cleanup.push(cwd);
   await writeFile(path.join(cwd, "package.json"), '{ "name": "rerun-participants-fixture" }\n');
-  await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+  await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
   const raw = lab("cuAppUrl", {}, { lanes: [{ id: "lane-01" }, { id: "lane-02" }] });
   await writeFile(
-    path.join(cwd, "humanish", "labs", "fanout.yaml"),
-    stringify({ ...raw, id: "fanout" }),
+    path.join(cwd, "humanish", "studies", "fanout.yaml"),
+    studyFileText({ ...raw, id: "fanout" }, cwd),
   );
 
   const child = await execFileAsync(

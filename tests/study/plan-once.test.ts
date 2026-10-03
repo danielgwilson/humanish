@@ -61,12 +61,12 @@ vi.mock("../../src/routes/computer-use/plan.js", async (importOriginal) => {
 
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
-import { parseStudy } from "../../src/study/config.js";
+import { parseStudyDocument } from "../../src/study/config.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { lab, SCENARIO_YAML, type BaseName, type Patch } from "../admission/fixtures.js";
 
 function parsed(base: BaseName, patch: Patch = {}): StudyConfig {
-  const result = parseStudy(lab(base, patch));
+  const result = parseStudyDocument(lab(base, patch));
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }

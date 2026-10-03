@@ -15,7 +15,7 @@ import type {
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy } from "../../../src/study/config.js";
+import { parseStudyDocument } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
@@ -275,7 +275,7 @@ function scriptedConfig(overrides?: {
   target?: "local" | undefined;
   ref?: string;
 }): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "scripted-routing-proof",
     title: "Scripted routing proof",
@@ -305,7 +305,7 @@ function scriptedConfig(overrides?: {
 }
 
 function provisionedScriptedConfig(): StudyConfig {
-  const parsed = parseStudy({
+  const parsed = parseStudyDocument({
     schema: V2_SCHEMA,
     id: "provisioned-scripted-routing-proof",
     title: "Provisioned scripted routing proof",
@@ -342,14 +342,14 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
   });
 
   it("app-url × e2b-desktop × openai-computer-use still routes to cua, and the other routes are untouched", () => {
-    const cua = parseStudy({
+    const cua = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "cua",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use" }],
       execution: { target: "e2b-desktop" },
     });
-    const synthetic = parseStudy({
+    const synthetic = parseStudyDocument({
       schema: V2_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
@@ -365,7 +365,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       execution: { target: "e2b-desktop" },
     } as const;
     if (!cua.ok || !synthetic.ok) throw new Error("fixture configs must parse");
-    expect(parseStudy(cloneWithCodeActor).ok).toBe(false);
+    expect(parseStudyDocument(cloneWithCodeActor).ok).toBe(false);
     expect(routeOf(cua.config)).toBe("computer-use");
     expect(routeOf(synthetic.config)).toBe("preview");
     expect(routeOf(cloneWithCodeActor as unknown as StudyConfig)).toBe("computer-use");
@@ -1427,8 +1427,8 @@ describe("humanish lab run scripted-demo (CLI)", () => {
       path.join(ROOT, "humanish", "studies", "scripted-demo.yaml"),
       "utf8",
     );
-    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "humanish", "labs", "scripted-demo.yaml"), lab, "utf8");
+    await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish", "studies", "scripted-demo.yaml"), lab, "utf8");
     await writeCommittedScenario(cwd);
   });
 

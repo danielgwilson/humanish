@@ -6,10 +6,10 @@ import path from "node:path";
 
 import { CommanderError, type Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { lab } from "../admission/fixtures.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const LAB_RUN_NOTE =
   "warning: humanish lab run is deprecated and is removed in the next minor. Use humanish run <study>.\n";
@@ -131,11 +131,11 @@ describe("run takes the rerun and scorer flags lab run had", () => {
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-command-"));
     await writeFile(path.join(cwd, "package.json"), '{ "name": "run-command-fixture" }\n');
-    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     const raw = lab("cuAppUrl", {}, { lanes: [{ id: "lane-01" }, { id: "lane-02" }] });
     await writeFile(
-      path.join(cwd, "humanish", "labs", "fanout.yaml"),
-      stringify({ ...raw, id: "fanout" }),
+      path.join(cwd, "humanish", "studies", "fanout.yaml"),
+      studyFileText({ ...raw, id: "fanout" }, cwd),
     );
   });
   afterEach(async () => {

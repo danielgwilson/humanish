@@ -11,6 +11,7 @@ import {
 } from "../../src/study/discover.js";
 
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { studyFileText } from "../helpers/study-file.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -19,7 +20,7 @@ describe("lab manifest resolution", () => {
     const cwd = await makeTestTempDir("humanish-labs-");
     await writeLab(
       cwd,
-      "humanish/labs/first-run.yaml",
+      "humanish/studies/first-run.yaml",
       [
         "schema: humanish.lab.v2",
         "id: first-run",
@@ -33,7 +34,7 @@ describe("lab manifest resolution", () => {
     );
     await writeLab(
       cwd,
-      ".humanish/local/labs/private.yaml",
+      ".humanish/local/studies/private.yaml",
       [
         "schema: humanish.lab.v2",
         "id: private",
@@ -57,7 +58,7 @@ describe("lab manifest resolution", () => {
 
     const committed = await resolveStudyManifest(cwd, "first-run");
     const ignored = await resolveStudyManifest(cwd, "private");
-    const explicit = await resolveStudyManifest(cwd, ".humanish/local/labs/private.yaml");
+    const explicit = await resolveStudyManifest(cwd, ".humanish/local/studies/private.yaml");
     const list = await listStudyManifests(cwd);
 
     expect(committed.ok && committed.origin).toBe("committed");
@@ -75,7 +76,7 @@ describe("lab manifest resolution", () => {
     const cwd = await makeTestTempDir("humanish-labs-invalid-");
     await writeLab(
       cwd,
-      "humanish/labs/compat.yml",
+      "humanish/studies/compat.yml",
       [
         "schema: humanish.lab.v2",
         "id: compat",
@@ -87,7 +88,7 @@ describe("lab manifest resolution", () => {
     );
     await writeLab(
       cwd,
-      "humanish/labs/bad.yaml",
+      "humanish/studies/bad.yaml",
       ["schema: nope", "id: bad", "subject:", "  source: this-repo"].join("\n"),
     );
 
@@ -106,10 +107,10 @@ describe("lab manifest resolution", () => {
       const root = await makeTestTempDir("humanish-labs-unsafe-leaf-");
       const cwd = path.join(root, "project");
       const outside = path.join(root, `outside-${kind}.yaml`);
-      const candidate = path.join(cwd, "humanish", "labs", "priority.yaml");
+      const candidate = path.join(cwd, "humanish", "studies", "priority.yaml");
       await mkdir(path.dirname(candidate), { recursive: true });
       await writeFile(outside, labYaml("outside"), "utf8");
-      await writeLab(cwd, ".humanish/labs/priority.yaml", labYaml("fallback"));
+      await writeLab(cwd, ".humanish/studies/priority.yaml", labYaml("fallback"));
 
       if (kind === "symlink") {
         await symlink(outside, candidate);
@@ -140,7 +141,7 @@ describe("lab manifest resolution", () => {
         /study directory|study file|single-link|containment/i,
       );
       expect(listed.studies.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:fallback"]);
-      expect(listed.warnings.join("\n")).toContain("humanish/labs/priority.yaml");
+      expect(listed.warnings.join("\n")).toContain("humanish/studies/priority.yaml");
       expect(await readFile(outside, "utf8")).toBe(labYaml("outside"));
     },
   );
@@ -151,9 +152,9 @@ describe("lab manifest resolution", () => {
       const root = await makeTestTempDir("humanish-labs-unsafe-dir-");
       const cwd = path.join(root, "project");
       const committedParent = path.join(cwd, "humanish");
-      const committedLabs = path.join(committedParent, "labs");
+      const committedLabs = path.join(committedParent, "studies");
       await mkdir(committedParent, { recursive: true });
-      await writeLab(cwd, ".humanish/local/labs/priority.yaml", labYaml("safe-local"));
+      await writeLab(cwd, ".humanish/local/studies/priority.yaml", labYaml("safe-local"));
 
       if (kind === "symlink") {
         const outsideLabs = path.join(root, "outside-labs");
@@ -177,7 +178,7 @@ describe("lab manifest resolution", () => {
       expect(listed.studies.map((lab) => `${lab.origin}:${lab.id}`)).toEqual([
         "ignored:safe-local",
       ]);
-      expect(listed.warnings.join("\n")).toMatch(/humanish[/\\]labs.*unsafe|symbolic links/i);
+      expect(listed.warnings.join("\n")).toMatch(/humanish[/\\]studies.*unsafe|symbolic links/i);
     },
   );
 
@@ -235,22 +236,24 @@ describe("lab manifest resolution", () => {
     const root = await makeTestTempDir("humanish-labs-cwd-alias-");
     const physicalCwd = path.join(root, "physical-project");
     const aliasCwd = path.join(root, "project-alias");
-    await writeLab(physicalCwd, "humanish/labs/aliased.yaml", labYaml("aliased"));
+    await writeLab(physicalCwd, "humanish/studies/aliased.yaml", labYaml("aliased"));
     await symlink(physicalCwd, aliasCwd);
 
     const resolved = await resolveStudyManifest(aliasCwd, "aliased");
     const listed = await listStudyManifests(aliasCwd);
 
     expect(resolved.ok).toBe(true);
-    expect(resolved.ok && resolved.path).toBe("humanish/labs/aliased.yaml");
-    expect(listed.studies.map((lab) => lab.path)).toEqual(["humanish/labs/aliased.yaml"]);
+    expect(resolved.ok && resolved.path).toBe("humanish/studies/aliased.yaml");
+    expect(listed.studies.map((lab) => lab.path)).toEqual(["humanish/studies/aliased.yaml"]);
   });
 });
 
+/** Writes a study file; one given in the humanish.lab.v2 shape is written as its v3 conversion. */
 async function writeLab(cwd: string, relativePath: string, contents: string): Promise<void> {
   const filePath = path.join(cwd, relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${contents}\n`, "utf8");
+  const v2 = contents.startsWith("schema: humanish.lab.v2");
+  await writeFile(filePath, v2 ? studyFileText(contents, cwd) : `${contents}\n`, "utf8");
 }
 
 function labYaml(id: string): string {
