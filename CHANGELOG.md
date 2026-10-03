@@ -342,6 +342,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   keep their two-column gutter and the labs list keeps the ▸ before the selected description.
   "Start a LIVE run" reads "Start a live run", empty states are sentences, and on-screen em
   dashes became colons or semicolons.
+- A word that names no command is reported as an unknown command whatever options follow it.
+  `humanish nope --cwd .` and `humanish verfy --run latest` print "error: unknown command 'nope'"
+  and "Did you mean 'verify'?" and exit 1. Before, an option after the word won: they printed
+  "unknown option '--cwd'" and listed the commands that take `--cwd`, as if the word were one of
+  them. `humanish nope --help` also reports the unknown command, where it printed the root help.
+  A real command with a wrong option, such as `verify --nope`, keeps the unknown-option message.
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 
