@@ -91,9 +91,9 @@ Two kinds of change need one more step:
 
 `pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files.
 It also holds four counts to caps: oxlint warnings (`lint`, capped in package.json), prose in
-comments and test names under `src/`, `tests/`, `scripts/` and `tui/` (`prose:check`: issue
-references, `FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and the
-other kinds listed at the top of `scripts/check-code-prose.mjs`, which also counts the text of
+comments and test names under `src/`, `tests/`, `scripts/`, `tui/` and `observer/` (`prose:check`:
+issue references, `FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and
+the other kinds listed at the top of `scripts/check-code-prose.mjs`, which also counts the text of
 `src/` string literals), and identifiers and file names in
 `src/` outside the exempt contract modules that still say a retired participant word (lane, seat,
 role or sim) or lab (`vocabulary:check`), and hex colors written into rules and classes no site

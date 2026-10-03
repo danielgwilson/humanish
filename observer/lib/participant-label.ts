@@ -3,8 +3,8 @@ import type { ObserverStream } from "./observer-data";
 /**
  * A computer-use participant stream records its participant id as `laneId`; no other route sets
  * it. Those streams display the recorded persona, so the card does not depend on the label's
- * wording, which has changed between releases ("CUA lane <id> — <lab>", then
- * "CUA participant <id>: <lab>"). Every other stream keeps its recorded label.
+ * wording, which has changed between releases (`CUA lane <id> — <lab>`, then
+ * `CUA participant <id>: <lab>`). Every other stream keeps its recorded label.
  */
 function displayLabel(stream: ObserverStream): string {
   if (stream.laneId === undefined) return stream.label;
@@ -18,7 +18,7 @@ export function participantLabels(streams: ObserverStream[]): Map<string, string
   for (const label of labels) counts.set(label, (counts.get(label) ?? 0) + 1);
   const qualified = streams.map((stream, index) => {
     const label = labels[index]!;
-    // Preserve identity when a persona participates in several lanes or streams.
+    // Preserve identity when a persona participates in several streams.
     return counts.get(label)! > 1 ? `${label} · ${stream.laneId ?? stream.id}` : label;
   });
   counts.clear();

@@ -112,7 +112,7 @@ describe("Study playback controller", () => {
     expect(playback.atMs).toBe(origin + 5500);
   });
 
-  it("does not invent timing for legacy lanes and resets when the study changes", async () => {
+  it("does not invent timing for legacy streams and resets when the study changes", async () => {
     await render([lane("timed", [0, 10_000]), lane("old", [null, null])]);
     await act(async () => playback.seek(origin + 5000));
     expect(playback.playerControl("old").moment.kind).toBe("timing-unavailable");

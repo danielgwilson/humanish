@@ -55,8 +55,9 @@ import {
   isCapsEmphasis,
 } from "./lib/prose-rules.mjs";
 
-// Each root is read recursively; node_modules and dist are skipped. src keeps the bare flag names.
-const ROOTS = ["src", "tests", "scripts", "tui"];
+// Each root is read recursively; node_modules and dist are skipped. A root's caps are under
+// `prose.<root>` in scripts/caps.json.
+const ROOTS = ["src", "tests", "scripts", "tui", "observer"];
 const SOURCE_FILE = /\.(?:ts|tsx|mts|mjs|js)$/;
 const SKIPPED_DIR = /(?:^|\/)(?:node_modules|dist)(?:\/|$)/;
 

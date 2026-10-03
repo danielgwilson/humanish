@@ -184,7 +184,7 @@ describe("Player projects the shared study clock", () => {
     expect(playback.onToggle).not.toHaveBeenCalled();
   });
 
-  it("renders before-first and missing frames honestly without stopping the shared clock", async () => {
+  it("renders before-first and missing frames as missing without stopping the shared clock", async () => {
     const onViewChange = vi.fn();
     await render(control(0, { moment: { kind: "before-first" }, playing: true }), { onViewChange });
     expect(frameSource()).toBeUndefined();

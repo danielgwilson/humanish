@@ -3,8 +3,8 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { parseSync } from "oxc-parser";
 
-// Value import of the producer is fine here (tests run in Node); the APP must never
-// do this — lib/observer-data.ts is type-only so no CLI code reaches the artifact.
+// Value import of the producer is fine here (tests run in Node); the app must never
+// do this: lib/observer-data.ts is type-only so no CLI code reaches the artifact.
 import { OBSERVER_DATA_SCHEMA as PRODUCER_SCHEMA } from "../../src/observer/data";
 import { OBSERVER_DATA_PLACEHOLDER, OBSERVER_DATA_SCHEMA } from "../lib/data";
 import { OBSERVER_DATA_PLACEHOLDER as INJECTOR_PLACEHOLDER } from "../scripts/inject";
