@@ -8,7 +8,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The single live rung for multi-participant fan-out. Written, gated, and not run in the
@@ -73,7 +73,7 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (live, spend-gated)", () => {
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 
-      const outcome = await runLab(parsed.config, {
+      const outcome = await runStudyWith(parsed.config, {
         cwd,
         // Per-participant prepareDesktop: serve the neutral page inside each participant's own
         // sandbox.

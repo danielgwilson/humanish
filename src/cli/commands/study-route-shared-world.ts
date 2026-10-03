@@ -9,7 +9,7 @@ import { redactText } from "../../evidence/redaction.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
 import {
   type CliIo,
-  type LabCommandOptions,
+  type StudyCommandOptions,
   parseObserverPort,
   wantsJson,
   writeResult,
@@ -20,9 +20,9 @@ import {
   staticObserverOpen,
   withObserverServer,
 } from "../observer-follow.js";
-import { formatConcurrentSharedWorldLabHuman } from "./lab-format.js";
-import { resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
-import type { RouteRun } from "./lab-route-run.js";
+import { formatConcurrentSharedWorldStudyHuman } from "./study-format.js";
+import { resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
+import type { RouteRun } from "./study-route-run.js";
 import { rosterOf } from "../../study/parse/actors.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 
@@ -31,7 +31,7 @@ interface SharedWorldRouteArgs {
   io: CliIo;
   config: StudyConfig;
   mode: "run" | "watch";
-  options: LabCommandOptions;
+  options: StudyCommandOptions;
 }
 
 /**
@@ -67,7 +67,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
       warnings: [],
       error: { code: "HUMANISH_SHARED_WORLD_FAILED", message },
     };
-    writeResult(args.command, args.io, result, formatConcurrentSharedWorldLabHuman);
+    writeResult(args.command, args.io, result, formatConcurrentSharedWorldStudyHuman);
     args.io.setExitCode(2);
   };
   if (wantsFollow && port === null) {
@@ -145,7 +145,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
           ],
         };
       }
-      writeResult(args.command, args.io, output, formatConcurrentSharedWorldLabHuman);
+      writeResult(args.command, args.io, output, formatConcurrentSharedWorldStudyHuman);
       args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
       if (server && output.observer?.ok) {

@@ -54,7 +54,7 @@ import { checkLiveTerminalMachine, runLiveTerminalSession } from "./session.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
 import { terminalRouteScorer } from "../../study/adapter-scorer-loader.js";
 import { withLateScorer } from "../../study/route-inputs.js";
-import type { AdmittedPlan } from "../../run-lab.js";
+import type { AdmittedPlan } from "../../run-study.js";
 import {
   type LiveTerminalAuth,
   type LiveTerminalPlan,
@@ -134,7 +134,7 @@ export async function runTerminalPlan(
 }
 
 /**
- * runLab's step for a terminal plan. It runs a live plan's local checks (checkLiveTerminalMachine)
+ * runStudyWith's step for a terminal plan. It runs a live plan's local checks (checkLiveTerminalMachine)
  * before any run scope opens, so the CLI can present their refusal before it loads a declared
  * scorer, and returns the run that continues from them with that scorer.
  */

@@ -16,7 +16,7 @@ import {
   CWD_OPTION_DESCRIPTION,
   ENV_FILE_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,
-  type LabCommandOptions,
+  type StudyCommandOptions,
   parsePositiveInteger,
   writeResult,
   type HumanOutput,
@@ -41,7 +41,7 @@ export function registerStudyCommands(parent: Command, io: CliIo): void {
   checkCommand(lab.command("preflight"), io, "humanish study check <study>");
   addRunOptions(
     lab.command("run", { hidden: true }).argument("<study>", "Study id or .yaml path."),
-  ).action((name: string, options: LabCommandOptions, command: Command) => {
+  ).action((name: string, options: StudyCommandOptions, command: Command) => {
     warnOldCommand(command, io, "humanish run <study>");
     return handleRun(io, name, options, command);
   });

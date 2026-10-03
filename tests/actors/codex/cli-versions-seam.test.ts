@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { parseSync } from "oxc-parser";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createProgram } from "../../../src/cli/program.js";
-import type { RunLabOptions } from "../../../src/run-lab.js";
+import type { RunStudyOptions } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 
@@ -154,7 +154,7 @@ describe("the cliVersions qualification bypass", () => {
     visit(createProgram());
     expect(flags.length).toBeGreaterThan(0);
     expect(flags.filter((flag) => /cli-?version/i.test(flag))).toEqual([]);
-    expectTypeOf<RunLabOptions>().not.toHaveProperty("cliVersions");
+    expectTypeOf<RunStudyOptions>().not.toHaveProperty("cliVersions");
     expectTypeOf<StudyDeps>().not.toHaveProperty("cliVersions");
   });
 });

@@ -17,7 +17,7 @@ const issues = (doc: string, overrides?: Record<string, string>) =>
 describe("doc symbol check", () => {
   it("reads the three explicit forms and nothing looser", () => {
     const doc = [
-      "`routeOf` (`src/study/plan.ts`) picks a route, and `runLab()` in `src/run-lab.ts` runs it.",
+      "`routeOf` (`src/study/plan.ts`) picks a route, and `runLab()` in `src/run-study.ts` runs it.",
       "`verifyRun` from `src/run/verify.ts`, `startRun` at `src/run/run.ts`, and",
       "(`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) and `resolveLabManifest`",
       "   (`src/study/discover.ts`).",
@@ -26,7 +26,7 @@ describe("doc symbol check", () => {
     ].join("\n");
     expect(findSymbolReferences(doc)).toEqual([
       { line: 1, name: "routeOf", path: "src/study/plan.ts" },
-      { line: 1, name: "runLab", path: "src/run-lab.ts" },
+      { line: 1, name: "runLab", path: "src/run-study.ts" },
       { line: 2, name: "verifyRun", path: "src/run/verify.ts" },
       { line: 2, name: "startRun", path: "src/run/run.ts" },
       { line: 3, name: "reclaimPreflightSandboxes", path: "src/run/reclaim.ts" },
@@ -92,11 +92,11 @@ describe("doc symbol check", () => {
   });
 
   it("fails when the doc names a file that only imports the symbol", () => {
-    expect(issues("`routeOf` in `src/run-lab.ts`")).toEqual(["1 routeOf src/run-lab.ts"]);
+    expect(issues("`routeOf` in `src/run-study.ts`")).toEqual(["1 routeOf src/run-study.ts"]);
   });
 
   it("fails when a re-export is dropped from an existing file", () => {
-    const index = real("src/index.ts").replace(/^\s*LabOutcome as StudyOutcome,\n/m, "");
+    const index = real("src/index.ts").replace(/\bStudyOutcome, /, "");
     expect(index).not.toBe(real("src/index.ts"));
     expect(issues("`StudyOutcome.backend` in `src/index.ts`")).toEqual([]);
     expect(issues("`StudyOutcome.backend` in `src/index.ts`", { "src/index.ts": index })).toEqual([

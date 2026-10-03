@@ -1,4 +1,4 @@
-// The public RunLabOptions homes that every route reads: env, scorer, prepareDesktop, onEvent,
+// The public RunStudyOptions homes that every route reads: env, scorer, prepareDesktop, onEvent,
 // onStream and analysisSignal, and the brain and in-process driving computer use takes.
 
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";

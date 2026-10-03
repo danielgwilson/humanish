@@ -11,7 +11,7 @@ import { parseStudy } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import type { Requirement } from "../../src/study/plan-types.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
-import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
+import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
@@ -63,7 +63,7 @@ function keyNames(requirement: Requirement): readonly string[] {
 }
 
 function options(cwd: string, env: Record<string, string>) {
-  return { cwd, env } satisfies InternalRunLabOptions;
+  return { cwd, env } satisfies InternalRunStudyOptions;
 }
 
 /** The terminal and scripted routes' seams: an E2B module load or a browser launch counts too. */
@@ -99,7 +99,7 @@ describe("plan.requirements keys", () => {
           Object.entries(ALL_KEYS).filter(([name]) => !names.includes(name)),
         );
         const loads = { count: 0 };
-        const outcome = await runLab(parsed.config, options(cwd, env), deps(loads));
+        const outcome = await runStudyWith(parsed.config, options(cwd, env), deps(loads));
         const runs = await readdir(path.join(cwd, ".humanish", "runs")).catch(() => []);
         expect({ without: names, ok: outcome.result.ok, runs, loads: loads.count }).toEqual({
           without: names,
@@ -132,7 +132,7 @@ describe("plan.requirements keys", () => {
       const env = Object.fromEntries(
         Object.entries(ALL_KEYS).filter(([name]) => declared.has(name)),
       );
-      const outcome = await runLab(parsed.config, options(cwd, env), deps({ count: 0 }));
+      const outcome = await runStudyWith(parsed.config, options(cwd, env), deps({ count: 0 }));
       expect(outcome.result.error?.code ?? "").not.toMatch(/_(KEYS|RUNTIME_AUTH)_MISSING$/);
     },
     60_000,
@@ -220,7 +220,7 @@ async function liveRun(raw: RawLab, env: Record<string, string>) {
   if (!parsed.ok) throw new Error(parsed.error.message);
   const cwd = await projectDir();
   const loads = { count: 0 };
-  const outcome = await runLab(parsed.config, options(cwd, env), deps(loads));
+  const outcome = await runStudyWith(parsed.config, options(cwd, env), deps(loads));
   const runs = await readdir(path.join(cwd, ".humanish", "runs")).catch(() => []);
   return { code: outcome.result.error?.code ?? "", runs, loads: loads.count };
 }

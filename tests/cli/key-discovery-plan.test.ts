@@ -5,7 +5,7 @@ import { parse, stringify } from "yaml";
 
 // The command stops after key discovery: the computer-use route's CLI setup is replaced by one that
 // returns no run, so no browser, agent, desktop, scorer or provider starts.
-vi.mock("../../src/cli/commands/lab-route-computer-use.js", () => ({
+vi.mock("../../src/cli/commands/study-route-computer-use.js", () => ({
   computerUseRouteRun: () => undefined,
 }));
 

@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import type { CliIo, LabCommandOptions } from "../io.js";
+import type { CliIo, StudyCommandOptions } from "../io.js";
 import { type ObserverPlan, planObserver, staticObserverOpen } from "../observer-follow.js";
 
 /**
@@ -26,7 +26,7 @@ export function resolveRouteShouldOpen(args: {
  * machine mode, null after an invalid --port was reported.
  */
 export function watchFinishedPlan(
-  args: { command: Command; io: CliIo; mode: "run" | "watch"; options: LabCommandOptions },
+  args: { command: Command; io: CliIo; mode: "run" | "watch"; options: StudyCommandOptions },
   wantsMachine: boolean,
   shouldOpen: boolean,
 ): ObserverPlan | null | undefined {

@@ -55,7 +55,7 @@ export function freePortOption(): Option {
   return new Option("--port <port>", PORT_OPTION_DESCRIPTION).default("0", "a free port");
 }
 
-export interface LabCommandOptions {
+export interface StudyCommandOptions {
   count?: string | undefined;
   cwd: string;
   detach?: boolean | undefined;
@@ -182,7 +182,7 @@ export async function discoverCliKeys(args: {
   }
 }
 
-export function parseLabCount(value: string | undefined, fallback: number): number | null {
+export function parseStudyCount(value: string | undefined, fallback: number): number | null {
   return value === undefined ? fallback : parsePositiveInteger(value);
 }
 

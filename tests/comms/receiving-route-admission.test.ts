@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseStudy } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
@@ -50,7 +50,7 @@ describe("real receiving admission on non-receiving backends", () => {
       for (const spy of generic) spy.mockImplementation(forbidden);
       const output = path.join(cwd, "must-not-exist");
       for (const dryRun of [false, true]) {
-        const outcome = await runLab(
+        const outcome = await runStudyWith(
           resolved,
           { cwd: output, dryRun, env: {} },
           {

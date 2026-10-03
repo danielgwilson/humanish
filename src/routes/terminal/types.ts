@@ -106,7 +106,7 @@ export type TerminalCostProbe = (context: {
   tokenCostUsd?: number;
 }) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
 
-/** The scorer functions a terminal run calls: `RunLabOptions.scorer` without `deriveArtifacts`. */
+/** The scorer functions a terminal run calls: `RunStudyOptions.scorer` without `deriveArtifacts`. */
 export interface TerminalScorer {
   /**
    * The adapter extension seam: product-adapter hooks without forking

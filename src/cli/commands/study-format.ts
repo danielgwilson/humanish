@@ -31,7 +31,7 @@ function participantStatus(status: string): string {
   return status === "contract_proof_only" ? "dry run, nothing ran live" : status;
 }
 
-export function formatConcurrentSharedWorldLabHuman(
+export function formatConcurrentSharedWorldStudyHuman(
   result: ConcurrentSharedWorldLabResult,
 ): HumanOutput {
   return withError(result.error, [
@@ -65,7 +65,7 @@ export function formatConcurrentSharedWorldLabHuman(
   ]);
 }
 
-export function formatTerminalLabHuman(result: TerminalProductLabResult): HumanOutput {
+export function formatTerminalStudyHuman(result: TerminalProductLabResult): HumanOutput {
   return withError(result.error, [
     ...runHeader(result, "terminal"),
     `run: ${result.runId}`,
@@ -79,7 +79,7 @@ export function formatTerminalLabHuman(result: TerminalProductLabResult): HumanO
   ]);
 }
 
-export function formatScriptedLabHuman(result: ScriptedBrowserLabResult): HumanOutput {
+export function formatScriptedStudyHuman(result: ScriptedBrowserLabResult): HumanOutput {
   return withError(result.error, [
     ...runHeader(result, "scripted"),
     `run: ${result.runId}`,
@@ -102,7 +102,7 @@ export function formatScriptedLabHuman(result: ScriptedBrowserLabResult): HumanO
   ]);
 }
 
-export function formatCuaLabHuman(result: CuaActorLabResult): HumanOutput {
+export function formatCuaStudyHuman(result: CuaActorLabResult): HumanOutput {
   return withError(result.error, [
     ...runHeader(result, "computer-use"),
     `run: ${result.runId}`,

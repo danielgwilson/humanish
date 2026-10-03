@@ -3,12 +3,8 @@
 // docs/contracts/schemas.md, "Library options", and the site's library page.
 
 // Run a study.
-export { runPackageLab as runStudy } from "./run-lab.js";
-export type {
-  LabOutcome as StudyOutcome,
-  LabResult as StudyResult,
-  RunLabOptions as RunStudyOptions,
-} from "./run-lab.js";
+export { runStudy } from "./run-study.js";
+export type { StudyOutcome, StudyResult, RunStudyOptions } from "./run-study.js";
 export type { StudyEvent } from "./study/run-study-events.js";
 export type { ProviderContext } from "./study/run-study-homes.js";
 export { routeOf } from "./study/plan.js";

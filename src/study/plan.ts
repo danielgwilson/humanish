@@ -8,7 +8,7 @@ import { injectedBrowser, planScriptedLab } from "../routes/scripted/plan.js";
 import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
-import type { InternalRunLabOptions } from "../run-lab.js";
+import type { InternalRunStudyOptions } from "../run-study.js";
 import type { StudyDeps } from "./study-deps.js";
 import { THIS_REPO_DRY_RUN_ONLY } from "./composition-rules.js";
 import { planBase } from "./plan-base.js";
@@ -43,7 +43,7 @@ export function resolveStudyDryRun(
  */
 function planPreview(
   config: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   input: { readonly dryRun: boolean },
 ): RoutePlanResult {
   const refuse = (code: PreviewRefusalCode, message: string): RoutePlanResult => ({
@@ -87,7 +87,7 @@ type RoutePlanResult =
  */
 export function planStudy(
   config: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   deps: StudyDeps = {},
 ): PlanResult {
   const lab = localBrowserDefaults(config);
@@ -103,7 +103,7 @@ export function planStudy(
 function planRoute(
   route: StudyRoute,
   lab: StudyConfig,
-  options: InternalRunLabOptions,
+  options: InternalRunStudyOptions,
   input: { readonly dryRun: boolean },
   deps: StudyDeps,
 ): RoutePlanResult {

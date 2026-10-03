@@ -1,5 +1,5 @@
 // A compact fake @e2b/desktop module and mock codex CLI, so the live terminal route runs
-// deterministically at $0. Shared by the scorer loader and RunLabOptions equivalence tests.
+// deterministically at $0. Shared by the scorer loader and RunStudyOptions equivalence tests.
 
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";

@@ -5,7 +5,7 @@ import { gzipSync } from "node:zlib";
 import { PNG } from "pngjs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import type { BrowserScoringContext } from "../../src/study/adapter-extension.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 import type { RunAdapterArtifact } from "../../src/run/bundle.js";
@@ -37,7 +37,7 @@ const CASES: Record<string, AdapterFile> = {
 
 /** A dry run whose adapter scorer writes one artifact into the run directory. */
 async function runWithAdapterFile(cwd: string, file: AdapterFile): Promise<string> {
-  const outcome = await runLab(shareSafetyDryRunConfig(), {
+  const outcome = await runStudyWith(shareSafetyDryRunConfig(), {
     cwd,
     scorer: {
       deriveArtifacts: async (ctx: BrowserScoringContext) => {

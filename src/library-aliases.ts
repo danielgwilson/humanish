@@ -21,11 +21,11 @@ import type { StudyRoute } from "./study/routing.js";
 import type { StudyEvent } from "./study/run-study-events.js";
 import { V2_SCHEMA, type StudyConfig } from "./study/types.js";
 import {
-  runPackageLab as runStudy,
-  type LabOutcome as StudyOutcome,
-  type LabResult as StudyResult,
-  type RunLabOptions as RunStudyOptions,
-} from "./run-lab.js";
+  runStudy,
+  type StudyOutcome,
+  type StudyResult,
+  type RunStudyOptions,
+} from "./run-study.js";
 
 /** @deprecated Use `runStudy`, the same function. 0.109 removes `runLab`. */
 export const runLab = runStudy;

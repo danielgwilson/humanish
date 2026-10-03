@@ -3,7 +3,7 @@
 import type { Command } from "commander";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
-import { runLabCommand } from "./lab-run.js";
+import { runStudyCommand } from "./study-run.js";
 import {
   applyEnvFileOption,
   type CliIo,
@@ -12,7 +12,7 @@ import {
   formatRunHuman,
   freePortOption,
   JSON_OPTION_DESCRIPTION,
-  type LabCommandOptions as RunOptions,
+  type StudyCommandOptions as RunOptions,
   parsePositiveInteger,
   writeResult,
 } from "../io.js";
@@ -96,13 +96,13 @@ export async function handleRun(
     cwd: options.cwd,
     envFile: options.envFile,
     io,
-    // runLabCommand discovers keys for a live lab; the lab-less preview needs none.
+    // runStudyCommand discovers keys for a live lab; the lab-less preview needs none.
     discoverKeys: false,
   });
   if (!loaded) return;
 
   if (study !== undefined) {
-    await runLabCommand({ command, io, lab: study, mode: "run", options });
+    await runStudyCommand({ command, io, lab: study, mode: "run", options });
     return;
   }
 

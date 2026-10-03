@@ -23,7 +23,7 @@ import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.j
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { ScriptedPlan } from "../../study/plan-types.js";
-import type { AdmittedPlan } from "../../run-lab.js";
+import type { AdmittedPlan } from "../../run-study.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { runScope, type RunScope } from "../../run/run.js";
@@ -108,7 +108,7 @@ export async function scriptedLabRefusal(
 }
 
 /**
- * runLab's step for a scripted plan. It takes no scorer, and its local checks (keys, a browser)
+ * runStudyWith's step for a scripted plan. It takes no scorer, and its local checks (keys, a browser)
  * run inside the run, so it returns the run.
  */
 export function admitScriptedPlan(
@@ -127,7 +127,7 @@ export function admitScriptedPlan(
 /**
  * Run a scripted plan. The run scope gives a direct library caller the same status-record lifetime
  * the CLI gets: returning from this function finalizes any record the run opened, whichever of its
- * fail-closed exits it took. Each route opens its own scope; `runLab` opens none. Without this a
+ * fail-closed exits it took. Each route opens its own scope; `runStudyWith` opens none. Without this a
  * test or an adopter calling the route directly leaves
  * the 5s cadence ticking into a directory something else is deleting, which surfaces as an
  * unrelated ENOTEMPTY.

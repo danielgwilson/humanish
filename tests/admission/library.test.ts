@@ -1,5 +1,5 @@
 // Pins what each library entry point does today with a config that breaks one admission rule, or
-// needs something it lacks: the parser, runLab, and the route's exported runner. The planStudy
+// needs something it lacks: the parser, runStudyWith, and the route's exported runner. The planStudy
 // migration (handoffs plan-design.md) must keep this golden byte-identical except for changes its
 // compatibility contract lists. Every refusal is also checked for side effects: no run directory,
 // no desktop module, no caller executor or provider, and no subprocess.
@@ -10,7 +10,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { parseStudy } from "../../src/study/config.js";
-import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
+import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import type { RunCuaActorLabOptions } from "../../src/routes/computer-use/types.js";
 import { resolveStudyDryRun, routeOf, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyConfig } from "../../src/study/types.js";
@@ -115,7 +115,7 @@ async function runEntry(
   let result: Json;
   try {
     if (entry === "runLab") {
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -124,7 +124,7 @@ async function runEntry(
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.count === undefined ? {} : { count: options.count }),
           ...rerun,
-        } as InternalRunLabOptions,
+        } as InternalRunStudyOptions,
         typed.deps,
       );
       result = outcome.result;
@@ -186,7 +186,7 @@ function summary(result: Json): Json {
   };
 }
 
-/** The runner usually returns what runLab returned; say so instead of repeating it. */
+/** The runner usually returns what runStudyWith returned; say so instead of repeating it. */
 function sameAsRunLab(runner: Record<string, Json>, runLabRecord: Json): Record<string, Json> {
   if (runLabRecord === undefined) return runner;
   const { runner: name, ...rest } = runner;

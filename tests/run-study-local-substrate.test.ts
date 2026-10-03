@@ -14,7 +14,7 @@ vi.mock("../src/routes/computer-use/local-vm.js", () => ({
   prepareLocalVmRun: localVm,
 }));
 
-import { runLab } from "../src/run-lab.js";
+import { runStudyWith } from "../src/run-study.js";
 import type { StudyConfig } from "../src/study/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../src/run/bundle.js";
 import type { CuaExecutor, CuaProvider } from "../src/actors/computer-use/loop.js";
@@ -64,7 +64,7 @@ describe("local browser study selection", () => {
       close,
     }));
 
-    const outcome = await runLab(config, {
+    const outcome = await runStudyWith(config, {
       cwd,
       dryRun: false,
       scorer: {
@@ -86,7 +86,7 @@ describe("local browser study selection", () => {
 
   it("keeps a caller's prepared local VM in place of a second study", async () => {
     const desktop = vi.fn();
-    const outcome = await runLab(config, {
+    const outcome = await runStudyWith(config, {
       cwd,
       dryRun: true,
       open: false,
@@ -105,7 +105,7 @@ describe("local browser study selection", () => {
     const createProvider = vi.fn(async (): Promise<CuaProvider> => {
       throw new Error("unexpected provider");
     });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       {
         ...config,
         actors: [{ type: "local-agent", localAgent: "codex", mission: "Save a synthetic note." }],

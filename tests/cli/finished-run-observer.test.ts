@@ -35,12 +35,12 @@ vi.mock("../../src/run/dry-run.js", async (importOriginal) => {
   };
 });
 
-vi.mock("../../src/run-lab.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/run-lab.js")>();
+vi.mock("../../src/run-study.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/run-study.js")>();
   return {
     ...actual,
-    prepareLab: async (...args: Parameters<typeof actual.prepareLab>) => {
-      const prepared = await actual.prepareLab(...args);
+    prepareStudy: async (...args: Parameters<typeof actual.prepareStudy>) => {
+      const prepared = await actual.prepareStudy(...args);
       if (!prepared.ok) return prepared;
       return {
         ok: true as const,

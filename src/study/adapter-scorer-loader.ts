@@ -59,7 +59,7 @@ export interface AdapterScorerModule<C extends AdapterScoringContext = AdapterSc
 }
 
 /**
- * A scorer written for computer use and shared world, as `RunLabOptions.scorer` takes it. Those
+ * A scorer written for computer use and shared world, as `RunStudyOptions.scorer` takes it. Those
  * routes pass the browser context; another route that calls it passes a context it was not written
  * for. The call states the kind, so the module itself needs no cast.
  */
@@ -69,7 +69,7 @@ export function browserScorer(
   return scorer as AdapterScorerModule;
 }
 
-/** A scorer written for terminal runs, as `RunLabOptions.scorer` takes it (see browserScorer). */
+/** A scorer written for terminal runs, as `RunStudyOptions.scorer` takes it (see browserScorer). */
 export function terminalScorer(
   scorer: AdapterScorerModule<TerminalProductScoringContext>,
 ): AdapterScorerModule {

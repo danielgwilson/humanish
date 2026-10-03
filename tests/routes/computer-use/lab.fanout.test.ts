@@ -45,7 +45,7 @@ import type {
 } from "../../../src/substrates/e2b/sdk.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
   type FetchLike,
@@ -398,7 +398,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
 
   it("dry-run run directory matches its golden", async () => {
     const stderr = captureStderr();
-    const outcome = await runLab(fanoutConfig(), { cwd, dryRun: true }).finally(stderr.stop);
+    const outcome = await runStudyWith(fanoutConfig(), { cwd, dryRun: true }).finally(stderr.stop);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
@@ -416,7 +416,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
 
   it("a 4-participant roster yields one bundle, simCount 4, per-participant requested screens, a plan event, contract statuses; verifyRun ok", async () => {
     const planEvents: StudyEvent[] = [];
-    const outcome = await runLab(fanoutConfig(), {
+    const outcome = await runStudyWith(fanoutConfig(), {
       cwd,
       dryRun: true,
       onEvent: (event) => {
@@ -738,7 +738,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     // receipts in whatever order the scheduler gives them, which changed the snapshot once under
     // full-suite load. The concurrency behavior has its own tests in this file.
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 1 }),
       {
         cwd,
@@ -785,7 +785,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         done: true,
       }),
     };
-    await runLab(
+    await runStudyWith(
       fanoutConfig({ concurrency: 1 }),
       {
         cwd,
@@ -834,7 +834,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       return inner(options);
     };
 
-    const result = await runLab(
+    const result = await runStudyWith(
       config,
       { cwd, runId: "cua-fanout-effort", env: FANOUT_ENV },
       seams,
@@ -884,7 +884,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       });
     };
 
-    const runPromise = runLab(
+    const runPromise = runStudyWith(
       config,
       {
         cwd,
@@ -991,7 +991,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   it("execution.desktop.template: every fan-out participant's Sandbox.create gets the template; bundle records it", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2, template: "acme-desktop-with-runtimes" }),
       { cwd, env: FANOUT_ENV },
       passingSeams(handle),
@@ -1016,7 +1016,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   it("byte-stable default: no template → every fan-out participant's create gets no template arg, bundle omits desktopTemplate", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -1041,7 +1041,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       await kill(sandboxId, options);
       throw new Error("synthetic kill failure");
     };
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -1070,7 +1070,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   it("runs the real orchestration at N=4, concurrency 2: 4 per-participant sandboxes, bounded concurrency, teardown kills only each participant's own id, verifyRun ok", async () => {
     const handle = makeFanoutModule();
     const active = { count: 0, max: 0 };
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -1154,7 +1154,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const handle = makeFanoutModule();
     const active = { count: 0, max: 0 };
     const seams = passingSeams(handle, { active });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 4 }),
       {
         cwd,
@@ -1186,7 +1186,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       sourceLanes: { passed?: number; harnessErrors?: number } | undefined;
       sourceBundle: RunBundle;
       sourceAfterRerun: RunBundle;
-      rerun: Extract<Awaited<ReturnType<typeof runLab>>, { route: "computer-use" }>["result"];
+      rerun: Extract<Awaited<ReturnType<typeof runStudyWith>>, { route: "computer-use" }>["result"];
       rerunHandle: FanoutModuleHandle;
       rerunBundle: RunBundle;
       rerunText: string;
@@ -1206,7 +1206,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       (made ??= (async (): Promise<RerunProof> => {
         const project = await mkdtemp(path.join(tmpdir(), "humanish-fanout-rerun-"));
         const sourceHandle = makeFanoutModule();
-        const sourceOutcome = await runLab(
+        const sourceOutcome = await runStudyWith(
           fanoutConfig({ concurrency: 4 }),
           { cwd: project, env: FANOUT_ENV },
           {
@@ -1227,7 +1227,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         const sourceRunId = sourceOutcome.result.runId;
         const sourceBundle = await readBundle(project, sourceRunId);
         const rerunHandle = makeFanoutModule();
-        const rerunOutcome = await runLab(
+        const rerunOutcome = await runStudyWith(
           fanoutConfig({ concurrency: 4 }),
           { cwd: project, runId: "fanout-rerun-proof", rerun: { sourceRunId }, env: FANOUT_ENV },
           passingSeams(rerunHandle),
@@ -1340,7 +1340,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   });
 
   it("reruns only the participants a rerun names and refuses an id the source run lacks", async () => {
-    const sourceOutcome = await runLab(
+    const sourceOutcome = await runStudyWith(
       fanoutConfig({ concurrency: 4 }),
       {
         cwd,
@@ -1353,7 +1353,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(sourceOutcome.result.ok).toBe(true);
 
     const rerunHandle = makeFanoutModule();
-    const named = await runLab(
+    const named = await runStudyWith(
       fanoutConfig({ concurrency: 4 }),
       {
         cwd,
@@ -1373,7 +1373,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       "small-skimmer",
     ]);
 
-    const ghost = await runLab(
+    const ghost = await runStudyWith(
       fanoutConfig({ concurrency: 4 }),
       {
         cwd,
@@ -1414,7 +1414,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         },
       ],
     });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -1476,7 +1476,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         },
       ],
     });
-    const outcome = await runLab(config, { cwd, env: FANOUT_ENV }, passingSeams(handle));
+    const outcome = await runStudyWith(config, { cwd, env: FANOUT_ENV }, passingSeams(handle));
     expect(outcome.route).toBe("computer-use");
     if (outcome.route !== "computer-use") return;
 
@@ -1511,7 +1511,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         })),
       });
       config.policies = { ...config.policies, redactScreenshots: true };
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -1647,7 +1647,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         })),
       });
       let lane = 0;
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -1685,7 +1685,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     });
     const endings: Ending[] = ["pass", "blocker"];
     let lane = 0;
-    const source = await runLab(
+    const source = await runStudyWith(
       config,
       {
         cwd,
@@ -1700,7 +1700,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     if (source.route !== "computer-use") throw new Error("expected the computer-use route");
     expect(source.result.ok).toBe(false);
 
-    const rerun = await runLab(
+    const rerun = await runStudyWith(
       config,
       {
         cwd,
@@ -1731,7 +1731,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       concurrency: 1,
       lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
     });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -1773,7 +1773,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       concurrency: 1,
       lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
     });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -1812,7 +1812,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       ],
     });
     let built = 0;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -1862,7 +1862,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       concurrency: 1,
       lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
     });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -1900,7 +1900,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       ],
     });
     let sessions = 0;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -1960,7 +1960,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   it("adapter fail score turns an otherwise green CUA fan-out run red while preserving the verified bundle", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -2035,7 +2035,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
     it("gives each participant its own commit and omits a divergent top-level commit", async () => {
       const commits = ["1111111111111111aaaa", "2222222222222222bbbb"] as const;
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         cloneFanoutConfig(),
         {
           cwd,
@@ -2054,7 +2054,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
     it("carries the commit at the top level when both participants resolved the same one", async () => {
       const commit = "3333333333333333cccc";
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         cloneFanoutConfig(),
         {
           cwd,
@@ -2070,7 +2070,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   it("pipeline gate: lane-1 provisioning failure ⇒ the remaining participants never start a sandbox", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -2104,7 +2104,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   it("fail-fast on a harness error: in-flight participants finish, queued participants are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -2155,7 +2155,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
   it("a hollow participant (zero actions/messages) ⇒ run ok=false and verifyRun fails the engagement check", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -2197,7 +2197,11 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       scenario: { mode: "live" },
     });
     if (!config.ok) throw new Error(config.error.message);
-    const outcome = await runLab(config.config, { cwd, env: FANOUT_ENV }, passingSeams(handle));
+    const outcome = await runStudyWith(
+      config.config,
+      { cwd, env: FANOUT_ENV },
+      passingSeams(handle),
+    );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -2210,7 +2214,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   it("per-participant secret scrub holds: a provisioned/actor key value never reaches any artifact", async () => {
     const handle = makeFanoutModule();
     const secret = "test-openai-key";
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
       {
         cwd,
@@ -2340,7 +2344,7 @@ describe("cua fan-out: cost estimate (sum participant token lines + one aggregat
         { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." },
       ],
     });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,

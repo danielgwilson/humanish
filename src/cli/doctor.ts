@@ -103,7 +103,7 @@ export type DoctorCheckDraft = Omit<DoctorResult["checks"][number], "status"> & 
   status?: "note";
 };
 type DoctorCheck = DoctorCheckDraft;
-type LabSetup = Awaited<ReturnType<typeof studySetupChecks>>;
+type StudySetup = Awaited<ReturnType<typeof studySetupChecks>>;
 
 export async function doctor(
   cwdInput: string,
@@ -272,7 +272,7 @@ async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) 
  * $0, but as a burned first impression on the flagship path. Answering it here means the readiness
  * command actually answers readiness.
  */
-async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck> {
+async function desktopSdkCheck(setup: StudySetup | undefined): Promise<DoctorCheck> {
   const present = await safeCheck(async () => {
     try {
       await import("@e2b/desktop");
@@ -388,7 +388,7 @@ function studyList(studies: readonly string[]): string {
 function keyChecks(
   probes: readonly KeySourceProbe[],
   receivingKey: string | null,
-  setup: LabSetup | undefined,
+  setup: StudySetup | undefined,
   keyUsers: ReadonlyMap<string, readonly string[]> | undefined,
 ): DoctorCheck[] {
   return probes.map((probe) => {

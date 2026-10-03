@@ -51,7 +51,7 @@ import { prepareConcurrentRun } from "./setup.js";
 import type { SharedWorldPlan } from "../../study/plan-types.js";
 import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
 import { withLateScorer } from "../../study/route-inputs.js";
-import type { AdmittedPlan } from "../../run-lab.js";
+import type { AdmittedPlan } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
 import {
   type ConcurrentSharedWorldLabErrorCode,
@@ -122,7 +122,7 @@ export function sharedWorldLabRefusal(
 }
 
 /**
- * runLab's step for a shared-world plan. It runs a live plan's local checks (the keys, a local
+ * runStudyWith's step for a shared-world plan. It runs a live plan's local checks (the keys, a local
  * agent's sign-in and the subject env) before any run scope opens, so the CLI can present their refusal before it loads a
  * declared scorer, and returns the run that continues from them with that scorer.
  */

@@ -30,10 +30,10 @@ import { prepareManagedHumanishOutputDirectory } from "../run/contained-output.j
  * manifest, `humanish run _wip` resolves it, and refusing it here would leave the surface
  * listing a lab it will not start. A leading dot stays out: that names a hidden file, not a lab.
  */
-const SAFE_LAB_HANDLE = /^[A-Za-z0-9_][A-Za-z0-9._:-]*$/;
+const SAFE_STUDY_HANDLE = /^[A-Za-z0-9_][A-Za-z0-9._:-]*$/;
 
-export function isSafeLabHandle(value: string): boolean {
-  return SAFE_LAB_HANDLE.test(value) && value.length <= 128;
+export function isSafeStudyHandle(value: string): boolean {
+  return SAFE_STUDY_HANDLE.test(value) && value.length <= 128;
 }
 
 export interface LaunchRunOptions {
@@ -84,7 +84,7 @@ function defaultCliPath(): string {
  * result the surface can render, not an exception that would tear down the screen.
  */
 export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunResult> {
-  if (!isSafeLabHandle(options.lab)) {
+  if (!isSafeStudyHandle(options.lab)) {
     return {
       ok: false,
       error: {

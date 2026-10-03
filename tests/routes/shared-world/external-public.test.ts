@@ -43,7 +43,7 @@ import {
 } from "../../../src/study/validation.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type {
@@ -1284,7 +1284,7 @@ describe("lobby-trivia-3player committed lab", () => {
     expect(parsed.warnings ?? []).toEqual([]);
     expect(routeOf(parsed.config)).toBe("shared-world");
 
-    const outcome = await runLab(parsed.config, { cwd, dryRun: true });
+    const outcome = await runStudyWith(parsed.config, { cwd, dryRun: true });
     expect(outcome.route).toBe("shared-world");
     if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);

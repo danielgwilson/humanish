@@ -14,18 +14,18 @@ import { type StudyRoute, routeOf } from "../../study/plan.js";
 import type { StudyConfig } from "../../study/types.js";
 import type { RunStudyProvenance } from "../../run/study-provenance.js";
 import type { RunResult } from "../../run/results.js";
-import { computerUseRouteRun } from "./lab-route-computer-use.js";
-import { type RouteRun, runRoute } from "./lab-route-run.js";
-import { scriptedRouteRun } from "./lab-route-scripted.js";
-import { sharedWorldRouteRun } from "./lab-route-shared-world.js";
-import { previewRouteRun } from "./lab-route-preview.js";
-import { terminalRouteRun } from "./lab-route-terminal.js";
-import { maybeLoadAdapterScorer } from "./lab-scorer.js";
+import { computerUseRouteRun } from "./study-route-computer-use.js";
+import { type RouteRun, runRoute } from "./study-route-run.js";
+import { scriptedRouteRun } from "./study-route-scripted.js";
+import { sharedWorldRouteRun } from "./study-route-shared-world.js";
+import { previewRouteRun } from "./study-route-preview.js";
+import { terminalRouteRun } from "./study-route-terminal.js";
+import { maybeLoadAdapterScorer } from "./study-scorer.js";
 import {
   type CliIo,
   discoverCliKeys,
   formatRunHuman,
-  type LabCommandOptions,
+  type StudyCommandOptions,
   noteRunFacts,
   writeResult,
   type HumanOutput,
@@ -34,16 +34,16 @@ import { watchExposeRequested } from "../observer-follow.js";
 import { beginRunSignalPhase } from "./run-signals.js";
 import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 
-export async function runLabCommand(args: {
+export async function runStudyCommand(args: {
   command: Command;
   io: CliIo;
   lab: string;
   mode: "run" | "watch";
-  options: LabCommandOptions;
+  options: StudyCommandOptions;
 }): Promise<void> {
   const resolved = await resolveStudyManifest(args.options.cwd, args.lab);
   if (!resolved.ok) {
-    writeResult(args.command, args.io, resolved, formatLabResolveFailureHuman);
+    writeResult(args.command, args.io, resolved, formatStudyResolveFailureHuman);
     args.io.setExitCode(2);
     return;
   }
@@ -63,7 +63,7 @@ export async function runLabCommand(args: {
   // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
   noteRunFacts(args.command, deriveRunFacts({ labId: config.id }));
   const route = routeOf(config);
-  if (route !== "computer-use" && labRerunFlagsRequested(args.options)) {
+  if (route !== "computer-use" && studyRerunFlagsRequested(args.options)) {
     writeUnsupportedRerunFlagsResult(args, route);
     return;
   }
@@ -105,7 +105,7 @@ export async function runLabCommand(args: {
   // Only a live run reads provider keys, so a dry run looks none up: no `gh auth token`, no e2b
   // login, overlay or key store. A live run fills every key it finds and prints a line only for
   // the keys its plan reads. This comes after the option refusals above, which read no key, and
-  // before the route's CLI setup and prepareLab, which do.
+  // before the route's CLI setup and prepareStudy, which do.
   if (resolveStudyDryRun(config, args.options.dryRun, true) === false) {
     const announced = announcedKeyNames(config, args.options);
     await discoverCliKeys({
@@ -115,13 +115,13 @@ export async function runLabCommand(args: {
     });
   }
 
-  // The route's CLI setup refuses bad options, runLab's plan refuses bad labs, and the route's local
+  // The route's CLI setup refuses bad options, runStudyWith's plan refuses bad labs, and the route's local
   // checks (keys, runtime auth, subject env, the local agent, caps) refuse this machine, all before
   // the scorer loads, so none imports the scorer's host code. The scripted route's checks and the
   // run-id claim still come after it; the scripted route takes no scorer.
   const routeRun = routeRunFor(route, { ...args, config });
   if (routeRun === undefined) return;
-  // Every route's runLab options carry the lab's provenance, from here only.
+  // Every route's runStudyWith options carry the lab's provenance, from here only.
   const run = { ...routeRun, options: { ...routeRun.options, lab } };
 
   // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
@@ -182,7 +182,7 @@ export async function runLabCommand(args: {
  */
 function announcedKeyNames(
   config: StudyConfig,
-  options: LabCommandOptions,
+  options: StudyCommandOptions,
 ): ReadonlySet<string> | undefined {
   if (options.scorer !== undefined || config.review?.scorer !== undefined) return undefined;
   const planned = planStudy(config, { cwd: options.cwd, dryRun: false });
@@ -198,7 +198,7 @@ function routeRunFor(
     lab: string;
     config: StudyConfig;
     mode: "run" | "watch";
-    options: LabCommandOptions;
+    options: StudyCommandOptions;
   },
 ): RouteRun | undefined {
   switch (route) {
@@ -218,7 +218,7 @@ function routeRunFor(
   }
 }
 
-function labRerunFlagsRequested(options: LabCommandOptions): boolean {
+function studyRerunFlagsRequested(options: StudyCommandOptions): boolean {
   return options.rerunFailedFrom !== undefined || options.participants !== undefined;
 }
 
@@ -226,7 +226,7 @@ function writeUnsupportedRerunFlagsResult(
   args: {
     command: Command;
     io: CliIo;
-    options: LabCommandOptions;
+    options: StudyCommandOptions;
   },
   route: StudyRoute,
 ): void {
@@ -244,7 +244,7 @@ function writeUnsupportedRerunFlagsResult(
   args.io.setExitCode(2);
 }
 
-function formatLabResolveFailureHuman(result: StudyResolveFailure): HumanOutput {
+function formatStudyResolveFailureHuman(result: StudyResolveFailure): HumanOutput {
   const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
   return { ...(warnings ? { stdout: warnings } : {}), error: result.error };
 }

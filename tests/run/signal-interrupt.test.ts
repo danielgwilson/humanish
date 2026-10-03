@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
-// A library caller of runLab gets no signal handler (the CLI installs one, tested in
+// A library caller of runStudyWith gets no signal handler (the CLI installs one, tested in
 // tests/cli/run-interrupt-child.test.ts): the process exits at once. What it leaves is the contract
 // `humanish reclaim` relies on: a status record that stops refreshing and the create-time sandbox
 // receipt, which reclaim kills by id. A fake E2B module stands in for the provider; its session
@@ -25,7 +25,7 @@ function screenshot(): string {
 
 const CHILD = `
   const root = process.env.REPO_ROOT;
-  const { runLab } = await import(root + "/src/run-lab.ts");
+  const { runStudyWith } = await import(root + "/src/run-study.ts");
   const { parseStudy } = await import(root + "/src/study/config.ts");
   const { V2_SCHEMA } = await import(root + "/src/study/types.ts");
   const frame = Buffer.from(process.env.PROBE_PNG, "base64");
@@ -57,7 +57,7 @@ const CHILD = `
     review: { analysis: false },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  await runLab(
+  await runStudyWith(
     parsed.config,
     {
       cwd: process.env.PROBE_CWD,

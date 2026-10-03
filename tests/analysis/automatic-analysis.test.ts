@@ -23,7 +23,7 @@ import { createProgram } from "../../src/cli/program.js";
 import { readStudySummary } from "../../src/study/summary.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import { parse as parseYaml } from "yaml";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
@@ -222,7 +222,7 @@ describe("automatic analysis admission and producer boundary", () => {
   it.each(fixtures.filter((row) => routeOf(row.config) === "preview"))(
     "fails direct unsupported $name before filesystem effects",
     async ({ config: base }) => {
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         { ...base, review: { analysis: { maxCostUsd: 5 } } },
         { cwd: path.join(cwd, "absent"), dryRun: false },
       );
@@ -261,7 +261,7 @@ describe("automatic analysis admission and producer boundary", () => {
       const base = fixtures.find((row) => row.route === route)!.config;
       const run = vi.fn();
       const onEvent = vi.fn();
-      const output = await runLab(
+      const output = await runStudyWith(
         base,
         {
           cwd,
@@ -762,14 +762,14 @@ describe("automatic analysis admission and producer boundary", () => {
     "%s during the real producer retains default termination and never starts analysis",
     async (signal) => {
       const script = `
-      import { runLab } from ${JSON.stringify(new URL("../../src/run-lab.ts", import.meta.url).href)};
+      import { runStudyWith } from ${JSON.stringify(new URL("../../src/run-study.ts", import.meta.url).href)};
       import { cliAnalysisOptions } from ${JSON.stringify(new URL("../../src/cli/commands/analysis-signals.ts", import.meta.url).href)};
       const config = ${JSON.stringify(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config)};
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);
       const analysis = cliAnalysisOptions({ writeErr: text => process.stderr.write(text) });
       const analysisSeam = { run: async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; } };
-      await runLab(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, ...analysis,
+      await runStudyWith(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, ...analysis,
         env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" } },
         { analysis: analysisSeam, desktopModule: async () => { process.stdout.write("ACTOR_READY\\n"); await new Promise(() => {}); } });
       clearInterval(timer);

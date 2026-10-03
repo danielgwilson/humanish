@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
 
 // Rung 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
@@ -87,7 +87,7 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
       expect(resolved.ok).toBe(true);
       if (!resolved.ok) return;
 
-      const outcome = await runLab(resolved.config, {
+      const outcome = await runStudyWith(resolved.config, {
         cwd: project,
         runId: golden.runId,
         dryRun: true,

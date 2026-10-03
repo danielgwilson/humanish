@@ -9,7 +9,7 @@ import { doctor } from "../../src/cli/doctor.js";
 import type { DetectLocalAgentsOptions } from "../../src/actors/local-agent/cli.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
@@ -560,7 +560,7 @@ describe("selected lab setup without paid dispatch", () => {
         );
         await chmod(command, 0o700);
         let desktopLoads = 0;
-        const outcome = await runLab(
+        const outcome = await runStudyWith(
           resolved.config,
           {
             cwd,

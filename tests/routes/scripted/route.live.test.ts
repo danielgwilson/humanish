@@ -10,11 +10,11 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The single live rung for the scripted-browser route: the committed scenario dispatched through
-// runLab to real playwright-core against an in-test loopback http.Server. Provider spend is $0
+// runStudyWith to real playwright-core against an in-test loopback http.Server. Provider spend is $0
 // by mechanism (no model exists on this route); the env gate exists for real-browser actuation
 // + environment dependence (a local Chrome/Chromium must be installed), mirroring the
 // HUMANISH_LIVE_CUA convention:
@@ -84,7 +84,7 @@ describe.skipIf(!LIVE)("scripted-browser-lab (live, actuation-gated; $0 by mecha
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 
-      const outcome = await runLab(parsed.config, { cwd });
+      const outcome = await runStudyWith(parsed.config, { cwd });
       expect(outcome.route).toBe("scripted");
       if (outcome.route !== "scripted") return;
       const result = outcome.result;

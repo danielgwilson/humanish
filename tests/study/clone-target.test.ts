@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 import { parseStudy } from "../../src/study/config.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
@@ -30,7 +30,7 @@ function cloneLab(actor: string, target: string | undefined): Record<string, unk
   };
 }
 
-/** A config that never went through the parser, as a library caller can hand one to runLab. */
+/** A config that never went through the parser, as a library caller can hand one to runStudyWith. */
 function unparsedCloneLab(actor: string, target: string | undefined): StudyConfig {
   return cloneLab(actor, target) as unknown as StudyConfig;
 }
@@ -80,7 +80,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-target-"));
       const desktop = countingDesktopModule();
       try {
-        const outcome = await runLab(
+        const outcome = await runStudyWith(
           unparsedCloneLab("openai-computer-use", target),
           {
             cwd,

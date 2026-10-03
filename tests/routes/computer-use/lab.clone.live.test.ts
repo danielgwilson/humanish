@@ -8,7 +8,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 
 // The live rung for the clone subject provider: a config-only study that clones a small public
 // static-site repo into a real E2B desktop, serves it with the declared command, probes
@@ -66,7 +66,7 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (live, spend-gated)", () => 
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 
-      const outcome = await runLab(parsed.config, { cwd });
+      const outcome = await runStudyWith(parsed.config, { cwd });
       expect(outcome.route).toBe("computer-use");
       if (outcome.route !== "computer-use") return;
       const result = outcome.result;

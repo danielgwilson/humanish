@@ -121,7 +121,7 @@ const STATE_STEP_WHENS: readonly StudyStateStepWhen[] = [
 
 /**
  * Semantic validation for `subject.state`, shared by parseStudy and the engine
- * (the route re-enforces it on configs that arrive through runLab). Returns
+ * (the route re-enforces it on configs that arrive through runStudyWith). Returns
  * the failure message, or null when the declaration is valid. Reads the candidate
  * defensively: library callers can hand the engine arbitrarily-shaped objects.
  */

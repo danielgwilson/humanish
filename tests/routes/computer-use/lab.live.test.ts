@@ -8,9 +8,9 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 
-// The single live rung for the computer-use route: a real study config dispatched through runLab to
+// The single live rung for the computer-use route: a real study config dispatched through runStudyWith to
 // a real E2B desktop driven by the real OpenAI Computer Use loop. Spend-gated exactly like the
 // actor-level live rung (tests/computer-use-actor.live.test.ts):
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the spend opt-in),
@@ -68,7 +68,7 @@ describe.skipIf(!LIVE)("cua-actor-lab (live, spend-gated)", () => {
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 
-      const outcome = await runLab(parsed.config, {
+      const outcome = await runStudyWith(parsed.config, {
         cwd,
         prepareDesktop: async (desktop) => {
           await desktop.files.write("/home/user/www/proof.html", PROOF_HTML);

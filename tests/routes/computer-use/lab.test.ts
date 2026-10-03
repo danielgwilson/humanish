@@ -66,7 +66,7 @@ import { parseStudy } from "../../../src/study/config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import {
   renderObserver,
@@ -491,7 +491,7 @@ describe("lab routing (app-url → cua)", () => {
     expect(routeOf(cloneCuaConfig())).toBe("computer-use");
     // A non-computer-use actor also routes to cua, whose actor gate refuses it before any
     // sandbox or filesystem work.
-    // The parser refuses this config now; runLab is reached by a library caller that skips it.
+    // The parser refuses this config now; runStudyWith is reached by a library caller that skips it.
     const meta = {
       schema: V2_SCHEMA,
       id: "m2",
@@ -502,7 +502,7 @@ describe("lab routing (app-url → cua)", () => {
     expect(routeOf(meta)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
     try {
-      const outcome = await runLab(meta, { cwd, dryRun: true });
+      const outcome = await runStudyWith(meta, { cwd, dryRun: true });
       expect(outcome.route).toBe("computer-use");
       expect(outcome.result.ok).toBe(false);
       expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
@@ -1104,7 +1104,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("dry-run produces a verified contract bundle with no sandbox and no spend", async () => {
-    const outcome = await runLab(cuaConfig(), { cwd, dryRun: true });
+    const outcome = await runStudyWith(cuaConfig(), { cwd, dryRun: true });
     expect(outcome.route).toBe("computer-use");
     if (outcome.route !== "computer-use") return;
     const result = outcome.result;
@@ -1240,7 +1240,7 @@ describe("runCuaActorLab", () => {
       },
     };
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -1364,7 +1364,7 @@ describe("runCuaActorLab", () => {
     if (!parsed.ok) throw new Error(parsed.error.message);
     const sandbox = makeFakeSandbox(); // Deliberately lacks files.read, like an older optional peer.
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -1494,7 +1494,7 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -1673,7 +1673,7 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -1754,7 +1754,7 @@ describe("runCuaActorLab", () => {
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const seen: unknown[] = [];
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -1840,7 +1840,7 @@ describe("runCuaActorLab", () => {
       policies,
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -1985,7 +1985,7 @@ describe("runCuaActorLab", () => {
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const phases: string[] = [];
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -2040,7 +2040,7 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -2096,7 +2096,7 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -2163,7 +2163,7 @@ describe("runCuaActorLab", () => {
       scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       parsed.config,
       {
         cwd,
@@ -2201,7 +2201,7 @@ describe("runCuaActorLab", () => {
     });
     const { module, killed } = makeFakeModule(sandbox);
     let participantSessions = 0;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -2264,7 +2264,7 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -2330,7 +2330,7 @@ describe("runCuaActorLab", () => {
   it("does not treat a negated blocker phrase in a success message as a self-reported blocker", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -2617,7 +2617,7 @@ describe("runCuaActorLab", () => {
   it("adapter fail score turns an otherwise goal_satisfied browser run red while keeping the bundle verifiable", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -2717,7 +2717,7 @@ describe("runCuaActorLab", () => {
   it("malformed browser adapter outputs are dropped, preserving default green behavior", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -2789,7 +2789,7 @@ describe("runCuaActorLab", () => {
   it("default persists raw screenshots (full fidelity, local) and warns the bundle is not publish-safe as-is", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -2848,7 +2848,7 @@ describe("runCuaActorLab", () => {
     };
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       redactedConfig,
       {
         cwd,
@@ -2893,7 +2893,7 @@ describe("runCuaActorLab", () => {
     };
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       publicConfig,
       {
         cwd,
@@ -2916,7 +2916,7 @@ describe("runCuaActorLab", () => {
     // Without the policy, the engine fails closed even if a config bypasses the parser.
     const sandbox2 = makeFakeSandbox();
     const { module: module2 } = makeFakeModule(sandbox2);
-    const blocked = await runLab(
+    const blocked = await runStudyWith(
       { ...publicConfig, policies: {} },
       {
         cwd,
@@ -2973,7 +2973,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, created } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -3059,7 +3059,7 @@ describe("runCuaActorLab", () => {
     const { module } = makeFakeModule(sandbox);
     let t = 0;
     const seenInstructions: string[] = [];
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -3129,7 +3129,7 @@ describe("runCuaActorLab", () => {
     const { module } = makeFakeModule(sandbox);
     let t = 0;
     const seenInstructions: string[] = [];
-    await runLab(
+    await runStudyWith(
       config,
       {
         cwd,
@@ -3185,7 +3185,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -3263,7 +3263,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -3337,7 +3337,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -3377,7 +3377,7 @@ describe("runCuaActorLab", () => {
     };
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       keepConfig,
       {
         cwd,
@@ -3406,7 +3406,7 @@ describe("runCuaActorLab", () => {
     ];
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -3442,7 +3442,7 @@ describe("runCuaActorLab", () => {
     // the bundle (Observer tally, `humanish runs`, the status index, a share) repeated the pass.
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -3506,7 +3506,7 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox();
     const { module, created } = makeFakeModule(sandbox);
     const sessionOptionsSeen: CuaActorSessionOptions[] = [];
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       mobileConfig,
       {
         cwd,
@@ -3545,7 +3545,7 @@ describe("runCuaActorLab", () => {
     const def = makeFakeSandbox();
     const defMod = makeFakeModule(def);
     const defConfig: StudyConfig = { ...cuaConfig(), execution: { target: "e2b-desktop" } };
-    const r1 = await runLab(
+    const r1 = await runStudyWith(
       defConfig,
       {
         cwd,
@@ -3570,7 +3570,7 @@ describe("runCuaActorLab", () => {
       execution: { target: "e2b-desktop", desktop: { device: "mobile", resolution: [1024, 768] } },
     };
     const ovSeen: CuaActorSessionOptions[] = [];
-    const r2 = await runLab(
+    const r2 = await runStudyWith(
       ovConfig,
       {
         cwd,
@@ -3607,7 +3607,7 @@ describe("runCuaActorLab", () => {
       "http://127.0.0.1:3000/api/bootstrap?origin=http%3A%2F%2F127.0.0.1%3A3000&scenario=alpha&redirect=%2Fdashboard";
     const sandbox = makeFakeSandbox({ withOpen: false });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(targetUrl),
       {
         cwd,
@@ -3655,7 +3655,7 @@ describe("runCuaActorLab", () => {
           : undefined,
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -3729,7 +3729,7 @@ describe("runCuaActorLab", () => {
       },
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -3778,7 +3778,7 @@ describe("runCuaActorLab", () => {
   it("live with missing keys fails closed, names the variables, and never creates a sandbox", async () => {
     const sandbox = makeFakeSandbox();
     const { module, created } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -3807,7 +3807,7 @@ describe("runCuaActorLab", () => {
     // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -3902,7 +3902,7 @@ describe("runCuaActorLab", () => {
     const hostPath = "/home/" + "someuser/private-checkout/app";
     const sandbox = makeFakeSandbox();
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -3936,7 +3936,7 @@ describe("runCuaActorLab", () => {
 
   it("turns a missing @e2b/desktop peer into a structured failure with a complete failed bundle (no raw throw, no orphan dir)", async () => {
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -3975,7 +3975,7 @@ describe("runCuaActorLab", () => {
   it("writes lab identity into the bundle and a finalized status record on disk", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -4025,7 +4025,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("points .humanish/runs/latest.json at the cua run so `verify --run latest` verifies this run", async () => {
-    const outcome = await runLab(cuaConfig(), { cwd, dryRun: true });
+    const outcome = await runStudyWith(cuaConfig(), { cwd, dryRun: true });
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(true);
@@ -4045,7 +4045,7 @@ describe("runCuaActorLab", () => {
   it("releases the acquired identity when a preparation hook mutates the handle and fails", async () => {
     const sandbox = makeFakeSandbox();
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -4067,7 +4067,7 @@ describe("runCuaActorLab", () => {
   it("passes a managed executor to the participant and closes it after the run", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     let executor: CuaExecutor | undefined;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -4094,7 +4094,7 @@ describe("runCuaActorLab", () => {
   it("records prior sandbox absence without claiming its exact termination time", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     module.Sandbox.kill = async () => false;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -4123,7 +4123,7 @@ describe("runCuaActorLab", () => {
     // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -4195,7 +4195,7 @@ describe("runCuaActorLab", () => {
     const module: E2BDesktopModule = {
       Sandbox: { create: async () => sandbox },
     };
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -4229,7 +4229,7 @@ describe("runCuaActorLab", () => {
     });
     const { module, created, killed } = makeFakeModule(sandbox);
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4329,7 +4329,7 @@ describe("runCuaActorLab", () => {
     const phaseCtxs: Array<{ id: string; index: number; count: number }> = [];
     const emitted: StudyEvent[] = [];
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4415,7 +4415,7 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4463,7 +4463,7 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created } = makeFakeModule(sandbox);
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4504,7 +4504,7 @@ describe("runCuaActorLab", () => {
     const config = cloneCuaConfig({ env: ["DATABASE_URL"] });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4541,7 +4541,7 @@ describe("runCuaActorLab", () => {
     });
     const { module } = makeFakeModule(sandbox);
     const phaseEvents: Array<{ type: string; ok?: boolean; message: string }> = [];
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4597,7 +4597,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4639,7 +4639,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4686,7 +4686,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cloneCuaConfig({ readyTimeoutMs: 5000 }),
       {
         cwd,
@@ -4717,7 +4717,7 @@ describe("runCuaActorLab", () => {
 
   it("provenance wording matches each phase: dry-run declares, failed provisioning never claims 'served'", async () => {
     // Dry-run: nothing cloned; the event must say so.
-    const dry = await runLab(cloneCuaConfig(), { cwd, dryRun: true });
+    const dry = await runStudyWith(cloneCuaConfig(), { cwd, dryRun: true });
     if (dry.route !== "computer-use") throw new Error("expected cua backend");
     const dryBundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", dry.result.runId, "run.json"), "utf8"),
@@ -4736,7 +4736,7 @@ describe("runCuaActorLab", () => {
     });
     const { module } = makeFakeModule(sandbox);
     let t = 0;
-    const failed = await runLab(
+    const failed = await runStudyWith(
       cloneCuaConfig({ readyTimeoutMs: 5000 }),
       {
         cwd,
@@ -4776,7 +4776,7 @@ describe("runCuaActorLab", () => {
           openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
         }),
     };
-    const redacted = await runLab(
+    const redacted = await runStudyWith(
       cloneCuaConfig({ env: ["GITHUB_TOKEN"] }),
       { cwd, env: tokenEnv },
       tokenDeps,
@@ -4794,7 +4794,7 @@ describe("runCuaActorLab", () => {
     const explicitConfig: StudyConfig = { ...explicit, policies: { redactRepos: false } };
     const sandbox2 = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module: module2 } = makeFakeModule(sandbox2);
-    const unredacted = await runLab(
+    const unredacted = await runStudyWith(
       explicitConfig,
       { cwd, env: tokenEnv },
       { ...tokenDeps, desktopModule: async () => module2 },
@@ -4823,7 +4823,7 @@ describe("runCuaActorLab", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -4898,7 +4898,7 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
           openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
         }),
     };
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       { cwd, env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" } },
       deps,
@@ -4983,7 +4983,7 @@ describe("Chrome DevTools readiness after launch", () => {
           : undefined,
     });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -5103,7 +5103,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const config = cloneCuaConfig({ state: THREE_PHASE_STATE });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, created, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -5251,7 +5251,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -5334,7 +5334,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       }),
     });
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -5365,7 +5365,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
   });
 
   it("dry-run records the declared recipe as declared-not-run: digests and phases only, no execution fields, event wording says not run", async () => {
-    const outcome = await runLab(cloneCuaConfig({ state: THREE_PHASE_STATE }), {
+    const outcome = await runStudyWith(cloneCuaConfig({ state: THREE_PHASE_STATE }), {
       cwd,
       dryRun: true,
     });
@@ -5424,7 +5424,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -5466,7 +5466,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
   });
 
   it("app-url bundles carry the uniform subject block: source app-url, state undeclared", async () => {
-    const outcome = await runLab(cuaConfig(), { cwd, dryRun: true });
+    const outcome = await runStudyWith(cuaConfig(), { cwd, dryRun: true });
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
@@ -5589,7 +5589,7 @@ describe("buildSingleParticipantBundle", () => {
 
     it("dry-run yields the contract bundle with subject.source local-tree and no archiveSha256", async () => {
       const config = localTreeCuaConfig();
-      const outcome = await runLab(config, { cwd, dryRun: true });
+      const outcome = await runStudyWith(config, { cwd, dryRun: true });
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       const result = outcome.result;
 
@@ -5622,7 +5622,7 @@ describe("buildSingleParticipantBundle", () => {
       const { module } = makeFakeModule(sandbox);
       const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -5672,7 +5672,7 @@ describe("buildSingleParticipantBundle", () => {
       const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> =
         [];
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -5754,7 +5754,7 @@ describe("buildSingleParticipantBundle", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -5791,7 +5791,7 @@ describe("buildSingleParticipantBundle", () => {
         ctx: { id: string; count: number };
       }> = [];
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -5890,7 +5890,7 @@ describe("buildSingleParticipantBundle", () => {
       });
       const { module, created } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -5926,7 +5926,7 @@ describe("buildSingleParticipantBundle", () => {
       });
       const { module } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -5962,7 +5962,7 @@ describe("buildSingleParticipantBundle", () => {
       const { module } = makeFakeModule(sandbox);
       const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -6004,7 +6004,7 @@ describe("buildSingleParticipantBundle", () => {
       const { module, created } = makeFakeModule(sandbox);
 
       const analysis = automaticAnalysisBoundary();
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -6045,7 +6045,7 @@ describe("buildSingleParticipantBundle", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, killed } = makeFakeModule(sandbox);
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -6305,7 +6305,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     const { module, created, killed } = makeFakeModule(sandbox);
     const stateExecutor = makeStateExecutor();
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localAppConfig(),
       {
         cwd,
@@ -6377,7 +6377,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     const createProvider = vi.fn(async (_context: { executor: CuaExecutor }) => provider);
     const onStream = vi.fn();
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localAppConfig(),
       {
         cwd,
@@ -6414,7 +6414,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
       const config = localAppConfig();
       config.execution = { caps };
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -6443,7 +6443,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
       },
     };
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localAppConfig(),
       {
         cwd,
@@ -6490,7 +6490,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
       }),
     };
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localAppConfig(),
       {
         cwd,
@@ -6513,7 +6513,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
 
   it("a hollow in-process run (zero actions/messages) still fails the no-engagement guard + verifyRun", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localAppConfig(),
       {
         cwd,
@@ -6543,7 +6543,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
 
   it("a gave_up in-process run is an abandoned participant: a participant outcome, still not an engaged pass", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localAppConfig(),
       {
         cwd,
@@ -6634,7 +6634,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     // createProvider without inProcess is allowed and stays on the normal E2B route; with no
     // keys/dry-run we just confirm it does not trip EXECUTOR_NO_PROVIDER and is not treated as
     // in-process (a dry-run produces a contract bundle with no sandbox, the normal route).
-    const outcome = await runLab(cuaConfig(), {
+    const outcome = await runStudyWith(cuaConfig(), {
       cwd,
       dryRun: true,
       createProvider: async () => makeStateProvider(),
@@ -6730,7 +6730,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   it("classifies a productive budget stop as incomplete: no pass claimed, and the evidence still verifies", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -6785,7 +6785,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   it("keeps a zero-progress timeout a failure (timed_out → result.ok false)", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -6882,7 +6882,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       };
     }
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       config,
       {
         cwd,
@@ -6968,7 +6968,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const running = runLab(
+    const running = runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -6999,7 +6999,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const analysis = automaticAnalysisBoundary();
     const tunnelFailure = new Error("synthetic tunnel failure");
     await expect(
-      runLab(
+      runStudyWith(
         cuaConfig(),
         {
           cwd,
@@ -7030,7 +7030,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     let readyObserver: (ObserverResult & { ok: true }) | undefined;
     let server: ObserverServer | undefined;
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
@@ -7437,7 +7437,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       const runSession = vi.fn(async () => {
         throw new Error("Participant must not start");
       });
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         parsed.config,
         {
           cwd,
@@ -7521,7 +7521,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
       const seenInstructions: string[] = [];
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         parsed.config,
         {
           cwd,
@@ -7571,7 +7571,7 @@ describe("computer-use run id reuse", () => {
   it("refuses a live run whose run id names an existing run, before any sandbox or analysis", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-run-id-"));
     try {
-      const older = await runLab(cuaConfig(), { cwd, dryRun: true, runId: "older-run" });
+      const older = await runStudyWith(cuaConfig(), { cwd, dryRun: true, runId: "older-run" });
       expect(older.result.ok).toBe(true);
       const runsRoot = path.join(cwd, ".humanish", "runs");
       const snapshot = async () => ({
@@ -7586,7 +7586,7 @@ describe("computer-use run id reuse", () => {
       });
       const analysis = automaticAnalysisBoundary();
 
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         cuaConfig(),
         {
           cwd,
@@ -7639,7 +7639,7 @@ describe("computer-use run directory goldens", () => {
     const { module } = makeFakeModule(sandbox);
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd: goldenCwd,
@@ -7680,7 +7680,7 @@ describe("computer-use run directory goldens", () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd: goldenCwd,
@@ -7725,7 +7725,7 @@ describe("computer-use run directory goldens", () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       localAppConfig(),
       {
         cwd: goldenCwd,

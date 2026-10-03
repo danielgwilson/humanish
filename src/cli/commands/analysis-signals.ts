@@ -1,4 +1,4 @@
-import type { RunLabOptions } from "../../run-lab.js";
+import type { RunStudyOptions } from "../../run-study.js";
 import type { CliIo } from "../io.js";
 import { handOverRunSignals } from "./run-signals.js";
 
@@ -9,7 +9,7 @@ import { handOverRunSignals } from "./run-signals.js";
  */
 export function cliAnalysisOptions(
   io: Pick<CliIo, "writeErr">,
-): Pick<RunLabOptions, "onEvent" | "analysisSignal"> {
+): Pick<RunStudyOptions, "onEvent" | "analysisSignal"> {
   const controller = new AbortController();
   const cancel = (): void => {
     controller.abort();

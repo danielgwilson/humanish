@@ -10,7 +10,7 @@ import type {
   RestrictedCodexResult,
 } from "../../src/actors/codex/restricted-policy.js";
 import { parseStudy } from "../../src/study/config.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { estimateActorCost, estimateActorCostForExecution } from "../../src/run/pricing.js";
 import { contradictsAccountBilling } from "../../src/verify/costs.js";
@@ -108,7 +108,7 @@ describe("account-billed participants", () => {
     const participant = createRestrictedCodexParticipant();
     const frame = PNG.sync.write(new PNG({ width: 2, height: 2 }));
     try {
-      await runLab(accountBilledConfig(), {
+      await runStudyWith(accountBilledConfig(), {
         cwd,
         runId: "account-proof",
         dryRun: false,

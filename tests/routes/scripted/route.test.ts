@@ -16,7 +16,7 @@ import type {
 } from "../../../src/substrates/e2b/sdk.js";
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { runLab } from "../../../src/run-lab.js";
+import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { digestText } from "../../../src/evidence/redaction.js";
@@ -38,7 +38,7 @@ import type { RunScriptedBrowserLabOptions } from "../../../src/routes/scripted/
 /** A scripted test's typed options and seams, as it spreads them into a runner's options. */
 type ScriptedTestInputs = Pick<RunScriptedBrowserLabOptions, "env" | "prepareDesktop" | "deps">;
 
-/** The typed options of a test's inputs, to spread beside the rest of runLab's options. */
+/** The typed options of a test's inputs, to spread beside the rest of runStudyWith's options. */
 const scriptedOptions = ({ deps: _deps, ...options }: ScriptedTestInputs) => options;
 import type {
   ScriptedBrowserLike,
@@ -528,7 +528,7 @@ describe("runScriptedBrowserLab", () => {
 
   it("dry-run produces a verified contract bundle with pinned scenario provenance and no actor seam", async () => {
     const scenarioText = await writeCommittedScenario(cwd);
-    const outcome = await runLab(scriptedConfig({ count: 2 }), { cwd, dryRun: true });
+    const outcome = await runStudyWith(scriptedConfig({ count: 2 }), { cwd, dryRun: true });
     expect(outcome.route).toBe("scripted");
     if (outcome.route !== "scripted") return;
     const result = outcome.result;
@@ -591,7 +591,7 @@ describe("runScriptedBrowserLab", () => {
 
   it("default surface roster is 1 (desktop only): the single-participant default governs; count: 2 is the override", async () => {
     await writeCommittedScenario(cwd);
-    const outcome = await runLab(scriptedConfig(), { cwd, dryRun: true });
+    const outcome = await runStudyWith(scriptedConfig(), { cwd, dryRun: true });
     if (outcome.route !== "scripted") throw new Error("expected scripted backend");
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
@@ -633,7 +633,7 @@ describe("runScriptedBrowserLab", () => {
         const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
         if (analysisMode === "disabled") config.review = { analysis: false };
         const analyze = automaticAnalysisBoundary();
-        const outcome = await runLab(
+        const outcome = await runStudyWith(
           config,
           {
             cwd,
@@ -737,7 +737,7 @@ describe("runScriptedBrowserLab", () => {
     const { hooks, rawSessionUrls } = provisionedCloneHooks(fakeE2B.module);
     const targets: unknown[] = [];
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       provisionedScriptedConfig(),
       {
         cwd,
@@ -854,7 +854,7 @@ describe("runScriptedBrowserLab", () => {
       const hooks: ScriptedTestInputs = {
         deps: { launchBrowser: async () => makeFakeBrowser({}) },
       };
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         scriptedConfig({ appUrl, count: 1, mode: "live" }),
         {
           cwd,
@@ -896,7 +896,7 @@ describe("runScriptedBrowserLab", () => {
         },
       };
       const stderr = captureStderr();
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         scriptedConfig({ appUrl, count: 1, mode: "live" }),
         {
           cwd,
@@ -1016,7 +1016,7 @@ describe("runScriptedBrowserLab", () => {
       const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
       config.execution!.timeoutMs = 3_000;
       const stderr = captureStderr();
-      const outcome = await runLab(config, { cwd }, deps).finally(stderr.stop);
+      const outcome = await runStudyWith(config, { cwd }, deps).finally(stderr.stop);
       if (outcome.route !== "scripted") throw new Error("expected scripted backend");
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1035,7 +1035,7 @@ describe("runScriptedBrowserLab", () => {
     await withHttpServer(async (appUrl) => {
       const config = scriptedConfig({ appUrl, count: 1, mode: "live" });
       config.review = { analysis: false };
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -1076,7 +1076,7 @@ describe("runScriptedBrowserLab", () => {
         "?access_token=secret-token#private-fragment";
       const config = scriptedConfig({ appUrl: polluted, count: 1, mode: "live" });
       config.review = { analysis: false };
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         config,
         {
           cwd,
@@ -1123,7 +1123,7 @@ describe("runScriptedBrowserLab", () => {
       },
     };
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       scriptedConfig({ count: 1, mode: "live" }),
       {
         cwd,
@@ -1159,7 +1159,7 @@ describe("runScriptedBrowserLab", () => {
   it("fails a live run whose session threw an error with an empty message", async () => {
     await writeCommittedScenario(cwd);
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       scriptedConfig({ count: 1, mode: "live" }),
       {
         cwd,
@@ -1512,7 +1512,7 @@ describe("scripted-browser run directory goldens", () => {
 
   it("dry run with two surfaces", async () => {
     const stderr = captureStderr();
-    const outcome = await runLab(scriptedConfig({ count: 2 }), { cwd, dryRun: true }).finally(
+    const outcome = await runStudyWith(scriptedConfig({ count: 2 }), { cwd, dryRun: true }).finally(
       stderr.stop,
     );
     const runId = outcome.result.runId;
@@ -1533,7 +1533,7 @@ describe("scripted-browser run directory goldens", () => {
   it("live journey that passes on a fake browser", async () => {
     await withHttpServer(async (appUrl) => {
       const stderr = captureStderr();
-      const outcome = await runLab(
+      const outcome = await runStudyWith(
         scriptedConfig({ appUrl, count: 1, mode: "live" }),
         {
           cwd,
@@ -1576,7 +1576,7 @@ describe("scripted-browser run directory goldens", () => {
     let clock = 0;
     const stderr = captureStderr();
     const inputs = provisionedCloneHooks(fakeE2B.module).hooks;
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       provisionedScriptedConfig(),
       {
         cwd,
@@ -1660,7 +1660,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     );
 
     await expect(
-      runLab(
+      runStudyWith(
         provisionedScriptedConfig(),
         {
           cwd,
@@ -1688,7 +1688,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     });
 
     const stderr = captureStderr();
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       provisionedScriptedConfig(),
       {
         cwd,
@@ -1738,7 +1738,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     const hooks = cloneHooks(fakeE2B.module, async () => {
       throw new Error("synthetic session failure");
     });
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       provisionedScriptedConfig(),
       { cwd, ...scriptedOptions(hooks) },
       hooks.deps,
@@ -1758,7 +1758,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     const passing = provisionedCloneHooks(fakeE2B.module).hooks.deps?.runScriptedSession;
     const hooks = cloneHooks(fakeE2B.module, passing);
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       provisionedScriptedConfig(),
       { cwd, ...scriptedOptions(hooks) },
       hooks.deps,
@@ -1788,7 +1788,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       throw new Error("synthetic session failure");
     });
 
-    const outcome = await runLab(
+    const outcome = await runStudyWith(
       provisionedScriptedConfig(),
       { cwd, runId, ...scriptedOptions(hooks) },
       hooks.deps,

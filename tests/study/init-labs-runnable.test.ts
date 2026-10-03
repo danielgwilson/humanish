@@ -10,7 +10,7 @@ import { parseStudy } from "../../src/study/config.js";
 import { runInit } from "../../src/study/init.js";
 import { starterFilesFor } from "../../src/study/init-templates.js";
 import { resolveStudyManifest, listStudyManifests } from "../../src/study/discover.js";
-import { runLab } from "../../src/run-lab.js";
+import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { isLocalBrowserLab } from "../../src/substrates/local/runtime-config.js";
@@ -56,7 +56,7 @@ describe("every lab `humanish init` writes is runnable", () => {
 
       // Dry-run: no provider spend, no sandbox, but far enough into each backend to hit the
       // budget and subject checks that only fire at run time.
-      const outcome = await runLab(resolved.config, {
+      const outcome = await runStudyWith(resolved.config, {
         cwd,
         dryRun: true,
         open: false,
@@ -111,7 +111,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
       if (!parsed.ok) continue;
       const config = parsed.config;
 
-      const outcome = await runLab(config, {
+      const outcome = await runStudyWith(config, {
         cwd,
         dryRun: true,
         open: false,

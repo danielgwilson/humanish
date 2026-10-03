@@ -6,11 +6,11 @@ import path from "node:path";
 import { Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runRoute } from "../../src/cli/commands/lab-route-run.js";
-import { sharedWorldRouteRun } from "../../src/cli/commands/lab-route-shared-world.js";
+import { runRoute } from "../../src/cli/commands/study-route-run.js";
+import { sharedWorldRouteRun } from "../../src/cli/commands/study-route-shared-world.js";
 import type { CliIo } from "../../src/cli/io.js";
 import { parseStudy } from "../../src/study/config.js";
-import { prepareLab, type RunLabOptions } from "../../src/run-lab.js";
+import { prepareStudy, type RunStudyOptions } from "../../src/run-study.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { liveObserverResult } from "../../src/observer/live.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -19,17 +19,17 @@ import { freePort } from "../helpers/free-port.js";
 // The route is replaced so the test drives the CLI's own onObserverReady against a real run
 // directory and a real Observer server, the part of the watch path that can fail on the operator's
 // machine (a taken port) before any participant starts.
-vi.mock("../../src/run-lab.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../src/run-lab.js")>()),
-  prepareLab: vi.fn(),
+vi.mock("../../src/run-study.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/run-study.js")>()),
+  prepareStudy: vi.fn(),
 }));
 
 /** A planned lab whose run calls the watch's Observer gate, then fails. */
 function gatedRun(
   failure: Error,
-  live: () => Parameters<NonNullable<RunLabOptions["onObserverReady"]>>[0],
+  live: () => Parameters<NonNullable<RunStudyOptions["onObserverReady"]>>[0],
 ) {
-  vi.mocked(prepareLab).mockImplementation(async (_config, options) => ({
+  vi.mocked(prepareStudy).mockImplementation(async (_config, options) => ({
     ok: true,
     run: async () => {
       await options.onObserverReady?.(live());
@@ -92,12 +92,12 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
     sockets.clear();
     await new Promise<void>((resolve) => (blocker ? blocker.close(() => resolve()) : resolve()));
     blocker = undefined;
-    vi.mocked(prepareLab).mockReset();
+    vi.mocked(prepareStudy).mockReset();
     await rm(cwd, { recursive: true, force: true });
   });
 
   const live = () => liveObserverResult(cwd, "gated", path.join(cwd, ".humanish", "runs", "gated"));
-  // The lab command's path for a watch: the backend's setup, then its one runLab call.
+  // The lab command's path for a watch: the backend's setup, then its one runStudyWith call.
   const runWatch = async (args: { io: CliIo; port: number }): Promise<void> => {
     const config = liveConcurrentConfig();
     const run = sharedWorldRouteRun({

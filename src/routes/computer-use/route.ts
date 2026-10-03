@@ -30,7 +30,7 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
 import { withLateScorer } from "../../study/route-inputs.js";
-import type { AdmittedPlan } from "../../run-lab.js";
+import type { AdmittedPlan } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
 import { callerDrivingOf, planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
@@ -98,7 +98,7 @@ export async function computerUseLabRefusal(
 }
 
 /**
- * runLab's step for a computer-use plan. It runs the plan's local checks (admitCuaRun: the
+ * runStudyWith's step for a computer-use plan. It runs the plan's local checks (admitCuaRun: the
  * participants, the preflight plan, the keys, the local agent, subject env and caps, and the
  * local-tree archive) before any run scope opens, so the CLI can present their refusal before it
  * loads a declared scorer, and returns the run that continues from them with that scorer.
