@@ -381,7 +381,7 @@ export interface TerminalLedgers {
 }
 
 /** What a terminal run takes besides its plan. The plan carries the config, dry run and lab. */
-export type TerminalRunInput = Omit<RunTerminalProductStudyOptions, "config" | "dryRun" | "lab">;
+export type TerminalRunInput = Omit<RunTerminalProductStudyOptions, "config" | "dryRun">;
 
 /** A live terminal plan: its caps are the fail-closed ones planTerminalStudy required. */
 export type LiveTerminalPlan = Extract<TerminalPlan, { readonly dryRun: false }>;

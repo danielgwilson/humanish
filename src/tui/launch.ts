@@ -39,7 +39,7 @@ export function isSafeStudyHandle(value: string): boolean {
 export interface LaunchRunOptions {
   cwd: string;
   /** The manifest handle (filename stem), as `humanish run` takes it. */
-  lab: string;
+  study: string;
   /** Exact selected manifest, avoiding a same-name committed lab shadowing a local copy. */
   manifestPath?: string;
   mode: "dry-run" | "live";
@@ -84,18 +84,18 @@ function defaultCliPath(): string {
  * result the surface can render, not an exception that would tear down the screen.
  */
 export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunResult> {
-  if (!isSafeStudyHandle(options.lab)) {
+  if (!isSafeStudyHandle(options.study)) {
     return {
       ok: false,
       error: {
         code: "HUMANISH_LAUNCH_INVALID_STUDY",
-        message: `"${options.lab}" is not a usable study handle. Run it by path with \`humanish run <path>\` instead.`,
+        message: `"${options.study}" is not a usable study handle. Run it by path with \`humanish run <path>\` instead.`,
       },
     };
   }
 
   const cwd = path.resolve(options.cwd);
-  let selectedLab = options.lab;
+  let selectedStudy = options.study;
   if (options.manifestPath !== undefined) {
     const resolved = await resolveStudyManifest(cwd, options.manifestPath);
     if (!resolved.ok) {
@@ -113,7 +113,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
         },
       };
     }
-    selectedLab = path.relative(cwd, path.resolve(cwd, resolved.path)).replace(/\\/g, "/");
+    selectedStudy = path.relative(cwd, path.resolve(cwd, resolved.path)).replace(/\\/g, "/");
   }
   const now = options.now ?? (() => new Date());
   const spawnFn = options.spawn ?? spawn;
@@ -126,7 +126,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     // symlinked directory cannot redirect the log somewhere outside the project.
     const logDir = await prepareManagedHumanishOutputDirectory(cwd, "launches");
     const stamp = launchedAt.replace(/[:.]/g, "-");
-    logPath = path.join(logDir.physicalPath, `${stamp}-${options.lab}.log`);
+    logPath = path.join(logDir.physicalPath, `${stamp}-${options.study}.log`);
     // O_NOFOLLOW so a symlink planted at this path cannot redirect a run's output (which may carry
     // provider error text) outside the project, and cannot defeat the 0600 mode by pointing at a
     // file that already exists with looser permissions. O_CREAT|O_APPEND keeps ordinary reuse
@@ -158,7 +158,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     ...(options.mode === "dry-run" ? ["--dry-run"] : []),
     // `--` ends option parsing, so the handle can only ever be read as the positional argument.
     "--",
-    selectedLab,
+    selectedStudy,
   ];
 
   const spawnOptions: SpawnOptions = {

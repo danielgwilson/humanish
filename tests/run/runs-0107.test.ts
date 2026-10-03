@@ -66,7 +66,7 @@ describe("runs saved by 0.107", () => {
 
   it("count under their study in stats", async () => {
     const stats = await computeStats(project);
-    const filtered = await computeStats(project, { lab: "first-run" });
+    const filtered = await computeStats(project, { study: "first-run" });
     if (!stats.ok || !filtered.ok) throw new Error("stats failed");
     expect(Object.fromEntries(stats.studies.map((row) => [row.study, row.runs]))).toEqual({
       "fanout-proof": 3,
@@ -83,7 +83,7 @@ describe("runs saved by 0.107", () => {
     const lanes = ["mobile-newcomer", "small-skimmer", "desktop-power", "wide-researcher"];
     const selection = await resolveCuaRerunSelection({
       cwd: project,
-      labId: "fanout-proof",
+      studyId: "fanout-proof",
       sandboxMs: 60_000,
       sourceRunId: "fanout-source",
       participantRuns: lanes.map((id) => ({ planned: { id } })) as never,

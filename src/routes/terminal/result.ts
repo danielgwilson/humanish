@@ -76,7 +76,7 @@ export function terminalExecutionFailures(args: {
 /** The terminal-product lab result for a live run, from its session, cleanup and cost ledger. */
 export function terminalStudyResult(args: {
   cwd: string;
-  labId: string;
+  studyId: string;
   actorId: string;
   productName: string;
   runId: string;
@@ -100,7 +100,7 @@ export function terminalStudyResult(args: {
 }): TerminalProductStudyResult {
   const {
     cwd,
-    labId,
+    studyId,
     actorId,
     productName,
     runId,
@@ -136,7 +136,7 @@ export function terminalStudyResult(args: {
   });
 
   return {
-    ...studyResultIdentity("terminal", labId),
+    ...studyResultIdentity("terminal", studyId),
     ok,
     cwd,
     actor: actorId,

@@ -43,6 +43,7 @@ const REMOVED_OPTIONS: Readonly<Record<string, string>> = {
   sharedWorldHooks: "Use scorer, prepareDesktop, env, onEvent and onStream.",
   automaticAnalysis: "Use onEvent (analysis-started, analysis-finished) and analysisSignal.",
   lab: "The humanish CLI sets it.",
+  study: "The humanish CLI sets it.",
   scorerProvenance: "The humanish CLI sets it.",
 };
 

@@ -15,7 +15,7 @@ const outDir = path.join(root, "tests", "golden", "labs");
 mkdirSync(outDir, { recursive: true });
 
 // Only deterministic, no-network built-in labs are golden-captured.
-const LABS = [
+const STUDIES = [
   {
     id: "first-run",
     runId: "golden-first-run",
@@ -24,24 +24,34 @@ const LABS = [
   },
 ];
 
-for (const lab of LABS) {
-  console.log(`[golden] capturing ${lab.id} ...`);
+for (const study of STUDIES) {
+  console.log(`[golden] capturing ${study.id} ...`);
   // A run id can be used once; clear this script's previous capture of the fixed id.
-  rmSync(path.join(root, ".humanish", "runs", lab.runId), { recursive: true, force: true });
+  rmSync(path.join(root, ".humanish", "runs", study.runId), { recursive: true, force: true });
   execFileSync(
     "pnpm",
-    ["humanish", "--", "run", lab.id, ...lab.extra, "--run-id", lab.runId, "--json", "--no-open"],
+    [
+      "humanish",
+      "--",
+      "run",
+      study.id,
+      ...study.extra,
+      "--run-id",
+      study.runId,
+      "--json",
+      "--no-open",
+    ],
     {
       cwd: root,
       stdio: "inherit",
       env: { ...process.env, CI: "true" },
     },
   );
-  const src = path.join(root, lab.artifact(lab.runId));
+  const src = path.join(root, study.artifact(study.runId));
   if (!existsSync(src)) {
-    throw new Error(`[golden] missing artifact for ${lab.id}: ${src}`);
+    throw new Error(`[golden] missing artifact for ${study.id}: ${src}`);
   }
-  copyFileSync(src, path.join(outDir, `${lab.id}.json`));
-  console.log(`[golden] wrote tests/golden/labs/${lab.id}.json`);
+  copyFileSync(src, path.join(outDir, `${study.id}.json`));
+  console.log(`[golden] wrote tests/golden/labs/${study.id}.json`);
 }
 console.log("[golden] done");

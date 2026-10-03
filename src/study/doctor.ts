@@ -205,7 +205,7 @@ async function studyLoaders() {
 
 export interface StudySetupCheckArgs {
   cwd: string;
-  lab: string;
+  study: string;
   env: NodeJS.ProcessEnv;
   agents: DetectedLocalAgent[];
   keyPresent: (name: string) => boolean;
@@ -232,7 +232,7 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
   checks: Check[];
 }> {
   const { resolveStudy, resolveDryRun, routeOf } = await studyLoaders();
-  const resolved = await resolveStudy(args.cwd, args.lab);
+  const resolved = await resolveStudy(args.cwd, args.study);
   if (!resolved.ok)
     return {
       desktop: false,

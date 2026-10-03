@@ -767,7 +767,7 @@ describe("serve library: labeled cost estimate", () => {
       appUrl: "http://127.0.0.1:3000/",
       run: { runId, mode: "live", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: false,
-      labId: "serve-cost-proof",
+      studyId: "serve-cost-proof",
       mission: "Explore the app and stop.",
       persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
       resolution: [1440, 960],

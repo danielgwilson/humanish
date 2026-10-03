@@ -125,7 +125,7 @@ describe("humanish stats", () => {
   });
 
   it("filters by lab and by since, and refuses a date it cannot read", async () => {
-    const byLab = await computeStats(cwd, { lab: "first-run", nowMs: NOW });
+    const byLab = await computeStats(cwd, { study: "first-run", nowMs: NOW });
     if (!byLab.ok) throw new Error(byLab.error.message);
     expect(byLab.totals.runs).toBe(1);
     expect(byLab.studies.map((row) => row.study)).toEqual(["first-run"]);

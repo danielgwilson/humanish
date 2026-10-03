@@ -9,7 +9,7 @@ import { plural } from "../../run/text.js";
 
 export async function resolveCuaRerunSelection(args: {
   cwd: string;
-  labId: string;
+  studyId: string;
   sandboxMs: number;
   sourceRunId: string;
   participantIds?: string[];
@@ -78,7 +78,7 @@ export async function resolveCuaRerunSelection(args: {
   if (missingCurrent.length > 0) {
     return {
       ok: false,
-      message: `${plural(missingCurrent.length, "selected participant id")} ${missingCurrent.length === 1 ? "is" : "are"} not present in the current study file ${args.labId}: ${missingCurrent.join(", ")}`,
+      message: `${plural(missingCurrent.length, "selected participant id")} ${missingCurrent.length === 1 ? "is" : "are"} not present in the current study file ${args.studyId}: ${missingCurrent.join(", ")}`,
     };
   }
 

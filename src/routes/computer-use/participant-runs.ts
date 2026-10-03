@@ -251,10 +251,10 @@ export function resolveCuaParticipantPlan(
 
 /** Print the participant plan to stderr before any sandbox/provider call (public-safe: ids, devices,
  *  digests, and budgets only; no prompt text, no secrets). */
-export function emitPreflightPlan(participantPlan: CuaParticipantPlan, labId: string): void {
+export function emitPreflightPlan(participantPlan: CuaParticipantPlan, studyId: string): void {
   const lines: string[] = [];
   lines.push(
-    `humanish computer-use fan-out plan (${labId}): ${plural(participantPlan.laneCount, "participant")}, strategy ${participantPlan.strategy}, concurrency ${participantPlan.concurrency}${participantPlan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${participantPlan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${plural(participantPlan.waves, "wave")}.`,
+    `humanish computer-use fan-out plan (${studyId}): ${plural(participantPlan.laneCount, "participant")}, strategy ${participantPlan.strategy}, concurrency ${participantPlan.concurrency}${participantPlan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${participantPlan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${plural(participantPlan.waves, "wave")}.`,
   );
   lines.push(
     `  session budget ${Math.round(participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${participantPlan.worstCaseSandboxMinutes} sandbox-minutes total${participantPlan.dryRun ? " (dry-run: $0)" : ""}.`,
@@ -334,7 +334,7 @@ export async function loadCuaParticipants(args: {
 
   const selected = await resolveCuaRerunSelection({
     cwd: args.cwd,
-    labId: plan.studyId,
+    studyId: plan.studyId,
     sandboxMs: plan.sandboxMs,
     sourceRunId: rerun.sourceRunId,
     ...(rerun.participantIds === undefined ? {} : { participantIds: [...rerun.participantIds] }),

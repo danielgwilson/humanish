@@ -75,8 +75,8 @@ export async function runStudy(
         } as const)
       : removedOptionRefusal(options);
   if (refusal === undefined) return runStudyWith(config, options);
-  const lab = localBrowserDefaults(config);
-  return optionRefusalOutcome(lab, routeOf(lab), options, refusal);
+  const study = localBrowserDefaults(config);
+  return optionRefusalOutcome(study, routeOf(study), options, refusal);
 }
 
 /** A lab planned once: the route's refusal, or the run of its plan. */
@@ -99,28 +99,28 @@ export async function prepareStudy(
   options: InternalRunStudyOptions,
   deps: StudyDeps = {},
 ): Promise<PreparedStudy> {
-  const lab = localBrowserDefaults(config);
-  const route = routeOf(lab);
-  const normalized = normalizeRunStudyOptions(lab, route, options);
+  const study = localBrowserDefaults(config);
+  const route = routeOf(study);
+  const normalized = normalizeRunStudyOptions(study, route, options);
   if (!normalized.ok)
-    return { ok: false, outcome: optionRefusalOutcome(lab, route, options, normalized) };
+    return { ok: false, outcome: optionRefusalOutcome(study, route, options, normalized) };
   // An in-process executor needs no desktop, and a caller that already prepared the study passes
   // its localVm, which a second study would replace.
   const prepareLocalVm =
-    isLocalBrowserStudy(lab) && options.inProcess === undefined && options.localVm === undefined
+    isLocalBrowserStudy(study) && options.inProcess === undefined && options.localVm === undefined
       ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmRun
       : undefined;
-  const vm = prepareLocalVm?.({ ...normalized.options, config: lab });
+  const vm = prepareLocalVm?.({ ...normalized.options, config: study });
   const planning: InternalRunStudyOptions =
     vm === undefined ? normalized.options : { ...vm.options, localVm: vm.localVm };
-  const planned = planStudy(lab, planning, deps);
+  const planned = planStudy(study, planning, deps);
   if (!planned.ok) {
     await vm?.close();
-    const outcome = await refusalOutcome(lab, planning, planned.refusal, deps, normalized.emit);
+    const outcome = await refusalOutcome(study, planning, planned.refusal, deps, normalized.emit);
     outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome };
   }
-  const admitted = await admitPlan(lab, planning, planned.planned.plan, deps, normalized.emit);
+  const admitted = await admitPlan(study, planning, planned.planned.plan, deps, normalized.emit);
   if (!admitted.ok) {
     await vm?.close();
     admitted.outcome.result.warnings.push(...normalized.warnings);
@@ -135,9 +135,9 @@ export async function prepareStudy(
         if (scorer !== undefined) {
           // Checks the scorer against the route and the caller's options, as if passed up front.
           // Only its refusal is used; its options and warnings array are not.
-          const withScorer = normalizeRunStudyOptions(lab, route, { ...options, ...scorer });
+          const withScorer = normalizeRunStudyOptions(study, route, { ...options, ...scorer });
           if (!withScorer.ok) {
-            const outcome = optionRefusalOutcome(lab, route, options, withScorer);
+            const outcome = optionRefusalOutcome(study, route, options, withScorer);
             outcome.result.warnings.push(...normalized.warnings);
             return outcome;
           }
@@ -258,7 +258,7 @@ interface RunStudyInternals {
    * plan.lab for the run's status record and bundle. Absent for a library caller that passes a
    * StudyConfig directly; that run records no lab.
    */
-  lab?: RunStudyProvenance;
+  study?: RunStudyProvenance;
   /**
    * Config-declared scorer provenance, forwarded alongside the
    * loaded scorer. Its presence is the "declared" marker the terminal route reads to flip a

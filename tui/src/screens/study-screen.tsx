@@ -22,9 +22,9 @@ import { color } from "../text-props.js";
  * Down from Start lands on the newest run, which is how it reads to someone holding an arrow key.
  * Defined once and used by everything that counts, indexes or opens a row.
  */
-export type LabItem = { kind: "start"; mode: LabRunMode } | { kind: "run"; run: RunIndexEntry };
+export type StudyItem = { kind: "start"; mode: StudyRunMode } | { kind: "run"; run: RunIndexEntry };
 
-type LabRunMode = "dry-run" | "live";
+type StudyRunMode = "dry-run" | "live";
 
 /**
  * Two start rows, not one row with a hidden mode.
@@ -36,17 +36,17 @@ type LabRunMode = "dry-run" | "live";
  * open everywhere else in the app silently meant something different here. Splitting the row
  * restores both, and costs no safety: the live row still arms and still restates the spend.
  */
-export function labItems(runs: readonly RunIndexEntry[], canStart: boolean): LabItem[] {
-  const starts: LabItem[] = canStart
+export function studyItems(runs: readonly RunIndexEntry[], canStart: boolean): StudyItem[] {
+  const starts: StudyItem[] = canStart
     ? [
         { kind: "start", mode: "dry-run" },
         { kind: "start", mode: "live" },
       ]
     : [];
-  return [...starts, ...runs.map((run): LabItem => ({ kind: "run", run }))];
+  return [...starts, ...runs.map((run): StudyItem => ({ kind: "run", run }))];
 }
 
-export interface LabScreenProps {
+export interface StudyScreenProps {
   row: StudyRow;
   summary: StudySummary | null | undefined;
   runs: RunIndexEntry[];
@@ -70,9 +70,9 @@ export interface LabScreenProps {
  * action, then its runs newest-first, so idle, running and finished are one screen rather than
  * three, and the run you just started appears where you are already looking.
  */
-export function LabScreen(props: LabScreenProps): React.ReactElement {
+export function StudyScreen(props: StudyScreenProps): React.ReactElement {
   const { row, summary, runs, selected, columns, viewport, now, tick, canStart } = props;
-  const items = labItems(runs, canStart);
+  const items = studyItems(runs, canStart);
 
   return (
     <Box flexDirection="column">
@@ -196,7 +196,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       )}
       {row.sharesIdWith > 0 ? (
         <Text color={PALETTE.warn}>
-          {row.sharesIdWith + 1} manifests declare &quot;{row.labId}&quot;: these runs are shared
+          {row.sharesIdWith + 1} manifests declare &quot;{row.studyId}&quot;: these runs are shared
           between them
         </Text>
       ) : null}
@@ -216,7 +216,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
             liveDetail={props.liveDetail}
             // Derived from the item model, never from a literal: the count of start rows changed
             // once already, and a hardcoded offset put a second cursor on the screen.
-            selected={selected - labItems([], canStart).length}
+            selected={selected - studyItems([], canStart).length}
             columns={columns}
             viewport={Math.max(2, viewport - 6)}
             now={now}
@@ -230,12 +230,14 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
 }
 
 /** Which start row the cursor is on, if any. */
-function activeStart(items: readonly LabItem[], selected: number): LabRunMode | undefined {
+function activeStart(items: readonly StudyItem[], selected: number): StudyRunMode | undefined {
   const item = items[selected];
   return item?.kind === "start" ? item.mode : undefined;
 }
 
-function StartRows(props: LabScreenProps & { active: LabRunMode | undefined }): React.ReactElement {
+function StartRows(
+  props: StudyScreenProps & { active: StudyRunMode | undefined },
+): React.ReactElement {
   const stacked = startRowsStack(props.columns, props.row, props.summary);
   return (
     <>
@@ -260,7 +262,11 @@ function StartRow({
   columns,
   row,
   summary,
-}: LabScreenProps & { active: boolean; mode: LabRunMode; stacked: boolean }): React.ReactElement {
+}: StudyScreenProps & {
+  active: boolean;
+  mode: StudyRunMode;
+  stacked: boolean;
+}): React.ReactElement {
   const { label, value, blocked } = startRowText(mode, row, summary);
   const accent = mode === "live" ? PALETTE.warn : PALETTE.accent;
   const labelText = (
@@ -297,7 +303,7 @@ function StartRow({
 const START_GAP = 2;
 
 function startRowText(
-  mode: LabRunMode,
+  mode: StudyRunMode,
   row: StudyRow,
   summary: StudySummary | null | undefined,
 ): { label: string; value: string; blocked: boolean } {

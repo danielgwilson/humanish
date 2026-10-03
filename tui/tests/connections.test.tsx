@@ -44,7 +44,7 @@ function options(
         runs: [],
         unreadable: [],
       }),
-      listLabs: async () => ({
+      listStudies: async () => ({
         schema: "humanish.study-list.v1",
         retired: [],
         ok: true,
@@ -57,7 +57,7 @@ function options(
         initialized: true,
         hasRuntime: false,
       }),
-      readLabSummary: async () => null,
+      readStudySummary: async () => null,
       readRunDetail: async () => null,
       readLaunchLog: async () => "",
       startRun: async () => ({
@@ -128,7 +128,7 @@ function receivingOptions(
       message:
         "Authentication passed. Inbox permissions, capacity and delivery are still untested. No resources were created.",
     }),
-    labs: async () => [{ title: "Signup", path: "humanish/labs/signup.yaml" }],
+    studies: async () => [{ title: "Signup", path: "humanish/labs/signup.yaml" }],
     configure: async (_lab, apply) => ({
       schema: "humanish.comms-configure.v1",
       ok: true,
@@ -376,10 +376,10 @@ describe("Receiving setup and cleanup", () => {
       try {
         await surface.press(KEY.down);
         await surface.press(KEY.down, (frame) => frame.includes("❯ Use real email"));
-        await surface.press(KEY.enter, (frame) => frame.includes("Choose a lab"));
+        await surface.press(KEY.enter, (frame) => frame.includes("Choose a study"));
         const preview = await surface.press(
           KEY.enter,
-          (frame) => frame.includes("Save email-enabled lab") && !frame.includes("Working…"),
+          (frame) => frame.includes("Save email-enabled study") && !frame.includes("Working…"),
         );
         await golden(`connections-preview-${columns}`, preview);
         readable(preview, columns);
@@ -390,7 +390,7 @@ describe("Receiving setup and cleanup", () => {
         offset = 500;
         const saved = await surface.press(
           KEY.enter,
-          (frame) => frame.includes("Email lab saved") && !frame.includes("Working…"),
+          (frame) => frame.includes("Email study saved") && !frame.includes("Working…"),
         );
         await golden(`connections-applied-${columns}`, saved);
         readable(saved, columns);
@@ -421,11 +421,11 @@ describe("Receiving setup and cleanup", () => {
     try {
       await surface.press(KEY.down);
       await surface.press(KEY.down);
-      await surface.press(KEY.enter, (frame) => frame.includes("Choose a lab"));
-      await surface.press(KEY.enter, (frame) => frame.includes("Save email-enabled lab"));
-      await surface.press(KEY.escape, (frame) => frame.includes("Choose a lab"));
+      await surface.press(KEY.enter, (frame) => frame.includes("Choose a study"));
+      await surface.press(KEY.enter, (frame) => frame.includes("Save email-enabled study"));
+      await surface.press(KEY.escape, (frame) => frame.includes("Choose a study"));
       expect(configure.mock.calls.every((call) => call[1] === false)).toBe(true);
-      await surface.press(KEY.enter, (frame) => frame.includes("Save email-enabled lab"));
+      await surface.press(KEY.enter, (frame) => frame.includes("Save email-enabled study"));
       configure.mockResolvedValueOnce({
         schema: "humanish.comms-configure.v1",
         ok: false,
@@ -435,7 +435,7 @@ describe("Receiving setup and cleanup", () => {
       offset = 500;
       await surface.press(KEY.enter, (frame) => frame.includes("Files changed. Preview again."));
       expect(surface.frames.at(-1)).not.toContain("Save study copy");
-      await surface.press(KEY.enter, (frame) => frame.includes("Save email-enabled lab"));
+      await surface.press(KEY.enter, (frame) => frame.includes("Save email-enabled study"));
       expect(configure).toHaveBeenLastCalledWith("humanish/labs/signup.yaml", false);
     } finally {
       clock.mockRestore();
@@ -595,13 +595,13 @@ describe("Receiving setup and cleanup", () => {
       path: `.humanish/local/labs/study-${i}.yaml`,
     }));
     const surface = await renderToText(
-      <App options={receivingOptions({ labs: async () => labs })} />,
+      <App options={receivingOptions({ studies: async () => labs })} />,
       { columns: 45, until: (frame) => frame.includes("Use real email") },
     );
     try {
       await surface.press(KEY.down);
       await surface.press(KEY.down);
-      const frame = await surface.press(KEY.enter, (frame) => frame.includes("Choose a lab"));
+      const frame = await surface.press(KEY.enter, (frame) => frame.includes("Choose a study"));
       expect(frame).toContain("more");
       readable(frame, 45);
       for (let i = 1; i <= 18; i++)

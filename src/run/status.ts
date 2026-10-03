@@ -130,7 +130,7 @@ export interface RunStatusHandle {
 export interface BeginRunStatusOptions {
   runId: string;
   mode: "dry-run" | "live";
-  lab?: RunStudyProvenance | undefined;
+  study?: RunStudyProvenance | undefined;
 }
 
 /**
@@ -149,7 +149,7 @@ export function beginRunStatus(
     runId: options.runId,
     state: "running",
     mode: options.mode,
-    ...studyFields(options.lab),
+    ...studyFields(options.study),
     pid: process.pid,
     startedAt,
     updatedAt: startedAt,

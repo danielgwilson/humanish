@@ -11,7 +11,7 @@ import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
 /** What a scripted run takes besides its plan. The plan carries the config, dry run and lab. */
-export type ScriptedRunInput = Omit<RunScriptedBrowserStudyOptions, "config" | "dryRun" | "lab">;
+export type ScriptedRunInput = Omit<RunScriptedBrowserStudyOptions, "config" | "dryRun">;
 
 export interface RunScriptedBrowserStudyOptions {
   /** Cancels post-run analysis only. */

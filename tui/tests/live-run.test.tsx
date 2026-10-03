@@ -65,7 +65,7 @@ function options(
       runs,
       unreadable: [],
     }),
-    listLabs: async () => ({
+    listStudies: async () => ({
       schema: "humanish.study-list.v1",
       retired: [],
       ok: true,
@@ -79,7 +79,7 @@ function options(
     }),
     readLaunchLog: async () => "",
     readRunDetail: async () => detail,
-    readLabSummary: async () => null,
+    readStudySummary: async () => null,
     readProjectState: () => ({
       schema: "humanish.tui-project.v1" as const,
       initialized: true,
@@ -242,7 +242,7 @@ describe("the interrupted card", () => {
         runs: [interrupted],
         unreadable: [],
       }),
-      listLabs: async () => ({
+      listStudies: async () => ({
         schema: "humanish.study-list.v1",
         retired: [],
         ok: true,
@@ -256,7 +256,7 @@ describe("the interrupted card", () => {
       }),
       readLaunchLog: async () => "",
       readRunDetail: async () => null,
-      readLabSummary: async () => null,
+      readStudySummary: async () => null,
       readProjectState: () => ({
         schema: "humanish.tui-project.v1",
         initialized: true,

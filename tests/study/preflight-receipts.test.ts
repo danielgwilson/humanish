@@ -211,7 +211,7 @@ describe("lab preflight receipts", () => {
 
     const result = await runStudyPreflight({
       cwd,
-      lab: "preview",
+      study: "preview",
       reachability: "public-preview",
       env,
       hooks: { loadDesktopModule: async () => provider.module },
@@ -238,14 +238,14 @@ describe("lab preflight receipts", () => {
 
     const previewResult = await runStudyPreflight({
       cwd,
-      lab: "preview",
+      study: "preview",
       reachability: "public-preview",
       env,
       hooks: { loadDesktopModule: async () => preview.module },
     });
     const cloneResult = await runStudyPreflight({
       cwd,
-      lab: "clone-probe",
+      study: "clone-probe",
       reachability: "sandbox-loopback",
       env,
       hooks: { loadDesktopModule: async () => clone.module, sleep: async () => undefined },
@@ -267,7 +267,7 @@ describe("lab preflight receipts", () => {
     const capped = fakeProvider({});
     await runStudyPreflight({
       cwd,
-      lab: "preview",
+      study: "preview",
       reachability: "public-preview",
       env,
       hooks: { loadDesktopModule: async () => capped.module },
@@ -294,7 +294,7 @@ describe("lab preflight receipts", () => {
     const slow = fakeProvider({});
     await runStudyPreflight({
       cwd,
-      lab: "clone-probe",
+      study: "clone-probe",
       reachability: "sandbox-loopback",
       env,
       hooks: { loadDesktopModule: async () => slow.module, sleep: async () => undefined },
@@ -309,7 +309,7 @@ describe("lab preflight receipts", () => {
     const quick = fakeProvider({});
     await runStudyPreflight({
       cwd,
-      lab: "clone-probe",
+      study: "clone-probe",
       reachability: "sandbox-loopback",
       env,
       hooks: { loadDesktopModule: async () => quick.module, sleep: async () => undefined },
@@ -323,7 +323,7 @@ describe("lab preflight receipts", () => {
 
     const result = await runStudyPreflight({
       cwd,
-      lab: "preview",
+      study: "preview",
       reachability: "public-preview",
       env,
       hooks: { loadDesktopModule: async () => gone.module },
@@ -340,7 +340,7 @@ describe("lab preflight receipts", () => {
 
     const result = await runStudyPreflight({
       cwd,
-      lab: "preview",
+      study: "preview",
       reachability: "public-preview",
       env,
       hooks: { loadDesktopModule: async () => odd.module },
@@ -357,7 +357,7 @@ describe("lab preflight receipts", () => {
 
     const result = await runStudyPreflight({
       cwd,
-      lab: "preview",
+      study: "preview",
       reachability: "public-preview",
       env,
       hooks: { loadDesktopModule: async () => failing.module },
@@ -522,7 +522,7 @@ describe("lab preflight receipts", () => {
       const module = { Sandbox: { create: async () => sandbox, kill: async () => true } };
       await runStudyPreflight({
         cwd: process.env.PROBE_CWD,
-        lab: "preview",
+        study: "preview",
         reachability: "public-preview",
         env: ${JSON.stringify(env)},
         hooks: { loadDesktopModule: async () => module },

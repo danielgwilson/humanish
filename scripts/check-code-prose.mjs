@@ -141,14 +141,14 @@ const STRING_KIND_NAMES = [
 // The title and description of each committed study, which `lab list`, `lab inspect` and the TUI
 // show. They are held to the comment rules; the test-name kinds do not apply. The caps keep the
 // `labs` root name until the rename's prose PR.
-const LABS_DIR = "humanish/studies";
-const LAB_KINDS = KINDS.filter((kind) => kind !== "series-codes" && kind !== "name-refs");
-const LAB_FIELDS = ["title", "description"];
+const STUDIES_DIR = "humanish/studies";
+const STUDY_KINDS = KINDS.filter((kind) => kind !== "series-codes" && kind !== "name-refs");
+const STUDY_FIELDS = ["title", "description"];
 
 /** Every hit, keyed by its cap path in scripts/caps.json: `prose.src.caps`, `prose.tests.caps`, ... */
 const hits = new Map([
   ...ROOTS.flatMap((root) => KINDS.map((kind) => [`prose.${root}.${kind}`, []])),
-  ...LAB_KINDS.map((kind) => [`prose.labs.${kind}`, []]),
+  ...STUDY_KINDS.map((kind) => [`prose.labs.${kind}`, []]),
   ["prose.markdown.title-case-headers", []],
   ...STRING_KIND_NAMES.map((kind) => [`prose.src.${kind}`, []]),
 ]);
@@ -338,17 +338,17 @@ for (const root of ROOTS) {
   }
 }
 
-const labFiles = existsSync(LABS_DIR)
-  ? readdirSync(LABS_DIR)
+const studyFiles = existsSync(STUDIES_DIR)
+  ? readdirSync(STUDIES_DIR)
       .filter((name) => name.endsWith(".yaml"))
       .sort()
   : [];
-for (const name of labFiles) {
-  const file = `${LABS_DIR}/${name}`;
+for (const name of studyFiles) {
+  const file = `${STUDIES_DIR}/${name}`;
   const text = readFileSync(file, "utf8");
-  const lab = parseYaml(text);
-  for (const field of LAB_FIELDS) {
-    const value = lab?.[field];
+  const study = parseYaml(text);
+  for (const field of STUDY_FIELDS) {
+    const value = study?.[field];
     if (typeof value !== "string") continue;
     const line = text.split("\n").findIndex((row) => row.startsWith(`${field}:`)) + 1;
     scan(value, "labs", (match) => `${file}:${line} ${field} ${match[0]}`, { testName: false });

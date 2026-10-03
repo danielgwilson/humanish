@@ -94,7 +94,7 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
  * What a computer-use run takes besides its plan and config. The count override and rerun go to
  * participant building with the config.
  */
-export type ComputerUseRunInput = Omit<RunCuaActorStudyOptions, "config" | "dryRun" | "lab">;
+export type ComputerUseRunInput = Omit<RunCuaActorStudyOptions, "config" | "dryRun">;
 
 /**
  * What runStudyWith's local VM study gives a computer-use run: the desktop each participant runs on, the
@@ -449,7 +449,7 @@ export function participantServeUrl(subject: ParticipantSubject): string | undef
 export interface E2BDesktopDeps {
   /** The plan's residual config: comms, policies, the desktop and target, and subject leftovers. */
   residual: Readonly<ResidualConfig>;
-  labId: string;
+  studyId: string;
   appUrl: string;
   /** What the participant's desktop does with the subject before the participant starts. */
   subject: ParticipantSubject;
@@ -463,7 +463,7 @@ export interface E2BDesktopDeps {
   participantCount: number;
   artifactRoot: PreparedOutputRoot;
   /** The lab's resolution directory: relative paths in the config (a camera .y4m) resolve here. */
-  labCwd: string;
+  studyCwd: string;
   scrubKnownValues: (text: string) => string;
   receiving?: CommsReceivingRun;
   /** Adopter-hosted comms plane: present on the app-url route when comms.email.external is

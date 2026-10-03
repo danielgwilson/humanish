@@ -112,29 +112,32 @@ type ManagedDirectoryResult =
   | { status: "unsafe"; message: string }
   | { status: "ok"; binding: ManagedDirectoryBinding };
 
-export async function resolveStudyManifest(cwd: string, lab: string): Promise<StudyResolveResult> {
+export async function resolveStudyManifest(
+  cwd: string,
+  study: string,
+): Promise<StudyResolveResult> {
   const resolvedCwd = path.resolve(cwd);
   const warnings: string[] = [];
   const projectRoot = await bindProjectRoot(resolvedCwd);
   if (!projectRoot) {
     return invalidStudy(
-      { cwd: resolvedCwd, lab, warnings },
+      { cwd: resolvedCwd, study, warnings },
       "Project root failed containment validation.",
     );
   }
 
-  if (studyLooksLikePath(lab)) {
-    const requestedPath = path.resolve(resolvedCwd, lab);
+  if (studyLooksLikePath(study)) {
+    const requestedPath = path.resolve(resolvedCwd, study);
     const read = await readExplicitManifest(projectRoot, requestedPath);
     if (read.status === "missing") {
-      return studyNotFound(resolvedCwd, lab, warnings);
+      return studyNotFound(resolvedCwd, study, warnings);
     }
     if (read.status === "unsafe") {
-      return invalidStudy({ cwd: resolvedCwd, lab, warnings }, read.message);
+      return invalidStudy({ cwd: resolvedCwd, study, warnings }, read.message);
     }
     return parseResolvedStudy({
       cwd: resolvedCwd,
-      lab,
+      study,
       origin: "explicit",
       path: requestedPath,
       warnings,
@@ -144,17 +147,17 @@ export async function resolveStudyManifest(cwd: string, lab: string): Promise<St
 
   // The studies/ directories are read in order. A name found only under a labs/ directory is
   // refused with what to do about it, so the user is not told the study does not exist.
-  for (const candidate of studyFileCandidates(lab)) {
+  for (const candidate of studyFileCandidates(study)) {
     const read = await readManagedManifest(projectRoot, candidate.relativePath);
     if (read.status === "missing") {
       continue;
     }
     if (read.status === "unsafe") {
-      return invalidStudy({ cwd: resolvedCwd, lab, warnings }, read.message);
+      return invalidStudy({ cwd: resolvedCwd, study, warnings }, read.message);
     }
     return parseResolvedStudy({
       cwd: resolvedCwd,
-      lab,
+      study,
       origin: candidate.directory.origin,
       path: path.join(resolvedCwd, candidate.relativePath),
       warnings,
@@ -163,7 +166,7 @@ export async function resolveStudyManifest(cwd: string, lab: string): Promise<St
     });
   }
 
-  return studyNotFound(resolvedCwd, lab, warnings);
+  return studyNotFound(resolvedCwd, study, warnings);
 }
 
 export async function listStudyManifests(cwd: string): Promise<StudyListResult> {
@@ -222,7 +225,7 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
 
       const parsed = parseResolvedStudy({
         cwd: resolvedCwd,
-        lab: name.replace(/\.(?:ya?ml)$/i, ""),
+        study: name.replace(/\.(?:ya?ml)$/i, ""),
         origin: entry.origin,
         path: requestedPath,
         warnings: [],
@@ -271,14 +274,17 @@ export async function listStudyManifests(cwd: string): Promise<StudyListResult> 
   };
 }
 
-export async function inspectStudyManifest(cwd: string, lab: string): Promise<StudyInspectResult> {
-  const resolved = await resolveStudyManifest(cwd, lab);
+export async function inspectStudyManifest(
+  cwd: string,
+  study: string,
+): Promise<StudyInspectResult> {
+  const resolved = await resolveStudyManifest(cwd, study);
   if (!resolved.ok) {
     return {
       schema: STUDY_SHOW_SCHEMA,
       ok: false,
       cwd: resolved.cwd,
-      study: lab,
+      study,
       error: resolved.error,
       warnings: resolved.warnings,
     };
@@ -293,7 +299,7 @@ export async function inspectStudyManifest(cwd: string, lab: string): Promise<St
       schema: STUDY_SHOW_SCHEMA,
       ok: false,
       cwd: path.resolve(cwd),
-      study: lab,
+      study,
       error: { code: "HUMANISH_STUDY_INVALID", message: error.message },
       warnings: resolved.warnings,
     };
@@ -306,7 +312,7 @@ export async function inspectStudyManifest(cwd: string, lab: string): Promise<St
     }),
     ok: true,
     cwd: path.resolve(cwd),
-    study: lab,
+    study,
     config: resolved.config,
     origin: resolved.origin,
     path: resolved.path,
@@ -316,7 +322,7 @@ export async function inspectStudyManifest(cwd: string, lab: string): Promise<St
 
 function parseResolvedStudy(args: {
   cwd: string;
-  lab: string;
+  study: string;
   origin: StudyOrigin;
   path: string;
   warnings: string[];
@@ -340,7 +346,7 @@ function parseResolvedStudy(args: {
     args.retiredDirectory === true,
   );
   if (refusal !== undefined) {
-    return { ok: false, cwd: args.cwd, study: args.lab, error: refusal, warnings: args.warnings };
+    return { ok: false, cwd: args.cwd, study: args.study, error: refusal, warnings: args.warnings };
   }
 
   const parsed = parseStudy(raw);
@@ -375,7 +381,7 @@ function retiredStudyRefusal(
   const directory = path.posix.dirname(relativePath);
   const studies = directory.replace(/labs$/, "studies");
   // migrate moves a v2 file out of a labs/ directory however the file was named.
-  const inLabs = STUDY_DIRECTORIES.some(
+  const inStudies = STUDY_DIRECTORIES.some(
     (entry) => entry.family === "labs" && entry.relativeDir.replace(/\\/g, "/") === directory,
   );
   // migrate refuses a path outside its --cwd, so a file outside the project gets its own directory.
@@ -385,7 +391,7 @@ function retiredStudyRefusal(
   if (typeof raw === "object" && raw !== null && (raw as { schema?: unknown }).schema === V2_SCHEMA)
     return {
       code: "HUMANISH_STUDY_V2_UNSUPPORTED",
-      message: inLabs
+      message: inStudies
         ? `${relativePath} is a humanish.lab.v2 file in ${directory}/, which humanish no longer reads. Run ${migrate} to convert it and move it to ${studies}/.`
         : `${relativePath} is a humanish.lab.v2 file, which humanish no longer reads. Run ${migrate} to convert it.`,
     };
@@ -600,7 +606,7 @@ async function assertManagedDirectoryBinding(
 function invalidStudy(
   args: {
     cwd: string;
-    lab: string;
+    study: string;
     warnings: string[];
   },
   message: string,
@@ -608,7 +614,7 @@ function invalidStudy(
   return {
     ok: false,
     cwd: args.cwd,
-    study: args.lab,
+    study: args.study,
     error: {
       code: "HUMANISH_STUDY_INVALID",
       message,
@@ -617,26 +623,26 @@ function invalidStudy(
   };
 }
 
-function studyNotFound(cwd: string, lab: string, warnings: string[]): StudyResolveFailure {
+function studyNotFound(cwd: string, study: string, warnings: string[]): StudyResolveFailure {
   return {
     ok: false,
     cwd,
-    study: lab,
+    study,
     error: {
       code: "HUMANISH_STUDY_NOT_FOUND",
-      message: `Study not found: ${lab}. Look in humanish/studies/, or pass a .yaml path.`,
+      message: `Study not found: ${study}. Look in humanish/studies/, or pass a .yaml path.`,
     },
     warnings,
   };
 }
 
-function studyLooksLikePath(lab: string): boolean {
+function studyLooksLikePath(study: string): boolean {
   return (
-    lab.endsWith(".yaml") ||
-    lab.endsWith(".yml") ||
-    lab.includes("/") ||
-    lab.includes("\\") ||
-    lab.startsWith(".")
+    study.endsWith(".yaml") ||
+    study.endsWith(".yml") ||
+    study.includes("/") ||
+    study.includes("\\") ||
+    study.startsWith(".")
   );
 }
 

@@ -160,7 +160,7 @@ async function runScriptedPlanInScope(
     runId: input.runId,
     mintRunId: makeScriptedRunId,
     mode: dryRun ? "dry-run" : "live",
-    lab: plan.lab,
+    study: plan.study,
     renderReview: renderScriptedReviewMarkdown,
     observer: { open: input.open === true, render: setup.deps.renderObserver },
   });

@@ -12,7 +12,7 @@ import type { RunIndexEntry } from "./run-index.js";
 
 /** One lab as the labs list shows it. */
 export interface StudyRollup {
-  labId: string;
+  studyId: string;
   /** Total runs attributed to this lab. */
   runs: number;
   /** Runs whose status record is fresh right now. */
@@ -29,25 +29,25 @@ export interface StudyRollup {
  * home for pre-contract runs and library callers.
  */
 export function groupRunsByStudy(entries: readonly RunIndexEntry[]): {
-  labs: StudyRollup[];
+  studies: StudyRollup[];
   unattributed: RunIndexEntry[];
 } {
-  const byLab = new Map<string, RunIndexEntry[]>();
+  const byStudy = new Map<string, RunIndexEntry[]>();
   const unattributed: RunIndexEntry[] = [];
   for (const entry of entries) {
-    const labId = entry.study?.id;
-    if (labId === undefined) {
+    const studyId = entry.study?.id;
+    if (studyId === undefined) {
       unattributed.push(entry);
       continue;
     }
-    const bucket = byLab.get(labId);
-    if (bucket === undefined) byLab.set(labId, [entry]);
+    const bucket = byStudy.get(studyId);
+    if (bucket === undefined) byStudy.set(studyId, [entry]);
     else bucket.push(entry);
   }
-  const labs: StudyRollup[] = [...byLab.entries()].map(([labId, runs]) => {
+  const studies: StudyRollup[] = [...byStudy.entries()].map(([studyId, runs]) => {
     const liveRuns = runs.filter((run) => run.liveness === "running");
     return {
-      labId,
+      studyId,
       runs: runs.length,
       live: liveRuns.length,
       ...(runs[0] === undefined ? {} : { latest: runs[0] }),
@@ -55,11 +55,11 @@ export function groupRunsByStudy(entries: readonly RunIndexEntry[]): {
     };
   });
   // A lab someone is working in sorts first; otherwise most recently used.
-  labs.sort((left, right) => {
+  studies.sort((left, right) => {
     if (left.live !== right.live) return right.live - left.live;
     return recencyOf(right.latest) - recencyOf(left.latest);
   });
-  return { labs, unattributed };
+  return { studies, unattributed };
 }
 
 function recencyOf(entry: RunIndexEntry | undefined): number {
@@ -307,7 +307,7 @@ export interface StudyRow {
    */
   key: string;
   /** The declared id. Run history attributes to this, so it is not unique across manifests. */
-  labId: string;
+  studyId: string;
   /**
    * The handle an operator would actually type. Lab resolution is by filename, so the manifest
    * `\`.humanish/labs/persona-contrast-live.yaml\`` is reached as `persona-contrast-live` even when
@@ -387,31 +387,31 @@ export function studyRows(
   declared: readonly DeclaredStudy[],
   entries: readonly RunIndexEntry[],
 ): { rows: StudyRow[]; unattributed: RunIndexEntry[] } {
-  const { labs, unattributed } = groupRunsByStudy(entries);
-  const byId = new Map(labs.map((lab) => [lab.labId, lab]));
+  const { studies, unattributed } = groupRunsByStudy(entries);
+  const byId = new Map(studies.map((study) => [study.studyId, study]));
   const runsOf = new Map<string, RunIndexEntry[]>();
   for (const entry of entries) {
-    const labId = entry.study?.id;
-    if (labId === undefined) continue;
-    const bucket = runsOf.get(labId);
-    if (bucket === undefined) runsOf.set(labId, [entry]);
+    const studyId = entry.study?.id;
+    if (studyId === undefined) continue;
+    const bucket = runsOf.get(studyId);
+    if (bucket === undefined) runsOf.set(studyId, [entry]);
     else bucket.push(entry);
   }
 
   const idCounts = new Map<string, number>();
-  for (const lab of declared) idCounts.set(lab.id, (idCounts.get(lab.id) ?? 0) + 1);
+  for (const study of declared) idCounts.set(study.id, (idCounts.get(study.id) ?? 0) + 1);
 
   const build = (
-    labId: string,
+    studyId: string,
     manifest: DeclaredStudy | undefined,
     isDeclared: boolean,
   ): StudyRow => {
-    const rollup = byId.get(labId);
+    const rollup = byId.get(studyId);
     const manifestPath = manifest?.path;
     return {
-      key: manifestPath ?? `id:${labId}`,
-      labId,
-      name: manifestPath === undefined ? labId : studyNameFromPath(manifestPath),
+      key: manifestPath ?? `id:${studyId}`,
+      studyId,
+      name: manifestPath === undefined ? studyId : studyNameFromPath(manifestPath),
       ...(manifest?.title === undefined ? {} : { title: manifest.title }),
       ...(manifestPath === undefined ? {} : { path: manifestPath }),
       ...(manifest?.origin === undefined ? {} : { origin: manifest.origin }),
@@ -419,24 +419,24 @@ export function studyRows(
       // Replaced by assignLabels once the whole set is known; a label is only meaningful relative
       // to the rows it sits beside.
       label:
-        manifest?.title ?? (manifestPath === undefined ? labId : studyNameFromPath(manifestPath)),
+        manifest?.title ?? (manifestPath === undefined ? studyId : studyNameFromPath(manifestPath)),
       ...(manifest?.description === undefined ? {} : { description: manifest.description }),
-      sharesIdWith: Math.max(0, (idCounts.get(labId) ?? 0) - 1),
+      sharesIdWith: Math.max(0, (idCounts.get(studyId) ?? 0) - 1),
       runs: rollup?.runs ?? 0,
       live: rollup?.live ?? 0,
       ...(rollup?.latest === undefined ? {} : { latest: rollup.latest }),
       liveRuns: rollup?.liveRuns ?? [],
-      expectation: expectationFor(runsOf.get(labId) ?? []),
-      liveExpectation: expectationFor(runsOf.get(labId) ?? [], "live"),
+      expectation: expectationFor(runsOf.get(studyId) ?? []),
+      liveExpectation: expectationFor(runsOf.get(studyId) ?? [], "live"),
     };
   };
 
-  const declaredIds = new Set(declared.map((lab) => lab.id));
+  const declaredIds = new Set(declared.map((study) => study.id));
   const rows = [
-    ...declared.map((lab) => build(lab.id, lab, true)),
-    ...labs
-      .filter((lab) => !declaredIds.has(lab.labId))
-      .map((lab) => build(lab.labId, undefined, false)),
+    ...declared.map((study) => build(study.id, study, true)),
+    ...studies
+      .filter((study) => !declaredIds.has(study.studyId))
+      .map((study) => build(study.studyId, undefined, false)),
   ];
 
   // Resolve each row's label before sorting, so the list is ordered by what a reader actually sees.

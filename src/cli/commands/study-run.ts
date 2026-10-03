@@ -37,11 +37,11 @@ import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 export async function runStudyCommand(args: {
   command: Command;
   io: CliIo;
-  lab: string;
+  study: string;
   mode: "run" | "watch";
   options: StudyCommandOptions;
 }): Promise<void> {
-  const resolved = await resolveStudyManifest(args.options.cwd, args.lab);
+  const resolved = await resolveStudyManifest(args.options.cwd, args.study);
   if (!resolved.ok) {
     writeResult(args.command, args.io, resolved, formatStudyResolveFailureHuman);
     args.io.setExitCode(2);
@@ -58,7 +58,7 @@ export async function runStudyCommand(args: {
   // local overlay, or an explicit path. Resolved once here (the only place that knows all three)
   // and carried into the run's status record and bundle so the filesystem can answer "which lab
   // produced this run" without the old `persona.source = "lab:<id>"` string convention.
-  const lab: RunStudyProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
+  const study: RunStudyProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
   // Named here, once, for every route, so the starter study `first-run` is named in telemetry
   // whatever its route's result carries.
   noteRunFacts(args.command, deriveRunFacts({ studyId: config.id }));
@@ -122,7 +122,7 @@ export async function runStudyCommand(args: {
   const routeRun = routeRunFor(route, { ...args, config });
   if (routeRun === undefined) return;
   // Every route's runStudyWith options carry the lab's provenance, from here only.
-  const run = { ...routeRun, options: { ...routeRun.options, lab } };
+  const run = { ...routeRun, options: { ...routeRun.options, study } };
 
   // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
   const signals = beginRunSignalPhase(args.io);
@@ -195,7 +195,7 @@ function routeRunFor(
   args: {
     command: Command;
     io: CliIo;
-    lab: string;
+    study: string;
     config: StudyConfig;
     mode: "run" | "watch";
     options: StudyCommandOptions;

@@ -204,7 +204,7 @@ export function participantRunDeps(
     onTrace: (participantId, items, usage, metadata) =>
       live.flush?.flush(participantId, items, usage, metadata),
     residual: ctx.plan.residual,
-    labId: ctx.plan.studyId,
+    studyId: ctx.plan.studyId,
     caps: ctx.plan.caps,
     subject: {
       kind: "shared-app",
@@ -218,7 +218,7 @@ export function participantRunDeps(
     timeoutMs: ctx.timeoutMs,
     participantCount: ctx.plan.plane.participants.length,
     artifactRoot: ctx.runPaths,
-    labCwd: ctx.cwd,
+    studyCwd: ctx.cwd,
     redactScreenshots: ctx.redactScreenshots,
     scrubKnownValues,
     runSession: ctx.runSession,

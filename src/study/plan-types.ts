@@ -72,7 +72,7 @@ interface PlanBase {
   readonly studyId: string;
   /** The lab's declared title, which bundles record. */
   readonly title?: string;
-  readonly lab?: RunStudyProvenance;
+  readonly study?: RunStudyProvenance;
   /** A frozen copy owned by the plan. */
   readonly residual: Readonly<ResidualConfig>;
   readonly dryRun: boolean;

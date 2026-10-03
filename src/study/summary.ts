@@ -146,10 +146,10 @@ export interface ReadStudySummaryOptions {
  */
 export async function readStudySummary(
   cwd: string,
-  lab: string,
+  study: string,
   options: ReadStudySummaryOptions = {},
 ): Promise<StudySummary | null> {
-  const inspected = await inspectStudyManifest(cwd, lab).catch(() => null);
+  const inspected = await inspectStudyManifest(cwd, study).catch(() => null);
   if (inspected === null || !inspected.ok || inspected.config === undefined) return null;
   const config = inspected.config as unknown as Record<string, unknown>;
   const actors = config.actors as { model?: string }[] | undefined;
@@ -236,7 +236,7 @@ export async function readStudySummary(
           communications: `Real email · ${inspected.config.comms.email.connection} · fresh inbox per participant · hosted processing · local review only`,
         }
       : {}),
-    studyId: String(config.id ?? lab),
+    studyId: String(config.id ?? study),
     ...(typeof config.title === "string" ? { title: config.title } : {}),
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),
     ...(subject === undefined ? {} : { subject }),

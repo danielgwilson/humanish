@@ -23,7 +23,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
       runs: RUNS,
       unreadable: [],
     }),
-    listLabs: async () => ({
+    listStudies: async () => ({
       schema: "humanish.study-list.v1",
       retired: [],
       ok: true,
@@ -45,7 +45,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
     },
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
-    readLabSummary: async () => null,
+    readStudySummary: async () => null,
     readProjectState: () => ({
       schema: "humanish.tui-project.v1" as const,
       initialized: true,
@@ -101,7 +101,7 @@ async function openLab(options: TuiOptions, columns = 80) {
 describe("starting a run", () => {
   it("shows local runtime and Codex-account readiness without implying API keys", async () => {
     const { options } = harness({
-      readLabSummary: async () => ({
+      readStudySummary: async () => ({
         schema: "humanish.study-summary.v1",
         studyId: "signup-flow",
         caps: {},
@@ -141,7 +141,7 @@ describe("starting a run", () => {
     "shows unknown account analysis dollars before starting at %i columns",
     async (columns) => {
       const { options, started } = harness({
-        readLabSummary: async () => ({
+        readStudySummary: async () => ({
           schema: "humanish.study-summary.v1",
           studyId: "signup-flow",
           caps: {},
@@ -174,7 +174,7 @@ describe("starting a run", () => {
     "shows the separate analysis admission budget before starting at %i columns",
     async (columns) => {
       const { options, started } = harness({
-        readLabSummary: async () => ({
+        readStudySummary: async () => ({
           schema: "humanish.study-summary.v1",
           studyId: "signup-flow",
           caps: { laneUsd: 1 },
@@ -239,7 +239,7 @@ describe("starting a run", () => {
     expect(started[0]?.mode).toBe("dry-run");
     // Started by the handle that `humanish run` resolves, never by the declared id: those are
     // different strings whenever a manifest's filename differs from the id inside it.
-    expect(started[0]?.lab).toBe("signup-flow");
+    expect(started[0]?.study).toBe("signup-flow");
   });
 
   it("a live run is armed first and commits on the second press, restating the cost", async () => {
@@ -300,7 +300,7 @@ describe("starting a run", () => {
     // Its runs are still readable evidence, but there is no file to run, so the action is absent
     // rather than present and failing.
     const { started, options } = harness({
-      listLabs: async () => ({
+      listStudies: async () => ({
         schema: "humanish.study-list.v1",
         retired: [],
         ok: true,
@@ -518,7 +518,7 @@ describe("what the surface says about the run it just started", () => {
     // estimate or budget: only missing-key warnings". Whether a run is worth setting keys up for
     // is the decision being made at that moment, so the number has to survive the blocker.
     const { options } = harness({
-      readLabSummary: async () => ({
+      readStudySummary: async () => ({
         schema: "humanish.study-summary.v1" as const,
         studyId: "signup-flow",
         caps: {},
@@ -565,7 +565,7 @@ describe("a lab whose live plan is refused", () => {
           }),
         );
         const { options } = harness({
-          readLabSummary: (_cwd, _lab, summaryOptions) =>
+          readStudySummary: (_cwd, _lab, summaryOptions) =>
             readStudySummary(cwd, "uncapped", summaryOptions),
         });
         const { surface } = await openLab(options, columns);

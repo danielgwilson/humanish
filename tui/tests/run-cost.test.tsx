@@ -31,7 +31,7 @@ const options = (): TuiOptions => ({
   version: { cli: "9.9.9" },
   capabilities: {
     readRunIndex: async () => readRunIndex(cwd),
-    listLabs: async () => ({
+    listStudies: async () => ({
       schema: "humanish.study-list.v1",
       ok: true,
       cwd,
@@ -48,7 +48,7 @@ const options = (): TuiOptions => ({
     startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
-    readLabSummary: async () => null,
+    readStudySummary: async () => null,
     readProjectState: () => ({
       schema: "humanish.tui-project.v1" as const,
       initialized: true,

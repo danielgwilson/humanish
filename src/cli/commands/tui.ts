@@ -299,15 +299,15 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
         });
         return session.connectionCheck;
       },
-      labs: async () =>
-        (await listStudyManifests(cwd)).studies.map((lab) => ({
-          title: lab.title ?? lab.id,
-          path: lab.path,
+      studies: async () =>
+        (await listStudyManifests(cwd)).studies.map((study) => ({
+          title: study.title ?? study.id,
+          path: study.path,
         })),
-      configure: (lab, apply, planToken) =>
+      configure: (study, apply, planToken) =>
         configureCommsStudy({
           cwd,
-          lab,
+          study,
           connection: "agentmail",
           apply,
           ...(planToken ? { planToken } : {}),
@@ -339,12 +339,12 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
     // run tree each tick is the cost this index exists to avoid.
     readRunIndex: (target, readOptions) =>
       readRunIndex(target, { ...readOptions, cache: runIndexCache }),
-    listLabs: listStudyManifests,
+    listStudies: listStudyManifests,
     startRun: (launchOptions) => launchRun({ ...launchOptions, env: sessionEnv }),
     readLaunchLog: readLaunchLogTail,
     readRunDetail,
-    readLabSummary: (target, lab, readOptions) =>
-      readStudySummary(target, lab, { ...readOptions, env: sessionEnv }),
+    readStudySummary: (target, study, readOptions) =>
+      readStudySummary(target, study, { ...readOptions, env: sessionEnv }),
     readProjectState,
     openObserver: (target, observerPath) => observerSession.open(target, observerPath),
     reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),

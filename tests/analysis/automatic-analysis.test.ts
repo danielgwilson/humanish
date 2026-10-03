@@ -197,7 +197,7 @@ describe("automatic analysis admission and producer boundary", () => {
         path.join(cwd, "humanish", "studies", "budget.yaml"),
         studyFileText(manifest, cwd),
       );
-      const preflight = await runStudyPreflight({ cwd, lab: "budget", env: {} });
+      const preflight = await runStudyPreflight({ cwd, study: "budget", env: {} });
       expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
       expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "computer-use"));
       expect((await readStudySummary(cwd, "budget"))?.analysis).toEqual(preflight.analysis);

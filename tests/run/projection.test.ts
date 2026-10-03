@@ -19,7 +19,7 @@ const run = (over: Partial<RunIndexEntry> & { runId: string }): RunIndexEntry =>
 
 describe("grouping runs by lab", () => {
   it("puts labs someone is working in first, then most recently used", () => {
-    const { labs } = groupRunsByStudy([
+    const { studies: labs } = groupRunsByStudy([
       run({ runId: "a1", study: { id: "alpha" }, completedAt: "2026-08-19T10:00:00.000Z" }),
       run({
         runId: "b1",
@@ -29,7 +29,7 @@ describe("grouping runs by lab", () => {
       }),
       run({ runId: "a2", study: { id: "alpha" }, completedAt: "2026-08-18T10:00:00.000Z" }),
     ]);
-    expect(labs.map((lab) => lab.labId)).toEqual(["beta", "alpha"]);
+    expect(labs.map((lab) => lab.studyId)).toEqual(["beta", "alpha"]);
     expect(labs[0]?.live).toBe(1);
     expect(labs[0]?.liveRuns).toHaveLength(1);
     expect(labs[1]?.runs).toBe(2);
@@ -37,11 +37,11 @@ describe("grouping runs by lab", () => {
   });
 
   it("keeps unattributed runs separate rather than inventing a lab for them", () => {
-    const { labs, unattributed } = groupRunsByStudy([
+    const { studies: labs, unattributed } = groupRunsByStudy([
       run({ runId: "x" }),
       run({ runId: "y", study: { id: "alpha" } }),
     ]);
-    expect(labs.map((lab) => lab.labId)).toEqual(["alpha"]);
+    expect(labs.map((lab) => lab.studyId)).toEqual(["alpha"]);
     expect(unattributed.map((entry) => entry.runId)).toEqual(["x"]);
   });
 });

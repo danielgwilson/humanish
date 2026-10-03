@@ -109,7 +109,7 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
           !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
         )
           return;
-        const result = await doctor(options.cwd, options.study ? { lab: options.study } : {});
+        const result = await doctor(options.cwd, options.study ? { study: options.study } : {});
         writeResult(command, io, result, formatDoctorHuman);
         // Behavioral change: was exit 1, every other structured command uses 2.
         io.setExitCode(result.ok ? 0 : 2);

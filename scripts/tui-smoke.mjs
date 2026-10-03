@@ -60,7 +60,7 @@ try {
         runs: [],
         unreadable: [],
       }),
-      listLabs: async () => ({
+      listStudies: async () => ({
         schema: "humanish.study-list.v1",
         ok: true,
         cwd,
@@ -69,7 +69,7 @@ try {
         warnings: [],
       }),
       readRunDetail: async () => null,
-      readLabSummary: async () => null,
+      readStudySummary: async () => null,
       readProjectState: () => ({
         schema: "humanish.tui-project.v1",
         initialized: false,

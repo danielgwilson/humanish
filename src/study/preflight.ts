@@ -97,7 +97,7 @@ interface StudyPreflightHooks {
 
 export interface RunStudyPreflightOptions {
   cwd: string;
-  lab: string;
+  study: string;
   reachability?: StudyPreflightReachabilityMode;
   timeoutMs?: number;
   env?: NodeJS.ProcessEnv;
@@ -107,8 +107,8 @@ export interface RunStudyPreflightOptions {
 /** A preflight run's state; the probes in preflight-probes.ts read and extend it. */
 export interface PreflightContext {
   cwd: string;
-  lab: string;
-  labId: string;
+  study: string;
+  studyId: string;
   origin: string;
   path: string;
   config: StudyConfig;
@@ -129,14 +129,14 @@ export async function runStudyPreflight(
   const cwd = path.resolve(options.cwd);
   const reachability = options.reachability ?? "metadata";
   const timeoutMs = options.timeoutMs ?? DEFAULT_PREFLIGHT_TIMEOUT_MS;
-  const resolved = await resolveStudyManifest(cwd, options.lab);
+  const resolved = await resolveStudyManifest(cwd, options.study);
 
   if (!resolved.ok) {
     return {
       schema: STUDY_CHECK_SCHEMA,
       ok: false,
       cwd,
-      study: options.lab,
+      study: options.study,
       reachability,
       checks: [
         {
@@ -156,8 +156,8 @@ export async function runStudyPreflight(
   const route = routeOf(resolved.config);
   const ctx: PreflightContext = {
     cwd,
-    lab: options.lab,
-    labId: resolved.config.id,
+    study: options.study,
+    studyId: resolved.config.id,
     origin: resolved.origin,
     path: resolved.path,
     config: resolved.config,

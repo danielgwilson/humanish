@@ -57,7 +57,7 @@ describe("doctor without --lab", () => {
   });
 
   it("still fails under --lab when the selected lab needs a missing key", async () => {
-    const result = await doctor(cwd, { lab: "try-live", env: keyless, localAgents: noAgents });
+    const result = await doctor(cwd, { study: "try-live", env: keyless, localAgents: noAgents });
     expect(result.ok).toBe(false);
     expect(row(result, "key E2B_API_KEY")).toMatchObject({ ok: false, status: "missing" });
   });

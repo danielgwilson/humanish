@@ -173,7 +173,7 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
     .action(
       async (options: { cwd: string; json?: boolean; study?: string; since?: string }, command) => {
         const result = await computeStats(options.cwd, {
-          ...(options.study === undefined ? {} : { lab: options.study }),
+          ...(options.study === undefined ? {} : { study: options.study }),
           ...(options.since === undefined ? {} : { since: options.since }),
         });
         writeResult(command, io, result, formatStatsHuman);

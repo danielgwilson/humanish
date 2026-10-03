@@ -50,7 +50,7 @@ describe("run status: identity + liveness on disk", () => {
       mintRunId: () => runId,
       mode: "live",
       renderReview: (bundle) => `# Review ${bundle.runId}\n`,
-      ...(withLab === undefined ? {} : { lab: withLab }),
+      ...(withLab === undefined ? {} : { study: withLab }),
     });
     if (!started.ok) throw new Error(started.message);
     return started.run;

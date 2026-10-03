@@ -115,7 +115,7 @@ describe("a humanish.lab.v2 file", () => {
 
     const launched = await launchRun({
       cwd,
-      lab: "old-run",
+      study: "old-run",
       manifestPath: "humanish/labs/old-run.yaml",
       mode: "dry-run",
       spawn: (() => ({ pid: 1, unref() {}, on() {} })) as never,

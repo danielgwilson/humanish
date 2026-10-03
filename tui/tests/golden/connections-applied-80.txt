@@ -1,7 +1,7 @@
 human(ish)                                                           example-app
 ‹ connections
 
-Email lab saved
+Email study saved
 .humanish/local/labs/signup-receiving.yaml
 
 Select this study from Studies to start.

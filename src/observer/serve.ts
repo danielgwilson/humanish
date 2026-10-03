@@ -68,7 +68,7 @@ export interface ServeResult {
 // and the namespace answers 501.
 interface ServeControlPlane {
   startRun?(request: {
-    labId: string;
+    studyId: string;
     dryRun: boolean;
   }): Promise<{ accepted: boolean; runId?: string }>;
 }

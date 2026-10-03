@@ -141,7 +141,7 @@ async function handleStudyCheck(
 
   const result = await runStudyPreflight({
     cwd: options.cwd,
-    lab: name,
+    study: name,
     reachability: options.reachability,
     timeoutMs,
   });
@@ -164,8 +164,8 @@ function formatStudyListHuman(result: StudyListResult): string {
     [
       "humanish studies",
       ...result.studies.map(
-        (lab) =>
-          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`,
+        (study) =>
+          `- ${study.id} ${study.source} ${study.origin} ${study.path}${study.title ? ` (${study.title})` : ""}`,
       ),
       ...result.warnings.map((warning) => `warning: ${warning}`),
     ].join("\n") + "\n"

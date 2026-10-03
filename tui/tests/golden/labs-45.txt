@@ -9,7 +9,7 @@ human(ish)   acme-app · 1 participant working
 
     All runs   1 working
 
-1 run with no lab
+1 run with no study
 
 ▸ Can a first-time visitor finish signing up…
 

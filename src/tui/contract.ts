@@ -42,8 +42,8 @@ export interface TuiCapabilities {
     read(): Promise<CommsSetupStatus>;
     save(): Promise<CommsSetupResult>;
     check?(): Promise<CommsCheckResult>;
-    labs?(): Promise<{ title: string; path: string }[]>;
-    configure?(lab: string, apply: boolean, planToken?: string): Promise<CommsConfigureResult>;
+    studies?(): Promise<{ title: string; path: string }[]>;
+    configure?(study: string, apply: boolean, planToken?: string): Promise<CommsConfigureResult>;
     recovery?(): Promise<CommsRecoveryEntry[]>;
     recover?(runId: string, connectionName: string): Promise<{ ok: boolean; message: string }>;
   };
@@ -54,7 +54,7 @@ export interface TuiCapabilities {
    * the whole truth: a fresh project has manifests and no runs, and a long-lived one has runs from
    * manifests since renamed or deleted.
    */
-  listLabs(cwd: string): Promise<StudyListResult>;
+  listStudies(cwd: string): Promise<StudyListResult>;
   /**
    * Start a run and return once it is running. The run is detached: it outlives this surface, so
    * quitting the TUI (or losing the connection it runs over) does not kill a study that costs
@@ -74,9 +74,9 @@ export interface TuiCapabilities {
    * resolve right now. Read for the lab being looked at, because it is what someone reads before
    * deciding to spend money.
    */
-  readLabSummary(
+  readStudySummary(
     cwd: string,
-    lab: string,
+    study: string,
     options?: ReadStudySummaryOptions,
   ): Promise<StudySummary | null>;
   /** Whether this directory is a humanish project: an empty project and a wrong directory are

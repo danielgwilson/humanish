@@ -45,7 +45,7 @@ export async function acquireParticipantDesktop(
       timeoutMs: deps.sandboxMs,
       metadata: {
         ...CUA_ACTOR_STUDY_PROVIDER_METADATA,
-        labId: deps.labId,
+        labId: deps.studyId,
         recordId: spec.recordId,
         participantId: spec.planned.id,
         participantIndex: String(spec.planned.index),

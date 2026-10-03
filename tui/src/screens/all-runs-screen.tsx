@@ -73,7 +73,7 @@ export function AllRunsScreen({
           key={run.runId}
           run={run}
           who={personaOf(details.get(run.runId)) ?? "starting…"}
-          lab={labels.get(run.runId) ?? run.study?.id ?? ""}
+          study={labels.get(run.runId) ?? run.study?.id ?? ""}
           expectedMs={expected.get(run.study?.id ?? "")}
           active={window.start + offset === selected}
           columns={columns}
@@ -131,7 +131,7 @@ function personaOf(detail: RunDetail | undefined): string | undefined {
 function RunRow({
   run,
   who,
-  lab,
+  study,
   expectedMs,
   active,
   columns,
@@ -140,7 +140,7 @@ function RunRow({
 }: {
   run: RunIndexEntry;
   who: string;
-  lab: string;
+  study: string;
   expectedMs: number | undefined;
   active: boolean;
   columns: number;
@@ -153,7 +153,7 @@ function RunRow({
   // Three columns: who, where, how far. The middle one is the quietest; it is how you find them
   // again, not what you are watching.
   const whoRoom = Math.max(10, Math.floor((columns - right.length - 6) * 0.5));
-  const labRoom = Math.max(8, columns - right.length - whoRoom - 6);
+  const studyRoom = Math.max(8, columns - right.length - whoRoom - 6);
   return (
     <Box width={columns}>
       <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
@@ -165,9 +165,9 @@ function RunRow({
           {fitLabelToWidth(who, whoRoom)}
         </Text>
       </Box>
-      <Box width={labRoom}>
+      <Box width={studyRoom}>
         <Text dimColor wrap="truncate-end">
-          {fitLabelToWidth(lab, labRoom)}
+          {fitLabelToWidth(study, studyRoom)}
         </Text>
       </Box>
       <Box flexGrow={1} />

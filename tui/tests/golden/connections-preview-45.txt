@@ -1,7 +1,7 @@
 human(ish)                        example-app
 ‹ connections
 
-Save email-enabled lab
+Save email-enabled study
 From: humanish/labs/signup.yaml
 
 Save as:

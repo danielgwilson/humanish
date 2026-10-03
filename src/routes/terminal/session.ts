@@ -83,7 +83,7 @@ export async function runLiveTerminalSession(
     mintRunId: makeTerminalRunId,
     // This entry point is the live terminal route; its dry-run sibling is a separate function.
     mode: "live",
-    lab: plan.lab,
+    study: plan.study,
     renderReview: renderTerminalReviewMarkdown,
     observer: { open: input.open === true, render: deps.renderObserver },
     now,
@@ -129,7 +129,7 @@ export async function runLiveTerminalSession(
     maxMinutes,
     e2bApiKey,
     runPaths,
-    metadata: buildSandboxMetadata({ labId: plan.studyId, recordId: "sim-001", runId }),
+    metadata: buildSandboxMetadata({ studyId: plan.studyId, recordId: "sim-001", runId }),
     warnings,
     recorder,
   });

@@ -20,8 +20,8 @@ import path from "node:path";
 import { terminalParticipantReport } from "./lib/terminal-report.mjs";
 
 const cwd = process.cwd();
-const LAB_ID = "release-dogfood";
-const labPath = path.join(cwd, ".humanish", "labs", `${LAB_ID}.yaml`);
+const STUDY_ID = "release-dogfood";
+const studyPath = path.join(cwd, ".humanish", "labs", `${STUDY_ID}.yaml`);
 
 function fail(message) {
   console.error(`release:dogfood — ${message}`);
@@ -71,8 +71,8 @@ if (!/^\s+runtimeAuth: openai-egress\b/m.test(fixture)) {
     "first-contact.yaml must use runtimeAuth: openai-egress, so the participant never holds the raw runtime key.",
   );
 }
-let lab = fixture
-  .replace("id: first-contact", `id: ${LAB_ID}`)
+let study = fixture
+  .replace("id: first-contact", `id: ${STUDY_ID}`)
   .replace("  mode: dry-run # committed fixture stays contract-only", "  mode: live")
   .replace(
     productBlock,
@@ -86,9 +86,9 @@ let lab = fixture
 // dollar telling us the last release worked. So the gate's copy says plainly that the build under
 // test is already here and must not be fetched.
 const missionAnchor = "    mission: >-\n";
-if (!lab.includes(missionAnchor))
+if (!study.includes(missionAnchor))
   fail("first-contact.yaml has changed shape — cannot rewrite its mission.");
-lab = lab.replace(
+study = study.replace(
   missionAnchor,
   missionAnchor +
     "      The build you are evaluating is ALREADY INSTALLED on this machine as `humanish`, and it is\n" +
@@ -97,15 +97,15 @@ lab = lab.replace(
     "      that would test a different build than the one under test.\n",
 );
 
-await mkdir(path.dirname(labPath), { recursive: true });
-await writeFile(labPath, lab, "utf8");
+await mkdir(path.dirname(studyPath), { recursive: true });
+await writeFile(studyPath, study, "utf8");
 
 console.log(
   `release:dogfood — sending a participant to meet humanish@${version} (product spend capped at $0)`,
 );
 let raw = "";
 try {
-  raw = execFileSync("node", ["dist/cli.js", "run", LAB_ID, "--json"], {
+  raw = execFileSync("node", ["dist/cli.js", "run", STUDY_ID, "--json"], {
     cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
@@ -116,7 +116,7 @@ try {
 } finally {
   await rm(path.join(cwd, tarball), { force: true });
   // The run bundle keeps the lab it ran. Left in place, the copy is a live lab in this checkout.
-  await rm(labPath, { force: true });
+  await rm(studyPath, { force: true });
 }
 
 const start = raw.indexOf("{");

@@ -48,7 +48,7 @@ async function participantRow(
   await writeFile(path.join(cwd, "humanish/studies/hosted.yaml"), manifest);
   const result = await studySetupChecks({
     cwd,
-    lab: "humanish/studies/hosted.yaml",
+    study: "humanish/studies/hosted.yaml",
     env: { HUMANISH_STRICT_KEYS: "1", PATH: "" },
     agents,
     keyPresent: () => false,
