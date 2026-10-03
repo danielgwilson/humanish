@@ -1,8 +1,8 @@
 // @ts-check
 // A scorer module: humanish calls `score` over the finished evidence of a computer-use,
 // shared-world or terminal run and stores the result, under your namespace, as
-// `bundle.adapterScore`. The same file works with `humanish lab run <lab> --scorer scorer.mjs` and,
-// from a library caller, as the scorer hooks passed to `runLab`.
+// `bundle.adapterScore`. The same file works with `humanish run <study> --scorer scorer.mjs` and,
+// from a library caller, as the scorer hooks passed to `runStudy`.
 
 /** @type {NonNullable<import("humanish").AdapterScorerModule["score"]>} */
 export function score(ctx) {

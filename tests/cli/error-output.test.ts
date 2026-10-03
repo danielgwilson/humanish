@@ -55,7 +55,7 @@ const FAILURES: ReadonlyArray<readonly [name: string, args: string[], depth: num
   ["study-show-missing", ["study", "show", "nope-study"], 2],
   ["stats-bad-since", ["stats", "--since", "last tuesday"], 1],
   ["observe-bad-port", ["observe", "--port", "99999"], 1],
-  ["serve-bad-port", ["serve", "--port", "99999"], 1],
+  ["observe-all-bad-port", ["observe", "--all", "--port", "99999"], 1],
   ["doctor-missing-env-file", ["doctor", "--env-file", "missing.env"], 1],
   ["verify-verbose-missing-run", ["verify", "--run", "nope", "--verbose"], 1],
   ["analyze-bad-timeout", ["analyze", "--timeout-ms", "0"], 1],

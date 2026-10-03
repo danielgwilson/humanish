@@ -209,7 +209,7 @@ describe("automatic analysis admission and producer boundary", () => {
         writeErr: () => {},
         setExitCode: () => {},
       });
-      await program.parseAsync(["node", "humanish", "lab", "preflight", "budget", "--cwd", cwd]);
+      await program.parseAsync(["node", "humanish", "study", "check", "budget", "--cwd", cwd]);
       if (setting === false) expect(stdout).not.toContain("After live runs:");
       else {
         expect(stdout).toContain(
@@ -603,7 +603,7 @@ describe("automatic analysis admission and producer boundary", () => {
       void onEvent!({ type: "analysis-finished" });
     }
   });
-  it.each([["run"], ["lab", "run"], ["watch"]])(
+  it.each([["run"], ["watch"]])(
     "CLI %j discloses default analysis before a live start",
     async (...prefix) => {
       // Placeholder keys pass the local checks, and a taken run id stops the run before anything
@@ -651,7 +651,7 @@ describe("automatic analysis admission and producer boundary", () => {
       });
     },
   );
-  it.each([{ prefix: ["run"] }, { prefix: ["lab", "run"] }, { prefix: ["watch"] }])(
+  it.each([{ prefix: ["run"] }, { prefix: ["watch"] }])(
     "CLI entry $prefix reports dry-run skip without starting analysis",
     async ({ prefix }) => {
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;

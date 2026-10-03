@@ -137,7 +137,6 @@ describe("the CLI uses only the new homes", () => {
         [
           "node",
           "humanish",
-          "lab",
           "run",
           "fanout-demo",
           "--dry-run",

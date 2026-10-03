@@ -26,7 +26,6 @@ for (const phase of ["Xvfb", "startxfce4"]) {
         "--import",
         preload,
         cli,
-        "lab",
         "run",
         "lab.yaml",
         "--cwd",

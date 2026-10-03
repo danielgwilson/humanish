@@ -89,7 +89,7 @@ async function liveRun(cwd: string, id: string, store = EVERY_KEY_STORE): Promis
     },
   });
   program.exitOverride();
-  await program.parseAsync(["node", "humanish", "lab", "run", id, "--cwd", cwd, "--no-open"], {
+  await program.parseAsync(["node", "humanish", "run", id, "--cwd", cwd, "--no-open"], {
     from: "node",
   });
   const keyLines = stderr

@@ -171,7 +171,7 @@ export function buildDraft(
     proposed_next_state: "study-quality-review",
     acceptance_proof: [
       feedbackProofCommands(bundle.runId).verify,
-      feedbackProofCommands(bundle.runId).watch,
+      feedbackProofCommands(bundle.runId).observe,
     ],
   };
 }
@@ -278,7 +278,7 @@ export async function buildAnalysisDraft(
     proposed_next_state: "study-quality-review",
     acceptance_proof: [
       feedbackProofCommands(bundle.runId).verify,
-      feedbackProofCommands(bundle.runId).watch,
+      feedbackProofCommands(bundle.runId).observe,
     ],
   };
 }

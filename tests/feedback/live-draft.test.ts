@@ -94,7 +94,7 @@ describe("participantFeedbackCandidates", () => {
     expect(candidate.idempotency_key).toBe("humanish:run-1:power-user:participant-report");
     expect(candidate.acceptance_proof).toEqual([
       "humanish verify --run run-1 --json",
-      "humanish watch --run run-1 --no-open",
+      "humanish observe --run run-1 --no-open",
     ]);
     expect(candidate.actor).toBe("computer-use");
     expect(candidate.failure_owner).toBe("target-app");

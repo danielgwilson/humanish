@@ -216,7 +216,6 @@ describe("CLI admission today", () => {
     });
 
     const result = await runCli([
-      "lab",
       "run",
       "adm-cu-local-tree-live",
       "--scorer",

@@ -620,7 +620,6 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
 
   it("dry-run --json emits the structured terminal lab result and verifies", async () => {
     const result = await runCli([
-      "lab",
       "run",
       "terminal-product-demo",
       "--cwd",
@@ -655,7 +654,6 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
 
   it("dry-run human output names run/lab/actor/product", async () => {
     const result = await runCli([
-      "lab",
       "run",
       "terminal-product-demo",
       "--cwd",

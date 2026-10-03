@@ -59,10 +59,9 @@ async function discoveryCalls(args: readonly string[], stdout: string[] = []): P
 
 describe("provider-key discovery runs for live runs only", () => {
   it.each([
-    ["run <live lab>", ["run", "kd-live"]],
-    ["lab run <live lab> (also the TUI's start)", ["lab", "run", "kd-live"]],
+    ["run <live lab> (also the TUI's start)", ["run", "kd-live"]],
     ["watch <live lab>", ["watch", "kd-live", "--detach"]],
-    ["lab preflight", ["lab", "preflight", "kd-live"]],
+    ["study check", ["study", "check", "kd-live"]],
   ])("%s discovers once", async (_name, args) => {
     const cwd = await project();
     expect(
@@ -73,7 +72,6 @@ describe("provider-key discovery runs for live runs only", () => {
   it.each([
     ["run <dry lab>", ["run", "kd-dry"]],
     ["run <live lab> --dry-run", ["run", "kd-live", "--dry-run"]],
-    ["lab run <live lab> --dry-run", ["lab", "run", "kd-live", "--dry-run"]],
     ["watch <live lab> --dry-run", ["watch", "kd-live", "--dry-run", "--detach"]],
     ["run without a lab (the preview)", ["run"]],
     ["watch --count", ["watch", "--count", "1", "--detach"]],
@@ -87,13 +85,13 @@ describe("provider-key discovery runs for live runs only", () => {
   it("does not discover for a live lab an option guard refuses", async () => {
     const cwd = await project();
     const stdout: string[] = [];
-    const args = ["lab", "run", "kd-terminal-live", "--rerun-failed-from", "earlier-run"];
+    const args = ["run", "kd-terminal-live", "--rerun-failed-from", "earlier-run"];
     expect(await discoveryCalls([...args, "--cwd", cwd, "--json", "--no-open"], stdout)).toBe(0);
     expect(stdout.join("")).toContain("HUMANISH_UNSUPPORTED_RERUN_FLAGS");
   });
 });
 
-/** `lab preflight` takes neither --no-open nor a watch flag. */
+/** `study check` takes neither --no-open nor a watch flag. */
 function validFor(args: readonly string[]): (flag: string) => boolean {
-  return (flag) => !(args[1] === "preflight" && flag === "--no-open");
+  return (flag) => !(args[1] === "check" && flag === "--no-open");
 }

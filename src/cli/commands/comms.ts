@@ -7,7 +7,6 @@ import { checkCommsConnection, configureCommsStudy } from "../../comms/setup.js"
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { resolveStudyManifest } from "../../study/discover.js";
-import { oldStudyOption, studyOptionValue } from "../deprecations.js";
 import { runCommsCatchHost } from "../../comms/catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "../../comms/sandbox-catch.js";
 import {
@@ -71,7 +70,6 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
     .option("--study <path>", "Check the connection this study selects.")
-    .addOption(oldStudyOption("path"))
     .option("--online", "Make a read-only provider authentication request.")
     .option("--env-file <path>", ENV_FILE_OPTION_DESCRIPTION)
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -81,9 +79,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .description(
       "Preview or save a local receiving-enabled copy of a supported study. No provider requests.",
     )
-    // Required, but checked in the action, so --lab still works for one minor.
-    .option("--study <path>", "Source study path or name. Required.")
-    .addOption(oldStudyOption("path"))
+    .requiredOption("--study <path>", "Source study path or name. Required.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
     .option("--apply", "Save the local copy; the source study stays unchanged.")
@@ -92,12 +88,6 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
       "Require the source and destination to match a previous preview.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .hook("preAction", (command) => {
-      const options = command.opts<{ study?: string; lab?: string }>();
-      // The message commander gives a missing required option.
-      if (options.study === undefined && options.lab === undefined)
-        command.error("error: required option '--study <path>' not specified");
-    })
     .action((options, command) => handleCommsConfigure(io, options, command));
   comms
     .command("recover")
@@ -197,7 +187,6 @@ async function handleCommsCheck(
     cwd: string;
     connection: string;
     study?: string;
-    lab?: string;
     online?: boolean;
     envFile?: string;
   },
@@ -206,7 +195,7 @@ async function handleCommsCheck(
   if (!(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })))
     return;
   let connection = options.connection;
-  const study = studyOptionValue(command, io, options);
+  const study = options.study;
   if (study) {
     const resolved = await resolveStudyManifest(options.cwd, study);
     if (!resolved.ok || resolved.config.comms?.email?.kind !== "real") {
@@ -234,20 +223,16 @@ async function handleCommsConfigure(
   io: CliIo,
   options: {
     cwd: string;
-    study?: string;
-    lab?: string;
+    study: string;
     connection: string;
     apply?: boolean;
     planToken?: string;
   },
   command: Command,
 ): Promise<void> {
-  const study = studyOptionValue(command, io, options);
-  // The preAction hook refuses a call without either option.
-  if (study === undefined) return;
   const result = await configureCommsStudy({
     cwd: resolve(options.cwd),
-    lab: study,
+    lab: options.study,
     connection: options.connection,
     ...(options.apply === undefined ? {} : { apply: options.apply }),
     ...(options.planToken === undefined ? {} : { planToken: options.planToken }),

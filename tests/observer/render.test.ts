@@ -593,32 +593,6 @@ describe("observer rendering", () => {
     });
   });
 
-  it("exposes watch --no-open through the Commander CLI", async () => {
-    await withRunBundle(async (cwd) => {
-      const result = await runCli([
-        "watch",
-        "--run",
-        "latest",
-        "--cwd",
-        cwd,
-        "--no-open",
-        "--json",
-      ]);
-
-      expect(result.exitCode).toBe(0);
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        observerDataPath: string;
-        observerPath: string;
-      };
-      expect(envelope.ok).toBe(true);
-      expect(envelope.observerPath).toBe(".humanish/runs/observer-proof/observer/index.html");
-      expect(envelope.observerDataPath).toBe(
-        ".humanish/runs/observer-proof/observer/observer-data.json",
-      );
-    });
-  });
-
   it("rejects an out-of-range observe port before binding a server", async () => {
     await withRunBundle(async (cwd) => {
       const result = await runCli([
@@ -733,30 +707,6 @@ describe("observer rendering", () => {
         "TUI",
         "Codex UI",
       ]);
-    });
-  });
-
-  it("fails closed when watch mixes fresh-run and existing-run options", async () => {
-    await withRunBundle(async (cwd) => {
-      const result = await runCli([
-        "watch",
-        "--run",
-        "latest",
-        "--count",
-        "4",
-        "--cwd",
-        cwd,
-        "--json",
-      ]);
-
-      expect(result.exitCode).toBe(2);
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        error: { code: string; message: string };
-      };
-      expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HUMANISH_WATCH_OPTION_CONFLICT");
-      expect(envelope.error.message).toContain("Use either --run");
     });
   });
 });

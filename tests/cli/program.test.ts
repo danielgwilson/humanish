@@ -639,7 +639,6 @@ describe("humanish CLI scaffold", () => {
       },
       async (cwd) => {
         const result = await runCli([
-          "lab",
           "run",
           "first-run",
           "--cwd",
@@ -1109,9 +1108,8 @@ function findFreePort(): Promise<number> {
   });
 }
 
-describe("humanish serve command", () => {
-  // `serve` is the hidden alias of `observe --all` until 0.109.0; both serve the same library.
-  it.each([[["observe", "--all"]], [["serve"]]])(
+describe("humanish observe --all", () => {
+  it.each([[["observe", "--all"]]])(
     "%j serves the run library over loopback with a machine envelope, then tears down once on SIGTERM",
     async (command) => {
       await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1660,13 +1658,10 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
     });
   });
 
-  it("refuses exposure on the non-lab watch path (existing evidence)", async () => {
+  it("refuses exposure on a watch without a study (a fresh preview run)", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
-      await seedDryRunBundle(cwd, "watch-existing-run");
       const result = await runCli([
         "watch",
-        "--run",
-        "latest",
         "--cwd",
         cwd,
         "--no-open",
@@ -1697,10 +1692,10 @@ describe("provider-key discovery at the CLI seam", () => {
       },
     });
     program.exitOverride();
-    // `lab preflight` goes through the same applyEnvFileOption seam as watch/run/lab run.
+    // `study check` goes through the same applyEnvFileOption seam as watch and run.
     try {
       await program.parseAsync(
-        ["node", "humanish", "lab", "preflight", "missing-lab", "--cwd", "/nonexistent", "--json"],
+        ["node", "humanish", "study", "check", "missing-study", "--cwd", "/nonexistent", "--json"],
         { from: "node" },
       );
     } catch {
@@ -1726,12 +1721,12 @@ describe("provider-key discovery at the CLI seam", () => {
   });
 });
 
-describe("lab provenance survives the whole CLI path", () => {
+describe("study provenance survives the whole CLI path", () => {
   // This test exists because a live run caught what the unit tests could not: the provenance was
   // built at the resolution site and forwarded through nine `runStudyWith` call sites, and three of them
   // silently dropped it: TypeScript cannot catch that, because a spread of an optional field is
   // never an excess-property error. So the guard has to run the CLI end to end and read the disk.
-  it("`lab run` stamps the resolved study into the bundle and the status record", async () => {
+  it("`run` stamps the resolved study into the bundle and the status record", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-provenance-"));
     try {
       const labPath = path.join(cwd, "humanish", "studies", "provenance-demo.yaml");
@@ -1755,15 +1750,7 @@ describe("lab provenance survives the whole CLI path", () => {
         "utf8",
       );
 
-      const result = await runCli([
-        "lab",
-        "run",
-        "provenance-demo",
-        "--cwd",
-        cwd,
-        "--json",
-        "--no-open",
-      ]);
+      const result = await runCli(["run", "provenance-demo", "--cwd", cwd, "--json", "--no-open"]);
       expect(result.exitCode).toBe(0);
 
       const runsDir = path.join(cwd, ".humanish", "runs");
@@ -1919,27 +1906,19 @@ describe("run writes the same bundle watch does", () => {
         ].join("\n"),
       },
       async (cwd) => {
-        const viaLab = await runCli([
-          "lab",
-          "run",
-          "first-run",
-          "--cwd",
-          cwd,
-          "--json",
-          "--no-open",
-        ]);
-        expect(viaLab.exitCode).toBe(0);
-        const labEnvelope = JSON.parse(viaLab.stdout) as {
+        const viaStudy = await runCli(["run", "first-run", "--cwd", cwd, "--json", "--no-open"]);
+        expect(viaStudy.exitCode).toBe(0);
+        const studyEnvelope = JSON.parse(viaStudy.stdout) as {
           ok: boolean;
           runId?: string;
           warnings: string[];
         };
-        expect(labEnvelope.ok).toBe(true);
+        expect(studyEnvelope.ok).toBe(true);
         expect(
-          labEnvelope.warnings.some((w) => w.includes("observer/index.html was not written")),
+          studyEnvelope.warnings.some((w) => w.includes("observer/index.html was not written")),
         ).toBe(false);
         await expect(
-          stat(path.join(cwd, ".humanish", "runs", labEnvelope.runId!, "observer", "index.html")),
+          stat(path.join(cwd, ".humanish", "runs", studyEnvelope.runId!, "observer", "index.html")),
         ).resolves.toBeTruthy();
 
         const direct = await runCli(["run", "--cwd", cwd, "--json", "--dry-run"]);
@@ -2012,15 +1991,7 @@ describe("CUA ending output", () => {
     await withTempApp(
       { "humanish/studies/preview.yaml": JSON.stringify(manifest) },
       async (cwd) => {
-        const result = await runCli([
-          "lab",
-          "run",
-          "preview",
-          "--dry-run",
-          "--no-open",
-          "--cwd",
-          cwd,
-        ]);
+        const result = await runCli(["run", "preview", "--dry-run", "--no-open", "--cwd", cwd]);
         expect(result.exitCode).toBe(0);
         expect(result.stdout).toContain("diagnostic: preview");
         expect(result.stdout).toContain(

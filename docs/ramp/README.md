@@ -163,7 +163,7 @@ From a clean checkout:
 ```bash
 git status --short --branch
 pnpm install --frozen-lockfile
-pnpm humanish lab list
+pnpm humanish study list
 pnpm humanish watch --json --no-open   # a keyless preview run
 pnpm humanish runs --json
 pnpm vitest run tests/<file>           # one test file: the fast loop

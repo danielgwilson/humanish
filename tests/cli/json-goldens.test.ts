@@ -115,7 +115,6 @@ const STEPS: ReadonlyArray<readonly [name: string, args: string[]]> = [
   ["comms-connections-list", ["comms", "connections", "list"]],
   ["keys-list", ["keys", "list"]],
   ["telemetry-status", ["telemetry", "status"]],
-  ["lab-run", ["lab", "run", "first-run"]],
 ];
 
 type Json = Record<string, unknown>;
@@ -138,7 +137,6 @@ const PINS: Readonly<Record<string, (json: Json) => unknown>> = {
     actions: [...new Set(rows(json.changes).map((change) => change.action))].sort(),
   }),
   run: (json) => ({ mode: json.mode }),
-  "lab-run": (json) => ({ mode: json.mode }),
   verify: (json) => ({
     checks: rows(json.checks).map((check) => [check.name, check.ok]),
     shareSafety: (json.shareSafety as Json).status,
