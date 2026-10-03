@@ -1,6 +1,11 @@
 import Home from "@/components/home";
+import PostHogClient from "@/components/analytics/posthog-client";
 
-/** Fallback for `/` when the proxy did not run (it rewrites `/` to the precomputed variant). */
 export default function Page() {
-  return <Home />;
+  return (
+    <>
+      <Home />
+      <PostHogClient />
+    </>
+  );
 }
