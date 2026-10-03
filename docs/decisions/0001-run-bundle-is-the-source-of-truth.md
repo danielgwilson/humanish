@@ -4,7 +4,7 @@ Accepted.
 
 ## Context
 
-Several surfaces read a finished or running study: the Observer, `humanish tui`, `serve`,
+Several surfaces read a finished or running study: the Observer, `humanish tui`, `observe --all`,
 `export`, feedback drafts and study analysis. Each of them wants a smaller, faster view than the
 full bundle, and a view that can drift from the evidence would let a surface show a result the
 evidence does not support.

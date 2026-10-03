@@ -1,4 +1,4 @@
-# State-driven executor (the `CuaExecutor` port)
+# State-driven executor (the `ComputerUseExecutor` port)
 
 The library path ships: a custom executor and a non-vision provider, driven through a study with
 no E2B desktop and no vision model. A config-only deterministic route and a `subject.contract.ref`
@@ -8,8 +8,8 @@ module loader are not built (see Not built, below).
 
 The computer-use (CUA) loop in
 [`src/actors/computer-use/loop.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/computer-use/loop.ts) is provider- and
-substrate-agnostic by design: the model lives behind a `CuaProvider` port and the thing
-being driven lives behind a `CuaExecutor` port. Both ports are declared in
+substrate-agnostic by design: the model lives behind a `ComputerUseProvider` port and the thing
+being driven lives behind a `ComputerUseExecutor` port. Both ports are declared in
 `src/actors/computer-use/loop/types.ts`. You do not have to drive a screen with a vision
 model. You can point the loop at **an already-running local app** and drive it through that
 app's **in-process JavaScript automation contract** (e.g. `window.app.getState()`,
@@ -24,12 +24,12 @@ This is the "plural harnesses / transport-agnostic" intent of
 ## The port
 
 ```ts
-interface CuaExecutor {
-  observe(): Promise<CuaObservation>; // capture current state
-  execute(action: CuaAction, signal?: AbortSignal): Promise<void>; // perform one action
+interface ComputerUseExecutor {
+  observe(): Promise<ComputerUseObservation>; // capture current state
+  execute(action: ComputerUseAction, signal?: AbortSignal): Promise<void>; // perform one action
 }
 
-interface CuaObservation {
+interface ComputerUseObservation {
   screenshot?: Buffer; // OPTIONAL — a state executor omits it
   stateSignature: string; // REQUIRED — the fallback progress key
   appState?: Record<string, unknown>; // structured state; preferred for progress
@@ -148,7 +148,7 @@ surfaces `appState`, the trace's `redaction.notes` declares that app state was
 observed each turn to drive progress detection and was not written to the trace.
 
 A future change that puts `appState` in evidence must route a stringified projection through
-`redaction.redactText` (and the lab's `scrubText`) and cap / whitelist fields
+`redaction.redactText` (and the study's `scrubText`) and cap / whitelist fields
 before persisting. Pattern + literal redaction alone cannot sanitize an
 arbitrary blob.
 
@@ -165,11 +165,11 @@ desktop created.
 
 ### 1. Bare `runComputerUseLoop` (lowest level)
 
-Implement `CuaExecutor.observe()/execute()`, derive `stateSignature`/`appState`
-from your own state, pair it with a non-vision `CuaProvider`, and call
+Implement `ComputerUseExecutor.observe()/execute()`, derive `stateSignature`/`appState`
+from your own state, pair it with a non-vision `ComputerUseProvider`, and call
 `runComputerUseLoop`. You own the bundle/redaction wiring.
 
-### 2. `runLab` + `inProcess` / `createProvider` (keeps the composition)
+### 2. `runStudy` + `inProcess` / `createProvider` (keeps the composition)
 
 The supported library path keeps personas, the Observer, the evidence bundle,
 redaction, and the friction loop, while skipping E2B entirely. Start with the
@@ -182,15 +182,15 @@ node node_modules/humanish/examples/participant/run.mjs
 ```
 
 The example includes a real loopback app, HTTP state/action bridge, full config
-object (`schema: LAB_CONFIG_SCHEMA`), deterministic non-vision provider,
-`stableProgressKey`, `runLab`, verification, a printed report and `finally`
+object (`schema: STUDY_SCHEMA`), deterministic non-vision provider,
+`stableProgressKey`, `runStudy`, verification, a printed report and `finally`
 cleanup. It makes no model calls and does not demonstrate persona efficacy.
-`parseLabConfig` accepts a decoded object, not a YAML string; narrow its result
-on `.ok`, then narrow `runLab`'s result on `route === "computer-use"` before
+`parseStudy` accepts a decoded object, not a YAML string; narrow its result
+on `.ok`, then narrow `runStudy`'s result on `route === "computer-use"` before
 reading the computer-use result. The example defines all helpers, so a consumer does not
 reconstruct them.
 
-Pass `inProcess: { executor }` and `createProvider` in `RunLabOptions`. The type requires
+Pass `inProcess: { executor }` and `createProvider` in `RunStudyOptions`. The type requires
 `createProvider` beside `inProcess`: a state executor returns no frame, so it needs a non-vision
 provider. With `inProcess` set, the computer-use route takes a branch that never
 loads the E2B module, creates a sandbox, runs `prepareDesktop`, provisions a
@@ -199,28 +199,28 @@ undefined, so `result.sandbox` is omitted. That omission is the verifiable
 "no E2B SDK call" proof.
 
 Fail-closed guards, all before any key check, so a CLI invocation never sees a misleading
-`HUMANISH_CUA_LAB_KEYS_MISSING` first:
+`HUMANISH_COMPUTER_USE_KEYS_MISSING` first:
 
-- `HUMANISH_LAB_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
+- `HUMANISH_STUDY_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
   where the type does not stop it), or on a subject other than `app-url` or `local-app`.
   `createProvider` alone is allowed; that is a model swap on the normal E2B route.
-- `HUMANISH_CUA_LAB_FANOUT_INVALID`: `inProcess` with more than one participant. The planner refuses it, because fan-out gives each participant
+- `HUMANISH_COMPUTER_USE_FANOUT_INVALID`: `inProcess` with more than one participant. The planner refuses it, because fan-out gives each participant
   its own E2B desktop and the in-process route has none.
-- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
+- `HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
   without `inProcess` (there is no built-in in-process driver yet). A structured error,
   never a desktop attempt.
-- `HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING`: an `app-url` lab with `execution.target: local`
-  and no local desktop. `runLab` gives a local browser study its desktop; a direct route
-  call or an in-process executor on the same lab has none.
-- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the route's internal executor hook without its
-  provider hook. A package caller gets `HUMANISH_LAB_OPTION_UNSUPPORTED` above instead.
+- `HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING`: an `app-url` study with `execution.target: local`
+  and no local desktop. `runStudy` gives a local browser study its desktop; a direct route
+  call or an in-process executor on the same study has none.
+- `HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER`: the route's internal executor hook without its
+  provider hook. A package caller gets `HUMANISH_STUDY_OPTION_UNSUPPORTED` above instead.
 
 Key gating is route-aware: the in-process route uses the caller's own model and
 executor, so no `OPENAI_API_KEY`/`E2B_API_KEY` is required.
 
 ## A note on `appState` typing
 
-`CuaObservation.appState` is `Record<string, unknown> | undefined` under the
+`ComputerUseObservation.appState` is `Record<string, unknown> | undefined` under the
 repo's strict flags (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`).
 A value typed as an `interface` does not satisfy `Record<string, unknown>`
 (interfaces have no implicit index signature), and a direct `as Record<...>` cast
@@ -237,8 +237,8 @@ Read every optional field defensively, and spread-omit optional fields
 
 - **A config-only deterministic `state-contract` route.** A registered,
   model-free route driving a built-in `window.app.*` bridge over the existing
-  `ScriptedPageLike.evaluate` primitive + a YAML step program, `scenario.mode:
-live` gating actuation. It would be deterministic step replay, not
+  `ScriptedPageLike.evaluate` primitive + a YAML step program, `mode: live`
+  gating actuation. It would be deterministic step replay, not
   `runComputerUseLoop`, and must not overclaim friction-loop reuse.
 - **A `subject.contract.ref` JS-module loader.** A config-referenced module
   loaded and run in-process with full harness privileges is a genuinely new trust

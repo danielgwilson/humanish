@@ -11,7 +11,7 @@ reference under `docs/` by what it is for. To make a first change, start with
 
 ## Look up what the code does now
 
-- [contracts/](contracts/README.md): bundle, lab, policy, feedback, analysis and cost contracts.
+- [contracts/](contracts/README.md): bundle, study, policy, feedback, analysis and cost contracts.
   Documented fields are API. [contracts/schemas.md](contracts/schemas.md) indexes every schema.
 - [architecture/observer.md](architecture/observer.md), [architecture/serve.md](architecture/serve.md):
   the Observer and the run library server.
@@ -19,10 +19,10 @@ reference under `docs/` by what it is for. To make a first change, start with
   [architecture/browser-control.md](architecture/browser-control.md),
   [architecture/guest-desktop.md](architecture/guest-desktop.md): hosted desktops, the browser
   control protocol and the guest runtime.
-- [architecture/state-driven-executor.md](architecture/state-driven-executor.md): the `CuaExecutor`
+- [architecture/state-driven-executor.md](architecture/state-driven-executor.md): the `ComputerUseExecutor`
   library path.
 - [architecture/task-protocol-support.md](architecture/task-protocol-support.md): which routes
-  accept `actors[0].tasks`.
+  accept `actor.tasks`.
 - [architecture/external-public-shared-world.md](architecture/external-public-shared-world.md) and
   [architecture/terminal-product-route.md](architecture/terminal-product-route.md): two routes in
   depth.

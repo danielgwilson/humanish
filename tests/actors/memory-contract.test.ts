@@ -196,9 +196,7 @@ async function codexViews(): Promise<string[]> {
   return codex.views;
 }
 
-type BrainCase =
-  | { views: () => Promise<string[]>; failsUntil?: string }
-  | { noCrossTurnMemory: string };
+type BrainCase = { views: () => Promise<string[]> } | { noCrossTurnMemory: string };
 
 /** Each local agent a study can name, with its default path. */
 const LOCAL_AGENT_BRAINS = {
@@ -213,8 +211,7 @@ const LOCAL_AGENT_BRAINS = {
 const BRAINS: Record<ActorId, Record<string, BrainCase>> = {
   "openai-computer-use": {
     "threaded (previous_response_id)": { views: () => openAiViews(false) },
-    // Carries only the last reply, so turn 1 is gone by turn 3. The provider fix flips this test.
-    explicit_context: { views: () => openAiViews(true), failsUntil: "TODO(#1491)" },
+    explicit_context: { views: () => openAiViews(true) },
   },
   "local-agent": {
     ...LOCAL_AGENT_BRAINS,
@@ -248,8 +245,7 @@ describe("participant memory across turns", () => {
   for (const [actor, brains] of Object.entries(BRAINS)) {
     for (const [brain, memory] of Object.entries(brains)) {
       if ("noCrossTurnMemory" in memory) continue;
-      const test = memory.failsUntil === undefined ? it : it.fails;
-      test(`${actor} ${brain} still holds turn 1 on turn ${TURNS}`, async () => {
+      it(`${actor} ${brain} still holds turn 1 on turn ${TURNS}`, async () => {
         const views = await memory.views();
         expect(views).toHaveLength(TURNS);
         for (let turn = 2; turn <= TURNS; turn += 1)

@@ -17,7 +17,7 @@ release.
   ```text
   humanish run failed: Lab not found: nope-lab. Look in humanish/studies/ or humanish/labs/, or pass a .yaml path.
   code: HUMANISH_STUDY_NOT_FOUND
-  next: humanish lab list
+  next: humanish study list
   ```
 
   A result with no code (`keys`, `comms`) prints no `code:` line. The `next:` line comes from a
@@ -28,7 +28,7 @@ release.
   checks there, since they are its result. Before 0.108.0, human mode printed the code and message
   on stdout.
 
-- Library: the result objects `runLab` and the analysis entry points return carry the same
+- Library: the result objects `runStudy` and the analysis entry points return carry the same
   `error.code`.
 
 ## Families

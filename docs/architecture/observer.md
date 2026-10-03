@@ -75,7 +75,7 @@ forwarding, and only contained run paths in the TUI's project are accepted.
 | `watch` during a study   | Saved evidence and available in-memory desktop streams                    | Until the attached command exits |
 | `observe --run <id>`     | Saved evidence from the selected run                                      | Until the command exits          |
 | TUI Open in Observer     | Saved evidence in the selected run; shares the project's evidence library | Until the TUI exits              |
-| `serve`                  | Saved evidence across the project's library                               | Until the server command exits   |
+| `observe --all`          | Saved evidence across the project's library                               | Until the server command exits   |
 | Static HTML or `file://` | The exported snapshot                                                     | Independent of a server          |
 
 `observe` uses the same current-data projection as the attached viewer, scoped
@@ -98,7 +98,7 @@ mismatched records omit the observation. A stale heartbeat alone does not prove
 interruption, and stored PIDs are neither probed nor returned. Static rendering
 and export do not create this served-only observation.
 
-Watch is deliberately distinct from `humanish serve`. Watch serves one
+Watch is deliberately distinct from `humanish observe --all`. Watch serves one
 attached run, and the process that created it may inject runtime stream URLs
 (live hosted-desktop viewers) into the observer data it serves. Serve is the
 library surface (every run under `.humanish/runs/`) and never serves runtime
@@ -134,7 +134,7 @@ authenticates the viewer first, so `watch --expose` always requires edge
 auth (a live run is never `share_ready`, so `--safe` alone cannot gate it). The
 attached server comes up during the run and survives a `timed_out`/`failed` run
 (serving is not gated on pass/fail), so a failed run's evidence stays inspectable
-to Ctrl-C. `serve` still never injects stream URLs. See
+to Ctrl-C. `observe --all` still never injects stream URLs. See
 [Serve: the run library surface](serve.md).
 
 ### Live desktop iframe authority
@@ -243,7 +243,7 @@ The renderer is the `observer/` workspace: a Vite single-file build on the
 artifact to `dist/observer-app.html`; in a repo checkout a missing or stale
 artifact auto-builds, and an unconditional preflight at CLI startup makes a
 broken artifact cost seconds, never a completed session. `renderObserverHtml`,
-the one function every surface (observe, watch, serve, labs) renders through,
+the one function every surface (observe, observe --all, watch, studies) renders through,
 injects the run's snapshot into the artifact
 (`tests/observer/artifact.test.ts` pins the path, cold, so CI exercises the
 auto-build every run). The legacy string-concat renderer was deleted at

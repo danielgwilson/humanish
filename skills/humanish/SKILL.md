@@ -32,9 +32,9 @@ Everything it shows has a machine-readable equivalent, which is what you want:
 
 | Instead of the TUI  | Use                                                                                    |
 | ------------------- | -------------------------------------------------------------------------------------- |
-| browsing labs       | `npx humanish lab list --json`                                                         |
+| browsing studies    | `npx humanish study list --json`                                                       |
 | browsing runs       | `npx humanish runs --json`                                                             |
-| starting a run      | `npx humanish lab run <lab> --json --no-open`                                          |
+| starting a run      | `npx humanish run <study> --json --no-open`                                            |
 | a run's outcome     | `npx humanish review --run <id> --json`                                                |
 | communication setup | `npx humanish comms providers --json` and `npx humanish comms connections list --json` |
 
@@ -51,7 +51,7 @@ authorized credential source), followed by
 and `HUMANISH_STRICT_KEYS=1` still apply. Read installed provider capabilities:
 use `humanish comms check --online --json` for read-only authentication.
 Authentication does not establish mailbox permissions, capacity or delivery.
-`humanish comms configure --lab <path> --json` previews an ignored lab copy;
+`humanish comms configure --study <path> --json` previews an ignored study copy;
 add `--apply --plan-token <digest>` to save the reviewed version. Launch its
 exact returned path, not a basename that could resolve to another manifest.
 
@@ -87,9 +87,9 @@ exact returned path, not a basename that could resolve to another manifest.
 5. Confirm the layout:
    - commit `humanish/` source files;
    - ignore `.humanish/` runtime artifacts;
-   - keep committed labs under `humanish/labs/*.yaml`;
-   - keep private/local labs under ignored `.humanish/labs/*.yaml` or
-     `.humanish/local/labs/*.yaml`;
+   - keep committed studies under `humanish/studies/*.yaml`;
+   - keep private/local studies under ignored `.humanish/studies/*.yaml` or
+     `.humanish/local/studies/*.yaml`;
    - keep `.env.example` commit-safe and value-free;
    - never commit generated run bundles.
 
@@ -109,28 +109,28 @@ Do not pass numeric `maxCostUsd`/`maxOutputTokens` or their CLI flags to the
 account branch. It cannot enforce those ceilings and rejects them. Account dollar
 cost remains unknown even when token usage is reported. There is no fallback to
 an API key or another provider. `analyze --dry-run --provider codex` validates
-local evidence/configuration only; `doctor --lab` checks setup without a model
+local evidence/configuration only; `doctor --study` checks setup without a model
 request. Inspect a failed attempt before explicitly retrying `--provider codex
 --rerun`. Opening Observer never starts analysis.
 
 ## Local browser setup
 
 On Linux x64 with local rootful Docker, KVM and TUN, or a supported M3-or-newer
-Mac with native ARM64 Node and Lima 2.2+, an `app-url` lab can set `execution.target: local` and `actors[0].type: local-agent` with
+Mac with native ARM64 Node and Lima 2.2+, an `app-url` study can set `execution.target: local` and `actor.type: local-agent` with
 `localAgent: codex`. It uses the supported Codex ChatGPT login, not E2B or an
 OpenAI API key. Inference is remote and consumes account quota. Existing hosted
-labs stay hosted; never silently change their execution or billing provider.
+studies stay hosted; never silently change their execution or billing provider.
 
-Use `humanish runtime status --json` and `humanish doctor --lab <path> --json`
+Use `humanish runtime status --json` and `humanish doctor --study <path> --json`
 for read-only setup inspection. `humanish runtime setup` downloads and verifies
 the pinned runtime; a live local run also prepares it automatically. The normal
-`humanish lab run <path>` command and TUI use the same study runner and Observer.
+`humanish run <path>` command and TUI use the same study runner and Observer.
 See [the complete example and limits](https://humanish.dev/docs/local-browser).
 
 Local browsers currently require a loopback app URL with an explicit port above
 1023 and use a 960×720 Chromium desktop. For email-gated local apps, start
 `humanish comms catch`, point the app's email sends at it, and declare
-`comms.email.external.catchBaseUrl`. Use `doctor --lab` to check its recipient
+`comms.email.external.catchBaseUrl`. Use `doctor --study` to check its recipient
 routes. This captures app sends without mailbox-provider credentials; it does
 not receive arbitrary internet email. Each participant gets only its assigned
 inbox through the local desktop. Real receiving still needs a supported hosted
@@ -151,7 +151,7 @@ for runtime requirements and export limits.
 
 When creating or editing humanish files:
 
-- use `.yaml` for human-authored humanish source: labs, personas and scenarios;
+- use `.yaml` for human-authored humanish source: studies, personas and scenarios;
 - use `.mjs` for executable adopter scorers named by `review.scorer.ref`;
 - use `.json` or `.ndjson` for generated machine artifacts, Observer data, run
   bundles, event streams, and synthetic fixtures.
@@ -188,9 +188,9 @@ background: |
 A profile with `background` receives only explicitly declared trait directives.
 Legacy profiles without it retain medium defaults for missing patience and
 technical confidence. Avoid contradictory prose and traits; inspect the compiled
-brief with `humanish lab inspect <lab> --json` before running.
+brief with `humanish study show <study> --json` before running.
 
-For an autonomous participant study, use a computer-use/local-agent lab and write
+For an autonomous participant study, use a computer-use/local-agent study and write
 its `mission` as a believable situation and desired outcome. Supply fixture facts
 needed to act, but do not supply selectors, click sequences, hidden success rules,
 expected defects or recovery tricks. For example: “Saturday's event needs two
@@ -230,42 +230,44 @@ and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
 values only. Do not write real emails, names, customer data, tickets, logs, or
 tokens into scenario files.
 
-## Authoring Labs
+## Authoring Studies
 
-Create reusable simulation runs as `.yaml` lab manifests:
+Write reusable studies as `.yaml` study files (`humanish.study.v3`):
 
 ```yaml
-schema: humanish.lab.v2
+schema: humanish.study.v3
 id: first-run
 title: First-run synthetic Observer
+route: preview
+mode: dry-run
 subject:
   source: this-repo
-actors:
-  - type: synthetic-persona
-    count: 4
-scenario:
-  mode: dry-run
+actor:
+  type: synthetic-persona
+participants: 4
 defaults:
   open: true
 ```
 
-A lab is a composition (`subject` × `actors` × `execution` × `scenario` ×
-`policies`), not a hardcoded kind; there is no v1 compatibility. Run
-`npx humanish lab inspect <lab>` to see how a manifest parses, including
-warnings for fields the engine does not consume yet.
+A study declares its `route` (`preview`, `computer-use`, `shared-world`, `terminal` or
+`scripted`) and composes `subject`, `actor`, `participants`, `caps`, `execution` and
+`policies` for it; a key the route does not read is a parse error that names the route.
+Run `npx humanish study show <study>` to see how a study file parses. A
+`humanish.lab.v2` file from 0.107 still runs with a warning; `npx humanish migrate`
+rewrites it as v3 under `studies/`.
 
 ### Many actors at once (fan-out, shared worlds, concurrency)
 
-- **Every declared participant runs live at once by default.** A 6-participant
-  roster is 6 simultaneous actors; total sessions and spend are the same either
+- **Every declared participant runs live at once by default.** A 6-entry
+  `participants` list is 6 simultaneous actors; total sessions and spend are the same either
   way, only wall-clock and simultaneity differ. `execution.concurrency` is a
   CAP, not a mode: declare it only to bound simultaneous paid desktops, and
   expect a parse warning when the cap makes participants run in waves (a green
   waved run looks identical to the all-live run you meant, so the harness says
   so up front).
 - **Separate worlds (`per-lane-worlds`) vs one shared world.** A plain
-  multi-participant computer-use lab gives each actor its OWN app instance
-  (independent studies in parallel). Add `subject.topology: shared-world` for N
+  multi-participant computer-use study gives each actor its OWN app instance
+  (independent studies in parallel). Declare `route: shared-world` for N
   actors in ONE world (a lobby, a shared DB, actors seeing each other's
   changes). Shared-world participants run at once; `execution.concurrency` must
   be at least 2 there.
@@ -274,8 +276,8 @@ warnings for fields the engine does not consume yet.
   run looks like idle tiles — another reason to leave the cap out unless you
   need it.
 
-Use committed `humanish/labs/*.yaml` for public-safe, reproducible labs. Use
-ignored `.humanish/labs/*.yaml` or `.humanish/local/labs/*.yaml` for private repo
+Use committed `humanish/studies/*.yaml` for public-safe, reproducible studies. Use
+ignored `.humanish/studies/*.yaml` or `.humanish/local/studies/*.yaml` for private repo
 targets, local-only dogfood, or machine-specific settings. Never commit private
 repo names, stream URLs, credential values, screenshots, logs, source snippets,
 or operational details.
@@ -283,10 +285,10 @@ or operational details.
 Useful commands:
 
 ```bash
-npx humanish lab list
-npx humanish lab inspect first-run
+npx humanish study list
+npx humanish study show first-run
 npx humanish watch first-run
-npx humanish lab run first-run --json --no-open
+npx humanish run first-run --json --no-open
 ```
 
 ### Off-app email verification (comms)
@@ -341,9 +343,9 @@ customize addresses or limit which participants do email:
 
 ```yaml
 recipients:
-  - lane: signup-01 # this lab's REAL participant id: a roster entry's `id`, or the
-    # generated lane-01..lane-NN names when you use `count`. An unknown id
-    # is a hard parse error listing the lab's actual participant ids (a mismatch
+  - lane: signup-01 # this study's REAL participant id: a `participants` entry's `id`,
+    # or the generated lane-01..lane-NN names when you use a count. An unknown id
+    # is a hard parse error listing the study's actual participant ids (a mismatch
     # would silently disable the funnel for that participant, which is how a
     # 6-actor field run lost every inbox at once). Participants you leave out get
     # no inbox and are never told one exists — the parser warns which.
@@ -386,7 +388,7 @@ For CI or non-interactive proof:
 
 ```bash
 npx humanish watch --json --no-open
-npx humanish lab run first-run --json --no-open
+npx humanish run first-run --json --no-open
 ```
 
 The feedback command prints a public-safe Markdown draft. It must not call the
@@ -394,7 +396,7 @@ GitHub API, require a token, update Projects, use provider credits, or claim
 product behavior proof from a dry run.
 
 When the target app can run locally, prove a known browser path with a
-scripted-browser lab after starting the app on loopback. The lab replays a
+scripted-browser study after starting the app on loopback. The study replays a
 `browser.steps` scenario (see above) on a desktop surface, plus a mobile one
 with `count: 2`. The scripted steps make no model requests. Post-run analysis
 still runs by default when `OPENAI_API_KEY` is set, with a $3 cap; keep
@@ -402,23 +404,23 @@ still runs by default when `OPENAI_API_KEY` is set, with a $3 cap; keep
 [`humanish/studies/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/studies/scripted-demo.yaml)
 or the example in the
 [lab manifest reference](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios):
-set `subject.appUrl` to the loopback URL, `scenario.ref` to the scenario id,
-and `scenario.mode: live`. Without `mode: live` the lab is a dry run that opens
+set `subject.appUrl` to the loopback URL, `scenario` to the scenario id,
+and `mode: live`. Without `mode: live` the study is a dry run that opens
 no browser.
 
 ```bash
 # in another terminal, start the target app on 127.0.0.1 or localhost
-npx humanish lab inspect <lab> --json
-npx humanish lab run <lab> --json --no-open
+npx humanish study show <study> --json
+npx humanish run <study> --json --no-open
 npx humanish verify --run latest --json
-npx humanish watch --run latest --detach --no-open --json
+npx humanish observe --run latest --open   # for a person; it serves until Ctrl-C
 ```
 
 Do not use `humanish watch --count ...` as a substitute for a scripted-browser
-lab. `watch` renders or follows Observer evidence; a live scripted-browser lab
+study. `watch` renders or follows Observer evidence; a live scripted-browser study
 captures desktop and mobile browser evidence against a running app.
 
-## Optional Live E2B Lab
+## Optional Live E2B Study
 
 Live headed E2B desktop participants are optional. Add the substrate dependency only
 when the user explicitly wants live E2B execution:
@@ -438,7 +440,7 @@ Do not paste values into files, prompts, run bundles, issue drafts, or logs.
 Load local values only at invocation time:
 
 ```bash
-npx humanish watch .humanish/labs/local-live.yaml --env-file .humanish/local/provider.env
+npx humanish watch .humanish/studies/local-live.yaml --env-file .humanish/local/provider.env
 ```
 
 When choosing dogfood targets, prefer apps, CLIs, or agent-facing tools with a

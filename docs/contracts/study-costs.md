@@ -7,28 +7,29 @@ All amounts are estimates from retained rate-table accounting, not provider bill
 
 ```bash
 humanish stats
-humanish stats --lab sample-study --since 2026-09-01 --json
+humanish stats --study sample-study --since 2026-09-01 --json
 ```
 
-The filters select runs by lab and run start date. All later analysis reruns
+The filters select runs by study and run start date. All later analysis reruns
 belong to their source run for filtering and daily grouping. This is study-cost
 attribution, not a calendar of provider charges.
 
 With no filters, a directory whose source metadata is unreadable can still
-contribute valid analysis receipts under `(no lab)` and `(undated)`. Lab/date
+contribute valid analysis receipts under `(no study)` and `(undated)`. Study/date
 filters exclude such unattributable directories; they remain named in
-`unreadable`. The command does not guess their date or lab from an analysis.
+`unreadable`. The command does not guess their date or study from an analysis.
 
 ## Additive JSON contract
 
-The envelope remains `humanish.stats.v1`. Existing fields keep their meanings:
-`totals.estimatedSpendUsd`, `days[].estimatedSpendUsd`, lab `medianCostUsd`,
+The envelope is `humanish.stats.v2`, which says `study` and `studies` where `humanish.stats.v1`
+said `lab` and `labs`. Its fields keep their meanings: `totals.estimatedSpendUsd`,
+`days[].estimatedSpendUsd`, each study's `medianCostUsd`,
 `costSamples` and `unpricedRuns` describe participant/desktop run estimates.
 They do not suddenly include a separate analysis request. The bundle's
 `cost.estimatedTotalUsd` and the cached run-index estimate also remain unchanged.
 Observer and terminal run summaries label this narrower scope.
 
-The new `costs` object appears on totals, each lab and each day. `costsByRun`
+The new `costs` object appears on totals, each study and each day. `costsByRun`
 contains the same accounting per selected run with stable warning codes.
 
 | Field                           | Meaning                                                                 |
