@@ -1,0 +1,290 @@
+// The findings projection and its text, over the analysis records committed in the repo: two
+// published live runs (site/public/runs) and the synthetic artifact the analysis tests use.
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+import type { AutomaticAnalysisView } from "../../src/analysis/job.js";
+import type { AnalysisArtifact, LoadedAnalysis } from "../../src/analysis/types.js";
+import {
+  analysisFindings,
+  ANALYSIS_FINDINGS_SCHEMA,
+  formatFindings,
+  formatFindingsSummary,
+} from "../../src/cli/findings.js";
+import { syntheticArtifact } from "../analysis/fixtures.js";
+
+const published = (name: string): LoadedAnalysis =>
+  JSON.parse(
+    readFileSync(
+      new URL(`../../site/public/runs/${name}/observer/study-analysis.json`, import.meta.url),
+      "utf8",
+    ),
+  ) as LoadedAnalysis;
+
+function source(loaded: LoadedAnalysis, mode: string | undefined = "live") {
+  const runId = loaded.analysis?.runId ?? "synthetic-study";
+  return { runId, mode, runRoot: `.humanish/runs/${runId}`, loaded, cwdFlag: "" };
+}
+
+const none = (automatic?: AutomaticAnalysisView): LoadedAnalysis => ({
+  state: "none",
+  analysis: null,
+  corrections: [],
+  warnings: [],
+  ...(automatic === undefined ? {} : { automatic }),
+});
+
+const job = (
+  state: AutomaticAnalysisView["state"],
+  reason: string | null = null,
+): AutomaticAnalysisView => ({
+  state,
+  analysisId: null,
+  reason,
+  updatedAt: "2026-10-04T00:00:00.000Z",
+});
+
+describe("a ready analysis", () => {
+  it("projects every finding with its participants, evidence moments and capture files", () => {
+    const view = analysisFindings(source(published("try-live")));
+    const runRoot = ".humanish/runs/cua-2026-10-03T10-43-07-890Z-833df699";
+    expect(view).toMatchObject({
+      schema: ANALYSIS_FINDINGS_SCHEMA,
+      state: "ready",
+      next: null,
+      status: "complete",
+      provider: "openai",
+      model: "gpt-6-astra",
+      estimatedCostUsd: 0.48348,
+      runPath: runRoot,
+    });
+    expect(
+      view.findings.map((finding) => [
+        finding.id,
+        finding.impact,
+        finding.confidence,
+        finding.recovery,
+      ]),
+    ).toEqual([
+      ["F1", "friction", "high", "not_observed"],
+      ["F2", "friction", "high", "recovered"],
+      ["F3", "friction", "high", "recovered"],
+    ]);
+    const first = view.findings[0]!;
+    expect(first.affected).toEqual([{ streamId: "stream-001", label: "lane-01 · browser" }]);
+    expect(first.exposedCount).toBe(1);
+    // Each cited item once, in citation order, with how the observations used it.
+    expect(
+      first.evidence.map((entry) => [entry.id, entry.frame, entry.elapsedMs, entry.capture]),
+    ).toEqual([
+      ["e000020", 5, 23613, `${runRoot}/screenshots/turn-05.jpg`],
+      ["e000029", 7, 34288, `${runRoot}/screenshots/turn-07.jpg`],
+      ["e000021", 5, 27105, null],
+    ]);
+    expect(view.path).toBe(
+      `${runRoot}/analysis/analysis-4cd2555b-19fe-49e4-a693-3edd70a7f236/analysis.json`,
+    );
+  });
+
+  it("prints each finding's title, impact, confidence, recovery, participants, frames and captures", () => {
+    const lines = formatFindings(analysisFindings(source(published("try-live"))));
+    expect(lines[0]).toBe(
+      "findings: 3 from analysis analysis-4cd2555b-19fe-49e4-a693-3edd70a7f236 (complete, openai gpt-6-astra, estimated $0.48)",
+    );
+    const f1 = lines.indexOf("F1 The second table partially obscured the first on the canvas");
+    expect(lines.slice(f1 + 1, f1 + 2)).toEqual([
+      "   impact: friction · confidence: high · recovery: no recovery observed",
+    ]);
+    expect(lines.slice(f1 + 3, f1 + 6)).toEqual([
+      "   affected: 1 of 1 exposed participant",
+      "   - lane-01 · browser: frame 5 at +0:23, frame 7 at +0:34",
+      "   captures: screenshots/turn-05.jpg, screenshots/turn-07.jpg",
+    ]);
+    expect(lines[f1 + 6]).toMatch(/^ {3}next step: \S/);
+    expect(lines).toContain("limitations:");
+    expect(lines.at(-1)).toBe(
+      "analysis: .humanish/runs/cua-2026-10-03T10-43-07-890Z-833df699/analysis/analysis-4cd2555b-19fe-49e4-a693-3edd70a7f236/analysis.json",
+    );
+  });
+
+  it("groups a multi-participant finding's moments by participant", () => {
+    const view = analysisFindings(source(published("lobby-0927")));
+    expect(view.status).toBe("partial");
+    expect(view.findings).toHaveLength(7);
+    const lines = formatFindings(view);
+    const f1 = lines.findIndex((line) => line.startsWith("F1 "));
+    expect(lines[f1 + 1]).toBe(
+      "   impact: blocked task · confidence: high · recovery: recovery unknown",
+    );
+    expect(lines[f1 + 3]).toMatch(/^ {3}affected: 3 of \d+ exposed participants$/);
+    const participantLines = lines.slice(f1 + 4).filter((line) => line.startsWith("   - "));
+    expect(participantLines.length).toBeGreaterThanOrEqual(3);
+    for (const line of participantLines.slice(0, 3)) expect(line).toMatch(/: frame \d+/);
+  });
+
+  it("summarizes at most three findings, one line each, with the command for all of them", () => {
+    const view = analysisFindings(source(published("lobby-0927")));
+    const lines = formatFindingsSummary(view, "humanish review --run lobby");
+    expect(lines).toHaveLength(6);
+    expect(lines[0]).toBe("findings: 7");
+    expect(lines[1]).toMatch(/^- F1 blocked task, high confidence, recovery unknown: \S/);
+    expect(lines[4]).toBe("- and 4 more findings");
+    expect(lines[5]).toBe("all findings: humanish review --run lobby");
+  });
+
+  it("carries the latest human review note on a finding", () => {
+    const analysis = syntheticArtifact();
+    const loaded: LoadedAnalysis = {
+      state: "ready",
+      analysis,
+      corrections: [
+        {
+          schema: "humanish.study-analysis-correction.v1",
+          id: "correction-1",
+          analysisId: analysis.id,
+          analysisSha256: "c".repeat(64),
+          findingId: "finding-1",
+          findingSha256: "d".repeat(64),
+          createdAt: "2026-09-01T00:03:00.000Z",
+          status: "amended",
+          reason: "The claim was too broad.",
+          replacementClaim: "Creation stalled once.",
+        },
+      ],
+      warnings: [],
+    };
+    const view = analysisFindings(source(loaded));
+    expect(view.findings[0]!.correction).toEqual({
+      status: "amended",
+      reason: "The claim was too broad.",
+      replacementClaim: "Creation stalled once.",
+    });
+    expect(formatFindings(view)).toContain(
+      "   human review: amended, The claim was too broad. Amended claim: Creation stalled once.",
+    );
+  });
+
+  it("marks findings stale when the run changed after the analysis, and names the command to redo it", () => {
+    const loaded: LoadedAnalysis = {
+      state: "stale",
+      analysis: syntheticArtifact(),
+      corrections: [],
+      warnings: ["ANALYSIS_SOURCE_CHANGED"],
+    };
+    const view = analysisFindings(source(loaded));
+    expect(view).toMatchObject({
+      state: "stale",
+      reason: "ANALYSIS_SOURCE_CHANGED",
+      next: "humanish analyze --run synthetic-study --max-cost 3",
+    });
+    expect(view.findings).toHaveLength(1);
+    expect(formatFindingsSummary(view, "humanish review --run synthetic-study")[0]).toBe(
+      "findings: 1 (stale)",
+    );
+  });
+});
+
+describe("a run without findings", () => {
+  const cases: Array<[string, LoadedAnalysis, string | undefined, string, string | null]> = [
+    ["a dry run", none(), "dry-run", "dry_run", null],
+    [
+      "a running automatic analysis",
+      none(job("running")),
+      "live",
+      "running",
+      "humanish review --run synthetic-study",
+    ],
+    [
+      "a skipped automatic analysis",
+      none(job("skipped", "AUTOMATIC_ANALYSIS_KEY_MISSING")),
+      "live",
+      "skipped",
+      "humanish analyze --run synthetic-study --max-cost 3",
+    ],
+    [
+      "an analysis refused at admission",
+      none(job("skipped", "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED")),
+      "live",
+      "skipped",
+      "humanish analyze --run synthetic-study --max-cost 3 --dry-run",
+    ],
+    [
+      "a run with no participant evidence",
+      none(job("skipped", "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE")),
+      "live",
+      "skipped",
+      null,
+    ],
+    [
+      "a Codex analyst that could not run",
+      none(job("failed", "AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE")),
+      "live",
+      "failed",
+      "humanish analyze --run synthetic-study --provider codex",
+    ],
+    [
+      "an unknown automatic outcome",
+      none(job("unknown", "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN")),
+      "live",
+      "unavailable",
+      "humanish analyze list --run synthetic-study",
+    ],
+    [
+      "a live run never analyzed",
+      none(),
+      "live",
+      "none",
+      "humanish analyze --run synthetic-study --max-cost 3",
+    ],
+  ];
+
+  it.each(cases)(
+    "says what happened to %s and how to get findings",
+    (_name, loaded, mode, state, next) => {
+      const view = analysisFindings(source(loaded, mode));
+      expect(view).toMatchObject({ state, next, findings: [], analysisId: null });
+      expect(view.message).not.toMatch(/AUTOMATIC_ANALYSIS_/);
+      const lines = formatFindings(view);
+      expect(lines[0]).toBe(`findings: none. ${view.message}`);
+      expect(lines.slice(1)).toEqual(next === null ? [] : [`next: ${next}`]);
+    },
+  );
+
+  it("names the failed attempt's code and retries with the same analyst", () => {
+    const failed: AnalysisArtifact = {
+      ...syntheticArtifact(),
+      provider: "codex",
+      status: "failed",
+      result: null,
+      error: "analysis_codex_turn_failed",
+    };
+    const view = analysisFindings(
+      source({
+        state: "invalid",
+        analysis: failed,
+        corrections: [],
+        warnings: ["ANALYSIS_FAILED"],
+      }),
+    );
+    expect(view).toMatchObject({
+      state: "failed",
+      reason: "analysis_codex_turn_failed",
+      next: "humanish analyze --run synthetic-study --provider codex",
+    });
+    expect(view.message).toContain("analysis-1");
+  });
+
+  it("withholds analysis text that matches a sensitive pattern", () => {
+    const analysis = syntheticArtifact();
+    analysis.result!.findings[0]!.title = `Saw key ${"sk-" + "syntheticvalue1234567890abcdef"}`;
+    const view = analysisFindings(
+      source({ state: "ready", analysis, corrections: [], warnings: [] }),
+    );
+    expect(view).toMatchObject({
+      state: "unavailable",
+      reason: "ANALYSIS_SENSITIVE_TEXT_QUARANTINED",
+      findings: [],
+    });
+    expect(JSON.stringify(view)).not.toContain("syntheticvalue");
+  });
+});

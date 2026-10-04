@@ -3,6 +3,7 @@ import { Command } from "commander";
 import type { StudyConfig } from "../../study/types.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
 import { type CliIo, type StudyCommandOptions, wantsJson, writeResult } from "../io.js";
+import { writeRunFindings } from "../findings.js";
 import { showObserver } from "../observer-follow.js";
 import { formatScriptedStudyHuman } from "./study-format.js";
 import { observerOpen, resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
@@ -46,6 +47,7 @@ export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined 
       const result = outcome.result;
       writeResult(args.command, args.io, result, formatScriptedStudyHuman);
       args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+      await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
       // Watch mode serves the Observer the route rendered through its finished run.
       if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {

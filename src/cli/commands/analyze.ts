@@ -22,7 +22,15 @@ import {
   RUN_OPTION_DESCRIPTION,
   writeResult,
   humanError,
+  wantsJson,
 } from "../io.js";
+import {
+  type AnalysisFindings,
+  analysisFindings,
+  formatFindings,
+  missingRunFindings,
+  readRunAnalysis,
+} from "../findings.js";
 import { resolvePhysicalCwd } from "../../run/paths.js";
 
 /** Commander may collect a shared flag on the parent; only explicit values override leaf defaults. */
@@ -99,7 +107,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
   analyze
     .command("show")
     .description(
-      "Read validated analysis and correction history. Defaults to the latest usable version.",
+      "Print a run's analysis findings with the evidence each one cites. --json prints the validated analysis record and its correction history. Defaults to the latest usable version.",
     )
     .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .option("--id <id>", "Exact analysis version.")
@@ -281,9 +289,27 @@ async function handleAnalyzeShow(
   command: Command,
 ): Promise<void> {
   options = analysisSelection(options, command);
-  const result = await showAnalysis(options.cwd, options.run, options.id);
-  writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
-  io.setExitCode(result.state === "invalid" ? 2 : 0);
+  if (wantsJson(command)) {
+    const result = await showAnalysis(options.cwd, options.run, options.id);
+    writeResult(command, io, result, () => "");
+    io.setExitCode(result.state === "invalid" ? 2 : 0);
+    return;
+  }
+  const source = await readRunAnalysis(options.cwd, options.run, options.id);
+  const findings = source ? analysisFindings(source) : missingRunFindings(options.cwd, options.run);
+  writeResult(command, io, findings, formatAnalysisShowHuman);
+  // The exit code the --json form gives for the same record.
+  io.setExitCode(source === null || source.loaded.state === "invalid" ? 2 : 0);
+}
+
+/**
+ * `analyze show` without --json: the findings, or why there are none and the command that gets
+ * them.
+ */
+function formatAnalysisShowHuman(findings: AnalysisFindings): string {
+  return (
+    [`humanish analyze show ${findings.runId}`, "", ...formatFindings(findings)].join("\n") + "\n"
+  );
 }
 
 async function handleAnalyzeCorrect(

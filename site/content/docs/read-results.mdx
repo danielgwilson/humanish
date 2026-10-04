@@ -13,6 +13,8 @@ npx humanish observe --run latest --open
 npx humanish review --run latest --json
 ```
 
+`review` prints the run's verdict and participant summary, then the findings of its post-run analysis: each one's title, impact, confidence and recovery, the participants it affected, the frames and capture files it cites, and a next step. With `--json` they are under `analysis`. When a run has no findings yet, `review` says why and prints the command that gets them.
+
 Observer shows the participant's account alongside screenshots and recorded actions. Read the final report, then inspect the moment behind each claim. When tasks have been declared, the per-task funnel helps separate reaching the goal from merely reaching the end of the session.
 
 Use a specific run ID in place of `latest` when you compare studies or save a finding. `latest` changes after another run.
