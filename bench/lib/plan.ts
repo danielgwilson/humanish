@@ -128,6 +128,15 @@ export function projectBrain(brain: Brain, runs: number, settings: BudgetSetting
   };
 }
 
+/** The smallest cap, in steps of $0.50, at which every planned run and analysis starts at typical spend. */
+export function capThatFits(brain: Brain, runs: number, settings: BudgetSettings): number {
+  for (let cap = Math.ceil(settings.maxUsdPerBrain * 2) / 2; ; cap += 0.5) {
+    const projection = projectBrain(brain, runs, { ...settings, maxUsdPerBrain: cap });
+    const analyses = settings.analysis ? runs : 0;
+    if (projection.participantsFit === runs && projection.analysesFit >= analyses) return cap;
+  }
+}
+
 /** A participant run starts only when its worst case still fits under the cap. */
 export function canStartParticipant(spentUsd: number, brain: Brain, settings: BudgetSettings): boolean {
   return spentUsd + participantBoundUsd(brain, settings) <= settings.maxUsdPerBrain;

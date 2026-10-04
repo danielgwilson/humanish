@@ -64,7 +64,23 @@ export interface RunRecord {
     admissionUsd: number | null;
     error: string | null;
   };
-  cleanup: { alreadyClean: number; failed: number; reclaimed: boolean | null } | null;
+  cleanup: CleanupRecord | null;
+}
+
+/**
+ * `reclaim --check`'s state after the run, and the killing reclaim's state when the check was not
+ * clean. Manifests written before `reclaim --check` existed hold the `cleanup` command's counts.
+ */
+export type CleanupRecord =
+  | { checkState: string; reclaimState: string | null }
+  | { alreadyClean: number; failed: number; reclaimed: boolean | null };
+
+function cleanupText(cleanup: CleanupRecord | null): string {
+  if (cleanup === null) return "not checked";
+  if ("checkState" in cleanup) {
+    return `check ${cleanup.checkState}${cleanup.reclaimState ? `, reclaim ${cleanup.reclaimState}` : ""}`;
+  }
+  return `${cleanup.alreadyClean} clean, ${cleanup.failed} unconfirmed${cleanup.reclaimed ? ", reclaimed" : ""}`;
 }
 
 export interface Manifest {
@@ -440,9 +456,7 @@ export function summaryMarkdown(result: BenchResult, jsonName: string): string {
     }
     lines.push("", "| arm | run | participant | desktop | analysis | analysis state | cleanup |", "|---|---|---|---|---|---|---|");
     for (const run of brain.runs) {
-      const cleanup = run.cleanup
-        ? `${run.cleanup.alreadyClean} clean, ${run.cleanup.failed} unconfirmed${run.cleanup.reclaimed ? ", reclaimed" : ""}`
-        : "not checked";
+      const cleanup = cleanupText(run.cleanup);
       lines.push(
         `| ${run.arm} ${run.index} | ${run.runId ? `\`${run.runId}\`` : `no run recorded (${run.error ?? "in progress or interrupted"})`} | ` +
           `${usd(run.costs.participantUsd)} | ${usd(run.costs.desktopUsd)} | ${usd(run.costs.analysisUsd)} | ` +

@@ -14,8 +14,8 @@ From a checkout, with `OPENAI_API_KEY` and `E2B_API_KEY` in a dotenv file:
 ```bash
 pnpm install --frozen-lockfile
 pnpm build
-pnpm bench --dry-run --runs 2 --max-usd 5
-pnpm bench --runs 2 --max-usd 5 --dotenv path/to/.env --out docs/evidence/benchmark
+pnpm bench --dry-run
+pnpm bench --dotenv path/to/.env --out docs/evidence/benchmark
 ```
 
 The dry run builds the throwaway project, has the CLI dry-run every generated study, and prints the
@@ -26,7 +26,7 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | -------------------------- | --------------------- | ----------------------------------------------------------------------------- |
 | `--brain <ids>`            | `openai-computer-use` | Comma-separated: `openai-computer-use`, `local-agent-claude`, `local-agent-codex` |
 | `--runs <n>`               | 3                     | Runs per arm per brain. Each run has one participant and one analysis         |
-| `--max-usd <usd>`          | 4                     | Cap on estimated spend per brain                                              |
+| `--max-usd <usd>`          | 7                     | Cap on estimated spend per brain                                              |
 | `--mission <id>`           | `neutral`             | `neutral` or `walked` (below)                                                 |
 | `--dry-run`                | off                   | Plan and estimate only                                                        |
 | `--dotenv <path>`          | none                  | Passed to `humanish run` and `humanish reclaim`; loaded by Node for `analyze`  |
@@ -54,9 +54,13 @@ Every child process gets `DO_NOT_TRACK=1`.
 3. Runs planted and clean alternately (planted 1, clean 1, planted 2, ...), one participant per
    run, at least 40 seconds apart. Generated studies set `review.analysis: false`, so no automatic
    analysis starts.
-4. After each run: `humanish cleanup`, then `humanish reclaim` when cleanup cannot confirm a
-   sandbox stopped; then `humanish analyze --dry-run` for the admission estimate, and
-   `humanish analyze --max-cost <analysis-max-usd>` when that estimate fits the budget.
+4. After each run: `humanish reclaim --check`, which asks E2B whether each of the run's sandboxes
+   still exists and kills nothing, then `humanish reclaim` when the check's `state` is anything
+   other than `clean` (`running`, `unconfirmed` or `unknown`). Results record both states. A run
+   made by humanish 0.110 or earlier records no owner tags, so its check reports `unknown` even
+   when every receipted sandbox is gone. Then `humanish analyze --dry-run` for the admission
+   estimate, and `humanish analyze --max-cost <analysis-max-usd>` when that estimate fits the
+   budget.
 5. Scores every recorded run and writes the results file and summary.
 
 ## What it spends
@@ -75,9 +79,12 @@ Each step starts only when the spend so far plus that step's worst case fits und
 On 2026-10-04, four neutral-mission runs cost $3.49 in estimates: participants $0.14 to $0.28,
 desktops about $0.01 each, analyses $0.50 to $0.84. Their analysis admission estimates were $1.44
 to $1.68 with a 16,384 token output allowance, so `--analysis-max-usd` below that refuses every
-analysis. With analysis,
-the default plan (3 runs per arm, $4) projects 4 runs and 3 analyses for `openai-computer-use`,
-and the dry run says the plan does not fit. `--runs 2 --max-usd 5` fits.
+analysis.
+
+The default plan, 3 runs per arm with analysis, is about $5.20 at those costs. The cap admits each
+step on its worst case, so the sixth analysis needs about $6.70 of headroom: at $6 the dry run
+projects 6 runs and 5 analyses, and the default of $7 fits all 12 steps. When a plan does not fit,
+the dry run names the smallest cap, in $0.50 steps, at which it does.
 
 The analysis here runs with `--max-cost 1.75`, where automatic analysis after a user's run uses a
 $3 limit. The model, effort and prompt version are the same; the output allowance is 16,384
@@ -152,8 +159,8 @@ problem language. Read the unresolved list before trusting a recall drop.
 
 ## Before each minor release
 
-[Publish a release](../../release/publish.md) runs `pnpm bench --runs 2 --max-usd 5` on the release
-commit for `openai-computer-use` and commits the summary and results file here. Compare report
+[Publish a release](../../release/publish.md) runs `pnpm bench` with its defaults (3 runs per arm,
+$7) on the release commit for `openai-computer-use` and commits the summary and results file here. Compare report
 recall, analysis recall and the clean arm's invented count with the previous file of the same
 mission, and read every unresolved and invented line before tagging.
 

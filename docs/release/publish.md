@@ -26,11 +26,11 @@ writes:
 
 ```bash
 pnpm build
-pnpm bench --runs 2 --max-usd 5 --dotenv path/to/.env --out docs/evidence/benchmark
+pnpm bench --dotenv path/to/.env --out docs/evidence/benchmark
 ```
 
-It needs `OPENAI_API_KEY` and `E2B_API_KEY` and stops starting runs before its estimated spend
-could pass $5. Compare report recall, analysis recall and the clean arm's invented count with the
+It runs 3 planted and 3 clean participants with analysis, needs `OPENAI_API_KEY` and
+`E2B_API_KEY`, and stops starting runs or analyses before its estimated spend could pass $7. Compare report recall, analysis recall and the clean arm's invented count with the
 previous results file for the same mission, add the new summary to the results table in
 [the benchmark README](../evidence/benchmark/README.md), and read the summary's claims to check
 before you tag.

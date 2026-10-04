@@ -20,6 +20,7 @@ import {
   BRAINS,
   canStartAnalysis,
   canStartParticipant,
+  capThatFits,
   isBrainId,
   participantBoundUsd,
   planRuns,
@@ -44,7 +45,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
 
   --brain <ids>            openai-computer-use (default), local-agent-claude, local-agent-codex; comma-separated
   --runs <n>               runs per arm per brain (default 3)
-  --max-usd <usd>          hard cap on estimated spend per brain (default 4)
+  --max-usd <usd>          hard cap on estimated spend per brain (default 7)
   --mission <id>           neutral (default) or walked
   --dry-run                plan and estimate cost; no keys, no desktop, no spend
   --dotenv <path>          passed to the humanish CLI, which loads keys without printing them
@@ -78,7 +79,7 @@ const { values } = parseArgs({
   options: {
     brain: { type: "string", default: "openai-computer-use" },
     runs: { type: "string", default: "3" },
-    "max-usd": { type: "string", default: "4" },
+    "max-usd": { type: "string", default: "7" },
     mission: { type: "string", default: "neutral" },
     "dry-run": { type: "boolean", default: false },
     dotenv: { type: "string" },
@@ -202,7 +203,12 @@ for (const brain of brains) {
       `${BRAINS[brain].priced ? "" : " Participant model spend is unpriced and not bounded by the cap."}\n`,
   );
   if (projection.participantsFit < projection.runs || (budget.analysis && projection.analysesFit < projection.runs)) {
-    process.stdout.write(`  The plan does not fit: lower --runs or raise --max-usd for a complete result.\n`);
+    const needed = capThatFits(BRAINS[brain], runsPerArm * 2, budget);
+    process.stdout.write(
+      `  The plan does not fit $${budget.maxUsdPerBrain}: every run and analysis starts at --max-usd ${needed}, or lower --runs.\n`,
+    );
+  } else {
+    process.stdout.write(`  Every planned run and analysis fits under $${budget.maxUsdPerBrain}.\n`);
   }
 }
 
@@ -334,20 +340,18 @@ for (const planned of planRuns(brains, runsPerArm)) {
   saveManifest();
 
   if (record.runId !== null) {
-    const cleanup = await runCli(cliPath, ["cleanup", "--run", record.runId, "--cwd", projectDir, "--json"], {
+    // reclaim --check asks E2B whether each of the run's sandboxes still exists and kills nothing.
+    // Any state other than clean (running, unconfirmed, unknown) gets a reclaim that kills.
+    const reclaimArgs = ["reclaim", "--run", record.runId, "--cwd", projectDir, "--json", ...dotenvArgs];
+    const check = await runCli(cliPath, [...reclaimArgs, "--check"], {
       logFile,
       timeoutMs: SHORT_TIMEOUT_MS,
     });
-    const summary = objectField(cleanup.json, "summary");
-    const failed = numberField(summary, "failed") ?? 0;
-    record.cleanup = { alreadyClean: numberField(summary, "alreadyClean") ?? 0, failed, reclaimed: null };
-    if (failed > 0) {
-      const reclaim = await runCli(
-        cliPath,
-        ["reclaim", "--run", record.runId, "--cwd", projectDir, "--json", ...dotenvArgs],
-        { logFile, timeoutMs: SHORT_TIMEOUT_MS },
-      );
-      record.cleanup.reclaimed = reclaim.json?.ok === true;
+    const checkState = stringField(check.json, "state") ?? "unknown";
+    record.cleanup = { checkState, reclaimState: null };
+    if (checkState !== "clean") {
+      const reclaim = await runCli(cliPath, reclaimArgs, { logFile, timeoutMs: SHORT_TIMEOUT_MS });
+      record.cleanup.reclaimState = stringField(reclaim.json, "state") ?? "unknown";
     }
     try {
       const costs = runCosts(readRunBundle(projectDir, record.runId));

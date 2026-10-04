@@ -6,6 +6,7 @@ import {
   BRAINS,
   canStartAnalysis,
   canStartParticipant,
+  capThatFits,
   participantBoundUsd,
   planRuns,
   projectBrain,
@@ -99,16 +100,13 @@ describe("the benchmark budget", () => {
     expect(priced - unpriced).toBeCloseTo(0.6);
   });
 
-  it("projects that the default plan does not fit the default cap with analysis", () => {
-    const projection = projectBrain(BRAINS["openai-computer-use"], 6, budget());
-    expect(projection.participantsFit).toBe(4);
-    expect(projection.analysesFit).toBe(3);
-    const smaller = projectBrain(
-      BRAINS["openai-computer-use"],
-      4,
-      budget({ maxUsdPerBrain: 4.95 }),
-    );
-    expect([smaller.participantsFit, smaller.analysesFit]).toEqual([4, 4]);
+  it("fits the default plan of three runs per arm with analysis under the default $7 cap", () => {
+    const brain = BRAINS["openai-computer-use"];
+    const defaults = budget({ maxUsdPerBrain: 7 });
+    expect(projectBrain(brain, 6, defaults)).toMatchObject({ participantsFit: 6, analysesFit: 6 });
+    const six = projectBrain(brain, 6, budget({ maxUsdPerBrain: 6 }));
+    expect([six.participantsFit, six.analysesFit]).toEqual([6, 5]);
+    expect(capThatFits(brain, 6, budget({ maxUsdPerBrain: 6 }))).toBe(7);
   });
 });
 
@@ -148,7 +146,7 @@ describe("the benchmark results", () => {
               error: null,
               costs: { participantUsd: 0, desktopUsd: 0, analysisUsd: 0, totalUsd: 0 },
               analysisState: "complete",
-              cleanup: null,
+              cleanup: { checkState: "running", reclaimState: "clean" },
               participants: [
                 {
                   streamId: "stream-001",
@@ -172,7 +170,9 @@ describe("the benchmark results", () => {
         },
       ],
     } as unknown as BenchResult;
-    const prose = docProse(summaryMarkdown(result, "x.json"));
+    const summary = summaryMarkdown(result, "x.json");
+    expect(summary).toMatch(/\| check running, reclaim clean \|/);
+    const prose = docProse(summary);
     expect(prose.match(CONTRAST)).toBeNull();
     expect(prose.match(EM_DASH)).toBeNull();
     expect(prose).not.toMatch(/\bNOT\b/);
