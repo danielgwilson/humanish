@@ -114,7 +114,7 @@ export default function StudyV3() {
             <p className="repair-copy">
               One run tells you what one person hit. The useful question is who gets stuck. So we
               gave the same task to two different people: a power user who lives on the keyboard,
-              and a newcomer who has never seen the app and reaches for the mouse. Three apps, two
+              and a newcomer who has never seen the app and reaches for the mouse. Three apps, four
               to six runs each. The persona is what you declare; whether a run really stayed on the
               keyboard is what the trace records, action by action.
             </p>
@@ -158,7 +158,7 @@ export default function StudyV3() {
               Keyboard-first participants reported drawDB&rsquo;s database modal 5 of 5 times and
               TodoMVC&rsquo;s double-click rename 6 of 6 times; no mouse newcomer reported either.
               Three of the five drawDB participants and two of the six TodoMVC participants were
-              blocked there; the others switched to the mouse, finished, and said so. Two to six
+              blocked there; the others switched to the mouse, finished, and said so. Five or six
               runs per cell. A blocked synthetic participant identifies a place in the app to check;
               it does not estimate how many people would be blocked.
             </p>
