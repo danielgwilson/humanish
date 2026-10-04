@@ -18,6 +18,20 @@ export interface EnvFileLoadResult {
 
 const envNamePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+// Names `--dotenv` set in this process. A host-side participant (the Claude Code local agent) never
+// gets them, even when a name is one it would otherwise keep, such as a proxy.
+const dotenvNames = new Set<string>();
+
+/** Records names a `--dotenv` file set, so participant environments can leave them out. */
+export function recordDotenvNames(names: readonly string[]): void {
+  for (const name of names) dotenvNames.add(name);
+}
+
+/** The names `--dotenv` set in this process so far. */
+export function dotenvSetNames(): ReadonlySet<string> {
+  return dotenvNames;
+}
+
 export async function loadEnvFile(
   cwd: string,
   envFile: string,

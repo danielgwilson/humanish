@@ -407,14 +407,23 @@ async function claudeTranscriptCheck(env: NodeJS.ProcessEnv): Promise<DoctorChec
   const found = await leftoverClaudeTranscripts(env, env.HOME ?? homedir(), (directory) =>
     readdir(directory),
   );
+  const name = "claude participant transcripts";
+  if ("unreadable" in found)
+    return {
+      name,
+      ok: true,
+      status: "note",
+      message: `could not list ${found.directory} (${found.unreadable}), so transcripts from earlier Claude Code participants were not counted. Check the folder for names ending in -humanish-claude-session-XXXXXX.`,
+    };
+  const count = found.names.length;
   return {
-    name: "claude participant transcripts",
+    name,
     ok: true,
-    ...(found.count === 0 ? {} : { status: "note" as const }),
+    ...(count === 0 ? {} : { status: "note" as const }),
     message:
       found.removeCommand === undefined
         ? `no transcript from an earlier Claude Code participant under ${found.directory}`
-        : `${found.count} transcript folder${found.count === 1 ? "" : "s"} from earlier Claude Code participants under ${found.directory} hold every screenshot those runs read, unblurred. Remove them with: ${found.removeCommand}`,
+        : `${count} transcript folder${count === 1 ? "" : "s"} from earlier Claude Code participants under ${found.directory} hold every screenshot those runs read, unblurred. Remove them with: ${found.removeCommand}`,
   };
 }
 

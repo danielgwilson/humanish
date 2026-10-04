@@ -15,6 +15,8 @@
 
 import path from "node:path";
 
+import { dotenvSetNames } from "../../keys/env-file.js";
+
 type JsonObject = Record<string, unknown>;
 
 /**
@@ -82,16 +84,18 @@ export const CLAUDE_PARTICIPANT_ENV_NAMES: readonly string[] = [
 ];
 
 /**
- * The participant's whole environment. The advisor is a server-side tool Claude Code enables by
- * default on some plans; it is turned off so the only tool the stream can show is Read.
+ * The participant's whole environment: the allowlisted names `source` holds, minus any a `--dotenv`
+ * file set. The advisor is a server-side tool Claude Code enables by default on some plans; it is
+ * turned off so the only tool the stream can show is Read.
  */
 export function claudeParticipantEnv(
   source: Readonly<Record<string, string | undefined>>,
+  fromDotenv: ReadonlySet<string> = dotenvSetNames(),
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1" };
   for (const name of CLAUDE_PARTICIPANT_ENV_NAMES) {
     const value = source[name];
-    if (typeof value === "string") env[name] = value;
+    if (typeof value === "string" && !fromDotenv.has(name)) env[name] = value;
   }
   return env;
 }
@@ -236,43 +240,52 @@ const refused = (reason: string): ClaudeParticipantError =>
   new ClaudeParticipantError("HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED", reason);
 
 /** Transcript folders Claude Code saved for earlier participants, before `--no-session-persistence`. */
-export interface LeftoverClaudeTranscripts {
-  /** Claude Code's projects folder. */
-  directory: string;
-  count: number;
-  /** A shell command that removes exactly the matched kinds; absent when nothing matched. */
-  removeCommand?: string;
-}
+export type LeftoverClaudeTranscripts =
+  | {
+      /** Claude Code's projects folder. */
+      directory: string;
+      /** The matched folder names. */
+      names: string[];
+      /** Removes exactly `names`; absent when there are none. */
+      removeCommand?: string;
+    }
+  /** The folder exists but could not be listed; `code` is the error code, such as `EACCES`. */
+  | { directory: string; unreadable: string };
 
 /**
  * Claude Code names a transcript folder after the session's working directory with every other
  * character replaced by `-`, so `/tmp/humanish-claude-session-AbC123` becomes
  * `-tmp-humanish-claude-session-AbC123`. The suffix is mkdtemp's six characters.
  */
-const TRANSCRIPT_KINDS = [
-  { pattern: /-humanish-claude-session-[A-Za-z0-9]{6}$/, glob: "*-humanish-claude-session-??????" },
-  { pattern: /-humanish-local-agent-[A-Za-z0-9]{6}$/, glob: "*-humanish-local-agent-??????" },
-] as const;
+const TRANSCRIPT_NAME = /-humanish-(?:claude-session|local-agent)-[A-Za-z0-9]{6}$/;
 
-/** Counts leftover participant transcripts. Reads folder names only, never their contents. */
+const shellQuoted = (text: string): string => `'${text.replaceAll("'", `'\\''`)}'`;
+
+/** Lists leftover participant transcripts. Reads folder names only, never their contents. */
 export async function leftoverClaudeTranscripts(
   env: Readonly<Record<string, string | undefined>>,
   home: string,
   list: (directory: string) => Promise<string[]>,
 ): Promise<LeftoverClaudeTranscripts> {
   const directory = path.join(env.CLAUDE_CONFIG_DIR ?? path.join(home, ".claude"), "projects");
-  const names = await list(directory).catch(() => []);
-  const matched = TRANSCRIPT_KINDS.filter((kind) => names.some((name) => kind.pattern.test(name)));
-  const count = names.filter((name) =>
-    TRANSCRIPT_KINDS.some((kind) => kind.pattern.test(name)),
-  ).length;
-  const quoted = `'${directory.replaceAll("'", `'\\''`)}'`;
+  let entries: string[];
+  try {
+    entries = await list(directory);
+  } catch (error) {
+    const code = (error as { code?: unknown }).code;
+    // No projects folder means Claude Code never saved a session here.
+    if (code === "ENOENT") return { directory, names: [] };
+    return { directory, unreadable: typeof code === "string" ? code : "unknown error" };
+  }
+  const names = entries.filter((name) => TRANSCRIPT_NAME.test(name)).sort();
   return {
     directory,
-    count,
-    // Only globs that match: zsh refuses a whole command when one glob matches nothing.
-    ...(matched.length === 0
+    names,
+    // Exact quoted paths: a glob would also match names doctor did not count.
+    ...(names.length === 0
       ? {}
-      : { removeCommand: `rm -rf ${matched.map((kind) => `${quoted}/${kind.glob}`).join(" ")}` }),
+      : {
+          removeCommand: `rm -rf -- ${names.map((name) => shellQuoted(path.join(directory, name))).join(" ")}`,
+        }),
   };
 }

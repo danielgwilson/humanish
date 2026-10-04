@@ -81,6 +81,15 @@ describe("the participant's flags and environment", () => {
     for (const name of CLAUDE_PARTICIPANT_ENV_NAMES)
       expect(name).not.toMatch(/KEY|TOKEN|SECRET|^CLAUDE_CODE_/);
   });
+
+  it("leaves out a name a --dotenv file set, even one it would otherwise keep", () => {
+    const source = { PATH: "/usr/bin", HOME: "/home/dev", HTTPS_PROXY: "http://proxy.example:1" };
+    expect(claudeParticipantEnv(source, new Set(["HTTPS_PROXY"]))).toEqual({
+      PATH: "/usr/bin",
+      HOME: "/home/dev",
+      CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1",
+    });
+  });
 });
 
 describe("the Claude Code release a participant needs", () => {
@@ -195,19 +204,37 @@ describe("leftover participant transcripts", () => {
     "-tmp-humanish-claude-session-XyZ789",
     "-var-folders-ab-T-humanish-local-agent-Q1w2E3",
     "-home-dev-humanish-claude-session-notes",
+    "-home-dev-humanish-claude-session-old-v1",
     "-home-dev-project",
   ];
 
-  it("counts only participant folders and prints a command for the kinds found", async () => {
+  it("lists only participant folders and removes exactly those", async () => {
     let listed = "";
     const found = await leftoverClaudeTranscripts({}, "/home/dev", async (directory) => {
       listed = directory;
       return names;
     });
     expect(listed).toBe("/home/dev/.claude/projects");
-    expect(found.count).toBe(3);
-    expect(found.removeCommand).toBe(
-      "rm -rf '/home/dev/.claude/projects'/*-humanish-claude-session-?????? '/home/dev/.claude/projects'/*-humanish-local-agent-??????",
+    expect(found).toEqual({
+      directory: "/home/dev/.claude/projects",
+      names: [
+        "-tmp-humanish-claude-session-AbC123",
+        "-tmp-humanish-claude-session-XyZ789",
+        "-var-folders-ab-T-humanish-local-agent-Q1w2E3",
+      ],
+      removeCommand:
+        "rm -rf -- '/home/dev/.claude/projects/-tmp-humanish-claude-session-AbC123' '/home/dev/.claude/projects/-tmp-humanish-claude-session-XyZ789' '/home/dev/.claude/projects/-var-folders-ab-T-humanish-local-agent-Q1w2E3'",
+    });
+  });
+
+  it("quotes a projects folder whose path holds a quote", async () => {
+    const found = await leftoverClaudeTranscripts(
+      { CLAUDE_CONFIG_DIR: "/srv/dev's claude" },
+      "/home/dev",
+      async () => ["-tmp-humanish-claude-session-AbC123"],
+    );
+    expect("removeCommand" in found && found.removeCommand).toBe(
+      "rm -rf -- '/srv/dev'\\''s claude/projects/-tmp-humanish-claude-session-AbC123'",
     );
   });
 
@@ -217,13 +244,20 @@ describe("leftover participant transcripts", () => {
       "/home/dev",
       async () => ["-home-dev-project"],
     );
-    expect(found).toEqual({ directory: "/srv/claude/projects", count: 0 });
+    expect(found).toEqual({ directory: "/srv/claude/projects", names: [] });
   });
 
-  it("treats a missing projects folder as empty", async () => {
-    const found = await leftoverClaudeTranscripts({}, "/home/dev", async () => {
-      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+  it("treats a missing projects folder as empty and an unreadable one as unchecked", async () => {
+    const failing = (code: string) => async () => {
+      throw Object.assign(new Error("synthetic"), { code });
+    };
+    expect(await leftoverClaudeTranscripts({}, "/home/dev", failing("ENOENT"))).toEqual({
+      directory: "/home/dev/.claude/projects",
+      names: [],
     });
-    expect(found.count).toBe(0);
+    expect(await leftoverClaudeTranscripts({}, "/home/dev", failing("EACCES"))).toEqual({
+      directory: "/home/dev/.claude/projects",
+      unreadable: "EACCES",
+    });
   });
 });

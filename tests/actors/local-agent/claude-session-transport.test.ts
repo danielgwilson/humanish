@@ -81,6 +81,9 @@ function fakeClaudeChild(init: Json | null = restrictedInit!) {
     spawned,
     users: () => received.filter((message) => message.type === "user"),
     write,
+    /** Several messages in one stdout chunk, as one read delivers them. */
+    writeChunk: (batch: Json[]) =>
+      stdout.write(batch.map((message) => `${JSON.stringify(message)}\n`).join("")),
     spawnFn: ((bin: string, args: string[], options: Json) => {
       spawned.push({ bin, args, options });
       return child;
@@ -408,6 +411,17 @@ describe("a participant whose stream shows what it may not do", () => {
     await expect(
       session.provider.nextTurn(request(), new AbortController().signal),
     ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    await session.close();
+  });
+
+  it("fails the turn when a forbidden call follows its result in the same chunk", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    const done = { message: "Finished.", done: true, actions: [] };
+    fake.writeChunk([resultFor(fake.users()[0]?.uuid, done), bashCall]);
+    await expect(turn).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
     await session.close();
   });
 

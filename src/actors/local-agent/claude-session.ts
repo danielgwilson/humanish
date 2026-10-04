@@ -135,6 +135,9 @@ function stdioClaudeTransport(
   let interrupts = 0;
   let stderrTail = "";
   let ended: Error | undefined;
+  // A refusal outlives a result already delivered: a forbidden line in the same stdout chunk as a
+  // result is read before the turn that awaits the result resumes.
+  let refused: ClaudeParticipantError | undefined;
 
   const write = (message: JsonObject): void => {
     child.stdin.write(`${JSON.stringify(message)}\n`);
@@ -223,6 +226,7 @@ function stdioClaudeTransport(
     if (refusal !== undefined) {
       // The refusal is recorded before the kill, so the exit it causes cannot replace it. SIGKILL:
       // a tool the flags somehow allowed may already be running.
+      refused ??= refusal;
       end(refusal);
       child.kill("SIGKILL");
       stop();
@@ -262,7 +266,9 @@ function stdioClaudeTransport(
       const id = randomUUID();
       const result = waitForTurn(waiting, id, timeoutMs, signal, () => abandon(id));
       write({ ...message, uuid: id });
-      return result;
+      const answer = await result;
+      if (refused !== undefined) throw refused;
+      return answer;
     },
     close() {
       end(new Error("Claude Code session closed"));

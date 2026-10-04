@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command, Option } from "commander";
-import { loadEnvFile } from "../keys/env-file.js";
+import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
 import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
@@ -165,6 +165,7 @@ export async function applyEnvFileOption(args: {
       return false;
     }
     for (const name of result.loaded) env[name] = stagedEnv[name];
+    recordDotenvNames(result.loaded);
     args.onLoaded?.({ path: args.envFile, names: result.loaded });
   }
 
