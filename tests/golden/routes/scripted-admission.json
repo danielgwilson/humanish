@@ -108,7 +108,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered scripted-browser actor."
+      "message": "actor.type \"not-an-actor\" is not a registered scripted-browser actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -174,7 +174,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
+      "message": "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -313,7 +313,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered scripted-browser actor."
+      "message": "actor.type \"not-an-actor\" is not a registered scripted-browser actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -379,7 +379,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
+      "message": "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

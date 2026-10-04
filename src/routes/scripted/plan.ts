@@ -98,7 +98,7 @@ export function planScriptedStudy(
   if (!descriptor || !isScriptedBrowserActorDescriptor(descriptor))
     return refuse(
       "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered scripted-browser actor.`,
+      `actor.type "${actorType}" is not a registered scripted-browser actor.`,
     );
   const actor = descriptor.id;
 
@@ -130,7 +130,7 @@ export function planScriptedStudy(
   if (!scenarioRef?.trim())
     return refuse(
       "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-      "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.",
+      "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file.",
       { actor, appUrl: evidenceAppUrlOf(subject) },
     );
 

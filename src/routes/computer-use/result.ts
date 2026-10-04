@@ -312,7 +312,7 @@ function participantCapWarning(
   const capUsd = caps.maxUsd;
   if (capUsd === undefined || participantCount <= 1) return undefined;
   if (caps.maxTotalUsd !== undefined) return undefined;
-  return `execution.caps.maxUsd ($${capUsd}) caps each participant, so ${participantCount} participants may spend up to ${participantCount} × $${capUsd} (about $${round6(capUsd * participantCount)}) before any of them stops. Set execution.caps.maxTotalUsd for one budget across the study.`;
+  return `caps.maxUsd ($${capUsd}) caps each participant, so ${participantCount} participants may spend up to ${participantCount} × $${capUsd} (about $${round6(capUsd * participantCount)}) before any of them stops. Set caps.maxTotalUsd for one budget across the study.`;
 }
 
 /** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */

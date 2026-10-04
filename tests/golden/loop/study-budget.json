@@ -2,7 +2,7 @@
   "result": {
     "status": "incomplete",
     "completionReason": "budget_reached",
-    "reason": "study budget reached: $12.10 crossed execution.caps.maxTotalUsd=$12",
+    "reason": "study budget reached: $12.10 crossed caps.maxTotalUsd=$12",
     "trace": {
       "schema": "humanish.actor-trace.v1",
       "provider": "golden-cua",
@@ -27,7 +27,7 @@
       "status": "incomplete",
       "completionReason": "budget_reached",
       "stopCause": "study_spend_limit",
-      "reason": "study budget reached: $12.10 crossed execution.caps.maxTotalUsd=$12",
+      "reason": "study budget reached: $12.10 crossed caps.maxTotalUsd=$12",
       "ids": {
         "model": "golden-1"
       },
@@ -162,6 +162,6 @@
     ["writeScreenshot","turn-02.png",15],
     ["onTrace",5,{"input":2000,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50},{"input":1000,"output":50}]},{}],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"}}],
-    ["overRunBudget",{"input":3000,"output":150,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50},{"input":1000,"output":50},{"input":1000,"output":50}]},"study budget reached: $12.10 crossed execution.caps.maxTotalUsd=$12"]
+    ["overRunBudget",{"input":3000,"output":150,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50},{"input":1000,"output":50},{"input":1000,"output":50}]},"study budget reached: $12.10 crossed caps.maxTotalUsd=$12"]
   ]
 }

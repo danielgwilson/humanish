@@ -125,8 +125,8 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
     completionReason: "budget_reached",
     reason:
       materialActions > 0
-        ? `Stopped before the next model turn: ${spend} passed execution.caps.maxUsd=$${maxUsd} after productive activity (${plural(materialActions, "material action")}, ${plural(turns, "turn")})`
-        : `Stopped before the next model turn: ${spend} passed execution.caps.maxUsd=$${maxUsd} with no material progress`,
+        ? `Stopped before the next model turn: ${spend} passed caps.maxUsd=$${maxUsd} after productive activity (${plural(materialActions, "material action")}, ${plural(turns, "turn")})`
+        : `Stopped before the next model turn: ${spend} passed caps.maxUsd=$${maxUsd} with no material progress`,
     stopCause: "spend_limit",
   };
 }
@@ -136,7 +136,7 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
 export const nonFiniteEstimate: Stop = {
   completionReason: "harness_error",
   reason:
-    "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+    "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
 };
 
 /** A study-level stop is a recruiting decision hitting its limit, not this participant's runaway. */
@@ -180,7 +180,7 @@ export const usageUnreported: Stop = {
  * limit is set, so its worst case is the model's whole output allowance.
  */
 export function lostRequestUnbounded(turnNumber: number, lost: LostRequest): Stop {
-  const reason = `provider turn ${turnNumber} ${lost}; its usage is unknown and no maxOutputTokens bounds what it cost, so the declared model-spend cap cannot be established; no further or closing request was dispatched. Set actors[].maxOutputTokens so a capped session can book the worst case and retry.`;
+  const reason = `provider turn ${turnNumber} ${lost}; its usage is unknown and no maxOutputTokens bounds what it cost, so the declared model-spend cap cannot be established; no further or closing request was dispatched. Set actor.maxOutputTokens so a capped session can book the worst case and retry.`;
   return {
     completionReason: "harness_error",
     reason,

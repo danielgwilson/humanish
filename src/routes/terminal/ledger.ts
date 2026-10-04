@@ -182,7 +182,7 @@ export function evaluateCapsAgainstLedger(
     );
     return {
       ok: false,
-      message: `Stopped: measured spend ${ledger.knownTotalUsd} USD passed scenario.caps.maxUsd=${caps.maxUsd}${overLines.length > 0 ? ` (non-zero lines: ${overLines.join(", ")})` : ""}. The cap stops the run; it is not a warning.`,
+      message: `Stopped: measured spend ${ledger.knownTotalUsd} USD passed caps.maxUsd=${caps.maxUsd}${overLines.length > 0 ? ` (non-zero lines: ${overLines.join(", ")})` : ""}. The cap stops the run; it is not a warning.`,
     };
   }
   if (caps.maxJobs !== undefined) {
@@ -194,7 +194,7 @@ export function evaluateCapsAgainstLedger(
     if (knownJobs > caps.maxJobs) {
       return {
         ok: false,
-        message: `Stopped: ${knownJobs} measured billable jobs passed scenario.caps.maxJobs=${caps.maxJobs}.`,
+        message: `Stopped: ${knownJobs} measured billable jobs passed caps.maxJobs=${caps.maxJobs}.`,
       };
     }
   }

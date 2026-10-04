@@ -280,8 +280,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
               at: args.run.createdAt,
               level: "info" as const,
               type: "cua-lab.contract.ready",
-              message:
-                "Dry-run bundle ready; switch scenario.mode to live for a real desktop session.",
+              message: "Dry-run bundle ready; switch mode to live for a real desktop session.",
             }),
   ];
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>

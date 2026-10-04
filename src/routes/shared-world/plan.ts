@@ -92,7 +92,7 @@ export function planSharedWorldStudy(
   if (!descriptor || !isCuaActorDescriptor(descriptor))
     return refuse(
       "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered computer-use actor.`,
+      `actor.type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
 

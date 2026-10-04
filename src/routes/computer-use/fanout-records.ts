@@ -326,7 +326,7 @@ function fanoutOutcomeEvents(
       at: args.run.createdAt,
       level: "info",
       type: "cua-lab.contract.ready",
-      message: `Participant ${spec.planned.id}: dry-run participant ready; switch scenario.mode to live for a real desktop session.`,
+      message: `Participant ${spec.planned.id}: dry-run participant ready; switch mode to live for a real desktop session.`,
     });
   }
 

@@ -47,7 +47,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+      "message": "actor.type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -333,7 +333,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
-      "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+      "message": "subject.appUrl and any participants[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -465,7 +465,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
+      "message": "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -653,7 +653,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+      "message": "actor.type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -939,7 +939,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
-      "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+      "message": "subject.appUrl and any participants[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1027,7 +1027,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
+      "message": "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1181,7 +1181,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
+      "message": "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1203,7 +1203,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
+      "message": "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

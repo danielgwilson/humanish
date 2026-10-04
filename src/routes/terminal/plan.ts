@@ -71,7 +71,7 @@ export function planTerminalStudy(
   if (!descriptor || !isTerminalActorDescriptor(descriptor))
     return refuse(
       "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered terminal actor.`,
+      `actor.type "${actorType}" is not a registered terminal actor.`,
     );
 
   const runtimeVersion = config.execution?.runtime?.version;
@@ -143,7 +143,7 @@ export function planTerminalStudy(
   if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0)
     return refuse(
       "HUMANISH_TERMINAL_CAPS_MISSING",
-      "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set scenario.caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force.",
+      "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force.",
       descriptor.id,
     );
   // maxUsd is checked against the cost ledger after the session, and only known lines can trip it.
@@ -154,7 +154,7 @@ export function planTerminalStudy(
   if (maxUsd > 0 && input.hasCostProbe !== true)
     return refuse(
       "HUMANISH_TERMINAL_UNPRICED_CAP",
-      `scenario.caps.maxUsd=${maxUsd} cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
+      `caps.maxUsd=${maxUsd} cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set caps.maxUsd to 0 and bound the run with caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );
   // The sandbox's timeout covers the steps before the codex command, maxMinutes and the teardown
@@ -166,7 +166,7 @@ export function planTerminalStudy(
     const headroomMinutes = (sandboxTimeoutMs - maxMinutes * 60_000) / 60_000;
     return refuse(
       "HUMANISH_TERMINAL_CAPS_INVALID",
-      `scenario.caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower scenario.caps.maxMinutes to at most ${MAX_SANDBOX_MS / 60_000 - headroomMinutes}. No sandbox was created and the runtime key was not used.`,
+      `caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower caps.maxMinutes to at most ${MAX_SANDBOX_MS / 60_000 - headroomMinutes}. No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );
   }

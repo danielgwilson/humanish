@@ -153,7 +153,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       type: "scripted-lab.spend",
       message: args.subject
         ? "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
-        : "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.",
+        : "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.",
     },
   ];
 
@@ -183,7 +183,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
       at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.contract.ready",
-      message: `Dry-run bundle ready: scenario ${args.journey.scenarioId} @ ${args.scenarioSourceDigest} (${args.scenarioSource}, ${args.journey.steps.length} step${args.journey.steps.length === 1 ? "" : "s"}) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser.`,
+      message: `Dry-run bundle ready: scenario ${args.journey.scenarioId} @ ${args.scenarioSourceDigest} (${args.scenarioSource}, ${args.journey.steps.length} step${args.journey.steps.length === 1 ? "" : "s"}) parsed and digest-pinned; switch mode to live to actuate a real browser.`,
     });
   }
   return events;
