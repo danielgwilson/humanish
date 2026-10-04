@@ -363,6 +363,7 @@ describe("E2B sandbox receipts from the desktop startup guard", () => {
   let cwd: string;
   let root: PreparedOutputRoot;
   beforeEach(async () => {
+    receiptGate.hold = undefined;
     receiptGate.fail = 0;
     receiptGate.attempts = 0;
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-sandbox-"));
@@ -419,6 +420,34 @@ describe("E2B sandbox receipts from the desktop startup guard", () => {
     await pending;
     expect(receiptGate.attempts).toBe(2);
     expect((await receipts()).map((receipt) => receipt.sandboxId)).toEqual(["fake-sb-retried"]);
+  });
+
+  it("settles a create whose startup failed only once the reported receipt is written", async () => {
+    let release!: () => void;
+    receiptGate.hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fake = guardedFakeDesktop({ ids: ["fake-sb-failed-startup"] });
+    let settled = false;
+    const pending = acquireE2BDesktopSandbox({
+      module: fake.module,
+      options: { apiKey: "synthetic" },
+      receipt: { root, participantId: "lane-01" },
+    })
+      .catch((value: unknown) => value)
+      .finally(() => {
+        settled = true;
+      });
+    await vi.waitFor(() => expect(receiptGate.attempts).toBe(1));
+    // Not a transient error, so the create is not tried again.
+    fake.failStartup(new Error("synthetic desktop startup failure"));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false);
+    release();
+    expect(await pending).toMatchObject({ name: "E2BDesktopStartupError" });
+    expect((await receipts()).map((receipt) => receipt.sandboxId)).toEqual([
+      "fake-sb-failed-startup",
+    ]);
   });
 
   it("releases a guarded sandbox when a throwing clock fails its receipt at the report and after create", async () => {

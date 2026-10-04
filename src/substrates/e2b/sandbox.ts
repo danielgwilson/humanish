@@ -83,6 +83,9 @@ async function acquire(
   // Refused before any provider call once the run is stopping.
   const ticket =
     target === null ? undefined : beginSandboxCreate(target.root, target.participantId);
+  // The receipts written when the guard reported an id, before desktop startup. A startup error
+  // can quote the id and the create may never return, so the journal holds it first.
+  const reported = new Map<string, Promise<boolean>>();
   try {
     // The owner tags let reclaim find this sandbox on E2B even if its id never reaches this
     // process: a create that throws after E2B allocated, or a process that dies mid-create. The
@@ -105,9 +108,6 @@ async function acquire(
         ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
       });
     };
-    // The receipts written when the guard reported an id, before desktop startup. A startup
-    // error can quote the id and the create may never return, so the journal holds it first.
-    const reported = new Map<string, Promise<boolean>>();
     if (ticket !== undefined)
       observeDesktopAllocation(options, (sandboxId) => {
         ticket.created(sandboxId);
@@ -144,6 +144,9 @@ async function acquire(
     }
     return { sandbox, allocation };
   } finally {
+    // A create that threw settles once its reported receipts are on disk, as one that returned
+    // does. These writes never reject.
+    await Promise.all(reported.values());
     ticket?.settled();
   }
 }

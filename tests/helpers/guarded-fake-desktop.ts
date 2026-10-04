@@ -14,6 +14,8 @@ export interface GuardedFakeDesktop {
   killed: string[];
   /** End the oldest startup still waiting: the create returns its handle. */
   finishStartup(): void;
+  /** Fail the oldest startup still waiting with `error`. */
+  failStartup(error: Error): void;
 }
 
 /** The startup error for a sandbox killed mid-startup, shaped like the E2B SDK's. */
@@ -83,5 +85,6 @@ export function guardedFakeDesktop(options: {
     constructed,
     killed,
     finishStartup: () => startups.shift()?.end(),
+    failStartup: (error) => startups.shift()?.end(error),
   };
 }
