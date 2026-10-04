@@ -31,6 +31,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   how each run reads: `passed`, `failed`, `blocked`, `timed_out`, `no_verdict`, `dry_run`,
   `interrupted`, `running` or `unknown`, with the first execution failure as the reason a run
   failed.
+- A compatibility policy, in the README and CONTRIBUTING.md: a deprecated name keeps working for
+  at least 30 days and through one minor release, breaking changes ship together in one minor
+  release with a migration table, and the study file and run bundle schemas are versioned.
+- humanish.dev/docs/concepts explains a study, run, participant, persona, actor, subject, route,
+  scenario and the verify grades on one annotated study file. humanish.dev/docs/study-files lists
+  every study file field with its type, default and meaning, and the persona fields and traits
+  with the sentence each trait level sends. `pnpm docs:check` fails when the parser accepts a
+  top-level or second-level field, or a persona field, that the page does not name.
 
 ### Changed
 
@@ -45,6 +53,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   `humanish doctor` shows the installed release. Sign-in is checked with the participant's
   environment, so a login held only in `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` reads as
   signed out: run `claude auth login`.
+- A terminal run's review and its cost ledger notes no longer say an adapter can supply spend
+  through `costProbe`. They say humanish has no source for the missing lines and a study cannot
+  supply one.
+- humanish.dev/docs/budgets-and-privacy redirects to /docs/what-a-study-costs, which now holds its
+  budget, cost-model and model sections under the same headings. Its credentials section moved to
+  /docs/trust-boundaries#store-credentials.
 
 ### Fixes
 

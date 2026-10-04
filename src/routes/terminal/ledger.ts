@@ -10,9 +10,9 @@ import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
  *   - The `provider` line is populated from the actor trace's tokenUsage.costUsd when the trace
  *     carries it (a measured value, incl. a measured 0). When the trace carries no costUsd, the
  *     provider line is `null` = not measured (never guessed to 0 just because no-spend was intended).
- *   - product/media/payment are `null` by default: core has no signal for those categories; an
- *     adapter may provide one through the shipped costProbe seam.
- * `injectedLines` lets a test or adapter supply known spend for a category,
+ *   - product/media/payment are `null` by default: core has no signal for those categories, and
+ *     only a test can supply one, through `StudyDeps.costProbe`.
+ * `injectedLines` lets a test supply known spend for a category,
  * exercising the fail-closed cap enforcement deterministically without a real billable run.
  */
 export function buildCostLedger(args: {
@@ -51,7 +51,7 @@ export function buildCostLedger(args: {
     usd: null,
     count: null,
     source: "unmeasured",
-    note: `${category} spend not measured: humanish has no ${category} spend signal for this run, and an adapter may supply one through costProbe. Recorded as null, never guessed as 0.`,
+    note: `${category} spend not measured: humanish has no ${category} spend signal, and a study cannot supply one. Recorded as null, never guessed as 0.`,
   });
 
   const lines: Record<CostCategory, CostLine> = {

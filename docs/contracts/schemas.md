@@ -301,10 +301,11 @@ instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` bec
   wall-clock kill; `maxUsd`/`maxJobs` are enforced fail-closed against the cost
   ledger after the session (a run whose known spend exceeds the cap fails closed,
   `HUMANISH_TERMINAL_CAPS_EXCEEDED`). Core records Codex provider spend as
-  unpriced tokens, so without a cost probe no line can trip a positive `maxUsd`:
-  a live run refuses `maxUsd > 0` before creating a sandbox
-  (`HUMANISH_TERMINAL_UNPRICED_CAP`) unless the caller passes a `costProbe`
-  hook. The sandbox's server-side timeout is the steps before the
+  unpriced tokens and measures no product, media or payment spend, so no line can trip a
+  positive `maxUsd`: a live run refuses `maxUsd > 0` before creating a sandbox
+  (`HUMANISH_TERMINAL_UNPRICED_CAP`). A terminal `maxUsd` cap has no adopter cost source
+  until [issue 347](https://github.com/danielgwilson/humanish/issues/347) lands;
+  `StudyDeps.costProbe` is a test seam. The sandbox's server-side timeout is the steps before the
   codex command (Node bootstrap, runtime version check, and product setup when
   `subject.product.install` is declared) plus `maxMinutes` plus a 5-minute
   teardown buffer; a live run refuses a `maxMinutes` that would take it past
@@ -1089,8 +1090,8 @@ discipline** that distinguishes three states and never conflates them:
 and is never coerced to `0`); `fullyMeasured` is true only when no line is null.
 Core meters only the `provider` line, populated from the actor trace's
 `tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment`
-remain `null` unless an adapter supplies those signals through the shipped
-cost-probe seam. The terminal route records the model as `codex` and does not pin Codex's
+remain `null`, because no adopter can supply those signals until
+[issue 347](https://github.com/danielgwilson/humanish/issues/347) lands. The terminal route records the model as `codex` and does not pin Codex's
 model, so a measured token count stays `usd: null` with `source: unpriced-token-usage`, and
 `knownTotalUsd: 0` with `fullyMeasured: false` means no line of this ledger was priced. E2B
 time for the terminal sandbox is not a line of this ledger, whose lines are checked against

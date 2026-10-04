@@ -38,7 +38,8 @@ export interface PersonaDirectives {
 }
 
 const LEVELS: PersonaLevel[] = ["low", "medium", "high"];
-const PERSONA_FIELDS = new Set([
+/** The fields a persona file can set; any other warns and is not sent. The study file reference lists each. */
+export const PERSONA_FIELDS = new Set([
   "schema",
   "id",
   "name",
@@ -47,7 +48,8 @@ const PERSONA_FIELDS = new Set([
   "traits",
   "constraints",
 ]);
-const TRAIT_FIELDS = new Set(["patience", "technical_confidence", "accessibility_needs"]);
+/** The traits under `traits:` that become directives; any other warns and is not sent. */
+export const TRAIT_FIELDS = new Set(["patience", "technical_confidence", "accessibility_needs"]);
 
 function cleanText(value: string): string {
   return value
