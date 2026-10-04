@@ -19,7 +19,8 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
-import { loadRunBundlePrepared } from "../run/locate.js";
+import { loadRunBundlePrepared, readRunJsonIfExists } from "../run/locate.js";
+import { RUN_STATUS_FILE } from "../run/status.js";
 import { verifyRunPrepared } from "../verify/verify.js";
 import { renderObserverHtml } from "./artifact.js";
 import { buildObserverData } from "./data.js";
@@ -203,7 +204,13 @@ export async function renderObserver(
     ...projectShareCheckedAnalysis(await loadAnalysis(preparedRunPaths)),
     ...(spend === null ? {} : { spend }),
   };
-  const observerData = buildObserverData(loaded.bundle);
+  // A run.json without an outcome is in progress, interrupted, or older than the field: its
+  // status.json says which, and holds an older run's ok.
+  const statusRecord =
+    loaded.bundle.outcome === undefined
+      ? await readRunJsonIfExists(preparedRunPaths, RUN_STATUS_FILE)
+      : undefined;
+  const observerData = buildObserverData(loaded.bundle, undefined, statusRecord);
   observerData.publicSafety.share = {
     status: verified.shareSafety.status,
     verifiedAt: new Date().toISOString(),

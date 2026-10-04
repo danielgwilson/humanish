@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { type Command, CommanderError } from "commander";
@@ -51,6 +51,36 @@ describe("a run's review in human mode", () => {
     expect(output).toContain("\ngaps:\n- No browser was launched.\n");
     expect(output).toMatch(/\nreview: \.humanish\/runs\/dryrun-\S+\/review\.json\n$/);
     expect(output).not.toContain("{");
+  });
+});
+
+describe("a run whose execution failed under a pass verdict", () => {
+  it("leads its review with how the run ended and why, not the pass", async () => {
+    const cwd = await freshProject();
+    await runCli(["init", "--yes", "--cwd", cwd]);
+    await runCli(["run", "first-run", "--cwd", cwd]);
+    const runDir = path.join(cwd, ".humanish", "runs");
+    const runId = JSON.parse(await readFile(path.join(runDir, "latest.json"), "utf8")).runId;
+    const bundlePath = path.join(runDir, runId, "run.json");
+    const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
+    bundle.review.verdict = "pass";
+    bundle.outcome = {
+      state: "finished",
+      ok: false,
+      execution: {
+        succeeded: false,
+        failures: [{ kind: "provider-cleanup", message: "lane-01: cleanup unconfirmed" }],
+      },
+    };
+    await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`);
+    const reviewPath = path.join(runDir, runId, "review.json");
+    const review = JSON.parse(await readFile(reviewPath, "utf8"));
+    await writeFile(reviewPath, `${JSON.stringify({ ...review, verdict: "pass" }, null, 2)}\n`);
+
+    const { output } = await runCli(["review", "--cwd", cwd]);
+    expect(output).toMatch(
+      /^humanish review \S+: failed \(verdict pass\)\nwhy: provider-cleanup: lane-01: cleanup unconfirmed\n/,
+    );
   });
 });
 

@@ -224,19 +224,18 @@ export function concurrentStudyFailure(envelope: {
 }
 
 /**
- * The run's execution failures: a run error (the handoff, the plane), each participant whose
- * session failed in the harness, each provider whose cleanup is unconfirmed or that reported a
- * disallowed item after its last request, each sandbox whose release is unconfirmed, and an
- * Observer that failed.
+ * The run's execution failures before the Observer renders: a run error (the handoff, the plane),
+ * each participant whose session failed in the harness, each provider whose cleanup is unconfirmed
+ * or that reported a disallowed item after its last request, and each sandbox whose release is
+ * unconfirmed. FinishedRun.renderObserver adds an Observer that did not render.
  */
 function sharedWorldExecutionFailures(args: {
   runId: string;
   runError: string | undefined;
   actorResults: readonly ActorRunResult[];
   subject: Pick<PlaneResults, "subjectSandboxId" | "subjectKilled" | "subjectReleaseWarning">;
-  observer: Pick<ObserverResult, "ok" | "error">;
 }): ExecutionFailure[] {
-  const { runId, runError, actorResults, subject, observer } = args;
+  const { runId, runError, actorResults, subject } = args;
   return [
     ...(runError === undefined ? [] : [{ kind: "run" as const, message: runError }]),
     ...actorResults
@@ -272,15 +271,6 @@ function sharedWorldExecutionFailures(args: {
     ...(subject.subjectSandboxId === undefined || subject.subjectKilled
       ? []
       : [sandboxCleanupFailure("subject", subject.subjectReleaseWarning, runId)]),
-    ...(observer.ok
-      ? []
-      : [
-          {
-            kind: "evidence" as const,
-            message:
-              observer.error?.message ?? "Observer failed for the concurrent shared-world run.",
-          },
-        ]),
   ];
 }
 
@@ -373,23 +363,32 @@ export async function finishConcurrentRun(
   bundle.review = foldScorerFailures(bundle.review, scorerResult.failures);
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
-  const finished = await run.finish(bundle);
+  // Concurrent "ok": every actor must produce a terminal, engaged, passed session, and the
+  // participants must show the concurrency verify requires of a pass (judgeSharedWorld). This is a
+  // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
+  // make the route green just because the harness got a terminal.
+  const policy = OUTCOME_POLICIES["shared-world"];
+  const preRender = judgeExecution(
+    sharedWorldExecutionFailures({ runId, runError, actorResults, subject: results }),
+    policy,
+  );
+  const finished = await run.finish(bundle, {
+    ok: resultOk({
+      judgment,
+      execution: preRender,
+      scorerFailures: scorerResult.failures,
+      policy,
+    }),
+    execution: preRender,
+    policy,
+  });
   const observer = await finished.renderObserver();
   if (observer.ok && live.observer) {
     attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, live.streamUrls);
   }
 
-  // Concurrent "ok": every actor must produce a terminal, engaged, passed session, and the
-  // participants must show the concurrency verify requires of a pass (judgeSharedWorld). This is a
-  // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
-  // make the route green just because the harness got a terminal.
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const policy = OUTCOME_POLICIES["shared-world"];
-  const execution = judgeExecution(
-    sharedWorldExecutionFailures({ runId, runError, actorResults, subject: results, observer }),
-    policy,
-  );
-  const ok = resultOk({ judgment, execution, scorerFailures: scorerResult.failures, policy });
+  const { ok, execution } = finished.outcome;
 
   const overlapProven = !dryRun && judgment.world.overlap;
 
@@ -431,6 +430,5 @@ export async function finishConcurrentRun(
     warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult }),
   };
-  await finished.recordOutcome({ ok, execution });
   return result;
 }

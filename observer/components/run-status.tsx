@@ -20,7 +20,8 @@ export function RunStatus({
 }) {
   const runtime = data.runtime;
   const active = data.streams.filter(isActiveStream).length;
-  const staleProcess = runtime?.state === "unknown" || runtime?.state === "interrupted";
+  const interrupted = runtime?.state === "interrupted";
+  const staleProcess = runtime?.state === "unknown" || interrupted;
   const ended = runtime?.state === "finished";
   const offline = connection.state === "offline";
   const failed = connection.state === "retrying";
@@ -33,13 +34,15 @@ export function RunStatus({
     ? "Saved recording"
     : failed && active > 0
       ? "Last seen running"
-      : staleProcess
-        ? "Run status unconfirmed"
-        : ended
-          ? "Run ended"
-          : active > 0
-            ? "Running"
-            : "Finished";
+      : interrupted
+        ? "Run interrupted"
+        : staleProcess
+          ? "Run status unconfirmed"
+          : ended
+            ? "Run ended"
+            : active > 0
+              ? "Running"
+              : "Finished";
   return (
     <div
       className={`run-status${compact ? " run-status-compact" : ""}${failed || staleProcess ? " needs-attention" : ""}`}
@@ -76,7 +79,7 @@ export function RunStatus({
           ) : (
             <>
               Evidence updated {ageLabel(updated, now)}
-              {staleProcess ? " · process status is not current" : ""}
+              {staleProcess && !interrupted ? " · process status is not current" : ""}
             </>
           )}
         </div>

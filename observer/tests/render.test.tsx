@@ -144,6 +144,66 @@ describe("the run library control (D6: first Base UI adoption)", () => {
     );
   });
 
+  it("lights the pass dot only for a run whose display passed, whatever its verdict", async () => {
+    const row = (runId: string, display: NonNullable<ObserverData["run"]["display"]>) => ({
+      runId,
+      status: "pass",
+      display,
+      href: "",
+      mode: "live",
+      streamCount: 1,
+    });
+    await mount(
+      <Sidebar
+        data={data}
+        history={{
+          latestRunId: "passed-run",
+          runs: [
+            row("passed-run", { state: "passed", label: "passed", tone: "pass" }),
+            row("failed-run", {
+              state: "failed",
+              label: "failed",
+              tone: "fail",
+              reason: "sandbox-cleanup: Sandbox teardown unproven.",
+            }),
+          ],
+        }}
+        onRuns={() => {}}
+      />,
+    );
+    const entries = [...container.querySelectorAll(".item")];
+    const entry = (runId: string) =>
+      entries.find((item) => item.getAttribute("title") === runId) as Element;
+    expect(entry("passed-run").querySelector(".dot.ok")).not.toBeNull();
+    expect(entry("failed-run").querySelector(".dot.ok")).toBeNull();
+    expect(entry("failed-run").querySelector(".dot.bad")).not.toBeNull();
+    expect(entry("failed-run").querySelector("small")?.textContent).toContain("Failed");
+  });
+
+  it("names a run its signal handler stopped as interrupted", async () => {
+    await mount(
+      <Sidebar
+        data={data}
+        history={{
+          latestRunId: "stopped",
+          runs: [
+            {
+              runId: "stopped",
+              status: "contract_proof_only",
+              display: { state: "interrupted", label: "interrupted", tone: "warn" },
+              runtimeState: "interrupted",
+              href: "",
+              mode: "live",
+              streamCount: 1,
+            },
+          ],
+        }}
+        onRuns={() => {}}
+      />,
+    );
+    expect(container.querySelector(".run-entry small")?.textContent).toContain("Interrupted");
+  });
+
   it("desktop: collapses and restores the static sidebar, persisted", async () => {
     window.localStorage.removeItem("humanish-sidebar");
     await mount(<App data={data} />);

@@ -36,6 +36,7 @@ import {
   type Verdict,
   verdictText,
 } from "./judge.js";
+import { reviewOutcome } from "./display.js";
 
 /**
  * The preview route's run. The run scope closes the run it started on every exit, including
@@ -166,20 +167,18 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     feedbackCandidates: [],
   };
 
-  const finished = await run.finish(bundle);
-  const observer =
-    options.observer === undefined ? undefined : await renderPreviewObserver(finished, warnings);
   // The preview's policy keeps an Observer that did not render a warning: the bundle is still
   // evidence, and `export` can render it later.
   const policy = OUTCOME_POLICIES.preview;
-  const execution = judgeExecution(
-    observer === undefined || observer.ok
-      ? []
-      : [{ kind: "evidence", message: observer.error?.message ?? "render failed" }],
+  const execution = judgeExecution([], policy);
+  const finished = await run.finish(bundle, {
+    ok: resultOk({ judgment, execution, scorerFailures: [], policy }),
+    execution,
     policy,
-  );
-  const ok = resultOk({ judgment, execution, scorerFailures: [], policy });
-  await finished.recordOutcome({ ok, execution });
+  });
+  const observer =
+    options.observer === undefined ? undefined : await renderPreviewObserver(finished, warnings);
+  const { ok } = finished.outcome;
 
   return {
     schema: "humanish.run-result.v1",
@@ -224,6 +223,8 @@ Run: ${bundle.runId}
 Mode: ${bundle.mode}
 
 Verdict: ${verdictText(bundle.review.verdict, bundle.mode)}
+
+Outcome: ${reviewOutcome(bundle)}
 
 ${bundle.review.summary}
 

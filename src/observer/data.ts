@@ -8,6 +8,7 @@ import {
 } from "../run/outcomes.js";
 import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../actors/goal-source.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation } from "../run/bundle.js";
+import { bundleDisplayFacts, runDisplay, type RunDisplay } from "../run/display.js";
 import type { RunStream, RunStreamKind } from "../run/streams.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
@@ -31,7 +32,14 @@ export interface ObserverData {
   run: {
     runId: string;
     mode: RunBundle["mode"];
+    /** The participants' verdict. `display` says whether the run passed. */
     status: RunBundle["review"]["verdict"];
+    /**
+     * How the run reads (runDisplay in src/run/display.ts): `passed` only when the verdict is pass
+     * and run.json's outcome does not say the run failed. Absent in observer-data.json written
+     * before it existed.
+     */
+    display?: RunDisplay;
     title: string;
     createdAt: string;
     simCount: number;
@@ -140,9 +148,15 @@ const allKinds: RunStreamKind[] = [
   "summary",
 ];
 
+/**
+ * The Observer's projection of a bundle. `statusRecord` is the run's status.json, read for a
+ * bundle with no outcome in run.json: a run in progress, interrupted, or recorded before run.json
+ * carried its outcome.
+ */
 export function buildObserverData(
   bundle: RunBundle,
   generatedAt = new Date().toISOString(),
+  statusRecord?: unknown,
 ): ObserverData {
   const byKind = Object.fromEntries(allKinds.map((kind) => [kind, 0])) as Record<
     RunStreamKind,
@@ -160,15 +174,18 @@ export function buildObserverData(
     const sim =
       bundle.simulations.find((candidate) => candidate.id === stream.simId) ??
       fallbackSimulation(bundle, stream);
-    // A natural session can finish its protocol while the participant explicitly reports a
-    // blocker. Match the review's typed-outcome rule without rewriting the raw trace or
-    // guessing from prose. Never turn an active or failed harness into a participant outcome.
+    // The judge's status for the participant wins where the run recorded one, so a participant
+    // the verdict counted as blocked or as never engaging shows that way here. A bundle written
+    // before the judge's status was recorded keeps the typed-outcome reading: a natural session
+    // that finished while declaring a blocker. Never turn an active or failed harness into a
+    // participant outcome.
     const status =
-      (stream.status === "passed" || stream.status === "complete") &&
+      stream.judgedStatus ??
+      ((stream.status === "passed" || stream.status === "complete") &&
       stream.actor?.completionReason === "goal_satisfied" &&
       stream.actor.declaredOutcome === "blocked"
         ? "blocked"
-        : stream.status;
+        : stream.status);
     byKind[stream.kind] += 1;
 
     return {
@@ -214,6 +231,7 @@ export function buildObserverData(
       runId: bundle.runId,
       mode: bundle.mode,
       status: bundle.review.verdict,
+      display: runDisplay(bundleDisplayFacts(bundle, statusRecord)),
       title: `${bundle.scenario.title} - ${bundle.persona.name}`,
       createdAt: bundle.createdAt,
       simCount: bundle.simCount ?? bundle.simulations.length,

@@ -30,6 +30,11 @@
       "runId": "[run]",
       "mode": "dry-run",
       "status": "contract_proof_only",
+      "display": {
+        "state": "dry_run",
+        "label": "dry run",
+        "tone": "neutral"
+      },
       "title": "Built-in First-Run Smoke - Built-in Synthetic New User",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -153,7 +158,7 @@
       "No model, provider, or E2B substrate was used."
     ]
   },
-  "review.md": "# humanish Run Review\n\nRun: [run]\n\nMode: dry-run\n\nVerdict: dry run\n\nDry run: humanish wrote a synthetic run bundle. No product behavior was tested.\n\n## Public-Safety\n\n- Redaction: passed\n- Notes: Dry-run bundle: synthetic data only, nothing from a product.\n\n## Gaps\n\n- No browser was launched.\n- No product state was verified.\n- No model, provider, or E2B substrate was used.\n",
+  "review.md": "# humanish Run Review\n\nRun: [run]\n\nMode: dry-run\n\nVerdict: dry run\n\nOutcome: dry run\n\nDry run: humanish wrote a synthetic run bundle. No product behavior was tested.\n\n## Public-Safety\n\n- Redaction: passed\n- Notes: Dry-run bundle: synthetic data only, nothing from a product.\n\n## Gaps\n\n- No browser was launched.\n- No product state was verified.\n- No model, provider, or E2B substrate was used.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -332,7 +337,15 @@
         "No model, provider, or E2B substrate was used."
       ]
     },
-    "feedbackCandidates": []
+    "feedbackCandidates": [],
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
+    }
   },
   "status.json": {
     "schema": "humanish.run-status.v1",

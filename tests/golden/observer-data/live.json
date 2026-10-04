@@ -6,6 +6,11 @@
     "runId": "cua-2026-08-17T18-17-25-392Z-9b6aa972",
     "mode": "live",
     "status": "pass",
+    "display": {
+      "state": "passed",
+      "label": "passed",
+      "tone": "pass"
+    },
     "title": "One participant, one small diagram — the rebuilt Observer's live path on a real desktop - Computer-use operator (synthetic-new-user)",
     "createdAt": "2026-08-17T18:17:25.394Z",
     "simCount": 1,

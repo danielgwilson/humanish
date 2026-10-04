@@ -13,6 +13,7 @@ import {
   type Judgment,
   verdictText,
 } from "../../run/judge.js";
+import { reviewOutcome } from "../../run/display.js";
 import { desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { providerResourcesForOutcome } from "./bundle-parts.js";
@@ -214,7 +215,8 @@ export function renderCuaReviewMarkdown(bundle: RunBundle): string {
     "",
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
-    `- run gate: ${verdictText(bundle.review.verdict, bundle.mode)}`,
+    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
+    `- outcome: ${reviewOutcome(bundle)}`,
     `- summary: ${bundle.review.summary}`,
     ...(provenance ? [`- subject: ${provenance.message}`] : []),
     ...(trace

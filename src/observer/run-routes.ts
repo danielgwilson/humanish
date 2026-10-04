@@ -16,8 +16,14 @@ import {
   isSafeRunIdSegment,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
+import type { RunDisplay } from "../run/display.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
-import { RUN_STATUS_FILE, RUN_STATUS_STALE_MS, isRunStatusRecord } from "../run/status.js";
+import {
+  RUN_STATUS_FILE,
+  RUN_STATUS_STALE_MS,
+  isRunStatusRecord,
+  type RunStatusRecord,
+} from "../run/status.js";
 import { renderObserverHtml } from "./artifact.js";
 import {
   buildObserverData,
@@ -189,6 +195,7 @@ async function readObserverData(
   runRoot: PinnedDirectory,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
 ): Promise<ObserverData | null> {
+  const record = await readLocalRunStatus(runRoot);
   // Best-effort load from either source. Both reads swallow all errors on
   // purpose: this runs on every browser poll of a live run, where run.json may
   // be absent, still being written (a partial-JSON parse error), or superseded
@@ -204,7 +211,7 @@ async function readObserverData(
       typeof buildObserverData
     >[0];
     return withRuntimeStreamUrls(
-      await withLocalRunStatus(runRoot, buildObserverData(bundle)),
+      withLocalRunStatus(record, buildObserverData(bundle, undefined, record)),
       runtimeStreamUrls,
     );
   } catch {}
@@ -216,8 +223,8 @@ async function readObserverData(
     );
     if (!observerBytes) throw new Error("observer-data.json unavailable");
     return withRuntimeStreamUrls(
-      await withLocalRunStatus(
-        runRoot,
+      withLocalRunStatus(
+        record,
         withObserverEndings(JSON.parse(observerBytes.toString("utf8")) as ObserverData),
       ),
       runtimeStreamUrls,
@@ -227,51 +234,56 @@ async function readObserverData(
   return null;
 }
 
-/**
- * Liveness is a current read of a contained local status record, separate from run evidence.
- * A stale heartbeat means unknown: neither an old timestamp nor a persisted PID proves that a
- * process died (the evidence may have been copied from another machine). No PID is served/probed.
- */
-async function withLocalRunStatus(
-  runRoot: PinnedDirectory,
-  input: ObserverData,
-): Promise<ObserverData> {
-  // A served observation must never be inherited from a persisted projection or export.
-  const { runtime: _persistedRuntime, ...data } = input;
+/** The run directory's own status record, when it is well formed and names that directory. */
+async function readLocalRunStatus(runRoot: PinnedDirectory): Promise<RunStatusRecord | undefined> {
   try {
     const bytes = await readContainedFile(
       runRoot,
       path.join(runRoot.physicalPath, RUN_STATUS_FILE),
     );
-    if (!bytes) return data;
+    if (!bytes) return undefined;
     const record: unknown = JSON.parse(bytes.toString("utf8"));
-    if (
-      !isRunStatusRecord(record) ||
-      record.runId !== data.run.runId ||
-      record.mode !== data.run.mode ||
-      record.runId !== path.basename(runRoot.physicalPath)
-    )
-      return data;
-    const now = Date.now();
-    const started = Date.parse(record.startedAt);
-    const updated = Date.parse(record.updatedAt);
-    const timestampsValid =
-      Number.isFinite(started) && Number.isFinite(updated) && started <= updated && updated <= now;
-    let state: NonNullable<ObserverData["runtime"]>["state"] = "unknown";
-    if (timestampsValid) {
-      if (record.state === "finished") {
-        state = "finished";
-      } else if (record.state === "running" && now - updated <= RUN_STATUS_STALE_MS) {
-        state = "running";
-      }
-    }
-    return {
-      ...data,
-      runtime: { state, observedAt: new Date(now).toISOString(), source: "local-run-status" },
-    };
+    return isRunStatusRecord(record) && record.runId === path.basename(runRoot.physicalPath)
+      ? record
+      : undefined;
   } catch {
-    return data;
+    return undefined;
   }
+}
+
+/**
+ * Liveness is a current read of a contained local status record, separate from run evidence.
+ * A stale heartbeat means unknown: neither an old timestamp nor a persisted PID proves that a
+ * process died (the evidence may have been copied from another machine). A record its stopped
+ * process wrote is interrupted. No PID is served/probed.
+ */
+function withLocalRunStatus(
+  record: RunStatusRecord | undefined,
+  input: ObserverData,
+): ObserverData {
+  // A served observation must never be inherited from a persisted projection or export.
+  const { runtime: _persistedRuntime, ...data } = input;
+  if (record === undefined || record.runId !== data.run.runId || record.mode !== data.run.mode)
+    return data;
+  const now = Date.now();
+  const started = Date.parse(record.startedAt);
+  const updated = Date.parse(record.updatedAt);
+  const timestampsValid =
+    Number.isFinite(started) && Number.isFinite(updated) && started <= updated && updated <= now;
+  let state: NonNullable<ObserverData["runtime"]>["state"] = "unknown";
+  if (timestampsValid) {
+    if (record.state === "finished") {
+      state = "finished";
+    } else if (record.state === "interrupted") {
+      state = "interrupted";
+    } else if (record.state === "running" && now - updated <= RUN_STATUS_STALE_MS) {
+      state = "running";
+    }
+  }
+  return {
+    ...data,
+    runtime: { state, observedAt: new Date(now).toISOString(), source: "local-run-status" },
+  };
 }
 
 /** internal: exported for the stream lifecycle tests. */
@@ -333,6 +345,7 @@ export async function buildHistoryIndex(
     mode: string | null;
     href: string;
     status: string;
+    display?: RunDisplay;
     runtimeState?: NonNullable<ObserverData["runtime"]>["state"];
     streamCount: number;
     estimatedCostUsd: number | null;
@@ -359,6 +372,7 @@ export async function buildHistoryIndex(
         mode: admitRun ? (data?.run.mode ?? null) : run.mode,
         href: `/_humanish/runs/${encodeURIComponent(run.runId)}/observer/index.html`,
         status: data?.run.status ?? "unknown",
+        ...(data?.run.display === undefined ? {} : { display: data.run.display }),
         ...(data?.runtime ? { runtimeState: data.runtime.state } : {}),
         streamCount: data?.streams.length ?? 0,
         // Labeled run-total cost estimate (advisory; null when the run carries no cost summary).

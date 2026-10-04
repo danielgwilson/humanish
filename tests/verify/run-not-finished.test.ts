@@ -36,9 +36,9 @@ describe("verify on a run that did not finish", () => {
   const writeJson = (name: string, value: unknown) =>
     writeFile(path.join(runDir, name), `${JSON.stringify(value, null, 2)}\n`);
 
-  /** Leave the run as a SIGKILL does: an in-progress bundle and a `running` record. */
+  /** Leave the run as a SIGKILL does: an in-progress bundle with no outcome and a `running` record. */
   const kill = async (updatedAt: string) => {
-    const bundle = await readJson<RunBundle>("run.json");
+    const { outcome: _bundleOutcome, ...bundle } = await readJson<RunBundle>("run.json");
     for (const stream of bundle.streams) stream.status = "running";
     for (const simulation of bundle.simulations) simulation.status = "running";
     await writeJson("run.json", bundle);

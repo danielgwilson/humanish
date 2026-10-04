@@ -334,6 +334,11 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
+      "display": {
+        "state": "passed",
+        "label": "passed",
+        "tone": "pass"
+      },
       "title": "Concurrent shared-world proof - Concurrent shared-world swarm (3 personas)",
       "createdAt": "[ts]",
       "simCount": 3,
@@ -411,7 +416,7 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed viewport desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui actor artifacts",
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
@@ -420,7 +425,7 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed viewport desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui actor artifacts",
         "id": "stream-002",
         "sim": "[same as run.json simulation sim-002]",
         "kindLabel": "Browser",
@@ -429,7 +434,7 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed viewport desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui actor artifacts",
         "id": "stream-003",
         "sim": "[same as run.json simulation sim-003]",
         "kindLabel": "Browser",
@@ -492,7 +497,7 @@
     "summary": "Concurrent shared-world (one shared app, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta under load.",
     "gaps": []
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- summary: Concurrent shared-world (one shared app, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta under load.\n- plane: Shared app: clone of example-org/collab-app@abc123def4567890abc1, served at a public sandbox URL humanish created; seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshots, 1 delta. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- outcome: passed\n- summary: Concurrent shared-world (one shared app, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta under load.\n- plane: Shared app: clone of example-org/collab-app@abc123def4567890abc1, served at a public sandbox URL humanish created; seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshots, 1 delta. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -604,6 +609,7 @@
         "kind": "browser",
         "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) · concurrent-shared-world-proof",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -741,6 +747,7 @@
         "kind": "browser",
         "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) · concurrent-shared-world-proof",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -878,6 +885,7 @@
         "kind": "browser",
         "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) · concurrent-shared-world-proof",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -1323,6 +1331,14 @@
       },
       "desktopMinutes": "[desktopMinutes]",
       "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Each line's reason says what is missing. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "sandbox-receipts.ndjson": [

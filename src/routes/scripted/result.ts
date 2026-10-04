@@ -13,7 +13,6 @@ import {
   type ExecutionFailure,
   type ParticipantFacts,
 } from "../../run/judge.js";
-import type { ObserverResult } from "../../observer/render.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import { buildScriptedStudyBundle } from "./bundle.js";
@@ -56,9 +55,9 @@ function scriptedSurfaceFacts(result: ScriptedBrowserSessionResult): Participant
 }
 
 /**
- * The scripted run's execution failures: the session's own error, a live surface that never
- * returned, a surface that ended in a harness error, a subject sandbox whose release is
- * unconfirmed, and an Observer that failed.
+ * The scripted run's execution failures before the Observer renders: the session's own error, a
+ * live surface that never returned, a surface that ended in a harness error, and a subject sandbox
+ * whose release is unconfirmed. FinishedRun.renderObserver adds an Observer that did not render.
  */
 export function scriptedExecutionFailures(args: {
   dryRun: boolean;
@@ -67,9 +66,8 @@ export function scriptedExecutionFailures(args: {
   expected: number;
   sessionResults: readonly Pick<ScriptedBrowserSessionResult, "completionReason" | "reason">[];
   subject: Pick<ScriptedSubject, "sandboxId" | "killed" | "releaseWarning"> | undefined;
-  observer: Pick<ObserverResult, "ok" | "error">;
 }): ExecutionFailure[] {
-  const { sessionError, sessionResults, observer } = args;
+  const { sessionError, sessionResults } = args;
   const harnessErrorSession = sessionResults.find(
     (result) => result.completionReason === "harness_error",
   );
@@ -94,14 +92,6 @@ export function scriptedExecutionFailures(args: {
     ...(args.subject?.sandboxId === undefined || args.subject.killed
       ? []
       : [sandboxCleanupFailure("subject", args.subject.releaseWarning, args.runId)]),
-    ...(observer.ok
-      ? []
-      : [
-          {
-            kind: "evidence" as const,
-            message: observer.error?.message ?? "Observer failed for the scripted run.",
-          },
-        ]),
   ];
 }
 
@@ -173,18 +163,6 @@ export async function finishScriptedRun(
     ...(hostDigest === undefined ? {} : { hostDigest }),
   });
 
-  const finished = await run.finish(bundle);
-
-  // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
-  if (sessionResults.some((result) => result.trace.redaction.screenshots === "raw")) {
-    warnings.push(
-      "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. policies.redactScreenshots is not supported on the scripted route yet.",
-    );
-  }
-
-  const observer = await finished.renderObserver();
-  await validatePreparedRunArtifactPaths(runPaths);
-
   // A failing surface is captured evidence on this route: only the execution fails ok.
   const policy = OUTCOME_POLICIES.scripted;
   const execution = judgeExecution(
@@ -195,12 +173,25 @@ export async function finishScriptedRun(
       expected: surfaces.length,
       sessionResults,
       subject: scriptedSubject,
-      observer,
     }),
     policy,
   );
-  const ok = resultOk({ judgment, execution, scorerFailures: [], policy });
-  await finished.recordOutcome({ ok, execution });
+  const finished = await run.finish(bundle, {
+    ok: resultOk({ judgment, execution, scorerFailures: [], policy }),
+    execution,
+    policy,
+  });
+
+  // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
+  if (sessionResults.some((result) => result.trace.redaction.screenshots === "raw")) {
+    warnings.push(
+      "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. policies.redactScreenshots is not supported on the scripted route yet.",
+    );
+  }
+
+  const observer = await finished.renderObserver();
+  await validatePreparedRunArtifactPaths(runPaths);
+  const { ok } = finished.outcome;
   const harnessErrorSession = sessionResults.find(
     (result) => result.completionReason === "harness_error",
   );

@@ -4,7 +4,8 @@
 //
 // run.json remains the evidence of record. This file is a derived index and liveness record:
 // `verify` never gates on it, nothing here is a claim about what a participant did, and when the
-// two disagree run.json wins and this file can be rebuilt from it.
+// two disagree run.json wins. A finished record copies run.json's outcome, so it can be rebuilt
+// from it; a record written before run.json carried an outcome holds the only copy of the run's ok.
 //
 // Public safety: it holds only the run id, the study id/path/origin (the strings `humanish study list`
 // prints), the mode, a local pid and timestamps. It holds no hostname or user/path identity: an
@@ -13,9 +14,7 @@
 import type { RunBundle } from "./bundle.js";
 import { isProvenanceField, studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
-import type { ExecutionFailure, ExecutionOutcome } from "./judge.js";
-import { redactText } from "../evidence/redaction.js";
-import { readRunSandboxIds, scrubSandboxIds } from "./sandbox-ids.js";
+import type { ExecutionOutcome } from "./judge.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
 
@@ -42,9 +41,9 @@ const RUN_INTERRUPT_SIGNALS: readonly string[] = ["SIGINT", "SIGTERM", "SIGHUP"]
 interface RunStatusOutcome {
   /** `review.verdict` verbatim. */
   verdict?: string;
-  /** True when the run's own envelope reported success: the result's ok, recorded after finish. */
+  /** run.json's `outcome.ok`: the route result's ok. */
   ok?: boolean;
-  /** Whether the run worked as an execution, apart from its verdict; recorded after finish. */
+  /** run.json's `outcome.execution`: whether the run worked as an execution, apart from its verdict. */
   execution?: ExecutionOutcome;
   /** `review.participants` counts, when the run recorded any. */
   participants?: {
@@ -83,6 +82,9 @@ export function runStatusOutcome(bundle: RunBundle): RunStatusOutcome {
     ...(typeof bundle.cost?.fullyEstimated === "boolean"
       ? { estimatedCostComplete: bundle.cost.fullyEstimated }
       : {}),
+    ...(bundle.outcome?.state === "finished"
+      ? { ok: bundle.outcome.ok, execution: bundle.outcome.execution }
+      : {}),
   };
 }
 
@@ -118,11 +120,11 @@ export interface RunStatusHandle {
   /** Finalize: state `finished`, `completedAt`, and the derived outcome. Stops the cadence.
    *  Idempotent: a second call is a no-op, so a route with several exit paths is safe. */
   finish(outcome?: RunStatusOutcome): Promise<void>;
-  /** After finish, add the result's ok and execution outcome to the finished record, so status.json
-   *  and the result agree. Before finish it does nothing. */
-  settle(result: { ok: boolean; execution: ExecutionOutcome }): Promise<void>;
+  /** After finish, replace the finished record's outcome with one read from a rewritten run.json,
+   *  so the two agree. Before finish, and after an interrupt, it does nothing. */
+  restate(outcome: RunStatusOutcome): Promise<void>;
   /** The process is being stopped by `signal`: state `interrupted`, `completedAt` and the signal.
-   *  It stops the cadence and makes a later finish or settle a no-op, so the route cannot write
+   *  It stops the cadence and makes a later finish or restate a no-op, so the route cannot write
    *  `running` or `finished` over it. When the run had finished it writes nothing, waits for the
    *  writes already queued and resolves false. */
   interrupt(signal: RunInterruptSignal): Promise<boolean>;
@@ -201,27 +203,9 @@ export function beginRunStatus(
       };
       await write(finishedRecord);
     },
-    async settle(result) {
+    async restate(outcome) {
       if (finishedRecord === undefined) return;
-      // The record is public-safe by construction, so each message passes the shape redaction
-      // again even though the routes scrubbed it. A route settles with its own result, so an SDK
-      // error here can still name a sandbox; the receipts give the ids to replace.
-      const ids = await readRunSandboxIds(runPaths);
-      const redacted = (failure: ExecutionFailure): ExecutionFailure => ({
-        kind: failure.kind,
-        message: scrubSandboxIds(redactText(failure.message), ids),
-      });
-      const execution: ExecutionOutcome = {
-        succeeded: result.execution.succeeded,
-        failures: result.execution.failures.map(redacted),
-        ...(result.execution.warnings === undefined
-          ? {}
-          : { warnings: result.execution.warnings.map(redacted) }),
-      };
-      finishedRecord = {
-        ...finishedRecord,
-        outcome: { ...finishedRecord.outcome, ok: result.ok, execution },
-      };
+      finishedRecord = { ...finishedRecord, outcome };
       await write(finishedRecord);
     },
     async interrupt(signal) {

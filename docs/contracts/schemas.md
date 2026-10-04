@@ -1150,9 +1150,13 @@ finished | interrupted, mode, study?, pid, startedAt, updatedAt, completedAt?,
 signal?, outcome? }`. A record written by 0.108 or earlier also has `lab`, with the same value as
 `study`, and readers accept it.
 `outcome` carries the bundle's `verdict`, `participants`, `estimatedCostUsd` and
-`estimatedCostComplete` when the run finishes, then the result's `ok` and `execution: { succeeded,
-failures: [{ kind, message }], warnings? }` once the Observer has rendered. The
-verdict is what the participants experienced; `execution` is whether the run
+`estimatedCostComplete` when the run finishes, with `ok` and `execution: { succeeded,
+failures: [{ kind, message }], warnings? }` copied from `run.json`'s `outcome`
+([Run Outcome](run-bundle.md#run-outcome)) in the same publication. An Observer
+that does not render adds its `evidence` failure to both files. A record written
+before `run.json` carried an outcome got `ok` and `execution` after the Observer
+rendered and is the only copy of that run's `ok`; readers use it for such a run
+only. The verdict is what the participants experienced; `execution` is whether the run
 worked as an execution (`kind` is `harness`, `provider-cleanup`,
 `provider-policy`, `sandbox-cleanup`, `evidence`, `cap` or `run`), and `ok`
 reads both under the route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`).
@@ -1180,8 +1184,9 @@ and the estimate is a lower bound. A record without it, as every record before
 the CLI's run command when that signal stops a live run outside post-run
 analysis. It then kills the E2B sandboxes the run's `sandbox-receipts.ndjson`
 names, writes `reclaim-receipt.json` as `humanish reclaim` does, and exits
-128+n. The bundle is not finished: run.json keeps its last live flush, and no
-`outcome` is written. A `running` record that stopped refreshing still reads as
+128+n. The bundle is not finished: run.json keeps its last live flush, with
+`outcome: { state: interrupted, ok: false, signal, at }` when the run had
+flushed one, and status.json gets no `outcome`. A `running` record that stopped refreshing still reads as
 interrupted once stale. A library caller of `runStudy` gets no signal handling. A
 humanish older than this field rejects the state and falls back to the bundle's
 own liveness.
@@ -1193,8 +1198,10 @@ nothing at all until they completed.
 
 It is a derived index, not evidence. `run.json` remains the evidence-of-record;
 `verify` never gates on `status.json`, nothing in it is a claim about what a
-participant did, and when the two disagree the bundle wins and the record is
-rebuildable from it. A `running` record whose `updatedAt` is older than three
+participant did, and when the two disagree the bundle wins. Fields that cannot be
+rebuilt from `run.json`: `pid`, `startedAt`, `updatedAt` and `completedAt`, which
+no bundle records, and, on a record written before `run.json` carried an
+`outcome`, `outcome.ok` and `outcome.execution`. A `running` record whose `updatedAt` is older than three
 touch intervals is interrupted, not alive. A dropped connection or a killed
 terminal leaves exactly that shape, so the record reads as interrupted
 (`classifyRunStatus` is the one shared definition). Fields are
@@ -1211,16 +1218,20 @@ them is a claim about what a participant did.
 `humanish.run-index.v1` is the listing projection. One entry per run, read
 cheapest-source-first: the `status.json` record, else the bundle, else the run
 directory alone. `{ runId, derivedFrom: status | bundle | directory, liveness,
-mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?,
-participants?, estimatedCostUsd?, estimatedCostComplete?, analysisCost?,
-durationMs? }`. The point is cost: walking
+mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?, ok?,
+failure?, participants?, estimatedCostUsd?, estimatedCostComplete?,
+analysisCost?, durationMs? }`. `ok` and `failure` (the first execution failure)
+are the run's own outcome; `runDisplay` (`src/run/display.ts`) reads them with
+`liveness` and `verdict`, so the TUI and `humanish stats` show a run with
+`ok: false` as failed whatever its verdict. The point is cost: walking
 every run tree and parsing every bundle measured 167ms on a 25-run project,
 against 16ms cold and 2.8ms warm here, which is what makes a surface that
 refreshes on a cadence affordable. `derivedFrom` is reported so a surprising row
 can be traced to the file it came from. A run with receipts and no outcome is
 `interrupted` (the shape a dropped connection leaves), and so is an
 in-progress bundle reached without a status record: there is no freshness to
-judge, and nothing in it says the run finished.
+judge, and nothing in it says the run finished. A bundle with an `outcome` reached
+without a status record takes its liveness from `outcome.state`.
 
 `estimatedCostUsd` is the participants-and-desktops figure from the status
 record or bundle and excludes analysis. `estimatedCostComplete` says whether that
@@ -1683,7 +1694,9 @@ the stream shape, the meaningful-use rubric, and hard-failure rules.
 Review summarizes whether evidence supports the claim. It does not replace
 verification or maintainer acceptance.
 
-`verdict` is the run gate result. `participants.reachedGoal` retains the count of
+`verdict` is what the participants experienced, collapsed to one word. Whether
+the run passed also reads `run.json`'s `outcome.ok` ([Run Outcome](run-bundle.md#run-outcome)):
+a run whose execution failed shows as failed beside a `pass` verdict. `participants.reachedGoal` retains the count of
 recorded successful sessions; it is not an independent adjudication of their
 claims. Computer-use review and Observer labels distinguish a participant's
 reported completion from a recorded `stopWhen` or dwell condition match. A

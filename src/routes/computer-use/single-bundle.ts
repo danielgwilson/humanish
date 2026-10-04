@@ -152,6 +152,12 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
 
 function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView): RunStream {
   const { publicAppUrl, status, reason, lastScreenshot, desktopGeometry, screenshotMode } = view;
+  // The judge's status for a finished session, as the review counts it, so the Observer shows
+  // the participant the way the verdict judged it.
+  const judged =
+    args.session === undefined || args.inProgress === true
+      ? undefined
+      : participantStatusFor(args.session.status, args.credibility);
   return participantStream(
     SINGLE,
     {
@@ -164,6 +170,7 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
       kind: "browser",
       label: `${args.participantId ?? "lane-01"} · browser`,
       status,
+      ...(judged === undefined ? {} : { judgedStatus: judged }),
       transport: "snapshot",
       updatedAt: args.run.createdAt,
       embed: lastScreenshot

@@ -59,6 +59,11 @@
       "runId": "[run]",
       "mode": "dry-run",
       "status": "contract_proof_only",
+      "display": {
+        "state": "dry_run",
+        "label": "dry run",
+        "tone": "neutral"
+      },
       "title": "First-run scripted walkthrough - Scripted journey persona (synthetic-new-user)",
       "createdAt": "[ts]",
       "simCount": 2,
@@ -183,7 +188,7 @@
       "Live scripted session not yet run (dry run only)."
     ]
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- summary: Dry run of scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario checked at $0; no browser ran.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n\n## Gaps\n- Live scripted session not yet run (dry run only).\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run of scenario scripted-first-run (humanish/scenarios/scripted-first-run.yaml, 4 steps) against http://127.0.0.1:5173/: composition and scenario checked at $0; no browser ran.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n\n## Gaps\n- Live scripted session not yet run (dry run only).\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -401,7 +406,15 @@
         "Live scripted session not yet run (dry run only)."
       ]
     },
-    "feedbackCandidates": []
+    "feedbackCandidates": [],
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
+    }
   },
   "status.json": {
     "schema": "humanish.run-status.v1",

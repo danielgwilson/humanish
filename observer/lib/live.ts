@@ -1,6 +1,6 @@
 import { historyRunHref, traceItems } from "./artifact-href";
 import type { ObserverData, ObserverStream } from "./observer-data";
-import { isObserverData } from "./validate";
+import { isObserverData, runDisplay } from "./validate";
 
 export const OBSERVER_POLL_MS = 5000;
 export const HISTORY_POLL_MS = 30_000;
@@ -47,7 +47,9 @@ export async function fetchObserverData(
 interface HistoryRun {
   runId: string;
   href: string;
+  /** The participants' verdict. `display` says whether the run passed. */
   status: string;
+  display?: NonNullable<ObserverData["run"]["display"]>;
   mode: string | null;
   streamCount: number;
   createdAt?: string;
@@ -86,6 +88,9 @@ export async function fetchHistoryIndex(
         runId: candidate.runId,
         href,
         status: typeof candidate.status === "string" ? candidate.status : "unknown",
+        ...(runDisplay(candidate.display)
+          ? { display: candidate.display as NonNullable<HistoryRun["display"]> }
+          : {}),
         mode: typeof candidate.mode === "string" ? candidate.mode : null,
         streamCount:
           typeof candidate.streamCount === "number" && Number.isFinite(candidate.streamCount)
@@ -102,6 +107,32 @@ export async function fetchHistoryIndex(
   } catch {
     return null;
   }
+}
+
+/** A row whose run is live: the served process status when there is one, else its display. */
+export function historyRunIsRunning(
+  run: Pick<HistoryRun, "status" | "display" | "runtimeState">,
+): boolean {
+  if (run.runtimeState) return run.runtimeState === "running";
+  if (run.display) return run.display.state === "running";
+  return run.status === "running" || run.status === "preparing";
+}
+
+/** How a library row reads: its display label, or the verdict a row from an older server has. */
+export function historyRunLabel(run: Pick<HistoryRun, "status" | "display">): string {
+  const label = run.display?.label ?? run.status;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/**
+ * The sidebar dot's tone: `ok` only for a run that passed, `bad` for one that failed or needs
+ * attention. A row from an older server has no display, and its verdict is all it says.
+ */
+export function historyRunDot(run: Pick<HistoryRun, "status" | "display">): "" | " ok" | " bad" {
+  if (run.display === undefined)
+    return ["pass", "passed", "complete"].includes(run.status) ? " ok" : "";
+  if (run.display.tone === "pass") return " ok";
+  return run.display.tone === "fail" || run.display.tone === "warn" ? " bad" : "";
 }
 
 export function isActiveStream(stream: ObserverStream): boolean {

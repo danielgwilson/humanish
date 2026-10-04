@@ -18,6 +18,9 @@ the evidence. Everything else is a projection rebuilt from them:
 - `status.json` (`humanish.run-status.v1`) is a liveness index. When it disagrees with `run.json`,
   `run.json` wins. `verify` reads it, with the sandbox and reclaim receipts, only to say a run
   did not finish (`RUN_NOT_FINISHED`). That warning changes no check and no grade.
+- A run's `ok` and execution outcome are in `run.json`'s `outcome`, and `status.json` copies them.
+  A `status.json` written before `run.json` carried an outcome holds the only copy of that run's
+  `ok`, so readers fall back to it for such a run only.
 - Analysis findings cite turns and artifacts in the bundle.
 
 ## Consequences

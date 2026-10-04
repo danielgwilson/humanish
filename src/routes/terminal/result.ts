@@ -1,12 +1,8 @@
 import type { ObserverResult } from "../../observer/render.js";
 import type { ActorCompletionReason, ActorStatus, ActorTrace } from "../../actors/contract.js";
 import {
-  OUTCOME_POLICIES,
   participantHarnessFailed,
-  resultOk,
   type ExecutionFailure,
-  type ExecutionOutcome,
-  type Judgment,
   type ParticipantFacts,
 } from "../../run/judge.js";
 import {
@@ -36,8 +32,9 @@ export function terminalParticipantFacts(
 }
 
 /**
- * The live run's execution failures: a harness error, a blown spend cap, an unproven sandbox
- * teardown, and an Observer that failed.
+ * The live run's execution failures before the Observer renders: a harness error, a blown spend
+ * cap and an unproven sandbox teardown. FinishedRun.renderObserver adds an Observer that did not
+ * render.
  */
 export function terminalExecutionFailures(args: {
   participant: ParticipantFacts;
@@ -46,9 +43,8 @@ export function terminalExecutionFailures(args: {
   /** Already scrubbed and redacted. */
   sessionReason: string;
   cleanup: TerminalLedgers["cleanup"];
-  observer: Pick<ObserverResult, "ok" | "error">;
 }): ExecutionFailure[] {
-  const { participant, cleanup, observer } = args;
+  const { participant, cleanup } = args;
   return [
     ...(participantHarnessFailed(participant)
       ? [{ kind: "harness" as const, message: participant.sessionError ?? args.sessionReason }]
@@ -60,14 +56,6 @@ export function terminalExecutionFailures(args: {
           {
             kind: "sandbox-cleanup" as const,
             message: `Sandbox teardown unproven (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}`,
-          },
-        ]),
-    ...(observer.ok
-      ? []
-      : [
-          {
-            kind: "evidence" as const,
-            message: observer.error?.message ?? "Observer failed for the terminal-product run.",
           },
         ]),
   ];
@@ -92,9 +80,8 @@ export function terminalStudyResult(args: {
   /** The cap check's message when known spend or jobs exceeded the caps. */
   capFailure: string | undefined;
   declaredScorerFailure: string | undefined;
-  /** The run's judgment. On this evidence route ok does not read whether the agent passed. */
-  judgment: Judgment;
-  execution: ExecutionOutcome;
+  /** run.json's outcome.ok (FinishedRun.outcome). On this evidence route it does not read whether the agent passed. */
+  ok: boolean;
   observer: ObserverResult;
   warnings: string[];
 }): TerminalProductStudyResult {
@@ -114,8 +101,7 @@ export function terminalStudyResult(args: {
     noSpendProof,
     capFailure,
     declaredScorerFailure,
-    judgment,
-    execution,
+    ok,
     observer,
     warnings,
   } = args;
@@ -125,15 +111,6 @@ export function terminalStudyResult(args: {
   // remaining===0 is the by-id-confirmed-reclaimed state; remaining===1 (still present) and
   // remaining===-1 (kill(id) itself failed) are both unproven by design.
   const cleanupProven = cleanup.killed && cleanup.remaining === 0;
-  // A config-declared scorer that failed to render a pass (status:"fail" / malformed / throw) fails the
-  // run result as well as the persisted verdict: the keystone route's declared rubric is a gate, so
-  // its fail must drive exit code. Library callers never set this (additive, back-compat).
-  const ok = resultOk({
-    judgment,
-    execution,
-    scorerFailures: declaredScorerFailure === undefined ? [] : [declaredScorerFailure],
-    policy: OUTCOME_POLICIES.terminal,
-  });
 
   return {
     ...studyResultIdentity("terminal", studyId),

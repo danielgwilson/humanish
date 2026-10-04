@@ -7,6 +7,11 @@
     "runs": [
       {
         "createdAt": "string",
+        "display": {
+          "label": "string",
+          "state": "string",
+          "tone": "string"
+        },
         "mode": "string",
         "path": "string",
         "runId": "string"

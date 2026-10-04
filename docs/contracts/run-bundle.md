@@ -70,6 +70,15 @@ artifacts:
 review:
   schema: humanish.review.v1
   verdict: "contract_proof_only|pass|fail|blocked|timed_out"
+outcome: # optional, additive: how the run ended (Run Outcome below)
+  state: "finished"
+  ok: false
+  execution:
+    succeeded: false
+    failures:
+      - kind: "harness|provider-cleanup|provider-policy|sandbox-cleanup|evidence|cap|run"
+        message: "<public-safe message>"
+    warnings: [] # omitted when empty
 redaction:
   status: "passed"
   notes: "<public-safe note>"
@@ -99,6 +108,59 @@ adapterArtifacts:
 Persisted `run.json` files must not contain absolute local target paths. Runtime
 commands may return the caller's working directory in process-local JSON
 responses, but durable run bundles use the public-safe `[target-cwd]` marker.
+
+## Run Outcome
+
+`outcome` records how the run ended as an execution. `review.verdict` is what the
+participants experienced; `outcome.ok` is the route result's `ok`, which
+`humanish run --json` prints as `runOk`. The two differ: a terminal run whose agent passed but whose sandbox
+teardown is unproven has verdict `pass` and `ok: false`.
+
+```yaml
+# Run.finish published the final bundle.
+outcome:
+  state: finished
+  ok: true
+  execution:
+    succeeded: true
+    failures: []
+    warnings: # omitted when empty
+      - kind: sandbox-cleanup
+        message: "lane-01: Sandbox release is unconfirmed. Reclaim it by recorded id with `humanish reclaim --run <id>`."
+---
+# The CLI's signal handler stopped the run before it finished.
+outcome:
+  state: interrupted
+  ok: false
+  signal: SIGINT # or SIGTERM, SIGHUP
+  at: "<ISO timestamp>"
+```
+
+`Run.finish` (`src/run/run.ts`) writes `finished` with the route's `ok` and its
+execution outcome (`judgeExecution` in `src/run/judge.ts`). Each route's policy in
+`OUTCOME_POLICIES` decides which failure kinds fail the run and which only warn.
+An Observer that does not render is an `evidence` failure known only after
+`run.json` is on disk: `FinishedRun.renderObserver` adds it to `outcome` and to
+`status.json` before the route returns, and no Observer page exists that could
+show the run without it. Messages pass the same redaction and sandbox id scrub
+as the rest of the bundle.
+
+When a signal stops a live run, the handler writes `interrupted` into the last
+flushed `run.json`, and every later write of that run keeps it. A run stopped
+before its first flush has no `run.json`; its `status.json` is the record.
+
+`outcome` is absent while a run is in progress, when its process died without
+writing it, and on runs recorded before the field existed. For those, readers
+take liveness from `status.json` and, for an older finished run, its `ok` and
+`execution` from `status.json`'s `outcome`. That record is the only copy of an
+older run's `ok`; for a run with `outcome` in `run.json`, `status.json` copies it.
+
+Every surface that shows whether a run passed calls `runDisplay`
+(`src/run/display.ts`) with the run's liveness, verdict and `ok`: the Observer
+(`observer-data.json` `run.display`), its run library, the served Observer,
+`humanish runs`, `humanish review`, `humanish stats`, the TUI and `review.md`'s
+`outcome` line. A run
+shows as `passed` only when its verdict is `pass` and its `ok` is not false.
 
 ## Recorded session stop causes
 

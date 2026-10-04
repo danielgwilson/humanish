@@ -19,6 +19,18 @@ The Unreleased section holds the full notes for the next version until it is tag
   (docs/contracts/study-analysis.md#reading-findings).
 - A live run's human output ends with up to three findings from its automatic analysis, one line
   each, and the `humanish review --run <id>` command for all of them.
+- `run.json` records how the run ended in a new optional `outcome` field. `Run.finish` writes
+  `{ state: "finished", ok, execution }` with the route result's `ok` and its execution failures
+  and warnings, and an Observer that does not render adds its `evidence` failure there. When a
+  signal stops a live run, the handler writes `{ state: "interrupted", ok: false, signal, at }`
+  into the last flushed `run.json`. `status.json` now copies `ok` and `execution` from `run.json`.
+  Runs recorded before this field keep their `ok` in `status.json` only, and every reader falls
+  back to it for them. `docs/contracts/run-bundle.md#run-outcome` documents the field.
+- `observer-data.json`'s `run.display`, the run library's `display`, the `display` in
+  `humanish runs --json` and `humanish review --json`, and `humanish stats`' `totals.outcomes` say
+  how each run reads: `passed`, `failed`, `blocked`, `timed_out`, `no_verdict`, `dry_run`,
+  `interrupted`, `running` or `unknown`, with the first execution failure as the reason a run
+  failed.
 
 ### Changed
 
@@ -52,6 +64,33 @@ The Unreleased section holds the full notes for the next version until it is tag
   `humanish doctor` counts the transcript folders earlier participants left and prints the command
   that removes them. The trust-boundaries and local-agents pages state what each local agent can
   reach.
+
+- A run whose own `ok` is false no longer shows as a pass. The Observer, its run library, the
+  served Observer, `humanish runs`, `humanish review`, `humanish stats`, the TUI and `review.md`
+  decide what to show
+  through one function, `runDisplay` in `src/run/display.ts`, which reads the verdict and the
+  run's `ok`. Before, each read the participants' verdict alone, and the `ok` lived only in
+  `status.json`, written after the Observer page. A terminal run whose sandbox teardown was
+  unproven (`ok: false`, verdict `pass`) showed a green dot in the Observer, a check mark in the
+  TUI, `pass` in review.md and counted as passed in `humanish stats`.
+- The TUI showed a check mark for a blocked, timed-out or no-verdict run. It now shows a flag in
+  the warning color. A dry run shows a dot.
+- The run library colored passed and failed runs the same gray, because its color table was keyed
+  on `passed` and `failed` while rows carried `pass` and `fail`. Pips now follow the display
+  state: green for passed, red for failed, amber for blocked, timed out, no verdict and
+  interrupted, blue for running. The `running` pulse and `live` badge, which never fired, follow
+  it too.
+- The served Observer reported a run its signal handler marked interrupted as "Status
+  unconfirmed". It now says interrupted.
+- `humanish runs` printed no state; each line now carries the display label. `humanish review`
+  printed `pass` for a run whose `ok` is false; it now leads with `failed (verdict pass)` and a
+  `why:` line naming the first execution failure.
+- The Observer judged a participant blocked only from a declared outcome, while the judge also
+  reads the closing report. Computer-use and shared-world runs now record each participant's
+  `judgedStatus`, and the Observer shows it, so the participant card and the verdict agree.
+- review.md's computer-use line `run gate:` is now `verdict:`, as on the other routes, and every
+  route's review.md has an `outcome:` line.
+
 - When the optional peer `@e2b/desktop` is missing, the live-run error, `humanish reclaim` and
   `humanish doctor` name the command for where humanish is installed. Node resolves the peer from
   humanish's own directory, and the advice used to assume this project or an npx cache:

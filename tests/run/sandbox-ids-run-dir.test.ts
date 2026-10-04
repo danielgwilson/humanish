@@ -6,7 +6,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { sandboxIdDigest } from "../../src/evidence/redaction.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { runScope, type RunScope } from "../../src/run/run.js";
+import { runScope, type FinishOutcome, type RunScope } from "../../src/run/run.js";
+import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import type { PreparedOutputRoot } from "../../src/run/contained-output.js";
 import { holdsKeyedSandboxId } from "../../src/run/sandbox-ids.js";
 import { appendedSandboxIds, appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
@@ -41,7 +42,11 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
-async function finishRun(runId: string, during: (run: Run) => Promise<void>) {
+async function finishRun(
+  runId: string,
+  during: (run: Run) => Promise<void>,
+  outcome: FinishOutcome = PASSING_OUTCOME,
+) {
   const { finished } = await runScope(async (scope) => {
     const started = await scope.startRun({
       cwd,
@@ -53,11 +58,10 @@ async function finishRun(runId: string, during: (run: Run) => Promise<void>) {
     });
     if (!started.ok) throw new Error(started.message);
     await during(started.run);
-    await started.run.finish({
-      ...template,
-      runId,
-      artifactRoot: path.join(".humanish", "runs", runId),
-    });
+    await started.run.finish(
+      { ...template, runId, artifactRoot: path.join(".humanish", "runs", runId) },
+      outcome,
+    );
   });
   return { finished, dir: path.join(cwd, ".humanish", "runs", runId) };
 }
@@ -96,31 +100,37 @@ describe("a finished run's directory", () => {
     expect(await readFile(path.join(dir, "sandbox-receipts.ndjson"), "utf8")).toContain(RAW);
   });
 
-  it("replaces an id whose receipt write failed, and one in status.json's settled outcome", async () => {
-    const { finished, dir } = await finishRun("unjournaled", async (run) => {
-      // A directory where the journal goes makes the append fail; the run goes on.
-      await mkdir(path.join(run.paths.physicalRunRoot, "sandbox-receipts.ndjson"));
-      await appendSandboxReceipt(run.paths, receipt(UNJOURNALED));
-      await writeFile(
-        path.join(run.paths.physicalRunRoot, "teardown.log"),
-        `kill(${UNJOURNALED}) returned true\n`,
-      );
-    });
+  it("replaces an id whose receipt write failed, and one in the outcome run.json and status.json record", async () => {
+    const { dir } = await finishRun(
+      "unjournaled",
+      async (run) => {
+        // A directory where the journal goes makes the append fail; the run goes on.
+        await mkdir(path.join(run.paths.physicalRunRoot, "sandbox-receipts.ndjson"));
+        await appendSandboxReceipt(run.paths, receipt(UNJOURNALED));
+        await writeFile(
+          path.join(run.paths.physicalRunRoot, "teardown.log"),
+          `kill(${UNJOURNALED}) returned true\n`,
+        );
+      },
+      {
+        ...PASSING_OUTCOME,
+        ok: false,
+        execution: {
+          succeeded: false,
+          failures: [{ kind: "sandbox-cleanup", message: `kill(${UNJOURNALED}) timed out` }],
+        },
+      },
+    );
     expect(await readFile(path.join(dir, "teardown.log"), "utf8")).toBe(
       `kill(${label(UNJOURNALED)}) returned true\n`,
     );
-    await finished!.recordOutcome({
-      ok: false,
-      execution: {
-        succeeded: false,
-        failures: [{ kind: "sandbox-cleanup", message: `kill(${UNJOURNALED}) timed out` }],
-      },
-    });
-    const status = await readFile(path.join(dir, "status.json"), "utf8");
-    expect(status).not.toContain(UNJOURNALED);
-    expect(JSON.parse(status).outcome.execution.failures[0].message).toBe(
-      `kill(${label(UNJOURNALED)}) timed out`,
-    );
+    for (const file of ["run.json", "status.json"]) {
+      const text = await readFile(path.join(dir, file), "utf8");
+      expect(text).not.toContain(UNJOURNALED);
+      expect(JSON.parse(text).outcome.execution.failures[0].message).toBe(
+        `kill(${label(UNJOURNALED)}) timed out`,
+      );
+    }
   });
 
   it("gives a run created later at a deleted run's path none of its ids", async () => {

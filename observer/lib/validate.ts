@@ -33,6 +33,30 @@ const item = (value: unknown): boolean =>
   (value.coord === undefined ||
     (object(value.coord) && finite(value.coord.x) && finite(value.coord.y)));
 
+const DISPLAY_STATES = [
+  "running",
+  "interrupted",
+  "passed",
+  "failed",
+  "blocked",
+  "timed_out",
+  "no_verdict",
+  "dry_run",
+  "unknown",
+];
+const DISPLAY_TONES = ["pass", "fail", "warn", "live", "neutral"];
+
+/** `run.display` (RunDisplay in src/run/display.ts), as the producer writes it. */
+export function runDisplay(value: unknown): boolean {
+  return (
+    object(value) &&
+    strings(value, ["state", "label", "tone"]) &&
+    DISPLAY_STATES.includes(value.state as string) &&
+    DISPLAY_TONES.includes(value.tone as string) &&
+    optionalString(value.reason)
+  );
+}
+
 /** Admit the fields used by the UI, including nested optional evidence. A bad poll
  * must not replace a usable snapshot. Unknown additive fields remain compatible. */
 export function isObserverData(value: unknown): value is ObserverData {
@@ -106,6 +130,7 @@ export function isObserverData(value: unknown): value is ObserverData {
       }
     }
   }
+  if (value.run.display !== undefined && !runDisplay(value.run.display)) return false;
   const runtime = value.runtime;
   if (
     runtime !== undefined &&

@@ -145,6 +145,12 @@
       "runId": "[run]",
       "mode": "live",
       "status": "fail",
+      "display": {
+        "state": "failed",
+        "label": "failed",
+        "tone": "fail",
+        "reason": "harness: lane-01: Live E2B desktop launch requires optional peer dependency @e2b/desktop."
+      },
       "title": "CUA routing proof - Computer-use operator (first-time-visitor)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -262,7 +268,7 @@
     "summary": "Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
     "gaps": []
   },
-  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- run gate: fail\n- summary: Live E2B desktop launch requires optional peer dependency @e2b/desktop.\n",
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: lane-01: Live E2B desktop launch requires optional peer dependency @e2b/desktop.\n- summary: Live E2B desktop launch requires optional peer dependency @e2b/desktop.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -429,6 +435,19 @@
       "source": "app-url",
       "state": {
         "provenance": "undeclared"
+      }
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "lane-01: Live E2B desktop launch requires optional peer dependency @e2b/desktop."
+          }
+        ]
       }
     }
   },

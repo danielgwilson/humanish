@@ -13,6 +13,7 @@ import {
 import type { CleanupResult } from "../../run/results.js";
 import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
+import type { RunDisplay } from "../../run/display.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
 import {
@@ -324,11 +325,19 @@ const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
   timed_out: "timed out",
 };
 
-/** A run's review: its verdict, summary and gaps, its analysis findings, and where review.json is. */
+/**
+ * A run's review: its verdict, summary and gaps, its analysis findings, and where review.json is.
+ * A pass verdict on a run whose own ok is false leads with how the run ended (runDisplay), then why.
+ */
 function formatReviewHuman(
   result:
     | VerifyResult
-    | (ReviewSummary & { path: string; runId: string; analysis: AnalysisFindings }),
+    | (ReviewSummary & {
+        path: string;
+        runId: string;
+        analysis: AnalysisFindings;
+        display?: RunDisplay;
+      }),
 ): HumanOutput {
   if (!("verdict" in result)) {
     // A run that did not pass verify has no review to show; verify says why.
@@ -345,9 +354,16 @@ function formatReviewHuman(
         }
       : humanError(error);
   }
+  const verdict = REVIEW_VERDICTS[result.verdict];
+  const display = result.display;
+  const headline =
+    result.verdict === "pass" && display !== undefined && display.state !== "passed"
+      ? `${display.label} (verdict pass)`
+      : verdict;
   return (
     [
-      `humanish review ${result.runId}: ${REVIEW_VERDICTS[result.verdict]}`,
+      `humanish review ${result.runId}: ${headline}`,
+      ...(display?.reason === undefined ? [] : [`why: ${display.reason}`]),
       "",
       result.summary,
       ...(result.gaps.length === 0 ? [] : ["", "gaps:", ...result.gaps.map((gap) => `- ${gap}`)]),
@@ -460,7 +476,7 @@ function formatRunsHuman(result: RunsResult): HumanOutput {
       `latest: ${result.latest ?? "none"}`,
       ...result.runs.map(
         (run) =>
-          `- ${run.runId} ${run.mode ?? "unknown"} ${run.createdAt ?? "unknown"} ${run.path}`,
+          `- ${run.runId} ${run.mode ?? "unknown"} ${run.display?.label ?? "unreadable"} ${run.createdAt ?? "unknown"} ${run.path}`,
       ),
     ].join("\n") + "\n"
   );

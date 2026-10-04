@@ -9,6 +9,7 @@ import { bundleHead, type RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { createRunArtifactPaths } from "../../src/run/paths.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
+import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import {
   RUN_STATUS_FILE,
   RUN_STATUS_SCHEMA,
@@ -133,7 +134,7 @@ describe("run status: identity + liveness on disk", () => {
       const touched = "2026-08-19T10:00:05.000Z";
       await waitFor(async () => ((await read("run-b")).updatedAt === touched ? true : undefined));
 
-      await run.finish(bundle);
+      await run.finish(bundle, PASSING_OUTCOME);
       const finished = await read("run-b");
       expect(finished.state).toBe("finished");
       expect(finished.completedAt).toBe(touched);
@@ -173,11 +174,44 @@ describe("run status: identity + liveness on disk", () => {
       // The route keeps going until the process exits: its ticks and its finish change nothing.
       expect(vi.getTimerCount()).toBe(0);
       vi.advanceTimersByTime(RUN_STATUS_TOUCH_MS * 3);
-      await run.finish(bundle);
+      await run.finish(bundle, PASSING_OUTCOME);
       expect(await read("run-f")).toEqual(interrupted);
       expect(await active.status.interrupt("SIGINT")).toBe(false);
     });
     expect(activeRuns().some((entry) => entry.runId === "run-f")).toBe(false);
+  });
+
+  it("an interrupt lands in the last flushed run.json, and a later finish keeps it", async () => {
+    const bundle = await bundleFor("run-i");
+    const runJson = async () =>
+      JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "run-i", "run.json"), "utf8"));
+    await runScope(async (scope) => {
+      const run = await startLive(scope, "run-i");
+      const [active] = activeRuns().filter((entry) => entry.runId === "run-i");
+      if (active === undefined) throw new Error("the started run was not registered");
+      await run.writeSnapshot(bundle);
+      expect((await runJson()).outcome).toBeUndefined();
+
+      expect(await active.status.interrupt("SIGINT")).toBe(true);
+      const interrupted = { state: "interrupted", ok: false, signal: "SIGINT" };
+      expect((await runJson()).outcome).toMatchObject(interrupted);
+
+      await run.finish(bundle, PASSING_OUTCOME);
+      expect((await runJson()).outcome).toMatchObject(interrupted);
+      expect((await read("run-i")).state).toBe("interrupted");
+    });
+  });
+
+  it("an interrupt before the first flush leaves status.json as its only record", async () => {
+    await runScope(async (scope) => {
+      await startLive(scope, "run-j");
+      const [active] = activeRuns().filter((entry) => entry.runId === "run-j");
+      expect(await active?.status.interrupt("SIGINT")).toBe(true);
+      await expect(
+        stat(path.join(cwd, ".humanish", "runs", "run-j", "run.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+      expect((await read("run-j")).state).toBe("interrupted");
+    });
   });
 
   it("an interrupt while finish is still writing waits for that write", async () => {
@@ -196,7 +230,7 @@ describe("run status: identity + liveness on disk", () => {
     await runScope(async (scope) => {
       const run = await startLive(scope, "run-g");
       const [active] = activeRuns().filter((entry) => entry.runId === "run-g");
-      await run.finish(bundle);
+      await run.finish(bundle, PASSING_OUTCOME);
       const finished = await read("run-g");
       expect(await active?.status.interrupt("SIGTERM")).toBe(false);
       expect(await read("run-g")).toEqual(finished);
@@ -234,7 +268,7 @@ describe("run status: identity + liveness on disk", () => {
       // A directory where the record goes makes every later status write fail.
       await rm(statusPath("run-d"));
       await mkdir(path.join(statusPath("run-d"), "blocker"), { recursive: true });
-      await run.finish(bundle);
+      await run.finish(bundle, PASSING_OUTCOME);
     });
     expect(finished?.runId).toBe("run-d");
     const published = JSON.parse(
@@ -247,7 +281,7 @@ describe("run status: identity + liveness on disk", () => {
   it("the record is one small file: the point is listing runs without parsing bundles", async () => {
     const bundle = await bundleFor("run-e");
     await runScope(async (scope) => {
-      await (await startLive(scope, "run-e", lab)).finish(bundle);
+      await (await startLive(scope, "run-e", lab)).finish(bundle, PASSING_OUTCOME);
     });
     expect((await read("run-e")).state).toBe("finished");
     expect((await stat(statusPath("run-e"))).size).toBeLessThan(600);

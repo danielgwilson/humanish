@@ -12,7 +12,6 @@ import {
   resultOk,
   type ExecutionFailure,
   type ExecutionOutcome,
-  type Judgment,
 } from "../../run/judge.js";
 import {
   participantFactsOf,
@@ -107,12 +106,9 @@ function cuaStudyResult(args: {
   participantPlan: CuaParticipantPlan;
   rerunLineage: RunRerunLineage | undefined;
   bundle: RunBundle;
-  /** The run's judgment; on this gate route ok requires every participant to have passed. */
-  judgment: Judgment;
-  execution: ExecutionOutcome;
+  /** The run's ok and execution outcome as run.json records them (FinishedRun.outcome). */
+  outcome: { ok: boolean; execution: ExecutionOutcome };
   observer: ObserverResult;
-  /** Why the scorer failed the run; already folded into the bundle's review. */
-  scorerFailures: readonly string[];
   receivingWarnings: string[];
   aggregateWarnings: string[];
   adapterWarnings: string[];
@@ -141,12 +137,7 @@ function cuaStudyResult(args: {
   const participantOk = (outcome: ParticipantRunOutcome | undefined): boolean =>
     participantOutcomeOk(outcome, dryRun);
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = resultOk({
-    judgment: args.judgment,
-    execution: args.execution,
-    scorerFailures: args.scorerFailures,
-    policy: OUTCOME_POLICIES["computer-use"],
-  });
+  const { ok } = args.outcome;
 
   const participantWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
   const warnings = [
@@ -200,7 +191,7 @@ function cuaStudyResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.execution.failures[0] !== undefined ? `; ${args.execution.failures[0].message}` : ""}.`
+        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.outcome.execution.failures[0] !== undefined ? `; ${args.outcome.execution.failures[0].message}` : ""}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();
@@ -252,13 +243,13 @@ function cuaStudyResult(args: {
 }
 
 /**
- * The run's execution failures: each participant whose session failed in the harness, each provider whose
- * cleanup is unconfirmed or that reported a disallowed item after its last request, each sandbox
- * whose release is unconfirmed, and an Observer that failed.
+ * The run's execution failures before the Observer renders: each participant whose session failed
+ * in the harness, each provider whose cleanup is unconfirmed or that reported a disallowed item
+ * after its last request, and each sandbox whose release is unconfirmed. FinishedRun.renderObserver
+ * adds an Observer that did not render.
  */
 function computerUseExecutionFailures(
   outcomes: readonly ParticipantRunOutcome[] | undefined,
-  observer: Pick<ObserverResult, "ok" | "error">,
   runId: string,
 ): ExecutionFailure[] {
   return [
@@ -289,14 +280,6 @@ function computerUseExecutionFailures(
           ],
     ),
     ...unreleasedSandboxFailures(outcomes, runId),
-    ...(observer.ok
-      ? []
-      : [
-          {
-            kind: "evidence" as const,
-            message: observer.error?.message ?? "Observer failed for the computer-use run.",
-          },
-        ]),
   ];
 }
 
@@ -377,15 +360,17 @@ export async function finishCuaRun(
   bundle.review = foldScorerFailures(bundle.review, scorerResult.failures);
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
-  const finished = await run.finish(bundle);
+  const policy = OUTCOME_POLICIES["computer-use"];
+  const execution = judgeExecution(computerUseExecutionFailures(outcomes, runId), policy);
+  const finished = await run.finish(bundle, {
+    ok: resultOk({ judgment, execution, scorerFailures: scorerResult.failures, policy }),
+    execution,
+    policy,
+  });
   const observer = await finished.renderObserver();
   streams.attachFinal(observer);
 
-  const execution = judgeExecution(
-    computerUseExecutionFailures(outcomes, observer, runId),
-    OUTCOME_POLICIES["computer-use"],
-  );
-  const result = cuaStudyResult({
+  return cuaStudyResult({
     studyId: plan.studyId,
     cwd,
     runId,
@@ -399,14 +384,10 @@ export async function finishCuaRun(
     participantPlan,
     rerunLineage,
     bundle,
-    judgment,
-    execution,
+    outcome: finished.outcome,
     observer,
-    scorerFailures: scorerResult.failures,
     receivingWarnings,
     aggregateWarnings,
     adapterWarnings,
   });
-  await finished.recordOutcome({ ok: result.ok, execution });
-  return result;
 }
