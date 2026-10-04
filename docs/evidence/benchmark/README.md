@@ -57,7 +57,7 @@ Every child process gets `DO_NOT_TRACK=1`.
 4. After each run: `humanish reclaim --check`, which asks E2B whether each of the run's sandboxes
    still exists and kills nothing, then `humanish reclaim` when the check's `state` is anything
    other than `clean` (`running`, `unconfirmed` or `unknown`). Results record both states. A run
-   made by humanish 0.110 or earlier records no owner tags, so its check reports `unknown` even
+   made by humanish 0.110.0 or earlier records no owner tags, so its check reports `unknown` even
    when every receipted sandbox is gone. Then `humanish analyze --dry-run` for the admission
    estimate, and `humanish analyze --max-cost <analysis-max-usd>` when that estimate fits the
    budget.
