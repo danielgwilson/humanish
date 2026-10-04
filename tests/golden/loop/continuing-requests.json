@@ -180,7 +180,7 @@
     "result": {
       "status": "incomplete",
       "completionReason": "budget_reached",
-      "reason": "Stopped before the next model turn: estimated spend $0.21 passed execution.caps.maxUsd=$0.1 with no material progress",
+      "reason": "Stopped before the next model turn: estimated spend $0.21 passed caps.maxUsd=$0.1 with no material progress",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "continuing-synthetic",
@@ -206,7 +206,7 @@
         "status": "incomplete",
         "completionReason": "budget_reached",
         "stopCause": "spend_limit",
-        "reason": "Stopped before the next model turn: estimated spend $0.21 passed execution.caps.maxUsd=$0.1 with no material progress",
+        "reason": "Stopped before the next model turn: estimated spend $0.21 passed caps.maxUsd=$0.1 with no material progress",
         "ids": {},
         "counts": {
           "turns": 1,

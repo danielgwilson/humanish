@@ -69,7 +69,7 @@ A participant is a `ComputerUseProvider` (the brain) driving a `ComputerUseExecu
 `createProvider` to `runStudy` to replace the default brain on a computer-use study, and
 `inProcess: { executor }` with it to drive an app in this process with no desktop. An
 in-process run uses the same participant runner as hosted participants, so a declared
-`execution.caps.maxUsd` or `maxTotalUsd` applies: report usage from your provider, or the
+`caps.maxUsd` or `caps.maxTotalUsd` applies: report usage from your provider, or the
 run stops at its first request with `stopCause: "usage_unreported"`. The
 [participant example](repo:examples/participant/)
 runs one end to end:

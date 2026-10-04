@@ -595,7 +595,7 @@
     "result": {
       "status": "failed",
       "completionReason": "harness_error",
-      "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+      "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -619,7 +619,7 @@
         "durationMs": 5000,
         "status": "failed",
         "completionReason": "harness_error",
-        "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+        "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
         "ids": {
           "model": "golden-1"
         },
@@ -685,7 +685,7 @@
     "result": {
       "status": "incomplete",
       "completionReason": "budget_reached",
-      "reason": "Stopped before the next model turn: estimated spend $0.15 passed execution.caps.maxUsd=$0 with no material progress",
+      "reason": "Stopped before the next model turn: estimated spend $0.15 passed caps.maxUsd=$0 with no material progress",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -710,7 +710,7 @@
         "status": "incomplete",
         "completionReason": "budget_reached",
         "stopCause": "spend_limit",
-        "reason": "Stopped before the next model turn: estimated spend $0.15 passed execution.caps.maxUsd=$0 with no material progress",
+        "reason": "Stopped before the next model turn: estimated spend $0.15 passed caps.maxUsd=$0 with no material progress",
         "ids": {
           "model": "golden-1"
         },

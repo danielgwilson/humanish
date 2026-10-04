@@ -540,7 +540,7 @@ describe("a lab whose live plan is refused", () => {
   it.each([45, 80])(
     "shows an uncapped terminal lab's planner refusal in place of its keys at %i columns",
     async (columns) => {
-      // A live terminal lab without scenario.caps parses, and the planner refuses it. The real
+      // A live terminal lab without caps parses, and the planner refuses it. The real
       // summary reads it, so the screen shows the message `humanish run` would print.
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-tui-refusal-"));
       try {
@@ -579,7 +579,7 @@ describe("a lab whose live plan is refused", () => {
           );
           const text = frame.replace(/\s+/g, " ");
           expect(text).toContain("A live run is refused: A live terminal-product run");
-          expect(text).toContain("scenario.caps");
+          expect(text).toContain("set caps with maxUsd");
           expect(frame).not.toContain("keys ✓");
           expect(frame).not.toContain("not found");
           // At 45 columns the price, with its "refused", sits on the line under the label.

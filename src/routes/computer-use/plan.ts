@@ -267,8 +267,8 @@ function entryTargetReason(config: StudyConfig, subjectRoute: DeclaredSubjectRou
     code: "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
     message:
       provisionedRoute || localAppSubject || !allowPublicTargets
-        ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
-        : "subject.appUrl and actors[0].lanes[].target entries must be valid http(s) URLs.",
+        ? "subject.appUrl and any participants[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+        : "subject.appUrl and participants[].target entries must be valid http(s) URLs.",
   };
 }
 
@@ -373,7 +373,7 @@ export function planComputerUseStudy(
     return refuse(
       "in-scope",
       "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered computer-use actor.`,
+      `actor.type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
   const rejection = cuaStudyRejection(
@@ -390,7 +390,7 @@ export function planComputerUseStudy(
     return refuse(
       "in-scope",
       "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld.",
+      "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld.",
       actor,
     );
   // The in-process route drives subject.appUrl on this machine and creates no desktop, so it would

@@ -520,7 +520,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-01: dry-run actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona persona-01: dry-run actor ready; switch mode to live for a real concurrent session.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -529,7 +529,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-02: dry-run actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona persona-02: dry-run actor ready; switch mode to live for a real concurrent session.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -538,7 +538,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-03: dry-run actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona persona-03: dry-run actor ready; switch mode to live for a real concurrent session.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },

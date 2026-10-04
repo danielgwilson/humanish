@@ -122,7 +122,7 @@ export function buildTerminalProductBundle(args: {
       level: "info",
       type: "terminal-lab.contract.ready",
       message:
-        "Dry-run bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
+        "Dry-run bundle ready. Switch mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
     }),
   ];
 

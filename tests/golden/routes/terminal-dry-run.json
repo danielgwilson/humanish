@@ -323,7 +323,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.contract.ready",
-        "message": "Dry-run bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
+        "message": "Dry-run bundle ready. Switch mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },

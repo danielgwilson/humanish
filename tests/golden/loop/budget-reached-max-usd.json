@@ -2,7 +2,7 @@
   "result": {
     "status": "incomplete",
     "completionReason": "budget_reached",
-    "reason": "Stopped before the next model turn: estimated spend $0.45 passed execution.caps.maxUsd=$0.35 after productive activity (2 material actions, 3 turns)",
+    "reason": "Stopped before the next model turn: estimated spend $0.45 passed caps.maxUsd=$0.35 after productive activity (2 material actions, 3 turns)",
     "trace": {
       "schema": "humanish.actor-trace.v1",
       "provider": "golden-cua",
@@ -27,7 +27,7 @@
       "status": "incomplete",
       "completionReason": "budget_reached",
       "stopCause": "spend_limit",
-      "reason": "Stopped before the next model turn: estimated spend $0.45 passed execution.caps.maxUsd=$0.35 after productive activity (2 material actions, 3 turns)",
+      "reason": "Stopped before the next model turn: estimated spend $0.45 passed caps.maxUsd=$0.35 after productive activity (2 material actions, 3 turns)",
       "ids": {
         "model": "golden-1"
       },

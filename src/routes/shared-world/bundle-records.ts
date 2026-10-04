@@ -258,7 +258,7 @@ function sharedWorldEvents(
       at: createdAt,
       level: "info",
       type: "concurrent-shared-world.contract.ready",
-      message: `Persona ${spec.planned.id}: dry-run actor ready; switch scenario.mode to live for a real concurrent session.`,
+      message: `Persona ${spec.planned.id}: dry-run actor ready; switch mode to live for a real concurrent session.`,
     });
   }
   return events;

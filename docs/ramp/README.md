@@ -68,7 +68,7 @@ Implemented:
   ignored `.humanish/labs/*.yaml` overlays, as `humanish.lab.v2` compositions
   (`src/study/config.ts`) with one engine and no hardcoded lab kinds;
 - a first-party actor registry with five registered descriptors
-  (`src/actors/registry.ts`); `actors[0].type` is a real dispatch key on the
+  (`src/actors/registry.ts`); `actor.type` is a real dispatch key on the
   computer-use, scripted-browser, and terminal-product routes;
 - a computer-use route and clone subject provider: `subject.source: app-url`
   drives a lab-owner loopback app in a hosted desktop, and `subject.source:
@@ -78,8 +78,9 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   `local-app` (library-assisted, in-process, no desktop), `terminal-product`,
   `desktop-cli` (computer-use participant at a terminal), and `local-tree`;
   each route fails closed on unsupported combinations;
-- bounded fan-out with separate worlds (`actors[0].count`, `lanes[]`, or `roster[]`),
-  backed by deterministic and kept live proof;
+- bounded fan-out with separate worlds (`participants` as a count, a
+  `{ count, instruction }` object or a list), backed by deterministic and kept
+  live proof;
 - concurrent single-origin shared-world execution with deterministic and kept
   live proof; verify still reads bundles from the sequential route removed in
   0.106.0;
@@ -97,7 +98,7 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
 - a CLI-loadable adopter scorer seam (`review.scorer.ref` in the lab manifest, or
   a `--scorer <path>` override): a config-declared `.mjs` supplies
   `{score, deriveFeedback, deriveArtifacts}`, resolved with the same containment
-  as `scenario.ref` and digest-pinned in the bundle
+  as `scenario` and digest-pinned in the bundle
   (`humanish.scorer-provenance.v1`); a config-declared scorer that fails to render
   a pass fails the run on the scorer-capable routes, while library callers keep
   the additive behavior (`costProbe` stays library-only); on the terminal route
@@ -138,22 +139,22 @@ browser row. Accepted rows have further required fields, such as `subject.serve`
 the parse error names the missing one. The computer-use actors are `openai-computer-use` and
 `local-agent`.
 
-| Route          | `subject.source`                                 | `execution.target`       | `actors[0].type`                       | Result                                                                         |
-| -------------- | ------------------------------------------------ | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `computer-use` | `app-url`                                        | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` | `app-url`                                        | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
-| `computer-use` | `clone`, `local-tree`                            | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` | `desktop-cli`                                    | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
-| `computer-use` | `local-app`                                      | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
-| `shared-world` | `clone`, `local-tree` + `topology: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `shared-world` | `app-url` + `topology: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
-| `scripted`     | `app-url` with a loopback URL                    | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
-| `scripted`     | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
-| `terminal`     | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
-| `preview`      | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
-| none           | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
+| Route          | `subject.source`                              | `execution.target`       | `actor.type`                           | Result                                                                         |
+| -------------- | --------------------------------------------- | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
+| `computer-use` | `app-url`                                     | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` | `app-url`                                     | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
+| `computer-use` | `clone`, `local-tree`                         | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` | `desktop-cli`                                 | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
+| `computer-use` | `local-app`                                   | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
+| `shared-world` | `clone`, `local-tree` + `route: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `shared-world` | `app-url` + `route: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
+| `scripted`     | `app-url` with a loopback URL                 | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
+| `scripted`     | `clone`                                       | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
+| `terminal`     | `terminal-product`                            | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
+| `preview`      | `this-repo`                                   | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
+| none           | any other pairing                             | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
 
-The fixture's `supported` field records which routes accept declared `actors[0].tasks`. The
+The fixture's `supported` field records which routes accept declared `actor.tasks`. The
 computer-use labs in the fixture accept them. The other routes refuse them at parse.
 
 ## First Commands

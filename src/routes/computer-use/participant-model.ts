@@ -191,7 +191,7 @@ export function participantSessionOptions(
             ).estimatedCostUsd;
             const totalUsd = deps.runBudget!.note(spec.planned.id, estimate);
             return totalUsd > deps.runBudget!.maxTotalUsd
-              ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
+              ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
               : null;
           },
         }),

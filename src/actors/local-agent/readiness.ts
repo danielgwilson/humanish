@@ -14,7 +14,7 @@ export type LocalAgentRefusal =
   | { kind: "signin-required"; message: string }
   /** Hosted Codex on an unsupported platform or a CLI release the launcher refuses. */
   | { kind: "unsupported"; message: string }
-  /** A ChatGPT-account Codex with execution.caps, which it cannot price. */
+  /** A ChatGPT-account Codex with a dollar cap in `caps`, which it cannot price. */
   | { kind: "unpriced-cap"; message: string };
 
 export async function localAgentRefusal(args: {
@@ -29,8 +29,8 @@ export async function localAgentRefusal(args: {
     return {
       kind: "agent-missing",
       message:
-        `actors[0].type: local-agent needs the ${agent} CLI on PATH and signed in. ` +
-        `Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead.`,
+        `actor.type: local-agent needs the ${agent} CLI on PATH and signed in. ` +
+        `Install it, or set OPENAI_API_KEY and use actor.type: openai-computer-use instead.`,
     };
   }
   if (chosen.authStatus !== "authenticated") {
@@ -60,7 +60,7 @@ export async function localAgentRefusal(args: {
     return {
       kind: "unpriced-cap",
       message:
-        "A ChatGPT-account Codex participant has no API-dollar price, so execution.caps.maxUsd/maxTotalUsd cannot be enforced. Remove the dollar cap and use finite execution timeout/step limits, or use an API-backed participant; no desktop was launched.",
+        "A ChatGPT-account Codex participant has no API-dollar price, so caps.maxUsd/maxTotalUsd cannot be enforced. Remove the dollar cap and use finite execution timeout/step limits, or use an API-backed participant; no desktop was launched.",
     };
   }
   return undefined;

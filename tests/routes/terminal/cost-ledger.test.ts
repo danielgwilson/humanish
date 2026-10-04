@@ -363,9 +363,9 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
     expect(bundle.review.verdict).toBe("pass");
-    expect(
-      bundle.review.gaps.some((gap: string) => gap.includes("passed scenario.caps.maxUsd=1")),
-    ).toBe(true);
+    expect(bundle.review.gaps.some((gap: string) => gap.includes("passed caps.maxUsd=1"))).toBe(
+      true,
+    );
     expect(status.outcome.ok).toBe(false);
     expect(
       status.outcome.execution.failures.map((failure: { kind: string }) => failure.kind),
@@ -434,7 +434,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_UNPRICED_CAP");
-    expect(result.error?.message).toMatch(/scenario\.caps\.maxMinutes/);
+    expect(result.error?.message).toMatch(/caps\.maxMinutes/);
     expect(result.error?.message).not.toContain(FAKE_RUNTIME_KEY);
     expect(result.runId).toBe("not-created");
     expect(moduleLoads).toBe(0);
