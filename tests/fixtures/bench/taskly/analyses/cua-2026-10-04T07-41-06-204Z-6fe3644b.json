@@ -1,0 +1,174 @@
+{
+  "schema": "humanish.study-analysis.v1",
+  "id": "analysis-3c5dbf73-699d-4168-b0a0-a0b4e1d6e1f3",
+  "runId": "cua-2026-10-04T07-41-06-204Z-6fe3644b",
+  "status": "complete",
+  "provider": "openai",
+  "promptVersion": "study-evidence-6",
+  "config": {
+    "model": "gpt-6-astra",
+    "maxCostUsd": 1.75,
+    "maxOutputTokens": 16384
+  },
+  "usage": {
+    "inputTokens": 36502,
+    "outputTokens": 7582,
+    "estimatedCostUsd": 0.835367
+  },
+  "result": {
+    "summary": "The retained synthetic participant completed the exploratory assignment: they tried Taskly with five chores and errands, supplied feedback, and decided not to keep using it. Adding tasks, checking them off, individual deletion, and renaming with Enter visibly worked. The main concern was that all four remaining tasks disappeared from the displayed list immediately after refresh. Other supported concerns were opposite-status filter results, repeated Clear completed attempts without visible removal, Save attempts requiring an Enter workaround, and an empty-list panel displaying “undefined.” These observations establish session-specific behavior, not its implementation cause or prevalence.",
+    "participants": [
+      {
+        "streamId": "stream-001",
+        "summary": "Started with “undefined” and “0 left,” then added five tasks using Enter. Renaming the dentist task remained in edit mode after two Save clicks, but pressing Enter produced the correctly renamed row. Checking groceries and kitchen cleaning reduced the remaining count from five to three. Active displayed the checked tasks, while Completed displayed the unchecked tasks. The participant returned to All and repeatedly tried Clear completed without visible removal. Individual deletion removed the unfinished dry-cleaning task and reduced the count to two. After refresh, no task rows remained visible. The participant then reported what worked, described the unexpected behavior, and declined continued use.",
+        "outcomeReason": "The assignment required trying the app, reaching a keep-or-not decision, and reporting the experience—not ending with a prescribed saved list. Captures affirmatively show substantial list use, and e000058 supplies the requested concrete feedback and decision. Completion of that exploratory assignment does not mean the list was retained or every attempted operation worked."
+      }
+    ],
+    "findings": [
+      {
+        "id": "F1",
+        "title": "Existing tasks were absent immediately after refresh",
+        "summary": "The All view changed from four tasks, including two unfinished tasks, to no task rows and “0 left” after refresh. The participant reported this as the reason they would not keep using Taskly. No restoration was observed.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The participant dispatched Ctrl+R and then waited.",
+            "basis": "action"
+          },
+          {
+            "claim": "The pre-refresh All view contained four task rows and “2 left”; the post-refresh All view contained “undefined,” “0 left,” and no task rows.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant said losing the list on refresh made Taskly unreliable and was why they would not keep using it.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Active and Completed displayed opposite completion states",
+        "summary": "Active showed only checked, struck-through tasks, while Completed showed only unchecked tasks. The participant reported caution about clearing tasks after seeing the filter behavior. Returning to All restored the full overview, but correct status-filter results were not observed.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "With Active selected, the view contained only Buy groceries and Clean the kitchen, both checked and struck through.",
+            "basis": "visual"
+          },
+          {
+            "claim": "With Completed selected, the view contained the three unchecked tasks rather than the two checked tasks.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant expressed caution about clearing completed tasks after noticing the filter behavior and proposed returning to All first.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "The subsequent All-selected view displayed all five tasks with their checked and unchecked states intact.",
+            "basis": "visual"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "title": "Clear completed attempts left checked tasks visible",
+        "summary": "Three Clear completed attempts on populated lists were followed by captures that still showed both checked tasks. Individual deletion worked for the unfinished dry-cleaning task, but did not resolve the attempted bulk clearing.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The participant made three later clicks at the displayed Clear completed control's position.",
+            "basis": "action"
+          },
+          {
+            "claim": "Both checked tasks remained visible after the Clear completed attempts.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Individual deletion removed Pick up dry cleaning and changed the remaining count from three to two while leaving both checked tasks present.",
+            "basis": "visual"
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "title": "Save clicks left edit mode open; Enter completed the rename",
+        "summary": "Two Save attempts left the dentist task in an editable field and prompted reported uncertainty. Refocusing the field and pressing Enter produced the correctly renamed, non-editing row.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "After two clicks at Save, the participant switched to refocusing the edit field and pressing Enter.",
+            "basis": "action"
+          },
+          {
+            "claim": "The task remained an input containing Schedule dentist appointment with Save visible after both clicks, then appeared as a normal row with Edit visible after Enter.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant questioned whether Save had done anything and whether the first click had registered.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "title": "“undefined” appeared in the empty-list panel",
+        "summary": "At entry and again after refresh, the panel displayed “undefined” alongside “0 left.” The participant reported this as confusing. Task entry still worked, so the empty-state issue did not prevent starting a list.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "Both captured empty-list states displayed the literal text “undefined” and a “0 left” count.",
+            "basis": "visual"
+          },
+          {
+            "claim": "After the first addition, the panel showed Buy groceries and “1 left” instead of “undefined.”",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant included the initial “undefined” display among things that confused them or behaved unexpectedly.",
+            "basis": "participant_statement"
+          }
+        ]
+      }
+    ]
+  }
+}

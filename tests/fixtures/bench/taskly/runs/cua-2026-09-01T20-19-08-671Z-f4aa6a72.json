@@ -1,0 +1,119 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T20-19-08-671Z-f4aa6a72",
+  "mode": "live",
+  "createdAt": "2026-09-01T20:19:08.673Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.181663,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.16983
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.011833
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added three tasks, including a detailed project-update task. The long text wrapped neatly and remained readable.\n\nI completed “Buy oat milk.” The count changed from 3 left to 2 left. The Active filter showed the two unfinished tasks, and Completed showed only the crossed-out finished task.\n\nI renamed “Water the plants” to “Water the indoor plants.” Edit changed the row into a text field with a clear Save button, and saving worked.\n\nTo tidy up, I used Clear completed, confirmed the Completed view was empty, then deleted the two remaining trial tasks. The list ended empty.\n\nEverything important worked clearly. I hesitated slightly over Delete because it removes a task immediately without confirmation or an undo option. “Clear completed” also stays available when there are no completed tasks, which made it look as though there might still be something to clear.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "notice",
+            "lifecycle": "completed",
+            "title": "provider turn stalled; retrying once",
+            "text": "provider turn 1 produced nothing within 180000ms; sending the same observation again"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Considering task input**\n\nI need to use a natural approach to add a few tasks. Maybe I should start with three examples via input. It seems like it could work to type something obvious first and then hit the enter button. I think task examples should be fictional, like “Buy oat milk” or “Book a de"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [100 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [16 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Organizing tasks**\n\nI want to get started by marking one checkbox as complete. That feels like a good first step! Then, I'll focus on the filters for both active and completed tasks before checking the counter to track my progress. Breaking it down like this helps me stay organized and ensures I'm"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Managing active tasks**\n\nI'm looking at my completed tasks and thinking of renaming one. It seems like there’s a task that’s likely still active, related to watering plants. I’ll need to click on either “All” or “Active” to find it, and then I can edit the task accordingly. Keeping things organize"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [23 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Organizing tasks efficiently**\n\nI’m trying to tidy up after completing tasks, which likely means using the \"clear completed\" button, and maybe I should delete the remaining test tasks. I’m thinking that I need to check if “clear completed” works while the Active filter is on. When the user says “t"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Considering button functions**\n\nI'm noticing that the clear button stays visible when nothing has been completed. It could be useful to mention that it's either expected or unexpected for it to be disabled/hidden, but it doesn't seem like a defect. I might want to tidy everything up or consider us"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Reporting task completion**\n\nI’ve reached the goal, so I need to report what worked and note anything that behaved differently. The first line should be exact. I should mention that “clear completed” will remain enabled when there are none. I might need to delete immediately without confirmation s"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 10",
+            "text": "REACHED THE GOAL.\nI added three tasks, including a detailed project-update task. The long text wrapped neatly and remained readable.\n\nI completed “Buy oat milk.” The count changed from 3 left to 2 left. The Active filter showed the two unfinished tasks, and Completed showed only the crossed-out fini"
+          }
+        ]
+      }
+    }
+  ]
+}

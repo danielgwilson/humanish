@@ -1,0 +1,113 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T19-24-22-829Z-a4c0ed27",
+  "mode": "live",
+  "createdAt": "2026-09-01T19:24:22.832Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.177839,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.173732
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.004107
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "## What worked\n\n- Added three tasks using both **Enter** and the **Add** button:\n  - “Buy milk”\n  - “Call dentist”\n  - A longer project-update task\n- The long task wrapped across several lines cleanly without hiding its controls.\n- Marked “Buy milk” complete; it was struck through and the count changed from **3 left** to **2 left**.\n- **Active** showed only the two unfinished tasks.\n- **Completed** showed only “Buy milk.”\n- Renamed “Call dentist” to “Book dentist appointment” using **Edit** and **Save**.\n- **Clear completed** removed the finished task even while I was viewing the Active filter.\n- Deleted the remaining trial tasks, leaving the list empty with **0 left**.\n\n## Things that felt different from expected\n\n- **Clear completed** remained available even when there were no completed tasks. I expected it to be disabled or hidden.\n- After deleting everything while viewing **Active**, the message said, “Nothing here yet. Add your first task above.” A filter-specific message such as “No active tasks” would be clearer.\n- Delete and Clear completed act immediately, with no confirmation or undo. That is quick, but it would be easy to remove something accidentally.\n\nOverall, the main list actions were straightforward and worked on the first try. I encountered no blockers or unclear error output.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Testing task input**\n\nI need to use the actual app for this. I think adding a few tasks, including a long one, might help. Maybe I can also test entering them and checking the button functionality. I'll start by adding \"Buy milk\" — I can do this by typing it in and hitting enter to see if it feels"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [8 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Adding reminders**\n\nI want to add some reminders, like \"Call dentist\" and a longer one for \"Prepare...\". I think using the button to create a detailed reminder would work well. It's always good to have important tasks ready and organized. I’ll just make sure I'm adding everything correctly so I do"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [106 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Managing tasks efficiently**\n\nI need to mark some tasks as complete, focusing on filtering between active and completed items. I also want to rename one of the tasks to keep everything organized. For example, I can mark \"Buy milk\" by simply clicking the checkbox. Getting everything tidied up will "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Renaming task**\n\nI need to rename one of my tasks. I'm considering changing it to \"Active.\" Maybe I can go with something like \"Go Active\" and then edit the task name to \"Call dentist.\" This could help clarify what I need to do and keep things organized. It's a small tweak, but it seems important "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Editing appointment title**\n\nI'm attempting to edit the input mode, and I need to save without a cancel option—maybe just rename it to \"Book dentist appointment.\" I'm thinking about using ctrl+a to select everything and then hit Enter, which seems natural? Since there's an obvious save button, cli"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Checking layout issues**\n\nI’m noticing that the \"Clear completed\" button is still enabled, even when there aren’t any tasks. It seems unexpected but is a minor issue. When I try to tidy up the active tasks and delete them one by one, I see that the layout shifts. I'll need to address this to make "
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 10",
+            "text": "## What worked\n\n- Added three tasks using both **Enter** and the **Add** button:\n  - “Buy milk”\n  - “Call dentist”\n  - A longer project-update task\n- The long task wrapped across several lines cleanly without hiding its controls.\n- Marked “Buy milk” complete; it was struck through and the count chan"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T20-19-28-652Z-02364cbf",
+  "mode": "live",
+  "createdAt": "2026-09-01T20:19:28.655Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.136683,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.133828
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.002855
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added three tasks, including a longer dentist-appointment reminder. The long text wrapped neatly and remained readable.\n\nI marked “Buy oat milk” complete, then used:\n- **Active** to see the two unfinished tasks.\n- **Completed** to see only the finished task.\n- **All** to return to the full list.\n\nI renamed “Water the plants” to “Water the kitchen herbs” using **Edit**, changing the text, and selecting **Save**. I tidied up with **Clear completed**, which removed the finished task and left the two active tasks.\n\nEverything worked without errors. I briefly hesitated because the Completed view said “2 left” while showing one completed task; I understood this as the total unfinished count, but it initially looked related to the current filter. After clearing the completed task, the **Clear completed** button remained visible and apparently usable even though there was nothing left to clear.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Adding tasks efficiently**\n\nI need to make sure the process of adding tasks is straightforward. Maybe hitting enter after typing each one would work well. For the first task, I’ll add \"Buy oat milk,\" then \"Book dentist appointment\" as the second one. The third task might be longer. I should consid"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [92 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [16 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Completing tasks step by step**\n\nI need to mark something as complete, so I think I should click the checkbox first. Then I’ll test if it shows as Active and Completed. I might rename the task to Edit. A quick thought: should I do something while it's active? Let’s go ahead and complete the task f"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Renaming task**\n\nI accidentally clicked the edit button, and I think the text input wasn't auto-selected. Now I need to rename it. I’ll use ctrl+a to select the entire text, then type \"Water the kitchen herbs\" and save it. It's a simple enough task, but I just want to make sure I do it right witho"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [23 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Cleaning up tasks**\n\nI'm thinking about how to tidy up once I'm done. It looks like using the \"Clear completed\" option is a straightforward choice, leaving active tasks intact. If the user wants everything organized, perhaps I should delete remaining demo tasks afterward. However, the \"2 left\" cou"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 8",
+            "text": "REACHED THE GOAL.\nI added three tasks, including a longer dentist-appointment reminder. The long text wrapped neatly and remained readable.\n\nI marked “Buy oat milk” complete, then used:\n- **Active** to see the two unfinished tasks.\n- **Completed** to see only the finished task.\n- **All** to return t"
+          }
+        ]
+      }
+    }
+  ]
+}

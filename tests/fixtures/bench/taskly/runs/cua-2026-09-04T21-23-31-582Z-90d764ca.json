@@ -1,0 +1,149 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T21-23-31-582Z-90d764ca",
+  "mode": "live",
+  "createdAt": "2026-09-04T21:23:31.585Z",
+  "study": {
+    "id": "detect-taskly-clean-claude-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.006304,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "claude (local, operator-authenticated, one session per run)",
+        "estimatedCostUsd": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.006304
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "local-agent-claude-session",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nWhat I did: I typed 'Buy oat milk' into the box and pressed Enter. It was added straight away, the box cleared, and the counter said '1 left'. I then typed a long task describing a quarterly budget summary and pressed Enter, then typed 'Call the dentist' and clicked the Add button. Both ways of adding worked. I ticked the checkbox on 'Buy oat milk' and it got a strikethrough and the counter dropped to '2 left'. Active showed only the two unfinished tasks. Completed showed only the ticked one. Back on All, I clicked Edit on 'Call the dentist', the row turned into a text box with a Save button, and I typed 'Book a dentist appointment'. I clicked Save and the new name stuck. To tidy up I clicked Clear completed, which removed the finished task, then clicked Delete on the other two. The list ended on 'Nothing here yet' with '0 left'.\n\nWhat behaved differently from what I expected:\n\n1. My long task got cut off without any warning. I typed a sentence that ended with 'and a short list of open questions for finance', but the saved task ends mid-word at 'and a s'. Nothing told me there was a length limit, the text box did not stop me typing, and there was no message afterwards. I would have lost the end of that note without noticing if I had not been reading the list. This is the one thing I would call a real problem.\n\n2. Enter does not save a rename. Enter adds a new task from the top box, so I pressed Enter after retyping the name in the edit box. Nothing happened and the row stayed in edit mode. I had to click Save. It works, but the two boxes behave differently for the same key.\n\n3. Delete and Clear completed act instantly with no confirmation and no undo. That was fine for me here, but a mis-click would lose a task for good.\n\nWhere I hesitated: after Enter failed on the rename I paused to work out whether the rename had gone through or not, since the box looked the same. The Save button being right there made it obvious enough. Everything else was clear from what was on screen and I never needed instructions.",
+        "ids": {
+          "model": "claude (local, operator-authenticated, one session per run)"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "The app is empty and the input placeholder says 'What needs doing?'. The obvious first step is to click the input, type a short task, and press Enter to see whether Enter adds it (most list apps do). If Enter does nothing I'll try the Add button next."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "Enter added the task, cleared the box and kept focus, and the counter went to '1 left'. Next I'll add a long descriptive task with Enter, then a third short one, this time clicking the Add button to see if that path works the same way."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [159 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [16 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "Two tasks are in the list, but the long one was cut off mid-word at 'and a s' with no warning, so the app silently truncated it at roughly 120 characters. I'll note that and keep going: click the Add button to add 'Call the dentist', then tick the checkbox on 'Buy oat milk' to mark it complete and s"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "The Add button worked, 'Buy oat milk' is struck through and ticked, and the counter now says '2 left'. Next I'll click the Active filter to check it hides the finished task, and only after seeing that I'll try Completed."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "Active shows only the two unfinished tasks and hides the ticked one, which is what I expected. Now I'll click Completed to check the other side of the filter."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "Completed shows just the ticked task, so both filters behave as expected. Now I'll go back to All and click Edit on 'Call the dentist' to see how renaming works before typing anything."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "Edit turned the row into an inline text box with a Save button, which is clear enough. I'll click into the box, select everything, and type the new name. Next turn I'll press Enter to see whether that saves, and fall back to the Save button if not."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [26 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "The new name is in the box. I'll press Enter to see if that saves the rename the same way Enter added tasks. If the row is still in edit mode afterwards I'll click Save."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "Enter did nothing here: the row is still in edit mode with the Save button showing. That's inconsistent with the add box, where Enter worked, so I'll note it and click Save instead."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "The rename saved and the row is back to normal text. Time to tidy up. I'll click Clear completed to remove the finished 'Buy oat milk', then delete the truncated long task, whose Delete button should sit where it did in the Active view once the top row is gone. I'll check the screen before deleting "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "Clear completed removed the finished task and Delete removed the long one without any confirmation prompt, both instantly. One task left. I'll delete it and then check the list is back to the empty state before wrapping up."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "The list is back to the empty state with '0 left', so everything I added is gone. I added three tasks, completed one, used both filters, renamed one, and tidied up. Two things stood out: the long task was silently cut off, and Enter did not save a rename. Done."
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 12",
+            "text": "REACHED THE GOAL.\n\nWhat I did: I typed 'Buy oat milk' into the box and pressed Enter. It was added straight away, the box cleared, and the counter said '1 left'. I then typed a long task describing a quarterly budget summary and pressed Enter, then typed 'Call the dentist' and clicked the Add button"
+          }
+        ]
+      }
+    }
+  ]
+}

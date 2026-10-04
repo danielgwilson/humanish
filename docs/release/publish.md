@@ -21,6 +21,20 @@ participant through the first-contact study against it. It needs provider keys a
 dollar of agent tokens; the study's own caps hold product spend to $0. CI never runs it. Read what
 the participant said before you tag.
 
+For a minor release, also run the efficacy benchmark on the release commit and commit what it
+writes:
+
+```bash
+pnpm build
+pnpm bench --runs 2 --max-usd 5 --dotenv path/to/.env --out docs/evidence/benchmark
+```
+
+It needs `OPENAI_API_KEY` and `E2B_API_KEY` and stops starting runs before its estimated spend
+could pass $5. Compare report recall, analysis recall and the clean arm's invented count with the
+previous results file for the same mission, add the new summary to the results table in
+[the benchmark README](../evidence/benchmark/README.md), and read the summary's claims to check
+before you tag.
+
 `pnpm public-surface:scan` scans tracked files and the npm dry-run payload, including the built
 `dist/`. It fails on common secret tokens, absolute local user paths, local workspace paths,
 unapproved commit email metadata, known private upstream system names, and binary assets missing
@@ -48,7 +62,7 @@ features and pre-1.0 breaking changes, each with its migration in the release no
    keeps a title, the opening paragraph and a link to the GitHub release, under an empty
    Unreleased heading.
 3. Run `pnpm docs:generate`, which writes the version into `site/content/docs/cli.mdx`.
-4. Run the two checks above on that commit, then open the pull request.
+4. Run the checks above on that commit, then open the pull request.
 
 ## Tag and publish
 

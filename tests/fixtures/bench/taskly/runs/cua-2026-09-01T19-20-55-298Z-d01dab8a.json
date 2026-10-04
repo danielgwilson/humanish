@@ -1,0 +1,148 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T19-20-55-298Z-d01dab8a",
+  "mode": "live",
+  "createdAt": "2026-09-01T19:20:55.301Z",
+  "study": {
+    "id": "detect-taskly-planted-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.303927,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.298907
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.00502
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "## Trial report\n\nI added three tasks:\n\n- “Buy oat milk”\n- “Book dentist appointment”\n- “Plan Saturday errands: return library books, collect the parcel, and pick up ingredients for dinner”\n\n### What worked\n\n- Adding tasks was straightforward, and the remaining count updated to “3 left.”\n- Checking “Buy oat milk” marked it complete with a strike-through and changed the count to “2 left.”\n- I renamed “Book dentist appointment” to “Schedule dentist check-up.”\n- Individual **Delete** buttons worked.\n- I ultimately tidied up by deleting all test tasks individually.\n\n### What behaved differently than expected\n\n- An empty list displayed **“undefined”** as though it were a list item. This appeared both when I first opened the app and after deleting everything.\n- The long task was visibly cut off after “Plan Saturday errands: return”. It did not wrap or show an ellipsis, so most of the description was hidden.\n- The filters appeared reversed:\n  - **Active** showed only the completed “Buy oat milk” task.\n  - **Completed** showed the two unfinished tasks.\n- Renaming was confusing. Clicking **Save** updated the text but left the task in edit mode. Pressing **Enter** was required to finish editing and return to the normal task view.\n- **Clear completed** did nothing, including when I tried it from the All view. I had to delete the completed task using its individual **Delete** button instead.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "**Interacting with the app**\n\nI see that I need to interact with the app and initialize it properly. It’s crucial to start off on the right foot, so I’ll make sure to follow the steps carefully. If I jump into it without the right initialization, it might lead to issues down the line. So, taking my "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Clarifying task management**\n\nI'm noting that I have an initial item that's undefined, which is surprising. The \"0 left\" might suggest something's malformed or incomplete. It looks like I need to use an \"add\" button to include a few tasks. I'll add \"Buy oat milk,\" \"Book dentist appointment,\" and \""
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [99 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Identifying potential UI issues**\n\nI’m noticing a potential defect with the long text being truncated at “return” without an ellipsis. I might need to check the item width for edit buttons. First, I should mark \"Buy oat milk\" as complete, then filter for the active and completed items. Also, it co"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Renaming tasks**\n\nI need to rename a task, like changing it to \"Schedule dentist check-up.\" It seems straightforward: I can click on the field, use ctrl-a to select the whole text, type the new name, and then save it. It’s a simple process, but I want to make sure I do it correctly! I don’t want t"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [25 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Troubleshooting rename issue**\n\nI'm facing an interesting problem with renaming an item — after clicking save, the text remains the old version and it's still in edit mode. I wonder if the click didn’t select the field properly. It shows the old text when I expected it to change. Maybe I didn’t us"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [25 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Investigating the Save function**\n\nHmm, I noticed that clicking \"Save\" doesn't exit edit mode, but the text remains in the input field. That feels a bit weird; maybe the Save button is malfunctioning? I'm thinking I should test pressing Enter instead, as that might provide a straightforward way to"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Evaluating click behavior**\n\nI'm noticing that clicking \"Save\" updates the underlying data but doesn’t exit, which is unexpected—maybe the save handler isn’t designed to exit. However, the renaming was ultimately successful. I also need to set up filters. Clicking \"Active\" should display two remai"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Navigating completions**\n\nI’m noticing that the major defect filter is active and it shows \"completed\" for a \"Buy\" action, which feels opposite. This is a bit puzzling. I think I might need to click on \"Completed\" to see what details come up. I'm wondering if there’s something not aligning in my u"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Tidy up task list**\n\nI think I need to tidy up my task list once I'm done. It seems like I could clear completed tasks via a button, even if the filter is reversed. So, when I complete \"Buy oat milk,\" it should clear from the list. I might click \"All\" and then \"Clear completed\" to see if that work"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "**Investigating task visibility**\n\nI'm noticing that after I deleted the remaining active tasks, the \"Buy\" task reappeared when I switched to \"All.\" It seems like the \"Clear completed\" action only hid the tasks instead of permanently removing them. When I was under the \"Completed\" filter, it didn't "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 15",
+            "text": "**Final report on task management issues**\n\nI'm looking into the report on our task management system. I need to communicate clearly about what worked, like adding tasks, using checkboxes, renaming with Enter, and deleting tasks. However, there are several issues: an empty list shows as undefined, l"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 15",
+            "text": "## Trial report\n\nI added three tasks:\n\n- “Buy oat milk”\n- “Book dentist appointment”\n- “Plan Saturday errands: return library books, collect the parcel, and pick up ingredients for dinner”\n\n### What worked\n\n- Adding tasks was straightforward, and the remaining count updated to “3 left.”\n- Checking “"
+          }
+        ]
+      }
+    }
+  ]
+}

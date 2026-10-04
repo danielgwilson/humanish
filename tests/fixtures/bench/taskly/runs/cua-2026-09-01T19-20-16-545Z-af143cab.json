@@ -1,0 +1,131 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T19-20-16-545Z-af143cab",
+  "mode": "live",
+  "createdAt": "2026-09-01T19:20:16.548Z",
+  "study": {
+    "id": "detect-taskly-planted-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.22479,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.220579
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.004211
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "## What worked\n\n- Added three tasks:\n  - “Buy oat milk”\n  - “Call dentist”\n  - A longer project-planning reminder\n- Marked “Buy oat milk” complete; it was crossed out and the count changed from **3 left** to **2 left**.\n- Renamed “Call dentist” to “Book dentist appointment.”\n- **Clear completed** removed the finished task.\n- **Delete** removed the remaining trial tasks, leaving the list tidy with **0 left**.\n\n## What behaved unexpectedly\n\n- The **Active** and **Completed** filters appear reversed:\n  - **Active** showed the completed, crossed-out task.\n  - **Completed** showed the two unfinished tasks.\n- The long task was cut off at “Prepare notes for Friday proje” rather than wrapping or showing an ellipsis, so I could not read its full description.\n- While renaming, clicking **Save** did nothing, even after a second attempt. Pressing **Enter** saved the new name successfully.\n- When the list was empty—both on first load and after cleanup—the list area displayed **“undefined”**. I expected a normal empty-state message or a blank list.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Adding tasks**\n\nI notice we have an undefined initial task and a blank card, which seems like a defect. I need to add some tasks. So, I'll use the normal click method to add three tasks: \"Buy oat milk,\" \"Call dentist,\" and \"Prepare notes for Friday's project planning meeting,\" along with listing o"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [90 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Clarifying task completion**\n\nI’m noticing that a long task truncates at the word \"proje\" without any ellipsis, which suggests text is getting clipped, possibly due to not wrapping horizontally. I should mark this task complete, but I'll need to click the checkbox first to ensure it's officially r"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Identifying a bug**\n\nI’ve noticed a bug where the active section is showing completed items instead of unfinished ones. It seems like there's an inversion in the label or order logic. I think I’ll need to click on the Completed section to see if that resolves the issue and reveals the unfinished i"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Adjusting task filters**\n\nI need to rename one of my tasks because the Completed filter is incorrectly showing it as active. So, I'll go ahead and edit the call for the dentist task. I should click Edit to make the necessary adjustments. This way, I can ensure everything is categorized correctly, "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Editing and saving a task**\n\nI'm checking how to edit the input. First, I need to select the existing text, so I’ll click the field and use ctrl+a to highlight everything. Then, I’ll type in \"Book dentist appointment.\" Finally, I’ll remember to hit Save to ensure everything is stored correctly. It"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Reflecting on saving changes**\n\nI find it intriguing that clicking \"Save\" didn’t exit editing—maybe I didn’t click it accurately? The button still says \"Save,\" but the text has changed, so perhaps it needs a second click? I might be overthinking this, but it feels like a necessary recovery step to"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Tidying up tasks**\n\nI realize the Save button didn't work, but Enter does the job! Once I finish, I need to tidy things up — it probably means clearing completed tasks and deleting leftovers. I can use the \"All\" view, then hit \"Clear completed\" to delete what's not needed. I noticed that the filte"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "**Tidy up tasks**\n\nI’ve completed removing the hidden item, but there’s still an active task left on the Completed list due to inversion. It seems I need to tidy things up and delete what’s remaining. I think the steps are to click delete for the first item and then reposition the second one. It fee"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "**Summarizing report requirements**\n\nI've wrapped up my thoughts and need to create a plain report detailing what worked and the differences observed. I should mention the initial and final undefined states, how active and completed tasks appear reversed, and that the Save button doesn’t function wh"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 12",
+            "text": "## What worked\n\n- Added three tasks:\n  - “Buy oat milk”\n  - “Call dentist”\n  - A longer project-planning reminder\n- Marked “Buy oat milk” complete; it was crossed out and the count changed from **3 left** to **2 left**.\n- Renamed “Call dentist” to “Book dentist appointment.”\n- **Clear completed** re"
+          }
+        ]
+      }
+    }
+  ]
+}

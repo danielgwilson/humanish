@@ -1,0 +1,126 @@
+{
+  "schema": "humanish.study-analysis.v1",
+  "id": "analysis-960d5313-f549-434f-8dca-2eec6243d44c",
+  "runId": "cua-2026-10-04T07-45-29-153Z-dfe76827",
+  "status": "complete",
+  "provider": "openai",
+  "promptVersion": "study-evidence-6",
+  "config": {
+    "model": "gpt-6-astra",
+    "maxCostUsd": 1.75,
+    "maxOutputTokens": 16384
+  },
+  "usage": {
+    "inputTokens": 24956,
+    "outputTokens": 6207,
+    "estimatedCostUsd": 0.596578
+  },
+  "result": {
+    "summary": "The single retained synthetic participant completed the open-ended trial and reported that they would not keep using Taskly. Adding five tasks, saving an edit, checking off tasks and using filters were supported by the captures. The main concern was an empty list after refresh despite three tasks remaining beforehand. An Enter-to-save expectation mismatch was recovered by clicking Save, and immediate clearing prompted reported hesitation. These observations concern one supplied build and do not establish the storage mechanism or real-user prevalence.",
+    "participants": [
+      {
+        "streamId": "stream-001",
+        "summary": "Starting with an empty list, the participant added five errands and chores using Enter. They appended “on Tuesday” to the dentist task; Enter left the edit open, but clicking Save committed it. They checked off groceries and recycling, viewed Active and Completed filters, and cleared the completed tasks. The counter still showed three remaining tasks. After selecting All and refreshing, the list was empty and the counter showed zero. They reported that the interface was otherwise understandable but that they would not keep using it because their list did not survive refresh.",
+        "outcomeReason": "The assignment required using the app, reaching a keep-or-not decision, and reporting what worked or differed from expectations. Captures affirm actual list use, and the final response supplies the requested decision and concrete feedback. Completion refers to this exploratory assignment, not successful retention of the list or independently verified long-term use; it is not inferred from the recorded success label."
+      }
+    ],
+    "findings": [
+      {
+        "id": "F1",
+        "title": "Three remaining tasks were absent from the list after refresh",
+        "summary": "Before refresh, Taskly showed “3 left”; afterward, All showed an empty list and “0 left”. The participant cited this change as the reason they would not keep using Taskly. No restoration was observed. The evidence establishes displayed-state loss in this session, not permanent deletion or its technical cause; the supplied fixture may contribute.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The Active view displayed three unchecked tasks, and the later post-clear capture still showed “3 left”.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant clicked the All-filter location and then issued Ctrl+R.",
+            "basis": "action"
+          },
+          {
+            "claim": "The resulting capture showed All selected, “Nothing here yet. Add your first task above.” and “0 left”.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported that they would not keep using Taskly because the list did not survive refresh.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Enter left an edit open; clicking Save completed it",
+        "summary": "The participant expected Enter to save the edited dentist task and reported hesitation when it did not. The capture still showed the edit field and Save button after Enter. Clicking Save recovered the interaction, with the Tuesday wording subsequently visible in the normal task row.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The participant typed additional text into the task edit and pressed Enter.",
+            "basis": "action"
+          },
+          {
+            "claim": "After Enter, “Book dentist appointment on Tuesday” remained inside an editable field with Save beside it.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported expecting Enter to save and described needing to click Save as tedious.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "The participant clicked the visible Save-button location.",
+            "basis": "action"
+          },
+          {
+            "claim": "The later task row displayed “Book dentist appointment on Tuesday” outside an input, with Edit restored.",
+            "basis": "visual"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "title": "Participant reported hesitation over clearing without confirmation",
+        "summary": "The participant reported that Clear completed removed tasks immediately without confirmation and made them pause. The intended clearing succeeded, and the remaining-task count stayed at three. No accidental clearing or desire to restore those completed tasks was demonstrated, so this is a bounded feedback concern rather than an established destructive-action defect.",
+        "impact": "friction",
+        "confidence": "medium",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The participant clicked the Clear completed control while the Completed filter showed two checked tasks.",
+            "basis": "action"
+          },
+          {
+            "claim": "The next capture showed no matches for Completed while retaining “3 left”.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported that the lack of confirmation when clearing made them pause.",
+            "basis": "participant_statement"
+          }
+        ]
+      }
+    ]
+  }
+}

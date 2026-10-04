@@ -1,0 +1,596 @@
+{
+  "about": "Hand labels for the recorded Taskly bundles beside this file. For the September runs, detected, falseAssurance and the clean arm's empty sets come from the dated results file named in each source, scored by hand when the runs were made. The two 2026-10-04 runs and their analyses were scored by hand in an evaluation review that day. supportedPlanted names a planted-class claim the clean build's evidence supports (the 120-character add box). d2Mechanism is the rubric author's reading of each report, assigned on 2026-10-04: a regression check on the rubric, with no independent rater. The four neutral-mission runs of the same day are the first live benchmark; the rubric author labelled them after reading each report and analysis, and three patterns were added on reading them (Enter leaving an edit open, lost-on-reload phrasings, a hedged D2 mechanism), so they check for regressions and do not validate the rubric.",
+  "runs": {
+    "cua-2026-09-01T19-20-16-545Z-af143cab": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-01-0.66.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [
+            "D1"
+          ],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T19-20-35-320Z-85505d68": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-01-0.66.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T19-20-55-298Z-d01dab8a": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-01-0.66.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T19-24-02-858Z-cd63707c": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-01-0.66.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T19-24-22-829Z-a4c0ed27": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-01-0.66.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T19-24-42-832Z-00ca139b": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-01-0.66.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T20-16-21-877Z-9ff3cf4a": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-01-closing-line.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T20-16-41-865Z-dc7e8af1": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-01-closing-line.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [
+            "D1"
+          ],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T20-17-01-877Z-2f659448": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-01-closing-line.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "data_loss"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T20-19-08-671Z-f4aa6a72": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-01-closing-line.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T20-19-28-652Z-02364cbf": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-01-closing-line.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-01T20-19-48-680Z-e2340c77": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-01-closing-line.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T18-59-49-004Z-f77eb9ee": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-04-0.76.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "unspecified"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T19-00-29-008Z-057ae8c5": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-04-0.76.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T19-01-09-183Z-b36e1206": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-04-0.76.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T19-01-49-012Z-a5597063": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-04-0.76.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T19-02-29-013Z-834f25e3": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-04-0.76.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T19-03-09-027Z-1d284899": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-04-0.76.0.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T21-21-31-598Z-5ffd2fda": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-04-claude.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "data_loss"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T21-22-11-567Z-45afb759": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-04-claude.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "data_loss"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T21-22-51-574Z-112ff6c1": {
+      "arm": "planted",
+      "source": "bench/RESULTS-2026-09-04-claude.md",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "data_loss"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T21-23-31-582Z-90d764ca": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-04-claude.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": [
+            "D2"
+          ]
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T21-24-11-576Z-4bb24e7a": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-04-claude.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-09-04T21-24-51-576Z-da6f2553": {
+      "arm": "clean",
+      "source": "bench/RESULTS-2026-09-04-claude.md",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": [
+            "D2"
+          ]
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-10-04T05-49-54-857Z-3cb1f7da": {
+      "arm": "planted",
+      "source": "evaluation review of 2026-10-04, scored by hand",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        },
+        "stream-002": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-10-04T05-55-40-025Z-51c265a8": {
+      "arm": "planted",
+      "source": "evaluation review of 2026-10-04, scored by hand",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        },
+        "stream-002": {
+          "detected": [
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": "display"
+        }
+      },
+      "mission": "walked"
+    },
+    "cua-2026-10-04T07-41-06-204Z-6fe3644b": {
+      "arm": "planted",
+      "mission": "neutral",
+      "source": "bench run of 2026-10-04 (docs/evidence/benchmark/2026-10-04-0.110.0-neutral-openai-computer-use.md), labelled by the rubric author",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D1",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [],
+          "d2Mechanism": null
+        }
+      }
+    },
+    "cua-2026-10-04T07-45-29-153Z-dfe76827": {
+      "arm": "clean",
+      "mission": "neutral",
+      "source": "bench run of 2026-10-04 (docs/evidence/benchmark/2026-10-04-0.110.0-neutral-openai-computer-use.md), labelled by the rubric author",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      }
+    },
+    "cua-2026-10-04T07-48-50-754Z-aed935c7": {
+      "arm": "planted",
+      "mission": "neutral",
+      "source": "bench run of 2026-10-04 (docs/evidence/benchmark/2026-10-04-0.110.0-neutral-openai-computer-use.md), labelled by the rubric author",
+      "participants": {
+        "stream-001": {
+          "detected": [
+            "D2",
+            "D3",
+            "D4",
+            "D5"
+          ],
+          "falseAssurance": [
+            "D1"
+          ],
+          "d2Mechanism": "unspecified"
+        }
+      }
+    },
+    "cua-2026-10-04T07-53-03-078Z-ae5787d0": {
+      "arm": "clean",
+      "mission": "neutral",
+      "source": "bench run of 2026-10-04 (docs/evidence/benchmark/2026-10-04-0.110.0-neutral-openai-computer-use.md), labelled by the rubric author",
+      "participants": {
+        "stream-001": {
+          "detected": [],
+          "invented": [],
+          "supportedPlanted": []
+        }
+      }
+    }
+  },
+  "analyses": {
+    "cua-2026-10-04T05-49-54-857Z-3cb1f7da": {
+      "findings": {
+        "F1": [
+          "D3"
+        ],
+        "F2": [
+          "D1"
+        ],
+        "F3": [
+          "D5"
+        ],
+        "F4": [
+          "D4"
+        ],
+        "F5": [
+          "D2"
+        ]
+      },
+      "unresolved": [],
+      "d2Mechanism": "display",
+      "arm": "planted"
+    },
+    "cua-2026-10-04T05-55-40-025Z-51c265a8": {
+      "findings": {
+        "F1": [
+          "D3"
+        ],
+        "F2": [
+          "D5"
+        ],
+        "F3": [
+          "D1"
+        ],
+        "F4": [],
+        "F5": [
+          "D2"
+        ],
+        "F6": [
+          "D4"
+        ]
+      },
+      "unresolved": [
+        "F4"
+      ],
+      "d2Mechanism": "ambiguous",
+      "arm": "planted"
+    },
+    "cua-2026-10-04T07-41-06-204Z-6fe3644b": {
+      "arm": "planted",
+      "findings": {
+        "F1": [],
+        "F2": [
+          "D3"
+        ],
+        "F3": [
+          "D1"
+        ],
+        "F4": [
+          "D5"
+        ],
+        "F5": [
+          "D4"
+        ]
+      },
+      "unresolved": [],
+      "d2Mechanism": null
+    },
+    "cua-2026-10-04T07-45-29-153Z-dfe76827": {
+      "arm": "clean",
+      "findings": {
+        "F1": [],
+        "F2": [],
+        "F3": []
+      },
+      "unresolved": [],
+      "d2Mechanism": null
+    },
+    "cua-2026-10-04T07-48-50-754Z-aed935c7": {
+      "arm": "planted",
+      "findings": {
+        "F1": [],
+        "F2": [
+          "D3"
+        ],
+        "F3": [
+          "D5"
+        ],
+        "F4": [
+          "D2"
+        ],
+        "F5": [
+          "D4"
+        ]
+      },
+      "unresolved": [],
+      "d2Mechanism": "ambiguous"
+    },
+    "cua-2026-10-04T07-53-03-078Z-ae5787d0": {
+      "arm": "clean",
+      "findings": {
+        "F1": [],
+        "F2": []
+      },
+      "unresolved": [],
+      "d2Mechanism": null
+    }
+  }
+}

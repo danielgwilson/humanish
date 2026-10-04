@@ -1,0 +1,155 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T21-24-11-576Z-4bb24e7a",
+  "mode": "live",
+  "createdAt": "2026-09-04T21:24:11.578Z",
+  "study": {
+    "id": "detect-taskly-clean-claude-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.006298,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "claude (local, operator-authenticated, one session per run)",
+        "estimatedCostUsd": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.006298
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "local-agent-claude-session",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nWhat I did: I typed 'Buy milk' into the box and pressed Enter, and it went straight onto the list with the count changing to '1 left'. I added a long task about calling the landlord, and it wrapped over four lines inside its row without being cut off. I typed 'Return library books' and used the Add button instead of Enter, and that worked the same way. I ticked the box next to 'Buy milk', clicked Active, and only the two unfinished tasks showed. Clicking Completed showed only 'Buy milk', ticked and struck through. Back on All, I clicked Edit on 'Return library books', which turned the row into a text box with a Save button. I changed the text to 'Return library books before Saturday' and clicked Save, and the new name stuck. To tidy up I clicked Clear completed, which removed 'Buy milk', then clicked Delete on the other two. The list ended up empty with '0 left' and the 'Nothing here yet' message.\n\nWhat confused me: while renaming, I pressed Enter expecting it to save, since Enter adds a task in the box at the top. Nothing happened and the text box stayed open, so I had to click Save. That inconsistency was the one thing that tripped me up.\n\nWhere I hesitated: Clear completed and Delete both act immediately with no confirmation and no undo. That was fine here, but I paused before clicking Delete because I was not sure whether it would ask first. Everything else was clear and the screen text was easy to read throughout.",
+        "ids": {
+          "model": "claude (local, operator-authenticated, one session per run)"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "The screen is clear: an empty list with an input labelled 'What needs doing?' and an Add button. The obvious first step is to click the input, type a short task, and press Enter to see whether Enter adds it or whether I need the Add button."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [8 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "Enter added 'Buy milk' and the counter went to '1 left'. The input stayed focused and cleared, so I can add the next two tasks straight away: one long descriptive one and one more short one."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [116 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "The long task wrapped cleanly and the count is '2 left'. 'Return library books' is typed but not yet added. This time I'll use the Add button to check it behaves like Enter, then tick 'Buy milk' as done, then switch to the Active filter to see whether it disappears."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "Active shows just the two unfinished tasks and 'Buy milk' has gone from the list, so ticking it worked. Now I want to see the Completed view on its own, so I'll click that and stop to look."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "Completed shows only 'Buy milk', ticked and struck through, which is what I expected. Next I want to rename a task. I'll go back to All first so I can see the whole list and find the Edit button for the task I want to rename."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "All three tasks are back, with 'Buy milk' ticked. Now I'll click Edit on 'Return library books' and stop to see how the rename works before typing anything."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "Edit turned the task into a text box with a Save button, which is clear enough. I'll click into the box, select the existing text, and type the new name. Then I'll try Enter next to see whether that saves, since that is what I'd naturally do."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [36 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "The box now reads 'Return library books before Saturday'. I'll press Enter, which is what I'd instinctively do to confirm a rename, and see whether it saves or whether I need the Save button."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "Enter did not save the rename. The box is still open with the Save button next to it, which is a little surprising since Enter adds a task at the top. I'll click Save instead."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "The rename saved and the list reads correctly. Time to tidy up. I'll try 'Clear completed' first, which should remove 'Buy milk', and stop to see whether it asks for confirmation or just does it."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "'Clear completed' removed 'Buy milk' straight away with no confirmation and the count still says '2 left'. Now I'll delete the remaining tasks one at a time, starting with the long one, and check whether Delete asks me to confirm."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "Delete removed the long task instantly with no confirmation. One task remains, so I'll delete it too and then check the list is empty."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "The list is back to empty with '0 left' and the original empty-state message, so tidy-up is done. Everything in the task has been tried: adding three tasks including a long one, completing one, both filters, a rename, and clearing up. Time to report."
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 13",
+            "text": "REACHED THE GOAL.\n\nWhat I did: I typed 'Buy milk' into the box and pressed Enter, and it went straight onto the list with the count changing to '1 left'. I added a long task about calling the landlord, and it wrapped over four lines inside its row without being cut off. I typed 'Return library books"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -29,6 +29,10 @@ is defect-free.
 
 Both arms get the same personas, the same mission, and the same number of runs.
 
+`pnpm bench` runs both arms and scores them with the rubric in `bench/taskly/answer-key.ts`;
+[the benchmark README](../docs/evidence/benchmark/README.md) defines each score and lists the
+dated results.
+
 ## Baseline retained — 2026-09-06
 
 [#652](https://github.com/danielgwilson/humanish/issues/652) is resolved by retaining the fixture

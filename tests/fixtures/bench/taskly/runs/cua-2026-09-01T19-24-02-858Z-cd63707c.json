@@ -1,0 +1,119 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T19-24-02-858Z-cd63707c",
+  "mode": "live",
+  "createdAt": "2026-09-01T19:24:02.860Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.155204,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.151509
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.003695
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "## First-time trial report\n\nI added three tasks:\n\n- “Buy oat milk”\n- A longer picnic-planning task\n- “Call the dentist”\n\nBoth the **Add** button and pressing **Enter** worked. The long task wrapped cleanly and remained readable.\n\nI marked “Buy oat milk” complete. Its text became crossed out, and the remaining count changed from **3 left** to **2 left**. The filters worked as expected:\n\n- **Active** showed only the two unfinished tasks.\n- **Completed** showed only “Buy oat milk.”\n- **All** restored the full list.\n\nI edited “Call the dentist” to “Book a dentist appointment.” Clicking **Edit** changed the row into a text field with a clear **Save** button, and the new name appeared after saving.\n\nTo tidy up, I used **Clear completed** and then deleted the two unfinished tasks. The app ended with an empty list and **0 left**.\n\n### What felt different from expected\n\nDeleting tasks and clearing completed tasks happened immediately, with no confirmation or undo option. That is quick, but an accidental click could remove something permanently. Also, **Clear completed** remains visible even when there are no completed tasks, although it appears harmless.\n\nOverall, the main list workflow was straightforward and everything requested worked without errors or confusing output.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Adding tasks to the app**\n\nI need to use the app and add a few tasks, maybe three total. I should include both short and long tasks. I'll test the Enter button to see if it works when adding items. Let’s add \"Buy oat milk,\" and for the longer one, \"Plan Saturday...\" and \"Call the dentist.\" I think"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [105 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [16 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Completing a task checklist**\n\nI need to first check off one box as complete, then click “Buy.” After that, I’ll filter by active and completed items. I might consider renaming the active task to something like “Book dentist appointment.” To do that, I can just use the Edit function. So, let’s mak"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Thinking about renaming**\n\nI'm considering renaming one of the completed works. It seems like a simple task, but I'll need to think about the best name that captures its essence. Maybe I'll click on \"All\" and then go to the Edit option. Oh, and I should remember to call the dentist afterward. It’s"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Editing and Saving**\n\nI’m in the process of editing and I need to make sure to save everything clearly. It looks like I need to rename the file too, so maybe I’ll click on the input and try using ctrl+a to select everything first. I’ll type in the new name and then hit enter? I’m just making sure "
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [26 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Organizing tasks**\n\nI need to tidy up my task list when I’m done. It makes sense to clear completed tasks and delete active ones, which would leave everything empty. First, I should click “Clear completed” before deleting the remaining active tasks. I wonder if using an “Active filter” is necessar"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Managing tasks and deletions**\n\nI realized I need to clear my completed tasks. First, I’ll remove completed buy tasks. Then, I have to delete the long, remaining task that I left from the dentist. Oh, and I must remember to delete the last task as well. It seems straightforward, but I have to keep"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Analyzing report expectations**\n\nI need to report on what worked and any differences from expectations. Overall, there were few issues. One potential defect was that completed tasks remained visible even when none were completed. Clicking might not perform expected actions, but the long task wrapp"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 9",
+            "text": "## First-time trial report\n\nI added three tasks:\n\n- “Buy oat milk”\n- A longer picnic-planning task\n- “Call the dentist”\n\nBoth the **Add** button and pressing **Enter** worked. The long task wrapped cleanly and remained readable.\n\nI marked “Buy oat milk” complete. Its text became crossed out, and the"
+          }
+        ]
+      }
+    }
+  ]
+}

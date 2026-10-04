@@ -1,0 +1,155 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T21-22-11-567Z-45afb759",
+  "mode": "live",
+  "createdAt": "2026-09-04T21:22:11.570Z",
+  "study": {
+    "id": "detect-taskly-planted-claude-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.009024,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "claude (local, operator-authenticated, one session per run)",
+        "estimatedCostUsd": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.009024
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "local-agent-claude-session",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nWhat I did: added three tasks (one short, one long sentence about calling the landlord, one more short), ticked 'Buy groceries' as done, clicked the Active and Completed filters, renamed the landlord task through Edit, then tried Clear completed and finally deleted every task with the row Delete buttons.\n\nWhat worked well:\n- Adding a task with Enter or the Add button. The box clears and focus stays there so you can keep typing.\n- Ticking the checkbox strikes the task through and the 'N left' counter updates straight away.\n- Edit turns the row into a text box with a Save button. Pressing Enter saved the new name.\n- Delete removes the row instantly.\n\nWhat behaved differently from what I expected:\n1. The Active and Completed filters are swapped. With one task ticked and two unticked, Active showed only the ticked task and Completed showed the two unticked ones. The counter still said '2 left' under both, so the list and the count disagreed.\n2. My long task was silently cut off. I typed a full sentence about the landlord and the leaking tap. The list showed only 'Call the landlord about the le', and when I opened Edit the box held just those 30 characters, so the rest was thrown away with no warning or limit shown on the input.\n3. Clear completed did nothing. With 'Buy groceries' ticked I clicked it twice and waited. The task stayed and the counter stayed at '2 left'. I had to use Delete instead.\n4. The empty list shows the word 'undefined' in the box, both on first load and after I deleted everything. It reads like a coding error rather than a message like 'Nothing to do yet'.\n5. Delete removes a task instantly with no confirmation. Fine for a small list, but a mis-click loses the task for good.\n\nWhere I hesitated: after the first Clear completed click did nothing I was not sure whether my click had registered, so I tried once more before giving up on that button. I also paused at the truncated landlord task, unsure whether the text was only clipped on screen or actually lost, until Edit confirmed it was lost.\n\nNot verified: whether tasks survive a page reload, and whether the cut-off happens at exactly 30 characters or depends on the word.",
+        "ids": {
+          "model": "claude (local, operator-authenticated, one session per run)"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "The page loaded and the layout is clear: an input, an Add button, three filters, and a Clear completed button. The empty list box says 'undefined' instead of a real empty-state message, which looks like a bug I will note. I'll start by adding my first task the obvious way: click the input, type, pre"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [13 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "Enter worked: 'Buy groceries' appeared with a checkbox, Edit and Delete buttons, the input cleared, and the counter went to '1 left'. Focus stayed in the input, so I can keep typing. Next I'll add a longer, more descriptive task and then a third short one."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [114 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [19 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "The long task got cut to 'Call the landlord about the le', with no ellipsis or warning, so either the text was silently truncated on save or it is just clipped in the list. I'll check which later when I edit it. 'Renew library books' is still sitting in the input, so I'll add it with the Add button "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "Marking complete worked: 'Buy groceries' is checked and struck through, and the counter dropped to '2 left'. All three tasks are listed. Now I'll try the Active filter to see only what is left."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "The Active filter is showing the wrong thing: it lists only 'Buy groceries', which is the one I completed, while the two unfinished tasks disappeared. The counter still says '2 left', so the count disagrees with the list. Looks like Active and Completed are swapped. I'll click Completed to check whe"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "Confirmed: the Completed filter shows the two unchecked tasks, and Active showed the checked one, so the two filter buttons are swapped. Next I'll go back to All and click Edit on the landlord task, which will also tell me whether the long text was really cut off or just clipped in the list."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "Edit mode opened as an inline text box with a Save button, which is clear. The box contains only 'Call the landlord about the le', so the long text was really cut off when I added it and the rest is gone. I'll rename this task to something shorter that fits: click the box, select all, type the new n"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [27 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "The new name is in the box. I'll press Enter, the natural way to confirm a rename, and see whether it saves or whether I need the Save button."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "Enter saved the rename and the task now reads 'Call landlord about the tap'. Time to tidy up. I'll click Clear completed to remove the finished task first and see what happens to the list and counter."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "I clicked Clear completed and nothing changed: 'Buy groceries' is still there, checked, and the counter still reads '2 left'. Maybe the click didn't register, so I'll try it once more and give it a moment. If it still does nothing I'll use the row's Delete button instead."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "Clear completed did nothing twice in a row, so that button seems broken. I'll fall back to the row's Delete button on 'Buy groceries' and check whether it works and whether it asks for confirmation before I delete the rest."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "Delete worked right away with no confirmation prompt, and 'Buy groceries' is gone. Two tasks remain. To finish tidying I'll delete both: the top row's Delete button, wait for the list to shift up, then the same spot again."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "The list is empty again and the counter says '0 left', so tidying is done. Everything the task asked for is covered: added three tasks including a long one, marked one complete, tried both filters, renamed one, and cleared the list. Time to write up what worked and what didn't."
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 13",
+            "text": "REACHED THE GOAL.\n\nWhat I did: added three tasks (one short, one long sentence about calling the landlord, one more short), ticked 'Buy groceries' as done, clicked the Active and Completed filters, renamed the landlord task through Edit, then tried Clear completed and finally deleted every task with"
+          }
+        ]
+      }
+    }
+  ]
+}

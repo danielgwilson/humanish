@@ -1,0 +1,113 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T19-01-49-012Z-a5597063",
+  "mode": "live",
+  "createdAt": "2026-09-04T19:01:49.015Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.119911,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.115697
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.004214
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added three tasks, including a longer planning-meeting task. Both the Add button and Enter worked, and the long text wrapped neatly.\n\nI renamed “Book dentist appointment” to “Schedule dental check-up,” then marked “Buy oat milk” complete. The count changed from 3 left to 2 left.\n\nThe Active filter showed only the two unfinished tasks, while Completed showed only the crossed-out finished task. I tidied up with Clear completed and returned to All, leaving the two active tasks.\n\nEverything important worked. I briefly hesitated over whether “tidy up” meant deleting every trial task or just clearing the completed one. I chose Clear completed because it was the obvious dedicated action. One small oddity: that button remained available even after there were no completed tasks left; disabling or hiding it would make the state clearer.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Organizing tasks**\n\nI need to take action and add some tasks. It seems like using three makes sense. My list will include buying oat milk, booking a dentist appointment, and preparing notes for a Monday planning meeting. Those notes need to cover project risks, deadlines, and questions for the tea"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [105 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Tidy up tasks**\n\nI'm focusing on marking something as complete, which feels good! I need to make sure the filters for active and completed tasks are set. Then, I'll rename my dentist task to “Schedule dental check-up.” It seems like a more straightforward title. I just need to click Edit to make t"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Considering edit functionality**\n\nI think I need to clarify the editing process. The \"edit\" option seems to be inline, while \"save\" and \"delete\" are options that persist, which feels a little odd but might be okay. I should remember to select the text first, then use \"ctrl+a\" to select everything "
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Tidying up tasks**\n\nI’m looking to tidy up my task list. The phrase \"tidy up when done\" probably means I should clear completed tasks. I might consider deleting remaining trial tasks too, but as a list app, it's best to only clear what's completed. If I delete everything, I risk losing the renamed"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Considering task management features**\n\nI'm pondering the task management features. It seems that something should be in place to keep things tidy when tasks are completed, but maybe users don't want to delete unfinished ones. I wonder if a \"Tidy Up\" button that only clears completed tasks could b"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Clarifying report details**\n\nI need to keep the report straightforward, starting with an exact first line. It looks like the user worked well, but there were a few things that differed. It seems there weren’t any major surprises, except after clearing completed items, the button remained active. I"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 9",
+            "text": "REACHED THE GOAL.\nI added three tasks, including a longer planning-meeting task. Both the Add button and Enter worked, and the long text wrapped neatly.\n\nI renamed “Book dentist appointment” to “Schedule dental check-up,” then marked “Buy oat milk” complete. The count changed from 3 left to 2 left.\n"
+          }
+        ]
+      }
+    }
+  ]
+}

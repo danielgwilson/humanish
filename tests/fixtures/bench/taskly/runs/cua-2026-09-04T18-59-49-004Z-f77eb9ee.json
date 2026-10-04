@@ -1,0 +1,125 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T18-59-49-004Z-f77eb9ee",
+  "mode": "live",
+  "createdAt": "2026-09-04T18:59:49.007Z",
+  "study": {
+    "id": "detect-taskly-planted-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.193396,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.188779
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.004617
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added three tasks, including a detailed picnic-planning task. Adding, checking off “Buy oat milk,” editing, and deleting tasks all worked. I renamed “Book a dentist appointment” to “Call dentist to arrange check-up.”\n\nWhat behaved unexpectedly:\n\n- The **Active** filter showed the finished task, while **Completed** showed the unfinished tasks. The filters appear reversed.\n- The long picnic task was cut off after “Plan Saturday picnic: check th,” with no way to read the rest.\n- Clicking **Save** while renaming did not appear to work. I hesitated and tried again, then pressed Enter, which saved it.\n- **Clear completed** did nothing after two attempts, so I deleted the completed task manually.\n- After deleting all test tasks to tidy up, the empty list displayed **“undefined”** instead of an empty-state message.\n\nI hesitated most around the reversed filters and the unresponsive Save and Clear completed buttons.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Addressing page issues**\n\nI’m noticing an undefined item on the page, which is strange since it says there are zero left and offers to clear completed tasks. This seems like a weird initial bug. I need to add a few items to see if that fixes the issue. First, I’ll click on the input type and try a"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [26 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [101 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Planning picnic task**\n\nI need to look at my task list for planning a Saturday picnic. It seems like the view is truncated, so I’m wondering if that’s due to a fixed-width layout that doesn’t wrap properly. I should mark tasks as complete and start by clicking the first checkbox. Then, I’ll check "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Renaming a task**\n\nI need to rename a task, particularly the one related to the dentist. I can do this while also looking at the tasks that are currently active in the filter view. I'll just click \"Edit\" on the dentist task, and that should allow me to rename it easily. It's a straightforward proc"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [32 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Troubleshooting edit mode**\n\nI think the issue is that it didn't exit edit mode as expected. The \"Save\" button is still there, so it seems like the click might not have registered. My cursor is showing the hand indicator, so it feels like something should happen. I'll try clicking again, hoping th"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Clarifying task management**\n\nI find it interesting that the \"Enter\" button saved my progress even though it seemed nonfunctional—maybe it was just focused through the layout? Once I'm finished, I need to tidy things up. I wonder if I should delete the test tasks and then clear the completed ones."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Troubleshooting button issues**\n\nIt seems like the \"Clear completed\" button didn't work since it still shows \"Buy oat milk\". Oh no, is the button broken again? I think I should try clicking it one more time just to be sure. Maybe there's a problem with the button handler or something like that. It"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "**Deleting items manually**\n\nI need to delete the remaining items manually after the first delete works. I’ll start with the dentist at coordinates y393 and y455. Hmm, is it smart to handle two clicks? Maybe I should consider if I can do a row shift after the first click. That might be safer, especi"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "**Clarifying task completion**\n\nI'm working on a task and I see some undefined issues, like a ghost that won't clear. I've mostly reached my goal, and I saved my work by pressing Enter. I need to ensure the first line is exact. I realize I hesitated a bit and got confused about filters that were rev"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 13",
+            "text": "REACHED THE GOAL.\nI added three tasks, including a detailed picnic-planning task. Adding, checking off “Buy oat milk,” editing, and deleting tasks all worked. I renamed “Book a dentist appointment” to “Call dentist to arrange check-up.”\n\nWhat behaved unexpectedly:\n\n- The **Active** filter showed the"
+          }
+        ]
+      }
+    }
+  ]
+}

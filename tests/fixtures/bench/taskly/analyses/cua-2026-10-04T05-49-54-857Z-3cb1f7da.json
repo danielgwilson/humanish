@@ -1,0 +1,205 @@
+{
+  "schema": "humanish.study-analysis.v1",
+  "id": "analysis-96bf4e96-0a7b-4d64-b087-29ea9c47a818",
+  "runId": "cua-2026-10-04T05-49-54-857Z-3cb1f7da",
+  "status": "complete",
+  "provider": "openai",
+  "promptVersion": "study-evidence-6",
+  "config": {
+    "model": "gpt-6-astra",
+    "maxCostUsd": 3,
+    "maxOutputTokens": 32768
+  },
+  "usage": {
+    "inputTokens": 59623,
+    "outputTokens": 9925,
+    "estimatedCostUsd": 1.215816
+  },
+  "result": {
+    "summary": "Both retained synthetic participants completed the assigned exploratory activities: adding three tasks including a long entry, completing one, inspecting both filtered subsets, renaming a task, tidying up and reporting their experience. Completion required workarounds. Both encountered opposite filter results, completed tasks remaining after Clear completed attempts, and edits remaining open after Save clicks. Enter completed both renames, and individual Delete controls enabled cleanup. Long task labels were visibly clipped, and no-result views displayed “undefined.” These observations concern the supplied sessions, not real-user prevalence or underlying implementation causes.",
+    "participants": [
+      {
+        "streamId": "stream-001",
+        "summary": "Added groceries, a dentist appointment and a long packing task. After completing groceries, found the checked task under Active and the two unfinished tasks under Completed. Retried Save while renaming the dentist task, then used Enter successfully. Tried Clear completed in two filtered views before deleting groceries individually. Ended in All with the renamed dentist task and packing task still unfinished.",
+        "outcomeReason": "The actions and captures establish three added rows, a long-entry input, a checked task, both isolated status subsets, the completed rename to “Book dentist appointment,” and removal of the finished grocery task while retaining two unfinished tasks. The final message supplies the requested report. The assignment asked the participant to try the features and tidy up, not to correct their behavior or delete every unfinished task."
+      },
+      {
+        "streamId": "stream-002",
+        "summary": "Added oat milk, a long project-summary task and a dentist appointment. Completed oat milk and found opposite task states under the two filter labels. Retried Save, then used Enter to finish renaming the dentist task. Initially believed completed-task removal had worked, deleted the unfinished tasks, then returned to All and discovered oat milk still present. Deleted it individually and ended with no named tasks, “0 left,” and an “undefined” display that remained after another Clear completed click.",
+        "outcomeReason": "The recording establishes three added rows including a long-entry input, a checked oat-milk task, inspection of both isolated status subsets, the rename to “Schedule dental checkup,” deletion of all three named tasks, and the requested final report. The remaining “undefined” display is a supported empty-state concern, but it does not establish that an additional task remained. Completion here refers to the exploratory assignment, not an error-free cleanup experience."
+      }
+    ],
+    "findings": [
+      {
+        "id": "F1",
+        "title": "Active and Completed showed opposite task states in both sessions",
+        "summary": "Active displayed the checked task, while Completed displayed the two unchecked tasks. Both participants reported confusion, recognized the opposite mapping and continued working with it. The workaround allowed exploration to continue, but the displayed label-to-state mismatch remained.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "With Active selected, each session displayed only its checked, struck-through shopping task.",
+            "basis": "visual"
+          },
+          {
+            "claim": "With Completed selected, each session displayed the two unchecked tasks instead.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Both participants reported uncertainty about why Active showed completed work.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "Both adapted to the opposite mapping and continued renaming an unfinished task in the Completed view.",
+            "basis": "inference"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Completed tasks remained after Clear completed attempts",
+        "summary": "Both participants still had their checked shopping task after attempting Clear completed. One retried in another filtered view; the other initially believed removal had succeeded until checking All. Both ultimately removed the completed task with its individual Delete control.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "Clear completed clicks were dispatched in both sessions, including a second attempt by stream-001.",
+            "basis": "action"
+          },
+          {
+            "claim": "The checked shopping task was still visible after those attempts when participants viewed the relevant subset or All.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Stream-002 initially believed removal was complete, then reported discovering that the task was still present in All.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "Both participants subsequently clicked the completed task's individual Delete control.",
+            "basis": "action"
+          },
+          {
+            "claim": "The later All views no longer contained either participant's completed shopping task.",
+            "basis": "visual"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "title": "Repeated Save clicks left edits open; Enter finished both renames",
+        "summary": "Each participant clicked Save twice and remained in edit mode, questioned whether the change had registered, then pressed Enter. Both new names subsequently appeared as normal task labels.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "Both participants retried clicks at the displayed Save control before switching to Enter.",
+            "basis": "action"
+          },
+          {
+            "claim": "The changed text remained inside an input with Save still displayed after both participants' Save attempts.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Both participants reported uncertainty about whether saving had worked.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "After Enter, the normal row labels displayed “Book dentist appointment” and “Schedule dental checkup,” with Edit controls restored.",
+            "basis": "visual"
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "title": "No-result views displayed “undefined,” making cleanup ambiguous",
+        "summary": "Both sessions displayed “undefined” without row controls at startup and again after deleting the last visible task. Stream-001 moved back to All and saw its retained tasks. Stream-002 ended with the message still present and reported that the list did not feel completely clean. This is evidence of an unclear display, not proof of an undeletable extra task.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "unknown",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "Both startup captures showed “undefined,” no task-row controls and “0 left.”",
+            "basis": "visual"
+          },
+          {
+            "claim": "The same display appeared after stream-001 removed its only visible filtered task and after stream-002 removed all named tasks.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Stream-002 reported that the control-free “undefined” display could not be removed and made cleanup seem incomplete.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "Stream-001 avoided the no-result view by returning to All, whereas stream-002 still saw “undefined” at the ending.",
+            "basis": "visual"
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "title": "Long task labels were visibly clipped in both sessions",
+        "summary": "Both participants entered long tasks whose list labels stopped mid-word on a single line. Neither recording shows the full description being revealed. Both reported the clipping, although stream-001 initially considered that it might be acceptable if the task remained recognizable.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "Both participants entered task text substantially longer than their short task names and attempted to add it.",
+            "basis": "action"
+          },
+          {
+            "claim": "The resulting packing and project-summary labels stopped mid-word without visible wrapping or an ellipsis.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Both participants reported clipped descriptions; stream-001 initially qualified its concern by considering whether the remaining text was clear enough.",
+            "basis": "participant_statement"
+          }
+        ]
+      }
+    ]
+  }
+}

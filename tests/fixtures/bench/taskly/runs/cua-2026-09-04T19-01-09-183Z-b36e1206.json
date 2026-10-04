@@ -1,0 +1,137 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T19-01-09-183Z-b36e1206",
+  "mode": "live",
+  "createdAt": "2026-09-04T19:01:09.186Z",
+  "study": {
+    "id": "detect-taskly-planted-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.197751,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.185625
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.012126
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added three tasks, including a detailed task about comparing train times. Both the Add button and Enter worked. I completed “Buy oat milk,” renamed “Reply to project email” to “Send project update email,” and left two active tasks.\n\nWhat behaved unexpectedly:\n- The empty list initially displayed “undefined” despite saying “0 left.”\n- The filters appeared reversed: Active showed the finished task, while Completed showed the unfinished tasks.\n- The long task was cut off instead of wrapping, so its full description was not visible.\n- Clicking Save while renaming did nothing; pressing Enter saved the change.\n- Clear completed did nothing after repeated clicks and an Enter attempt. I tidied up by deleting the completed task individually instead.\n\nThe main controls were easy to find, but I hesitated when the filters contradicted their labels and when Save and Clear completed gave no visible response.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "notice",
+            "lifecycle": "completed",
+            "title": "provider turn stalled; retrying once",
+            "text": "provider turn 1 produced nothing within 180000ms; sending the same observation again"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Adding tasks for clarity**\n\nI see that I have an undefined ghost with 0 tasks left, so I need to add some. I could use the Enter key and buttons for that. It's better to use non-personal task names. For example, I can add tasks like \"Buy oat milk\" or \"Reply to project email\" instead of something t"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [22 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [75 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Identifying visual issues**\n\nI'm noticing that the text \"Saturd\" is visually clipped due to button placement, which isn't ideal. I should mark something as complete first to check that checkbox. Then I can look at the active and completed filters to see how they function. It’s important to observe"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Identifying filter issues**\n\nOops! It looks like the active view is showing a completed item instead of two active ones. I notice the filters might be reversed. It seems to be showing the checked item for \"Buy oat milk.\" I'll click on the completed section to double-check what’s going on. I just n"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [25 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Troubleshooting save issues**\n\nIt seems like the edit didn’t exit as expected. The name changed in the field, but it might not have been saved due to a failure. The “Save” button is still there, which could mean it didn’t act properly. I’m considering that the actual save event might not have trig"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Tidying up tasks**\n\nI’ve entered the saved tasks, so renaming is done. Now, I think I need to tidy things up and ensure the completed tasks are clear. I’ll check if “Tidy up when done” indeed means to clear those completed tasks. It seems like I should click on \"All\" and then clear completed items"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Evaluating button clicks**\n\nI'm combining clicks, but I think the second coordinate was stale, which led to a confusing outcome. It looks like the click might have happened before the re-render was completed, even though it shows the button as completed. Maybe I need to focus on getting the click "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "**Troubleshooting button issues**\n\nIt seems like there might be some issues with the buttons not functioning as expected. Maybe they require the Enter key or are having trouble with how they coordinate. The cursor is visible, but it feels like there could be defects in the app if the click handlers "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "**Considering deletion options**\n\nOkay, it seems like the focus ring is still there, so pressing Enter didn’t work to remove it. Maybe I should try pressing the spacebar as a reset? I've already been at it for a couple of tries, and I need to stay patient. The \"Tidy up\" option might help delete them"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "**Analyzing task deletion results**\n\nI noticed that clicking \"Delete\" on the completed items removed the \"Buy oat milk\" button as well, which makes me think about how the visuals and interactions connect. It seems that the \"Clear completed\" button didn’t work, but individual deletions did. It makes "
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 13",
+            "text": "REACHED THE GOAL.\nI added three tasks, including a detailed task about comparing train times. Both the Add button and Enter worked. I completed “Buy oat milk,” renamed “Reply to project email” to “Send project update email,” and left two active tasks.\n\nWhat behaved unexpectedly:\n- The empty list ini"
+          }
+        ]
+      }
+    }
+  ]
+}

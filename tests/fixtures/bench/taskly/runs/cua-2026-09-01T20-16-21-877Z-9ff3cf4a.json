@@ -1,0 +1,137 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T20-16-21-877Z-9ff3cf4a",
+  "mode": "live",
+  "createdAt": "2026-09-01T20:16:21.879Z",
+  "study": {
+    "id": "detect-taskly-planted-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.227201,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.223033
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.004168
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nI added three tasks, including a detailed Saturday errands task. Adding tasks and marking “Buy oat milk” complete worked, and the remaining count changed from 3 to 2.\n\nI renamed “Book dentist appointment” to “Call dentist to book check-up.” Clicking **Save** did nothing, so I hesitated and tried Enter; that saved the rename.\n\nSeveral things behaved unexpectedly:\n\n- The empty list initially displayed an item reading **“undefined”** even though the counter said **0 left**.\n- The filters appeared reversed: **Active** showed the completed task, while **Completed** showed the two unfinished tasks.\n- The long task was cut off after “Plan Saturday errands: visit t” instead of wrapping or otherwise letting me read the full description.\n- **Clear completed** did nothing after repeated clicks. I tidied up by manually deleting the completed task instead.\n\nThe two unfinished tasks remain on the list, as I would expect in normal use.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "**Interacting with computers**\n\nI’m noting that I need to interact with the existing computer system, which means I first need to initialize it properly. I want to ensure all systems are ready and functioning before proceeding with anything else. Making sure I follow the right steps is crucial, so I"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Evaluating card visibility**\n\nI'm noticing a weird undefined card even though there are zero left, and there aren't any visible controls. It seems like I need to add a few elements to fix this. It makes sense to use some input or the add function, possibly adding three items to make it clearer. Le"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [111 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Evaluating user interface behavior**\n\nI'm noticing that the \"Active\" filter shows completed items instead of just active ones. It seems like the filters might be broken or swapped somehow. The \"Active\" option is selected, but only the completed items are visible. I really need to pay close attenti"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Renaming task labels**\n\nI’ve noticed that the labels are confusing because \"Completed\" is showing active tasks instead. So, I need to rename it to make it more accurate. I can think of a clearer name for the active tasks section. I want to edit the dentist task and click on the right option to mak"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Selecting text to rename**\n\nI'm looking to select all text to rename it to \"Call dentist to book check-up.\" I think I need to use the shortcut ctrl+a, which should select everything in the input field. After that, I’ll save the changes. It's always a bit nerve-wracking, wondering if I selected eve"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [29 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Determining button functionality**\n\nI’m considering whether the click really saved the input. It seems like the \"Save\" button is still visible, which makes me wonder if my click didn’t register. I’ll move the mouse pointer over the button again and try clicking it once more. I want to make sure my"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Considering app issues**\n\nI’m thinking that the save function might be broken. It could be due to a filter mismatch that’s causing the app to rerender in an odd way. That’s frustrating! I should probably try hitting Enter as a recovery option. I wonder if that will resolve the issue. It’s always t"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Organizing tasks**\n\nI need to work on tidying up. This means clearing completed tasks and possibly deleting active test tasks. Usually, tidying up means clearing what's done, but I wonder if some completed tasks might be hidden due to a swapped filter. \n\nI’ll click the \"Clear completed\" button and"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Troubleshooting a clearing issue**\n\nI tried to clear tasks, but it seems like nothing happened. When I clicked the \"Completed\" filter, it showed active tasks, and the button click didn’t seem to work—maybe there's a bug. It’s odd because clicking \"All\" still shows completed tasks. I’m thinking the"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "**Troubleshooting button issues**\n\nIt seems like the button isn’t working well. I should consider trying a recovery option; maybe that could succeed. I wonder if the task marked as completed might still have an effect. I could tidy things up and delete completed tasks manually. I’ll try clicking on "
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 12",
+            "text": "REACHED THE GOAL.\n\nI added three tasks, including a detailed Saturday errands task. Adding tasks and marking “Buy oat milk” complete worked, and the remaining count changed from 3 to 2.\n\nI renamed “Book dentist appointment” to “Call dentist to book check-up.” Clicking **Save** did nothing, so I hesi"
+          }
+        ]
+      }
+    }
+  ]
+}

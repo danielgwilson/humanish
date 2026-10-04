@@ -1,0 +1,201 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T21-22-51-574Z-112ff6c1",
+  "mode": "live",
+  "createdAt": "2026-09-04T21:22:51.576Z",
+  "study": {
+    "id": "detect-taskly-planted-claude-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.011261,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "claude (local, operator-authenticated, one session per run)",
+        "estimatedCostUsd": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.011261
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "local-agent-claude-session",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nWhat I did: added three tasks (one short, one a full sentence, one more short), ticked 'Buy milk' as done, tried the Active and Completed filters, renamed two tasks, then removed everything so the list was empty again.\n\nWhat worked: adding with Enter or the Add button, the checkbox and strike-through on completion, the 'N left' counter, and the per-row Delete buttons. Long text shows fine once it is in the list, wrapping to two lines.\n\nWhat behaved differently from what I expected:\n\n1. Long task got chopped when added. I typed a full sentence about calling the dentist and pressed Add. Only the first six words, 'Call the dentist to reschedule', went into the list. No warning, no ellipsis, no character limit shown. Opening Edit confirmed the rest was gone, not just hidden. Retyping the full sentence in the edit box and pressing Enter kept all of it, so the limit only applies to the Add box.\n\n2. The Save button in edit mode does nothing. I clicked it three times across two edits, with both a long and a short name. The row stayed in edit mode with no message. Pressing Enter in the text box saved fine each time. I only found that by guessing.\n\n3. Active and Completed filters are swapped. With one task ticked and two unticked, Active showed only the ticked, struck-through task. Completed showed the two unfinished ones. The counter under the list was right both times, so only the filter buttons are backwards.\n\n4. Clear completed does nothing. With 'Buy milk' ticked, I clicked it twice. The task stayed. I had to delete it with its own Delete button.\n\n5. The empty list shows the word 'undefined'. I saw this on first load and again after deleting everything. It reads like a bug leaking through rather than a message meant for me.\n\n6. Edit doesn't put the cursor in the text box. The first time I clicked Edit and started typing, my keystrokes went to the page instead: Ctrl+A highlighted the whole screen. I had to click into the box first.\n\nWhere I hesitated: after the first Save click did nothing I wasn't sure whether the app was slow or broken, so I clicked again and waited before trying Enter. When Active showed me the finished task, I paused to check Completed before trusting my read that the two were reversed. After Clear completed failed, I wondered whether I was meant to select something first, but nothing on screen suggested that.",
+        "ids": {
+          "model": "claude (local, operator-authenticated, one session per run)"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "First look at Taskly. The empty list shows the word 'undefined' where I'd expect a friendly 'nothing here yet' message. That's odd and I'll note it. Otherwise the path is obvious: type a task into the box and press Add. I'll start with a short task and press Enter to see if that works like I'd expec"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [8 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "Enter worked: 'Buy milk' is in the list with a checkbox, Edit and Delete buttons, and the counter says 1 left. The input cleared and kept focus, which is nice. Now I'll add a longer, properly descriptive task, this time using the Add button instead of Enter to see if both work."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [128 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "My long task came through as just 'Call the dentist to reschedule'. The rest of the sentence is gone with no ellipsis or warning. I want to see whether the app stored the whole thing and is only showing part, or actually threw the rest away. Clicking Edit on that row should reveal which."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "The edit box confirms it: only 'Call the dentist to reschedule' was saved. The rest of my sentence was silently thrown away with no warning and no visible character limit. Since I'm already in edit mode, I'll try retyping the full description here to see whether editing behaves any differently. I'll"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [67 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "The full sentence is in the edit box now. Next I need to save it and see whether the app keeps the whole thing this time or cuts it again. I'll click Save."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "I clicked Save, but the row is still in edit mode with a Save button showing. Either the click didn't register or Save quietly did nothing. I'll try once more, then fall back to pressing Enter in the field if the box is still open."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "Two clicks on Save and the row is still stuck in edit mode with no message. As one recovery step, I'll click into the text box and press Enter, which is how I'd normally confirm an edit."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "Pressing Enter did what the Save button wouldn't: the row closed and the full sentence is now shown, wrapped over two lines. So the app can hold long text; it's only the Add box that chopped it. Now I'll add a third task, then get on with marking something done."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [16 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "Three tasks in the list, counter says 3 left. Time to mark one done. I'll tick the checkbox next to 'Buy milk' and then click the Active filter to see whether it drops out of view."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "That's backwards. I ticked 'Buy milk' and it's now struck through, and the counter correctly dropped to 2 left. But the Active filter is showing me the one finished task and hiding the two I still have to do. I expected the opposite. Let me click Completed to see whether the two filters are simply s"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "Confirmed: the Completed filter shows my two unfinished tasks and Active shows the finished one. The two filter buttons are swapped. Now I'll rename a task. I'll use 'Water the plants' so I can also check whether the Save button works with a short name, since it failed on the long one."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "Edit opened the box, but my keystrokes went to the page instead: the whole page got highlighted and the box still says 'Water the plants'. The edit box doesn't take focus on its own. I'll click into it first, then select and retype."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "The new name is in the box. Now I'll click Save to see whether the button works at all with a short name, since it did nothing on the long one earlier."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 14",
+            "text": "Same thing again: the Save button does nothing even with a short name. So it's the button itself, not the text length. I'll press Enter in the box, which worked last time, then switch back to All to see the whole list."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 15",
+            "text": "Rename went through and the All view shows everything as expected: one done, two left. Time to tidy up. I'll try Clear completed first, since that's what it's there for, and then delete the two remaining tasks."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 16",
+            "text": "Clear completed didn't do anything: 'Buy milk' is still sitting there ticked. I'll give it one more click, and if it still ignores me I'll fall back to the row's own Delete button."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 17",
+            "text": "Clear completed is dead: two clicks, nothing changed, no message. I'll tidy up the slow way with each row's Delete button, starting from the top. The list shifts up after each delete, so I'll pause between clicks."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 18",
+            "text": "Both deletes went through without any confirmation prompt, which is fine for a small list. One task left. I'll delete it and then look at what the empty list shows, since it said 'undefined' when I first arrived."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 19",
+            "text": "The list is empty again and the counter says 0 left, so I've done everything I set out to do: added three tasks including a long one, ticked one off, tried both filters, renamed a task, and cleared the list. I had to work around three things that didn't behave, but nothing stopped me outright. Time "
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 19",
+            "text": "REACHED THE GOAL.\n\nWhat I did: added three tasks (one short, one a full sentence, one more short), ticked 'Buy milk' as done, tried the Active and Completed filters, renamed two tasks, then removed everything so the list was empty again.\n\nWhat worked: adding with Enter or the Add button, the checkbo"
+          }
+        ]
+      }
+    }
+  ]
+}
