@@ -53,10 +53,11 @@ runs, corroborated from page text and URL, with the participants never shown the
 Cost: $0.31 and $0.29 per run. Funnel: 4 tasks x 3 participants x 2 runs = 24 of 24 measured
 and completed.
 
-Across the two apps: keyboard-first participants are now 6 of 6 blocked at TodoMVC's rename
-(4 on 2026-09-01, 2 here) and 5 of 5 reporting drawDB's modal. The phone participants did not
-add a new blocker on TodoMVC; what they added is the framing: both read the double-click rename
-and the hover-only delete as touch-hostile, which a desktop participant has no reason to say.
+Across the two apps: keyboard-first participants are now 6 of 6 reporting TodoMVC's rename
+(4 on 2026-09-01, who used the mouse to finish, and 2 here, who were blocked) and 5 of 5 reporting
+drawDB's modal. The phone participants did not add a new blocker on TodoMVC; what they added is
+the framing: both read the double-click rename and the hover-only delete as touch-hostile, which a
+desktop participant has no reason to say.
 
 ## Excalidraw (`excalidraw/excalidraw`, depth-1 clone, `yarn build:app:docker`, served by python3)
 
