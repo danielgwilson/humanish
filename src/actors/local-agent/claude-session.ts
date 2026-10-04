@@ -11,15 +11,16 @@
 // stream-json --output-format stream-json --verbose` is a bidirectional session over stdio. One
 // NDJSON `user` message in, a stream of `system` / `assistant` / `result` messages out, then it
 // waits for the next `user` message with the conversation intact. Two messages, one session id,
-// and a codeword given in the first turn was recalled in the second. `--allowedTools Read` keeps
-// the bound the one-shot version had: it looks at a picture, and that is all it can do.
+// and a codeword given in the first turn was recalled in the second. The process runs with the
+// flags and environment in claude-participant.ts, and every message it writes passes the stream
+// guard there: a tool call other than Read inside the session folder stops it.
 //
 // What this is not: a change to the loop, the executor, the trace, or the Observer. Only where
 // the next action comes from.
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import readline from "node:readline";
@@ -35,6 +36,13 @@ import {
   LOCAL_AGENT_CAPABILITIES,
 } from "./cli.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
+import {
+  ClaudeParticipantError,
+  ClaudeStreamGuard,
+  claudeParticipantEnv,
+  claudeParticipantFlags,
+  type ClaudeParticipantErrorCode,
+} from "./claude-participant.js";
 
 type JsonObject = Record<string, unknown>;
 
@@ -47,6 +55,8 @@ export interface ClaudeStreamTransport {
    */
   turn(message: JsonObject, timeoutMs: number, signal?: AbortSignal): Promise<JsonObject>;
   close(): void;
+  /** The first refusal the stream guard raised, if any. */
+  refusal?(): ClaudeParticipantError | undefined;
 }
 
 /** How long Claude Code may take to acknowledge an interrupt before the session is ended. */
@@ -112,10 +122,13 @@ function waitForTurn(
  * NDJSON over the child's stdio. Each user message carries a fresh `uuid`, and a `result` goes
  * only to the turn whose uuid it names. A turn given up on is interrupted with a control request,
  * and the next user message waits for the interrupt's receipt, so its `cancel_queued` cancels an
- * abandoned message still in the queue but never the message sent after it. Every other message
- * is a progress line and is ignored.
+ * abandoned message still in the queue but never the message sent after it. Every message passes
+ * `guard` first; one it refuses ends the session and kills the process.
  */
-function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStreamTransport {
+function stdioClaudeTransport(
+  child: ChildProcessWithoutNullStreams,
+  guard: ClaudeStreamGuard,
+): ClaudeStreamTransport {
   const rl = readline.createInterface({ input: child.stdout });
   const waiting = new Map<string, WaitingTurn>();
   // Given-up turns whose result may still arrive; it must reach nobody.
@@ -125,6 +138,9 @@ function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStre
   let interrupts = 0;
   let stderrTail = "";
   let ended: Error | undefined;
+  // The first refusal outranks every other ending: a forbidden line in the same stdout chunk as a
+  // result, or as a line that desynchronized the session, is read before the waiting turn resumes.
+  let refused: ClaudeParticipantError | undefined;
 
   const write = (message: JsonObject): void => {
     child.stdin.write(`${JSON.stringify(message)}\n`);
@@ -209,6 +225,16 @@ function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStre
     } catch {
       return; // never a reason to end a run
     }
+    const refusal = guard.inspect(message);
+    if (refusal !== undefined) {
+      // The refusal is recorded before the kill, so the exit it causes cannot replace it. SIGKILL:
+      // a tool the flags somehow allowed may already be running.
+      refused ??= refusal;
+      end(refusal);
+      child.kill("SIGKILL");
+      stop();
+      return;
+    }
     if (message.type === "result") {
       deliver(message);
     } else if (message.type === "control_response") {
@@ -236,19 +262,27 @@ function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStre
 
   return {
     async turn(message, timeoutMs, signal) {
-      if (ended !== undefined) throw ended;
+      if (ended !== undefined) throw refused ?? ended;
       await acknowledged;
-      if (ended !== undefined) throw ended;
+      if (ended !== undefined) throw refused ?? ended;
       if (signal?.aborted) throw new Error("run stopped");
       const id = randomUUID();
       const result = waitForTurn(waiting, id, timeoutMs, signal, () => abandon(id));
       write({ ...message, uuid: id });
-      return result;
+      let answer: JsonObject;
+      try {
+        answer = await result;
+      } catch (error) {
+        throw refused ?? error;
+      }
+      if (refused !== undefined) throw refused;
+      return answer;
     },
     close() {
       end(new Error("Claude Code session closed"));
       stop();
     },
+    refusal: () => refused,
   };
 }
 
@@ -262,16 +296,36 @@ export interface ClaudeSessionOptions {
   timeoutMs?: number;
   /** Scratch root for the session's working directory (the screenshots it is allowed to Read). */
   workRoot?: string;
-  /** Extra arguments, e.g. a model override. Tests never pass any. */
+  /** Injected in tests to see the argv and environment the child gets. */
   spawnFn?: typeof spawn;
+  /** Where the participant's few environment names come from. Absent = process.env. */
+  env?: Readonly<Record<string, string | undefined>>;
 }
 
 const CLAUDE_SESSION_CAPABILITIES: ActorCapabilities = LOCAL_AGENT_CAPABILITIES;
 
 export interface ClaudeSession {
   provider: CuaProvider;
-  /** Ends the process and removes its scratch directory. The run owns the lifetime, not the provider. */
-  close(): Promise<void>;
+  /**
+   * Ends the process and removes its scratch directory. The run owns the lifetime, not the
+   * provider. `refusal` is a stream refusal no turn reported, such as a forbidden call after the
+   * last turn ended or was given up; it fails the run.
+   */
+  close(): Promise<{ refusal?: ClaudeParticipantErrorCode }>;
+}
+
+/** The argv of the session process: stream-json both ways, then the restricting flags. */
+export function claudeSessionArgs(model?: string): string[] {
+  return [
+    "-p",
+    "--input-format",
+    "stream-json",
+    "--output-format",
+    "stream-json",
+    // Required for stream-json output in -p mode; it is what makes each message visible.
+    "--verbose",
+    ...claudeParticipantFlags(model),
+  ];
 }
 
 /** The message shape Claude Code reads on stdin in stream-json mode. */
@@ -290,33 +344,25 @@ export async function startClaudeSession(
   const timeoutMs = options.timeoutMs ?? 180_000;
   const effort = options.reasoningEffort ?? "low";
   const work = await mkdtemp(path.join(options.workRoot ?? tmpdir(), "humanish-claude-session-"));
+  // The folder as given to Claude Code and as resolved on disk (macOS /var is /private/var).
+  const folders = [work, await realpath(work).catch(() => work)];
 
   let child: ChildProcessWithoutNullStreams | undefined;
   let transport = options.transport;
   if (transport === undefined) {
     const spawnFn = options.spawnFn ?? spawn;
-    child = spawnFn(
-      "claude",
-      [
-        "-p",
-        "--input-format",
-        "stream-json",
-        "--output-format",
-        "stream-json",
-        // Required for stream-json output in -p mode; it is what makes the per-turn `result` visible.
-        "--verbose",
-        // Read is the only tool it needs (the screenshot) and the only one it gets.
-        "--allowedTools",
-        "Read",
-        ...(options.model === undefined ? [] : ["--model", options.model]),
-      ],
-      { cwd: work, stdio: ["pipe", "pipe", "pipe"] },
-    ) as ChildProcessWithoutNullStreams;
-    transport = stdioClaudeTransport(child);
+    child = spawnFn("claude", claudeSessionArgs(options.model), {
+      cwd: work,
+      env: claudeParticipantEnv(options.env ?? process.env),
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+    transport = stdioClaudeTransport(child, new ClaudeStreamGuard(folders));
   }
 
   let turnIndex = 0;
   let previousShot: string | undefined;
+  // Whether a turn already failed with the stream's refusal, so close does not report it twice.
+  let refusalReported = false;
   // A turn that delivered no result of its own spent tokens that no delivered turn reports. Its
   // late result is discarded rather than added to another turn, so the usage stays unknown.
   let usageIncomplete = false;
@@ -358,6 +404,11 @@ export async function startClaudeSession(
         result = await transport!.turn(userMessage(text), timeoutMs, signal);
       } catch (error) {
         usageIncomplete = true;
+        // A refused stream keeps its code: the run fails with it.
+        if (error instanceof ClaudeParticipantError) {
+          refusalReported = true;
+          throw error;
+        }
         if (error instanceof ClaudeSessionDesyncError) {
           // The stream no longer pairs results with turns, so no later turn can trust it.
           throw new ComputerUseProviderError("protocol_error", {
@@ -381,6 +432,8 @@ export async function startClaudeSession(
       transport?.close();
       child?.kill();
       await rm(work, { recursive: true, force: true }).catch(() => undefined);
+      const late = refusalReported ? undefined : transport?.refusal?.();
+      return late === undefined ? {} : { refusal: late.code };
     },
   };
 }

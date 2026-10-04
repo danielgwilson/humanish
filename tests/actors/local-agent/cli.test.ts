@@ -25,6 +25,26 @@ function fakeCli(reply: string, code = 0): SpawnLike {
   return async () => ({ code, stdout: reply, stderr: "" });
 }
 
+/** The init a restricted Claude Code writes (tests/fixtures/claude-code-stream-json). */
+const RESTRICTED_INIT = {
+  type: "system",
+  subtype: "init",
+  tools: ["Read"],
+  mcp_servers: [],
+  permissionMode: "dontAsk",
+};
+
+/** A one-shot stream-json stdout: the restricted init, any extra messages, then a result. */
+function claudeStream(resultText: string, extra: object[] = []): string {
+  return [
+    RESTRICTED_INIT,
+    ...extra,
+    { type: "result", subtype: "success", is_error: false, result: resultText },
+  ]
+    .map((message) => JSON.stringify(message))
+    .join("\n");
+}
+
 describe("the action vocabulary a local agent answers in", () => {
   it("maps the kinds it is allowed to use", () => {
     expect(toCuaActions([{ kind: "click", x: 10.4, y: 20.6 }])).toEqual([
@@ -70,10 +90,9 @@ describe("the provider", () => {
     const provider = createLocalAgentProvider({
       agent: "claude",
       spawnFn: fakeCli(
-        JSON.stringify({
-          result:
-            '{"reasoning":"menu top-left","done":false,"message":null,"actions":[{"kind":"click","x":52,"y":12,"text":null,"keys":null,"ms":null}]}',
-        }),
+        claudeStream(
+          '{"reasoning":"menu top-left","done":false,"message":null,"actions":[{"kind":"click","x":52,"y":12,"text":null,"keys":null,"ms":null}]}',
+        ),
       ),
     });
     const turn = await provider.nextTurn(
@@ -92,10 +111,9 @@ describe("the provider", () => {
     const provider = createLocalAgentProvider({
       agent: "claude",
       spawnFn: fakeCli(
-        JSON.stringify({
-          result:
-            '```json\n{"reasoning":"done here","done":true,"message":"I finished","actions":[]}\n```',
-        }),
+        claudeStream(
+          '```json\n{"reasoning":"done here","done":true,"message":"I finished","actions":[]}\n```',
+        ),
       ),
     });
     const turn = await provider.nextTurn(
@@ -161,30 +179,124 @@ describe("the provider", () => {
       .catch(() => undefined);
     expect(sawSignal).toBe(controller.signal);
   });
+});
 
-  it("restricts the agent's own tools: it is here to look at a picture", async () => {
-    const seen: string[][] = [];
-    const spy: SpawnLike = async (_bin, args, _o) => {
-      seen.push([...args]);
-      return {
-        code: 0,
-        stdout: '{"done":true,"actions":[],"reasoning":"x","message":null}',
-        stderr: "",
-      };
+describe("the one-shot Claude Code participant's limits", () => {
+  it("runs Claude Code restricted to Read, with a minimal environment and the prompt after --", async () => {
+    const seen: Array<{ args: string[]; env: NodeJS.ProcessEnv }> = [];
+    const spy: SpawnLike = async (_bin, args, options) => {
+      seen.push({ args: [...args], env: options.env });
+      return { code: 0, stdout: claudeStream('{"done":true,"actions":[]}'), stderr: "" };
     };
-    const claude = createLocalAgentProvider({ agent: "claude", spawnFn: spy });
-    await claude
-      .nextTurn({ instructions: "x", observation: observation() }, new AbortController().signal)
-      .catch(() => undefined);
-    expect(seen[0]).toContain("--allowedTools");
-    expect(seen[0]).toContain("Read");
-    // The prompt comes after a `--`: --allowedTools takes a list, and a prompt placed right after
-    // it was read as a tool name (Claude Code 2.1.257 exited 1, "Input must be provided", on three
-    // of three live runs, 2026-09-01).
-    const args = seen[0]!;
-    expect(args[args.length - 2]).toBe("--");
-    expect(args[args.length - 1]).toContain("x");
-    expect(args.indexOf("--allowedTools") + 1).toBe(args.indexOf("Read"));
+    const claude = createLocalAgentProvider({
+      agent: "claude",
+      spawnFn: spy,
+      env: {
+        PATH: "/usr/bin",
+        HOME: "/home/dev",
+        OPENAI_API_KEY: "sk-synthetic",
+        GH_TOKEN: "synthetic",
+        SYNTHETIC_DOTENV_SECRET: "synthetic",
+      },
+    });
+    await claude.nextTurn(
+      { instructions: "x", observation: observation() },
+      new AbortController().signal,
+    );
+    const { args, env } = seen[0]!;
+    expect(args.slice(0, -1)).toEqual([
+      "-p",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--restricted",
+      "--tools",
+      "Read",
+      "--strict-mcp-config",
+      "--permission-mode",
+      "dontAsk",
+      "--no-session-persistence",
+      "--",
+    ]);
+    expect(args.at(-1)).toContain("x");
+    expect(env).toEqual({
+      PATH: "/usr/bin",
+      HOME: "/home/dev",
+      CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1",
+    });
+  });
+
+  it("fails the turn with the refusal code when the stream shows a forbidden tool call", async () => {
+    const bash = {
+      type: "assistant",
+      message: { content: [{ type: "tool_use", name: "Bash", input: { command: "true" } }] },
+    };
+    let stopped: boolean | undefined;
+    const claude = createLocalAgentProvider({
+      agent: "claude",
+      spawnFn: async (_bin, _args, options) => {
+        stopped = options.onLine?.(JSON.stringify(bash));
+        return {
+          code: null,
+          stdout: claudeStream('{"done":true,"actions":[]}', [bash]),
+          stderr: "",
+        };
+      },
+    });
+    await expect(
+      claude.nextTurn(
+        { instructions: "x", observation: observation() },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    expect(stopped).toBe(true);
+  });
+
+  it("refuses an answer from a Claude Code that did not report a restricted start", async () => {
+    const claude = createLocalAgentProvider({
+      agent: "claude",
+      spawnFn: fakeCli(JSON.stringify({ type: "result", subtype: "success", result: "{}" })),
+    });
+    await expect(
+      claude.nextTurn(
+        { instructions: "x", observation: observation() },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_UNRESTRICTED" });
+  });
+
+  it("kills a real child process at its first forbidden line", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "humanish-claude-one-shot-"));
+    try {
+      const lines = [
+        RESTRICTED_INIT,
+        {
+          type: "assistant",
+          message: { content: [{ type: "tool_use", name: "Bash", input: {} }] },
+        },
+      ].map((message) => JSON.stringify(message));
+      // It prints the forbidden call, then would wait 30 s before answering.
+      await writeFile(
+        path.join(directory, "claude"),
+        `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(lines.join("\n") + "\n")});\nsetTimeout(() => {}, 30000);\n`,
+      );
+      await chmod(path.join(directory, "claude"), 0o700);
+      const claude = createLocalAgentProvider({
+        agent: "claude",
+        env: { PATH: directory, HOME: directory },
+        workRoot: directory,
+      });
+      const before = Date.now();
+      await expect(
+        claude.nextTurn(
+          { instructions: "x", observation: observation() },
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+      expect(Date.now() - before).toBeLessThan(10_000);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });
 
@@ -383,5 +495,33 @@ describe("telling the operator what they already have", () => {
         },
       }),
     ).resolves.toBe("unsupported_platform");
+  });
+});
+
+describe("Claude Code's release and sign-in check", () => {
+  it("asks Claude Code for its status and release with the participant's environment", async () => {
+    const calls: Array<{ args: string[]; env: NodeJS.ProcessEnv }> = [];
+    const detectClaude = (version: string) =>
+      detectLocalAgents({
+        home: "/home/dev",
+        env: { PATH: "/usr/bin", HOME: "/home/dev", ANTHROPIC_API_KEY: "synthetic" },
+        which: async (bin) => (bin === "claude" ? "/usr/bin/claude" : undefined),
+        exists: async () => true,
+        authProbe: async (_bin, args, env) => {
+          calls.push({ args: [...args], env });
+          return args[0] === "--version"
+            ? { code: 0, stdout: `${version} (Claude Code)\n`, stderr: "" }
+            : { code: 0, stdout: JSON.stringify({ loggedIn: true }), stderr: "" };
+        },
+      });
+    const [current] = await detectClaude("2.1.289");
+    expect(current).toMatchObject({ authStatus: "authenticated", version: "2.1.289" });
+    expect(calls.map((call) => call.args)).toEqual([["auth", "status"], ["--version"]]);
+    for (const call of calls) expect(call.env.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(localAgentDoctorMessage(current!)).toContain("instead of a provider API key");
+
+    const [old] = await detectClaude("2.1.200");
+    expect(localAgentDoctorMessage(old!)).toContain("2.1.248");
+    expect(localAgentDoctorMessage(old!)).toContain("claude update");
   });
 });

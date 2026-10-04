@@ -142,6 +142,12 @@ async function claudeSessionViews(): Promise<string[]> {
         for (const line of chunk.toString("utf8").split("\n").filter(Boolean)) {
           const message = JSON.parse(line) as { type: string; uuid?: string; message?: unknown };
           if (message.type !== "user") continue;
+          // A restricted Claude Code reports its tools before its first answer
+          // (tests/fixtures/claude-code-stream-json/restricted-denial.ndjson).
+          if (transcript.length === 0)
+            stdout.write(
+              `${JSON.stringify({ type: "system", subtype: "init", tools: ["Read"], mcp_servers: [], permissionMode: "dontAsk" })}\n`,
+            );
           transcript.push(JSON.stringify(message.message));
           views.push(transcript.join("\n"));
           const reply = {

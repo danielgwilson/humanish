@@ -5,7 +5,7 @@ import type { StudyConfig } from "./types.js";
 import type { StudyRoute } from "./plan.js";
 import type { PlanResult } from "./plan-types.js";
 import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
-import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
+import { localAgentVersionRefusal, type DetectedLocalAgent } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import {
   protocolAdditionsWarning,
@@ -374,13 +374,15 @@ async function participantChecks(
   // that the operator's config, release and model admit a launch.
   if (choice === "codex" && agent?.authStatus === "authenticated")
     return [await hostedCodexParticipantCheck(args, config.actors[0])];
+  const outdated = agent === undefined ? undefined : localAgentVersionRefusal(agent);
   return [
     {
       name: "local participant authentication",
-      ok: agent?.authStatus === "authenticated",
+      ok: agent?.authStatus === "authenticated" && outdated === undefined,
       message:
         agent?.authStatus === "authenticated"
-          ? `${agent.label} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`
+          ? (outdated ??
+            `${agent.label}${agent.version === undefined ? "" : ` ${agent.version}`} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`)
           : agent
             ? `${agent.label} ${agent.authStatus === "unauthenticated" ? "reports not signed in" : "authentication could not be checked"}. Run \`${choice === "codex" ? "codex login status" : "claude auth status"}\`; sign in or update the CLI before running.`
             : `${choice} is not on this process's PATH. Install and sign in to that CLI, or choose openai-computer-use with OPENAI_API_KEY.`,

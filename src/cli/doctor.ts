@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
+import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
@@ -20,6 +21,7 @@ import {
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
+import { leftoverClaudeTranscripts } from "../actors/local-agent/claude-participant.js";
 import {
   studySetupChecks,
   studiesByRequiredKey,
@@ -187,6 +189,7 @@ export async function doctor(
     await desktopSdkCheck(setup),
     terminalSurfaceCheck(),
     ...localAgentChecks(agents),
+    await claudeTranscriptCheck(env),
     ...keyChecks(probes, receivingKey, setup, keyUsers),
     ...(setup?.checks ?? [
       {
@@ -392,6 +395,39 @@ function localAgentChecks(agents: readonly DetectedLocalAgent[]): DoctorCheck[] 
     ...(agent.authStatus === "authenticated" ? {} : { status: "note" as const }),
     message: localAgentDoctorMessage(agent),
   }));
+}
+
+/**
+ * Earlier releases let Claude Code save a transcript for every participant, with each screenshot it
+ * read, under its projects folder and outside `.humanish/`. Participants now run with
+ * `--no-session-persistence`; this row counts what earlier runs left and prints the command that
+ * removes it. doctor never deletes anything.
+ */
+async function claudeTranscriptCheck(env: NodeJS.ProcessEnv): Promise<DoctorCheck> {
+  const found = await leftoverClaudeTranscripts(env, env.HOME ?? homedir(), (directory) =>
+    readdir(directory),
+  );
+  const name = "claude participant transcripts";
+  if ("unreadable" in found)
+    return {
+      name,
+      ok: true,
+      status: "note",
+      message: `could not list ${found.directory} (${found.unreadable}), so transcripts from earlier Claude Code participants were not counted. Check the folder for names ending in -humanish-claude-session-XXXXXX.`,
+    };
+  const count = found.names.length;
+  const folders = `${count} transcript folder${count === 1 ? "" : "s"} from earlier Claude Code participants under ${found.directory} hold every screenshot those runs read, unblurred.`;
+  return {
+    name,
+    ok: true,
+    ...(count === 0 ? {} : { status: "note" as const }),
+    message:
+      count === 0
+        ? `no transcript from an earlier Claude Code participant under ${found.directory}`
+        : found.removeCommand === undefined
+          ? `${folders} Remove these folders there: ${found.names.join(", ")}`
+          : `${folders} Remove them with: ${found.removeCommand}`,
+  };
 }
 
 /** "try-live", "try-live and local-browser", "a, b and c". */

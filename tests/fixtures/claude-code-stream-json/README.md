@@ -34,3 +34,21 @@ with the same arguments plus `--model haiku`. It sent a user message with `uuid`
 - the second turn's `result`, naming the second message.
 
 Every other field and message is omitted. The raw stream stayed local.
+
+## Restricted participant and a denied Read
+
+`restricted-denial.ndjson` comes from one Claude Code 2.1.289 session on 2026-10-04, spawned with
+the participant flags in `src/actors/local-agent/claude-participant.ts` (`--restricted --tools Read
+--strict-mcp-config --permission-mode dontAsk --no-session-persistence`), the participant
+environment, and a `--settings` that allowed `Bash(*)`, `Read(//**)` and `Write(//**)`. The
+synthetic prompt asked for a Read of an image in the working directory, a Read of a file outside
+it, a Bash command and a Write. It keeps, in order:
+- the `system` `init` message's `tools`, `mcp_servers`, `permissionMode` and
+  `claude_code_version`;
+- the two `Read` `tool_use` blocks (the one inside the folder ran; the one outside was denied);
+- the `system` `permission_denied` message for the outside Read;
+- the `result`'s `type`, `subtype`, `is_error` and `permission_denials`.
+
+The model reported that Bash and Write did not exist; no tool call for either was made. Both paths
+are replaced with synthetic ones (`/tmp/humanish-claude-session-AbC123`, `/tmp/outside`). Every
+other field and message is omitted.

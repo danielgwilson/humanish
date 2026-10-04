@@ -2,7 +2,7 @@
 // on a temporary `PATH` stands in for each case; computer use and shared world map the kind to their
 // own error codes.
 
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -45,6 +45,33 @@ async function refusal(script: string | undefined, caps: { maxUsd?: number } = {
   return localAgentRefusal({ agent: "codex", env: { PATH: dir, HOME: dir }, caps });
 }
 
+/**
+ * A `PATH` holding a `claude` that reports `version`. It is signed in, or with `tokenOnly` signed
+ * in only while CLAUDE_CODE_OAUTH_TOKEN is set, which the readiness check is then given.
+ */
+async function claudeRefusal(version: string, tokenOnly = false) {
+  const dir = await mkdtemp(path.join(tmpdir(), "humanish-local-agent-readiness-"));
+  dirs.push(dir);
+  const signedIn = tokenOnly ? '[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]' : "true";
+  await writeFile(
+    path.join(dir, "claude"),
+    [
+      "#!/bin/sh",
+      `if [ "$1" = "--version" ]; then echo "${version} (Claude Code)"; exit 0; fi`,
+      `if [ "$1" = "auth" ] && ${signedIn}; then echo '{"loggedIn": true}'; exit 0; fi`,
+      `if [ "$1" = "auth" ]; then echo '{"loggedIn": false}'; exit 1; fi`,
+      "exit 3",
+    ].join("\n"),
+  );
+  await chmod(path.join(dir, "claude"), 0o755);
+  const env = {
+    PATH: dir,
+    HOME: dir,
+    ...(tokenOnly ? { CLAUDE_CODE_OAUTH_TOKEN: "synthetic" } : {}),
+  };
+  return localAgentRefusal({ agent: "claude", env, caps: {} });
+}
+
 describe("localAgentRefusal", () => {
   it("reports a missing CLI when it is not on `PATH`", async () => {
     const result = await refusal(undefined);
@@ -79,4 +106,31 @@ describe("localAgentRefusal", () => {
       expect(await refusal(signedIn(qualified!))).toBeUndefined();
     },
   );
+
+  it("refuses a Claude Code older than the release with --restricted, and admits the floor", async () => {
+    const old = await claudeRefusal("2.1.247");
+    expect(old?.kind).toBe("unsupported");
+    expect(old?.message).toContain("2.1.248");
+    expect(old?.message).toContain("claude update");
+    expect(await claudeRefusal("2.1.248")).toBeUndefined();
+  });
+
+  it("runs only the selected CLI", async () => {
+    // A codex on the same `PATH` that would fail the test if it ran.
+    const dir = await pathWithCodex('touch "$HOME/codex-ran"; exit 3');
+    await writeFile(
+      path.join(dir, "claude"),
+      `#!/bin/sh\nif [ "$1" = "--version" ]; then echo "2.1.289 (Claude Code)"; exit 0; fi\necho '{"loggedIn": true}'\n`,
+    );
+    await chmod(path.join(dir, "claude"), 0o755);
+    expect(
+      await localAgentRefusal({ agent: "claude", env: { PATH: dir, HOME: dir }, caps: {} }),
+    ).toBeUndefined();
+    await expect(access(path.join(dir, "codex-ran"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("checks Claude Code's sign-in with the environment the participant gets", async () => {
+    // The participant does not get CLAUDE_CODE_OAUTH_TOKEN, so a login that needs it cannot run one.
+    expect((await claudeRefusal("2.1.289", true))?.kind).toBe("signin-required");
+  });
 });

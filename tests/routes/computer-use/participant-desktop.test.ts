@@ -384,7 +384,12 @@ describe("ready desktop participant contract", () => {
     expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
   });
 
-  it("runs a hosted Claude participant on one Claude session and closes it before the desktop", async () => {
+  const claudeRefusal = "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED";
+  it.each([
+    ["closes it before the desktop", {}, undefined],
+    ["fails on a refusal the session reports at close", { refusal: claudeRefusal }, claudeRefusal],
+  ] as const)("runs a hosted Claude participant on one Claude session and %s", async (...test) => {
+    const [, closed, refusal] = test;
     const f = await fixture();
     const provider: CuaProvider = {
       id: "claude-session",
@@ -399,6 +404,7 @@ describe("ready desktop participant contract", () => {
     };
     const close = vi.fn(async () => {
       f.order.push("model-closed");
+      return closed;
     });
     claudeSessionFactory.mockResolvedValue({ provider, close });
     f.deps.brain = { kind: "local-agent", agent: "claude" };
@@ -406,7 +412,8 @@ describe("ready desktop participant contract", () => {
 
     const result = await runCuaParticipant(f.spec, f.deps);
 
-    expect(result.harnessError).toBe(false);
+    expect(result.harnessError).toBe(refusal !== undefined);
+    expect(result.providerPolicyError?.match(/HUMANISH_CLAUDE_PARTICIPANT_\w+/)?.[0]).toBe(refusal);
     expect(claudeSessionFactory).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
     expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
