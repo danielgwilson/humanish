@@ -371,11 +371,11 @@ async function reclaimRoot(
   const createsInFlight = hooks.creates?.inFlight() ?? 0;
 
   // An empty search proves nothing for a run that never recorded its tags: one from humanish
-  // 0.110 or earlier, or whose owner lines were lost. The process that made the creates knows.
+  // 0.110.0 or earlier, or whose owner lines were lost. The process that made the creates knows.
   const provenance = owners.length > 0 || hooks.creates !== undefined;
   if (!provenance)
     warnings.push(
-      `${label} records no owner tags, so a sandbox whose id never reached a receipt cannot be ruled out: the run predates humanish 0.111, it created no sandbox, or its journal lost those lines. Each sandbox's create-time timeout is the backstop.`,
+      `${label} records no owner tags, so a sandbox whose id never reached a receipt cannot be ruled out: the run is from humanish 0.110.0 or earlier, it created no sandbox, or its journal lost those lines. Each sandbox's create-time timeout is the backstop.`,
     );
   // A carried sandbox from a create or a tag search carries this run's tags; if the finished
   // search, with the tags the run recorded, no longer lists it, it is gone. One from an older

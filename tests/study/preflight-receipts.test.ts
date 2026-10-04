@@ -154,7 +154,7 @@ async function writeJournal(
     startTicks?: string;
     createdAt?: string;
     leaseMs?: number;
-    /** A journal from humanish 0.110 or earlier, with no owner line. */
+    /** A journal from humanish 0.110.0 or earlier, with no owner line. */
     legacy?: boolean;
   },
 ): Promise<string> {

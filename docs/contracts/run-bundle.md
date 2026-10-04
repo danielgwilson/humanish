@@ -617,7 +617,7 @@ leads with it, for example `verified <id> (interrupted, sandboxes unknown) · sh
 `sandboxes` is `clean` only when the reclaim receipt records every sandbox gone and its
 `state` is `clean`, which means the search by tag finished. It is `unconfirmed` when the
 receipt records a sandbox not gone or misses a journaled one, and `unknown` otherwise,
-including a receipt from humanish 0.110 or earlier, which did not search by tag.
+including a receipt from humanish 0.110.0 or earlier, which did not search by tag.
 
 The local-evidence check includes screenshots declared only by
 `streams[].actor.items[].screenshotRef` or `streams[].liveActor.items[].screenshotRef`,

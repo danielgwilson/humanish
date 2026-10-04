@@ -19,7 +19,7 @@ import {
 // run that failed and all of them agree. The TUI's glyphs are checked on the same table in
 // tui/tests/outcome-surfaces.test.tsx.
 
-/** A surface's state, or its verdict where a surface shows no state, as surfaces before 0.111 did. */
+/** A surface's state, or its verdict where a surface shows no state, as surfaces before 0.110.1 did. */
 interface Shown {
   display?: { state: string } | undefined;
   verdict?: string | undefined;

@@ -214,10 +214,13 @@ describe("sandbox receipts + humanish reclaim", () => {
     });
 
     expect(killedIds).toEqual(["fake-sb-old", "fake-sb-new"]);
-    // No owner line, as in a run from 0.110 or earlier: every receipt is gone, but a sandbox whose
+    // No owner line, as in a run from 0.110.0 or earlier: every receipt is gone, but a sandbox whose
     // id never reached a receipt carries no tags to search for, so it cannot be ruled out.
     expect(result).toMatchObject({ ok: false, state: "unknown" });
-    expect(result.warnings.join("\n")).toContain("records no owner tags");
+    // The release that added owner lines is 0.110.1; the warning names the last one without them.
+    expect(result.warnings.join("\n")).toContain(
+      "records no owner tags, so a sandbox whose id never reached a receipt cannot be ruled out: the run is from humanish 0.110.0 or earlier, it created no sandbox, or its journal lost those lines. Each sandbox's create-time timeout is the backstop.",
+    );
   });
 
   it("reclaims by recorded exact id: kills the living, reports the gone, fails loud on a provider error, dedupes racing receipts", async () => {
