@@ -583,6 +583,15 @@
   "sandbox-receipts.ndjson": [
     {
       "at": "[ts]",
+      "provider": "e2b",
+      "owner": {
+        "tool": "humanish",
+        "runId": "[run]",
+        "runKey": "[runKey]"
+      }
+    },
+    {
+      "at": "[ts]",
       "laneId": "subject",
       "provider": "e2b",
       "sandboxId": "fake-subject-001",

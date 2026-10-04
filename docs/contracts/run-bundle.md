@@ -605,12 +605,19 @@ writing; an older one reads as interrupted. The warning names what verify saw:
 - the record's state and its last `updatedAt`, or the running `simulations[]` entries when
   there is no usable record;
 - how many streams are still `running`;
-- what `reclaim-receipt.json` records: how many of the run's sandboxes are gone
-  (killed or already gone), and how many journaled sandboxes it does not cover. It
-  matches its outcomes to the receipts by `sandboxIdDigest`; a reclaim receipt from
-  before 0.110 names raw ids, which are digested to match;
-- with journaled sandboxes and no reclaim receipt, the command that stops them:
-  `humanish reclaim --run <id>`.
+- the sandbox state, and what `reclaim-receipt.json` records: how many of the run's
+  sandboxes are gone (killed or already gone), and how many journaled sandboxes it does
+  not cover. It matches its outcomes to the receipts by `sandboxIdDigest`; a reclaim
+  receipt from before 0.110 names raw ids, which are digested to match;
+- with no reclaim receipt, the command that stops the journaled sandboxes and searches
+  E2B by the run's owner tags: `humanish reclaim --run <id>`.
+
+The result also carries `unfinished: { liveness, sandboxes }`, and the one-line output
+leads with it, for example `verified <id> (interrupted, sandboxes unknown) · share_ready`.
+`sandboxes` is `clean` only when the reclaim receipt records every sandbox gone and its
+`state` is `clean`, which means the search by tag finished. It is `unconfirmed` when the
+receipt records a sandbox not gone or misses a journaled one, and `unknown` otherwise,
+including a receipt from humanish 0.110 or earlier, which did not search by tag.
 
 The local-evidence check includes screenshots declared only by
 `streams[].actor.items[].screenshotRef` or `streams[].liveActor.items[].screenshotRef`,

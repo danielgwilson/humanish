@@ -93,6 +93,10 @@ function options(
     reclaimRun: async () => ({
       schema: "humanish.reclaim-result.v1" as const,
       ok: true,
+      state: "clean" as const,
+      mode: "kill" as const,
+      tagSearch: { status: "done" as const, found: 0 },
+      createsInFlight: 0,
       cwd: "/x",
       runId: "r",
       receiptCount: 0,
@@ -266,10 +270,20 @@ describe("the interrupted card", () => {
       reclaimRun: async () => ({
         schema: "humanish.reclaim-result.v1",
         ok: true,
+        state: "clean" as const,
+        mode: "kill" as const,
+        tagSearch: { status: "done" as const, found: 0 },
+        createsInFlight: 0,
         cwd: "/x",
         runId: "r",
         receiptCount: 2,
-        outcomes: [],
+        outcomes: ["participant-1", "participant-2"].map((laneId, index) => ({
+          sandboxId: "[redacted-sandbox-id]",
+          sandboxIdDigest: `digest-${index}`,
+          laneId,
+          source: "receipt" as const,
+          state: "killed" as const,
+        })),
         warnings: [],
       }),
       stopRun: async () => ({
@@ -305,11 +319,11 @@ describe("the interrupted card", () => {
     expect(card).toContain("sandboxes");
     expect(card).toContain("Reclaim");
 
-    const done = await surface.press(KEY.enter, (frame) => frame.includes("reclaimed"));
+    const done = await surface.press(KEY.enter, (frame) => frame.includes("reclaim clean"));
     surface.unmount();
     // The action reports what it did. One that fires and says nothing is indistinguishable from
     // one that is broken.
-    expect(done).toContain("reclaimed 2 recorded resources");
+    expect(done).toContain("reclaim clean: 2 sandboxes found");
   }, 20_000);
 });
 

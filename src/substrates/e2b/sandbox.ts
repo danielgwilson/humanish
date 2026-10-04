@@ -1,11 +1,20 @@
 // E2B sandbox acquisition and release. Every route that allocates an E2B sandbox calls this module,
-// so each allocation runs the same steps in the same order: create, one retry on a transient
+// so each allocation runs the same steps in the same order: register the create with the run's
+// in-process registry, tag the sandbox with the run's owner tags, create, one retry on a transient
 // provider error, capture of the exact id and kill authority, and a provider-qualified receipt in
 // the run directory before the caller gets the handle. The desktop startup guard
 // (guardDesktopSandboxCreate) is installed by loadE2BDesktopModule, so a create whose desktop
-// startup fails has already reclaimed its handle when the error reaches the retry here.
+// startup fails has already reclaimed its handle when the error reaches the retry here, and it
+// reports the id to the registry before desktop startup begins.
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
+import {
+  beginSandboxCreate,
+  recordSandboxOwnerOnce,
+  SandboxCreateRefusedError,
+  sandboxOwnerTags,
+  type SandboxCreateTicket,
+} from "../../run/sandbox-creates.js";
+import { appendSandboxOwner, appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import {
   ownDesktopAllocation,
@@ -18,9 +27,11 @@ import {
   E2BDesktopStartupError,
   e2bDebugMode,
   isSandboxNotFoundError,
+  observeDesktopAllocation,
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
+  type E2BListedSandbox,
 } from "./sdk.js";
 
 /** Where an allocation's receipt goes: the run's prepared root, under a public-safe participant
@@ -38,7 +49,7 @@ export interface E2BSandboxRequest {
   retry?: TransientRetryHooks;
   /**
    * Required so every caller decides. `null` is only for a caller that could not open a journal;
-   * that sandbox is reclaimable by its create-time `timeoutMs` alone.
+   * that sandbox carries no owner tags and is reclaimable by its create-time `timeoutMs` alone.
    */
   receipt: E2BSandboxReceiptTarget | null;
 }
@@ -66,36 +77,59 @@ async function acquire(
   request: E2BSandboxRequest,
   template: string | undefined,
 ): Promise<E2BSandbox> {
-  const { module, options } = request;
-  // Without a template the SDK's one-argument create chooses its stock desktop template.
-  const sandbox = await withOneRetryOnTransientE2BError(
-    () =>
-      template === undefined
-        ? module.Sandbox.create(options)
-        : module.Sandbox.create(template, options),
-    request.retry,
-  );
-  const allocation = ownE2BSandbox(module, sandbox.sandboxId);
+  const { module } = request;
+  const target = request.receipt;
+  // Refused before any provider call once the run is stopping.
+  const ticket =
+    target === null ? undefined : beginSandboxCreate(target.root, target.participantId);
   try {
-    if (request.receipt !== null) {
-      const { root, participantId, now = Date.now } = request.receipt;
-      // Best effort by contract: a failed write leaves the TTL as the only backstop and never
-      // fails the participant.
-      await appendSandboxReceipt(root, {
-        at: new Date(now()).toISOString(),
-        laneId: participantId,
-        provider: "e2b",
-        sandboxId: allocation.resourceId,
-        ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
-      });
+    // The owner tags let reclaim find this sandbox on E2B even if its id never reaches this
+    // process: a create that throws after E2B allocated, or a process that dies mid-create. The
+    // journal records them first, so reclaim knows which tags to search for.
+    const owner = target === null ? undefined : sandboxOwnerTags(target.root);
+    if (target !== null && owner !== undefined)
+      await recordSandboxOwnerOnce(target.root, () => appendSandboxOwner(target.root, owner));
+    const options: E2BDesktopCreateOptions =
+      owner === undefined
+        ? request.options
+        : { ...request.options, metadata: { ...request.options.metadata, ...owner } };
+    if (ticket !== undefined)
+      observeDesktopAllocation(options, (sandboxId) => ticket.created(sandboxId));
+    const sandbox = await withOneRetryOnTransientE2BError(
+      () => {
+        if (ticket?.stopping()) throw new SandboxCreateRefusedError();
+        // Without a template the SDK's one-argument create chooses its stock desktop template.
+        return template === undefined
+          ? module.Sandbox.create(options)
+          : module.Sandbox.create(template, options);
+      },
+      { ...request.retry, canRetry: () => ticket?.stopping() !== true },
+    );
+    ticket?.created(sandbox.sandboxId);
+    const allocation = ownE2BSandbox(module, sandbox.sandboxId, ticket);
+    try {
+      if (target !== null) {
+        const { root, participantId, now = Date.now } = target;
+        // Best effort by contract: a failed write leaves the owner tags and the TTL as the
+        // backstops and never fails the participant.
+        await appendSandboxReceipt(root, {
+          at: new Date(now()).toISOString(),
+          laneId: participantId,
+          provider: "e2b",
+          sandboxId: allocation.resourceId,
+          ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+        });
+      }
+    } catch (error) {
+      // The caller never receives this sandbox, so release it here. A throwing or invalid injected
+      // clock is the known case.
+      await allocation.close();
+      throw error;
     }
-  } catch (error) {
-    // The caller never receives this sandbox, so release it here. A throwing or invalid injected
-    // clock is the known case.
-    await allocation.close();
-    throw error;
+    return { sandbox, allocation };
+  } finally {
+    ticket?.settled();
   }
-  return { sandbox, allocation };
 }
 
 type SandboxKill = NonNullable<E2BDesktopModule["Sandbox"]["kill"]>;
@@ -113,7 +147,7 @@ function boundKill(module: E2BDesktopModule): SandboxKill | undefined {
  * recognized by type, means the same. Every other throw is unconfirmed, whatever its message
  * says: the SDK answers a 404 with false before it throws, so "not found" or "404" in a thrown
  * message comes from some other failure, such as a trace id. A true in debug mode sent no
- * request, so it confirms nothing. Never list the account.
+ * request, so it confirms nothing.
  */
 async function killById(
   kill: SandboxKill | undefined,
@@ -140,12 +174,21 @@ async function killById(
   }
 }
 
-function ownE2BSandbox(module: E2BDesktopModule, resourceId: string): OwnedDesktopAllocation {
+function ownE2BSandbox(
+  module: E2BDesktopModule,
+  resourceId: string,
+  ticket: SandboxCreateTicket | undefined,
+): OwnedDesktopAllocation {
   // Bind the provider method now, before any hook can replace it on the shared module.
   const kill = boundKill(module);
   return ownDesktopAllocation({
     resourceId,
-    release: () => killById(kill, resourceId, { requestTimeoutMs: 60_000 }),
+    release: async () => {
+      const released = await killById(kill, resourceId, { requestTimeoutMs: 60_000 });
+      // The signal handler skips a sandbox its route already released.
+      if (released.status === "released") ticket?.released(resourceId);
+      return released;
+    },
   });
 }
 
@@ -210,10 +253,8 @@ export type E2BSandboxDestroyOutcome =
   | { state: "killed" | "already-gone" }
   | { state: "kill-failed"; detail: string };
 
-/**
- * Kill one sandbox by its exact recorded id, for reclaim, and map the shared release result onto
- * reclaim's persisted outcome. It never lists the account.
- */
+/** Kill one sandbox by its exact id, for reclaim, and map the shared release result onto
+ *  reclaim's persisted outcome. */
 export async function destroyE2BSandbox(
   module: E2BDesktopModule,
   sandboxId: string,
@@ -232,6 +273,88 @@ export async function destroyE2BSandbox(
       };
     case "release_failed":
       return { state: "kill-failed", detail: redactText(toErrorMessage(released.error)) };
+  }
+}
+
+/** What `reclaim --check` learned about one sandbox by its exact id. */
+export type E2BSandboxPresence =
+  | { state: "running" | "already-gone" }
+  | { state: "check-failed"; detail: string };
+
+/**
+ * Ask E2B whether one sandbox still exists, by exact id. A SandboxNotFoundError, recognized by
+ * type, means gone; any other error leaves the answer open.
+ */
+export async function inspectE2BSandbox(
+  module: E2BDesktopModule,
+  sandboxId: string,
+  options: { requestTimeoutMs: number },
+): Promise<E2BSandboxPresence> {
+  if (typeof module.Sandbox.getInfo !== "function")
+    return {
+      state: "check-failed",
+      detail: "the installed @e2b/desktop SDK has no Sandbox.getInfo",
+    };
+  try {
+    await module.Sandbox.getInfo(sandboxId, options);
+    return { state: "running" };
+  } catch (error) {
+    if (isSandboxNotFoundError(error)) return { state: "already-gone" };
+    return { state: "check-failed", detail: redactText(toErrorMessage(error)) };
+  }
+}
+
+/** What E2B listed for a run's owner tags. `sandboxes` holds exact matches only. */
+export interface E2BTagSearch {
+  status: "done" | "unavailable" | "failed";
+  sandboxes: E2BListedSandbox[];
+  detail?: string;
+}
+
+const TAG_SEARCH_PAGE_SIZE = 100;
+// One run tags at most a few dozen sandboxes. More pages than this means the filter was not
+// applied, and reading on would walk the whole account.
+const TAG_SEARCH_MAX_PAGES = 3;
+
+/**
+ * List the sandboxes E2B matches to every one of `tags`, filtered server-side. Each result is
+ * checked against every tag again, so a server that ignored the filter still cannot hand back
+ * another run's sandbox, and the search stops after a few pages instead of walking the account.
+ */
+export async function findE2BSandboxesByTags(
+  module: E2BDesktopModule,
+  tags: Record<string, string>,
+  options: { requestTimeoutMs: number },
+): Promise<E2BTagSearch> {
+  if (typeof module.Sandbox.list !== "function")
+    return {
+      status: "unavailable",
+      sandboxes: [],
+      detail: "the installed @e2b/desktop SDK has no Sandbox.list",
+    };
+  const sandboxes: E2BListedSandbox[] = [];
+  try {
+    const pages = module.Sandbox.list({
+      query: { metadata: tags },
+      limit: TAG_SEARCH_PAGE_SIZE,
+      requestTimeoutMs: options.requestTimeoutMs,
+    });
+    for (let page = 0; pages.hasNext; page += 1) {
+      if (page === TAG_SEARCH_MAX_PAGES)
+        return {
+          status: "failed",
+          sandboxes,
+          detail: `E2B returned more than ${TAG_SEARCH_MAX_PAGES * TAG_SEARCH_PAGE_SIZE} sandboxes for one run's tags, so the search stopped before reading the rest`,
+        };
+      for (const listed of await pages.nextItems()) {
+        const metadata = listed.metadata ?? {};
+        if (Object.entries(tags).every(([key, value]) => metadata[key] === value))
+          sandboxes.push(listed);
+      }
+    }
+    return { status: "done", sandboxes };
+  } catch (error) {
+    return { status: "failed", sandboxes, detail: redactText(toErrorMessage(error)) };
   }
 }
 
@@ -255,6 +378,8 @@ export function e2bDesktopTemplate(config: {
 export interface TransientRetryHooks {
   onRetry?: (reason: string) => void;
   sleep?: (ms: number) => Promise<void>;
+  /** False skips the retry, as when the run started stopping during the first attempt. */
+  canRetry?: () => boolean;
 }
 
 /** Wall-clock pause before the single retry; envd routing settles within a few seconds. */
@@ -299,7 +424,7 @@ export async function withOneRetryOnTransientE2BError<T>(
   try {
     return await attempt();
   } catch (error) {
-    if (!isTransientE2BError(error)) throw error;
+    if (!isTransientE2BError(error) || hooks?.canRetry?.() === false) throw error;
     const reason = error instanceof Error ? error.message : String(error);
     hooks?.onRetry?.(reason);
     await (

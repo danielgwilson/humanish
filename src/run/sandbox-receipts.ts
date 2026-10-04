@@ -77,6 +77,71 @@ export async function appendSandboxReceipt(
   }
 }
 
+/**
+ * A line written before each create: the owner tags the sandbox is created with. It names no
+ * sandbox, so parseSandboxReceipts, and every version before it existed, skip it. Reclaim searches
+ * E2B with these tags, so a run directory that was copied or moved still finds its sandboxes, and
+ * an empty search counts as clean only when the run recorded the tags it used.
+ */
+interface SandboxOwnerLine {
+  at: string;
+  provider: SandboxProviderId;
+  owner: SandboxOwnerTags;
+}
+
+/** Append one owner line; false when the write failed, which never fails the create. */
+export async function appendSandboxOwner(
+  root: PreparedOutputRoot,
+  owner: SandboxOwnerTags,
+): Promise<boolean> {
+  try {
+    const line: SandboxOwnerLine = { at: new Date().toISOString(), provider: "e2b", owner };
+    const filePath = await prepareContainedOutputFile(root, SANDBOX_RECEIPTS_ARTIFACT);
+    // The leading newline ends a line an earlier append left torn, so this record parses.
+    await appendFile(filePath, `\n${JSON.stringify(line)}\n`, "utf8");
+    return true;
+  } catch {
+    // Never fails the create. Without the line, reclaim reports the run's sandboxes as unknown,
+    // never clean, so the next create tries again.
+    return false;
+  }
+}
+
+/** The owner tags every sandbox carries; sandboxOwnerTags in src/run/sandbox-creates.ts. */
+// A type alias, so a tag set passes where E2B metadata (a string record) is expected.
+export type SandboxOwnerTags = {
+  tool: "humanish";
+  runId: string;
+  runKey: string;
+};
+
+const RUN_KEY = /^[0-9a-f]{16}$/;
+
+/**
+ * The owner tag sets a journal's owner lines record for the run named `runId`. Only a complete
+ * tuple counts: provider e2b, `tool: humanish`, this run's id and a well-formed key, and nothing
+ * else. A partial or foreign line would widen reclaim's search past this run, so it is skipped.
+ */
+export function parseSandboxOwners(text: string, runId: string): SandboxOwnerTags[] {
+  const owners = new Map<string, SandboxOwnerTags>();
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const parsed = JSON.parse(trimmed) as { provider?: unknown; owner?: unknown };
+      const owner = parsed.owner as Partial<Record<keyof SandboxOwnerTags, unknown>> | null;
+      if (parsed.provider !== "e2b" || owner === null || typeof owner !== "object") continue;
+      if (Object.keys(owner).length !== 3 || owner.tool !== "humanish" || owner.runId !== runId)
+        continue;
+      if (typeof owner.runKey !== "string" || !RUN_KEY.test(owner.runKey)) continue;
+      owners.set(owner.runKey, { tool: "humanish", runId, runKey: owner.runKey });
+    } catch {
+      // A torn line: skip it.
+    }
+  }
+  return [...owners.values()];
+}
+
 /** Parse a receipts file leniently: a torn final line (crash mid-append) drops, valid lines keep. */
 export function parseSandboxReceipts(text: string): ParsedSandboxReceipt[] {
   const receipts: ParsedSandboxReceipt[] = [];

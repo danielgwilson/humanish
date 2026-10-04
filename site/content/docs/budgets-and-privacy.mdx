@@ -173,7 +173,7 @@ Run evidence stays in gitignored `.humanish/`, and no command publishes it. Use 
 
 ## Recover after an interruption
 
-After a crash, run `npx humanish runs`, then `npx humanish cleanup --run YOUR_RUN_ID`, then `npx humanish reclaim --run YOUR_RUN_ID`. For an interrupted `humanish study check` probe, run `npx humanish reclaim --preflight --json`. [Knowing that cleanup happened](/docs/trust-boundaries#knowing-that-cleanup-happened) explains each receipt and how long a preflight sandbox lives.
+After a crash, run `npx humanish runs`, then `npx humanish reclaim --run YOUR_RUN_ID`, which kills what the run journaled and anything E2B lists with the run's tags. `npx humanish reclaim --check --run YOUR_RUN_ID` asks the same questions and kills nothing. For an interrupted `humanish study check` probe, run `npx humanish reclaim --preflight --json`. [Knowing that cleanup happened](/docs/trust-boundaries#knowing-that-cleanup-happened) explains each receipt and how long a preflight sandbox lives.
 
 ## Choose telemetry
 

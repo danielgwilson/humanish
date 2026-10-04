@@ -1299,6 +1299,15 @@
       "provider": "e2b",
       "sandboxId": "fake-sandbox-003",
       "timeoutMs": 660000
+    },
+    {
+      "at": "[ts]",
+      "provider": "e2b",
+      "owner": {
+        "tool": "humanish",
+        "runId": "[run]",
+        "runKey": "[runKey]"
+      }
     }
   ],
   "status.json": {

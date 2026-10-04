@@ -151,6 +151,14 @@ const PINS: Readonly<Record<string, (json: Json) => unknown>> = {
     checks: rows(json.checks).map((check) => check.name),
   }),
   "analyze-refused": (json) => ({ code: (json.error as Json).code }),
+  // No E2B key in the suite, so a run with no receipts cannot be called clean.
+  reclaim: (json) => ({ state: json.state, tagSearch: (json.tagSearch as Json).status }),
+  // The deprecated alias of reclaim --check: its result, with the deprecation warning first.
+  cleanup: (json) => ({
+    mode: json.mode,
+    state: json.state,
+    warning: Array.isArray(json.warnings) ? json.warnings[0] : undefined,
+  }),
   "comms-providers": (json) => ({ ids: rows(json.providers).map((provider) => provider.id) }),
   "keys-list": (json) => ({ action: json.action }),
 };

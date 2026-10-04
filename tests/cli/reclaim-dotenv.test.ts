@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
 import { resolveRunPath } from "../../src/run/locate.js";
-import { appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
+import { appendSandboxOwner, appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
+import { sandboxOwnerTags } from "../../src/run/sandbox-creates.js";
 import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { parseStudyDocument } from "../../src/study/config.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
@@ -28,6 +29,8 @@ const loadModule = vi.fn(
           seenKeys.push(process.env.E2B_API_KEY);
           return true;
         },
+        // E2B lists no sandbox tagged with the run.
+        list: () => ({ hasNext: false, nextItems: async () => [] }),
       },
     }) as unknown as E2BDesktopModule,
 );
@@ -98,6 +101,8 @@ describe("humanish reclaim --dotenv", () => {
     });
     expect(run.ok).toBe(true);
     const runPaths = await resolveRunPath(cwd, "latest");
+    // A run from this version records its owner tags before the create.
+    await appendSandboxOwner(runPaths!, sandboxOwnerTags(runPaths!));
     await appendSandboxReceipt(runPaths!, {
       at: "t1",
       laneId: "lane-01",

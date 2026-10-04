@@ -45,6 +45,40 @@ The Unreleased section holds the full notes for the next version until it is tag
   `humanish doctor` shows the installed release. Sign-in is checked with the participant's
   environment, so a login held only in `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` reads as
   signed out: run `claude auth login`.
+- `humanish reclaim` results carry `state`: `clean` only when every sandbox found is confirmed
+  gone, the search by tag finished and the run recorded its owner tags, `unconfirmed` when a kill
+  did not confirm, and `unknown` when E2B could not be searched, a create was still in flight,
+  or the run has no owner line, as every run from 0.110 or earlier. `ok` is true only for
+  `clean`, so a run with no receipts now exits 2 when E2B cannot be reached or no E2B key is
+  set, where it exited 0 with "nothing to reclaim", and a run from 0.110 or earlier exits 2 even
+  when every receipt is gone. `humanish reclaim --preflight` keeps such a journal however much
+  time has passed, since a probe can create later than its journal says, and its warning names
+  the directory to delete once the E2B dashboard shows no sandbox for it. The human line reads
+  `Reclaim <run>: <state>.` where it read `ok` or `failed`. Each outcome gains `source`
+  (`receipt`, `create` or `tag`), and `pending` is a new outcome state. The result also gains
+  `mode`, `tagSearch` and `createsInFlight`, and `reclaim-receipt.json` gains `state`.
+- `humanish reclaim --check` asks E2B whether each of a run's sandboxes still exists, by exact
+  id and by tag, and kills nothing and writes nothing. It reports `clean`, `running` or
+  `unknown` and exits 0 only for `clean`.
+- `humanish cleanup` runs `humanish reclaim --check`, with its output and exit code. It used to
+  read only the sandboxes computer-use runs recorded in `providerResources`, so it passed every
+  shared-world, scripted and terminal run, and it passed when it found no record at all. Its JSON
+  result is now the reclaim result, its human line reads `Reclaim check <run>: <state>.` where it
+  read `humanish cleanup passed`, and it writes no `cleanup.json`. `humanish verify` still reads
+  a `cleanup.json` an earlier version wrote.
+- The signal line after a stop reads `sandboxes clean: …`, `sandboxes unconfirmed: …` or
+  `sandboxes unknown: …` where it read `sandboxes: …` or "no sandbox receipts to reclaim".
+- `humanish verify` on a run that is not finished leads its one-line output with the run's
+  liveness and sandbox state, for example `verified <id> (interrupted, sandboxes unknown)`, and
+  its result gains `unfinished: { liveness, sandboxes }`. `sandboxes` is `clean` only when the
+  run's reclaim receipt records a finished search by tag; the `RUN_NOT_FINISHED` warning says
+  which, and names `humanish reclaim --run <id>` when no receipt does.
+
+### Deprecated
+
+- `humanish cleanup`: it prints "`cleanup` is now `reclaim --check`; `cleanup` is removed in
+  0.112.0." on stderr and first in the JSON `warnings[]`, then runs `humanish reclaim --check`.
+  It takes `--run`, `--cwd`, `--dotenv` and `--json`. It no longer appears in `--help`.
 
 ### Fixes
 
@@ -121,6 +155,35 @@ The Unreleased section holds the full notes for the next version until it is tag
   `scenario.mode`, `scenario` for `scenario.ref` and `participants[].target` for
   `actors[0].lanes[].target`. A 3-participant run warned "Set execution.caps.maxTotalUsd", and a
   study that did so failed to parse with `HUMANISH_STUDY_INVALID`.
+- A Ctrl-C in the first seconds of a live run no longer leaves a sandbox running until its
+  timeout. A receipt reaches `sandbox-receipts.ndjson` only after `Sandbox.create` returns, and
+  on `@e2b/desktop` that is after desktop startup, seconds after E2B created the sandbox. The
+  signal handler now refuses any further create, kills each sandbox whose id a create reports
+  during the stop (the desktop startup guard reports it before startup begins), and searches
+  E2B by the run's owner tags. Reproduced on 0.110.0 with a SIGINT 2.1 s into a run: the
+  handler, `cleanup`, `reclaim` and `verify` all reported clean while the sandbox ran for its
+  12-minute timeout.
+- Every sandbox humanish creates carries `tool: humanish`, `runId` and `runKey` in its E2B
+  metadata, on every route and on `study check` probes. Only the terminal route set a run id
+  before. `runKey` is a digest of the run directory's inode and creation time, so two projects
+  that reuse a run id never match each other's sandboxes.
+- `humanish reclaim` also kills any sandbox E2B lists with all three of the run's tags, so a
+  sandbox whose id never reached a receipt is found: a create that threw after E2B allocated,
+  or a process that died mid-create. E2B filters the list, and reclaim checks every tag again
+  on each result before it acts and reads at most three pages. Before the first create,
+  `sandbox-receipts.ndjson` records the tags in an owner line that names no sandbox, so a copied
+  or moved run directory searches with the tags its sandboxes carry. A line counts only with
+  exactly `tool: humanish`, this run's id and a 16-hex `runKey`, and each one starts with a
+  newline, so a line an earlier append left torn cannot swallow it. Older versions skip the line.
+- Reclaim kills all of a run's sandboxes concurrently, the newest included, and writes
+  `reclaim-receipt.json` before the first kill, with each sandbox `pending`, and again as each
+  answers. A signal that hit its 10 s deadline used to kill one sandbox at a time, oldest first,
+  and write no receipt. The signal handler skips a sandbox its route already released.
+- The first Ctrl-C prints one line saying humanish is stopping and reclaiming the run's
+  sandboxes. A second Ctrl-C prints the `humanish reclaim` command for the run, with `--cwd`
+  when the run used another directory, before it exits. Before, nothing printed for up to 10 s,
+  and the second exited silently.
+- `humanish reclaim`'s human output ends with a newline.
 
 ## 0.110.0: --dotenv, and sandbox ids only in receipts (2026-10-03)
 

@@ -22,8 +22,10 @@ import {
   acquireE2BDesktopSandbox,
   acquireE2BShellSandbox,
   destroyE2BSandbox,
+  findE2BSandboxesByTags,
   readE2BRelease,
 } from "../../../src/substrates/e2b/sandbox.js";
+import { sandboxOwnerTags } from "../../../src/run/sandbox-creates.js";
 
 // A receipt write can be held open so a test can observe what the caller sees meanwhile.
 const receiptGate = vi.hoisted(() => ({ hold: undefined as Promise<void> | undefined }));
@@ -266,7 +268,17 @@ describe("E2B sandbox receipts", () => {
     const acquired = await pending;
     expect(acquired.sandbox).toBe(f.desktop);
     const raw = await readFile(path.join(cwd, "run", SANDBOX_RECEIPTS_ARTIFACT), "utf8");
-    expect(JSON.parse(raw.trim())).toEqual({
+    const [ownerLine, receiptLine] = raw
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    // The owner tags land before the create, the receipt after it.
+    expect(ownerLine).toEqual({
+      at: expect.any(String),
+      provider: "e2b",
+      owner: sandboxOwnerTags(root),
+    });
+    expect(receiptLine).toEqual({
       at: "2026-09-30T00:00:00.000Z",
       laneId: "lane-01",
       provider: "e2b",
@@ -331,6 +343,71 @@ describe("E2B sandbox receipts", () => {
     });
     expect(acquired.sandbox).toBe(f.desktop);
     expect(acquired.allocation.resourceId).toBe("fake-owned-desktop");
+  });
+});
+
+describe("E2B sandbox owner tags", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-sandbox-tags-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("adds the run's owner tags to the route's own metadata on create", async () => {
+    const root = await prepareSelectedOutputDirectory(cwd, "cua-run-1");
+    const f = fixture();
+    await acquireE2BDesktopSandbox({
+      module: f.module,
+      options: { apiKey: "synthetic", metadata: { mode: "cua-actor-lab", participantId: "p1" } },
+      receipt: { root, participantId: "p1" },
+    });
+    const [options] = f.create.mock.calls[0] as [E2BDesktopCreateOptions];
+    expect(options.metadata).toEqual({
+      mode: "cua-actor-lab",
+      participantId: "p1",
+      tool: "humanish",
+      runId: "cua-run-1",
+      runKey: sandboxOwnerTags(root).runKey,
+    });
+  });
+
+  it("gives two directories with the same run id different run keys", async () => {
+    const first = await prepareSelectedOutputDirectory(cwd, "one/smoke");
+    const second = await prepareSelectedOutputDirectory(cwd, "two/smoke");
+    expect(sandboxOwnerTags(first).runId).toBe("smoke");
+    expect(sandboxOwnerTags(second).runId).toBe("smoke");
+    expect(sandboxOwnerTags(first).runKey).not.toBe(sandboxOwnerTags(second).runKey);
+  });
+
+  it("returns only exact matches and stops before walking a whole account", async () => {
+    const tags = { tool: "humanish", runId: "r1", runKey: "k1" };
+    const pages: number[] = [];
+    const module = {
+      Sandbox: {
+        create: vi.fn(),
+        // A server that ignored the filter: endless pages of everyone's sandboxes.
+        list: () => ({
+          hasNext: true,
+          nextItems: async () => {
+            pages.push(pages.length);
+            return [
+              { sandboxId: `fake-mine-${pages.length}`, metadata: { ...tags } },
+              { sandboxId: `fake-other-${pages.length}`, metadata: { tool: "humanish" } },
+            ];
+          },
+        }),
+      },
+    } as unknown as E2BDesktopModule;
+    const search = await findE2BSandboxesByTags(module, tags, { requestTimeoutMs: 1_000 });
+    expect(search.status).toBe("failed");
+    expect(pages).toHaveLength(3);
+    expect(search.sandboxes.map((listed) => listed.sandboxId)).toEqual([
+      "fake-mine-1",
+      "fake-mine-2",
+      "fake-mine-3",
+    ]);
   });
 });
 

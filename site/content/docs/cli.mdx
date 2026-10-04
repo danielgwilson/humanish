@@ -39,8 +39,7 @@ humanish [options] [command]
 - [humanish migrate](#humanish-migrate): Convert v2 study files to v3.
 - [humanish comms](#humanish-comms): Catch the email an app sends, for email-gated flows.
 - [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
-- [humanish reclaim](#humanish-reclaim): Stop an interrupted run's leftover sandboxes.
-- [humanish cleanup](#humanish-cleanup): Check that a run's resources were stopped.
+- [humanish reclaim](#humanish-reclaim): Stop or check an interrupted run's sandboxes.
 - [humanish keys](#humanish-keys): Store and manage your provider keys.
 - [humanish telemetry](#humanish-telemetry): Show or change anonymous usage collection.
 - [humanish tui](#humanish-tui): Browse studies and runs in a terminal UI for people.
@@ -694,7 +693,7 @@ humanish runtime setup [options]
 
 ## humanish reclaim
 
-Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --dotenv.
+Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox E2B lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks E2B whether each still exists and kills nothing. Needs E2B_API_KEY in the environment or in --dotenv.
 
 ```text
 humanish reclaim [options]
@@ -705,22 +704,8 @@ humanish reclaim [options]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--run <id>` | Run id, or latest. (default: "latest") |
 | `--preflight` | Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's. |
+| `--check` | Ask E2B whether each sandbox still exists; kill nothing and write nothing. Exits 0 only when all are gone. |
 | `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | Show help for this command. |
-
-## humanish cleanup
-
-Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.
-
-```text
-humanish cleanup [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--run <id>` | Run id, or latest. (default: "latest") |
-| `--cwd <path>` | Project directory. (default: ".") |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 

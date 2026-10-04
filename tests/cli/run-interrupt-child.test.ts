@@ -42,6 +42,7 @@ const CHILD = `
     Sandbox: {
       create: async () => sandbox,
       kill: async (id) => { process.stdout.write("killed " + id + "\\n"); return true; },
+      list: () => ({ hasNext: false, nextItems: async () => [] }),
     },
   };
   beginRunSignalPhase(
@@ -136,7 +137,7 @@ describe("a live run with the run command's handler, signalled mid-session", () 
       ],
     });
     expect(stderr).toContain(
-      `humanish: SIGTERM: run ${runId} marked interrupted; sandboxes: 1 killed.`,
+      `humanish: SIGTERM: run ${runId} marked interrupted; sandboxes clean: 1 killed; E2B lists none still tagged with this run.`,
     );
   });
 });

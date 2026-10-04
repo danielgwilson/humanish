@@ -1,16 +1,4 @@
-import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
-import {
-  cp,
-  link,
-  mkdir,
-  mkdtemp,
-  readFile,
-  realpath,
-  rm,
-  stat,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -35,22 +23,13 @@ import {
   type RunSubjectStateStepRecord,
 } from "../../src/run/bundle.js";
 import { CLEANUP_SCHEMA } from "../../src/run/results.js";
-import { cleanupRun, listRuns, readReview } from "../../src/run/stored-runs.js";
+import { listRuns, readReview } from "../../src/run/stored-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 
 const execFileAsync = promisify(execFile);
 const PNG_1X1 = syntheticPng1x1();
-
-function isNodeErrorCode(error: unknown, ...codes: string[]): boolean {
-  return (
-    error instanceof Error &&
-    "code" in error &&
-    typeof error.code === "string" &&
-    codes.includes(error.code)
-  );
-}
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-run-fixture-"));
@@ -237,228 +216,31 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("refuses to trust a stored provider id without a verified resource lease", async () => {
+  it("runs the deprecated humanish cleanup as reclaim --check, with one warning", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({
-        cwd,
-        dryRun: true,
-        runId: "cleanup-owned",
-      });
-
-      const bundlePath = path.join(cwd, ".humanish/runs/cleanup-owned/run.json");
-      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as Record<string, unknown>;
-      bundle.providerResources = [
-        {
-          schema: "humanish.provider-resource.v1",
-          provider: "e2b-desktop",
-          kind: "sandbox",
-          id: "sbx-owned-1",
-          owner: "humanish",
-          status: "running",
-          simId: "sim-001",
-          streamId: "stream-001",
-          laneId: "lane-01",
-          createdAt: "2026-01-01T00:00:00.000Z",
-        },
-        {
-          schema: "humanish.provider-resource.v1",
-          provider: "e2b-desktop",
-          kind: "sandbox",
-          id: "sbx-forged-unknown",
-          owner: "humanish",
-          status: "unknown",
-          createdAt: "2026-01-01T00:00:00.000Z",
-        },
-      ];
-      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-
-      let providerLoads = 0;
-      const cleanup = await cleanupRun(cwd, "cleanup-owned", {
-        now: () => new Date("2026-01-01T00:01:00.000Z"),
-        loadDesktopModule: async () => {
-          providerLoads += 1;
-          throw new Error("provider module must not be loaded from stored resource metadata");
-        },
-      });
-
-      expect(cleanup.schema).toBe(CLEANUP_SCHEMA);
-      expect(cleanup.ok).toBe(false);
-      expect(providerLoads).toBe(0);
-      // A run recorded before 0.110 holds raw ids in run.json; cleanup reports them by digest.
-      expect(cleanup.resources).toEqual(
-        ["sbx-owned-1", "sbx-forged-unknown"].map((id) =>
-          expect.objectContaining({
-            id: REDACTED_SANDBOX_ID,
-            idDigest: sandboxIdDigest(id),
-            status: "failed",
-            message: "automatic provider cleanup requires a verified resource lease",
-          }),
-        ),
-      );
-      expect(cleanup.summary).toMatchObject({
-        resources: 2,
-        killed: 0,
-        alreadyClean: 0,
-        failed: 2,
-        skipped: 0,
-      });
-
-      const cleanupText = await readFile(
-        path.join(cwd, ".humanish/runs/cleanup-owned/cleanup.json"),
-        "utf8",
-      );
-      expect(cleanupText).toContain("humanish.cleanup-result.v1");
-
-      const verify = await verifyRun(cwd, "cleanup-owned");
-      expect(verify.ok).toBe(false);
-      expect(verify.checks.find((check) => check.name === "cleanup receipt")?.ok).toBe(false);
-    });
-  });
-
-  it("keeps cleanup bound to the original physical run across a cwd alias retarget", async () => {
-    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-cleanup-alias-"));
-    const physicalA = path.join(tempRoot, "physical-a");
-    const physicalB = path.join(tempRoot, "physical-b");
-    const cwdAlias = path.join(tempRoot, "selected-cwd");
-    try {
-      await cp(path.resolve("fixtures/minimal-app"), physicalA, { recursive: true });
-      await cp(path.resolve("fixtures/minimal-app"), physicalB, { recursive: true });
-      await symlink(physicalA, cwdAlias, "dir");
-      await runDryRun({ cwd: cwdAlias, dryRun: true, runId: "cleanup-retarget" });
-      await cp(path.join(physicalA, ".humanish"), path.join(physicalB, ".humanish"), {
-        recursive: true,
-      });
-      const bCleanup = path.join(physicalB, ".humanish/runs/cleanup-retarget/cleanup.json");
-      await writeFile(bCleanup, "physical-b-sentinel\n", "utf8");
-
-      await expect(
-        cleanupRun(cwdAlias, "cleanup-retarget", {
-          cleanupAdapterResources: async ({ runDir }) => {
-            expect(runDir).toBe(
-              path.join(await realpath(physicalA), ".humanish/runs/cleanup-retarget"),
-            );
-            await rm(cwdAlias);
-            await symlink(physicalB, cwdAlias, "dir");
-            return [];
-          },
-        }),
-      ).rejects.toThrow(/changed physical destination|identity/i);
-
-      await expect(readFile(bCleanup, "utf8")).resolves.toBe("physical-b-sentinel\n");
-      await expect(
-        stat(path.join(physicalA, ".humanish/runs/cleanup-retarget/cleanup.json")),
-      ).rejects.toMatchObject({
-        code: "ENOENT",
-      });
-    } finally {
-      await rm(tempRoot, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects a symlinked cleanup receipt without mutating its target", async () => {
-    await withFixtureCopy(async (cwd) => {
-      await runDryRun({ cwd, dryRun: true, runId: "cleanup-symlink" });
-      const sentinel = path.join(path.dirname(cwd), "cleanup-symlink-sentinel.txt");
-      const cleanupPath = path.join(cwd, ".humanish/runs/cleanup-symlink/cleanup.json");
-      await writeFile(sentinel, "outside-sentinel\n", "utf8");
-      await symlink(sentinel, cleanupPath);
-
-      await expect(cleanupRun(cwd, "cleanup-symlink")).resolves.toMatchObject({
-        ok: false,
-        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" },
-      });
-      await expect(readFile(sentinel, "utf8")).resolves.toBe("outside-sentinel\n");
-    });
-  });
-
-  it("rejects a hardlinked cleanup receipt without mutating its target", async () => {
-    await withFixtureCopy(async (cwd) => {
-      await runDryRun({ cwd, dryRun: true, runId: "cleanup-hardlink" });
-      const sentinel = path.join(path.dirname(cwd), "cleanup-hardlink-sentinel.txt");
-      const cleanupPath = path.join(cwd, ".humanish/runs/cleanup-hardlink/cleanup.json");
-      await writeFile(sentinel, "outside-sentinel\n", "utf8");
-      try {
-        await link(sentinel, cleanupPath);
-      } catch (error) {
-        if (isNodeErrorCode(error, "EPERM", "ENOTSUP", "EOPNOTSUPP")) {
-          return;
-        }
-        throw error;
-      }
-
-      await expect(cleanupRun(cwd, "cleanup-hardlink")).resolves.toMatchObject({
-        ok: false,
-        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" },
-      });
-      await expect(readFile(sentinel, "utf8")).resolves.toBe("outside-sentinel\n");
-    });
-  });
-
-  it("supports cleanup CLI for already-clean resources without loading a provider dependency", async () => {
-    await withFixtureCopy(async (cwd) => {
-      await runDryRun({
-        cwd,
-        dryRun: true,
-        runId: "cleanup-already-clean",
-      });
-
-      const bundlePath = path.join(cwd, ".humanish/runs/cleanup-already-clean/run.json");
-      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as Record<string, unknown>;
-      bundle.providerResources = [
-        {
-          schema: "humanish.provider-resource.v1",
-          provider: "e2b-desktop",
-          kind: "sandbox",
-          id: "sbx-already-clean",
-          owner: "humanish",
-          status: "killed",
-          cleanup: {
-            killed: true,
-            reason: "killed during normal lane teardown",
-          },
-        },
-      ];
-      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-
-      const cli = await runCli(["cleanup", "--cwd", cwd, "--run", "latest", "--json"]);
-      expect(cli.exitCode).toBe(0);
-      const result = JSON.parse(cli.stdout) as {
-        ok: boolean;
-        summary: { alreadyClean: number; killed: number };
+      await runDryRun({ cwd, dryRun: true, runId: "cleanup-alias" });
+      const warning = "`cleanup` is now `reclaim --check`; `cleanup` is removed in 0.112.0.";
+      const check = await runCli(["reclaim", "--check", "--cwd", cwd, "--json"]);
+      const cleanup = await runCli(["cleanup", "--cwd", cwd, "--json"]);
+      // The same result and exit code, with the warning first in warnings[] and once on stderr.
+      expect(cleanup.exitCode).toBe(check.exitCode);
+      const { warnings, ...result } = JSON.parse(cleanup.stdout) as { warnings: string[] };
+      const { warnings: checkWarnings, ...checkResult } = JSON.parse(check.stdout) as {
+        warnings: string[];
       };
-      expect(result.ok).toBe(true);
-      expect(result.summary.alreadyClean).toBe(1);
-      expect(result.summary.killed).toBe(0);
+      expect(result).toEqual(checkResult);
+      expect(result).toMatchObject({ mode: "check" });
+      expect(warnings).toEqual([warning, ...checkWarnings]);
+      expect(cleanup.stderr.split(warning)).toHaveLength(2);
 
-      // Cleanup never kills, so the human summary does not offer a killed count.
-      const human = await runCli(["cleanup", "--cwd", cwd, "--run", "latest"]);
-      expect(human.stdout).toContain("resources: already-clean 1, skipped 0, failed 0");
-      expect(human.stdout).not.toContain("reclaim");
-    });
-  });
-
-  it("ends cleanup's human output with the reclaim command when a sandbox is not recorded as stopped", async () => {
-    await withFixtureCopy(async (cwd) => {
-      await runDryRun({ cwd, dryRun: true, runId: "cleanup-leftover" });
-      const bundlePath = path.join(cwd, ".humanish/runs/cleanup-leftover/run.json");
-      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as Record<string, unknown>;
-      bundle.providerResources = [
-        {
-          schema: "humanish.provider-resource.v1",
-          provider: "e2b-desktop",
-          kind: "sandbox",
-          id: "sbx-leftover",
-          owner: "humanish",
-          status: "unknown",
-          createdAt: "2026-01-01T00:00:00.000Z",
-        },
-      ];
-      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-      const human = await runCli(["cleanup", "--cwd", cwd, "--run", "latest"]);
-      expect(human.stdout).toContain("resources: already-clean 0, skipped 0, failed 1");
-      expect(human.stdout.trimEnd().split("\n").at(-1)).toBe(
-        `To stop leftover sandboxes, run humanish reclaim --run cleanup-leftover --cwd ${cwd}.`,
-      );
+      const human = await runCli(["cleanup", "--cwd", cwd]);
+      const humanCheck = await runCli(["reclaim", "--check", "--cwd", cwd]);
+      expect(human.stdout).toBe(humanCheck.stdout);
+      expect(human.stderr).toContain(`warning: ${warning}`);
+      // It writes nothing, so verify reads no cleanup receipt for the run.
+      await expect(
+        stat(path.join(cwd, ".humanish/runs/cleanup-alias/cleanup.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 

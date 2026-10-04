@@ -326,10 +326,11 @@ export function App({
       if (action === "reclaim") {
         setActionNote("reclaiming: stopping sandboxes, keeping evidence…");
         const result = await options.capabilities.reclaimRun(options.cwd, run.runId);
+        const found = result.outcomes.length;
         setActionNote(
-          result.ok
-            ? `reclaimed ${result.receiptCount} recorded resource${result.receiptCount === 1 ? "" : "s"}`
-            : `could not reclaim: ${result.error?.message ?? "unknown"}`,
+          result.error === undefined
+            ? `reclaim ${result.state}: ${found} sandbox${found === 1 ? "" : "es"} found by receipt or E2B tag`
+            : `could not reclaim: ${result.error.message}`,
         );
         return;
       }

@@ -59,6 +59,10 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
     reclaimRun: async () => ({
       schema: "humanish.reclaim-result.v1" as const,
       ok: true,
+      state: "clean" as const,
+      mode: "kill" as const,
+      tagSearch: { status: "done" as const, found: 0 },
+      createsInFlight: 0,
       cwd: "/x",
       runId: "r",
       receiptCount: 0,
