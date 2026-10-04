@@ -288,6 +288,51 @@ companion project validated records; generic HTTP serving of producer-owned raw
 analysis/correction JSON, execution receipts, atomic write temporaries and locks
 is disabled. Existing adapter captures and logs retain their contained routes.
 
+## Reading findings
+
+`humanish review` prints a run's analysis findings after its participant review, and
+`humanish analyze show` prints them alone. Each finding shows its title, impact, confidence and
+recovery, the participants it affected out of those exposed, the frames its evidence cites with
+their time since the first retained capture, the capture files, its next step and the latest
+human review note. A live run's human output ends with up to three findings, one line each, and
+the `review` command that prints all of them. `analyze show --json` prints the validated
+analysis record and its corrections, as before. Reading findings never starts an analysis.
+
+`review --json` carries the same view as its `analysis` field, schema
+`humanish.analysis-findings.v1`, built in `src/cli/findings.ts`:
+
+| Field                                                                          | Meaning                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`                                                                       | `humanish.analysis-findings.v1`.                                                                                                                                                                                                                                                                                                              |
+| `runId`                                                                        | The run the view reads.                                                                                                                                                                                                                                                                                                                       |
+| `state`                                                                        | `ready`, `stale`, `running`, `none`, `skipped`, `failed`, `dry_run` or `unavailable`. Only `ready` and `stale` carry findings.                                                                                                                                                                                                                |
+| `reason`                                                                       | The stable code behind a state other than `ready`, or null: an automatic analysis reason such as `AUTOMATIC_ANALYSIS_KEY_MISSING`, a failed attempt's error code, or a load warning such as `ANALYSIS_SOURCE_CHANGED`.                                                                                                                        |
+| `message`                                                                      | What happened, in words.                                                                                                                                                                                                                                                                                                                      |
+| `next`                                                                         | The command that gets findings for this run, or null when no command can, as for a dry run or a run whose participants left no evidence.                                                                                                                                                                                                      |
+| `analysisId`, `status`, `provider`, `model`, `completedAt`, `estimatedCostUsd` | The analysis version `analyze show` selects: the newest ready one, else the newest stale one. Null without one.                                                                                                                                                                                                                               |
+| `runPath`, `path`                                                              | The run directory and the version's `analysis.json`, relative to the project directory.                                                                                                                                                                                                                                                       |
+| `summary`, `limitations`                                                       | The analysis's own summary and limitations.                                                                                                                                                                                                                                                                                                   |
+| `findings[]`                                                                   | Highest priority first: `id`, `title`, `summary`, `impact` (`blocked_task`, `friction`, `recovery`, `uncertain`), `confidence` (`low`, `medium`, `high`), `recovery` (`recovered`, `not_observed`, `unknown`), `affected[]` (`streamId`, `label`), `exposedCount`, `evidence[]`, `nextStep` and `correction`.                                 |
+| `findings[].evidence[]`                                                        | Each cited item once: `id`, `streamId`, `kind`, `bases` (how the observations used it), `frame` (the latest retained capture's index from 0, null before any capture), `elapsedMs` (time since the first retained capture, not a video offset), `at` and `capture` (the file relative to the project directory, null for nonvisual evidence). |
+| `findings[].correction`                                                        | The latest `analyze correct` note on that finding version (`status`, `reason`, `replacementClaim`), or null.                                                                                                                                                                                                                                  |
+| `warnings`                                                                     | Load warnings for the selected version.                                                                                                                                                                                                                                                                                                       |
+
+The states without findings:
+
+- `running`: the automatic analysis is queued or running. `next` is `review` again.
+- `skipped`: the automatic analysis was skipped or refused, for example without
+  `OPENAI_API_KEY`. `next` is `analyze --max-cost 3`.
+- `failed`: the latest attempt failed or was cancelled and no usable version exists. `next`
+  reruns it with the same analyst, `--provider codex` for the Codex account analyst.
+- `none`: no analysis ran for this live run, for example with `review.analysis: false`.
+- `dry_run`: a dry run has no participant evidence to analyze.
+- `unavailable`: the run or its analysis records could not be read or checked, or the analysis
+  text matched a sensitive-text pattern (`ANALYSIS_SENSITIVE_TEXT_QUARANTINED`), which the
+  Observer withholds too.
+
+`stale` lists the findings with a warning: the run's evidence changed after the analysis, and
+`next` requests a new one. `analyze show` without `--json` exits 2 when the JSON form would.
+
 ## Human review and sharing
 
 ```bash

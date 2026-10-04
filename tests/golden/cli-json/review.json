@@ -1,6 +1,26 @@
 {
   "exitCode": 0,
   "shape": {
+    "analysis": {
+      "analysisId": "null",
+      "completedAt": "null",
+      "estimatedCostUsd": "null",
+      "findings": [],
+      "limitations": [],
+      "message": "string",
+      "model": "null",
+      "next": "null",
+      "path": "null",
+      "provider": "null",
+      "reason": "null",
+      "runId": "string",
+      "runPath": "string",
+      "schema": "string",
+      "state": "string",
+      "status": "null",
+      "summary": "null",
+      "warnings": []
+    },
     "gaps": [
       "string"
     ],
@@ -11,6 +31,7 @@
     "verdict": "string"
   },
   "pinned": {
-    "verdict": "contract_proof_only"
+    "verdict": "contract_proof_only",
+    "analysis": "dry_run"
   }
 }

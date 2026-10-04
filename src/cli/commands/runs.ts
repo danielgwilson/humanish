@@ -29,6 +29,7 @@ import {
   type HumanOutput,
 } from "../io.js";
 import { plural } from "../../run/text.js";
+import { type AnalysisFindings, formatFindings, readRunFindings } from "../findings.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
   addRunOptions(
@@ -83,13 +84,20 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
 export function registerReviewCommand(parent: Command, io: CliIo): void {
   parent
     .command("review")
-    .description("Show a run's review: verdict, summary and gaps.")
-    .summary("Build a review packet from verified run evidence.")
+    .description(
+      "Show a run's review: verdict, summary, gaps and the findings of its analysis, with the evidence each one cites.",
+    )
+    .summary("Show a run's outcome and analysis findings.")
     .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
-      const result = await readReview(options.cwd, options.run);
+      const review = await readReview(options.cwd, options.run);
+      // The verified run's exact id, so a run that moves `latest` meanwhile cannot swap the analysis.
+      const result =
+        "verdict" in review
+          ? { ...review, analysis: await readRunFindings(options.cwd, review.runId) }
+          : review;
       writeResult(command, io, result, formatReviewHuman);
       io.setExitCode("ok" in result && result.ok === false ? 2 : 0);
     });
@@ -316,9 +324,11 @@ const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
   timed_out: "timed out",
 };
 
-/** A run's review: its verdict, summary and gaps, and where review.json is. */
+/** A run's review: its verdict, summary and gaps, its analysis findings, and where review.json is. */
 function formatReviewHuman(
-  result: VerifyResult | (ReviewSummary & { path: string; runId: string }),
+  result:
+    | VerifyResult
+    | (ReviewSummary & { path: string; runId: string; analysis: AnalysisFindings }),
 ): HumanOutput {
   if (!("verdict" in result)) {
     // A run that did not pass verify has no review to show; verify says why.
@@ -342,6 +352,7 @@ function formatReviewHuman(
       result.summary,
       ...(result.gaps.length === 0 ? [] : ["", "gaps:", ...result.gaps.map((gap) => `- ${gap}`)]),
       "",
+      ...formatFindings(result.analysis),
       `review: ${result.path}`,
     ].join("\n") + "\n"
   );

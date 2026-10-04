@@ -33,6 +33,7 @@ import {
   staticObserverOpen,
   withObserverServer,
 } from "../observer-follow.js";
+import { writeRunFindings } from "../findings.js";
 import { formatCuaStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
@@ -351,6 +352,7 @@ async function reportCuaRun(
   }
   writeResult(args.command, args.io, output, formatCuaStudyHuman);
   args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+  await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
   if (server && (result.observer?.ok || attachedObserver)) {
     const followResult = output.observer?.ok

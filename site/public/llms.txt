@@ -67,10 +67,10 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish watch`: Run a study, open its Observer and keep the shell attached.
 - `humanish observe`: Open a saved run in the Observer, served on http://127.0.0.1; without --run, the latest. With --all, serve the run library, opening on --run when given.
 - `humanish verify`: Check a run's evidence and share safety.
-- `humanish review`: Show a run's review: verdict, summary and gaps.
+- `humanish review`: Show a run's review: verdict, summary, gaps and the findings of its analysis, with the evidence each one cites.
 - `humanish analyze`: Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.
 - `humanish analyze list`: List immutable analysis versions, including failed attempts.
-- `humanish analyze show`: Read validated analysis and correction history. Defaults to the latest usable version.
+- `humanish analyze show`: Print a run's analysis findings with the evidence each one cites. --json prints the validated analysis record and its correction history. Defaults to the latest usable version.
 - `humanish analyze correct`: Append a human review note bound to one exact finding version; original claims remain intact.
 - `humanish feedback`: Draft public-safe feedback issues from a run. humanish never calls the GitHub API.
 - `humanish feedback list`: List recorded feedback candidates and any saved draft.

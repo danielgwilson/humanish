@@ -8,6 +8,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `humanish review` prints the run's analysis findings after the participant review: each
+  finding's title, impact, confidence and recovery, the participants it affected, the frames it
+  cites with their time since the first capture, the capture files, its next step and any human
+  review note. When there are no findings it says why (a dry run, analysis still running, skipped,
+  failed, never run, stale or unreadable) and prints the command that gets them. `review --json`
+  carries the same view as `analysis`, schema `humanish.analysis-findings.v1`
+  (docs/contracts/study-analysis.md#reading-findings).
+- A live run's human output ends with up to three findings from its automatic analysis, one line
+  each, and the `humanish review --run <id>` command for all of them.
+
+### Changed
+
+- `humanish analyze show` prints the findings as text. The validated analysis record and its
+  correction history, which it printed as JSON in both modes, now need `--json`.
+- The skill's "Reporting Back" section and the `AGENTS.md` section `humanish init` writes tell a
+  coding agent to run `humanish review` after a live run and report its findings.
+
 ### Fixes
 
 - When the optional peer `@e2b/desktop` is missing, the live-run error, `humanish reclaim` and

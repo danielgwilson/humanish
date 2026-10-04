@@ -20,6 +20,7 @@ import {
   staticObserverOpen,
   withObserverServer,
 } from "../observer-follow.js";
+import { writeRunFindings } from "../findings.js";
 import { formatConcurrentSharedWorldStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
@@ -147,6 +148,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
       }
       writeResult(args.command, args.io, output, formatConcurrentSharedWorldStudyHuman);
       args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+      await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
       if (server && output.observer?.ok) {
         await followObserver(args.io, output.observer, server);

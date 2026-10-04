@@ -35,7 +35,7 @@ Everything it shows has a machine-readable equivalent, which is what you want:
 | browsing studies    | `npx humanish study list --json`                                                       |
 | browsing runs       | `npx humanish runs --json`                                                             |
 | starting a run      | `npx humanish run <study> --json --no-open`                                            |
-| a run's outcome     | `npx humanish review --run <id> --json`                                                |
+| a run's findings    | `npx humanish review --run <id> --json`                                                |
 | communication setup | `npx humanish comms providers --json` and `npx humanish comms connections list --json` |
 
 If a human asks you to "open the TUI", tell them the command to type; do not run
@@ -454,7 +454,21 @@ publish their names, screenshots, logs, source snippets, or operational details.
 
 ## Reporting Back
 
-Report:
+After a live run, read its findings before anything else:
+
+```bash
+npx humanish review --run <id>          # the verdict, then each analysis finding
+npx humanish review --run <id> --json   # the same; findings are under `analysis`
+```
+
+Report each finding to the user: its title, impact, confidence and recovery, the participants it
+affected, and the capture files it cites. These come from the post-run analysis of the evidence.
+Label the participant's own report in the review summary as the participant's account. When
+`analysis.state` is not `ready`, report `analysis.message` and the `analysis.next` command in
+place of findings; `analysis.next` is null when no command can produce them. `latest` moves with
+every run, including dry runs, so use the run id the run printed.
+
+Then report:
 
 - files changed in the target repo;
 - exact proof commands run;

@@ -160,6 +160,8 @@ npx humanish verify --run latest --json
 npx humanish feedback issue --run latest --repo owner/repo --format markdown
 ```
 
+`review` lists each analysis finding with its impact, confidence, recovery,
+affected participants and cited captures; `--json` has them under `analysis`.
 `feedback issue` prints a draft and requires `share_ready` evidence. A live run
 with raw screenshots can be valid local evidence and still fail that sharing
 gate. `humanish export --run latest --format bundle --redact-screenshots` creates
@@ -332,7 +334,7 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 | `humanish run <study>`                                   | Run the named preview or live study.                                      |
 | `humanish watch <study>`                                 | Run a study with an attached Observer.                                    |
 | `humanish runs --json`                                   | List local run history.                                                   |
-| `humanish review --run latest --json`                    | Read an existing run's evidence.                                          |
+| `humanish review --run latest --json`                    | Read a run's outcome and its analysis findings.                           |
 | `humanish verify --run latest --json`                    | Check evidence and share-safety gates.                                    |
 | `humanish feedback issue --run latest --repo owner/repo` | Print an eligible feedback draft.                                         |
 
