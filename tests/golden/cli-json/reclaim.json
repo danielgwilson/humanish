@@ -1,26 +1,25 @@
 {
-  "exitCode": 2,
+  "exitCode": 0,
   "shape": {
     "createsInFlight": "number",
     "cwd": "string",
     "mode": "string",
     "ok": "boolean",
     "outcomes": [],
+    "reason": "string",
     "receiptCount": "number",
     "runId": "string",
     "schema": "string",
     "state": "string",
     "tagSearch": {
-      "detail": "string",
       "found": "number",
       "status": "string"
     },
-    "warnings": [
-      "string"
-    ]
+    "warnings": []
   },
   "pinned": {
-    "state": "unknown",
-    "tagSearch": "failed"
+    "state": "clean",
+    "reason": "dry-run",
+    "tagSearch": "not-run"
   }
 }

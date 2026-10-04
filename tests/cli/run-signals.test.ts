@@ -1,6 +1,6 @@
 import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { EventEmitter } from "node:events";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { appendFile, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,11 +24,14 @@ import {
 } from "../../src/run/sandbox-receipts.js";
 import type { RunInterruptSignal } from "../../src/run/status.js";
 import { acquireE2BDesktopSandbox } from "../../src/substrates/e2b/sandbox.js";
-import type {
-  E2BDesktopModule,
-  E2BDesktopSandbox,
-  E2BListedSandbox,
+import {
+  E2BDesktopStartupError,
+  type E2BDesktopModule,
+  type E2BDesktopSandbox,
+  type E2BListedSandbox,
 } from "../../src/substrates/e2b/sdk.js";
+import { verifyRun } from "../../src/verify/verify.js";
+import { connectionEnded, guardedFakeDesktop } from "../helpers/guarded-fake-desktop.js";
 
 // The run command's handler: the first signal says it is stopping, refuses further creates, marks
 // the run interrupted, reclaims the sandboxes its receipts, its in-flight creates and its E2B tags
@@ -102,6 +105,8 @@ function fakeE2B(options: {
 
 async function setup(options: {
   runId?: string;
+  /** The E2B module reclaim loads, in place of the default fake. */
+  module?: E2BDesktopModule;
   interrupted?: boolean;
   interrupt?: () => Promise<boolean>;
   kill?: (sandboxId: string) => Promise<boolean>;
@@ -138,7 +143,7 @@ async function setup(options: {
       signalTarget: target,
       exit,
       reclaim: {
-        loadModule: async () => e2b.module,
+        loadModule: async () => options.module ?? e2b.module,
         ...(options.createsWaitMs === undefined ? {} : { createsWaitMs: options.createsWaitMs }),
       },
       deadline: () => deadlinePassed,
@@ -406,6 +411,79 @@ describe("the run command's signal handler during a sandbox create", () => {
     expect(run.stderr()).toContain("Still waiting on E2B: 1 sandbox create");
     expect(run.stderr()).toContain(`\`${reclaimCommand(RUN)}\``);
     expect(run.stderr()).not.toContain("clean");
+  });
+});
+
+// The desktop startup guard reports a sandbox's id seconds before create returns. A signal in that
+// window kills the sandbox, and desktop startup then fails with an error that quotes the id.
+describe("the run command's signal handler during a desktop startup", () => {
+  const ID = "fake-sb-startup-cut";
+
+  /** Every run file, by path relative to the run directory, that holds `text`. */
+  async function filesHolding(runRoot: string, text: string): Promise<string[]> {
+    const entries = await readdir(runRoot, { recursive: true, withFileTypes: true });
+    const holding: string[] = [];
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const file = path.join(entry.parentPath, entry.name);
+      if ((await readFile(file)).includes(text)) holding.push(path.relative(runRoot, file));
+    }
+    return holding.sort();
+  }
+
+  it("journals the reported id and sweeps the startup error that quotes it from the run's files", async () => {
+    // The tag search waits until the test lets it finish, so the sweep after reclaim waits too.
+    let finishSearch!: () => void;
+    const listGate = new Promise<void>((resolve) => {
+      finishSearch = resolve;
+    });
+    const sdk = guardedFakeDesktop({ ids: [ID], listGate });
+    const run = await setup({ module: sdk.module });
+    const acquired = acquireE2BDesktopSandbox({
+      module: sdk.module,
+      options: { apiKey: "synthetic", timeoutMs: 60_000 },
+      receipt: { root: run.paths, participantId: "p1" },
+    }).catch((error: unknown) => error);
+    const runRoot = run.paths.absoluteRunRoot;
+    const journaled = async () =>
+      parseSandboxReceipts(
+        await readFile(path.join(runRoot, SANDBOX_RECEIPTS_ARTIFACT), "utf8"),
+      ).map((receipt) => receipt.sandboxId);
+    // The create has not returned, and its receipt is already in the journal.
+    await vi.waitFor(async () => expect(await journaled()).toEqual(["fake-sb-1", ID]));
+
+    target.emit("SIGINT");
+    const error = await acquired;
+    expect(error).toBeInstanceOf(E2BDesktopStartupError);
+    expect(sdk.killed).toContain(ID);
+    // The route records the startup error where a person reads it.
+    const message = (error as Error).message;
+    expect(message).toContain(connectionEnded(ID).message);
+    await appendFile(path.join(runRoot, "review.md"), `\nParticipant p1 failed: ${message}\n`);
+
+    // Before the sweep, verify sees the receipt's id in review.md and does not grade it share_ready.
+    const before = await verifyRun(cwd, RUN);
+    expect(before.shareSafety.status).not.toBe("share_ready");
+    expect(before.shareSafety.reasons).toContainEqual(
+      expect.objectContaining({ code: "RAW_SANDBOX_ID" }),
+    );
+    expect(await filesHolding(runRoot, ID)).toEqual(["review.md", SANDBOX_RECEIPTS_ARTIFACT]);
+    expect(run.exit).not.toHaveBeenCalled();
+
+    finishSearch();
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(130));
+    // Only the receipts name the sandbox; review.md keeps the error with the marker and digest.
+    expect(await filesHolding(runRoot, ID)).toEqual([SANDBOX_RECEIPTS_ARTIFACT]);
+    expect(await journaled()).toEqual(["fake-sb-1", ID]);
+    const review = await readFile(path.join(runRoot, "review.md"), "utf8");
+    expect(review).toContain(
+      `the connection to sandbox ${REDACTED_SANDBOX_ID.slice(0, -1)} ${sandboxIdDigest(ID)}] ended`,
+    );
+    const after = await verifyRun(cwd, RUN);
+    expect(after.shareSafety.reasons).not.toContainEqual(
+      expect.objectContaining({ code: "RAW_SANDBOX_ID" }),
+    );
+    expect(run.stderr()).toContain("sandboxes clean: 2 killed");
   });
 });
 
