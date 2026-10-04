@@ -279,6 +279,24 @@ export function isStudyKeyPath(path: string): boolean {
   return true;
 }
 
+/**
+ * The dotted path of every key a humanish.study.v3 file can set, down to `depth` levels:
+ * `route`, `caps.maxUsd`, `participants.persona`. scripts/check-doc-study-fields.ts holds the
+ * study file reference to these paths.
+ */
+export function studyKeyPaths(depth: number): string[] {
+  const paths: string[] = [];
+  const visit = (shape: KeyShape, prefix: string, level: number): void => {
+    for (const [key, child] of Object.entries(shape)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      paths.push(path);
+      if (child !== true && level < depth) visit(child, path, level + 1);
+    }
+  };
+  visit(STUDY_KEYS, "", 1);
+  return paths;
+}
+
 /** The first key in `raw` that V2_KEYS does not list, as an error message; undefined if none. */
 export function findUnknownV2Key(raw: unknown): string | undefined {
   return walk(raw, V2_KEYS, "", "study");

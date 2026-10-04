@@ -33,7 +33,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `execution.runtimeAuth`           | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                               |
 | `execution.runtime.version`       | Optional exact `@openai/codex` version; observed before keyed execution                                                                                     |
 | `actor.model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                          |
-| `caps`                            | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                                     |
+| `caps`                            | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused: no adopter cost source exists until issue 347 lands                    |
 | `policies`                        | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all default false                                |
 | `actor.type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                       |
 | route                             | `terminal` → `runTerminalProductStudy` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |

@@ -1,0 +1,167 @@
+---
+title: How a study works
+description: What a study, run, participant, persona, actor, subject, route, scenario and the verify grades are, shown on one study file.
+---
+
+humanish sends AI participants to use your app on real desktops, and each run keeps what they did as evidence you can check. You describe the work in a study file, run it, and read the run it leaves. This page names each part of that on one example file. [Study files](/docs/study-files) lists every field the file can set.
+
+## Read one study file
+
+This study sends two participants to drawDB, an open-source diagram editor. Each one gets a hosted desktop with its own build of the app. They get the same task and different personas: a newcomer of average patience, and an impatient user who prefers the keyboard.
+
+```yaml title="humanish/studies/two-newcomers.yaml"
+schema: humanish.study.v3 # the study file format
+id: two-newcomers # run it with: npx humanish run two-newcomers
+title: Two newcomers add tables in drawDB
+route: computer-use # one of five routes; this one gives each participant a desktop
+mode: live # leave it out for a dry run: no desktop, model or spend
+
+# The subject is the product under study. This one is cloned, built and served
+# inside each participant's hosted desktop.
+subject:
+  source: clone
+  repos: [drawdb-io/drawdb]
+  serve:
+    install: npm install --no-audit --no-fund
+    build: npm run build
+    start: npx vite preview --host 127.0.0.1 --port 3000
+    url: http://127.0.0.1:3000/
+
+# The actor drives every participant. openai-computer-use reads a screenshot,
+# picks a mouse or keyboard action, and repeats, using your OPENAI_API_KEY.
+actor:
+  type: openai-computer-use
+  maxOutputTokens: 8192
+  mission: >-
+    You have never seen this diagram tool before. Add two tables and give
+    them meaningful names, then stop and say what you did, what confused
+    you, and where you hesitated.
+
+# Each participant gets its own desktop and its own copy of the app.
+# A persona is a file in humanish/personas/ that says who the participant is.
+participants:
+  - id: newcomer
+    persona: synthetic-new-user # patience medium, technical_confidence medium
+  - id: keyboard-user
+    persona: skeptical-power-user # patience low, accessibility_needs keyboard_first
+
+# Caps stop the run on estimated model spend. Desktop time is billed on top.
+caps:
+  maxTotalUsd: 4 # the whole study
+  maxUsd: 2 # each participant
+
+execution:
+  target: e2b-desktop # a hosted desktop from E2B; needs E2B_API_KEY
+  timeoutMs: 600000 # each participant's session ends after 10 minutes
+
+# After the participants finish, a separate model reads the evidence and writes
+# findings. It is refused if its estimate is over maxCostUsd.
+review:
+  analysis:
+    maxCostUsd: 3
+```
+
+Save it in a project where `npx humanish init --yes` has run, so the two persona files exist. Check it without a desktop, a model call or a key:
+
+```bash
+npx humanish study check two-newcomers
+```
+
+```text
+humanish study check passed
+study: two-newcomers
+route: computer-use
+reachability: metadata
+targets: 1 declared, not checked
+spend: none
+After live runs: explicit analysis · gpt-6-astra · refused before it starts if its estimate is over $3; this is not a billing cap. Set review.analysis: false to disable.
+- ok study file: resolved committed study file
+- ok route: selected the computer-use route
+- ok reachability: metadata-only; no network, sandbox, or model calls. Credentials, local login, dependencies and target reachability were not checked; use humanish doctor --study <study> for setup checks.
+```
+
+`npx humanish run two-newcomers --dry-run` writes a synthetic run from the file and spends nothing. The live run needs `E2B_API_KEY` and `OPENAI_API_KEY`. The maintainer's two-participant persona study on drawDB had a median estimated model cost of $1.11 per run; [what a study costs](/docs/what-a-study-costs) has the measured runs and what the caps leave out.
+
+## Learn the parts of a study
+
+| Term          | What it is                                                                                                                                                 | Where you set it or find it                                                           |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| study         | The file above: what to test, on what, with whom, and within which limits.                                                                                 | `humanish/studies/<id>.yaml`, schema `humanish.study.v3`                              |
+| run           | One execution of a study. Every `humanish run` makes a new one with its own id.                                                                            | `.humanish/runs/<run id>/`; `run.json` is its record                                  |
+| dry run       | A run with no live participant. It writes a synthetic run with no browser, model, key or spend, and tests no product behavior.                             | `mode: dry-run`, the default, or `--dry-run` on the command line                      |
+| participant   | One simulated person taking part. On the computer-use route each participant gets its own desktop and its own copy of the app.                             | `participants`                                                                        |
+| persona       | Who a participant is: a name, a background, and traits such as patience and keyboard use. The participant receives it as instructions about how to behave. | `humanish/personas/<id>.yaml`, named by `actor.persona` or `participants[].persona`   |
+| mission       | What the participant is asked to do, written the way you would brief a person.                                                                             | `actor.mission`; `actor.tasks` adds tasks with checks the participant does not see    |
+| actor         | The program that drives every participant. A model-driven actor is the participant's brain: its decisions come from that model.                            | `actor.type`, [below](#an-actor-decides-what-each-participant-does)                   |
+| subject       | The product under study: a repository humanish builds, a URL, your working tree, or a CLI.                                                                 | `subject.source` and the fields for that source                                       |
+| route         | How humanish runs the study. It takes one of five values.                                                                                                  | `route`, [below](#five-values-of-route-decide-how-a-study-runs)                       |
+| caps          | Limits on estimated model spend that stop a participant or the study. They are not provider billing limits.                                                | `caps`                                                                                |
+| evidence      | What a run keeps: screenshots, every action, each participant's report and the estimated cost.                                                             | the run's folder under `.humanish/runs/`, which `init` adds to `.gitignore`           |
+| Observer      | The page that replays a run: each participant's report, every action, and the screenshot at each moment.                                                   | `npx humanish observe --run latest --open`                                            |
+| analysis      | A separate model reading of a finished live run. It writes findings, each with the screenshots it cites.                                                   | `review.analysis`; `npx humanish review --run latest` prints the findings             |
+| verify grades | Whether a run's evidence can be shared: `share_ready`, `local_only` or `blocked`.                                                                          | `npx humanish verify --run latest`, [below](#verify-grades-a-run-before-you-share-it) |
+
+## An actor decides what each participant does
+
+`actor.type` names the program that drives the participants. The first two are computer-use actors: each turn, the model reads a screenshot of the desktop and answers with mouse and keyboard actions.
+
+| `actor.type`          | What drives each participant                                                                                                       | What it needs                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `openai-computer-use` | An OpenAI model, `gpt-5.6-sol` unless `actor.model` names another, called with your API key.                                       | `OPENAI_API_KEY`                                              |
+| `local-agent`         | Your signed-in Codex (`actor.localAgent: codex`, the default) or Claude Code (`actor.localAgent: claude`), on that account's plan. | The agent's own login. No dollar cap applies to plan usage.   |
+| `scripted-browser`    | No model. A browser replays the steps of a scenario file.                                                                          | A local Chrome or Chromium, or a hosted desktop for a `clone` |
+| `codex-exec`          | Codex in a terminal sandbox, studying a CLI from its public pages.                                                                 | `E2B_API_KEY`, and `OPENAI_API_KEY` or `CODEX_API_KEY`        |
+
+On `route: preview` no participant runs, so `actor.type` is only a label, such as `synthetic-persona` in the `first-run` starter study.
+
+## Five values of `route:` decide how a study runs
+
+| `route`        | What happens                                                                                                                                                                        | `subject.source`                                                               | `actor.type`                           |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------- |
+| `preview`      | A dry run only: a synthetic run with sample participants.                                                                                                                           | `this-repo`                                                                    | any label                              |
+| `computer-use` | Each participant gets its own desktop and its own copy of the app: a hosted E2B desktop (`execution.target: e2b-desktop`) or a browser on your machine (`execution.target: local`). | `app-url`, `clone`, `local-tree`, `desktop-cli` or `local-app`                 | `openai-computer-use` or `local-agent` |
+| `shared-world` | Every participant uses one copy of the app at the same time, such as players in one game lobby.                                                                                     | `clone` or `local-tree`, or `app-url` with `policies.allowPublicTargets: true` | `openai-computer-use` or `local-agent` |
+| `scripted`     | A browser replays a scenario's steps on one or two surfaces. No model runs.                                                                                                         | `app-url` on a loopback URL, or `clone`                                        | `scripted-browser`                     |
+| `terminal`     | An agent studies a CLI in a terminal sandbox, starting from the product's public pages.                                                                                             | `terminal-product`                                                             | `codex-exec`                           |
+
+The route must match the subject, `execution.target` and the actor. When they disagree, `study check` refuses the file and names the route they take.
+
+Only these five words are routes. Other setups are set by other fields:
+
+- A hosted desktop is `execution.target: e2b-desktop`. It needs `E2B_API_KEY` and the `@e2b/desktop` package.
+- A local browser is `execution.target: local` with an `app-url` subject. It runs in a disposable VM on your machine. [Local browser](/docs/local-browser) has the setup.
+- A signed-in agent participant is `actor.type: local-agent`. [Local agents](/docs/local-agents) has the setup.
+- A clone subject is `subject.source: clone`: humanish clones a repository and serves it inside each desktop.
+
+## Scripted studies replay a scenario on one or two surfaces
+
+A scenario is a file of browser steps, each with an expected result: `humanish/scenarios/<id>.yaml`, schema `humanish.scenario.v1`. A scripted study names one in `scenario:` and replays it without a model. A surface is the viewport the steps run on. A scripted study runs the `desktop` surface, and `surfaces: [desktop, mobile]` adds a phone-sized one. Each surface writes its own trace. [Scripted browser scenarios](/docs/study-files#scripted-browser-scenarios) has a complete example.
+
+A `surface` field on a computer-use participant is an unrelated free-form label for grouping participants.
+
+## Follow one run from the command to a finding
+
+1. `npx humanish run two-newcomers` starts a run and prints its id.
+2. Each participant works until it finishes, gives up, reaches a cap or runs out of time. The run writes `run.json`, the screenshots, every action, each participant's report and the estimated cost to `.humanish/runs/<run id>/`.
+3. `npx humanish observe --run latest --open` replays the run in the Observer.
+4. A supported live run then requests analysis. `npx humanish review --run latest` prints its findings, each with its impact, confidence and the captures it cites.
+5. `npx humanish verify --run latest` checks the evidence and grades it for sharing.
+6. `npx humanish feedback issue --run latest --repo owner/repo` prints an issue draft. It requires a `share_ready` run and calls no GitHub API.
+
+A participant who gets stuck and says where is a result. The run records that participant as not passing, and its report names the place in the app to look. [Read results](/docs/read-results) explains how to tell a finding from a broken run.
+
+## Verify grades a run before you share it
+
+`verify` checks that a run's files are complete and consistent, and scans their text for secret, key, token and local path patterns. On the `first-run` dry run it prints one line:
+
+```text
+verified dryrun-2026-10-04T07-11-55-932Z-d11afab6 · share_ready · 16 checks passed
+```
+
+| Grade         | Meaning                                                                                                                                                                                                               |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `share_ready` | The evidence passed every check. Feedback drafts and `observe --all --safe` accept only these runs.                                                                                                                   |
+| `local_only`  | Valid evidence to keep on your machine as it is. A live run with full-fidelity screenshots is graded this way. `humanish export --run latest --format bundle --redact-screenshots` writes a separately verified copy. |
+| `blocked`     | The run failed verification or a public-safety check.                                                                                                                                                                 |
+
+`share_ready` means the pattern scan found nothing. The scan does not detect names, email addresses or other personal data in free text or screenshots. Use synthetic accounts and data, and read the evidence before you share it. [Verify before sharing](/docs/read-results#verify-before-sharing) has the details.

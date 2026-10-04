@@ -5,11 +5,11 @@ description: Point a synthetic participant at your preview URL, a repository bui
 
 You have a build nobody outside the team has used, and you want to know where a newcomer gets stuck. Give one participant one concrete job, let them try it, and keep what came back for the next change.
 
-Use an app you own or have permission to study, with synthetic accounts and data. Pick the route that matches where your app runs:
+Use an app you own or have permission to study, with synthetic accounts and data. All three setups below are `route: computer-use` studies; they differ in where the app runs. [How a study works](/docs/concepts) explains the fields they use.
 
-- **A preview or staging URL:** the hosted route below. This is the common case.
-- **A repository, not yet deployed:** the [clone route](#build-the-app-inside-the-sandbox) builds it inside the desktop.
-- **Running on your machine, and you use Codex:** the [local-browser route](#study-your-running-local-app) needs no E2B or OpenAI key.
+- **A preview or staging URL:** a hosted desktop opens it, below. This is the common case.
+- **A repository, not yet deployed:** a [clone subject](#build-the-app-inside-the-sandbox) builds it inside each desktop.
+- **Running on your machine, and you use Codex:** a [local browser study](#study-your-running-local-app) needs no E2B or OpenAI key.
 
 ## Create a study for your preview URL
 
@@ -48,11 +48,11 @@ defaults:
 
 Write the task the way you would brief a person. "Create a project and find it again" leaves room for the participant to look around. "Click the plus icon in the top right" hands them the answer and hides the navigation problem you wanted to see.
 
-The two caps are checked on every run and do not carry across runs: `maxTotalUsd` is the study's model budget, `maxUsd` the backstop per participant. Desktop time is billed on top, and a supported live run also requests analysis when it finishes, which is refused when its estimate exceeds $3. [Budgets](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules and the opt-outs.
+The two caps are checked on every run and do not carry across runs: `maxTotalUsd` is the study's model budget, `maxUsd` the backstop per participant. Desktop time is billed on top, and a supported live run also requests analysis when it finishes, which is refused when its estimate exceeds $3. [Set a study budget](/docs/what-a-study-costs#set-a-study-budget) has the exact rules and the opt-outs.
 
-To use your signed-in Codex or Claude Code as the participant instead of the OpenAI key, swap the actor for the [local-agent fragment](/docs/local-agents); that route skips analysis unless an OpenAI key is present.
+To use your signed-in Codex or Claude Code as the participant instead of the OpenAI key, swap the actor for the [local-agent fragment](/docs/local-agents); that participant's study skips analysis unless an OpenAI key is present.
 
-One public URL takes one participant per run on this route. For a second observation, reset the test data or use another test account and run the study again, and keep both run ids so the first is not lost behind `latest`. For several newcomers at once, each on their own copy of the app, use the clone route below.
+One public URL takes one participant per run. For a second observation, reset the test data or use another test account and run the study again, and keep both run ids so the first is not lost behind `latest`. For several newcomers at once, each on their own copy of the app, use a clone subject, below.
 
 ## Check, then run
 
@@ -99,11 +99,11 @@ The start command shown fits a Next.js app; use yours, with a readiness URL on t
 
 If you edit the scaffolded `cua-browser.yaml` directly, change `mode` from `dry-run` to `live` and add a `caps` budget; a dry run writes a synthetic bundle and does not study the app.
 
-For uncommitted code, `subject.source: local-tree` packages a selected working tree with a content pin. Environment allowlists, state seeding and the other subject routes are in the [computer-use reference](/docs/computer-use#choose-a-subject) and the [schema contract](repo:docs/contracts/schemas.md).
+For uncommitted code, `subject.source: local-tree` packages a selected working tree with a content pin. Environment allowlists, state seeding and the other subject sources are in the [computer-use reference](/docs/computer-use#choose-a-subject) and the [study file reference](/docs/study-files#declare-the-product-in-subject).
 
 ## Study your running local app
 
-This route drives a browser on your own machine through your signed-in Codex account, so it needs neither E2B nor an OpenAI API key. It needs a supported Codex CLI with a file-backed ChatGPT login, plus either Linux x64 with rootful Docker Engine, KVM and TUN, or an M3-or-newer Mac with native ARM64 Node and Lima 2.2 or later. Docker Desktop is not supported. Check the [account profile](repo:docs/architecture/restricted-codex-analysis.md) and [platform setup](/docs/local-browser) first.
+A local browser study drives a browser on your own machine through your signed-in Codex account, so it needs neither E2B nor an OpenAI API key. It needs a supported Codex CLI with a file-backed ChatGPT login, plus either Linux x64 with rootful Docker Engine, KVM and TUN, or an M3-or-newer Mac with native ARM64 Node and Lima 2.2 or later. Docker Desktop is not supported. Check the [account profile](repo:docs/architecture/restricted-codex-analysis.md) and [platform setup](/docs/local-browser) first.
 
 Start your app, then replace the URL and the task:
 
@@ -118,7 +118,7 @@ npx humanish run local-browser
 
 If you already ran `init`, edit `subject.appUrl` and the actor's `mission` in `humanish/studies/local-browser.yaml` instead; `init` keeps existing files and warns that these options were skipped. Use an explicit loopback port above 1023.
 
-The starter gives one participant two minutes. For a longer task, raise `execution.timeoutMs` in the study before running. `doctor` checks setup without launching a participant or downloading the runtime; the first live run prepares the pinned browser image and later runs reuse it. The participant and the separate analyst both use your Codex plan and remote inference, so the dollar cost is unknown rather than zero. This route does not fall back to a hosted desktop if setup fails.
+The starter gives one participant two minutes. For a longer task, raise `execution.timeoutMs` in the study before running. `doctor` checks setup without launching a participant or downloading the runtime; the first live run prepares the pinned browser image and later runs reuse it. The participant and the separate analyst both use your Codex plan and remote inference, so the dollar cost is unknown and never reported as zero. A local browser study does not fall back to a hosted desktop if setup fails.
 
 ```bash
 npx humanish observe --run latest --open

@@ -12,7 +12,7 @@ export default function Trust() {
           <p>
             Computer-use participants call the model from your machine; the desktop receives
             actions. Terminal participants receive a runtime key by default.{" "}
-            <a href="/docs/budgets-and-privacy#store-credentials">See credential options.</a>
+            <a href="/docs/trust-boundaries#store-credentials">See credential options.</a>
           </p>
         </div>
         <div className="tcard rev" style={{ "--d": ".06s" } as React.CSSProperties}>

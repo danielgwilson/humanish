@@ -136,7 +136,7 @@ async function settleLiveLedgers(
   // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
   // The cost ledger is derived, with the null discipline: provider spend from the trace's
   // tokenUsage.costUsd when present (else null = not measured), product/media/payment null by
-  // default (core has no signal). The costProbe hook lets tests or adapters inject known
+  // default (core has no signal). The costProbe hook lets tests inject known
   // spend to exercise the fail-closed cap without a real billable run.
   const injectedLines = costProbe?.(
     trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd },

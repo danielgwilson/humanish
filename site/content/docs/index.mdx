@@ -15,11 +15,11 @@ Use Node 22.19 or newer, in a project directory:
 npm install --save-dev humanish @e2b/desktop
 ```
 
-`@e2b/desktop` is the hosted desktop; install it in the same project, because a one-shot `npx humanish@latest` cannot see a copy installed elsewhere. The keyless preview and the local-browser route work without it.
+`@e2b/desktop` is the hosted desktop; install it in the same project, because a one-shot `npx humanish@latest` cannot see a copy installed elsewhere. The keyless preview and a local browser study work without it.
 
 ## Add two keys
 
-A live study needs a desktop and a model. The default route uses E2B for the desktop and the OpenAI API for the participant:
+A live study needs a desktop and a model. By default E2B supplies the desktop and the OpenAI API drives the participant:
 
 ```bash
 npx humanish keys set e2b
@@ -28,14 +28,14 @@ npx humanish init --yes
 npx humanish doctor --study try-live
 ```
 
-The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--dotenv <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --study` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
+The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--dotenv <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --study` checks that the study's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
 
 `init` writes example studies and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. Run it after `keys set`: it writes the `try-live` study for the participant it finds credentials for, and it never overwrites an existing study file.
 
 Two alternatives, each on its own page:
 
 - Your signed-in Codex or Claude Code can drive the participant instead of the OpenAI key. You still need E2B. See [a signed-in coding agent](/docs/local-agents).
-- If the app runs on your machine and you use Codex, the [local-browser route](/docs/your-app#study-your-running-local-app) needs neither key.
+- If the app runs on your machine and you use Codex, a [local browser study](/docs/your-app#study-your-running-local-app) needs neither key.
 
 ## Run the example
 
@@ -82,6 +82,7 @@ This writes a synthetic sample bundle and opens it. Nothing is spent and no part
 
 ## Next
 
+- [How a study works](/docs/concepts): the study, participant, persona, actor, subject and route on one annotated file.
 - [Your own app](/docs/your-app): a preview URL, a repository built inside the desktop, or the app running on your machine.
-- [What a study costs](/docs/what-a-study-costs): measured numbers and what the caps do.
+- [What a study costs](/docs/what-a-study-costs): measured numbers, budgets and what the caps do.
 - For a coding agent setting this up for you: `npx skills add danielgwilson/humanish --skill humanish`. Agents should use the CLI with `--json`. `npx humanish tui` is for a person at a terminal; it refuses agent sessions. See [Observer and terminal](/docs/review-surfaces#for-coding-agents-and-scripts).
