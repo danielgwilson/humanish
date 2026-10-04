@@ -53,6 +53,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   `npm i -D @e2b/desktop`. The outdated-SDK advisory and `humanish init`'s first-run hint name the
   command the same way.
 
+- Messages, the `AGENTS.md` section `humanish init` writes and the docs name study keys by their
+  `humanish.study.v3` path: `caps.maxUsd` and `caps.maxTotalUsd` where they said
+  `execution.caps.*` or `scenario.caps.*`, `actor.type` for `actors[0].type`, `mode` for
+  `scenario.mode`, `scenario` for `scenario.ref` and `participants[].target` for
+  `actors[0].lanes[].target`. A 3-participant run warned "Set execution.caps.maxTotalUsd", and a
+  study that did so failed to parse with `HUMANISH_STUDY_INVALID`.
+
 ## 0.110.0: --dotenv, and sandbox ids only in receipts (2026-10-03)
 
 humanish 0.110.0 renames `--env-file` to `--dotenv`, so a missing file reaches humanish's exit 2

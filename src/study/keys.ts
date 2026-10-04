@@ -265,6 +265,20 @@ const STUDY_KEYS: KeyShape = {
   comms: V2_KEYS.comms,
 };
 
+/**
+ * Whether a dotted key path, such as `caps.maxUsd` or `participants[0].persona`, names a key a
+ * humanish.study.v3 file can set. A path below a leaf is not one: `scenario.ref`, where `scenario`
+ * is a string, and `review.analysis.question`, whose keys resolveAutomaticAnalysis checks.
+ */
+export function isStudyKeyPath(path: string): boolean {
+  let shape: KeyShape | true = STUDY_KEYS;
+  for (const segment of path.replaceAll(/\[\d*\]/g, "").split(".")) {
+    if (shape === true || !Object.hasOwn(shape, segment)) return false;
+    shape = shape[segment]!;
+  }
+  return true;
+}
+
 /** The first key in `raw` that V2_KEYS does not list, as an error message; undefined if none. */
 export function findUnknownV2Key(raw: unknown): string | undefined {
   return walk(raw, V2_KEYS, "", "study");

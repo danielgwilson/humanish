@@ -159,7 +159,7 @@ describe("the study budget stops a participant with budget_reached", () => {
       overRunBudget: () => {
         calls += 1;
         return calls >= 3
-          ? "study budget reached: the run's estimated model spend $12.10 crossed execution.caps.maxTotalUsd=$12"
+          ? "study budget reached: the run's estimated model spend $12.10 crossed caps.maxTotalUsd=$12"
           : null;
       },
     });

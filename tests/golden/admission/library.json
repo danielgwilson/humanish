@@ -453,7 +453,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"scripted-browser\" is not a registered computer-use actor."
+          "message": "actor.type \"scripted-browser\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -634,7 +634,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-          "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
+          "message": "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -792,7 +792,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+          "message": "actor.type \"not-an-actor\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -833,7 +833,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"codex-app-server\" is not a registered computer-use actor."
+          "message": "actor.type \"codex-app-server\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -874,7 +874,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
-          "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+          "message": "subject.appUrl and any participants[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -915,7 +915,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"scripted-browser\" is not a registered computer-use actor."
+          "message": "actor.type \"scripted-browser\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -956,7 +956,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"scripted-browser\" is not a registered computer-use actor."
+          "message": "actor.type \"scripted-browser\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1089,7 +1089,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-          "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
+          "message": "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1397,7 +1397,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"codex-exec\" is not a registered computer-use actor."
+          "message": "actor.type \"codex-exec\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1438,7 +1438,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"codex-exec\" is not a registered computer-use actor."
+          "message": "actor.type \"codex-exec\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1479,7 +1479,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"codex-app-server\" is not a registered computer-use actor."
+          "message": "actor.type \"codex-app-server\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2323,7 +2323,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE",
-          "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+          "message": "subject.appUrl and any participants[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2694,7 +2694,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"codex-app-server\" is not a registered computer-use actor."
+          "message": "actor.type \"codex-app-server\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2776,7 +2776,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"openai-computer-use\" is not a registered terminal actor."
+          "message": "actor.type \"openai-computer-use\" is not a registered terminal actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3219,7 +3219,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_CAPS_MISSING",
-          "message": "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set scenario.caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force."
+          "message": "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3258,7 +3258,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_CAPS_INVALID",
-          "message": "scenario.caps.maxMinutes 56 derives a 67m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is maxMinutes plus 11m: the Node bootstrap (5m), the runtime version check (1m) and the teardown buffer (5m). Lower scenario.caps.maxMinutes to at most 49. No sandbox was created and the runtime key was not used."
+          "message": "caps.maxMinutes 56 derives a 67m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is maxMinutes plus 11m: the Node bootstrap (5m), the runtime version check (1m) and the teardown buffer (5m). Lower caps.maxMinutes to at most 49. No sandbox was created and the runtime key was not used."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3381,7 +3381,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
-          "message": "execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
+          "message": "caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3461,7 +3461,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
-          "message": "execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
+          "message": "caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3541,7 +3541,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_AGENT_MISSING",
-          "message": "actors[0].type: local-agent needs the codex CLI on PATH and signed in. Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead."
+          "message": "actor.type: local-agent needs the codex CLI on PATH and signed in. Install it, or set OPENAI_API_KEY and use actor.type: openai-computer-use instead."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3818,7 +3818,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_UNPRICED_CAP",
-          "message": "scenario.caps.maxUsd=1 cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
+          "message": "caps.maxUsd=1 cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set caps.maxUsd to 0 and bound the run with caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3902,7 +3902,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "subject.topology: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
+          "message": "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3979,7 +3979,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"codex-exec\" is not a registered scripted-browser actor."
+          "message": "actor.type \"codex-exec\" is not a registered scripted-browser actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -4015,7 +4015,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"scripted-browser\" is not a registered terminal actor."
+          "message": "actor.type \"scripted-browser\" is not a registered terminal actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -4104,7 +4104,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
-          "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+          "message": "actor.type \"not-an-actor\" is not a registered computer-use actor."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

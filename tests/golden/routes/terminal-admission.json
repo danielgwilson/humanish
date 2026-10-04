@@ -91,7 +91,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered terminal actor."
+      "message": "actor.type \"not-an-actor\" is not a registered terminal actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -154,7 +154,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_CAPS_MISSING",
-      "message": "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set scenario.caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force."
+      "message": "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -175,7 +175,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_UNPRICED_CAP",
-      "message": "scenario.caps.maxUsd=1 cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
+      "message": "caps.maxUsd=1 cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set caps.maxUsd to 0 and bound the run with caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -270,7 +270,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered terminal actor."
+      "message": "actor.type \"not-an-actor\" is not a registered terminal actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

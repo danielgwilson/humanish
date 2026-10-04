@@ -86,7 +86,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+      "message": "actor.type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -236,7 +236,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
-      "message": "execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
+      "message": "caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -451,7 +451,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
-      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+      "message": "actor.type \"not-an-actor\" is not a registered computer-use actor."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -601,7 +601,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
-      "message": "execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
+      "message": "caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

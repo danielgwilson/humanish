@@ -45,7 +45,7 @@ export async function resolveScriptedScenario(
     if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
       return {
         ok: false,
-        message: `scenario.ref must stay inside the project directory, and "${trimmed}" does not: the run records it relative to the project.`,
+        message: `scenario must stay inside the project directory, and "${trimmed}" does not: the run records it relative to the project.`,
       };
     }
     source = relative.split(path.sep).join("/");
@@ -53,7 +53,7 @@ export async function resolveScriptedScenario(
     if (!SCENARIO_REF_ID_PATTERN.test(trimmed)) {
       return {
         ok: false,
-        message: `scenario.ref must be a public-safe scenario id or a .yaml path inside the repo (got "${trimmed}").`,
+        message: `scenario must be a public-safe scenario id or a .yaml path inside the repo (got "${trimmed}").`,
       };
     }
     const candidates = [
@@ -64,7 +64,7 @@ export async function resolveScriptedScenario(
     if (!found) {
       return {
         ok: false,
-        message: `scenario.ref "${trimmed}" was not found (looked for ${candidates.join(", ")}).`,
+        message: `scenario "${trimmed}" was not found (looked for ${candidates.join(", ")}).`,
       };
     }
     source = found;
@@ -74,7 +74,7 @@ export async function resolveScriptedScenario(
   const relativeScenarioPath = path.relative(projectRoot.physicalPath, absolutePath);
   const scenarioBytes = await readContainedRegularFile(projectRoot, relativeScenarioPath);
   if (!scenarioBytes) {
-    return { ok: false, message: `scenario.ref "${trimmed}" could not be read (${source}).` };
+    return { ok: false, message: `scenario "${trimmed}" could not be read (${source}).` };
   }
   const text = scenarioBytes.toString("utf8");
 

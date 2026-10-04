@@ -228,7 +228,7 @@ const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
  * since an npm install cannot edit this file.
  */
 export function unpricedCapMessage(model: string): string {
-  return `execution.caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model "${model}", so it cannot enforce the cap and refuses to start. Priced models: ${Object.keys(MODEL_RATES).sort().join(", ")}. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap.`;
+  return `caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model "${model}", so it cannot enforce the cap and refuses to start. Priced models: ${Object.keys(MODEL_RATES).sort().join(", ")}. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap.`;
 }
 
 export const DESKTOP_RATE: DesktopRate = {

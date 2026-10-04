@@ -50,7 +50,7 @@ export async function liveCuaRejection(args: {
           return ready.length === 0
             ? ""
             : ` ${ready.map((agent) => agent.label).join(" and ")} reports authenticated on this machine` +
-                `. Set actors[0].type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
+                `. Set actor.type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
         })()
       : "";
     return {

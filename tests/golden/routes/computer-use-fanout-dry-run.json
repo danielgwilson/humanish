@@ -717,7 +717,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant mobile-newcomer: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant mobile-newcomer: dry-run participant ready; switch mode to live for a real desktop session.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -735,7 +735,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant small-skimmer: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant small-skimmer: dry-run participant ready; switch mode to live for a real desktop session.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -753,7 +753,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant desktop-power: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant desktop-power: dry-run participant ready; switch mode to live for a real desktop session.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -771,7 +771,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.contract.ready",
-        "message": "Participant wide-researcher: dry-run participant ready; switch scenario.mode to live for a real desktop session.",
+        "message": "Participant wide-researcher: dry-run participant ready; switch mode to live for a real desktop session.",
         "simId": "sim-004",
         "streamId": "stream-004"
       }
