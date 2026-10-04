@@ -12,7 +12,7 @@ import {
 } from "../../run/reclaim.js";
 import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
-import type { RunDisplay } from "../../run/display.js";
+import type { RunDisplay, RunDisplayState } from "../../run/display.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
 import {
@@ -354,18 +354,47 @@ function formatReclaimHuman(result: ReclaimResult, cwd: string, preflight: boole
   return result.error === undefined ? stdout : { stdout, error: result.error };
 }
 
+const NOTHING_TESTED = "no product behavior was tested";
+
 const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
   // A dry run, or a live run with no participant result; review's result does not carry the mode.
-  contract_proof_only: "no verdict; no product behavior was tested",
+  contract_proof_only: `no verdict; ${NOTHING_TESTED}`,
   pass: "pass",
   fail: "fail",
   blocked: "blocked",
   timed_out: "timed out",
 };
 
+/** The state runDisplay gives a finished run whose own ok agrees with its verdict. */
+const VERDICT_STATES: Partial<Record<ReviewSummary["verdict"], RunDisplayState>> = {
+  pass: "passed",
+  fail: "failed",
+  blocked: "blocked",
+  timed_out: "timed_out",
+};
+
 /**
- * A run's review: its verdict, summary and gaps, its analysis findings, and where review.json is.
- * A pass verdict on a run whose own ok is false leads with how the run ended (runDisplay), then why.
+ * Review's headline: the run's display label, as `humanish runs`, review.md and the Observer show
+ * it. A verdict that names another state follows in parentheses, so an interrupted run whose last
+ * flush judged its participants `fail` reads "interrupted (verdict fail)". A run with no display,
+ * which verify does not pass, falls back to the verdict.
+ */
+function reviewHeadline(
+  verdict: ReviewSummary["verdict"],
+  display: RunDisplay | undefined,
+): string {
+  if (display === undefined) return REVIEW_VERDICTS[verdict];
+  if (display.state === "no_verdict" || display.state === "dry_run")
+    return `${display.label}; ${NOTHING_TESTED}`;
+  const judged = VERDICT_STATES[verdict];
+  return judged === undefined || judged === display.state
+    ? display.label
+    : `${display.label} (verdict ${REVIEW_VERDICTS[verdict]})`;
+}
+
+/**
+ * A run's review: how it ended (runDisplay) and why it failed when it says, its summary and gaps,
+ * its analysis findings, and where review.json is.
  */
 function formatReviewHuman(
   result:
@@ -392,15 +421,10 @@ function formatReviewHuman(
         }
       : humanError(error);
   }
-  const verdict = REVIEW_VERDICTS[result.verdict];
   const display = result.display;
-  const headline =
-    result.verdict === "pass" && display !== undefined && display.state !== "passed"
-      ? `${display.label} (verdict pass)`
-      : verdict;
   return (
     [
-      `humanish review ${result.runId}: ${headline}`,
+      `humanish review ${result.runId}: ${reviewHeadline(result.verdict, display)}`,
       ...(display?.reason === undefined ? [] : [`why: ${display.reason}`]),
       "",
       result.summary,

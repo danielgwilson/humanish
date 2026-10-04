@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import { defaultRedactionHooks, digestText, promptForLog } from "../../src/evidence/redaction.js";
+import {
+  containsSensitive,
+  defaultRedactionHooks,
+  digestText,
+  promptForLog,
+  redactText,
+} from "../../src/evidence/redaction.js";
 
 function tinyPng(width: number, height: number): Buffer {
   const png = new PNG({ width, height });
@@ -87,5 +93,56 @@ describe("defaultRedactionHooks", () => {
 
   it("promptForLog is wired through the hooks", () => {
     expect(defaultRedactionHooks.promptForLog("x").digest).toBe(digestText("x"));
+  });
+});
+
+describe("the E2B URL pattern", () => {
+  // The E2B SDK's error when no API key reaches it, as e2b 2.49.0 writes it.
+  const MISSING_KEY =
+    "API key is required, please visit the API Keys tab at https://e2b.dev/dashboard?tab=keys to get your API key. You can either set the environment variable `E2B_API_KEY` or you can pass it directly to the sandbox like Sandbox.create({ apiKey: 'e2b_...' })";
+
+  it("passes E2B's dashboard URL when it carries no token or credential", () => {
+    expect(redactText(MISSING_KEY)).toBe(MISSING_KEY);
+    for (const text of [
+      "https://e2b.dev/dashboard",
+      "https://e2b.dev/dashboard/",
+      "https://www.e2b.dev/dashboard?tab=keys",
+      "open https://e2b.dev/dashboard?tab=usage.",
+      "(see https://e2b.dev/dashboard?tab=keys)",
+      '"https://e2b.dev/dashboard?tab=keys"',
+    ]) {
+      expect(redactText(text), text).toBe(text);
+      expect(containsSensitive(text), text).toBe(false);
+    }
+  });
+
+  it("still redacts a dashboard URL that carries a token, a credential or more path", () => {
+    for (const url of [
+      "https://e2b.dev/dashboard?tab=keys&token=synthetic-dashboard-token",
+      "https://e2b.dev/dashboard?access_token=synthetic-dashboard-token",
+      "https://e2b.dev/dashboard?tab=keys#token=synthetic-dashboard-token",
+      "https://operator:synthetic-password@e2b.dev/dashboard?tab=keys",
+      "https://e2b.dev/dashboard/synthetic-team/sandboxes/synthetic-sandbox",
+      "https://e2b.dev/dashboard?tab=synthetic-dashboard-token",
+      "http://e2b.dev/dashboard?tab=keys",
+      "https://e2b.dev.synthetic.example/dashboard",
+      // A URL that ends a JSON string, with a token in the next field.
+      'https://e2b.dev/dashboard?tab=keys","token":"synthetic-dashboard-token"',
+    ]) {
+      const text = `visit ${url} now`;
+      expect(redactText(text), url).toBe("visit [REDACTED_SECRET] now");
+      expect(containsSensitive(text), url).toBe(true);
+    }
+  });
+
+  it("still redacts sandbox hosts, stream URLs and E2B's other pages", () => {
+    for (const url of [
+      "https://3000-synthetic-sandbox.e2b.app/verify?t=1",
+      "https://6080-synthetic-sandbox.e2b.dev/vnc.html?password=synthetic-stream-key",
+      "https://api.e2b.app/sandboxes",
+      "https://docs.e2b.dev/api-key",
+    ]) {
+      expect(redactText(`at ${url} now`), url).toBe("at [REDACTED_SECRET] now");
+    }
   });
 });

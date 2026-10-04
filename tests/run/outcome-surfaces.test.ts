@@ -1,6 +1,8 @@
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { type Command, CommanderError } from "commander";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createProgram } from "../../src/cli/program.js";
 import { buildObserverData, type ObserverData } from "../../src/observer/data.js";
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
@@ -86,6 +88,9 @@ async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surface
 
   const runs = await listRuns(cwd);
   states["runs list"] = shownState({ display: displayOf(runs.runs[0]) });
+  // review prints nothing about a run that fails verify; verify says why.
+  const headline = await reviewHeadline(cwd, runId);
+  if (headline !== undefined) states["review headline"] = stateOfLabel(headline);
 
   const started = await serveObserverLibrary(cwd, {
     port: 0,
@@ -116,10 +121,43 @@ async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surface
   }
 }
 
-/** The state a label names: a review.md outcome line starts with it. */
+/** `humanish review`'s headline: what its first line says after the run id, when it prints one. */
+async function reviewHeadline(cwd: string, runId: string): Promise<string | undefined> {
+  const out: string[] = [];
+  const program = createProgram({
+    writeOut: (text) => out.push(text),
+    writeErr: () => {},
+    setExitCode: () => {},
+  });
+  const override = (command: Command): void => {
+    command.exitOverride();
+    command.commands.forEach(override);
+  };
+  override(program);
+  try {
+    await program.parseAsync(["node", "humanish", "review", "--run", runId, "--cwd", cwd], {
+      from: "node",
+    });
+  } catch (error) {
+    if (!(error instanceof CommanderError)) throw error;
+  }
+  return /^humanish review \S+: (.+)$/m.exec(out.join(""))?.[1];
+}
+
+// The words a review.md outcome line or a review headline starts with, as states. Before 0.110.2
+// the headline said the verdict ("pass", "fail") wherever it did not lead with a display label.
+const STATES_BY_WORD: Record<string, string> = {
+  pass: "passed",
+  fail: "failed",
+  "timed out": "timed_out",
+  "no verdict": "no_verdict",
+  "dry run": "dry_run",
+};
+
+/** The state a label names: a review.md outcome line and review's headline start with it. */
 function stateOfLabel(line: string): string {
-  const label = line.split(":")[0]!.trim();
-  return label === "timed out" ? "timed_out" : label === "no verdict" ? "no_verdict" : label;
+  const label = line.split(/[:;(]/)[0]!.trim();
+  return STATES_BY_WORD[label] ?? label;
 }
 
 let root: string;
@@ -158,6 +196,13 @@ describe.each(cases.map((outcome) => [outcome.name, outcome] as const))("%s", (_
     );
     expect(states).toEqual(expected);
   });
+});
+
+it("prints a review headline for every case but the one verify refuses", () => {
+  const without = cases
+    .filter((outcome) => shown.get(outcome.name)!.states["review headline"] === undefined)
+    .map((outcome) => outcome.name);
+  expect(without).toEqual(["terminal/teardown-unproven"]);
 });
 
 it("shows the interrupted run as interrupted in the served Observer's process status", () => {

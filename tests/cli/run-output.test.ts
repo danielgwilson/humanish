@@ -46,7 +46,7 @@ describe("a run's review in human mode", () => {
     const { exitCode, output } = await runCli(["review", "--cwd", cwd]);
     expect(exitCode).toBe(0);
     expect(output).toMatch(
-      /^humanish review dryrun-\S+: no verdict; no product behavior was tested\n/,
+      /^humanish review dryrun-\S+: dry run; no product behavior was tested\n/,
     );
     expect(output).toContain("\ngaps:\n- No browser was launched.\n");
     expect(output).toMatch(/\nreview: \.humanish\/runs\/dryrun-\S+\/review\.json\n$/);
@@ -81,6 +81,29 @@ describe("a run whose execution failed under a pass verdict", () => {
     expect(output).toMatch(
       /^humanish review \S+: failed \(verdict pass\)\nwhy: provider-cleanup: lane-01: cleanup unconfirmed\n/,
     );
+  });
+});
+
+describe("a run stopped by a signal after its participants were judged", () => {
+  it("leads its review with interrupted, as humanish runs does, then the verdict", async () => {
+    const cwd = await freshProject();
+    await runCli(["init", "--yes", "--cwd", cwd]);
+    await runCli(["run", "first-run", "--cwd", cwd]);
+    const runDir = path.join(cwd, ".humanish", "runs");
+    const runId = JSON.parse(await readFile(path.join(runDir, "latest.json"), "utf8")).runId;
+    const bundlePath = path.join(runDir, runId, "run.json");
+    const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
+    bundle.review.verdict = "fail";
+    bundle.outcome = { state: "interrupted", ok: false, signal: "SIGINT", at: bundle.createdAt };
+    await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`);
+    const reviewPath = path.join(runDir, runId, "review.json");
+    const review = JSON.parse(await readFile(reviewPath, "utf8"));
+    await writeFile(reviewPath, `${JSON.stringify({ ...review, verdict: "fail" }, null, 2)}\n`);
+
+    const runs = JSON.parse((await runCli(["runs", "--cwd", cwd, "--json"])).output);
+    expect(runs.runs[0].display.label).toBe("interrupted");
+    const { output } = await runCli(["review", "--cwd", cwd]);
+    expect(output).toMatch(/^humanish review \S+: interrupted \(verdict fail\)\n\n/);
   });
 });
 

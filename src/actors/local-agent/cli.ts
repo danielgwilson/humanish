@@ -626,6 +626,15 @@ export function localAgentVersionRefusal(agent: DetectedLocalAgent): string | un
     : undefined;
 }
 
+/**
+ * Whether an installed agent can run participants here: it reports signed in under the
+ * participant's environment, and a Claude Code is at or above the floor. Doctor's rows decide their
+ * status from this, so a row whose message says the agent cannot run participants is never "ok".
+ */
+export function localAgentReady(agent: DetectedLocalAgent): boolean {
+  return agent.authStatus === "authenticated" && localAgentVersionRefusal(agent) === undefined;
+}
+
 /** Doctor's row for one installed agent, in the register the other rows use. */
 export function localAgentDoctorMessage(agent: DetectedLocalAgent): string {
   const outdated = localAgentVersionRefusal(agent);

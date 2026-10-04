@@ -21,6 +21,21 @@ The Unreleased section holds the full notes for the next version until it is tag
   E2B key, because a dry run writes no owner line. A run whose `run.json` and `status.json` record
   it as a dry run, with nothing journaled, is now `clean` with `reason: dry-run`, exits 0, and
   reclaim loads no E2B SDK for it.
+- `humanish review` on an interrupted run led with its participants' last verdict, such as `fail`
+  or `no verdict`, while `humanish runs`, review.md's `outcome:` line and the Observer said
+  `interrupted`. Review's headline now uses the same display state as those surfaces, with a verdict
+  that names another state in parentheses: `interrupted (verdict fail)`. A passing run's headline
+  reads `passed`, and a dry run's reads `dry run; no product behavior was tested`. Read
+  `review --json`'s `display` where a script parses the text.
+- `humanish doctor` marked the Claude Code row `ok` while its message said Claude Code could not
+  run participants: a release below 2.1.248, or one that reported no version. That row is now a
+  note, as a signed-out agent's row already was. It does not fail a bare `doctor`, and
+  `doctor --study` still fails on a study whose participant is that Claude Code.
+- Redacted output, `humanish reclaim` among it, printed the E2B dashboard link from the SDK's
+  missing-key error, `https://e2b.dev/dashboard?tab=keys`, as `[REDACTED_SECRET]`. The E2B URL
+  pattern now passes `https://e2b.dev/dashboard` when it has no userinfo, no path below
+  `/dashboard` and no query but a short `tab`. A dashboard URL with a token or credential in it, a
+  sandbox host, a stream URL and every other E2B URL are still redacted.
 
 ## 0.110.1: Claude participants restricted, sandboxes reclaimed by tag (2026-10-04)
 
