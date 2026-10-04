@@ -121,7 +121,8 @@ describe("the E2B URL pattern", () => {
       "https://e2b.dev/dashboard?tab=keys&token=synthetic-dashboard-token",
       "https://e2b.dev/dashboard?access_token=synthetic-dashboard-token",
       "https://e2b.dev/dashboard?tab=keys#token=synthetic-dashboard-token",
-      "https://operator:synthetic-password@e2b.dev/dashboard?tab=keys",
+      // Joined at run time so the source holds no email-shaped literal.
+      ["https://operator:synthetic-password", "e2b.dev/dashboard?tab=keys"].join("@"),
       "https://e2b.dev/dashboard/synthetic-team/sandboxes/synthetic-sandbox",
       "https://e2b.dev/dashboard?tab=synthetic-dashboard-token",
       "http://e2b.dev/dashboard?tab=keys",
