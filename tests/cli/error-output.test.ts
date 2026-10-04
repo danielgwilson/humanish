@@ -47,7 +47,6 @@ async function runCli(args: string[]): Promise<CliRun> {
 const FAILURES: ReadonlyArray<readonly [name: string, args: string[], depth: number]> = [
   ["verify-missing-run", ["verify", "--run", "nope"], 1],
   ["review-missing-run", ["review", "--run", "nope"], 1],
-  ["cleanup-missing-run", ["cleanup", "--run", "nope"], 1],
   ["export-missing-run", ["export", "--run", "nope"], 1],
   ["feedback-missing-run", ["feedback", "draft", "--run", "nope"], 2],
   ["run-missing-lab", ["run", "nope-lab"], 1],

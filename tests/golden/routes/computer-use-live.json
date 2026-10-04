@@ -832,6 +832,15 @@
   "sandbox-receipts.ndjson": [
     {
       "at": "[ts]",
+      "provider": "e2b",
+      "owner": {
+        "tool": "humanish",
+        "runId": "[run]",
+        "runKey": "[runKey]"
+      }
+    },
+    {
+      "at": "[ts]",
       "laneId": "lane-01",
       "provider": "e2b",
       "sandboxId": "fake-sandbox-001",

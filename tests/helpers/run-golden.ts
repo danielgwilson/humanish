@@ -9,6 +9,8 @@ import { dedupeProjections, inflateProjections } from "./run-golden-projections.
 // Numeric keys that vary between two runs of the same fixture: wall-clock measurements and the
 // writing process id.
 const AMBIENT_KEYS = new Set(["durationMs", "elapsedMs", "wallMs", "pid"]);
+// `runKey`, an owner tag, digests the run directory's inode, which differs for each temp directory.
+const AMBIENT_TEXT_KEYS = new Set(["runKey"]);
 const TEXT_EXTENSIONS = new Set([".md", ".txt", ".log", ".yaml", ".yml", ".html", ".csv"]);
 // The Observer page embeds the whole app build, which changes with every Observer edit. Its data
 // files sit next to it and are snapshotted like any other JSON.
@@ -25,7 +27,9 @@ function mask(value: unknown, keys: ReadonlySet<string>): unknown {
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [
         key,
-        (AMBIENT_KEYS.has(key) && typeof entry === "number") || keys.has(key)
+        (AMBIENT_KEYS.has(key) && typeof entry === "number") ||
+        AMBIENT_TEXT_KEYS.has(key) ||
+        keys.has(key)
           ? `[${key}]`
           : mask(entry, keys),
       ]),

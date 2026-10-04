@@ -285,8 +285,8 @@ nondeterminism candidate and does not license erasing the original red participa
 
 ## Run-owned cleanup
 
-`npx humanish cleanup --run latest` re-checks every desktop the run recorded, and
-`npx humanish reclaim --run YOUR_RUN_ID` stops the ones an interrupted run left.
+`npx humanish reclaim --check --run latest` asks E2B whether each desktop the run created still
+exists, and `npx humanish reclaim --run YOUR_RUN_ID` stops the ones an interrupted run left.
 [Knowing that cleanup happened](/docs/trust-boundaries#knowing-that-cleanup-happened)
 explains both receipts.
 

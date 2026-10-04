@@ -34,7 +34,33 @@ export interface E2BDesktopModule {
      * lack it, so callers fall back to kill()'s own boolean rather than ever calling Sandbox.list.
      */
     getInfo?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo>;
+    /**
+     * List sandboxes whose metadata matches every `query.metadata` pair, filtered server-side.
+     * Reclaim calls it only with a run's owner tags (sandboxOwnerTags in src/run/sandbox-creates.ts)
+     * and re-checks each tag on what comes back. The e2b SDK on the supported @e2b/desktop range
+     * (2.38 and later) returns a paginator.
+     */
+    list?(options?: E2BSandboxListOptions): E2BSandboxPaginator;
   };
+}
+
+interface E2BSandboxListOptions {
+  query?: { metadata?: Record<string, string> };
+  limit?: number;
+  requestTimeoutMs?: number;
+}
+
+interface E2BSandboxPaginator {
+  readonly hasNext: boolean;
+  nextItems(): Promise<E2BListedSandbox[]>;
+}
+
+/** One sandbox as the list endpoint describes it. */
+export interface E2BListedSandbox {
+  sandboxId: string;
+  metadata?: Record<string, string>;
+  /** `running` or `paused`. */
+  state?: string;
 }
 
 interface E2BSandboxInfo {
@@ -182,6 +208,22 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
 
 export const DESKTOP_CREATE_CLEANUP_TIMEOUT_MS = 10_000;
 
+const allocationObservers = new WeakMap<object, (sandboxId: string) => void>();
+
+/**
+ * Call `observer` with the sandbox id as soon as the guarded SDK constructs the handle for a
+ * create made with this exact options object, before desktop startup runs. Startup can take
+ * seconds after E2B created the sandbox; this is the earliest point the id exists in this process.
+ * A module without the guard (a test fake) never calls it, and create's own result still reports
+ * the id.
+ */
+export function observeDesktopAllocation(
+  options: E2BDesktopCreateOptions,
+  observer: (sandboxId: string) => void,
+): void {
+  allocationObservers.set(options, observer);
+}
+
 type DesktopCreateCleanup = "killed" | "already_gone" | "unconfirmed";
 interface DesktopCreateCleanupResult {
   cleanup: DesktopCreateCleanup;
@@ -242,6 +284,8 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
           : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
       let cleanupOwned: (() => Promise<DesktopCreateCleanupResult>) | undefined;
       let restoreKill: (() => void) | undefined;
+      const observeAllocation =
+        createOptions === undefined ? undefined : allocationObservers.get(createOptions);
       // oxlint-disable-next-line typescript/no-this-alias -- the attempt subclasses whichever SDK class was called
       const CallingSandbox = this;
       class AttemptSandbox extends CallingSandbox {
@@ -264,6 +308,11 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
             if (ownKill) Object.defineProperty(this, "kill", ownKill);
             else Reflect.deleteProperty(this, "kill");
           };
+          try {
+            observeAllocation?.(this.sandboxId);
+          } catch {
+            // An observer that throws must not fail the create; the resolved handle reports the id.
+          }
         }
       }
       try {

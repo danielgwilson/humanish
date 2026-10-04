@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
 import { verifyRun, type VerifyResult } from "../../src/verify/verify.js";
+import { writeStoredCleanup } from "../helpers/stored-cleanup.js";
 
 async function runCli(
   args: string[],
@@ -146,8 +147,7 @@ describe("humanish verify output", () => {
   it("gives every check that flips a different sentence on each side", async () => {
     const secret = ["ghp", "_", "a".repeat(30)].join("");
     const cleanup = async (ok: boolean | "malformed") => {
-      expect((await runCli(["cleanup", "--cwd", cwd])).exitCode).toBe(0);
-      const file = path.join(runDir, "cleanup.json");
+      const file = await writeStoredCleanup(runDir, path.basename(runDir));
       const receipt = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
       if (ok === "malformed") delete receipt.schema;
       else receipt.ok = ok;

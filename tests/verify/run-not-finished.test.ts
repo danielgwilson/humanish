@@ -1,5 +1,6 @@
 // verify's RUN_NOT_FINISHED warning: a killed run's in-progress bundle still verifies, and the
-// warning says what verify saw. The run index decides liveness by the same rule, so both agree.
+// warning and the result's `unfinished` say what verify saw, including whether anything records
+// the run's sandboxes stopped. The run index decides liveness by the same rule, so both agree.
 
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -17,59 +18,60 @@ const RUN = "killed-run";
 const TAIL =
   "Verify ok covers the integrity of what was written; it does not mean the run finished.";
 
+let cwd: string;
+let runDir: string;
+
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-run-not-finished-"));
+  await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+  await runDryRun({ cwd, dryRun: true, runId: RUN });
+  runDir = path.join(cwd, ".humanish", "runs", RUN);
+});
+afterEach(async () => {
+  await rm(cwd, { recursive: true, force: true });
+});
+
+const readJson = async <T>(name: string): Promise<T> =>
+  JSON.parse(await readFile(path.join(runDir, name), "utf8")) as T;
+const writeJson = (name: string, value: unknown) =>
+  writeFile(path.join(runDir, name), `${JSON.stringify(value, null, 2)}\n`);
+
+/** Leave the run as a SIGKILL does: an in-progress bundle with no outcome and a `running` record. */
+const kill = async (updatedAt: string) => {
+  const { outcome: _bundleOutcome, ...bundle } = await readJson<RunBundle>("run.json");
+  for (const stream of bundle.streams) stream.status = "running";
+  for (const simulation of bundle.simulations) simulation.status = "running";
+  await writeJson("run.json", bundle);
+  const {
+    completedAt: _completedAt,
+    outcome: _outcome,
+    ...status
+  } = await readJson<RunStatusRecord>(RUN_STATUS_FILE);
+  await writeJson(RUN_STATUS_FILE, { ...status, state: "running", updatedAt });
+  await writeFile(
+    path.join(runDir, "sandbox-receipts.ndjson"),
+    ["synthetic-sandbox-a", "synthetic-sandbox-b"]
+      .map((sandboxId, index) =>
+        JSON.stringify({ sandboxId, laneId: `lane-0${index + 1}`, provider: "e2b" }),
+      )
+      .join("\n") + "\n",
+  );
+};
+const notFinished = async () => {
+  const result = await verifyRun(cwd, RUN);
+  return {
+    ok: result.ok,
+    warnings: result.warnings.filter((warning) => warning.startsWith("RUN_NOT_FINISHED")),
+    ...(result.unfinished === undefined ? {} : { unfinished: result.unfinished }),
+  };
+};
+const indexLiveness = async () => (await readRunIndex(cwd)).runs[0]?.liveness;
+const stopped = "2026-09-30T13:37:29.366Z";
+
 describe("verify on a run that did not finish", () => {
-  let cwd: string;
-  let runDir: string;
-
-  beforeEach(async () => {
-    cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-run-not-finished-"));
-    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-    await runDryRun({ cwd, dryRun: true, runId: RUN });
-    runDir = path.join(cwd, ".humanish", "runs", RUN);
-  });
-  afterEach(async () => {
-    await rm(cwd, { recursive: true, force: true });
-  });
-
-  const readJson = async <T>(name: string): Promise<T> =>
-    JSON.parse(await readFile(path.join(runDir, name), "utf8")) as T;
-  const writeJson = (name: string, value: unknown) =>
-    writeFile(path.join(runDir, name), `${JSON.stringify(value, null, 2)}\n`);
-
-  /** Leave the run as a SIGKILL does: an in-progress bundle with no outcome and a `running` record. */
-  const kill = async (updatedAt: string) => {
-    const { outcome: _bundleOutcome, ...bundle } = await readJson<RunBundle>("run.json");
-    for (const stream of bundle.streams) stream.status = "running";
-    for (const simulation of bundle.simulations) simulation.status = "running";
-    await writeJson("run.json", bundle);
-    const {
-      completedAt: _completedAt,
-      outcome: _outcome,
-      ...status
-    } = await readJson<RunStatusRecord>(RUN_STATUS_FILE);
-    await writeJson(RUN_STATUS_FILE, { ...status, state: "running", updatedAt });
-    await writeFile(
-      path.join(runDir, "sandbox-receipts.ndjson"),
-      ["synthetic-sandbox-a", "synthetic-sandbox-b"]
-        .map((sandboxId, index) =>
-          JSON.stringify({ sandboxId, laneId: `lane-0${index + 1}`, provider: "e2b" }),
-        )
-        .join("\n") + "\n",
-    );
-  };
-  const notFinished = async () => {
-    const result = await verifyRun(cwd, RUN);
-    return {
-      ok: result.ok,
-      warnings: result.warnings.filter((warning) => warning.startsWith("RUN_NOT_FINISHED")),
-    };
-  };
-  const indexLiveness = async () => (await readRunIndex(cwd)).runs[0]?.liveness;
-  const stopped = "2026-09-30T13:37:29.366Z";
-
   it("reads status.json for this warning only: the grades are the same when it contradicts the bundle or is gone", async () => {
     const graded = async () => {
-      const { warnings, ...result } = await verifyRun(cwd, RUN);
+      const { warnings, unfinished: _unfinished, ...result } = await verifyRun(cwd, RUN);
       return {
         result: {
           ...result,
@@ -110,11 +112,13 @@ describe("verify on a run that did not finish", () => {
       ],
     });
 
+    // That receipt predates the tag search, so a sandbox no receipt named is still unknown.
     await expect(notFinished()).resolves.toEqual({
       ok: true,
       warnings: [
-        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. reclaim-receipt.json records 2 of 2 sandboxes gone. ${TAIL}`,
+        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. Sandboxes unknown: reclaim-receipt.json records 2 of 2 sandboxes gone, but it records no finished search of E2B by this run's tags; \`humanish reclaim --run ${RUN}\` searches. ${TAIL}`,
       ],
+      unfinished: { liveness: "interrupted", sandboxes: "unknown" },
     });
     await expect(indexLiveness()).resolves.toBe("interrupted");
   });
@@ -135,7 +139,7 @@ describe("verify on a run that did not finish", () => {
     });
 
     const text = (await notFinished()).warnings.join("\n");
-    expect(text).toMatch(/reclaim-receipt\.json records 2 of 2 sandboxes gone\.(?! .*not in it)/);
+    expect(text).toMatch(/reclaim-receipt\.json records 2 of 2 sandboxes gone, but/);
   });
 
   it("says which journaled sandboxes a reclaim receipt did not cover", async () => {
@@ -148,9 +152,10 @@ describe("verify on a run that did not finish", () => {
       outcomes: [{ sandboxId: "synthetic-sandbox-a", laneId: "lane-01", state: "kill-failed" }],
     });
 
-    const { warnings } = await notFinished();
+    const { warnings, unfinished } = await notFinished();
+    expect(unfinished).toEqual({ liveness: "interrupted", sandboxes: "unconfirmed" });
     expect(warnings[0]).toContain(
-      "reclaim-receipt.json records 0 of 1 sandboxes gone, and 1 journaled sandboxes are not in it.",
+      "Sandboxes unconfirmed: reclaim-receipt.json records 0 of 1 sandboxes gone, and 1 journaled sandboxes are not in it;",
     );
   });
 
@@ -160,8 +165,9 @@ describe("verify on a run that did not finish", () => {
     await expect(notFinished()).resolves.toEqual({
       ok: true,
       warnings: [
-        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. It has no reclaim-receipt.json; \`humanish reclaim --run ${RUN}\` stops the 2 sandboxes it journaled. ${TAIL}`,
+        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. Sandboxes unknown: it has no reclaim-receipt.json and journaled 2 sandboxes; \`humanish reclaim --run ${RUN}\` stops those and searches E2B by this run's tags for any whose id never reached a receipt. ${TAIL}`,
       ],
+      unfinished: { liveness: "interrupted", sandboxes: "unknown" },
     });
     await expect(indexLiveness()).resolves.toBe("interrupted");
   });
@@ -186,5 +192,37 @@ describe("verify on a run that did not finish", () => {
       /^RUN_NOT_FINISHED: the run has no usable status\.json and 1 of 1 simulations are still running; 1 of 1 streams are still running\. /,
     );
     await expect(indexLiveness()).resolves.toBe("interrupted");
+  });
+});
+
+// Whether anything records that the run's sandboxes stopped, which leads verify's one-line output.
+describe("verify's sandbox state for a run that did not finish", () => {
+  it("calls the sandboxes clean only when the reclaim receipt records a finished tag search", async () => {
+    await kill(stopped);
+    await writeJson("reclaim-receipt.json", {
+      schema: "humanish.reclaim-result.v1",
+      at: "2026-10-04T13:38:14.809Z",
+      runId: RUN,
+      state: "clean",
+      receiptCount: 2,
+      outcomes: ["synthetic-sandbox-a", "synthetic-sandbox-b"].map((id, index) => ({
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest(id),
+        laneId: `lane-0${index + 1}`,
+        source: "receipt",
+        state: "killed",
+      })),
+    });
+    const result = await notFinished();
+    expect(result.unfinished).toEqual({ liveness: "interrupted", sandboxes: "clean" });
+    expect(result.warnings[0]).toContain("Sandboxes clean: reclaim-receipt.json records 2 of 2");
+  });
+
+  it("calls the sandboxes unknown when nothing journaled one and no reclaim searched", async () => {
+    await kill(stopped);
+    await rm(path.join(runDir, "sandbox-receipts.ndjson"));
+    const result = await notFinished();
+    expect(result.unfinished).toEqual({ liveness: "interrupted", sandboxes: "unknown" });
+    expect(result.warnings[0]).toContain("Sandboxes unknown: it has no reclaim-receipt.json");
   });
 });

@@ -1183,8 +1183,10 @@ and the estimate is a lower bound. A record without it, as every record before
 
 `interrupted` with `signal` (`SIGINT`, `SIGTERM` or `SIGHUP`) is written by
 the CLI's run command when that signal stops a live run outside post-run
-analysis. It then kills the E2B sandboxes the run's `sandbox-receipts.ndjson`
-names, writes `reclaim-receipt.json` as `humanish reclaim` does, and exits
+analysis. It first prints one line saying it is stopping and refuses any further sandbox
+create. It then kills the E2B sandboxes the run's `sandbox-receipts.ndjson` names, each sandbox
+a create in flight reports as its id arrives, and each one E2B lists with the run's owner tags,
+writes `reclaim-receipt.json` as `humanish reclaim` does, and exits
 128+n. The bundle is not finished: run.json keeps its last live flush, with
 `outcome: { state: interrupted, ok: false, signal, at }` when the run had
 flushed one, and status.json gets no `outcome`. A `running` record that stopped refreshing still reads as

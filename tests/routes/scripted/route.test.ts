@@ -229,6 +229,8 @@ function makeFakeE2BModule(
         killed.push(sandboxId);
         return present;
       },
+      // E2B lists no sandbox tagged with the run beyond those reclaim already holds.
+      list: () => ({ hasNext: false, nextItems: async () => [] }),
     },
   };
   return { module, created, templates, killed, sandboxes, order };
@@ -857,6 +859,7 @@ describe("runScriptedBrowserLab", () => {
         sandboxId: REDACTED_SANDBOX_ID,
         sandboxIdDigest: sandboxIdDigest("fake-subject-001"),
         laneId: "subject",
+        source: "receipt",
         state: "already-gone",
       },
     ]);

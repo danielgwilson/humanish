@@ -5,6 +5,7 @@ import {
   DESKTOP_CREATE_CLEANUP_TIMEOUT_MS,
   E2BDesktopStartupError,
   guardDesktopSandboxCreate,
+  observeDesktopAllocation,
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
 } from "../../../src/substrates/e2b/sdk.js";
@@ -281,6 +282,23 @@ describe("desktop allocation ownership survives startup failure", () => {
     await expect(probe.module.Sandbox.create(options)).rejects.toThrow("401 Unauthorized");
     expect(probe.instances).toHaveLength(0);
     expect(probe.killed).toHaveLength(0);
+    expect(probe.list).not.toHaveBeenCalled();
+    expect(probe.allocation).not.toHaveBeenCalled();
+  });
+});
+
+describe("desktop allocation id before startup", () => {
+  it("reports the constructed handle's id before desktop startup runs its first command", async () => {
+    const startup = deferred();
+    const probe = sdkProbe({ command: () => startup.promise });
+    const observed = { ...options };
+    observeDesktopAllocation(observed, (sandboxId) => probe.events.push(`observed-${sandboxId}`));
+    const creating = probe.module.Sandbox.create(observed);
+    await vi.waitFor(() => expect(probe.events).toContain("command-1"));
+    // The SDK's debug mode names every sandbox debug_sandbox_id; the order is the contract.
+    expect(probe.events).toEqual(["construct-1", "observed-debug_sandbox_id", "command-1"]);
+    startup.resolve();
+    await creating;
     expect(probe.list).not.toHaveBeenCalled();
     expect(probe.allocation).not.toHaveBeenCalled();
   });

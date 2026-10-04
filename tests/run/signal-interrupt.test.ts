@@ -140,6 +140,7 @@ describe("a live run signalled mid-session", () => {
                 killed.push(sandboxId);
                 return true;
               },
+              list: () => ({ hasNext: false, nextItems: async () => [] }),
             },
           }) as unknown as E2BDesktopModule,
       });
@@ -149,6 +150,7 @@ describe("a live run signalled mid-session", () => {
           sandboxId: REDACTED_SANDBOX_ID,
           sandboxIdDigest: sandboxIdDigest("fake-sb-signalled"),
           laneId: "lane-01",
+          source: "receipt",
           state: "killed",
         },
       ]);

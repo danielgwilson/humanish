@@ -59,6 +59,11 @@ export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+/** A command-line argument, single-quoted only when the shell would split or expand it. */
+export function shellArg(value: string): string {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : shellQuote(value);
+}
+
 /** Sanitized, whitespace-collapsed, length-capped tail of command output. */
 export function tailOf(value: string | undefined): string {
   return (value ?? "").trim().replace(/\s+/g, " ").slice(-240);

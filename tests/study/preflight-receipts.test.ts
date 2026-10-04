@@ -10,7 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createProgram } from "../../src/cli/program.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import { reclaimPreflightSandboxes } from "../../src/run/reclaim.js";
-import { SANDBOX_RECEIPTS_ARTIFACT } from "../../src/run/sandbox-receipts.js";
+import {
+  parseSandboxOwners,
+  parseSandboxReceipts,
+  SANDBOX_RECEIPTS_ARTIFACT,
+} from "../../src/run/sandbox-receipts.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -122,6 +126,8 @@ function fakeProvider(behavior: {
         killed.push(sandboxId);
         return "killAnswer" in behavior ? behavior.killAnswer : true;
       },
+      // E2B lists no sandbox tagged with the probe beyond the one its journal names.
+      list: () => ({ hasNext: false, nextItems: async () => [] }),
     },
   } as unknown as E2BDesktopModule;
   return { module, created, killed };
@@ -148,6 +154,8 @@ async function writeJournal(
     startTicks?: string;
     createdAt?: string;
     leaseMs?: number;
+    /** A journal from humanish 0.110 or earlier, with no owner line. */
+    legacy?: boolean;
   },
 ): Promise<string> {
   const id = `preflight-${owner.pid}-test-${Math.random().toString(16).slice(2, 10)}`;
@@ -174,9 +182,15 @@ async function writeJournal(
       leaseMs,
     }),
   );
+  // The owner line this version writes before the create, then the receipt.
+  const ownerLine = {
+    at: createdAt,
+    provider: "e2b",
+    owner: { tool: "humanish", runId: id, runKey: "00000000000000aa" },
+  };
   await writeFile(
     path.join(dir, SANDBOX_RECEIPTS_ARTIFACT),
-    `${JSON.stringify({ at: createdAt, laneId: id, provider: "e2b", sandboxId: "fake-sb-journaled", timeoutMs: leaseMs })}\n`,
+    `${owner.legacy === true ? "" : `${JSON.stringify(ownerLine)}\n`}${JSON.stringify({ at: createdAt, laneId: id, provider: "e2b", sandboxId: "fake-sb-journaled", timeoutMs: leaseMs })}\n`,
   );
   return id;
 }
@@ -195,9 +209,11 @@ describe("lab preflight receipts", () => {
   it("journals the probe before its first command and removes the journal after the kill", async () => {
     await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), previewLab());
     let journalAtFirstCommand = "";
+    let journalId = "";
     const provider = fakeProvider({
       onFirstCommand: async () => {
         const [id] = await journals(cwd);
+        journalId = id ?? "missing";
         journalAtFirstCommand = await readFile(
           path.join(cwd, ".humanish", "preflight", id ?? "missing", SANDBOX_RECEIPTS_ARTIFACT),
           "utf8",
@@ -214,11 +230,17 @@ describe("lab preflight receipts", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(JSON.parse(journalAtFirstCommand)).toMatchObject({
-      provider: "e2b",
-      sandboxId: "fake-sb-preflight-1",
-      timeoutMs: PROBE_TIMEOUT_MS + LEASE_BUFFER_MS,
-    });
+    expect(parseSandboxReceipts(journalAtFirstCommand)).toEqual([
+      expect.objectContaining({
+        provider: "e2b",
+        sandboxId: "fake-sb-preflight-1",
+        timeoutMs: PROBE_TIMEOUT_MS + LEASE_BUFFER_MS,
+      }),
+    ]);
+    // The owner line went first, naming the tags the probe sandbox was created with.
+    expect(parseSandboxOwners(journalAtFirstCommand, journalId)).toEqual([
+      expect.objectContaining({ tool: "humanish", runId: journalId }),
+    ]);
     expect(provider.killed).toEqual(["fake-sb-preflight-1"]);
     expect(await journals(cwd)).toEqual([]);
   });
@@ -375,6 +397,7 @@ describe("lab preflight receipts", () => {
         sandboxId: REDACTED_SANDBOX_ID,
         sandboxIdDigest: sandboxIdDigest("fake-sb-preflight-1"),
         laneId: id,
+        source: "receipt",
         state: "killed",
       },
     ]);
@@ -428,6 +451,43 @@ describe("lab preflight receipts", () => {
     expect(provider.killed).toEqual(["fake-sb-journaled"]);
     expect(reclaim.ok).toBe(true);
     expect(await journals(cwd)).toEqual([]);
+  });
+
+  it("keeps a journal from before owner lines after its lease has ended", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const id = await writeJournal(cwd, {
+      pid: process.pid,
+      createdAt: twoHoursAgo,
+      leaseMs: 5 * 60_000,
+      legacy: true,
+    });
+    const provider = fakeProvider({});
+
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => provider.module,
+    });
+
+    expect(provider.killed).toEqual(["fake-sb-journaled"]);
+    // A probe can create later than its journal says, so elapsed time proves nothing.
+    expect(reclaim).toMatchObject({ ok: false, state: "unknown" });
+    expect(reclaim.warnings.join("\n")).toContain(`delete .humanish/preflight/${id}`);
+    expect(await journals(cwd)).toEqual([id]);
+  });
+
+  it("keeps a journal from before owner lines while its lease may still run", async () => {
+    const id = await writeJournal(cwd, { pid: process.pid, legacy: true });
+    // The probe gave up its sandbox, so reclaim may act before the lease ends.
+    await writeFile(path.join(cwd, ".humanish", "preflight", id, "abandoned"), "");
+    const provider = fakeProvider({});
+
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => provider.module,
+    });
+
+    expect(provider.killed).toEqual(["fake-sb-journaled"]);
+    expect(reclaim).toMatchObject({ ok: false, state: "unknown" });
+    expect(reclaim.warnings.join("\n")).toContain("records no owner tags");
+    expect(await journals(cwd)).toEqual([id]);
   });
 
   it("refuses reclaim with E2B_DEBUG=true and keeps the journal", async () => {

@@ -1,5 +1,5 @@
-// The run command's options and result, the cleanup result (cleanup.json) and the latest-run
-// pointer (latest.json). None of them are stored in run.json.
+// The run command's options and result, the cleanup.json shape releases through 0.110 wrote, and
+// the latest-run pointer (latest.json). None of them are stored in run.json.
 
 import type { ObserverResult } from "../observer/render.js";
 import type { RunProviderResource } from "./bundle.js";
@@ -61,21 +61,18 @@ export interface RunResult {
   };
 }
 
-export interface CleanupResourceResult {
+/**
+ * A resource line of cleanup.json. `humanish cleanup` wrote the file through 0.110, and verify
+ * still reads one a run kept. v0.12.23 through v0.15.0 killed sandboxes and wrote `killed`.
+ */
+export interface StoredCleanupResourceResult {
   provider: RunProviderResource["provider"];
   kind: RunProviderResource["kind"];
-  /** "[redacted-sandbox-id]"; the raw id is only in the run's sandbox-receipts.ndjson. */
+  /** "[redacted-sandbox-id]" from 0.110; earlier files hold the raw id. */
   id: string;
-  /** The id's digest, which matches its receipt; absent when the record had neither. */
   idDigest?: string;
-  /** Cleanup reads recorded evidence and never kills a sandbox, so it never writes `killed`. */
-  status: "already_clean" | "failed" | "skipped";
+  status: "already_clean" | "failed" | "skipped" | "killed";
   message: string;
-}
-
-/** A resource line as a stored cleanup.json holds it. v0.12.23 through v0.15.0 killed sandboxes. */
-export interface StoredCleanupResourceResult extends Omit<CleanupResourceResult, "status"> {
-  status: CleanupResourceResult["status"] | "killed";
 }
 
 export interface CleanupAdapterResult {
@@ -84,7 +81,8 @@ export interface CleanupAdapterResult {
   message: string;
 }
 
-export interface CleanupResult {
+/** cleanup.json as any release through 0.110 wrote it. */
+export interface StoredCleanupResult {
   schema: typeof CLEANUP_SCHEMA;
   ok: boolean;
   cwd: string;
@@ -95,24 +93,14 @@ export interface CleanupResult {
   checkedAt: string;
   summary: {
     resources: number;
-    /** Always 0 now; written so readers from earlier releases still accept the file. */
     killed: number;
     alreadyClean: number;
     failed: number;
     skipped: number;
   };
-  resources: CleanupResourceResult[];
+  resources: StoredCleanupResourceResult[];
   adapterResults: CleanupAdapterResult[];
   warnings: string[];
-  error?: {
-    code: "HUMANISH_RUN_NOT_FOUND" | "HUMANISH_INVALID_RUN_BUNDLE";
-    message: string;
-  };
-}
-
-/** cleanup.json as any release wrote it; see StoredCleanupResourceResult. */
-export interface StoredCleanupResult extends Omit<CleanupResult, "resources"> {
-  resources: StoredCleanupResourceResult[];
 }
 
 export interface RunPointer {

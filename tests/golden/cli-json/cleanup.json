@@ -1,25 +1,27 @@
 {
-  "exitCode": 0,
+  "exitCode": 2,
   "shape": {
-    "adapterResults": [],
-    "bundlePath": "string",
-    "checkedAt": "string",
-    "cleanupPath": "string",
+    "createsInFlight": "number",
     "cwd": "string",
+    "mode": "string",
     "ok": "boolean",
-    "resources": [],
-    "run": "string",
+    "outcomes": [],
+    "receiptCount": "number",
     "runId": "string",
     "schema": "string",
-    "summary": {
-      "alreadyClean": "number",
-      "failed": "number",
-      "killed": "number",
-      "resources": "number",
-      "skipped": "number"
+    "state": "string",
+    "tagSearch": {
+      "detail": "string",
+      "found": "number",
+      "status": "string"
     },
     "warnings": [
       "string"
     ]
+  },
+  "pinned": {
+    "mode": "check",
+    "state": "unknown",
+    "warning": "`cleanup` is now `reclaim --check`; `cleanup` is removed in 0.112.0."
   }
 }

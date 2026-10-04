@@ -33,7 +33,7 @@ import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { computeStats } from "../../src/run/stats.js";
-import { cleanupRun } from "../../src/run/stored-runs.js";
+import { storedCleanupSandbox, writeStoredCleanup } from "../helpers/stored-cleanup.js";
 import { createProgram } from "../../src/cli/program.js";
 
 const execFileAsync = promisify(execFile);
@@ -317,16 +317,7 @@ describe("redacted bundle export", () => {
           ],
         }),
       );
-      await cleanupRun(cwd, RUN);
-      const cleanupFile = path.join(runDir, "cleanup.json");
-      const cleanup = JSON.parse(await readFile(cleanupFile, "utf8")) as {
-        resources: { id: string; idDigest?: string }[];
-      };
-      for (const entry of cleanup.resources) {
-        entry.id = raw;
-        delete entry.idDigest;
-      }
-      await writeFile(cleanupFile, JSON.stringify(cleanup, null, 2));
+      await writeStoredCleanup(runDir, RUN, [storedCleanupSandbox(raw)]);
       // Free text and YAML name it too; without receipts, run.json's keyed id is how export knows it.
       const review = path.join(runDir, "review.md");
       await writeFile(review, `${await readFile(review, "utf8")}\nSandbox ${raw} reclaimed.\n`);

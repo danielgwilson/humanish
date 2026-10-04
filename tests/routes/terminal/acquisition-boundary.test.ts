@@ -10,7 +10,11 @@ import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudyDocument } from "../../../src/study/config.js";
 import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
-import { SANDBOX_RECEIPTS_ARTIFACT } from "../../../src/run/sandbox-receipts.js";
+import {
+  parseSandboxOwners,
+  parseSandboxReceipts,
+  SANDBOX_RECEIPTS_ARTIFACT,
+} from "../../../src/run/sandbox-receipts.js";
 import { classifyRunStatus, RUN_STATUS_STALE_MS } from "../../../src/run/status.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 
@@ -191,6 +195,8 @@ describe("terminal sandbox acquisition boundary", () => {
     const provider = fakeProvider({
       // The receipt path becomes a directory after the run directory exists, so the append fails.
       afterAllocate: async () => {
+        // The owner line written before the create made it a file; replace it.
+        await rm(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), { force: true });
         await mkdir(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT));
       },
     });
@@ -247,6 +253,7 @@ describe("terminal sandbox acquisition boundary", () => {
         sandboxId: REDACTED_SANDBOX_ID,
         sandboxIdDigest: sandboxIdDigest("fake-sb-boundary-orphan"),
         laneId: "terminal",
+        source: "receipt",
         state: "killed",
       },
     ]);
@@ -258,7 +265,7 @@ describe("terminal sandbox acquisition boundary", () => {
     expect(classifyRunStatus(status, Date.now() + RUN_STATUS_STALE_MS + 1)).toBe("interrupted");
   }, 60_000);
 
-  it("an allocation whose id never reaches the run has no receipt and keeps its TTL", async () => {
+  it("an allocation whose id never reaches the run has no receipt, carries its tags and keeps its TTL", async () => {
     const provider = fakeProvider({ rejectAfterAllocate: true });
 
     const result = await runTerminalProductStudy({
@@ -274,11 +281,17 @@ describe("terminal sandbox acquisition boundary", () => {
     expect(result.ok).toBe(false);
     expect(provider.allocated).toHaveLength(1);
     expect(provider.killed).toEqual([]);
-    await expect(stat(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT))).rejects.toThrow("ENOENT");
+    // The journal holds only the owner line written before the create, which names no sandbox.
+    const journal = await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8");
+    expect(parseSandboxReceipts(journal)).toEqual([]);
+    const [owner] = parseSandboxOwners(journal, RUN_ID);
+    expect(owner).toMatchObject({ tool: "humanish", runId: RUN_ID });
     const reclaim = await reclaimRunSandboxes(cwd, RUN_ID, {
       loadModule: async () => provider.module,
     });
     expect(reclaim.receiptCount).toBe(0);
+    // The tags it was created with are the ones reclaim searches E2B for.
+    expect(provider.allocated[0]?.options.metadata).toMatchObject(owner!);
     // The provider-side backstop: the sandbox kills itself when its create-time timeout ends.
     const [created] = provider.allocated;
     expect(created?.options.timeoutMs).toBeGreaterThan(0);

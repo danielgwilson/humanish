@@ -14,14 +14,26 @@ import {
 import { registerActiveRun } from "../../src/run/active-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
-import { prepareRunArtifactPaths } from "../../src/run/paths.js";
+import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../../src/run/reclaim.js";
-import { appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
+import { sandboxOwnerTags } from "../../src/run/sandbox-creates.js";
+import {
+  appendSandboxReceipt,
+  parseSandboxReceipts,
+  SANDBOX_RECEIPTS_ARTIFACT,
+} from "../../src/run/sandbox-receipts.js";
 import type { RunInterruptSignal } from "../../src/run/status.js";
-import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
+import { acquireE2BDesktopSandbox } from "../../src/substrates/e2b/sandbox.js";
+import type {
+  E2BDesktopModule,
+  E2BDesktopSandbox,
+  E2BListedSandbox,
+} from "../../src/substrates/e2b/sdk.js";
 
-// The run command's handler: the first signal marks the run interrupted, reclaims the sandboxes
-// its receipts name and exits 128+n; a second exits at once; analysis takes the signals over.
+// The run command's handler: the first signal says it is stopping, refuses further creates, marks
+// the run interrupted, reclaims the sandboxes its receipts, its in-flight creates and its E2B tags
+// name, and exits 128+n; a second prints the reclaim command and exits at once; analysis takes
+// the signals over.
 let cwd: string;
 let target: EventEmitter;
 let cleanups: Array<() => void>;
@@ -41,12 +53,64 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
+/** A fake @e2b/desktop module: creates resolve when the test says, kills and lists record. */
+function fakeE2B(options: {
+  kill?: (sandboxId: string) => Promise<boolean>;
+  listed?: (paths: PreparedRunArtifactPaths) => E2BListedSandbox[];
+  paths?: PreparedRunArtifactPaths;
+  /** Holds every list request open until it resolves. */
+  listGate?: Promise<void>;
+}) {
+  const killed: string[] = [];
+  let lists = 0;
+  const created: unknown[] = [];
+  const pendingCreates: Array<(result: { sandboxId: string } | Error) => void> = [];
+  const module = {
+    Sandbox: {
+      create: (...args: unknown[]) => {
+        created.push(args);
+        return new Promise<E2BDesktopSandbox>((resolve, reject) => {
+          pendingCreates.push((result) =>
+            result instanceof Error ? reject(result) : resolve(result as E2BDesktopSandbox),
+          );
+        });
+      },
+      kill: async (sandboxId: string) => {
+        killed.push(sandboxId);
+        return (options.kill ?? (async () => true))(sandboxId);
+      },
+      list: () => {
+        let read = false;
+        return {
+          get hasNext() {
+            return !read;
+          },
+          nextItems: async () => {
+            read = true;
+            lists += 1;
+            await options.listGate;
+            return options.listed && options.paths ? options.listed(options.paths) : [];
+          },
+        };
+      },
+    },
+  } as unknown as E2BDesktopModule;
+  /** Resolve (or fail) the oldest create still waiting. */
+  const finishCreate = (result: { sandboxId: string } | Error) => pendingCreates.shift()?.(result);
+  return { module, killed, created, finishCreate, lists: () => lists };
+}
+
 async function setup(options: {
   runId?: string;
   interrupted?: boolean;
   interrupt?: () => Promise<boolean>;
   kill?: (sandboxId: string) => Promise<boolean>;
+  listed?: (paths: PreparedRunArtifactPaths) => E2BListedSandbox[];
+  listGate?: Promise<void>;
+  /** Only names the deadline in output; it passes when the test calls `fireDeadline`. */
   deadlineMs?: number;
+  /** How long reclaim waits for in-flight creates before it searches by tag. */
+  createsWaitMs?: number;
 }) {
   const runId = options.runId ?? RUN;
   const interrupt = vi.fn(
@@ -55,32 +119,38 @@ async function setup(options: {
   );
   const paths = await prepareRunArtifactPaths(cwd, runId);
   cleanups.push(registerActiveRun({ cwd, runId, paths, status: { interrupt } }));
-  const killed: string[] = [];
-  const module = {
-    Sandbox: {
-      create: async () => {
-        throw new Error("reclaim never creates sandboxes");
-      },
-      kill: async (sandboxId: string) => {
-        killed.push(sandboxId);
-        return (options.kill ?? (async () => true))(sandboxId);
-      },
-    },
-  } as unknown as E2BDesktopModule;
+  const e2b = fakeE2B({
+    ...(options.kill === undefined ? {} : { kill: options.kill }),
+    ...(options.listed === undefined ? {} : { listed: options.listed }),
+    ...(options.listGate === undefined ? {} : { listGate: options.listGate }),
+    paths,
+  });
   const exit = vi.fn();
   let stderr = "";
+  // No wall clock decides when the handler gives up: the test passes the deadline itself.
+  let fireDeadline!: () => void;
+  const deadlinePassed = new Promise<void>((resolve) => {
+    fireDeadline = resolve;
+  });
   const phase = beginRunSignalPhase(
     { writeErr: (text) => (stderr += text) },
     {
       signalTarget: target,
       exit,
-      reclaim: { loadModule: async () => module },
+      reclaim: {
+        loadModule: async () => e2b.module,
+        ...(options.createsWaitMs === undefined ? {} : { createsWaitMs: options.createsWaitMs }),
+      },
+      deadline: () => deadlinePassed,
       ...(options.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
     },
   );
   cleanups.push(phase.end);
-  return { interrupt, killed, exit, phase, stderr: () => stderr };
+  return { interrupt, ...e2b, exit, phase, paths, stderr: () => stderr, fireDeadline };
 }
+
+/** The command the handler prints for this test's run, whose cwd is a temporary directory. */
+const reclaimCommand = (runId: string) => `humanish reclaim --run ${runId} --cwd ${cwd}`;
 
 describe("the run command's signal handler", () => {
   it("marks the run interrupted, reclaims its receipts and exits 128+n", async () => {
@@ -98,31 +168,88 @@ describe("the run command's signal handler", () => {
         sandboxId: REDACTED_SANDBOX_ID,
         sandboxIdDigest: sandboxIdDigest("fake-sb-1"),
         laneId: "lane-01",
+        source: "receipt",
         state: "killed",
       },
     ]);
-    expect(run.stderr()).toBe(
-      `humanish: SIGTERM: run ${RUN} marked interrupted; sandboxes: 1 killed.\n`,
-    );
+    expect(run.stderr().split("\n")).toEqual([
+      `humanish: SIGTERM: stopping run ${RUN} and reclaiming its sandboxes (up to 10 s); a second SIGTERM exits without waiting.`,
+      `humanish: SIGTERM: run ${RUN} marked interrupted; sandboxes clean: 1 killed; E2B lists none still tagged with this run.`,
+      "",
+    ]);
+  });
+
+  it("says it is stopping before it awaits anything", async () => {
+    const run = await setup({});
+    target.emit("SIGINT");
+    expect(run.stderr()).toContain(`humanish: SIGINT: stopping run ${RUN}`);
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(130));
   });
 
   it("exits at once on a second signal while reclaim is still waiting", async () => {
-    const run = await setup({
-      kill: () => new Promise<boolean>(() => undefined),
-      deadlineMs: 2_000,
-    });
+    const run = await setup({ kill: () => new Promise<boolean>(() => undefined) });
     target.emit("SIGINT");
     await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
     expect(run.exit).not.toHaveBeenCalled();
     target.emit("SIGINT");
     expect(run.exit).toHaveBeenCalledExactlyOnceWith(130);
+    // The terminal says what was left undone and the exact command that finishes it.
+    expect(run.stderr()).toContain(
+      `humanish: second SIGINT: exiting before run ${RUN}'s sandboxes were confirmed stopped; run \`${reclaimCommand(RUN)}\` to stop what is left.`,
+    );
   });
 
   it("exits after the deadline and names the reclaim command", async () => {
-    const run = await setup({ kill: () => new Promise<boolean>(() => undefined), deadlineMs: 50 });
+    const run = await setup({ kill: () => new Promise<boolean>(() => undefined) });
     target.emit("SIGHUP");
+    await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
+    expect(run.exit).not.toHaveBeenCalled();
+    run.fireDeadline();
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(129));
-    expect(run.stderr()).toContain(`run \`humanish reclaim --run ${RUN}\``);
+    expect(run.stderr()).toContain("sandboxes unknown");
+    expect(run.stderr()).toContain(`\`${reclaimCommand(RUN)}\``);
+  });
+
+  it("kills twelve sandboxes at once under a slow kill and names the unconfirmed one on timeout", async () => {
+    for (let index = 2; index <= 12; index += 1)
+      await appendSandboxReceipt(await prepareRunArtifactPaths(cwd, RUN), {
+        at: `t${index}`,
+        laneId: "lane-01",
+        sandboxId: `fake-sb-${index}`,
+      });
+    // Each kill answers only when the test says so; the newest never answers.
+    const answers = new Map<string, (killed: boolean) => void>();
+    const run = await setup({
+      kill: (sandboxId) =>
+        new Promise<boolean>((resolve) => {
+          if (sandboxId !== "fake-sb-12") answers.set(sandboxId, resolve);
+        }),
+      deadlineMs: 600,
+    });
+    const receiptFile = path.join(run.paths.absoluteRunRoot, RECLAIM_RECEIPT_ARTIFACT);
+    const recorded = async () =>
+      JSON.parse(await readFile(receiptFile, "utf8")) as {
+        state: string;
+        outcomes: { sandboxIdDigest: string; state: string }[];
+      };
+    target.emit("SIGTERM");
+    // All twelve kills, the newest included, start before any one answers.
+    await vi.waitFor(() => expect(run.killed).toHaveLength(12));
+    expect(answers.size).toBe(11);
+    for (const answer of answers.values()) answer(true);
+    await vi.waitFor(async () =>
+      expect((await recorded()).outcomes.filter((o) => o.state === "killed")).toHaveLength(11),
+    );
+    expect(run.exit).not.toHaveBeenCalled();
+    run.fireDeadline();
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    expect(run.stderr()).toContain("stopping did not finish within 0.6 s");
+    const receipt = await recorded();
+    expect(receipt.state).toBe("unknown");
+    expect(receipt.outcomes.filter((outcome) => outcome.state === "killed")).toHaveLength(11);
+    expect(receipt.outcomes.filter((outcome) => outcome.state === "pending")).toEqual([
+      expect.objectContaining({ sandboxIdDigest: sandboxIdDigest("fake-sb-12") }),
+    ]);
   });
 
   it("leaves a run that had already finished to its route", async () => {
@@ -130,7 +257,7 @@ describe("the run command's signal handler", () => {
     target.emit("SIGTERM");
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
     expect(run.killed).toEqual([]);
-    expect(run.stderr()).toBe("");
+    expect(run.stderr()).not.toContain("marked interrupted");
   });
 
   it("takes no signal after end", async () => {
@@ -139,6 +266,146 @@ describe("the run command's signal handler", () => {
     expect(target.listenerCount("SIGTERM")).toBe(0);
     target.emit("SIGTERM");
     expect(run.exit).not.toHaveBeenCalled();
+  });
+});
+
+// A sandbox exists on E2B before its create returns, and so before its receipt. These cover a
+// signal that lands in that window.
+describe("the run command's signal handler during a sandbox create", () => {
+  async function creating(run: Awaited<ReturnType<typeof setup>>, participantId = "p1") {
+    const acquired = acquireE2BDesktopSandbox({
+      module: run.module,
+      options: { apiKey: "synthetic", timeoutMs: 60_000 },
+      receipt: { root: run.paths, participantId },
+    });
+    // Returned in an object: an async function would otherwise wait for the create to return.
+    acquired.catch(() => undefined);
+    await vi.waitFor(() => expect(run.created).toHaveLength(1));
+    return { acquired };
+  }
+
+  it("kills a sandbox whose create returns after the signal, before its receipt was written", async () => {
+    const run = await setup({});
+    const { acquired } = await creating(run);
+    target.emit("SIGINT");
+    // The create is still waiting on E2B: only the journaled sandbox is named yet.
+    await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
+    run.finishCreate({ sandboxId: "fake-sb-late" });
+    await acquired;
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(130));
+    expect(run.killed.sort()).toEqual(["fake-sb-1", "fake-sb-late"]);
+    const receipt = JSON.parse(
+      await readFile(path.join(run.paths.absoluteRunRoot, RECLAIM_RECEIPT_ARTIFACT), "utf8"),
+    ) as { state: string; outcomes: { sandboxIdDigest: string; source: string; state: string }[] };
+    expect(receipt.state).toBe("clean");
+    expect(receipt.outcomes).toContainEqual(
+      expect.objectContaining({
+        sandboxIdDigest: sandboxIdDigest("fake-sb-late"),
+        source: "create",
+        state: "killed",
+      }),
+    );
+    expect(run.stderr()).toContain("sandboxes clean: 2 killed");
+  });
+
+  it("tags the create with the run's owner tags before it reaches E2B", async () => {
+    const run = await setup({});
+    await creating(run);
+    const [options] = run.created[0] as [{ metadata?: Record<string, string> }];
+    expect(options.metadata).toEqual(sandboxOwnerTags(run.paths));
+    expect(options.metadata?.runId).toBe(RUN);
+    run.finishCreate({ sandboxId: "fake-sb-tagged" });
+  });
+
+  it("refuses a create that starts after the signal, before any call to E2B", async () => {
+    const run = await setup({ kill: () => new Promise<boolean>(() => undefined) });
+    target.emit("SIGTERM");
+    await expect(
+      acquireE2BDesktopSandbox({
+        module: run.module,
+        options: { apiKey: "synthetic" },
+        receipt: { root: run.paths, participantId: "p2" },
+      }),
+    ).rejects.toThrow("The run is stopping");
+    expect(run.created).toEqual([]);
+    run.fireDeadline();
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+  });
+
+  it("finds a sandbox whose id never reached the process by the run's E2B tags", async () => {
+    // The create threw after E2B allocated, so only E2B knows the sandbox exists.
+    const run = await setup({
+      listed: (paths) => [
+        {
+          sandboxId: "fake-sb-orphan",
+          metadata: { ...sandboxOwnerTags(paths), participantId: "p1" },
+        },
+      ],
+    });
+    const { acquired } = await creating(run);
+    target.emit("SIGINT");
+    run.finishCreate(new Error("Response data is missing"));
+    await expect(acquired).rejects.toThrow("Response data is missing");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(130));
+    expect(run.killed.sort()).toEqual(["fake-sb-1", "fake-sb-orphan"]);
+    expect(run.stderr()).toContain("sandboxes clean: 2 killed");
+  });
+
+  it("kills a sandbox whose create returns while the tag search is still running", async () => {
+    let releaseList!: () => void;
+    const listGate = new Promise<void>((resolve) => {
+      releaseList = resolve;
+    });
+    // The search starts at once, with the create still waiting on E2B.
+    const run = await setup({ createsWaitMs: 0, listGate });
+    await creating(run);
+    target.emit("SIGINT");
+    await vi.waitFor(() => expect(run.lists()).toBe(1));
+    run.finishCreate({ sandboxId: "fake-sb-during-search" });
+    await vi.waitFor(() => expect(run.killed).toContain("fake-sb-during-search"));
+    releaseList();
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(130));
+    const receipt = JSON.parse(
+      await readFile(path.join(run.paths.absoluteRunRoot, RECLAIM_RECEIPT_ARTIFACT), "utf8"),
+    ) as { outcomes: { sandboxIdDigest: string; state: string }[] };
+    expect(receipt.outcomes).toContainEqual(
+      expect.objectContaining({
+        sandboxIdDigest: sandboxIdDigest("fake-sb-during-search"),
+        state: "killed",
+      }),
+    );
+  });
+
+  it("does not kill again a sandbox its route already released", async () => {
+    const run = await setup({});
+    const { acquired } = await creating(run);
+    run.finishCreate({ sandboxId: "fake-sb-released" });
+    const { allocation } = await acquired;
+    await allocation.close();
+    expect(run.killed).toEqual(["fake-sb-released"]);
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    // The receipt journal names it too; the route's confirmed release is what skips it.
+    expect(
+      parseSandboxReceipts(
+        await readFile(path.join(run.paths.absoluteRunRoot, SANDBOX_RECEIPTS_ARTIFACT), "utf8"),
+      ).map((receipt) => receipt.sandboxId),
+    ).toContain("fake-sb-released");
+    expect(run.killed).toEqual(["fake-sb-released", "fake-sb-1"]);
+  });
+
+  it("says unknown, with the command that searches by tag, when a create outlasts the deadline", async () => {
+    // The create never returns, and the search never answers, so only the deadline ends it.
+    const run = await setup({ createsWaitMs: 0, listGate: new Promise<void>(() => undefined) });
+    await creating(run);
+    target.emit("SIGINT");
+    await vi.waitFor(() => expect(run.lists()).toBe(1));
+    run.fireDeadline();
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(130));
+    expect(run.stderr()).toContain("sandboxes unknown");
+    expect(run.stderr()).toContain("Still waiting on E2B: 1 sandbox create");
+    expect(run.stderr()).toContain(`\`${reclaimCommand(RUN)}\``);
+    expect(run.stderr()).not.toContain("clean");
   });
 });
 
@@ -166,10 +433,7 @@ describe("the run command's signal handler at shutdown edges", () => {
   });
 
   it("keeps second-signal exit when analysis starts after shutdown began", async () => {
-    const run = await setup({
-      kill: () => new Promise<boolean>(() => undefined),
-      deadlineMs: 2_000,
-    });
+    const run = await setup({ kill: () => new Promise<boolean>(() => undefined) });
     target.emit("SIGTERM");
     await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
     // The route published its bundle meanwhile and analysis starts.
@@ -185,9 +449,10 @@ describe("the run command's signal handler at shutdown edges", () => {
     const run = await setup({
       runId: "latest",
       kill: () => new Promise<boolean>(() => undefined),
-      deadlineMs: 50,
     });
     target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-named"]));
+    run.fireDeadline();
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
     expect(run.stderr()).not.toContain("reclaim --run latest");
     expect(run.stderr()).toContain(
@@ -201,16 +466,15 @@ describe("the run command's signal handler at shutdown edges", () => {
       deadlineMs: 50,
     });
     target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.interrupt).toHaveBeenCalled());
+    run.fireDeadline();
     await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
     expect(run.killed).toEqual([]);
     expect(run.stderr()).toContain("stopping did not finish within 0.05 s");
   });
 
   it("keeps second-signal exit when the run returns after shutdown began", async () => {
-    const run = await setup({
-      kill: () => new Promise<boolean>(() => undefined),
-      deadlineMs: 2_000,
-    });
+    const run = await setup({ kill: () => new Promise<boolean>(() => undefined) });
     target.emit("SIGTERM");
     await vi.waitFor(() => expect(run.killed).toEqual(["fake-sb-1"]));
     // The run returned; the run command releases its handling before presentation.

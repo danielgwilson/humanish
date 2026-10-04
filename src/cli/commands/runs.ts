@@ -1,16 +1,15 @@
 import path from "node:path";
 import { Command, Option } from "commander";
-import { shellQuote } from "../../substrates/shell.js";
+import { shellArg } from "../../substrates/shell.js";
 import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
-import { cleanupRun, listRuns, readReview } from "../../run/stored-runs.js";
+import { listRuns, readReview } from "../../run/stored-runs.js";
 import { verifyRun } from "../../verify/verify.js";
 import {
   reclaimPreflightSandboxes,
   reclaimRunSandboxes,
   type ReclaimResult,
 } from "../../run/reclaim.js";
-import type { CleanupResult } from "../../run/results.js";
 import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { RunDisplay } from "../../run/display.js";
@@ -30,6 +29,7 @@ import {
   type HumanOutput,
 } from "../io.js";
 import { plural } from "../../run/text.js";
+import { warnAndQueue } from "../deprecations.js";
 import { type AnalysisFindings, formatFindings, readRunFindings } from "../findings.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
@@ -65,20 +65,25 @@ export function registerVerifyCommand(parent: Command, io: CliIo): void {
     );
 }
 
+const CLEANUP_RENAMED = "`cleanup` is now `reclaim --check`; `cleanup` is removed in 0.112.0.";
+
+/**
+ * The deprecated `cleanup`, hidden from help: one warning, then exactly `reclaim --check`, with
+ * its output and exit code. The old command read only what computer-use runs recorded and passed
+ * when it found no record; the check asks E2B.
+ */
 export function registerCleanupCommand(parent: Command, io: CliIo): void {
   parent
-    .command("cleanup")
-    .description(
-      "Check a run's recorded resources and write cleanup.json. It stops nothing; humanish reclaim stops leftover sandboxes.",
-    )
-    .summary("Check that a run's resources were stopped.")
-    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .command("cleanup", { hidden: true })
+    .description(`Deprecated: ${CLEANUP_RENAMED}`)
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
+    .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
+    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
-      const result = await cleanupRun(options.cwd, options.run);
-      writeResult(command, io, result, (value) => formatCleanupHuman(value, options.cwd));
-      io.setExitCode(result.ok ? 0 : 2);
+    .action(async (options: ReclaimCommandOptions, command: Command) => {
+      warnAndQueue(command, io, CLEANUP_RENAMED);
+      await runReclaimCommand(io, command, { ...options, check: true });
     });
 }
 
@@ -256,9 +261,9 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
   parent
     .command("reclaim")
     .description(
-      "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment or in --dotenv.",
+      "Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox E2B lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks E2B whether each still exists and kills nothing. Needs E2B_API_KEY in the environment or in --dotenv.",
     )
-    .summary("Stop an interrupted run's leftover sandboxes.")
+    .summary("Stop or check an interrupted run's sandboxes.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
     .addOption(
@@ -267,53 +272,84 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
         "Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's.",
       ).conflicts("run"),
     )
+    .option(
+      "--check",
+      "Ask E2B whether each sandbox still exists; kill nothing and write nothing. Exits 0 only when all are gone.",
+    )
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
     .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          cwd: string;
-          run: string;
-          preflight?: boolean;
-          dotenv?: string;
-          envFile?: string;
-          json?: boolean;
-        },
-        command,
-      ) => {
-        // The kill calls read E2B_API_KEY from the environment: the env file, then discovered keys.
-        if (
-          !(await applyEnvFileOption({
-            command,
-            cwd: options.cwd,
-            envFile: dotenvPathOf(options, command, io),
-            io,
-          }))
-        )
-          return;
-        const result = options.preflight
-          ? await reclaimPreflightSandboxes(options.cwd)
-          : await reclaimRunSandboxes(options.cwd, options.run);
-        writeResult(command, io, result, formatReclaimHuman);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
+    .action((options: ReclaimCommandOptions, command: Command) =>
+      runReclaimCommand(io, command, options),
     );
 }
 
-function formatReclaimHuman(result: ReclaimResult): HumanOutput {
+interface ReclaimCommandOptions {
+  cwd: string;
+  run: string;
+  preflight?: boolean;
+  check?: boolean;
+  dotenv?: string;
+  envFile?: string;
+  json?: boolean;
+}
+
+/** `reclaim`, and the deprecated `cleanup`, which runs it with `check`. */
+async function runReclaimCommand(
+  io: CliIo,
+  command: Command,
+  options: ReclaimCommandOptions,
+): Promise<void> {
+  // The kill calls read E2B_API_KEY from the environment: the env file, then discovered keys.
+  if (
+    !(await applyEnvFileOption({
+      command,
+      cwd: options.cwd,
+      envFile: dotenvPathOf(options, command, io),
+      io,
+    }))
+  )
+    return;
+  const hooks = { check: options.check === true };
+  const result = options.preflight
+    ? await reclaimPreflightSandboxes(options.cwd, hooks)
+    : await reclaimRunSandboxes(options.cwd, options.run, hooks);
+  writeResult(command, io, result, (value) =>
+    formatReclaimHuman(value, options.cwd, options.preflight === true),
+  );
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+/** The command that finishes what a reclaim left open, with --cwd when it was given. */
+function reclaimCommand(result: ReclaimResult, cwd: string, preflight: boolean): string {
+  const target = preflight ? "--preflight" : `--run ${shellArg(result.runId)}`;
+  return `humanish reclaim ${target}${cwd === "." ? "" : ` --cwd ${shellArg(cwd)}`}`;
+}
+
+function formatReclaimHuman(result: ReclaimResult, cwd: string, preflight: boolean): HumanOutput {
   const lines: string[] = [];
+  const check = result.mode === "check";
+  const search =
+    result.tagSearch.status === "done"
+      ? `E2B lists ${plural(result.tagSearch.found, "more sandbox", "more sandboxes")} tagged with it`
+      : `E2B tag search ${result.tagSearch.status}`;
   lines.push(
-    `Reclaim ${result.runId}: ${result.ok ? "ok" : "failed"}, ${plural(result.receiptCount, "sandbox receipt")}.`,
+    `${check ? "Reclaim check" : "Reclaim"} ${result.runId}: ${result.state}. ${plural(result.receiptCount, "sandbox receipt")}; ${search}.`,
   );
   for (const outcome of result.outcomes) {
     lines.push(
-      `  sandbox ${outcome.sandboxIdDigest} (${outcome.laneId}): ${outcome.state}${outcome.detail ? ` — ${outcome.detail}` : ""}`,
+      `  sandbox ${outcome.sandboxIdDigest} (${outcome.laneId}, from ${outcome.source}): ${outcome.state}${outcome.detail ? `: ${outcome.detail}` : ""}`,
     );
   }
   for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
-  const stdout = lines.join("\n");
-  return result.error === undefined ? stdout : { stdout: `${stdout}\n`, error: result.error };
+  if (result.error === undefined && result.state !== "clean")
+    lines.push(
+      result.state === "running"
+        ? `To stop them, run ${reclaimCommand(result, cwd, preflight)}.`
+        : `Run ${reclaimCommand(result, cwd, preflight)} again once E2B is reachable; each sandbox's create-time timeout is the backstop.`,
+    );
+  const stdout = `${lines.join("\n")}\n`;
+  return result.error === undefined ? stdout : { stdout, error: result.error };
 }
 
 const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
@@ -388,6 +424,13 @@ function shareSafetyLines(result: VerifyResult): string[] {
     .map((reason) => `share-safety: ${reason.code}: ${reason.message}`);
 }
 
+/** For a run that is not finished, its liveness and sandbox state, so the line leads with them. */
+function unfinishedNote(result: VerifyResult): string {
+  return result.unfinished === undefined
+    ? ""
+    : ` (${result.unfinished.liveness}, sandboxes ${result.unfinished.sandboxes})`;
+}
+
 /**
  * One line for a pass. A failure lists only the failing checks. `--verbose` prints every check.
  * A run that does not exist prints only that.
@@ -395,12 +438,13 @@ function shareSafetyLines(result: VerifyResult): string[] {
 function formatVerifyHuman(result: VerifyResult): HumanOutput {
   if (result.error?.code === "HUMANISH_RUN_NOT_FOUND") return humanError(result.error);
   const runId = verifiedRunId(result);
+  const named = `${runId}${unfinishedNote(result)}`;
   const total = result.checks.length;
   const failed = result.checks.filter((check) => !check.ok);
   const lines = result.ok
-    ? [`verified ${runId} · ${result.shareSafety.status} · ${total} checks passed`]
+    ? [`verified ${named} · ${result.shareSafety.status} · ${total} checks passed`]
     : [
-        `verify failed: ${runId} · ${result.shareSafety.status} · ${failed.length} of ${total} checks failed`,
+        `verify failed: ${named} · ${result.shareSafety.status} · ${failed.length} of ${total} checks failed`,
         ...failed.map((check) => `- ${check.message}`),
       ];
   lines.push(
@@ -417,7 +461,7 @@ function formatVerifyVerbose(result: VerifyResult): HumanOutput {
   return (
     [
       `humanish verify ${result.ok ? "passed" : "failed"}`,
-      `run: ${verifiedRunId(result)}`,
+      `run: ${verifiedRunId(result)}${unfinishedNote(result)}`,
       `share-safety: ${result.shareSafety.status}`,
       ...result.shareSafety.reasons.map(
         (reason) => `share-safety reason: ${reason.code}: ${reason.message}`,
@@ -426,40 +470,6 @@ function formatVerifyVerbose(result: VerifyResult): HumanOutput {
         (check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
       ),
       ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
-}
-
-/** A command-line argument, single-quoted only when the shell would split or expand it. */
-function shellArg(value: string): string {
-  return /^[\w@%+=:,./-]+$/.test(value) ? value : shellQuote(value);
-}
-
-/**
- * Cleanup only reads evidence and never stops a sandbox. A failed resource is an E2B sandbox not
- * recorded as stopped, which reclaim can stop from the run's sandbox receipts, so the last line
- * names it. A skipped resource is a provider reclaim does not handle, so it gets no line. `cwd` is
- * the --cwd the command was given, since cleanup's result masks it.
- */
-function reclaimPointer(result: CleanupResult, cwd: string): string[] {
-  if (result.runId === undefined || result.summary.failed === 0) return [];
-  const cwdFlag = cwd === "." ? "" : ` --cwd ${shellArg(cwd)}`;
-  return [
-    `To stop leftover sandboxes, run humanish reclaim --run ${shellArg(result.runId)}${cwdFlag}.`,
-  ];
-}
-
-function formatCleanupHuman(result: CleanupResult, cwd: string): HumanOutput {
-  if (!result.ok && result.error) return humanError(result.error);
-
-  return (
-    [
-      `humanish cleanup ${result.ok ? "passed" : "failed"}`,
-      `run: ${result.runId ?? result.run}`,
-      `resources: already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
-      ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
-      ...result.warnings.map((warning) => `warning: ${warning}`),
-      ...reclaimPointer(result, cwd),
     ].join("\n") + "\n"
   );
 }

@@ -27,7 +27,7 @@ import {
   streamScreenshotPaths,
 } from "./artifacts.js";
 import { flatContextWarnings } from "./context-growth.js";
-import { runNotFinishedWarnings } from "./liveness.js";
+import { runNotFinished, type UnfinishedRun } from "./liveness.js";
 import { costAndReceiptFindings } from "./costs.js";
 import { rerunLineageFindings } from "./rerun.js";
 import { sharedWorldEvidenceFindings } from "./shared-world.js";
@@ -70,6 +70,8 @@ export interface VerifyResult {
   // Advisory postures the operator must see (e.g. raw full-fidelity screenshots) that never
   // flip ok: overriding a default is supported, but ok: true must not read as "share-ready".
   warnings: string[];
+  /** Present when the run is not finished: its liveness and what is known of its sandboxes. */
+  unfinished?: UnfinishedRun;
   error?: {
     code: "HUMANISH_RUN_NOT_FOUND" | "HUMANISH_INVALID_RUN_BUNDLE";
     message: string;
@@ -215,13 +217,16 @@ export async function verifyResolvedRun(
         "Derived analysis contains sensitive text or unsafe artifact paths; sharing is blocked, original recording remains independently verifiable.",
     });
   const ok = checks.every((check) => check.ok);
+  const notFinished = isRunBundle(bundle)
+    ? await runNotFinished(runPaths, bundle)
+    : { warnings: [], unfinished: undefined };
   const warnings = isRunBundle(bundle)
     ? [
         ...rawScreenshotPostureWarnings(bundle, redactedShapeFrames),
         ...undeclaredSubjectStateWarnings(bundle),
         ...desktopGeometryWarnings(bundle),
         ...flatContextWarnings(bundle),
-        ...(await runNotFinishedWarnings(runPaths, bundle)),
+        ...notFinished.warnings,
       ]
     : [];
   const shareSafety = isRunBundle(bundle)
@@ -255,6 +260,7 @@ export async function verifyResolvedRun(
     checks,
     shareSafety,
     warnings,
+    ...(notFinished.unfinished === undefined ? {} : { unfinished: notFinished.unfinished }),
     ...(ok
       ? {}
       : {
