@@ -1,0 +1,106 @@
+{
+  "schema": "humanish.study-analysis.v1",
+  "id": "analysis-77fbfd1f-405a-4e00-b869-803fb56e6c67",
+  "runId": "cua-2026-10-04T07-53-03-078Z-ae5787d0",
+  "status": "complete",
+  "provider": "openai",
+  "promptVersion": "study-evidence-6",
+  "config": {
+    "model": "gpt-6-astra",
+    "maxCostUsd": 1.75,
+    "maxOutputTokens": 16384
+  },
+  "usage": {
+    "inputTokens": 23009,
+    "outputTokens": 4735,
+    "estimatedCostUsd": 0.498641
+  },
+  "result": {
+    "summary": "The single retained synthetic participant completed the exploratory assignment: they used Taskly for five errands and chores, evaluated its behavior, and reported whether they would continue using it. Adding, checkbox completion, and filtering worked in the supplied captures. Two concerns emerged: refreshing returned the populated list to an empty state, with no recovery observed; pressing Enter during editing left the editor open, but clicking Save successfully completed the edit. The participant reported that they would not use Taskly for a weekly list without persistence. The recording establishes these interface outcomes, not the underlying storage cause or behavior beyond this session.",
+    "participants": [
+      {
+        "streamId": "stream-001",
+        "summary": "Started with an empty list, added five tasks using Enter, edited the groceries task, marked groceries and recycling complete, and checked the Active and Completed filters. Enter left the edit field open; clicking Save recovered that interaction. After refreshing, the All view showed an empty list and “0 left.” The participant then reported positive feedback about basic list operations and rejected continued weekly use unless tasks persist.",
+        "outcomeReason": "The assignment required exploration, a keep-using decision, and a report—not completion of every chore or a prescribed final list state. Captures affirm actual list use, and the final response supplies a concrete decision and feedback about observed behavior. This supports completion of the evaluation assignment despite the empty ending state; it does not establish successful retention between visits."
+      }
+    ],
+    "findings": [
+      {
+        "id": "F1",
+        "title": "Refresh returned the populated list to an empty state",
+        "summary": "The five-task list was no longer displayed after refresh: All was selected, the empty-state message appeared, and the count was “0 left.” The participant reported uncertainty about whether the list was intentionally temporary and said they would not continue weekly use without persistence. No recovery was observed. The evidence does not distinguish a product persistence failure from intentional or setup-specific temporary state.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "Before refresh, the All view contained five tasks, two checked and struck through, with “3 left.”",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant issued the browser refresh shortcut.",
+            "basis": "action"
+          },
+          {
+            "claim": "The post-refresh capture shows All selected, “Nothing here yet. Add your first task above.” and “0 left.”",
+            "basis": "visual"
+          },
+          {
+            "claim": "The supplied initial and populated screens contain no visible explanation that the list is temporary or will reset on refresh.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported expecting retention, hesitating over whether the list was temporary, and declining continued weekly use unless tasks persist.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Enter left the edit open; clicking Save completed it",
+        "summary": "After using Enter to add tasks, the participant expected it to save an edit as well. The edited row remained an input with a Save button after Enter. They noticed the mismatch, clicked Save, and the revised text subsequently appeared outside edit mode. This was a recovered keyboard-expectation mismatch, not evidence that editing was generally broken.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "An Enter keypress during task creation was followed by a capture showing “Buy groceries” as a task and “1 left.”",
+            "basis": "action"
+          },
+          {
+            "claim": "The participant typed replacement text and pressed Enter while editing.",
+            "basis": "action"
+          },
+          {
+            "claim": "After Enter, the first row still showed “Buy groceries and toiletries” inside an input with a Save button.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported that Enter had not saved the edit and identified clicking Save as the next step.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "The participant clicked the location of the visible Save button.",
+            "basis": "action"
+          },
+          {
+            "claim": "The next capture displays “Buy groceries and toiletries” as a normal task row with an Edit button, supporting recovery from the open editor.",
+            "basis": "visual"
+          }
+        ]
+      }
+    ]
+  }
+}

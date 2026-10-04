@@ -1,0 +1,119 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T20-19-48-680Z-e2340c77",
+  "mode": "live",
+  "createdAt": "2026-09-01T20:19:48.682Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.157607,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.154347
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.00326
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added three tasks, including the longer “Call dentist to schedule a routine checkup for next month.” The long text wrapped cleanly and remained readable.\n\nI marked “Buy groceries” complete. The Active filter then showed the two remaining tasks and “2 left”; the Completed filter showed only the finished task with a checked box and crossed-out text.\n\nI renamed “Water the plants” to “Water all indoor plants” using Edit and Save. That worked as expected.\n\nTo tidy up, I used Clear completed. “Buy groceries” was removed, and the Completed filter then said “Nothing matches this filter.” I returned to All, leaving the two unfinished tasks visible.\n\nEverything important worked without errors. My only hesitation was that Clear completed stayed visible and looked usable even after there were no completed tasks left; I expected it to disappear or become disabled.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Planning task input flow**\n\nI need to actually implement this process. I should add a few tasks, maybe about three. It feels straightforward: I'll input tasks like \"Buy groceries\" and \"Call dentist.\" I think it’ll be long enough. I'll click to enter each task, making sure it feels obvious. I could"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [13 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [57 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [16 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Completing tasks and renaming**\n\nI'm feeling good about finishing up the grocery list. I expect to complete two items with the active filter, but then I only anticipate one more completion. I realize I need to rename one of the items. I could tackle that before or after I set the filters, but I th"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Renaming task**\n\nI’ve completed one task, and now I need to rename it. I think it’s probably best to switch it to \"Active,\" then I’ll edit the task to say \"Water plants.\" I’ll click on the \"Active\" option first and then make the edits to the second one. It feels straightforward, but I want to ensu"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Considering text input options**\n\nI’m thinking about the best way to edit transformed text. It should feel intuitive, right? I guess I need to ensure that text isn’t automatically selected. Maybe I should just click and then use ctrl+A to select everything before typing a reminder like \"Water all "
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [23 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Tidying up task management**\n\nI'm thinking about how to tidy up the task management app once I'm done. First, it makes sense to use the \"clear completed\" feature, but should I also delete all test tasks? I probably want to keep active tasks in case they're needed, especially since this is a testin"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Evaluating button functionality**\n\nI'm noticing that the clear button works, which is good! However, it seems a bit unexpected that the button stays enabled even when there are no completed tasks. It's still visible, which feels minor but could be confusing. I think it might be worth mentioning th"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Clarifying report details**\n\nI need to ensure the first line of the report is exact, mentioning what worked and what differed from my expectations. Overall, nothing behaved too differently, except that long text wrapped nicely. However, I was confused because the \"Clear completed\" button stayed av"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 9",
+            "text": "REACHED THE GOAL.\nI added three tasks, including the longer “Call dentist to schedule a routine checkup for next month.” The long text wrapped cleanly and remained readable.\n\nI marked “Buy groceries” complete. The Active filter then showed the two remaining tasks and “2 left”; the Completed filter s"
+          }
+        ]
+      }
+    }
+  ]
+}

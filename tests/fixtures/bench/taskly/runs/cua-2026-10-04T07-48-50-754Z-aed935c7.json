@@ -1,0 +1,124 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-10-04T07-48-50-754Z-aed935c7",
+  "mode": "live",
+  "createdAt": "2026-10-04T07:48:50.764Z",
+  "study": {
+    "id": "bench-taskly-a-openai-computer-use"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.209352,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.196283
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "lane-01",
+        "modelId": null,
+        "estimatedCostUsd": 0.013069
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nI added five errands and chores. Adding tasks was quick, and Enter worked without needing to click Add. Checkboxes marked tasks complete, crossed them out, and updated the “left” count. “Clear completed” removed the two finished tasks.\n\nI would not keep using Taskly because:\n\n- The empty list initially displayed a large “undefined” item with “0 left.”\n- The filters were reversed: **Active** showed my completed tasks, while **Completed** showed my unfinished tasks.\n- A longer task title was cut off, so I could not read the full text.\n- While editing, clicking **Save** twice appeared to do nothing. Pressing Enter finally saved the change.\n- Most importantly, refreshing the page erased all three remaining tasks and brought back “undefined.” I would expect a to-do list to retain tasks between visits.\n\nI hesitated around the unresponsive Save button and the contradictory filters. Losing the list on refresh was the deciding issue. No terminal was needed during this web-app trial.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "**Initializing tasks**\n\nI see that we need to interact and set things up. There’s this undefined state, like having zero tasks to start with, which feels a bit odd. I should add tasks to get things moving. It’s important to ensure we have everything initialized properly! Let’s figure out how to get "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Planning task entry**\n\nI'm thinking of adding five tasks through input. First, I'll include groceries. I want to type that in and then hit Enter. Could be useful to test a shortcut method. I'm curious if that makes the process smoother or faster for entering multiple tasks. It feels pretty straigh"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [13 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [18 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [34 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Checking for text issues**\n\nI noticed that the last text got truncated visually, possibly due to overflow issues. I'll want to test this out by editing a typo I found. Specifically, I need to change \"Vacuum apartment\" to \"Vacuum living room.\" So, I’ll click on the third edit option to make the cor"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [22 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Assessing save function**\n\nIt seems like there's an issue with the save function. The button remains visible even when it should be hidden. Perhaps the text indicating the saved state is still there, but I can't exit edit mode due to a bug? I’m considering trying the Enter key in the input field t"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "**Analyzing button responses**\n\nOkay, so it seems like my \"Save\" action is causing some confusion. Maybe there's an issue with click targeting? The buttons behave differently: the \"Save\" button doesn't seem to respond with two clicks, while hitting \"Enter\" works fine. So, I should probably complete "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "**Identifying usability issues**\n\nI’ve noticed a serious usability bug. I need to test the \"clear completed\" button under any filter. The completed tab is supposed to show active tasks, so clicking it should delete actual completed items regardless of the list. I expect we can clear completed tasks,"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 13",
+            "text": "REACHED THE GOAL.\n\nI added five errands and chores. Adding tasks was quick, and Enter worked without needing to click Add. Checkboxes marked tasks complete, crossed them out, and updated the “left” count. “Clear completed” removed the two finished tasks.\n\nI would not keep using Taskly because:\n\n- Th"
+          }
+        ]
+      }
+    }
+  ]
+}

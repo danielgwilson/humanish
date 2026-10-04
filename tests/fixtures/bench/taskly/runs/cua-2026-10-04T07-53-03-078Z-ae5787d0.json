@@ -1,0 +1,106 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-10-04T07-53-03-078Z-ae5787d0",
+  "mode": "live",
+  "createdAt": "2026-10-04T07:53:03.088Z",
+  "study": {
+    "id": "bench-taskly-b-openai-computer-use"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.15014,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.14077
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "lane-01",
+        "modelId": null,
+        "estimatedCostUsd": 0.00937
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nI added five errands and chores. Pressing Enter added tasks quickly, and the remaining-task count updated correctly. Editing worked through the visible Edit and Save buttons, checkboxes clearly marked tasks complete, and the Active and Completed filters showed the expected items.\n\nTwo things behaved differently from what I expected:\n\n- While editing, pressing Enter did not save the change; I had to click Save.\n- After refreshing the page, all five tasks disappeared and the app returned to “Nothing here yet” with “0 left.” I expected a to-do app to retain my list.\n\nI hesitated over whether the list was intentionally temporary, but the screen did not warn me that refreshing would erase it. I would not keep using Taskly for a weekly list unless tasks persist between visits.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "**Interacting with the list**\n\nI need to make sure we can interact effectively. First, I’ll initialize the process, then I want to add a handful of items and test entering or adding them. I should also consider completing filters and possibly clear them. It might be necessary to think about editing,"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [13 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [18 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [18 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [32 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [28 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Noticing save issues**\n\nOh no, it looks like I didn’t save my work when I hit Enter! That’s definitely noticeable. I should click Save to make sure everything’s backed up properly. After that, I might need to tackle a couple of tasks like doing the groceries and taking care of the recycling. It’s "
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "**Considering persistence reload**\n\nI’m thinking about a potential persistence reload. It’s important to keep using the system smoothly. I wonder if reloading will help maintain the items and persist the necessary data. Maybe pressing F5 could do the trick? Hm, I should find out if there’s a better "
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 10",
+            "text": "REACHED THE GOAL.\n\nI added five errands and chores. Pressing Enter added tasks quickly, and the remaining-task count updated correctly. Editing worked through the visible Edit and Save buttons, checkboxes clearly marked tasks complete, and the Active and Completed filters showed the expected items.\n"
+          }
+        ]
+      }
+    }
+  ]
+}

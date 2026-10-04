@@ -1,0 +1,107 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T19-24-42-832Z-00ca139b",
+  "mode": "live",
+  "createdAt": "2026-09-01T19:24:42.835Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.17734,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.173975
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.003365
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "## Trial report\n\nI added three tasks:\n\n- “Buy oat milk”\n- “Return library books”\n- A longer apartment clean-up task\n\nThe long task wrapped onto multiple lines cleanly without hiding the Edit or Delete controls.\n\nI marked “Return library books” complete. The **Active** filter then showed the two remaining tasks, and **Completed** showed only the finished task with a checked box and strikethrough. The footer still said “2 left” while viewing Completed; I understood this as the total unfinished count, but it initially looked like a count for the current view.\n\nI edited “Buy oat milk” to “Buy oat milk and bananas.” Edit changed the row into a text field with a clear Save button, and the new name appeared correctly.\n\nTo tidy up, I used **Clear completed**, then deleted the two remaining test tasks. The list returned to its empty state with “0 left.”\n\n### What worked well\n\n- Adding, completing, filtering, renaming, and clearing tasks all worked.\n- The interface was simple enough to use without documentation.\n- Long task text remained readable.\n- Counts updated immediately.\n\n### Unexpected or potentially risky behavior\n\n- **Delete removes a task immediately**, with no confirmation or undo. That was faster than I expected, but it would be easy to delete something accidentally.\n- **Clear completed remains visible even when there are no completed tasks**, including on an empty list.\n- The “left” count is global rather than specific to the selected filter, which was slightly confusing in the Completed view.\n\nNo issues blocked me from completing the trial.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Adding tasks to an app**\n\nI need to use an app and add a few tasks, including a longer one. To start, I might test by pressing Enter, then typing and clicking “Add” for my first task. I’ll use some generic fake tasks like “Buy oat milk” and “Book dentist appointment,” which feel a bit personal but"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [104 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Completing tasks neatly**\n\nI'm working through my task list and want to mark something as complete first. I’ll make sure to adjust the filters for active and completed tasks afterward. There might be a need to rename one task for clarity, possibly changing \"Edit\" to something more specific. Oh, an"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Renaming a task**\n\nI think I’m finished with my tasks, but I need to rename one. The current title is “Buy oat milk,” and I want to change it to “Buy oat milk and bananas.” It seems more complete that way! I’ll go ahead and make that change now to reflect what I actually need to do. This way, I ke"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Organizing tasks**\n\nI’m thinking about how to tidy up my task list. When I say \"ambiguous,\" does it mean I should clear completed tasks and delete any active ones? \"Tidy up when done” probably just means I clear the completed tasks. \n\nRight now, I can see the active filter with a “Clear completed”"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Reporting task functionality**\n\nI need to report on what worked and highlight some expectations. First, I could mention that the “clear completed” option remains enabled even when there’s nothing to clear; this might be confusing. The count showing “2 left” in the Completed view feels a bit odd si"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 10",
+            "text": "## Trial report\n\nI added three tasks:\n\n- “Buy oat milk”\n- “Return library books”\n- A longer apartment clean-up task\n\nThe long task wrapped onto multiple lines cleanly without hiding the Edit or Delete controls.\n\nI marked “Return library books” complete. The **Active** filter then showed the two rema"
+          }
+        ]
+      }
+    }
+  ]
+}

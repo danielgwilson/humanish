@@ -1,0 +1,106 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-10-04T07-45-29-153Z-dfe76827",
+  "mode": "live",
+  "createdAt": "2026-10-04T07:45:29.165Z",
+  "study": {
+    "id": "bench-taskly-b-openai-computer-use"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.168022,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.158229
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "lane-01",
+        "modelId": null,
+        "estimatedCostUsd": 0.009793
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added five errands and chores. Pressing Enter added each task quickly and kept the input ready for the next one. Checkboxes, the remaining-task count, and the All/Active/Completed filters worked clearly.\n\nI edited “Book dentist appointment” to include Tuesday. I hesitated because Enter did not save the edit as I expected; the task stayed in edit mode until I clicked Save.\n\nI completed two tasks and used Clear completed. It removed them immediately without confirmation. The three active tasks remained until I refreshed the page—then the entire list disappeared and the counter returned to zero.\n\nI would not keep using Taskly because the list did not survive a normal page refresh. The interface was otherwise simple and understandable. No terminal output was shown during this trial.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [13 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [18 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Editing tasks for clarity**\n\nI'm looking to test edits and maybe complete some filters, thinking about persistence and doing things like reloading, deleting, and clearing if necessary. I want to ensure everything is set for real use. I might need to edit the task again and consider adding “Tuesday"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [11 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Considering save functionality**\n\nI find it interesting that pressing Enter didn't save my work as I expected. It's a common assumption! I think I need to click \"Save\" instead, which seems a bit tedious. I wonder if there's a way to streamline this process for a smoother experience. Oh, I really h"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "**Reviewing data loss issues**\n\nAha, data is gone after a refresh, which is a major surprise. Maybe the app wasn’t designed for persistence, and that’s critical for a list app. I need to decide whether to keep using it, but the task indicates I should use it until I make a decision. Testing to see i"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 11",
+            "text": "REACHED THE GOAL.\nI added five errands and chores. Pressing Enter added each task quickly and kept the input ready for the next one. Checkboxes, the remaining-task count, and the All/Active/Completed filters worked clearly.\n\nI edited “Book dentist appointment” to include Tuesday. I hesitated because"
+          }
+        ]
+      }
+    }
+  ]
+}

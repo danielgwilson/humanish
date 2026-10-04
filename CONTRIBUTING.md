@@ -151,8 +151,9 @@ Six folders hold fixtures:
 
 ### Find the test folders outside the `src/` mirror
 
-Most of `tests/` mirrors `src/`. Six folders sit outside that mirror. `tests/admission/` pins what the CLI and the
-library do when they refuse a study before a run starts, and `tests/scripts/` tests `scripts/`.
+Most of `tests/` mirrors `src/`. Seven folders sit outside that mirror. `tests/admission/` pins what the CLI and the
+library do when they refuse a study before a run starts, `tests/scripts/` tests `scripts/`, and `tests/bench/` tests the
+benchmark scorer in `bench/` against recorded runs.
 `tests/surface/` checks the README, the site, `site/public/llms.txt`, the agent skill and the package
 against the shipped CLI. `tests/helpers/`, `tests/fixtures/` and `tests/golden/` hold shared test
 code, inputs and goldens.

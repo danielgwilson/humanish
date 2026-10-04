@@ -1,0 +1,113 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-01T19-20-35-320Z-85505d68",
+  "mode": "live",
+  "createdAt": "2026-09-01T19:20:35.323Z",
+  "study": {
+    "id": "detect-taskly-planted-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.248908,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.244863
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.004045
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "## First-time trial report\n\n### What worked\n- Added three tasks using the input and **Add** button:\n  - “Buy oat milk”\n  - A longer dentist-appointment task\n  - “Take recycling out”\n- Marking “Buy oat milk” complete worked: it became checked and struck through, and the remaining count changed from **3 left** to **2 left**.\n- **Delete** worked, so I could remove the test tasks individually when tidying up.\n- **All** displayed the tasks together.\n\n### What behaved differently than expected\n- The empty list displayed **“undefined”** instead of a normal empty-state message. This appeared both at the start and after deleting everything.\n- The filters appeared reversed:\n  - **Active** showed the completed, struck-through task.\n  - **Completed** showed the unfinished tasks.\n- The long task was cut off at “Book a dentist appointment for.” It did not wrap or show an ellipsis, so most of the description was invisible.\n- I tried renaming “Take recycling out” to “Take recycling and cardboard out.” The text changed in the edit field, but clicking **Save** twice did not close edit mode or give confirmation, so I could not tell whether the rename had actually been saved.\n- **Clear completed** did nothing when clicked twice. I had to use the individual **Delete** buttons to tidy up instead.\n\nOverall, adding, completing, counting, and deleting were straightforward, but the reversed filters and unclear/broken save and cleanup actions made the list unreliable.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Considering task management**\n\nI’m noticing an initial undefined item, with zero left and a clear completed section — probably a bug or stale default. I need to use this naturally and add a few tasks. Something like \"Buy oat milk,\" \"Book dentist appointment for next Tuesday,\" and \"Take out the rec"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [93 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [18 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Identifying UI issues**\n\nI see there's a visual issue where the task gets truncated to just \"Book a dentist appointment for,\" and it doesn't add an ellipsis or wrap properly. That seems like a defect! I wonder if I should try editing the full content instead? Also, I might need to mark it as compl"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Renaming a task**\n\nI realize I've swapped filters, so I need to rename a task. There's a bug showing \"Take recycling out\" under currently active tasks, but it needs to be updated. I think I'll change it to \"Take recycling and cardboard out\" for clarity. I just need to click edit on the second task"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [32 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Trying to save changes**\n\nI’m noticing that the edit mode didn’t exit as expected, since the button still says “Save” and the input is visible. Maybe I just missed clicking it? I should double-check the cursor position on the button too. Hm, it’s possible that the button didn’t actually save the c"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "**Troubleshooting button issues**\n\nIt sounds like I'm trying to get a button to work. The first couple of clicks didn't do anything, so it might be broken. I'm thinking I should try clicking it again, focusing on the center this time. Maybe clearing any completed tasks could help too. I'll give it o"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "**Organizing deletions**\n\nIt seems like there’s no effect from the previous changes, so I can delete items individually to tidy things up. I'll focus on deleting “buy” and “long” and then click on the positions starting from y392. After that, I’ll probably need to rerender the section around y392. I"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 13",
+            "text": "## First-time trial report\n\n### What worked\n- Added three tasks using the input and **Add** button:\n  - “Buy oat milk”\n  - A longer dentist-appointment task\n  - “Take recycling out”\n- Marking “Buy oat milk” complete worked: it became checked and struck through, and the remaining count changed from *"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -107,7 +107,7 @@ not.
 | `humanish/`                | This repo's own studies, personas, scenarios, fixtures and coverage notes                                                       | `humanish/studies/first-run.yaml`   |
 | `examples/`                | Library examples shipped in the npm package: a participant and a scorer                                                         | `examples/README.md`                |
 | `adapters/`                | Adapter fixture sets that `tests/study/adapter-fixtures.test.ts` checks                                                         | `adapters/fixtures/README.md`       |
-| `bench/`                   | Benchmark apps with planted defects and their dated results                                                                     | `bench/DEFECTS.md`                  |
+| `bench/`                   | Benchmark apps with planted defects, the scored runner behind `pnpm bench` and the September results                            | `bench/DEFECTS.md`                  |
 | `fixtures/`                | Synthetic apps and cases that tests and scripts copy                                                                            | `fixtures/minimal-app/README.md`    |
 | `skills/`                  | The companion agent skill that `npx skills add` installs                                                                        | `skills/humanish/SKILL.md`          |
 | `runtime/`                 | Desktop and browser image recipes                                                                                               | `runtime/browser-guest/README.md`   |

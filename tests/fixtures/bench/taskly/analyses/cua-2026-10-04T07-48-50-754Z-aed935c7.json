@@ -1,0 +1,170 @@
+{
+  "schema": "humanish.study-analysis.v1",
+  "id": "analysis-52d28ae1-5d49-4785-8e7f-2b9dc105f233",
+  "runId": "cua-2026-10-04T07-48-50-754Z-aed935c7",
+  "status": "complete",
+  "provider": "openai",
+  "promptVersion": "study-evidence-6",
+  "config": {
+    "model": "gpt-6-astra",
+    "maxCostUsd": 1.75,
+    "maxOutputTokens": 16384
+  },
+  "usage": {
+    "inputTokens": 28955,
+    "outputTokens": 8000,
+    "estimatedCostUsd": 0.736216
+  },
+  "result": {
+    "summary": "The included synthetic participant completed the open-ended trial and reported that they would not keep using Taskly. Enter-based task entry and checkbox/count updates worked visibly. Editing recovered through Enter after two Save attempts left the editor open. The strongest concern was that three unfinished tasks no longer appeared after refresh; other observations included filters showing the opposite completion state, an incompletely displayed title, and an “undefined” zero-task view. Permanent data erasure and the reported success of Clear completed were not independently established.",
+    "participants": [
+      {
+        "streamId": "stream-001",
+        "summary": "Started with an “undefined” list area and “0 left,” then added five tasks using Enter. Edited the vacuum task, tried Save twice, and returned to the normal row view using Enter. Checked off groceries and recycling, observed contradictory Active/Completed filter results, attempted Clear completed, and refreshed. The final capture showed “undefined” and “0 left,” with none of the entered tasks visible. The participant then delivered a concrete report and a decision not to continue using Taskly.",
+        "outcomeReason": "The assignment required an exploratory trial and a report of what worked, unexpected behavior, and a keep-using decision. Recorded interactions establish actual use, and the final report supplies those requested judgments. Completion refers to this evaluation assignment, not reliable task retention or verification of every feature claim."
+      }
+    ],
+    "findings": [
+      {
+        "id": "F1",
+        "title": "Three unfinished tasks were absent from the All view after refresh",
+        "summary": "Three unchecked tasks and “3 left” were visible before refresh; afterward, All showed “undefined” and “0 left.” The participant reported this as the deciding reason not to keep using Taskly. The evidence establishes the visible reset, not permanent deletion or its underlying cause.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "A browser refresh was dispatched after the list still displayed three unfinished tasks.",
+            "basis": "action"
+          },
+          {
+            "claim": "The pre-refresh view contained three unchecked rows and “3 left”; the subsequent All view contained “undefined,” “0 left,” and none of those rows.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported that losing the list on refresh determined their decision not to keep using Taskly.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Active and Completed displayed the opposite completion states",
+        "summary": "Active displayed the two checked, struck-through tasks, while Completed displayed the three unchecked tasks. This visibly contradicted the filter labels and was reported as confusing. No corrected filter behavior was observed.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "With Active selected, only the checked and struck-through groceries and recycling tasks were displayed.",
+            "basis": "visual"
+          },
+          {
+            "claim": "With Completed selected, the three displayed tasks were unchecked and not struck through.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported hesitation around the contradictory filters.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "title": "Two Save attempts left the editor open; Enter returned to the list",
+        "summary": "After changing the vacuum task, two clicks at Save were followed by an unchanged editing state. Enter then returned the row to its normal display with the revised title. This was a recovered editing detour; whether product handling, click targeting, or the observation setup caused it remains unverified.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The participant dispatched two clicks at the Save location before clicking the text field and pressing Enter.",
+            "basis": "action"
+          },
+          {
+            "claim": "Both post-click captures retained the input and Save control; the post-Enter capture showed “Vacuum the living room” as ordinary row text with an Edit button.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant reported confusion about Save and considered click targeting as a possible explanation.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "title": "A longer task title was not fully readable in list view",
+        "summary": "The dentist task appeared ending mid-word at “che,” and the participant reported being unable to read its full title. No full-text recovery was demonstrated. The packet does not distinguish display clipping from alteration of the entered text.",
+        "impact": "friction",
+        "confidence": "medium",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The fifth task was entered through a logged 34-character typing action followed by Enter.",
+            "basis": "action"
+          },
+          {
+            "claim": "The dentist row visibly ended at “Call the dentist to book a che” in both full and filtered list views.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant noticed truncation during use and later reported that the longer title could not be read in full.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "title": "The zero-task view displayed “undefined”",
+        "summary": "At both the start and the end, the list area displayed “undefined” alongside “0 left.” The participant found the initial state odd but could proceed by adding a task. Entry bypassed the message; no corrected zero-task presentation was observed.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The initial and final captures displayed “undefined” in the list area with “0 left.”",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant described the initial undefined state as odd.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "The next captured populated view displayed “Buy groceries” and “1 left” instead of “undefined.”",
+            "basis": "visual"
+          }
+        ]
+      }
+    ]
+  }
+}

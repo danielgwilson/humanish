@@ -1,0 +1,160 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T21-24-51-576Z-da6f2553",
+  "mode": "live",
+  "createdAt": "2026-09-04T21:24:51.579Z",
+  "study": {
+    "id": "detect-taskly-clean-claude-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.009106,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "claude (local, operator-authenticated, one session per run)",
+        "estimatedCostUsd": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.009106
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "local-agent-claude-session",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\n\nWhat I did: I typed a short task into the 'What needs doing?' box and pressed Enter, and it appeared in the list straight away with the counter reading '1 left'. I added a long task describing a plumber call and a third short one. I ticked 'Buy milk', which got struck through. I clicked Active and saw only the two unfinished tasks. I clicked Completed and saw only 'Buy milk', ticked and struck through. I pressed Edit on 'Return library books', added ' by Saturday', and saved. I then deleted the two remaining tasks and pressed Clear completed to remove the finished one. The list ended empty with '0 left'.\n\nWhat worked: adding with Enter, the checkbox, both filters, Edit and Save, Delete, and Clear completed all did what their labels say. The counter updated correctly every time.\n\nWhat behaved differently from what I expected:\n\n1. My long task got cut off with no warning. I typed a sentence ending 'before 10, otherwise reschedule for next week'. The saved task stopped at 'before 10, othe'. Nothing told me there was a length limit or that text had been dropped. I only noticed because I read the list afterwards.\n\n2. The limit is inconsistent. When I pressed Edit on that task and typed the missing words back in, Save kept the whole sentence. So the add box cuts text that the edit box accepts. If there is a limit, it should apply the same way in both places, and it should say so.\n\n3. Enter does not save a rename. Enter adds a task from the top box, so I pressed Enter after editing too. The row stayed in edit mode with my new text sitting there. I had to click Save. That inconsistency made me pause and wonder if the edit had failed.\n\n4. The edit box is a single line. For the long task I could only see the first few words and had to press End to reach the end. The list shows the full text wrapped over five lines, so the edit box shrinking it to one line felt cramped.\n\n5. Delete is immediate. No confirmation and no undo. Fine for a tiny list, but a mis-click loses a task for good.\n\nWhere I hesitated: after the rename did not save on Enter, I was briefly unsure whether the app had frozen or whether I had done something wrong. Clicking Save fixed it. I also hesitated before deleting, since I did not know whether a confirmation would appear, so I deleted one task first to check.",
+        "ids": {
+          "model": "claude (local, operator-authenticated, one session per run)"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "Empty list with an obvious input box labeled 'What needs doing?' and an Add button. I'll click into the box, type my first short task, and press Enter to see whether Enter submits or whether I need the Add button."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [8 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "Enter submitted the task, the box cleared and kept focus, and the counter moved to '1 left'. Next I'll add a long descriptive task and start a third one while the box is still focused."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [150 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [20 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "The long task got cut off: it ends at 'before 10, othe' and the rest of what I typed ('rwise reschedule for next week') is gone, with no warning. I'll note that. Now I'll submit the third task, tick 'Buy milk' as done, and switch to the Active filter to see what's left."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "Active filter shows just the two unfinished tasks and 'Buy milk' is hidden, which is what I expected. Now I'll check the Completed filter to confirm 'Buy milk' shows up there on its own."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "Completed filter shows only 'Buy milk', ticked and struck through. Filters work both ways. Now I'll go back to All and press Edit on 'Return library books' to see how renaming works."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "Edit turned the row into an inline text box and the button became Save. I'll click at the end of the text, add ' by Saturday', and press Enter to see if Enter saves the rename like it did for adding."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "Pressing Enter did not save the rename; the row is still in edit mode with my new text. That's different from the add box, where Enter worked. I'll click Save instead."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "Save worked and the rename shows as 'Return library books by Saturday'. Before tidying up I want to check the cut-off task: I'll press Edit on it to see whether the missing words are actually stored or really gone."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 9",
+            "text": "The edit box is a single line, so I can only see the start of the text. I'll click into it, jump to the end with the End key, and type the missing words back in, then save next turn to see if the app keeps them this time."
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [30 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 10",
+            "text": "The edit box accepted the full sentence this time; it now ends with 'otherwise reschedule for next week'. I'll click Save and see whether the saved task keeps the whole thing or gets cut again."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 11",
+            "text": "After saving the edit, the full sentence is kept, so the cut-off only happens when adding a task, not when editing one. Time to tidy up. I'll delete the bottom task first to see whether Delete asks for confirmation before I remove the rest."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "Delete removed the task straight away with no confirmation or undo. I'll delete the long task next, then use Clear completed to remove the finished 'Buy milk', which should leave the list empty."
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "The list is back to empty with '0 left' and the 'Nothing here yet' message, so tidying up is complete. Everything in the task has been done: added three tasks, marked one complete, tried both filters, renamed a task, and cleared everything out."
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 13",
+            "text": "REACHED THE GOAL.\n\nWhat I did: I typed a short task into the 'What needs doing?' box and pressed Enter, and it appeared in the list straight away with the counter reading '1 left'. I added a long task describing a plumber call and a third short one. I ticked 'Buy milk', which got struck through. I c"
+          }
+        ]
+      }
+    }
+  ]
+}

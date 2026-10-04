@@ -1,0 +1,107 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "cua-2026-09-04T19-03-09-027Z-1d284899",
+  "mode": "live",
+  "createdAt": "2026-09-04T19:03:09.029Z",
+  "study": {
+    "id": "detect-taskly-clean-live"
+  },
+  "cost": {
+    "estimatedTotalUsd": 0.118012,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.11477
+      },
+      {
+        "kind": "desktop-minutes",
+        "modelId": null,
+        "estimatedCostUsd": 0.003242
+      }
+    ]
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "laneId": "lane-01",
+      "actor": {
+        "provider": "openai-responses-cu",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added three tasks, including a detailed picnic-planning task. The long text wrapped neatly and remained readable.\n\nI marked “Buy oat milk” complete. The **Active** filter showed the two unfinished tasks, while **Completed** showed only the crossed-out finished task. The “left” count updated correctly.\n\nI renamed “Book dentist appointment” to “Call dentist to book check-up” using **Edit** and **Save**. I then used **Clear completed** and deleted the remaining trial tasks, leaving the list empty.\n\nEverything worked without errors. I briefly hesitated because edit mode offered **Save** but no visible **Cancel** option. Deleting tasks also happened immediately without confirmation, and **Clear completed** remains visible even when there is nothing to clear.",
+        "ids": {
+          "model": "gpt-5.6-sol"
+        },
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ]
+        },
+        "items": [
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "**Inspecting app interaction**\n\nI need to interact with the app using a computer, so I’ll make sure to inspect it carefully. There are probably certain elements I should look at to ensure everything is functioning as it should. It’s usually a good idea to check for any errors or inconsistencies that"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Planning task additions**\n\nI need to add a few tasks, maybe three? I’m thinking of keeping it natural, perhaps allowing the user to add them via input and then hitting enter? The button could be an obvious path. For the tasks, I want to start with \"Buy oat milk\" for the first, followed by \"Book de"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [12 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [24 chars]"
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [104 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Managing tasks and purchases**\n\nI'm thinking about completing a task. First, I need to mark something as complete. Then, I'll add \"buy milk\" to my checklist. After that, I can filter my tasks to show only the completed ones. It'll be helpful to inspect what I've done, so I'll also consider using t"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Renaming a task**\n\nI need to rename one of the tasks. It seems like I could edit either the completed or active tasks, but it’s likely the active one that needs the change. I think I’ll click on \"All\" first to see everything, then I’ll look for the dentist task specifically to edit it. Let's make "
+          },
+          {
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [29 chars]"
+          },
+          {
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Planning task cleanup**\n\nI need to tidy up once I'm finished. The user suggested clearing completed tasks, and that might involve deleting any trial tasks too. It makes sense to clear completed items first, then consider deleting the rest. I'm thinking about whether just clearing completed tasks w"
+          },
+          {
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 9",
+            "text": "REACHED THE GOAL.\nI added three tasks, including a detailed picnic-planning task. The long text wrapped neatly and remained readable.\n\nI marked “Buy oat milk” complete. The **Active** filter showed the two unfinished tasks, while **Completed** showed only the crossed-out finished task. The “left” co"
+          }
+        ]
+      }
+    }
+  ]
+}

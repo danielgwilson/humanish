@@ -1,0 +1,209 @@
+{
+  "schema": "humanish.study-analysis.v1",
+  "id": "analysis-0abd43f2-ad08-4a50-8e88-33f0cc4eabd6",
+  "runId": "cua-2026-10-04T05-55-40-025Z-51c265a8",
+  "status": "complete",
+  "provider": "openai",
+  "promptVersion": "study-evidence-6",
+  "config": {
+    "model": "gpt-6-astra",
+    "maxCostUsd": 3,
+    "maxOutputTokens": 16384
+  },
+  "usage": {
+    "inputTokens": 67316,
+    "outputTokens": 9230,
+    "estimatedCostUsd": 1.277229
+  },
+  "result": {
+    "summary": "Both synthetic participants completed the exploratory assignment: they added tasks, marked one complete, visited both filtered views, visibly renamed a task, removed their test tasks, and supplied feedback. Completion involved workarounds. Both sessions showed filter labels paired with the opposite completion state, unsuccessful Save and Clear completed attempts, shortened long-task text, and “undefined” in the empty list. Enter within the edit field and individual deletion enabled progress. One participant also unintentionally removed a task during keyboard Save troubleshooting. These observations establish session-specific friction, not population rates or implementation causes.",
+    "participants": [
+      {
+        "streamId": "stream-001",
+        "summary": "Added three tasks, including an 80-character entry, then completed Buy oat milk and inspected both filters. Initially tried renaming the plants task; Save attempts left it in editing mode, and switching to All restored its original text. Tab/Space troubleshooting was followed by removal of that task, which the participant acknowledged as accidental. Subsequently renamed the dentist task using Enter within its edit field. Clear completed attempts left the completed task visible, so individual deletion was used to finish cleanup. Feedback identified the filter mismatch, Save and clearing difficulties, shortened text, and the empty-state label.",
+        "outcomeReason": "The supplied actions and captures affirm the exploratory requirements: three added rows following entry of a long task; a checked, struck-through task; separate completed-only and unfinished-only views, albeit under opposite labels; Book dentist appointment displayed outside editing; and no added task rows remaining in All at the end, with 0 left. A final plain-language report was supplied. Completion does not imply that the controls behaved correctly or that the full long-task text was preserved in storage."
+      },
+      {
+        "streamId": "stream-002",
+        "summary": "Noticed the unusual initial empty state, then added three tasks including a 113-character entry. Completed Buy oat milk and inspected the opposite-status results under Active and Completed. Repeated Save clicks left the dentist task in editing mode; switching to All showed its original name again. Retyping and pressing Enter within the field produced Schedule dentist checkup outside editing. During cleanup, reported confusion from controls moving between successive clicks. An isolated Clear completed retry still left the completed task visible; individual deletions removed the remaining tasks.",
+        "outcomeReason": "Captures and actions show three added task rows following a long entry, a checked and struck-through task, both status-only filtered sets despite their reversed labels, a visibly renamed task outside editing, and final removal of all added task rows in All with 0 left. The participant also supplied the requested report. This supports completion of the exploratory assignment, not correct behavior of every feature."
+      }
+    ],
+    "findings": [
+      {
+        "id": "F1",
+        "title": "Active and Completed displayed opposite-status task sets",
+        "summary": "In both sessions, Active displayed the checked, struck-through task, while Completed displayed the two unchecked tasks. Both participants reported uncertainty about the apparent reversal. They continued, but correctly labeled filtering was not subsequently observed.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "The selected filter labels were inconsistent with the completion states of the displayed rows in both sessions.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Both participants reported surprise or uncertainty about the apparent filter inversion.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Save attempts left drafts uncommitted; Enter enabled renaming",
+        "summary": "Both participants repeatedly questioned whether Save had worked. The edit field remained open, and switching to All showed the original text again. Enter within the field later produced a renamed row in each session. Stream-001 recovered the rename requirement on a different task after its plants task was removed.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "Both participants attempted to commit replacement text with repeated clicks at the visible Save control.",
+            "basis": "action"
+          },
+          {
+            "claim": "Draft replacement text remained in edit fields after Save attempts, then the original text reappeared when All was selected.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Both participants reported uncertainty about whether saving had occurred or editing was supposed to remain open.",
+            "basis": "participant_statement"
+          },
+          {
+            "claim": "Later Enter-in-field sequences were followed by renamed rows outside editing in both sessions.",
+            "basis": "inference"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "title": "Clear completed attempts left the completed task visible",
+        "summary": "Clear completed did not visibly remove Buy oat milk in either session. Stream-001 also tried keyboard activation. Both eventually removed the completed task individually and finished cleanup.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "recovered",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "Both participants clicked Clear completed, and stream-001 additionally attempted Enter and Space activation.",
+            "basis": "action"
+          },
+          {
+            "claim": "The checked Buy oat milk row remained present after those clearing attempts.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Individual Delete actions provided a successful cleanup alternative in both sessions.",
+            "basis": "inference"
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "title": "Keyboard Save troubleshooting coincided with an unintended deletion",
+        "summary": "In stream-001, Tab followed by Space during Save troubleshooting was followed by disappearance of the plants task. The participant later called this accidental. It may reflect normal activation of the adjacent Delete control during synthetic keyboard exploration, rather than spontaneous deletion by the app. Restoration was not observed.",
+        "impact": "friction",
+        "confidence": "medium",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001"
+        ],
+        "exposedStreamIds": [
+          "stream-001"
+        ],
+        "observations": [
+          {
+            "claim": "The participant dispatched Tab and Space after a Save attempt.",
+            "basis": "action"
+          },
+          {
+            "claim": "The plants row disappeared between the surrounding captures, and the unfinished count changed from 2 left to 1 left.",
+            "basis": "visual"
+          },
+          {
+            "claim": "The participant described the removal as accidental after previously discussing keyboard attempts to save.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "title": "Long entries appeared shortened in the list",
+        "summary": "Both participants entered substantially longer tasks than the text subsequently visible in their single-line rows. Both reported truncation; stream-002 explicitly said the full description could not be read in the list. The evidence does not distinguish display clipping from shortening of the underlying task value.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "The long-entry input actions recorded 80 characters in stream-001 and 113 characters in stream-002.",
+            "basis": "action"
+          },
+          {
+            "claim": "The resulting rows displayed only short single-line text, ending at “about” for the dentist entry and “b” for the household entry.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Both participants reported that long text was cut off instead of wrapping.",
+            "basis": "participant_statement"
+          }
+        ]
+      },
+      {
+        "id": "F6",
+        "title": "Empty lists displayed “undefined”",
+        "summary": "Both sessions displayed “undefined” in the list area with 0 left, both initially and after cleanup. Stream-002 reported that the initial state felt malformed or incomplete. Adding tasks and later cleanup were still possible.",
+        "impact": "friction",
+        "confidence": "high",
+        "recovery": "not_observed",
+        "affectedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "exposedStreamIds": [
+          "stream-001",
+          "stream-002"
+        ],
+        "observations": [
+          {
+            "claim": "The initial and final All views contained “undefined” and 0 left rather than task rows.",
+            "basis": "visual"
+          },
+          {
+            "claim": "Stream-002 reported uncertainty about the initial zero-task presentation, and both final reports flagged the empty-state text.",
+            "basis": "participant_statement"
+          }
+        ]
+      }
+    ]
+  }
+}

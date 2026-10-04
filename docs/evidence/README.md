@@ -4,6 +4,10 @@ Dated study records: what one or more runs measured, the commands that produced 
 of each result. The README, the site and the pages in `docs/` cite them. A record keeps its date;
 where a later record differs, the later one holds.
 
+## Efficacy benchmark
+
+- [Taskly efficacy benchmark](benchmark/README.md): `pnpm bench`, its scores and every dated result
+
 ## Computer use, participants and analysis
 
 - 2026-10-01: [Codex CLI 0.159.3 qualification](computer-use/codex-cli-0.159.3-qualification-2026-10-01.md)
